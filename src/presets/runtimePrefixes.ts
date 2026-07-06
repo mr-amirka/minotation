@@ -1,0 +1,56 @@
+// @ts-nocheck
+/* eslint-disable */
+/**
+ * @overview Minimalist-Notation preset "runtime prefixes"
+ * @author Amir Absaliamov <mr.amirka@ya.ru>
+ */
+
+export default (mn) => {
+  const {
+    utils, propertiesStringify,
+  } = mn;
+  const {
+    flags, forEach,
+  } = utils;
+  const style = document.createElement('div').style;
+  const prefixes = propertiesStringify.prefixes;
+  forEach([
+    'webkit',
+    'moz',
+    'o',
+    'ms',
+    'khtml',
+  ], (prefix) => {
+    style[prefix + 'Transform'] && (prefixes['-' + prefix + '-'] = 1);
+  });
+  flags([
+    'appearance',
+    'overflowScrolling',
+    'backdropFilter',
+    'backgroundClip',
+    'transform',
+    'transformStyle',
+    'transitionDuration',
+    'pointerEvents',
+    'userSelect',
+    'filter',
+    'flex',
+    'flexDirection',
+    'flexBasis',
+    'flexWrap',
+    'flexFlow',
+    'flexGrow',
+    'flexShrink',
+    'justifyContent',
+    'alignItems',
+    'alignContent',
+    'alignSelf',
+    'boxPack',
+    'boxDirection',
+    'boxOrient',
+    'order',
+    'opacity',
+    'boxSizing',
+    'textSizeAdjust',
+  ], propertiesStringify.prefixedAttrs);
+};

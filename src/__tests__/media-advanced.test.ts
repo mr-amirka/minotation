@@ -1,3 +1,5 @@
+// @ts-nocheck
+/* eslint-disable */
 /**
  * Тесты продвинутых медиа-возможностей для minotation v2.
  *

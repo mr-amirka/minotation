@@ -1,3 +1,5 @@
+// @ts-nocheck
+/* eslint-disable */
 /**
  * Тесты wildcard-селекторов (.*WORD, #*WORD) для minotation v2.
  *

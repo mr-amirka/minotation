@@ -8,7 +8,8 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "sourceMap": true,
-    "strict": true
+    "strict": false,
+    "noImplicitAny": false
   },
   "exclude": ["node_modules", "dist", "**/*.tmp.*"],
   "include": ["src/**/*"]

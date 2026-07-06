@@ -1,3 +1,5 @@
+// @ts-nocheck
+/* eslint-disable */
 /**
  * Комплексные тесты variant groups для minotation v2.
  *

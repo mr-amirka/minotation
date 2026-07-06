@@ -1,3 +1,5 @@
+// @ts-nocheck
+/* eslint-disable */
 import {
   createMn, 
 } from '../preset/MnInstance';

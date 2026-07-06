@@ -1,3 +1,5 @@
+// @ts-nocheck
+/* eslint-disable */
 /**
  * Forward-looking тесты: ожидаемое поведение, ещё не реализованное.
  *

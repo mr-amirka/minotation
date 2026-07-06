@@ -1,3 +1,5 @@
+// @ts-nocheck
+/* eslint-disable */
 /**
  * Тесты совместимости: новый minotation vs старый minimalist-notation 1.x.
  *

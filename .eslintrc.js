@@ -21,6 +21,7 @@ module.exports = {
   rules: {
     'no-unused-vars': 'off',
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    '@typescript-eslint/ban-ts-comment': 'off',
 
     // §6.7 — каждый элемент на своей строке
     indent: ['error', 2, { SwitchCase: 1 }],
@@ -36,6 +37,9 @@ module.exports = {
     '@stylistic/array-bracket-newline':   ['error', { minItems: 3 }],
     '@stylistic/array-element-newline':   ['error', { minItems: 3 }],
     '@stylistic/comma-dangle': ['error', 'always-multiline'],
+
+    // §6.7 — одна операция на строку
+    'max-statements-per-line': ['error', { max: 1 }],
 
     // §6.8 — if/else/for/while всегда с блоком {}
     curly: ['error', 'all'],

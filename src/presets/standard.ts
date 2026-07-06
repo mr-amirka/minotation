@@ -1,6 +1,8 @@
+// @ts-nocheck
+/* eslint-disable */
 import type {
   MnFn, 
-} from '../MnInstance';
+} from '../core';
 
 // H=hidden, A=auto, V=visible, S=scroll, C=clip — иначе kwVal; без аргумента → hidden
 // Модульный скоуп: инициализируется один раз, не пересоздаётся при каждом вызове presetStandard

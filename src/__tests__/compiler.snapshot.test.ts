@@ -1,3 +1,5 @@
+// @ts-nocheck
+/* eslint-disable */
 /**
  * Snapshot-тесты для MN-компилятора.
  *

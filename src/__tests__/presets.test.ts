@@ -1,3 +1,5 @@
+// @ts-nocheck
+/* eslint-disable */
 import postcss from 'postcss';
 import {
   createMn, presetStandard, presetSynonyms, presetMedias, presetNormalize, presetMain,

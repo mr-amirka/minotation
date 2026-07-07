@@ -354,7 +354,3 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       parseClass,
     });
 }
-
-selectorsCompileProvider.getCombinatorByDepth = getCombinatorByDepth;
-selectorsCompileProvider.getCombinator = getCombinator;
-selectorsCompileProvider.extractMedia = extractMedia;

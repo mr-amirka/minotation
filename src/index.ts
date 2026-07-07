@@ -224,25 +224,25 @@ const MN_KEYFRAMES_TOKEN = 'keyframes';
 const MN_DEFAULT_PRIORITY = -2000;
 const MN_DEFAULT_CSS_PRIORITY = MN_DEFAULT_PRIORITY - 2000;
 const MN_DEFAULT_OTHER_CSS_PRIORITY = MN_DEFAULT_PRIORITY - 4000;
-const reSpace = /\s+/gim;
-const splitSpace = splitProvider(/\s+/);
-const splitSelector = splitProvider(/\s*,+\s*/);
-const splitAmp = splitProvider(/\s*&+\s*/);
-const regexpMatchVar = /^(--[^=]+)=(.*)$/;
-const regexpMatchName = /^([a-z]+)(.*)$/;
-const regexpMatchImportant = /^(.*)(-i)$/;
-const regexpMatchValue = /^((([A-Z][A-Za-z]*)|((-)?[0-9.]+))([a-z%]+)?)?(.*)?$/;
-const regexpBrowserPrefix = /((\:\:\-?|\:\-)([a-z]+\-)?)/;
-const regexpMediaPriority = /^(.*)\^(-?[0-9]+)$/;
-const regexpImportant = /-i$/;
-const joinAnd = joinProvider(' and ');
+const RE_SPACE = /\s+/gim;
+const SPLIT_SPACE = splitProvider(/\s+/);
+const SPLIT_SELECTOR = splitProvider(/\s*,+\s*/);
+const SPLIT_AMP = splitProvider(/\s*&+\s*/);
+const REGEXP_MATCH_VAR = /^(--[^=]+)=(.*)$/;
+const REGEXP_MATCH_NAME = /^([a-z]+)(.*)$/;
+const REGEXP_MATCH_IMPORTANT = /^(.*)(-i)$/;
+const REGEXP_MATCH_VALUE = /^((([A-Z][A-Za-z]*)|((-)?[0-9.]+))([a-z%]+)?)?(.*)?$/;
+const REGEXP_BROWSER_PREFIX = /((\:\:\-?|\:\-)([a-z]+\-)?)/;
+const REGEXP_MEDIA_PRIORITY = /^(.*)\^(-?[0-9]+)$/;
+const REGEXP_IMPORTANT = /-i$/;
+const JOIN_AND = joinProvider(' and ');
 
 const normalizeSelectors = normalizeMapProvider(normalizeSelectorsIteratee);
 const normalizeComboNames = normalizeMapProvider((namesMap, name) => {
-  return flags(splitSpace(name), namesMap);
+  return flags(SPLIT_SPACE(name), namesMap);
 });
 function normalizeSelectorsIteratee(selectorsMap, selector) {
-  forEach((splitSelector(trim(selector).replace(reSpace, ' ')) as any), (selector: string) => {
+  forEach((SPLIT_SELECTOR(trim(selector).replace(RE_SPACE, ' ')) as any), (selector: string) => {
     selector
       && flags(map((variants(selector) as any)[0], selectorNormalize as any), selectorsMap);
   });
@@ -291,7 +291,7 @@ function iterateeCheckImportant(
   return a;
 }
 function __iterateeCheckImportant(v) {
-  return regexpImportant.test(v) ? v : (v + '-i');
+  return REGEXP_IMPORTANT.test(v) ? v : (v + '-i');
 }
 function __normalize(essence) {
   if (!essence) {
@@ -331,14 +331,14 @@ function normalizeMapProvider(iteratee) {
     : iteratee({}, names);
 }
 function normalizeIncludeIteratee(names, name) {
-  return pushArray(names, splitSpace(name));
+  return pushArray(names, SPLIT_SPACE(name));
 }
 function normalizeInclude(names) {
   return isArray(names)
     ? (reduce as any)(
       names, normalizeIncludeIteratee, [],
     )
-    : splitSpace(names);
+    : SPLIT_SPACE(names);
 }
 function priotitySort(a, b) {
   return a.priority - b.priority;
@@ -350,7 +350,7 @@ function getEessenceSelectors(selectorsMap) {
   const specifics = {}, other = [], outputSelectors = []; // eslint-disable-line
   let matchs, prefix, selector; // eslint-disable-line
   for (selector in selectorsMap) (push as any)( // eslint-disable-line
-    (matchs = regexpBrowserPrefix.exec(selector))
+    (matchs = REGEXP_BROWSER_PREFIX.exec(selector))
       ? (specifics[prefix = matchs[3]] || (specifics[prefix] = []))
       : other, selector);
   // eslint-disable-next-line
@@ -374,7 +374,7 @@ function __compileProvider(attrName) {
       return;
     }
     // eslint-disable-next-line
-    for (let vs = splitSpace(v || ''), i = 0, l = vs.length, k; i < l; i++) {
+    for (let vs = SPLIT_SPACE(v || ''), i = 0, l = vs.length, k; i < l; i++) {
       _cache[k = vs[i]] || (
         _cache[k] = 1,
         (push as any)(_values, k)
@@ -643,15 +643,15 @@ function minimalistNotationProvider(options) {
     const queries = [];
 
     // get media priority
-    if (tmp = regexpMediaPriority.exec(mediaExpression)) {
+    if (tmp = REGEXP_MEDIA_PRIORITY.exec(mediaExpression)) {
       mediaExpression = tmp[1];
       mediaPriority = parseInt(tmp[2]);
     }
 
     // eslint-disable-next-line
-    let partsOr = splitSelector(mediaExpression), iOr = 0, lOr = partsOr.length;
+    let partsOr = SPLIT_SELECTOR(mediaExpression), iOr = 0, lOr = partsOr.length;
     for (;iOr < lOr; iOr++) {
-      partsAnd = splitAmp(name = partsOr[iOr]);
+      partsAnd = SPLIT_AMP(name = partsOr[iOr]);
       lAnd = partsAnd.length;
       iAnd = 0;
       outputQuery = [];
@@ -671,7 +671,7 @@ function minimalistNotationProvider(options) {
         );
       }
 
-      query = joinAnd(outputQuery);
+      query = JOIN_AND(outputQuery);
       (selector = joinOnly(outputSelector))
         ? push(medias, [
           name,
@@ -719,7 +719,7 @@ function minimalistNotationProvider(options) {
     } catch (ex) {
       return [mediaName];
     }
-    return [joinAnd(queries), priority];
+    return [JOIN_AND(queries), priority];
   }
   mn.parseMediaExpression = parseMediaExpression;
 
@@ -886,16 +886,16 @@ function minimalistNotationProvider(options) {
     value: any, matchs?: any, ni?: any, name?: any, handle?: any, essence?: any, params?: any, suffix?: any, err?: any,
   ): any {
     try {
-      if (matchs = regexpMatchVar.exec(value)) {
+      if (matchs = REGEXP_MATCH_VAR.exec(value)) {
         params = {};
         params[matchs[1]] = spaceNormalize(matchs[2]);
         return {
           style: params,
         };
       }
-      return (matchs = regexpMatchName.exec(value)) && (
+      return (matchs = REGEXP_MATCH_NAME.exec(value)) && (
         name = matchs[1],
-        (matchs = regexpMatchImportant.exec(suffix = matchs[2])) && (
+        (matchs = REGEXP_MATCH_IMPORTANT.exec(suffix = matchs[2])) && (
           suffix = matchs[1],
           ni = matchs[2]
         ),
@@ -905,7 +905,7 @@ function minimalistNotationProvider(options) {
             suffix: suffix,
             ni: ni || '',
           },
-          handle.skip || (matchs = regexpMatchValue.exec(suffix)) && (
+          handle.skip || (matchs = REGEXP_MATCH_VALUE.exec(suffix)) && (
             params.value = matchs[2],
             params.camel = matchs[3],
             params.num = matchs[4],

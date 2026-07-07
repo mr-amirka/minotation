@@ -12,7 +12,7 @@
  *   w50%+10px  → селектор .w50%\+10px, значение width: calc(50% + 10px)
  */
 
-const mnProvider = require('../index').default || require('../index').minimalistNotationProvider;
+const mnProvider = require('../core').default || require('../core').minimalistNotationProvider;
 
 /**
  * Создаёт экземпляр MN с простым w-хендлером.

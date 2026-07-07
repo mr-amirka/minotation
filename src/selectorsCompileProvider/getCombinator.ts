@@ -1,4 +1,3 @@
-/* eslint-disable */
 import {
   repeat,
 } from 'fundamentool';

@@ -1,10 +1,10 @@
-/* eslint-disable */
 export {
   getCombinatorByDepth,
   getCombinator,
 } from './getCombinator';
 export {
   extractMedia,
+  mediaFilterIteratee,
 } from './extractMedia';
 export {
   selectorsCompileProvider,

@@ -1,4 +1,4 @@
-/* eslint-disable */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   escapeCss,
   escapeQuote,
@@ -32,6 +32,7 @@ import {
 } from './constants';
 import {
   extractMedia,
+  mediaFilterIteratee,
 } from './extractMedia';
 import {
   getCombinator,
@@ -97,12 +98,11 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     $$states = (instance as any).states || {};
     $$synonyms = (instance as any)._synonyms || {};
 
-    let multiplierMatch: RegExpExecArray | null;
     let name = comboName;
     let tgt = targetName;
     let multiplier: number;
 
-    multiplierMatch = REGEXP_MULTIPLIER.exec(name);
+    const multiplierMatch = REGEXP_MULTIPLIER.exec(name);
     if (multiplierMatch) {
       name = multiplierMatch[1];
       multiplier = parseInt(multiplierMatch[2]);
@@ -112,16 +112,20 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     }
 
     const suffixes = reduceIn(
-        variantsBase(name), suffixesReduce, {} as StrMap<StrMap<number>>,
-      );
+      variantsBase(name), suffixesReduce, {} as StrMap<StrMap<number>>,
+    );
     return (reduceIn as any)(
       suffixes,
-      (items: Array<[StrMap<number>, AltMap]>, essences: StrMap<number>, suffix: string) => {
+      (
+        items: Array<[StrMap<number>, AltMap]>, essences: StrMap<number>, suffix: string,
+      ) => {
         const childs = splitChild(suffix as any as string);
         const first = getParents(
           childs.shift(), tgt, '',
         );
-        return push(items, [essences, mapIn(reduce(childs, childsIteratee as any, first), extractMedia as any)]);
+        return push(items, [essences, mapIn(reduce(
+          childs, childsIteratee as any, first,
+        ), mediaFilterIteratee as any)]);
       },
       [],
     );

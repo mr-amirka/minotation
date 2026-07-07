@@ -1,4 +1,3 @@
-/* eslint-disable */
 import {
   filter,
   indexOf,
@@ -15,7 +14,7 @@ import {
   splitSelector,
 } from './constants';
 
-function mediaFilterIteratee(mediaNames: string[]): string {
+export function mediaFilterIteratee(mediaNames: string[]): string {
   const excludes: string[] = [];
   const mainMedia = mediaNames.shift() as string;
   mediaNames = filter(mediaNames, (mediaName: string): boolean => {
@@ -39,6 +38,7 @@ export function extractMedia(mediaNames: string[], partName: string): string {
       ) => {
         const mediaParts = splitMedia(selector);
         push(output, mediaParts[0] + (separators[index] || ''));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         mediaParts.length > 1 && push(mediaNames as any, unslash(mediaParts[1]));
         return output;
       },

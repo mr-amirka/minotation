@@ -1,5 +1,5 @@
-// @ts-nocheck
 /* eslint-disable */
+// @ts-nocheck
 /**
  * @overview Minimalist-Notation preset "default styles"
  * @author Amir Absaliamov <mr.amirka@ya.ru>
@@ -297,7 +297,7 @@ function normalizeDefault(p, def) {
 }
 
 
-export default (mn) => {
+export default (mn: any) => {
   const {
     utils,
     setKeyframes,

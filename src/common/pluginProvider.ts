@@ -1,3 +1,4 @@
+/* eslint-disable */
 // @ts-nocheck
 /* eslint-disable */
 import { extend, forEach, forIn, isArray, isFunction, isString, merge, noop, write } from 'fundamentool';

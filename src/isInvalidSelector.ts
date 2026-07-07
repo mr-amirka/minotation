@@ -1,12 +1,7 @@
-// @ts-nocheck
 /* eslint-disable */
-const regexpInvalid = /\.[[\]#.*^$()><+~=|:,"'`\s@%\!\/0-9]/g;
-const regexpInQuotesAndEscaped = /("[^"]*"|'[^']*'|\\.)/g;
+const REGEXP_INVALID = /\.[[\]#.*^$()><+~=|:,"'`\s@%\!\/0-9]/g;
+const REGEXP_IN_QUOTES_AND_ESCAPED = /("[^"]*"|'[^']*'|\\.)/g;
 
-function isInvalidSelector(selector) {
-  return regexpInvalid.test(selector.replace(regexpInQuotesAndEscaped, ''));
+export function isInvalidSelector(selector: string): boolean {
+  return REGEXP_INVALID.test(selector.replace(REGEXP_IN_QUOTES_AND_ESCAPED, ''));
 }
-
-export {
-  isInvalidSelector,
-};

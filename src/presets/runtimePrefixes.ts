@@ -1,11 +1,11 @@
-// @ts-nocheck
 /* eslint-disable */
+// @ts-nocheck
 /**
  * @overview Minimalist-Notation preset "runtime prefixes"
  * @author Amir Absaliamov <mr.amirka@ya.ru>
  */
 
-export default (mn) => {
+export default (mn: any) => {
   const {
     utils, propertiesStringify,
   } = mn;

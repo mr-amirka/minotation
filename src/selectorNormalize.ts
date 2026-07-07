@@ -1,18 +1,18 @@
-// @ts-nocheck
 /* eslint-disable */
-import { forEach, flags, keys, mapEach, push, pushArray, splitProvider, trim, variants } from 'fundamentool';
-import { escapedSplitProvider } from 'fundamentool';
-const splitReverse = require('./mn-utils-shim/escapedSplitProvider')('!').base;
-const regexpClassSubstr = /\.\*([A-Za-z0-9-_$]+)/g;
-const regexpIdSubstr = /\#\*([A-Za-z0-9-_$]+)/g;
+import {
+  escapedSplitProvider,
+} from 'fundamentool';
 
+const splitReverse = escapedSplitProvider('!').base;
+const REGEXP_CLASS_SUBSTR = /\.\*([A-Za-z0-9-_$]+)/g;
+const REGEXP_ID_SUBSTR = /\#\*([A-Za-z0-9-_$]+)/g;
 
-function selectorNormalize(minimalistNotationSelector) {
+function selectorNormalize(minimalistNotationSelector: string): string {
   return splitReverse(minimalistNotationSelector)
     .reverse()
     .join('')
-    .replace(regexpClassSubstr, '[class*=$1]')
-    .replace(regexpIdSubstr, '[id*=$1]');
+    .replace(REGEXP_CLASS_SUBSTR, '[class*=$1]')
+    .replace(REGEXP_ID_SUBSTR, '[id*=$1]');
 }
 
 export {

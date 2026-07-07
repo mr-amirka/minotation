@@ -1,11 +1,11 @@
-// @ts-nocheck
 /* eslint-disable */
+// @ts-nocheck
 /**
  * @overview Minimalist-Notation preset "default medias"
  * @author Amir Absaliamov <mr.amirka@ya.ru>
  */
 
-export default (mn) => {
+export default (mn: any) => {
   const {
     media,
     utils,

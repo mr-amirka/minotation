@@ -1,5 +1,5 @@
-// @ts-nocheck
 /* eslint-disable */
+// @ts-nocheck
 /**
  * @overview Minimalist-Notation preset "prefixes"
  * @author Amir Absaliamov <mr.amirka@ya.ru>
@@ -12,7 +12,7 @@ const // eslint-disable-line
   MS = '-ms-'; // eslint-disable-line
   KHTML = '-khtml-'; // eslint-disable-line
 
-export default (mn) => {
+export default (mn: any) => {
   const {
     utils,
     propertiesStringify,

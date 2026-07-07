@@ -1,5 +1,5 @@
-// @ts-nocheck
 /* eslint-disable */
+// @ts-nocheck
 /**
  * @overview Minimalist-Notation preset "main"
  * @author Amir Absaliamov <mr.amirka@ya.ru>
@@ -10,7 +10,7 @@
 
 
 /* eslint quote-props: ["error", "as-needed"] */
-export default (mn) => {
+export default (mn: any) => {
   mn.css({
     html: {
       '-webkit-tap-highlight-color': '#000',

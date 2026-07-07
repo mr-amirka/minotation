@@ -1,18 +1,80 @@
-// @ts-nocheck
 /* eslint-disable */
+/* eslint-disable */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-  addOf, aggregate, anyval, camelToKebabCase, color, colorGetBackground, concat,
-  cssPropertiesParseSimple, cssPropertiesStringifyProvider, defer, delay,
-  eachApply, eachTry, escapeCss, escapeQuote, escapeRegExp, escapedHalfProvider,
-  escapedSplitProvider, extend, extendDepth, filter, flags, flagsSet, forEach,
-  forIn, get, half, indexOf, isArray, isDefined, isEmpty, isIndex, isLength,
-  isNumber, isObject, isObjectLike, isPlainObject, isPromise, isString,
-  joinArrays, joinComma, joinMaps, joinOnly, joinProvider, kebabToCamelCase,
-  keys, lowerFirst, map, mapEach, mapIn, mapperProvider, merge, mergeDepth,
-  noop, once, push, pushArray, reduce, reduceEach, reduceIn, regexpMapperProvider,
-  removeOf, routeParseProvider, scopeJoin, scopeSplit2, set, size, slice,
-  splitProvider, support, toUpper, trim, unslash, upperFirst, values, variants,
-  withDefer, withResult,
+  addOf,
+  aggregate,
+  camelToKebabCase,
+  color,
+  colorGetBackground,
+  cssPropertiesParseSimple,
+  cssPropertiesStringifyProvider,
+  createTimeout,
+  defer,
+  eachApply,
+  eachTry,
+  escapeCss,
+  escapeQuote,
+  escapeRegExp,
+  escapedHalfProvider,
+  escapedSplitProvider,
+  executeTry,
+  extend,
+  extendDepth,
+  filter,
+  flags,
+  forEach,
+  forIn,
+  get,
+  half,
+  indexOf,
+  isArray,
+  isDefined,
+  isEmpty,
+  isIndex,
+  isLength,
+  isNumber,
+  isObject,
+  isObjectLike,
+  isPlainObject,
+  isPromise,
+  isString,
+  joinArrays,
+  joinComma,
+  joinMaps,
+  joinOnly,
+  joinProvider,
+  kebabToCamelCase,
+  keys,
+  lowerFirst,
+  map,
+  mapIn,
+  mapperProvider,
+  merge,
+  mergeDepth,
+  noop,
+  once,
+  push,
+  pushArray,
+  reduce,
+  reduceIn,
+  regexpMapperProvider,
+  removeOf,
+  routeParseProvider,
+  scopeJoin,
+  scopeSplit,
+  set,
+  size,
+  slice,
+  splitProvider,
+  toUpper,
+  trim,
+  unslash,
+  upperFirst,
+  values,
+  variants,
+  withDefer,
+  withResult,
 } from 'fundamentool';
 import {
   selectorsCompileProvider,
@@ -24,38 +86,46 @@ import {
 import {
   isInvalidSelector,
 } from './isInvalidSelector';
-const regexpSpaceNormalize = /(\\_)|(_)/g;
 
-function replacerSpaceNormalize(all, escaped) {
+// Тип экземпляра MN
+type MnInstance = ReturnType<typeof minimalistNotationProvider>;
+
+const REGEXP_SPACE_NORMALIZE = /(\\_)|(_)/g;
+
+function replacerSpaceNormalize(_all: string, escaped: string): string {
   return escaped ? '_' : ' ';
 }
-function spaceNormalize(v) {
-  return v.replace(regexpSpaceNormalize, replacerSpaceNormalize);
+function spaceNormalize(v: string): string {
+  return v.replace(REGEXP_SPACE_NORMALIZE, replacerSpaceNormalize);
 }
 
+type Observer<T> = {
+  getValue: () => T;
+  emit: (value: T) => void;
+  on: (callback: (value: T) => void) => () => void;
+};
 
-function observableProvider(_value) {
-  const callbacks = [];
+function observableProvider<T>(_value: T): Observer<T> {
+  const callbacks: Array<((value: T) => void) | 0> = [];
   return {
     getValue: () => {
       return _value;
     },
-    emit: (value) => {
+    emit: (value: T) => {
       _value = value;
       eachTry(callbacks, [value]);
     },
-    on: (callback) => {
+    on: (callback: (value: T) => void) => {
       callbacks.push(callback);
       return () => {
         if (callback) {
-          callback = 0;
-          removeOf(callbacks, callback);
+          (callback as any) = 0;
+          (removeOf as any)(callbacks, callback);
         }
       };
     },
   };
 }
-
 
 const utils = minimalistNotationProvider.utils = merge([{
   observableProvider,
@@ -64,9 +134,8 @@ const utils = minimalistNotationProvider.utils = merge([{
   half: half,
   unslash: unslash,
   noop,
-  support: support,
   size: size,
-  concat: concat,
+  concat: (Array as any).prototype.concat,
   extend,
   merge,
   isPlainObject,
@@ -74,7 +143,6 @@ const utils = minimalistNotationProvider.utils = merge([{
   isArray,
   isNumber,
   isString,
-  isNumber: isNumber,
   isObjectLike: isObjectLike,
   isPromise: isPromise,
   isIndex: isIndex,
@@ -83,7 +151,7 @@ const utils = minimalistNotationProvider.utils = merge([{
   isEmpty,
   indexOf: indexOf,
   once: once,
-  delay: delay,
+  delay: createTimeout,
   removeOf,
   addOf: addOf,
   set,
@@ -94,7 +162,7 @@ const utils = minimalistNotationProvider.utils = merge([{
   extendDepth: extendDepth,
   mergeDepth,
   flags,
-  flagsSet: flagsSet,
+  flagsSet: flags,
   joinMaps,
   joinArrays,
   routeParseProvider,
@@ -102,10 +170,10 @@ const utils = minimalistNotationProvider.utils = merge([{
   forEach,
   reduce,
   reduceIn,
-  reduceEach,
+  reduceEach: reduce,
   filter,
   cssPropertiesStringifyProvider,
-  cssPropertiesParse,
+  cssPropertiesParse: cssPropertiesParseSimple,
   push,
   pushArray,
   splitProvider,
@@ -116,8 +184,8 @@ const utils = minimalistNotationProvider.utils = merge([{
   withResult,
   map,
   mapIn,
-  mapEach,
-  values: __values,
+  mapEach: map,
+  values: values,
   keys,
   escapedSplitProvider: escapedSplitProvider,
   mapperProvider: mapperProvider,
@@ -135,17 +203,17 @@ const utils = minimalistNotationProvider.utils = merge([{
   kebabToCamelCase: kebabToCamelCase,
   defer: defer,
   scopeJoin: scopeJoin,
-  scopeSplit: scopeSplit2,
+  scopeSplit: scopeSplit,
   slice: slice,
   spaceNormalize,
-}, anyval]);
+}, {} as any]);
 
 const // eslint-disable-line
   OBJECT = 'object',
   FUNCTION = 'function',
   STRING = 'string',
-  baseSet = set.base,
-  baseGet = get.base;
+  baseSet = (set as any).base,
+  baseGet = (get as any).base;
 
 const MN_CONTEXT_ESSENCE_MAP = 0;
 const MN_CONTEXT_ESSENCE_SELECTORS = 1;
@@ -177,9 +245,9 @@ const normalizeComboNames = normalizeMapProvider((namesMap, name) => {
   return flags(splitSpace(name), namesMap);
 });
 function normalizeSelectorsIteratee(selectorsMap, selector) {
-  forEach(splitSelector(trim(selector).replace(reSpace, ' ')), (selector) => {
+  forEach((splitSelector(trim(selector).replace(reSpace, ' ')) as any), (selector: string) => {
     selector
-      && flags(mapEach(variants(selector), selectorNormalize), selectorsMap);
+      && flags(map(variants(selector) as any, selectorNormalize as any), selectorsMap);
   });
   return selectorsMap;
 }
@@ -197,7 +265,7 @@ function parseMediaValue(v) {
   return v;
 }
 function parseMediaPart(
-  mediaPart, parts, v,
+  mediaPart: any, parts?: any, v?: any,
 ) {
   return mediaPart && (
     parts = mediaPart.split('-'),
@@ -209,7 +277,7 @@ function parseMediaPart(
 }
 function handlerWrap(essenceHandler, paramsMatchPath) {
   const parse = isArray(paramsMatchPath)
-    ? aggregate(mapEach(paramsMatchPath, routeParseProvider), eachApply)
+    ? aggregate(map(paramsMatchPath, routeParseProvider as any) as any, eachApply as any)
     : routeParseProvider(paramsMatchPath);
   return (p) => {
     parse(p.suffix, p);
@@ -236,22 +304,22 @@ function __normalize(essence) {
     selectors, exts, include, important,
   } = essence;
   function childAddNormalize(childs) {
-    important && forIn(childs, iterateeAddImportant);
-    forIn(childs, __normalize);
+    important && (forIn as any)(childs, iterateeAddImportant);
+    (forIn as any)(childs, __normalize);
   }
   essence.selectors = selectors ? normalizeSelectors(selectors) : {
     '': 1,
   };
   exts && (
     essence.exts = important
-      ? reduceIn(
+      ? (reduceIn as any)(
         normalizeComboNames(exts), iterateeCheckImportant, {},
       )
       : normalizeComboNames(exts)
   );
   include && (
     essence.include = important
-      ? mapEach(normalizeInclude(include), __iterateeCheckImportant)
+      ? map(normalizeInclude(include), __iterateeCheckImportant as any)
       : normalizeInclude(include)
   );
   childAddNormalize(essence.childs);
@@ -260,7 +328,7 @@ function __normalize(essence) {
 }
 function normalizeMapProvider(iteratee) {
   return (names) => isObject(names)
-    ? reduceEach(
+    ? (reduce as any)(
       isArray(names) ? names : keys(names), iteratee, {},
     )
     : iteratee({}, names);
@@ -270,7 +338,7 @@ function normalizeIncludeIteratee(names, name) {
 }
 function normalizeInclude(names) {
   return isArray(names)
-    ? reduceEach(
+    ? (reduce as any)(
       names, normalizeIncludeIteratee, [],
     )
     : splitSpace(names);
@@ -284,13 +352,13 @@ function priotitySortContext(a, b) {
 function getEessenceSelectors(selectorsMap) {
   const specifics = {}, other = [], outputSelectors = []; // eslint-disable-line
   let matchs, prefix, selector; // eslint-disable-line
-  for (selector in selectorsMap) push( // eslint-disable-line
+  for (selector in selectorsMap) (push as any)( // eslint-disable-line
     (matchs = regexpBrowserPrefix.exec(selector))
       ? (specifics[prefix = matchs[3]] || (specifics[prefix] = []))
       : other, selector);
   // eslint-disable-next-line
-  for (selector in specifics) push(outputSelectors, specifics[selector]);
-  other.length && push(outputSelectors, other);
+  for (selector in specifics) (push as any)(outputSelectors, specifics[selector]);
+  other.length && (push as any)(outputSelectors, other);
   return outputSelectors;
 }
 function __mergeDepth(src, dst) {
@@ -312,15 +380,15 @@ function __compileProvider(attrName) {
     for (let vs = splitSpace(v || ''), i = 0, l = vs.length, k; i < l; i++) {
       _cache[k = vs[i]] || (
         _cache[k] = 1,
-        push(_values, k)
+        (push as any)(_values, k)
       );
     }
   }
   (instance.clear = () => {
-    _cache = instance.cache = {};
+    _cache = (instance as any).cache = {};
     _values = [];
   })();
-  instance.getNext = (node) => {
+  instance.getNext = (node: any) => {
     const values = _values;
     _values = [];
     return values;
@@ -335,12 +403,12 @@ function __compileProvider(attrName) {
 function minimalistNotationProvider(options) {
   options = options || {};
   function setPresets(presets) {
-    isArray(presets) && eachTry(
+    isArray(presets) && (eachTry as any)(
       presets, [mn], mn, emitError,
     );
   }
   function styleRender() {
-    emit(__values($$stylesMap).sort(priotitySort));
+    emit((values as any)($$stylesMap).sort(priotitySort));
   }
   function updateOptions() {
     const options = mn.options || {};
@@ -353,12 +421,12 @@ function minimalistNotationProvider(options) {
   ) {
     const type = typeof essencePath;
     type === OBJECT
-      ? forIn(essencePath, baseSetMapIteratee)
+      ? (forIn as any)(essencePath, baseSetMapIteratee)
       : (
         !essencePath || type !== STRING
           ? console.warn('MN: essencePath value must be an string', essencePath)
           : mnBaseSet(
-            extendedEssence, essencePath, paramsMatchPath, skip,
+            extendedEssence, essencePath, paramsMatchPath, skip, undefined,
           )
       );
     return mn;
@@ -395,9 +463,9 @@ function minimalistNotationProvider(options) {
   function baseSetMapIteratee(extendedEssence, essencePath) {
     isArray(extendedEssence)
       ? mnBaseSet(
-        extendedEssence[0], essencePath, extendedEssence[1],
+        extendedEssence[0], essencePath, extendedEssence[1], undefined, undefined,
       )
-      : mnBaseSet(extendedEssence, essencePath);
+      : mnBaseSet(extendedEssence, essencePath, undefined, undefined, undefined);
   }
 
   function baseSetEssenseBase(
@@ -453,31 +521,31 @@ function minimalistNotationProvider(options) {
   }
 
 
-  selectorsCompileProvider(mn);
-  const parseComboNameProvider = mn.parseComboNameProvider;
-  const __parseComboName = withCatchParseComboNameDecorate(mn.parseComboName);
+  (selectorsCompileProvider as any)(mn);
+  const parseComboNameProvider = (mn as any).parseComboNameProvider;
+  const __parseComboName: any = withCatchParseComboNameDecorate((mn as any).parseComboName);
 
   // eslint-disable-next-line
   const updateAttrByMap = mn.updateAttrByMap = withResult((comboNamesMap, attrName) => {
     // eslint-disable-next-line
-    let parseComboName = withCatchParseComboNameDecorate(parseComboNameProvider(attrName)), comboName;
-    for (comboName in comboNamesMap) forEach( // eslint-disable-line
+    let parseComboName: any = withCatchParseComboNameDecorate(parseComboNameProvider(attrName)), comboName: any;
+    for (comboName in comboNamesMap) (forEach as any)( // eslint-disable-line
       parseComboName(comboName), updateSelectorIteratee);
-  }, mn);
+  }, mn as any);
   // eslint-disable-next-line
   const updateAttrByValues = mn.updateAttrByValues = withResult((comboNames, attrName) => {
     // eslint-disable-next-line
-    const parseComboName = withCatchParseComboNameDecorate(parseComboNameProvider(attrName));
-    forEach(comboNames, (comboName) => {
-      forEach(parseComboName(comboName), updateSelectorIteratee);
+    const parseComboName: any = withCatchParseComboNameDecorate(parseComboNameProvider(attrName));
+    (forEach as any)(comboNames, (comboName: any) => {
+      (forEach as any)(parseComboName(comboName), updateSelectorIteratee);
     });
   }, mn);
 
   mn.recompileFrom = withResult((attrsMap) => {
     __clear();
     updateOptions();
-    forIn(attrsMap, updateAttrByMap);
-    forIn($$root, generate);
+    (forIn as any)(attrsMap, updateAttrByMap);
+    (forIn as any)($$root, generate);
     cssRender();
     keyframesRender();
     styleRender();
@@ -485,17 +553,17 @@ function minimalistNotationProvider(options) {
 
   mn.getCompiler = getCompiler;
   mn.recursiveCheckByAttrs = withResult((node, attrs) => {
-    eachApply(map(mapEach(isString(attrs) ? [attrs] : attrs, getCompiler),
+    (eachApply as any)((map as any)(map(isString(attrs) ? [attrs] : attrs, getCompiler as any),
       'recursiveCheck'), [node]);
   }, mn);
   mn.checkOneNodeByAttrs = withResult((node, attrs) => {
-    eachApply(map(mapEach(isString(attrs) ? [attrs] : attrs, getCompiler),
+    (eachApply as any)((map as any)(map(isString(attrs) ? [attrs] : attrs, getCompiler as any),
       'checkNode'), [node]);
   }, mn);
   mn.checkByAttrs = withResult((v, attrs) => {
     isString(attrs)
       ? getCompiler(attrs)(v)
-      : eachApply(mapEach(attrs, getCompiler), [v]);
+      : (eachApply as any)((map as any)(attrs, getCompiler as any), [v]);
   }, mn);
   mn.setStyle = (
     name, content, priority,
@@ -504,14 +572,14 @@ function minimalistNotationProvider(options) {
   );
 
   mn.options = extend({}, options);
-  const $$data = mn.data = {};
+  const $$data: any = mn.data = {};
   const $$compilers = $$data.compilers = {};
   const cssPropertiesStringify = mn.propertiesStringify
-    = cssPropertiesStringifyProvider();
+    = cssPropertiesStringifyProvider() as any;
   const emit = (mn.styles$ = observableProvider([])).emit;
-  const error$ = mn.error$ = observableProvider();
+  const error$ = mn.error$ = observableProvider<any>(undefined);
   const emitError = error$.emit;
-  let $$onError = noop;
+  let $$onError: any = noop;
   let $$updated;
   let $$essences;
   let $$root;
@@ -529,7 +597,7 @@ function minimalistNotationProvider(options) {
   let $$altColor;
   let $$revision = 0;
 
-  error$.on((error) => {
+  (error$ as any).on((error: any) => {
     $$onError(error);
   });
 
@@ -638,17 +706,17 @@ function minimalistNotationProvider(options) {
     let queries = [], mp, v, priority, input = mediaName.split('x');
     try {
       (mp = parseMediaPart(input[0])) && (
-        (v = mp[0]) && push(queries, '(min-width: ' + v + 'px)'),
+        (v = mp[0]) && (push as any)(queries, '(min-width: ' + v + 'px)'),
         (v = mp[1]) && (
           priority = -v,
-          push(queries, '(max-width: ' + v + 'px)')
+          (push as any)(queries, '(max-width: ' + v + 'px)')
         )
       );
       (mp = parseMediaPart(input[1])) && (
-        (v = mp[0]) && push(queries, '(min-height: ' + v + 'px)'),
+        (v = mp[0]) && (push as any)(queries, '(min-height: ' + v + 'px)'),
         (v = mp[1]) && (
           isDefined(priority) || (priority = -v),
-          push(queries, '(max-height: ' + v + 'px)')
+          (push as any)(queries, '(max-height: ' + v + 'px)')
         )
       );
     } catch (ex) {
@@ -714,14 +782,14 @@ function minimalistNotationProvider(options) {
             updated[essenceName] = 1,
             cssText = contextEssence[MN_CONTEXT_ESSENCE_CSS_TEXT],
             contextEssence[MN_CONTEXT_ESSENCE_CONTENT][mediaName] = cssText
-              ? joinOnly(mapEach(getEessenceSelectors(contextEssence[MN_CONTEXT_ESSENCE_MAP]),
+              ? joinOnly(map(getEessenceSelectors(contextEssence[MN_CONTEXT_ESSENCE_MAP]) as any,
                 selectorsIteratee))
               : ''
           );
       }
 
       isContinue || (
-        output = joinOnly(map(__values(context).sort(priotitySortContext),
+        output = joinOnly((map as any)((values as any)(context).sort(priotitySortContext),
           [MN_CONTEXT_ESSENCE_CONTENT, mediaName])),
         mediaQuery && mediaQuery !== 'all' && output
           && (output = joinOnly([
@@ -744,7 +812,7 @@ function minimalistNotationProvider(options) {
   }
 
   function __assignCore(
-    assigned, comboNames, selectors, defaultMediaName, excludes,
+    assigned: any, comboNames: any, selectors: any, defaultMediaName: any, excludes?: any,
   ) {
     defaultMediaName = defaultMediaName || 'all';
     let name;
@@ -801,13 +869,13 @@ function minimalistNotationProvider(options) {
       );
     }
     isPlainObject(selectors)
-      ? forIn(selectors, iteratee)
+      ? (forIn as any)(selectors, iteratee)
       : iteratee(comboNames, selectors);
   }, mn);
 
   function __initEssence(
-    value, matchs, ni, name, handle, essence, params, suffix, err,
-  ) {
+    value: any, matchs?: any, ni?: any, name?: any, handle?: any, essence?: any, params?: any, suffix?: any, err?: any,
+  ): any {
     try {
       if (matchs = regexpMatchVar.exec(value)) {
         params = {};
@@ -869,10 +937,10 @@ function minimalistNotationProvider(options) {
     const important = essence.important;
 
     function __childsHandle(
-      childs, separator, withStatic,
+      childs: any, separator: any, withStatic?: any,
     ) {
       const __prefix = essenceName + separator;
-      forIn(childs, withStatic ? (_childEssence, _childName) => {
+      (forIn as any)(childs, withStatic ? (_childEssence: any, _childName: any) => {
         const childEssenceName = __prefix + _childName;
         const childStaticEssence = $$staticsEssences[childEssenceName];
         childs[_childName] = compileMixedEssence(
@@ -884,7 +952,7 @@ function minimalistNotationProvider(options) {
             : _childEssence,
           excludes, important,
         );
-      } : (_childEssence, _childName) => {
+      } : (_childEssence: any, _childName: any) => {
         childs[_childName] = compileMixedEssence(
           $$essences[__prefix + _childName] = {},
           _childEssence,
@@ -898,7 +966,7 @@ function minimalistNotationProvider(options) {
     );
   }
   function compileMixedEssence(
-    dst, src, excludes, important,
+    dst: any, src: any, excludes: any, important?: any,
   ) {
     const include = src.include;
     let // eslint-disable-line
@@ -915,7 +983,7 @@ function minimalistNotationProvider(options) {
     }
 
     dst.cssText = (style = dst.style)
-      && (style = cssPropertiesStringify(style, dst.important || important))
+      && (style = (cssPropertiesStringify as any)(style, dst.important || important))
       ? ('{' + style + '}') : '';
     dst.inited = 1;
     return dst;
@@ -936,8 +1004,8 @@ function minimalistNotationProvider(options) {
     ];
   }
   function updateEssence(
-    essenceName, selectors, mediaName, _excludes, essence,
-  ) {
+    essenceName: any, selectors: any, mediaName: any, _excludes?: any, essence?: any,
+  ): any {
     const excludes = extend({}, _excludes);
     if (excludes[essenceName]) {
       return;
@@ -1004,11 +1072,11 @@ function minimalistNotationProvider(options) {
       to = extractMedia(mediaNames = [], from);
       selectorsMedias[to] = [0, mediaNames[0]];
     }
-    (mn._synonyms || (mn._synonyms = {}))[name] = selectorsMedias;
+    ((mn as any)._synonyms || ((mn as any)._synonyms = {}))[name] = selectorsMedias;
   }
 
   function __assignItemCompile(actx, mediaName) {
-    forIn(actx, (selectors, essenceName) => {
+    (forIn as any)(actx, (selectors: any, essenceName: any) => {
       updateEssence(
         essenceName, selectors, mediaName,
       );
@@ -1026,8 +1094,8 @@ function minimalistNotationProvider(options) {
     $$css = $$data.css = $$data.css || [{}, 0];
     $$stylesMap = $$data.stylesMap = {};
     $$assigned = $$data.assigned = {};
-    forIn($$staticsAssigned = $$statics.assigned || ($$statics.assigned = {}),
-      __assignItemCompile);
+      (forIn as any)($$staticsAssigned = $$statics.assigned || ($$statics.assigned = {}),
+        __assignItemCompile);
   }
   __clear();
   mn.clear = withResult((attrName) => {
@@ -1041,11 +1109,11 @@ function minimalistNotationProvider(options) {
     const keyframesPrefix = MN_KEYFRAMES_TOKEN + ' ';
     const prefixes = cssPropertiesStringify.prefixes;
     // eslint-disable-next-line
-    setStyle(MN_KEYFRAMES_TOKEN, joinOnly(reduceIn($$keyframes[0], (output, v, k) => {
-      let prefix;
-      for (prefix in prefixes) push( // eslint-disable-line
+    setStyle(MN_KEYFRAMES_TOKEN, (joinOnly as any)((reduceIn as any)($$keyframes[0], (output: any, v: any, k: any) => {
+      let prefix: string;
+      for (prefix in prefixes) (push as any)( // eslint-disable-line
         output, '@' + prefix + keyframesPrefix + k + v);
-      push(output, '@' + keyframesPrefix + k + v);
+      (push as any)(output, '@' + keyframesPrefix + k + v);
       return output;
     }, [],
     )), MN_DEFAULT_CSS_PRIORITY,
@@ -1054,9 +1122,9 @@ function minimalistNotationProvider(options) {
   const cssRender = mn.cssCompile = withResult(() => {
     $$css[1] = 0;
     // eslint-disable-next-line
-    setStyle('css', joinOnly(reduceIn($$css[0], __cssReducer, [])), MN_DEFAULT_CSS_PRIORITY);
+    setStyle('css', (joinOnly as any)((reduceIn as any)($$css[0], __cssReducer, [])), MN_DEFAULT_CSS_PRIORITY);
   }, mn);
-  const __render = mn.compile = withResult((attrName) => {
+  const __render = (mn.compile = withResult as any)((attrName: any) => {
     updateOptions();
     if ($$force) {
       __clear();
@@ -1072,7 +1140,7 @@ function minimalistNotationProvider(options) {
     }
     $$keyframes[1] && keyframesRender();
     $$css[1] && cssRender();
-    forIn($$root, generate);
+    (forIn as any)($$root, generate);
     $$updated && styleRender();
     $$updated = $$force = 0;
   }, mn);
@@ -1095,8 +1163,8 @@ function minimalistNotationProvider(options) {
     if (body) {
       const output = ['{'];
       isObject(body)
-        ? forIn(body, (css, k) => push(output, k + '{'
-          + (isObject(css) ? cssPropertiesStringify(css) : css) + '}'))
+        ? (forIn as any)(body, (css: any, k: any) => (push as any)(output, k + '{'
+          + (isObject(css) ? (cssPropertiesStringify as any)(css) : css) + '}'))
         : push(output, body);
       push(output, '}');
       keyframes[name] = joinOnly(output);
@@ -1117,8 +1185,8 @@ function minimalistNotationProvider(options) {
           s,
           '{',
           cssPropertiesStringify(isObject(css)
-            ? extend(instance.css, css)
-            : cssPropertiesParse(css, instance.css)),
+            ? (extend as any)(instance.css, css)
+            : (cssPropertiesParseSimple as any)(css, instance.css)),
           '}',
         ]);
       } else {

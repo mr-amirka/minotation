@@ -1,11 +1,11 @@
-// @ts-nocheck
 /* eslint-disable */
+// @ts-nocheck
 /**
  * @overview MinimalistNotation preset "synonyms"
  * @author Amir Absaliamov <mr.amirka@ya.ru>
  */
 
-export default (mn) => {
+export default (mn: any) => {
   // synonyms
   mn.synonyms({
     a: ':active',

@@ -1,6 +1,4 @@
 /* eslint-disable */
-/* eslint-disable */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   addOf,
   aggregate,
@@ -18,7 +16,6 @@ import {
   escapeRegExp,
   escapedHalfProvider,
   escapedSplitProvider,
-  executeTry,
   extend,
   extendDepth,
   filter,
@@ -212,8 +209,8 @@ const // eslint-disable-line
   OBJECT = 'object',
   FUNCTION = 'function',
   STRING = 'string',
-  baseSet = (set as any).base,
-  baseGet = (get as any).base;
+  baseSet = set,
+  baseGet = get;
 
 const MN_CONTEXT_ESSENCE_MAP = 0;
 const MN_CONTEXT_ESSENCE_SELECTORS = 1;
@@ -247,7 +244,7 @@ const normalizeComboNames = normalizeMapProvider((namesMap, name) => {
 function normalizeSelectorsIteratee(selectorsMap, selector) {
   forEach((splitSelector(trim(selector).replace(reSpace, ' ')) as any), (selector: string) => {
     selector
-      && flags(map(variants(selector) as any, selectorNormalize as any), selectorsMap);
+      && flags(map((variants(selector) as any)[0], selectorNormalize as any), selectorsMap);
   });
   return selectorsMap;
 }
@@ -767,12 +764,12 @@ function minimalistNotationProvider(options) {
         : (mediaSelector ? [mediaSelector] : 0);
 
       selectorsIteratee = selectorPrefixes
-        ? ((selectors) => (
+        ? ((selectors: any) => (
           joinComma(joinArrays(
             selectorPrefixes, selectors, ' ',
           )) + cssText
         ))
-        : ((selectors) => joinComma(selectors) + cssText);
+        : ((selectors: any) => joinComma(selectors) + cssText);
 
       for (essenceName in context) { // eslint-disable-line
         (contextEssence = context[essenceName])
@@ -783,7 +780,7 @@ function minimalistNotationProvider(options) {
             cssText = contextEssence[MN_CONTEXT_ESSENCE_CSS_TEXT],
             contextEssence[MN_CONTEXT_ESSENCE_CONTENT][mediaName] = cssText
               ? joinOnly(map(getEessenceSelectors(contextEssence[MN_CONTEXT_ESSENCE_MAP]) as any,
-                selectorsIteratee))
+                selectorsIteratee as any))
               : ''
           );
       }
@@ -1124,7 +1121,8 @@ function minimalistNotationProvider(options) {
     // eslint-disable-next-line
     setStyle('css', (joinOnly as any)((reduceIn as any)($$css[0], __cssReducer, [])), MN_DEFAULT_CSS_PRIORITY);
   }, mn);
-  const __render = (mn.compile = withResult as any)((attrName: any) => {
+  const __render = mn.compile = withResult(() => {
+    let attrName: any;
     updateOptions();
     if ($$force) {
       __clear();

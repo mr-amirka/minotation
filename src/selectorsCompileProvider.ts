@@ -10,6 +10,7 @@ import {
   joinComma,
   joinOnly,
   map,
+  mapIn,
   push,
   pushArray,
   reduce,
@@ -201,18 +202,17 @@ function provider(instance?: ParseComboNameFn) {
       }
     }
 
-    return reduce(
-      reduceIn(
+    const suffixes = reduceIn(
         variantsBase(name), suffixesReduce, {} as StrMap<StrMap<number>>,
-      ),
-      (items: Array<[StrMap<number>, AltMap]>, essences: StrMap<number>) => {
-        const childs = splitChild(essences as any as string);
+      );
+    return (reduceIn as any)(
+      suffixes,
+      (items: Array<[StrMap<number>, AltMap]>, essences: StrMap<number>, suffix: string) => {
+        const childs = splitChild(suffix as any as string);
         const first = getParents(
           childs.shift(), tgt, '',
         );
-        return push(items, [essences, map(reduce(
-          childs, childsIteratee as any, first,
-        ), mediaFilterIteratee as any) as unknown as AltMap]);
+        return push(items, [essences, mapIn(reduce(childs, childsIteratee as any, first), mediaFilterIteratee as any)]);
       },
       [],
     );

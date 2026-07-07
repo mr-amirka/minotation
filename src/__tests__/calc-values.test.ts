@@ -23,37 +23,37 @@ function makeMn() {
     onError: (e) => { throw e; },
   });
 
-  // Регистрируем w-хендлер: width
-  mn('w', {
-    exts: ({ suffix, ni }) => {
-      if (!suffix) {
-        return { style: { width: '100%' } };
-      }
+  // Регистрируем w-хендлер: width. В v1 API хендлер передаётся как функция.
+  mn('w', function(p) {
+    const suffix = p.suffix;
+    const ni = p.ni;
+    if (!suffix) {
+      return { style: { width: '100%' } };
+    }
 
-      // Парсим suffix: число + опциональная единица + опциональный +добавка
-      const match = /^(-?[0-9.]+)([a-z%]*)(?:\+(.+))?$/.exec(suffix);
-      if (!match) {
-        return { style: { width: suffix } };
-      }
+    // Парсим suffix: опциональный знак + число + опциональная единица + опциональный +добавка
+    const match = /^([-+]?[0-9.]+)([a-z%]*)(?:\+(.+))?$/.exec(suffix);
+    if (!match) {
+      return { style: { width: suffix } };
+    }
 
-      const num = match[1];
-      const unit = match[2] || 'px';
-      const add = match[3];
+    const num = match[1];
+    const unit = match[2] || 'px';
+    const add = match[3];
 
-      if (add) {
-        const addParsed = /^(-?[0-9.]+)([a-z%]*)$/.exec(add);
-        const addVal = addParsed ? addParsed[1] + (addParsed[2] || 'px') : add;
-        return {
-          style: { width: 'calc(' + num + unit + ' + ' + addVal + ')' },
-          important: ni ? 1 : 0,
-        };
-      }
-
+    if (add) {
+      const addParsed = /^(-?[0-9.]+)([a-z%]*)$/.exec(add);
+      const addVal = addParsed ? addParsed[1] + (addParsed[2] || 'px') : add;
       return {
-        style: { width: num + unit },
+        style: { width: 'calc(' + num + unit + ' + ' + addVal + ')' },
         important: ni ? 1 : 0,
       };
-    },
+    }
+
+    return {
+      style: { width: num + unit },
+      important: ni ? 1 : 0,
+    };
   });
 
   return mn;
@@ -85,6 +85,7 @@ describe('calc()-значения через плюс', () => {
   });
 
   test('w+50 → width: +50px (плюс в начале — знак числа)', () => {
+    // "+" перед числом: парсится как "+50", единица по умолчанию "px"
     expect(css('w+50')).toContain('width:+50px');
   });
 });
@@ -95,12 +96,13 @@ describe('calc()-значения через плюс', () => {
 describe('экранирование плюса в селекторе', () => {
   test('класс с % и + экранируются оба', () => {
     const result = css('w50%+10');
-    expect(result).toMatch(/\.w50%\\\+10/);
+    // % → \%, + → \+ в CSS-селекторе
+    expect(result).toMatch(/\.w50\\%\\\+10/);
   });
 
   test('класс с + и px', () => {
     const result = css('w50%+10px');
-    expect(result).toMatch(/\.w50%\\\+10px/);
+    expect(result).toMatch(/\.w50\\%\\\+10px/);
   });
 });
 

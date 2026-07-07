@@ -779,15 +779,27 @@ function minimalistNotationProvider(options) {
             updated[essenceName] = 1,
             cssText = contextEssence[MN_CONTEXT_ESSENCE_CSS_TEXT],
             contextEssence[MN_CONTEXT_ESSENCE_CONTENT][mediaName] = cssText
-              ? joinOnly(map(getEessenceSelectors(contextEssence[MN_CONTEXT_ESSENCE_MAP]) as any,
-                selectorsIteratee as any))
+              ? joinOnly((() => {
+                const sels = getEessenceSelectors(contextEssence[MN_CONTEXT_ESSENCE_MAP]);
+                const result: string[] = [];
+                for (let si = 0; si < sels.length; si++) {
+                  result[si] = selectorsIteratee(sels[si], si, sels as any);
+                }
+                return result;
+              })())
               : ''
           );
       }
 
       isContinue || (
-        output = joinOnly((map as any)((values as any)(context).sort(priotitySortContext),
-          [MN_CONTEXT_ESSENCE_CONTENT, mediaName])),
+        output = joinOnly((() => {
+          const sorted = (values as any)(context).sort(priotitySortContext);
+          const result: any[] = [];
+          for (let si = 0; si < sorted.length; si++) {
+            result[si] = sorted[si][MN_CONTEXT_ESSENCE_CONTENT][mediaName];
+          }
+          return result;
+        })()),
         mediaQuery && mediaQuery !== 'all' && output
           && (output = joinOnly([
             '@media ',

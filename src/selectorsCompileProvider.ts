@@ -63,18 +63,18 @@ function mediaFilterIteratee(mediaNames: string[]): string {
     : mediaNames.join('&');
 }
 
-function getCombinatorByDepth(depth: number): string {
+export function getCombinatorByDepth(depth: number): string {
   return depth < 1 ? '' : ('>' + repeat('*>', depth - 1));
 }
 
-function getCombinator(name: string): [string, string] {
+export function getCombinator(name: string): [string, string] {
   const depthMatchs = REGEXP_DEPTH.exec(name);
   return depthMatchs
     ? [getCombinatorByDepth(parseInt(depthMatchs[1])), depthMatchs[2] || '']
     : [' ', name];
 }
 
-function extractMedia(mediaNames: string[], partName: string): string {
+export function extractMedia(mediaNames: string[], partName: string): string {
   const separators: string[] = [];
   return partName
     ? joinOnly(reduce(
@@ -144,7 +144,7 @@ function joinPrefixWithFirstValue(
 
 type ParseComboNameFn = (comboName: string, targetName?: string) => Array<[StrMap<number>, AltMap]>;
 
-function provider(instance?: ParseComboNameFn) {
+export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   let $$states: StrMap<string[]>;
   let $$synonyms: StrMap<AltMap>;
 
@@ -355,11 +355,6 @@ function provider(instance?: ParseComboNameFn) {
     });
 }
 
-provider.getCombinatorByDepth = getCombinatorByDepth;
-provider.getCombinator = getCombinator;
-provider.extractMedia = extractMedia;
-
-export {
-  provider as selectorsCompileProvider,
-  extractMedia,
-};
+selectorsCompileProvider.getCombinatorByDepth = getCombinatorByDepth;
+selectorsCompileProvider.getCombinator = getCombinator;
+selectorsCompileProvider.extractMedia = extractMedia;

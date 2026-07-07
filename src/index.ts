@@ -12,6 +12,8 @@ export {
 export {
   selectorsCompileProvider,
   extractMedia,
+  getCombinatorByDepth,
+  getCombinator,
 } from './selectorsCompileProvider';
 export {
   selectorNormalize,

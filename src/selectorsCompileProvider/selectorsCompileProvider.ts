@@ -2,94 +2,47 @@
 import {
   escapeCss,
   escapeQuote,
-  escapedHalfProvider,
-  escapedSplitProvider,
   extend,
-  filter,
-  indexOf,
-  joinComma,
-  joinOnly,
-  map,
   mapIn,
   push,
-  pushArray,
   reduce,
   reduceIn,
   repeat,
-  scopeSplit as scopeSplitFn,
-  slice,
+  scopeSplit,
   unslash,
   variants,
 } from 'fundamentool';
 import {
   selectorNormalize,
-} from './selectorNormalize';
-
-type StrMap<T> = Record<string, T>;
-type AltEntry = [number, string];
-type AltMap = StrMap<AltEntry[]>;
+} from '../selectorNormalize';
+import type {
+  AltMap,
+  ParseComboNameFn,
+  StrMap,
+} from './types';
+import {
+  extractSuffix,
+  REGEXP_MULTIPLIER,
+  REGEXP_SCOPE_SUFFIX,
+  SCOPE_END,
+  SCOPE_START,
+  splitChild,
+  splitParent,
+  splitState,
+} from './constants';
+import {
+  extractMedia,
+} from './extractMedia';
+import {
+  getCombinator,
+} from './getCombinator';
+import {
+  joinMapsWithFirstValue,
+  joinPrefixWithFirstValue,
+} from './joinMaps';
 
 function variantsBase(comboName: string): string[] {
   return variants(comboName)[0];
-}
-
-const escSplit = escapedSplitProvider as any;
-const escHalf = escapedHalfProvider as any;
-const splitParent = escSplit(/<|>\-/).base;
-const splitChild = escSplit(/>|<\-/).base;
-const splitMedia = escSplit('@').base;
-const splitState = escSplit(':').base;
-const splitComma = escSplit(',').base;
-const splitSelector = escSplit(/[<>:\.\[\]#+~]/, /\\.|[\.+]\d/).base;
-const extractSuffix = escHalf(/[<>:\.\[\]#+~@\!]/, /\\.|[\.+]\d/).base;
-const REGEXP_DEPTH = /^(\d+)(.*)$/;
-const REGEXP_MULTIPLIER = /^(.*)\*([0-9]+)$/;
-const REGEXP_SCOPE_SUFFIX = /^([A-Za-z0-9-_$]+)(.*)$/;
-const SCOPE_START = '[';
-const SCOPE_END = ']';
-
-
-function mediaFilterIteratee(mediaNames: string[]): string {
-  const excludes: string[] = [];
-  const mainMedia = mediaNames.shift() as string;
-  mediaNames = filter(mediaNames, (mediaName: string): boolean => {
-    return !!(mediaName && indexOf(excludes, mediaName) < 0
-      && push(excludes, mediaName));
-  });
-  return mainMedia
-    ? (map(splitComma(mainMedia), (m: string) => {
-      return (pushArray([m], mediaNames) as string[]).join('&');
-    }) as string[]).join(',')
-    : mediaNames.join('&');
-}
-
-export function getCombinatorByDepth(depth: number): string {
-  return depth < 1 ? '' : ('>' + repeat('*>', depth - 1));
-}
-
-export function getCombinator(name: string): [string, string] {
-  const depthMatchs = REGEXP_DEPTH.exec(name);
-  return depthMatchs
-    ? [getCombinatorByDepth(parseInt(depthMatchs[1])), depthMatchs[2] || '']
-    : [' ', name];
-}
-
-export function extractMedia(mediaNames: string[], partName: string): string {
-  const separators: string[] = [];
-  return partName
-    ? joinOnly(reduce(
-      splitSelector(partName, separators),
-      (
-        output: string[], selector: string, index: number,
-      ) => {
-        const mediaParts = splitMedia(selector);
-        push(output, mediaParts[0] + (separators[index] || ''));
-        mediaParts.length > 1 && push(mediaNames as any, unslash(mediaParts[1]));
-        return output;
-      },
-      [],
-    ))
-    : '';
 }
 
 function suffixesReduce(suffixes: StrMap<StrMap<number>>,
@@ -99,50 +52,6 @@ function suffixesReduce(suffixes: StrMap<StrMap<number>>,
   (suffixes[suffix] || (suffixes[suffix] = {} as StrMap<number>))[unslash(extract[0])] = 1;
   return suffixes;
 }
-
-function joinMapsWithFirstValue(
-  prefixes: AltMap,
-  suffixes: AltMap,
-  separator?: string,
-  end?: string,
-): AltMap {
-  const sep = separator || '';
-  const e = end || '';
-  const output: AltMap = {};
-  let prefix: string;
-  let suffix: string;
-  let pv: AltEntry[];
-  let p: string;
-  let tmp: AltEntry[];
-  for (prefix in prefixes) {
-    pv = prefixes[prefix];
-    p = prefix + sep;
-    for (suffix in suffixes) {
-      tmp = output[p + suffix + e] = slice(suffixes[suffix]);
-      tmp[0] = pv[0] || tmp[0];
-      pushArray(tmp as any, slice(pv, 1));
-    }
-  }
-  return output;
-}
-
-function joinPrefixWithFirstValue(
-  prefix: string,
-  suffixes: AltMap,
-  pv: any,
-): AltMap {
-  const output: AltMap = {};
-  let suffix: string;
-  let tmp: AltEntry[];
-  for (suffix in suffixes) {
-    tmp = output[prefix + suffix] = slice(suffixes[suffix]);
-    tmp[0] = pv || tmp[0];
-  }
-  return output;
-}
-
-
-type ParseComboNameFn = (comboName: string, targetName?: string) => Array<[StrMap<number>, AltMap]>;
 
 export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   let $$states: StrMap<string[]>;
@@ -212,7 +121,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
         const first = getParents(
           childs.shift(), tgt, '',
         );
-        return push(items, [essences, mapIn(reduce(childs, childsIteratee as any, first), mediaFilterIteratee as any)]);
+        return push(items, [essences, mapIn(reduce(childs, childsIteratee as any, first), extractMedia as any)]);
       },
       [],
     );
@@ -256,7 +165,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     let alts: AltMap = {
       '': [], 
     };
-    base(scopeSplitFn(
+    base(scopeSplit(
       value, SCOPE_START, SCOPE_END,
     ), 1);
     return alts;

@@ -6,8 +6,7 @@
 
 const { isInvalidSelector } = require('../isInvalidSelector');
 
-describe('isInvalidSelector', () => {
-  describe('валидные селекторы', () => {
+describe('isInvalidSelector', () => {  describe('валидные селекторы', () => {
     test('.myClass', () => {
       expect(isInvalidSelector('.myClass')).toBe(false);
     });
@@ -33,6 +32,10 @@ describe('isInvalidSelector', () => {
   describe('невалидные селекторы', () => {
     test('.[myClass] — квадратные скобки сразу после точки', () => {
       expect(isInvalidSelector('.[myClass]')).toBe(true);
+    });
+
+    test('.#myId — хэш сразу после точки', () => {
+      expect(isInvalidSelector('.#myId')).toBe(true);
     });
 
     test('.0leading — цифра сразу после точки', () => {

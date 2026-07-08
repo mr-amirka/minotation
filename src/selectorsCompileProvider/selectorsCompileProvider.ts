@@ -54,6 +54,35 @@ function suffixesReduce(suffixes: StrMap<StrMap<number>>,
   return suffixes;
 }
 
+/**
+ * Провайдер компиляции селекторов Minimalist Notation.
+ *
+ * Разбирает MN-комбо-имя (значение атрибута `class`, `id`, etc.) на
+ * карту селекторов с медиа-привязками.
+ *
+ * ## Возвращаемый объект
+ *
+ * - `parseComboName(comboName, targetName)` — разобрать одно имя
+ * - `parseComboNameProvider(attrName)` — получить парсер для атрибута
+ * - `parseClass(comboName)` — разбор класса
+ * - `parseId(comboName)` — разбор id
+ * - `states` — состояния (синонимы сущностей)
+ * - `_synonyms` — синонимы селекторов
+ *
+ * ## Формат результата parseComboName
+ *
+ * `Array<[StrMap<number>, AltMap]>` — массив пар:
+ * - `StrMap<number>` — карта имён сущностей → 1
+ * - `AltMap` — карта селекторов → массив `[медиа-приоритет, медиа-имя]`
+ *
+ * @param instance — существующий экземпляр для расширения
+ * @returns расширенный экземпляр с методами парсинга
+ *
+ * @example
+ * const scp = selectorsCompileProvider();
+ * const result = scp.parseClass('w50');
+ * // → [[{ w50: 1 }, { '.w50': [[0, undefined]] }]]
+ */
 export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   let $$states: StrMap<string[]>;
   let $$synonyms: StrMap<AltMap>;

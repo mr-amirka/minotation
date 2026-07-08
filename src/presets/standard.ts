@@ -1,1228 +1,1815 @@
+/**
+ * Стандартный пресет Minimalist Notation — все CSS-токены.
+ *
+ * ## Архитектура
+ *
+ * Хендлеры генерируются **динамически** через `forIn`-циклы над картами свойств.
+ * Это позволяет покрыть сотни CSS-свойств без ручного перечисления каждого.
+ *
+ * ### Основные группы хендлеров
+ *
+ * | Группа | Токены | CSS-свойства |
+ * |--------|--------|-------------|
+ * | **Размеры** | `w`, `h`, `sq`, `wmin`, `wmax`, `hmin`, `hmax` | `width`, `height`, `min/max-*` |
+ * | **Отступы** | `p`, `m` + стороны (`t`,`b`,`l`,`r`,`x`,`y`) | `padding`, `margin` |
+ * | **Границы** | `b`, `bs`, `bc`, `bi` + стороны | `border-*` |
+ * | **Цвета** | `c`, `bg`, `bga`, `bgi`, `bgo`, `bgr`, `bgs` | `color`, `background-*` |
+ * | **Флекс** | `fha`, `fva`, `fx` | `flex`, `align-*`, `justify-*` |
+ * | **Позиция** | `pos`, `abs`, `ar`, `ai`, `ac`, `as` | `position`, `align/justify` |
+ * | **Тени** | `bxsh`, `tsh` | `box-shadow`, `text-shadow` |
+ * | **Фильтры** | `blur`, `gray`, `bright`, `contrast`, `hue`, `invert`, `saturate`, `sepia` | `filter` |
+ * | **Текст** | `break`, `td`, `fw`, `ff`, `fs`, `lh`, `ta`, `va`, `ws`, `wb`, `ov` | `text-*`, `font-*`, `line-height`, `overflow` |
+ * | **Таблицы** | `tbl`, `tbl.cell` | `display:table`, `display:table-cell` |
+ *
+ * ### Как работают стороны
+ *
+ * Базовые токены (`p`, `m`, `b`, `s`) комбинируются с суффиксами сторон:
+ * - `t` = top, `b` = bottom, `l` = left, `r` = right
+ * - `x` = left+right, `y` = top+bottom
+ * - `lt` = left+top, `rb` = right+bottom, и т.д.
+ *
+ * Примеры: `p20` → `padding:20px`, `pt10` → `padding-top:10px`, `mxA` → `margin-left:auto;margin-right:auto`
+ *
+ * ### Значения
+ *
+ * Токен `w50%+10` парсится как `width: calc(50% + 10px)`.
+ * `+` в середине значения — оператор `calc()`, не требует экранирования.
+ *
+ * @module presetStyles
+ * @author Amir Absaliamov <mr.amirka@ya.ru>
+ */
+
 /* eslint-disable */
 // @ts-nocheck
-/* eslint-disable */
-import type {
-  MnFn, 
-} from '../core';
+/** @constant {RegExp} Разделитель запятых с пробелами */
+const regexpComma = /(?:\s*,\s*)+/;
+const regexpTrimSnakeLeft = /^_+/g;
+const regexpTrimKebabLeft = /^-+/g;
+const reZero =/^0+|\.?0+$/g;
+const regexpFilterName = /^([A-Za-z]+)([0-9]*)(.*)$/;
+const regexpFilterSep = /_+/;
+const regexpDots = /\./g;
 
-// H=hidden, A=auto, V=visible, S=scroll, C=clip — иначе kwVal; без аргумента → hidden
-// Модульный скоуп: инициализируется один раз, не пересоздаётся при каждом вызове presetStandard
-const _OV_MAP: Record<string, string> = {
-  H: 'hidden',
-  A: 'auto',
-  V: 'visible',
-  S: 'scroll',
-  C: 'clip', 
+
+const PATTERN_VAR = '((-):env?((--[^;,]+)(,\\d+([a-z%]+):vu?):va?):vv;?)';
+// eslint-disable-next-line
+const PATTERN_VAR_ADD = '(-):nva?((--[^;,]+)(,[0-9\\.]+([a-z%]+):vua?):vaa?):vva;?';
+const PATTERN_DIGITS = '(-?[0-9\\.]+)';
+
+// eslint-disable-next-line
+const PATTERN_BASE_COLOR = '([A-Z][a-z][A-Za-z]+):camel|([A-Fa-f0-9]+(\\.[0-9]+)?):color|(-?--[^;]+):vv';
+const PATTERN_COLOR = '^(' + PATTERN_BASE_COLOR + '):value';
+
+const PATTERN_VAL = '^(((([A-Za-z]+):otherName|([-]):sign?'
+  + PATTERN_DIGITS + ':num(/' + PATTERN_DIGITS
+  + ':total?)?):value([a-z%]+):unit?)|'
+  + PATTERN_VAR + '):vl(([-+]):sa(([0-9\\.]+):addv([a-z%]+):addu?|'
+  + PATTERN_VAR_ADD + ')):add?$';
+
+
+const SHADOW_PATTERNS = [
+  '(r|R)(\\-?[0-9]+):r',
+  '(x|X)(\\-?[0-9]+):x',
+  '(y|Y)(\\-?[0-9]+):y',
+  '(m|M)([0-9]+):m',
+  'c(' + PATTERN_BASE_COLOR + '):c',
+  '(in):in',
+];
+const TOP = '-top';
+const BOTTOM = '-bottom';
+const LEFT = '-left';
+const RIGHT = '-right';
+
+const SIDES_MAP = {
+  '': [''],
+  t: [TOP],
+  b: [BOTTOM],
+  l: [LEFT],
+  r: [RIGHT],
+
+  y: [TOP, BOTTOM],
+  yl: [
+    TOP,
+    BOTTOM,
+    LEFT,
+  ],
+  yr: [
+    TOP,
+    BOTTOM,
+    RIGHT,
+  ],
+
+  x: [LEFT, RIGHT],
+  xt: [
+    LEFT,
+    RIGHT,
+    TOP,
+  ],
+  xb: [
+    LEFT,
+    RIGHT,
+    BOTTOM,
+  ],
+
+  lt: [TOP, LEFT],
+  rt: [TOP, RIGHT],
+  lb: [BOTTOM, LEFT],
+  rb: [BOTTOM, RIGHT],
 };
-function ovVal(arg: string): string {
-  if (!arg) {
-    return 'hidden';
-  }
-  return _OV_MAP[arg] ?? arg.replace(/[A-Z]/g, (ch, i) => (i === 0 ? '' : '-') + ch.toLowerCase());
+const COLOR_SYNONYMS = {
+  CT: 'CurrentColor',
+  T: 'Transparent',
+};
+const borderStyleSynonyms = {
+  N: 'None',
+  H: 'Hidden',
+  DT: 'Dotted',
+  DS: 'Dashed',
+  S: 'Solid',
+  DB: 'Double',
+  DTDS: 'DotDash',
+  DTDTDS: 'DotDotDash',
+  W: 'Wave',
+  G: 'Groove',
+  R: 'Ridge',
+  I: 'Inset',
+  O: 'Outset',
+};
+const sizeSynonyms = {
+  A: 'Auto',
+  N: 'None',
+};
+const tdSynonyms = {
+  '': 'None',
+  N: 'None',
+  U: 'Underline',
+  O: 'Overline',
+  L: 'LineThrough',
+  I: 'Inherit',
+};
+const breakAfterSynonyms = {
+  A: 'Auto',
+  AW: 'Always',
+  AV: 'Avoid',
+  AVP: 'AvoidPage',
+  AVC: 'AvoidColumn',
+  AVRN: 'AvoidRegion',
+  RN: 'Region',
+  C: 'Column',
+  P: 'Page',
+  L: 'Left',
+  R: 'Right',
+  RE: 'Recto',
+  VE: 'Verso',
+};
+const fontWeightSynonyms = {
+  N: 'Normal',
+  B: 'Bold',
+  BR: 'Bolder',
+  LR: 'Lighter',
+};
+const outlineStyleSynonyms = {
+  N: 'None',
+  DT: 'Dotted',
+  DS: 'Dashed',
+  S: 'Solid',
+  DB: 'Double',
+  G: 'Groove',
+  R: 'Ridge',
+  I: 'Inset',
+  O: 'Outset',
+};
+const positionSynonyms = {
+  '': 'Relative',
+  R: 'Relative',
+  A: 'Absolute',
+  F: 'Fixed',
+  S: 'Static',
+  SK: 'Sticky',
+};
+
+const overscrollBehaviorPriorities = {
+  A: 'Auto',
+  CT: 'Contain',
+  N: 'None',
+  I: 'Inherit',
+  R: 'Revert',
+  RL: 'RevertLayer',
+  U: 'Unset',
+};
+
+const positionPriorities = {
+  relative: 0,
+  absolute: 1,
+  fixed: 2,
+  static: 3,
+  sticky: 4,
+};
+
+const SHADOW_HANDLERS = {
+  bxsh: ['boxShadow', function(
+    x, y, value, r, color,
+  ) {
+    return [
+      x,
+      y,
+      value,
+      r,
+      color,
+    ];
+  }],
+  tsh: ['textShadow', function(
+    x, y, value, r, color,
+  ) {
+    return [
+      x,
+      y,
+      value,
+      color,
+    ];
+  }],
+};
+const FILTER_MAP = {
+  blur: [
+    'blur',
+    4,
+    'px',
+  ],
+  gray: [
+    'grayscale',
+    100,
+    '%',
+  ],
+  bright: [
+    'brightness',
+    100,
+    '%',
+  ],
+  contrast: [
+    'contrast',
+    100,
+    '%',
+  ],
+  hue: [
+    'hue-rotate',
+    180,
+    'deg',
+  ],
+  invert: [
+    'invert',
+    100,
+    '%',
+  ],
+  saturate: [
+    'saturate',
+    100,
+    '%',
+  ],
+  sepia: [
+    'sepia',
+    100,
+    '%',
+  ],
+};
+const UNITS = 'em,ex,%,px,cm,mm,in,pt,pc,ch,rem,vh,vw,vmin,vmax'.split(',');
+
+function throwInvalid(message) {
+  throw new Error(message || 'Parameter is invalid');
+}
+function floatNormalize(v, nosign) {
+  const m = v && v.match(regexpDots);
+  (m && m.length > 1 || isNaN(v = parseFloat(v)) || (v < 0 && nosign))
+    && throwInvalid();
+  return v;
 }
 
-/**
- * Стандартный пресет Minimalist Notation.
- * Все имена тегов — канонические из MN 1.x (верифицированы по mn-docs).
- */
-export function presetStandard(mn: MnFn): void {
+function replace(
+  v, from, to,
+) {
+  return ('' + v).replace(from, to);
+}
+function snakeLeftTrim(v) {
+  return replace(
+    v, regexpTrimSnakeLeft, '',
+  );
+}
+function styleWrap(style, priority) {
+  return {
+    style,
+    priority: priority || 0,
+  };
+}
+function toFixed(v) {
+  isNaN(v = v * 100) && throwInvalid();
+  return replace(
+    (Math.floor(v) * 0.01).toFixed(2), reZero, '',
+  ) || '0';
+}
+function __wr(v) {
+  return v[0] == '-'
+    ? '"' + v.substr(1) + '"'
+    : (
+      v.indexOf(' ') > -1 ? '"' + v + '"' : v
+    );
+}
+function calc(
+  v, sign, add,
+) {
+  return 'calc(' + v + ' ' + sign + ' ' + add + ')';
+}
+function normalizeCalc(
+  base, signAndVal, unit,
+) {
+  const sign = signAndVal[0];
+  const val = signAndVal.slice(1);
+  return calc(
+    base, sign, val + (unit || ''),
+  );
+}
+function normalizeDefault(p, def) {
+  return {
+    exts: [p.name + (def || 0) + p.ni],
+  };
+}
+
+
+export default (mn: any) => {
   const {
-    val, kwVal, colorVal, numVal, spacedVal, alignVal,
-    dirVal, weightVal, textDecoVal, shadowVal, filterVal, transformVal, multiVal,
-  } = mn.utils;
+    utils,
+    setKeyframes,
+  } = mn;
+  const {
+    isDefined,
+    map,
+    filter,
+    forIn,
+    forEach,
+    upperFirst,
+    lowerFirst,
+    toUpper,
+    camelToKebabCase,
+    isArray,
+    flags,
+    size,
+    intval,
+    floatval,
+    color: getColor,
+    colorGetBackground,
+    spaceNormalize,
+    routeParseProvider,
+    indexOf,
+  } = utils;
 
-  // ================================================================
-  // Width / Height
-  // ================================================================
-  mn('w', (c) => ({
-    style: {
-      width: c.arg ? val(c.arg) : '100%',
-    },
-  }));
-  mn('h', (c) => {
-    if (!c.arg) {
-      return {
-        style: {
-          height: '100%', 
-        }, 
+  const parseVals = routeParseProvider(PATTERN_VAL);
+
+
+  function validateUnit(unit) {
+    if (!unit || indexOf(UNITS, unit) > -1) {
+      return unit;
+    }
+    throwInvalid('Unit "' + unit + '" is invalid');
+  }
+  function getVal(
+    suffix,
+    positive,
+    one,
+    defaultUnit,
+    noOtherName,
+    symonyms,
+    seprarator,
+  ) {
+    defaultUnit = defaultUnit || 'px';
+    const parts = ('' + suffix).split('_');
+    const l = parts.length;
+    one && l > 1 && throwInvalid('There must be one parameter');
+    l > 4 && throwInvalid('There should not be more than 4 parameters');
+    const output = new Array(l);
+    let i = 0;
+    let otherName;
+    let add;
+    let total;
+    let vv;
+    let vva;
+    let num;
+    let val;
+    let p;
+    let sa;
+    for (; i < l; i++) {
+      parseVals(parts[i], p = {});
+      if (otherName = p.otherName) {
+        noOtherName && throwInvalid();
+        output[i] = toKebabCase(symonyms && symonyms[otherName] || otherName);
+        continue;
+      }
+      p.vl || throwInvalid();
+      num = p.num;
+      vv = p.vv;
+      add = p.add;
+      total = p.total;
+      vva = p.vva;
+      sa = p.sa;
+      val = num == '0'
+        ? num
+        : (
+          vv ? (
+            (p.env ? 'env(' : 'var(') + vv
+              + (p.va ? (validateUnit(p.vu) ? '' : defaultUnit) : '') + ')'
+          ) : (p.sign || '') + (
+            total
+              ? toFixed(100 * floatNormalize(num, positive)
+                / floatNormalize(total, positive)) + '%'
+              : toFixed(num) + validateUnit(p.unit || defaultUnit)
+          )
+        );
+      output[i] = add ? calc(
+        val,
+        sa,
+        vva
+          ? ((p.nva ? 'env(' : 'var(') + vva
+              + (p.vaa ? (validateUnit(p.vua) ? '' : defaultUnit) : '') + ')')
+          : ('' + floatNormalize(p.addv)
+              + validateUnit(p.addu || defaultUnit)),
+      ) : val;
+    }
+    return [output.join(seprarator || ' '), l - 1];
+  }
+
+  function toKebabCase(v) {
+    return camelToKebabCase(lowerFirst(v));
+  }
+  function fontNameNormalize(s, c) {
+    c = s[0];
+    return spaceNormalize(c == '_'
+      ? snakeLeftTrim(s)
+      : (
+        c == '\'' || c == '-'
+          ? s
+          : toKebabCase(s)
+      ));
+  }
+  function synonymProvider(
+    propName, synonyms, priority, _style, props,
+  ) {
+    return isArray(propName)
+      ? (props = flags(propName), ((
+        p, s, style, synonym, propName,
+      ) => {
+        if (synonym = synonyms[s = p.suffix]) {
+          return normalizeDefault(p, synonym);
+        }
+        if (s) {
+          s = fontNameNormalize(s);
+          style = {};
+          for (propName in props) style[propName] = s; // eslint-disable-line
+          return styleWrap(style, priority);
+        }
+      }))
+      : ((
+        p, s, style, synonym,
+      ) => {
+        return (synonym = synonyms[s = p.suffix])
+          ? normalizeDefault(p, synonym)
+          : (
+            s ? (style = {}, style[propName] = spaceNormalize(s[0] == '_'
+              ? snakeLeftTrim(s)
+              : toKebabCase(s)), styleWrap(style, priority))
+              : (_style ? styleWrap(_style, priority) : 0)
+          );
+      });
+  }
+
+  function backgroundProvider(propName) {
+    return (
+      p, v, style,
+    ) => {
+      p.negative && throwInvalid();
+      return (v = p.suffix)
+        ? (style = {}, style[propName] = colorGetBackground(v), styleWrap(style))
+        : normalizeDefault(p);
+    };
+  }
+
+  forIn(map(SIDES_MAP, (sides) => flags(sides)), (sides, suffix) => {
+    const priority = suffix ? (4 - size(sides)) : 0;
+    const bsSidesSet = sidesSetter((side) => 'border' + side + '-style');
+    const bcSidesSet = sidesSetter((side) => 'border' + side + '-color');
+    const biSidesSet = sidesSetter((side) => 'border' + side + '-image');
+
+    function sidesSetter(handle) {
+      const propsMap = {};
+      let propSide;
+      for (propSide in sides) propsMap[handle(propSide)] = 1; // eslint-disable-line
+      return (v) => {
+        isDefined(v) || throwInvalid();
+        let style = {}, pName; // eslint-disable-line
+        for (pName in propsMap) style[pName] = v; // eslint-disable-line
+        return style;
       };
     }
-    return {
-      style: {
-        height: val(c.arg), 
-      }, 
-    };
-  });
-  mn('wmin', (c) => ({
-    style: {
-      minWidth: val(c.arg),
-    },
-  }));
-  mn('wmax', (c) => ({
-    style: {
-      maxWidth: val(c.arg),
-    },
-  }));
-  mn('hmin', (c) => ({
-    style: {
-      minHeight: val(c.arg || '0'),
-    },
-  }));
-  mn('hmax', (c) => ({
-    style: {
-      maxHeight: val(c.arg),
-    },
-  }));
 
-  // Square
-  mn('sq', (c) => {
-    const v = c.arg ? val(c.arg) : '100%';
-    return {
-      style: {
-        width: v,
-        height: v,
-      },
-    };
-  });
-  mn('sqmin', (c) => {
-    const v = c.arg ? val(c.arg) : '100%';
-    return {
-      style: {
-        minWidth: v,
-        minHeight: v,
-      },
-    };
-  });
-  mn('sqmax', (c) => {
-    const v = c.arg ? val(c.arg) : '100%';
-    return {
-      style: {
-        maxWidth: v,
-        maxHeight: v,
-      },
-    };
-  });
+    function handleProvider(
+      sidesSet, nosign, one,
+    ) {
+      return (
+        p, suffix, synonym,
+      ) => {
+        if (!(suffix = p.suffix)) {
+          return normalizeDefault(p, 0);
+        }
+        if (synonym = sizeSynonyms[suffix]) {
+          return normalizeDefault(p, synonym);
+        }
+        const v = getVal(
+          suffix, nosign, one, 'px', 0, sizeSynonyms,
+        );
+        return styleWrap(sidesSet(v[0]), priority + v[1]);
+      };
+    }
 
-  // ================================================================
-  // Padding / Margin
-  // ================================================================
-  mn('p', (c) => ({
-    style: {
-      padding: val(c.arg),
-    },
-  }));
-  mn('pt', (c) => ({
-    style: {
-      paddingTop: val(c.arg),
-    },
-  }));
-  mn('pb', (c) => ({
-    style: {
-      paddingBottom: val(c.arg),
-    },
-  }));
-  mn('pl', (c) => ({
-    style: {
-      paddingLeft: val(c.arg),
-    },
-  }));
-  mn('pr', (c) => ({
-    style: {
-      paddingRight: val(c.arg),
-    },
-  }));
-  mn('px', (c) => {
-    const v = val(c.arg);
-    return {
-      style: {
-        paddingLeft: v,
-        paddingRight: v,
-      },
-    };
-  });
-  mn('py', (c) => {
-    const v = val(c.arg);
-    return {
-      style: {
-        paddingTop: v,
-        paddingBottom: v,
-      },
-    };
+    forIn({
+      p: [
+        'padding',
+        0,
+        1,
+      ],
+      m: ['margin'],
+      b: [
+        'border',
+        '-width',
+        1,
+      ],
+    }, (args, pfx) => {
+      const propName = args[0];
+      const propSuffix = args[1] || '';
+      mn(
+        pfx + suffix, handleProvider(
+          sidesSetter((side) => propName + side + propSuffix),
+          args[2],
+          suffix,
+        ), 0, 1,
+      );
+    });
+
+    mn(
+      's' + suffix, handleProvider(
+        suffix
+          ? sidesSetter((side) => replace(
+            side, regexpTrimKebabLeft, '',
+          ))
+          : (v) => (isDefined(v) ? {
+            top: v,
+            bottom: v,
+            left: v,
+            right: v,
+          } : throwInvalid()),
+        0,
+        1,
+      ), 0, 1,
+    );
+    mn('bs' + suffix, (
+      p, s, synonym,
+    ) => {
+      return (synonym = borderStyleSynonyms[s = p.suffix])
+        ? normalizeDefault(p, synonym)
+        : (
+          s
+            ? styleWrap(bsSidesSet(toKebabCase(s)), priority + 1)
+            : normalizeDefault(p, 'Solid')
+        );
+    });
+    mn(
+      'bc' + suffix, (
+        p, v, suffix, synonym,
+      ) => {
+        return (synonym = COLOR_SYNONYMS[suffix = p.suffix || 'CT'])
+          ? normalizeDefault(p, synonym)
+          : (
+            (v = p.value)
+              ? styleWrap(bcSidesSet(getColor(v)), priority + 1)
+              : normalizeDefault(p)
+          );
+      }, PATTERN_COLOR, 1,
+    );
+    mn('bi' + suffix, (p, s) => {
+      return styleWrap(biSidesSet((s = p.suffix)
+        ? spaceNormalize(s[0] == '_' ? snakeLeftTrim(s) : toKebabCase(s))
+        : 'none'), priority + 1);
+    });
   });
 
-  mn('m', (c) => ({
-    style: {
-      margin: val(c.arg),
-    },
-  }));
-  mn('mt', (c) => ({
-    style: {
-      marginTop: val(c.arg),
-    },
-  }));
-  mn('mb', (c) => ({
-    style: {
-      marginBottom: val(c.arg),
-    },
-  }));
-  mn('ml', (c) => ({
-    style: {
-      marginLeft: val(c.arg),
-    },
-  }));
-  mn('mr', (c) => ({
-    style: {
-      marginRight: val(c.arg),
-    },
-  }));
-  mn('mx', (c) => {
-    const v = val(c.arg);
-    return {
-      style: {
-        marginLeft: v,
-        marginRight: v,
-      },
-    };
-  });
-  mn('my', (c) => {
-    const v = val(c.arg);
-    return {
-      style: {
-        marginTop: v,
-        marginBottom: v,
-      },
-    };
+
+  forIn({
+    sq: ['width', 'height'],
+    w: ['width'],
+    h: ['height'],
+  }, (props, essencePrefix) => {
+    const length = props.length;
+    const priority = 2 - length;
+    forEach([
+      '',
+      'min',
+      'max',
+    ], (sfx) => {
+      const propMap = {};
+      let propName, i = 0; // eslint-disable-line
+      for (; i < length; i++) {
+        propName = props[i];
+        propMap[sfx ? (sfx + '-' + propName) : propName] = 1;
+      }
+      mn(
+        essencePrefix + sfx, (p) => {
+          const suffix = p.suffix;
+          if (!suffix) {
+            return normalizeDefault(p, '100%');
+          }
+          const synonym = sizeSynonyms[suffix];
+          if (synonym) {
+            return normalizeDefault(p, synonym);
+          }
+          const v = getVal(
+            suffix, 1, 1, 'px', 0, sizeSynonyms,
+          );
+          const [value] = v;
+          const style = {};
+          let propName;
+        for (propName in propMap) style[propName] = value; // eslint-disable-line
+          return styleWrap(style, priority + v[1]);
+        }, 0, 1,
+      );
+    });
   });
 
-  // ================================================================
-  // Font
-  // ================================================================
-  mn('f', (c) => ({
-    style: {
-      fontSize: val(c.arg),
-    },
+  mn(
+    'gap', (p) => {
+      const suffix = p.suffix;
+      if (!suffix) {
+        return normalizeDefault(p, '100%');
+      }
+      const synonym = sizeSynonyms[suffix];
+      if (synonym) {
+        return normalizeDefault(p, synonym);
+      }
+      const v = getVal(
+        suffix, 1, 1, 'px', 0, sizeSynonyms,
+      );
+      return styleWrap({
+        gap: v[0],
+      }, priority + v[1]);
+    }, 0, 1,
+  );
+
+  mn('tbl', styleWrap({
+    display: 'table',
   }));
-  mn('fw', (c) => ({
+  mn('tbl.cell', {
+    selectors: ['>*'],
     style: {
-      fontWeight: weightVal(c.arg),
+      display: 'table-cell',
+      verticalAlign: 'middle',
     },
-  }));
-  mn('lh', (c) => ({
-    style: {
-      lineHeight: val(c.arg, ''),
-    },
-  }));
-  mn('ff', (c) => ({
-    style: {
-      fontFamily: spacedVal(c.arg),
-    },
-  }));
-  mn('fs', (c) => {
-    const m: Record<string, string> = {
-      I: 'italic',
-      N: 'normal',
-      O: 'oblique',
-    };
-    return {
-      style: {
-        fontStyle: m[c.arg] || kwVal(c.arg),
-      },
-    };
   });
-  mn('fv', (c) => ({
-    style: {
-      fontVariant: kwVal(c.arg),
-    },
-  }));
-  mn('fst', (c) => ({
-    style: {
-      fontStretch: kwVal(c.arg),
-    },
-  }));
-  mn('fsm', (c) => ({
-    style: {
-      fontSmooth: kwVal(c.arg),
-    },
-  }));
-  mn('fef', (c) => ({
-    style: {
-      fontEffect: kwVal(c.arg),
-    },
-  }));
-  mn('font', (c) => ({
-    style: {
-      font: spacedVal(c.arg || 'Caption'),
-    },
-  }));
 
-  // ================================================================
-  // Color
-  // ================================================================
-  mn('c', (c) => ({
-    style: {
-      color: colorVal(c.arg),
+  // flex horizontal align
+  forIn({
+    start: {
+      boxPack: 'start',
+      justifyContent: 'flex-start',
     },
-  }));
-  mn('bg', (c) => ({
-    style: {
-      background: colorVal(c.arg),
+    center: {
+      boxPack: 'center',
+      justifyContent: 'center',
     },
-  }));
-  mn('bc', (c) => ({
-    style: {
-      borderColor: colorVal(c.arg),
+    end: {
+      boxPack: 'end',
+      justifyContent: 'flex-end',
     },
-  }));
-  mn('bgc', (c) => ({
-    style: {
-      backgroundColor: colorVal(c.arg),
+    around: {
+      justifyContent: 'space-around',
     },
-  }));
-  mn('olc', (c) => ({
-    style: {
-      outlineColor: colorVal(c.arg),
+    between: {
+      boxPack: 'justify',
+      justifyContent: 'space-between',
     },
-  }));
-  mn('tdc', (c) => ({
-    style: {
-      textDecorationColor: colorVal(c.arg),
-    },
-  }));
-  mn('temc', (c) => ({
-    style: {
-      textEmphasisColor: colorVal(c.arg),
-    },
-  }));
-  mn('stroke', (c) => ({
-    style: {
-      stroke: colorVal(c.arg),
-    },
-  }));
-  mn('fill', (c) => ({
-    style: {
-      fill: colorVal(c.arg),
-    },
-  }));
+  }, (
+    style, essenceName, name,
+  ) => {
+    mn(name = 'fha' + (essenceName = upperFirst(essenceName)),
+      styleWrap(style, 1));
+    mn('fha' + essenceName[0], name);
+  });
 
-  // ================================================================
-  // Display / Position / Float / Clear
-  // ================================================================
-  mn('d', (c) => ({
-    style: {
-      display: kwVal(c.arg),
+  // flex vertical align
+  forIn({
+    start: {
+      boxAlign: 'start',
+      alignItems: 'flex-start',
+      alignContent: 'flex-start',
     },
-  }));
-  mn('pos', (c) => ({
-    style: {
-      position: kwVal(c.arg),
+    center: {
+      boxAlign: 'center',
+      alignItems: 'center',
+      alignContent: 'center',
     },
-  }));
-  mn('rlv', () => ({
-    style: {
-      position: 'relative',
+    end: {
+      boxAlign: 'end',
+      alignItems: 'flex-end',
+      alignContent: 'flex-end',
     },
-  }));
-  mn('abs', () => ({
-    style: {
-      position: 'absolute',
+    stretch: {
+      boxAlign: 'stretch',
+      alignItems: 'stretch',
+      alignContent: 'stretch',
     },
-  }));
-  mn('fixed', () => ({
-    style: {
-      position: 'fixed',
-    },
-  }));
-  mn('sticky', () => ({
-    style: {
-      position: 'sticky',
-    },
-  }));
-  mn('lt', () => ({
-    style: {
-      float: 'left',
-    },
-  }));
-  mn('rt', () => ({
-    style: {
-      float: 'right',
-    },
-  }));
-  mn('jt', () => ({
-    style: {
-      float: 'none',
-    },
-  }));
-  mn('cl', (c) => ({
-    style: {
-      clear: kwVal(c.arg || 'Both'),
-    },
-  }));
-  mn('tbl', () => ({
-    style: {
-      display: 'table',
-      width: '100%',
-      height: '100%',
-    },
-  }));
-  mn('layout', (c) => ({
-    style: {
-      display: kwVal(c.arg || 'Flex'),
-    },
-  }));
-  mn('v', (c) => ({
-    style: {
-      visibility: kwVal(c.arg),
-    },
-  }));
+  }, (style, essenceName) => {
+    mn('fva' + upperFirst(essenceName), styleWrap(style, 1));
+  });
 
-  // ================================================================
-  // Text align
-  // ================================================================
-  mn('tl', () => ({
-    style: {
-      textAlign: 'left',
-    },
-  }));
-  mn('tr', () => ({
-    style: {
-      textAlign: 'right',
-    },
-  }));
-  mn('tc', () => ({
-    style: {
-      textAlign: 'center',
-    },
-  }));
-  mn('tj', () => ({
-    style: {
-      textAlign: 'justify',
-    },
-  }));
-  mn('tal', (c) => ({
-    style: {
-      textAlignLast: kwVal(c.arg),
-    },
-  }));
+  forIn({
+    S: 'Start',
+    C: 'Center',
+    E: 'End',
+    A: 'Around',
+    ST: 'Stretch',
+  }, (essenceName, abbr) => {
+    mn('fva' + abbr, 'fva' + essenceName);
+  });
 
-  // ================================================================
-  // Text
-  // ================================================================
-  mn('td', (c) => ({
-    style: {
-      textDecoration: textDecoVal(c.arg),
+  forIn({
+    dn: 'transitionDuration',
+    delay: 'transitionDelay',
+  }, (propName, essenceName) => {
+    mn(essenceName, (p, num) => {
+      return p.camel || p.negative ? 0 : ((num = p.num)
+        ? styleWrap({
+          [propName]: num + 'ms',
+        }, 1)
+        : normalizeDefault(p, 250)
+      );
+    });
+  });
+
+  forIn({
+    c: ['color'],
+    stroke: ['stroke'],
+    fill: ['fill'],
+    olc: ['outlineColor', 1],
+    bgc: ['backgroundColor', 1],
+    temc: ['textEmphasisColor', 1],
+    tdc: ['textDecorationColor', 1],
+  }, (options, pfx) => {
+    const propName = options[0];
+    const priority = options[1] || 0;
+    mn(
+      pfx, (
+        p, s, suffix, v, synonym,
+      ) => {
+        return (synonym = COLOR_SYNONYMS[suffix = p.suffix || 'CT'])
+          ? normalizeDefault(p, synonym)
+          : (
+            v = p.value,
+            v || throwInvalid(),
+            s = {},
+            s[propName] = getColor(v),
+            styleWrap(s, priority)
+          );
+      }, PATTERN_COLOR,
+    );
+  });
+
+  forIn({
+    // backgroundImage: url(...)
+    bgi: 'backgroundImage',
+    // listStyleImage: url(...)
+    lisi: 'listStyleImage',
+    maski: 'maskImage',
+  }, (propName, name) => {
+    mn(name, (
+      p, style, url,
+    ) => {
+      style = {};
+      style[propName] = (url = snakeLeftTrim(p.suffix))
+        ? ('url("' + url + '")')
+        : 'none';
+      return styleWrap(style, 1);
+    });
+  });
+
+  forIn({
+    textAlign: {
+      tl: 'left',
+      tc: 'center',
+      tr: 'right',
+      tj: 'justify',
     },
-  }));
-  mn('tdl', (c) => ({
-    style: {
-      textDecorationLine: kwVal(c.arg),
+    float: {
+      lt: 'left',
+      jt: 'none',
+      rt: 'right',
     },
-  }));
-  mn('tds', (c) => ({
-    style: {
-      textDecorationSkip: kwVal(c.arg),
+  }, (valsMap, propName) => {
+    forIn(valsMap, (value, pfx) => {
+      mn(pfx, (p) => {
+        return p.suffix ? 0 : styleWrap({
+          [propName]: value,
+        });
+      });
+    });
+  });
+
+  mn(
+    'x', (p) => {
+      const scale = p.s;
+      const angle = p.angle;
+      const z = p.z;
+      return styleWrap({
+        transform:
+        'translate(' + (floatNormalize(p.x || '0') + (p.xu || 'px')) + ','
+        + (floatNormalize(p.y || '0') + (p.yu || 'px')) + ')'
+        + (z ? (' translateZ('
+          + floatNormalize(z || '0') + (p.zu || 'px') + ')') : '')
+        + (scale ? (' scale(' + (0.01 * floatNormalize(scale)) + ')') : '')
+        + (angle ? (' rotate' + toUpper(p.dir)
+        + '(' + floatNormalize(angle) + (p.unit || 'deg') + ')') : ''),
+      }); // eslint-disable-next-line
+  }, '^' + PATTERN_DIGITS + ':x?(%):xu?([yY]' + PATTERN_DIGITS
+    + ':y(%):yu?)?([zZ]' + PATTERN_DIGITS
+    + ':z(%):zu?)?([sS]([0-9\\.]+):s)?([rR](x|y|z):dir'
+    + PATTERN_DIGITS + ':angle([a-z]+):unit?)?$',
+  );
+
+  mn('spnr', (p, v) => {
+    return isNaN(v = (v = p.value) ? parseInt(v) : 3000) || v < 1 ? 0 : (
+      setKeyframes(
+        'spinner-animate', {
+          from: {
+            transform: 'rotateZ(0deg)',
+          },
+          to: {
+            transform: 'rotateZ(360deg)',
+          },
+        }, 1,
+      ),
+      styleWrap({
+        animation: 'spinner-animate ' + v + 'ms infinite linear',
+      })
+    );
+  });
+
+  forEach([
+    'x',
+    'y',
+    'z',
+  ], (suffix) => {
+    const prefix = 'rotate' + toUpper(suffix) + '(';
+    mn('r' + suffix, (p, v) => {
+      return (v = p.value) ? styleWrap({
+        transform: prefix + v + (p.unit || 'deg') + ')',
+      }) : normalizeDefault(p, 180);
+    });
+  });
+
+  forIn(SHADOW_HANDLERS, ([propName, handler], pfx) => {
+    mn(
+      pfx, (p, output) => {
+        const suffix = p.suffix;
+        const style = {};
+        if (suffix[0] === '_') {
+          output = spaceNormalize(snakeLeftTrim(suffix));
+        } else {
+          const repeatCount = intval(
+            p.m, 1, 0,
+          );
+          const value = p.value;
+          if (!value || repeatCount < 1) {
+            style[propName] = 'none';
+            return styleWrap(style);
+          }
+
+          const colors = getColor(p.c || '0');
+          const prefixIn = p.in ? 'inset ' : '';
+          const colorsLength = colors.length;
+        let sample, v, color, i, ci = 0; // eslint-disable-line
+          output = new Array(colorsLength);
+
+          for (;ci < colorsLength; ci++) {
+            color = colors[ci];
+            sample = prefixIn
+            + handler(
+              p.x || 0, p.y || 0, value, p.r || 0, color,
+            ).join('px ');
+            v = new Array(repeatCount);
+            for (i = repeatCount; i--;) {
+              v[i] = sample;
+            }
+            output[ci] = v.join(',');
+          }
+        }
+        style[propName] = output;
+        return styleWrap(style);
+      }, SHADOW_PATTERNS,
+    );
+  });
+
+
+  mn(
+    'r', (p) => {
+      const v = getVal(
+        p.suffix || 10000, 1, 0, 'px', 1,
+      );
+      return styleWrap({
+        borderRadius: v[0],
+      }, v[1]);
+    }, 0, 1,
+  );
+
+
+  // border-radius by sides
+  forIn({
+    lt: 'top-left',
+    lb: 'bottom-left',
+    rt: 'top-right',
+    rb: 'bottom-right',
+  }, (side, suffix) => {
+    const propName = 'border-' + side + '-radius';
+    mn(
+      'r' + suffix, (p) => {
+        const style = {};
+        style[propName] = getVal(
+          p.suffix || 10000, 1, 1, 'px', 1,
+        )[0];
+        return styleWrap(style, 2);
+      }, 0, 1,
+    );
+  });
+
+
+  forIn(
+    {
+      f: [
+        'fontSize',
+        '',
+        1,
+        1,
+        {
+          I: 'Inherit',
+        },
+      ],
+      sw: ['strokeWidth', 0],
+      olw: [
+        'outlineWidth',
+        0,
+        1,
+      ],
+      gg: [
+        'gridGap',
+        0,
+        1,
+        0,
+        {
+          U: 'Unset',
+        },
+      ],
+      ggc: [
+        'gridColumnGap',
+        0,
+        2,
+        0,
+        {
+          U: 'Unset',
+          R: 'Revert',
+          N: 'Normal',
+        },
+      ],
+      ggr: [
+        'gridRowGap',
+        0,
+        2,
+        0,
+        {
+          U: 'Unset',
+          R: 'Revert',
+        },
+      ],
+    }, (options, pfx) => {
+      const [propName, defaultValue] = options;
+      const priority = options[2] || 0;
+      const one = options[3];
+      const synonyms = options[4] || {};
+      mn(pfx, (
+        p, style, suffix, synonym, v,
+      ) => {
+        return (synonym = synonyms[suffix = p.suffix])
+          ? normalizeDefault(p, synonym)
+          : (
+            v = getVal(
+              suffix || defaultValue,
+              1, one, 'px', 0, synonyms,
+            ),
+            style = {},
+            style[propName] = v[0],
+            styleWrap(style, priority + v[1])
+          );
+      });
+    }, 0, 1,
+  );
+
+
+  forIn({
+    '': 0,
+    x: 1,
+    y: 1,
+  }, (priority, suffix) => {
+    const propName = 'overflow' + toUpper(suffix);
+    const handle = synonymProvider(
+      propName, {
+        '': 'Hidden',
+        V: 'Visible',
+        H: 'Hidden',
+        S: 'Scroll',
+        A: 'Auto',
+      }, priority,
+    );
+
+    mn('ov' + suffix, function() {
+      // eslint-disable-next-line
+      const essence = handle.apply(this, arguments);
+      if (essence) {
+        const s = essence.style;
+        const v = s && s[propName];
+        if (v === 'scroll' || v === 'auto') {
+          essence.exts = ['ovscT'];
+        }
+      }
+      return essence;
+    });
+  });
+
+  mn('pos', (
+    p, s, synonym, v,
+  ) => {
+    return (synonym = positionSynonyms[s = p.suffix])
+      ? normalizeDefault(p, synonym)
+      : (
+        s ? (
+          v = spaceNormalize(s[0] == '_'
+            ? snakeLeftTrim(s)
+            : toKebabCase(s)),
+          styleWrap({
+            position: v,
+          }, positionPriorities[v] || 0)
+        ) : 0
+      );
+  });
+
+  mn({
+    cfx: {
+      exts: ['posS'],
+      childs: {
+        pale: {
+          selectors: [':before', ':after'],
+          style: {
+            content: '" "',
+            clear: 'both',
+            display: 'table',
+          },
+        },
+      },
     },
-  }));
-  mn('tdsi', (c) => ({
-    style: {
-      textDecorationSkipInk: kwVal(c.arg),
+
+    tbl: synonymProvider('tableLayout', {
+      A: 'Auto',
+      F: 'Fixed',
+    }),
+
+    layout: styleWrap({
+      display: [
+        '-webkit-box',
+        '-webkit-flex',
+        'flex',
+      ],
+    }),
+
+    layoutRow: {
+      exts: ['layout'],
+      style: {
+        boxDirection: 'normal',
+        boxOrient: 'horizontal',
+        flexDirection: 'row',
+      },
     },
-  }));
-  mn('tdt', (c) => ({
-    style: {
-      textDecorationThickness: val(c.arg),
+
+    layoutColumn: {
+      exts: ['layout'],
+      style: {
+        boxDirection: 'normal',
+        boxOrient: 'vertical',
+        flexDirection: 'column',
+      },
     },
-  }));
-  mn('tt', (c) => ({
-    style: {
-      textTransform: kwVal(c.arg),
+
+    olcI: 'olcInvert',
+
+    // background: (...)
+    bg: backgroundProvider('background'),
+
+    // font-weight
+    fw: (
+      p, camel, synonym,
+    ) => {
+      camel = p.camel;
+      synonym = camel && fontWeightSynonyms[camel];
+      return synonym ? normalizeDefault(p, synonym) : !p.negative && styleWrap({
+        fontWeight: camel
+          ? toKebabCase(camel)
+          : (100 * intval(
+            p.num, 1, 1, 9,
+          )),
+      }, 1);
     },
-  }));
-  mn('va', (c) => ({
-    style: {
-      verticalAlign: kwVal(c.arg),
-    },
-  }));
-  mn('ws', (c) => ({
-    style: {
-      whiteSpace: kwVal(c.arg),
-    },
-  }));
-  mn('wb', (c) => ({
-    style: {
-      wordBreak: kwVal(c.arg),
-    },
-  }));
-  mn('ww', (c) => ({
-    style: {
-      wordWrap: kwVal(c.arg),
-    },
-  }));
-  mn('tw', (c) => ({
-    style: {
-      textWrap: kwVal(c.arg),
-    },
-  }));
-  mn('wsc', (c) => ({
-    style: {
-      whiteSpaceCollapse: kwVal(c.arg),
-    },
-  }));
-  mn('wos', (c) => ({
-    style: {
-      wordSpacing: val(c.arg),
-    },
-  }));
-  mn('lts', (c) => ({
-    style: {
-      letterSpacing: val(c.arg),
-    },
-  }));
-  mn('ti', (c) => ({
-    style: {
-      textIndent: val(c.arg),
-    },
-  }));
-  mn('tov', (c) => ({
-    style: {
-      textOverflow: kwVal(c.arg),
-    },
-  }));
-  mn('tsa', (c) => ({
-    style: {
-      textSizeAdjust: c.arg ? kwVal(c.arg) : '100%',
-    },
-  }));
-  mn('break', () => ({
-    style: {
-      wordBreak: 'break-word',
+
+    // position
+    rlv: 'posR',
+    abs: 'posA',
+    fixed: 'posF',
+    'static': 'posS', // eslint-disable-line
+    sticky: 'posSK',
+
+    olwTN: 'olwThin',
+    olwM: 'olwMedium',
+    olwTC: 'olwThick',
+    'break': styleWrap({ // eslint-disable-line
       whiteSpace: 'normal',
+      wordBreak: 'break-word',
+    }),
+    z: (p, num) => {
+      return p.camel ? 0 : ((num = p.num) ? styleWrap({
+        zIndex: num,
+      }) : normalizeDefault(p, 1));
     },
-  }));
-  mn('wm', (c) => ({
-    style: {
-      writingMode: kwVal(c.arg),
+    o: (p, num) => {
+      return p.camel || p.negative ? 0 : ((num = p.num) ? styleWrap({
+        opacity: toFixed((p.num || 0) * 0.01),
+      }) : normalizeDefault(p));
     },
-  }));
+    lh: (
+      p, num, unit,
+    ) => {
+      return p.camel ? 0 : (
+        unit = p.unit,
+        (num = p.num) ? styleWrap({
+          lineHeight: num == '0' ? num : (
+            unit === '%' ? toFixed(num * 0.01) : (num + (unit || 'px'))
+          ),
+        }) : normalizeDefault(p, '100%')
+      );
+    },
+    tsa: (
+      p, num, camel,
+    ) => {
+      return p.negative ? 0 : (p.value ? styleWrap({
+        textSizeAdjust: (camel = p.camel)
+          ? toKebabCase(camel)
+          : ((num = p.num) == '0' ? num : (num + (p.unit || 'px'))),
+      }) : normalizeDefault(p, '100%'));
+    },
+    fsa: (
+      p, num, camel,
+    ) => {
+      return p.negative ? 0 : (p.value ? styleWrap({
+        fontSizeAdjust: (camel = p.camel)
+          ? (camel == 'N' ? 'none' : toKebabCase(camel))
+          : ((num = p.num) == '0' ? num : (num + (p.unit || 'px'))),
+      }) : 0);
+    },
+    olo: (
+      p, num, camel,
+    ) => {
+      return (p.value ? styleWrap({
+        outlineOffset: (camel = p.camel)
+          ? toKebabCase(camel)
+          : ((num = p.num) == '0' ? num : (num + (p.unit || 'px'))),
+      }) : normalizeDefault(p));
+    },
 
-  // ================================================================
-  // Border
-  // ================================================================
-  mn('r', (c) => ({
-    style: {
-      borderRadius: val(c.arg || '10000'),
-    },
-  }));
-  mn('rlt', (c) => ({
-    style: {
-      borderTopLeftRadius: val(c.arg),
-    },
-  }));
-  mn('rrt', (c) => ({
-    style: {
-      borderTopRightRadius: val(c.arg),
-    },
-  }));
-  mn('rlb', (c) => ({
-    style: {
-      borderBottomLeftRadius: val(c.arg),
-    },
-  }));
-  mn('rrb', (c) => ({
-    style: {
-      borderBottomRightRadius: val(c.arg),
-    },
-  }));
-  // border-width (b = all sides, b[lrtb] = individual)
-  mn('b', (c) => ({
-    style: {
-      borderWidth: val(c.arg),
-    },
-  }));
-  mn('bl', (c) => ({
-    style: {
-      borderLeftWidth: val(c.arg),
-    },
-  }));
-  mn('br', (c) => ({
-    style: {
-      borderRightWidth: val(c.arg),
-    },
-  }));
-  mn('bt', (c) => ({
-    style: {
-      borderTopWidth: val(c.arg),
-    },
-  }));
-  mn('bb', (c) => ({
-    style: {
-      borderBottomWidth: val(c.arg),
-    },
-  }));
-  // border-style (bs = all sides, bs[lrtb] = individual)
-  mn('bs', (c) => ({
-    style: {
-      borderStyle: kwVal(c.arg),
-    },
-  }));
-  mn('bsl', (c) => ({
-    style: {
-      borderLeftStyle: kwVal(c.arg),
-    },
-  }));
-  mn('bsr', (c) => ({
-    style: {
-      borderRightStyle: kwVal(c.arg),
-    },
-  }));
-  mn('bst', (c) => ({
-    style: {
-      borderTopStyle: kwVal(c.arg),
-    },
-  }));
-  mn('bsb', (c) => ({
-    style: {
-      borderBottomStyle: kwVal(c.arg),
-    },
-  }));
-  // border-color (bc = all sides, bc[lrtb] = individual)
-  mn('bcl', (c) => ({
-    style: {
-      borderLeftColor: colorVal(c.arg),
-    },
-  }));
-  mn('bcr', (c) => ({
-    style: {
-      borderRightColor: colorVal(c.arg),
-    },
-  }));
-  mn('bct', (c) => ({
-    style: {
-      borderTopColor: colorVal(c.arg),
-    },
-  }));
-  mn('bcb', (c) => ({
-    style: {
-      borderBottomColor: colorVal(c.arg),
-    },
-  }));
-  mn('bxz', (c) => ({
-    style: {
-      boxSizing: kwVal(c.arg),
-    },
-  }));
-  mn('bi', (c) => ({
-    style: {
-      borderImage: spacedVal(c.arg),
-    },
-  }));
-  mn('bdcl', (c) => ({
-    style: {
-      borderCollapse: kwVal(c.arg),
-    },
-  }));
-  mn('bsp', (c) => ({
-    style: {
-      borderSpacing: val(c.arg),
-    },
-  }));
+    of: synonymProvider('objectFit', {
+      '': 'Cover',
+      F: 'Fill',
+      CT: 'Contain',
+      CV: 'Cover',
+      N: 'None',
+      SD: 'ScaleDown',
+    }),
 
-  // ================================================================
-  // Shadow
-  // ================================================================
-  mn('bxsh', (c) => ({
-    style: {
-      boxShadow: shadowVal(c.arg || '0'),
-    },
-  }));
-  mn('tsh', (c) => ({
-    style: {
-      textShadow: shadowVal(c.arg || '0'),
-    },
-  }));
+    d: synonymProvider('display', {
+      '': 'Block',
+      B: 'Block',
+      N: 'None',
+      F: 'Flex',
+      IF: 'InlineFlex',
+      I: 'Inline',
+      IB: 'InlineBlock',
+      LI: 'ListItem',
+      RI: 'RunIn',
+      CP: 'Compact',
+      TB: 'Table',
+      ITB: 'InlineTable',
+      TBCP: 'TableCaption',
+      TBCL: 'TableColumn',
+      TBCLG: 'TableColumnGroup',
+      TBHG: 'TableHeaderGroup',
+      TBFG: 'TableFooterGroup',
+      TBR: 'TableRow',
+      TBRG: 'TableRowGroup',
+      TBC: 'TableCell',
+      RB: 'Ruby',
+      RBB: 'RubyBase',
+      RBBG: 'RubyBaseGroup',
+      RBT: 'RubyText',
+      RBTG: 'RubyTextGroup',
+    }),
 
-  // ================================================================
-  // Opacity / Object
-  // ================================================================
-  mn('o', (c) => {
-    const num = parseInt(c.arg, 10);
-    return {
-      style: {
-        opacity: isNaN(num) ? c.arg : String(num / 100),
+    dir: synonymProvider('direction', {
+      LTR: 'Ltr',
+      RTL: 'Rtl',
+      I: 'Inherit',
+      R: 'Revert',
+      RL: 'RevertLayer',
+      U: 'Unset',
+    }),
+
+    ovb: synonymProvider('overscrollBehavior', overscrollBehaviorPriorities),
+    ovbx: synonymProvider('overscrollBehaviorX', overscrollBehaviorPriorities),
+    ovby: synonymProvider('overscrollBehaviorY', overscrollBehaviorPriorities),
+
+    maskt: synonymProvider('maskType', {
+      L: 'Luminance',
+      A: 'Alpha',
+      I: 'Inherit',
+      R: 'Revert',
+      RL: 'RevertLayer',
+      U: 'Unset',
+    }),
+
+    maskm: synonymProvider('maskMode', {
+      L: 'Luminance',
+      A: 'Alpha',
+      I: 'Inherit',
+      R: 'Revert',
+      RL: 'RevertLayer',
+      U: 'Unset',
+      MS: 'MatchSource',
+    }),
+
+    maskbg: backgroundProvider('maskImage'),
+
+    cl: synonymProvider('clear', {
+      '': 'Both',
+      B: 'Both',
+      N: 'None',
+      L: 'Left',
+      R: 'Right',
+    }),
+    v: synonymProvider('visibility', {
+      '': 'Hidden',
+      V: 'Visible',
+      H: 'Hidden',
+      C: 'Collapse',
+    }),
+    ovs: synonymProvider('overflowStyle', {
+      '': 'Scrollbar',
+      S: 'Scrollbar',
+      A: 'Auto',
+      P: 'Panner',
+      M: 'Move',
+      MQ: 'Marquee',
+    }),
+    ovsc: synonymProvider('-webkitOverflowScrolling', {
+      '': 'Touch',
+      A: 'Auto',
+      T: 'Touch',
+    }),
+    cp: synonymProvider('clip', {
+      A: 'Auto',
+      R: 'Rect\\(top_right_bottom_left\\)',
+    }),
+    rsz: synonymProvider('resize', {
+      '': 'None',
+      N: 'None',
+      B: 'Both',
+      H: 'Horizontal',
+      V: 'Vertical',
+    }),
+    cr: synonymProvider('cursor', {
+      '': 'Pointer',
+      A: 'Auto',
+      D: 'Default',
+      C: 'Crosshair',
+      HA: 'Hand',
+      HE: 'Help',
+      M: 'Move',
+      P: 'Pointer',
+      T: 'Text',
+      N: 'None',
+      NA: 'NotAllowed',
+    }),
+    jc: synonymProvider('justifyContent', {
+      '': 'Center',
+      C: 'Center',
+      FE: 'FlexEnd',
+      FS: 'FlexStart',
+      SA: 'SpaceAround',
+      SB: 'SpaceBetween',
+    }),
+    ai: synonymProvider('alignItems', {
+      '': 'Center',
+      C: 'Center',
+      B: 'Baseline',
+      FE: 'FlexEnd',
+      FS: 'FlexStart',
+      S: 'Stretch',
+    }),
+    bxz: synonymProvider('boxSizing', {
+      '': 'BorderBox',
+      BB: 'BorderBox',
+      CB: 'ContentBox',
+    }),
+    fs: synonymProvider(
+      'fontStyle', {
+        '': 'Italic',
+        N: 'Normal',
+        I: 'Italic',
+        O: 'Oblique',
+      }, 1,
+    ),
+    fv: synonymProvider(
+      'fontVariant', {
+        N: 'Normal',
+        SC: 'SmallCaps',
+      }, 1,
+    ),
+    fef: synonymProvider(
+      'fontEffect', {
+        N: 'None',
+        EG: 'Engrave',
+        EB: 'Emboss',
+        O: 'Outline',
+      }, 1,
+    ),
+    fsm: synonymProvider(
+      'fontSmooth', {
+        A: 'Auto',
+        N: 'Never',
+        AW: 'Always',
+      }, 1,
+    ),
+    fst: synonymProvider(
+      'fontStretch', {
+        N: 'Normal',
+        UC: 'UltraCondensed',
+        EC: 'ExtraCondensed',
+        C: 'Condensed',
+        SC: 'SemiCondensed',
+        SE: 'SemiExpanded',
+        E: 'Expanded',
+        EE: 'ExtraExpanded',
+        UE: 'UltraExpanded',
+      }, 1,
+    ),
+    tcha: synonymProvider('touchAction', {
+      A: 'Auto',
+      N: 'None',
+      M: 'Manipulation',
+      I: 'Initial',
+      R: 'Revert',
+      U: 'Unset',
+      RL: 'RevertLayer',
+      PX: 'PanX',
+      PY: 'PanY',
+      PL: 'PanLeft',
+      PR: 'PanRight',
+      PU: 'PanUp',
+      PD: 'PanDown',
+      PZ: 'PinchZoom',
+    }),
+    tal: synonymProvider(
+      'textAlignLast', {
+        A: 'Auto',
+        L: 'Left',
+        C: 'Center',
+        R: 'Right',
+        J: 'Justify',
+        E: 'End',
+        S: 'Start',
+      }, 1,
+    ),
+    td: synonymProvider('textDecoration', tdSynonyms),
+    tdl: synonymProvider(
+      'textDecorationLine', tdSynonyms, 1,
+    ),
+    tj: synonymProvider(
+      'textJustify', {
+        A: 'Auto',
+        IW: 'InterWord',
+        II: 'InterIdeograph',
+        IC: 'InterCluster',
+        D: 'Distribute',
+        K: 'Kashida',
+        T: 'Tibetan',
+      }, 0, {
+        textAlign: 'justify',
       },
-    };
-  });
-  mn('op', (c) => ({
-    style: {
-      objectPosition: spacedVal(c.arg),
+    ),
+    tov: synonymProvider('textOverflow', {
+      '': 'Ellipsis',
+      C: 'Clip',
+      E: 'Ellipsis',
+    }),
+    tt: synonymProvider('textTransform', {
+      '': 'Uppercase',
+      N: 'None',
+      C: 'Capitalize',
+      U: 'Uppercase',
+      L: 'Lowercase',
+      FL: 'FullWidth',
+      FSK: 'FullSizeKana',
+    }),
+    tw: synonymProvider('textWrap', {
+      N: 'Normal',
+      NO: 'None',
+      U: 'Unrestricted',
+      S: 'Suppress',
+    }),
+    lts: synonymProvider('letterSpacing', {
+      N: 'Normal',
+    }),
+    ws: synonymProvider('whiteSpace', {
+      '': 'Nowrap',
+      N: 'Normal',
+      P: 'Pre',
+      NW: 'Nowrap',
+      PW: 'PreWrap',
+      PL: 'PreLine',
+      BS: 'BreakSpaces',
+    }),
+    wsc: synonymProvider('whiteSpaceCollapse', {
+      N: 'Normal',
+      K: 'KeepAll',
+      L: 'Loose',
+      BS: 'BreakStrict',
+      BA: 'BreakAll',
+    }),
+    wb: synonymProvider('wordBreak', {
+      N: 'Normal',
+      K: 'KeepAll',
+      BA: 'BreakAll',
+    }),
+    ww: synonymProvider('wordWrap', {
+      N: 'None',
+      NM: 'Normal',
+      U: 'Unrestricted',
+      S: 'Suppress',
+      B: 'BreakWord',
+    }),
+    bgr: synonymProvider(
+      'backgroundRepeat', {
+        '': 'Repeat',
+        R: 'Repeat',
+        N: 'NoRepeat',
+        X: 'RepeatX',
+        Y: 'RepeatY',
+        SP: 'Space',
+        RD: 'Round',
+      }, 1,
+    ),
+    bga: synonymProvider(
+      'backgroundAttachment', {
+        F: 'Fixed',
+        S: 'Scroll',
+        L: 'Local',
+      }, 1,
+    ),
+    bgbk: synonymProvider(
+      'backgroundBreak', {
+        BB: 'BoundingBox',
+        EB: 'EachBox',
+        C: 'Continuous',
+      }, 1,
+    ),
+    bgcp: synonymProvider(
+      'backgroundClip', {
+        '': 'PaddingBox',
+        BB: 'BorderBox',
+        PB: 'PaddingBox',
+        CB: 'ContentBox',
+        NC: 'NoClip',
+        T: 'Text',
+      }, 1,
+    ),
+    bgo: synonymProvider(
+      'backgroundOrigin', {
+        BB: 'BorderBox',
+        PB: 'PaddingBox',
+        CB: 'ContentBox',
+      }, 1,
+    ),
+    bgs: synonymProvider(
+      'backgroundSize', {
+        A: 'Auto',
+        CT: 'Contain',
+        CV: 'Cover',
+      }, 1,
+    ),
+    q: synonymProvider(
+      'quotes', {
+        A: 'Auto',
+        N: 'None',
+        RU: `'\\00AB'_'\\00BB'_'\\201E'_'\\201C'`,
+        EN: `'\\201C'_'\\201D'_'\\2018'_'\\2019'`,
+      }, 1,
+    ),
+    ol: synonymProvider('outline', outlineStyleSynonyms),
+    ols: synonymProvider(
+      'outlineStyle', outlineStyleSynonyms, 1,
+    ),
+    cps: synonymProvider('captionSide', {
+      T: 'Top',
+      B: 'Bottom',
+      L: 'Left',
+      R: 'Right',
+      TO: 'TopOutside',
+      BO: 'BottomOutside',
+    }),
+    ec: synonymProvider('emptyCells', {
+      S: 'Show',
+      H: 'Hide',
+      U: 'Unset',
+    }),
+    bdcl: synonymProvider(
+      'borderCollapse', {
+        C: 'Collapse',
+        S: 'Separate',
+      }, 1,
+    ),
+    lis: synonymProvider('listStyle', {
+      N: 'None',
+      S: 'Square',
+      D: 'Disc',
+      DC: 'Decimal',
+      DCLZ: 'DecimalLeadingZero',
+      LR: 'LowerRoman',
+      UR: 'UpperRoman',
+      C: 'Circle',
+      I: 'Inside',
+      O: 'Outside',
+    }),
+    lisp: synonymProvider(
+      'listStylePosition', {
+        I: 'Inside',
+        O: 'Outside',
+      }, 1,
+    ),
+    list: synonymProvider(
+      'listStyleType', {
+        N: 'None',
+        S: 'Square',
+        D: 'Disc',
+        DC: 'Decimal',
+        DCLZ: 'DecimalLeadingZero',
+        LR: 'LowerRoman',
+        UR: 'UpperRoman',
+        C: 'Circle',
+      }, 1,
+    ),
+    pgbb: synonymProvider(['pageBreakBefore', 'breakBefore'], breakAfterSynonyms),
+    pgba: synonymProvider(['pageBreakAfter', 'breakAfter'], breakAfterSynonyms),
+    pgbi: synonymProvider(['pageBreakInside', 'breakInside'], {
+      A: 'Auto',
+      AV: 'Avoid',
+      AVP: 'AvoidPage',
+      AVC: 'AvoidColumn',
+      AVRN: 'AvoidRegion',
+    }),
+    us: synonymProvider('userSelect', {
+      A: 'Auto',
+      N: 'None',
+      T: 'Text',
+      C: 'Contain',
+      E: 'Element',
+    }),
+    e: synonymProvider('pointerEvents', {
+      A: 'Auto',
+      N: 'None',
+      V: 'Visible',
+      VP: '_visiblePainted',
+      VF: '_visibleFill',
+      VS: '_visibleStroke',
+      P: 'Painted',
+      F: 'Fill',
+      S: 'Stroke',
+    }),
+    as: synonymProvider('alignSelf', {
+      A: 'Auto',
+      N: 'Normal',
+      B: 'Baseline',
+      C: 'Center',
+      FS: 'FlexStart',
+      FE: 'FlexEnd',
+      SS: 'SelfStart',
+      SE: 'SelfEnd',
+      S: 'Start',
+      E: 'End',
+      ST: 'Stretch',
+      FB: 'First_baseline',
+      LB: 'Last_baseline',
+    }),
+    ac: synonymProvider('alignContent', {
+      S: 'Start',
+      E: 'End',
+      C: 'Center',
+      FS: 'FlexStart',
+      FE: 'FlexEnd',
+      SB: 'SpaceBetween',
+      SA: 'SpaceAround',
+      ST: 'Stretch',
+    }),
+    va: synonymProvider('verticalAlign', {
+      SUP: 'Super',
+      T: 'Top',
+      TT: 'TextTop',
+      M: 'Middle',
+      BL: 'Baseline',
+      B: 'Bottom',
+      TB: 'TextBottom',
+    }),
+    wm: synonymProvider('writingMode', {
+      '': 'LrTb',
+      BTL: 'BtLr',
+      BTR: 'BtRl',
+      LRB: 'LrBt',
+      LRT: 'LrTb',
+      RLB: 'RlTb',
+      TBL: 'TbLr',
+      TBR: 'TbRl',
+      HT: 'HorizontalTb',
+      HB: 'HorizontalBt',
+      VR: 'VerticalRl',
+      VL: 'VerticalLr',
+    }),
+    fxd: synonymProvider(
+      'flexDirection', {
+        C: 'Column',
+        CR: 'ColumnReverse',
+        R: 'Row',
+        RR: 'RowReverse',
+        U: 'Unset',
+      }, 1,
+    ),
+    font: (p, s) => {
+      return (s = p.suffix) && styleWrap({
+        font: spaceNormalize(s),
+      });
     },
-  }));
-
-  // ================================================================
-  // Overflow
-  // ================================================================
-  mn('ov', (c) => ({
-    style: {
-      overflow: ovVal(c.arg),
+    ff: (p, s) => {
+      return (s = p.suffix) && styleWrap({
+        fontFamily: map(fontNameNormalize(s).split(regexpComma), __wr)
+          .join(','),
+      }, 1);
     },
-  }));
-  mn('ovx', (c) => ({
-    style: {
-      overflowX: ovVal(c.arg),
+    cnt: (
+      p, s, v,
+    ) => {
+      return (s = p.suffix) == '_'
+        ? normalizeDefault(p, '\'_\'')
+        : styleWrap({
+          content: s ? spaceNormalize(s[0] == '_' ? (snakeLeftTrim(s) || '" "') : toKebabCase(s)) : 'none',
+        });
     },
-  }));
-  mn('ovy', (c) => ({
-    style: {
-      overflowY: ovVal(c.arg),
-    },
-  }));
-  mn('ovs', (c) => ({
-    style: {
-      overflowStyle: kwVal(c.arg),
-    },
-  }));
-  mn('ovsc', (c) => ({
-    style: {
-      overflowScrolling: kwVal(c.arg),
-    },
-  }));
-
-  // ================================================================
-  // Z-index / Cursor / Events / Select / Resize / Clip
-  // ================================================================
-  mn('z', (c) => ({
-    style: {
-      zIndex: numVal(c.arg),
-    },
-  }));
-  mn('cr', (c) => ({
-    style: {
-      cursor: kwVal(c.arg),
-    },
-  }));
-  mn('e', (c) => ({
-    style: {
-      pointerEvents: kwVal(c.arg),
-    },
-  }));
-  mn('us', (c) => ({
-    style: {
-      userSelect: kwVal(c.arg),
-    },
-  }));
-  mn('rsz', (c) => ({
-    style: {
-      resize: kwVal(c.arg),
-    },
-  }));
-  mn('cp', (c) => ({
-    style: {
-      clip: kwVal(c.arg),
-    },
-  }));
-  mn('ta', (c) => ({
-    style: {
-      touchAction: kwVal(c.arg),
-    },
-  }));
-  mn('inset', (c) => ({
-    style: {
-      inset: c.arg ? multiVal(c.arg) : '0',
-    },
-  }));
-
-  // ================================================================
-  // Flex
-  // ================================================================
-  mn('fx', (c) => ({
-    style: {
-      flex: spacedVal(c.arg || '1'), 
-    } as Record<string, string>,
-  }));
-  mn('fxd', (c) => ({
-    style: {
-      flexDirection: dirVal(c.arg),
-    },
-  }));
-  mn('fxb', (c) => ({
-    style: {
-      flexBasis: val(c.arg),
-    },
-  }));
-  mn('fxw', (c) => ({
-    style: {
-      flexWrap: kwVal(c.arg || 'W'),
-    },
-  }));
-  mn('fxf', (c) => ({
-    style: {
-      flexFlow: kwVal(c.arg),
-    },
-  }));
-  mn('fxg', (c) => ({
-    style: {
-      flexGrow: numVal(c.arg),
-    },
-  }));
-  mn('fxs', (c) => ({
-    style: {
-      flexShrink: numVal(c.arg),
-    },
-  }));
-  mn('fxa', (c) => ({
-    style: {
-      justifyContent: alignVal(c.arg),
-    },
-  }));
-  mn('fya', (c) => {
-    const v = alignVal(c.arg);
-    return {
-      style: {
-        alignItems: v,
-        alignContent: v,
-      },
-    };
-  });
-  mn('jc', (c) => ({
-    style: {
-      justifyContent: alignVal(c.arg),
-    },
-  }));
-  mn('ai', (c) => ({
-    style: {
-      alignItems: alignVal(c.arg),
-    },
-  }));
-  mn('as', (c) => ({
-    style: {
-      alignSelf: alignVal(c.arg),
-    },
-  }));
-  mn('ac', (c) => ({
-    style: {
-      alignContent: alignVal(c.arg),
-    },
-  }));
-  mn('or', (c) => ({
-    style: {
-      order: numVal(c.arg),
-    },
-  }));
-
-  // ================================================================
-  // Grid
-  // ================================================================
-  mn('g', (c) => ({
-    style: {
-      grid: spacedVal(c.arg),
-    },
-  }));
-  mn('gt', (c) => ({
-    style: {
-      gridTemplate: spacedVal(c.arg),
-    },
-  }));
-  mn('gtc', (c) => ({
-    style: {
-      gridTemplateColumns: spacedVal(c.arg),
-    },
-  }));
-  mn('gtr', (c) => ({
-    style: {
-      gridTemplateRows: spacedVal(c.arg),
-    },
-  }));
-  mn('gac', (c) => ({
-    style: {
-      gridAutoColumns: spacedVal(c.arg),
-    },
-  }));
-  mn('gar', (c) => ({
-    style: {
-      gridAutoRows: spacedVal(c.arg),
-    },
-  }));
-  mn('gaf', (c) => ({
-    style: {
-      gridAutoFlow: kwVal(c.arg),
-    },
-  }));
-  mn('gap', (c) => ({
-    style: {
-      gap: val(c.arg),
-    },
-  }));
-  mn('gapc', (c) => ({
-    style: {
-      columnGap: val(c.arg),
-    },
-  }));
-  mn('gapr', (c) => ({
-    style: {
-      rowGap: val(c.arg),
-    },
-  }));
-  mn('gg', (c) => ({
-    style: {
-      gridGap: val(c.arg),
-    },
-  }));
-  mn('ggc', (c) => ({
-    style: {
-      gridColumnGap: val(c.arg),
-    },
-  }));
-  mn('ggr', (c) => ({
-    style: {
-      gridRowGap: val(c.arg),
-    },
-  }));
-  mn('gc', (c) => ({
-    style: {
-      gridColumn: spacedVal(c.arg),
-    },
-  }));
-  mn('gr', (c) => ({
-    style: {
-      gridRow: spacedVal(c.arg),
-    },
-  }));
-
-  // ================================================================
-  // Transform
-  // ================================================================
-  mn('x', (c) => ({
-    style: {
-      transform: transformVal(c.arg),
-    },
-  }));
-  mn('ts', (c) => ({
-    style: {
-      transformStyle: kwVal(c.arg),
-    },
-  }));
-
-  // ================================================================
-  // Transition / Animation
-  // ================================================================
-  mn('dn', (c) => ({
-    style: {
-      transitionDuration: (parseInt(c.arg) || 250) + 'ms',
-    },
-  }));
-  mn('delay', (c) => ({
-    style: {
-      transitionDelay: (parseInt(c.arg) || 0) + 'ms',
-    },
-  }));
-  mn('ttf', (c) => ({
-    style: {
-      transitionTimingFunction: kwVal(c.arg || 'Ease'),
-    },
-  }));
-  mn('tn', (c) => ({
-    style: {
-      transition: spacedVal(c.arg),
-    },
-  }));
-  mn('tp', (c) => ({
-    style: {
-      transitionProperty: spacedVal(c.arg),
-    },
-  }));
-  mn('spnr', (c) => {
-    const ms = parseInt(c.arg) || 1000;
-    return {
-      style: {
-        animation: `spnr ${ms}ms linear infinite`,
-        transform: `rotate(${ms}deg)`,
-      },
-    };
+    ft: ftProvider('filter'),
+    ftb: ftProvider('backdropFilter'),
   });
 
-  // ================================================================
-  // Background
-  // ================================================================
-  mn('bgi', (c) => ({
-    style: {
-      backgroundImage: c.arg,
-    },
-  }));
-  mn('bgp', (c) => ({
-    style: {
-      backgroundPosition: spacedVal(c.arg),
-    },
-  }));
-  mn('bgpx', (c) => ({
-    style: {
-      backgroundPositionX: spacedVal(c.arg),
-    },
-  }));
-  mn('bgpy', (c) => ({
-    style: {
-      backgroundPositionY: spacedVal(c.arg),
-    },
-  }));
-  mn('bgs', (c) => ({
-    style: {
-      backgroundSize: spacedVal(c.arg),
-    },
-  }));
-  mn('bga', (c) => ({
-    style: {
-      backgroundAttachment: kwVal(c.arg),
-    },
-  }));
-  mn('bgr', (c) => ({
-    style: {
-      backgroundRepeat: kwVal(c.arg),
-    },
-  }));
-  mn('bgo', (c) => ({
-    style: {
-      backgroundOrigin: kwVal(c.arg),
-    },
-  }));
-  mn('bgcp', (c) => ({
-    style: {
-      backgroundClip: kwVal(c.arg),
-    },
-  }));
-  mn('bgbk', (c) => ({
-    style: {
-      backgroundBreak: kwVal(c.arg),
-    },
-  }));
+  function ftProvider(propName) {
+    return (
+      p, v, s,
+    ) => {
+      return (v = filter(map(p.suffix.split(regexpFilterSep),
+        (
+          v, matchs, name, options,
+        ) => {
+          return v && (matchs = regexpFilterName.exec(v)) ? (
+            options = FILTER_MAP[name = lowerFirst(matchs[1])],
+            camelToKebabCase(options && options[0] || name)
+                + '(' + (matchs[2] || options && options[1] || '')
+                + (matchs[3] || options && options[2] || '') + ')'
+          ) : 0;
+        })).join(' ')) ? (
+          s = {},
+          s[propName] = v,
+          styleWrap(s)
+        ) : 0;
+    };
+  }
 
-  // ================================================================
-  // Outline
-  // ================================================================
-  mn('ol', (c) => {
-    if (c.arg === 'N') {
+  forIn({
+    ar: ['aspectRatio'],
+
+    col: ['columns'],
+    wid: ['widows'],
+    orp: ['orphans'],
+    coi: ['counterIncrement'],
+    cor: ['counterReset'],
+    wos: ['wordSpacing'],
+    apc: ['appearance'],
+
+    ti: ['textIndent'],
+
+    tn: ['transition'],
+    tp: ['transitionProperty', 1],
+    ttf: ['transitionTimingFunction', 1],
+
+
+    op: ['objectPosition', 1],
+    bgp: ['backgroundPosition', 1],
+    bgpx: ['backgroundPositionX', 2],
+    bgpy: ['backgroundPositionY', 2],
+
+    g: ['grid'],
+    gt: ['gridTemplate', 1],
+    gtc: ['gridTemplateColumns', 2],
+    gtr: ['gridTemplateRows', 2],
+    gac: ['gridAutoColumns', 1],
+    gar: ['gridAutoRows', 1],
+    gaf: ['gridAutoFlow', 1],
+
+    gr: ['gridRow', 1],
+    gc: ['gridColumn', 1],
+
+    fx: ['flex'],
+    fxb: ['flexBasis', 1],
+    fxf: ['flexFlow', 1],
+    fxw: ['flexWrap', 1],
+    fxg: ['flexGrow', 1],
+    fxs: ['flexShrink', 1],
+
+    or: ['order'],
+    tds: ['textDecorationSkip', 1],
+    tdsi: ['textDecorationSkipInk', 2],
+    tdt: ['textDecorationThickness', 1],
+
+    ts: ['transformStyle'],
+    mbm: ['mixBlendMode'],
+    bsp: ['borderSpacing'],
+    // bdrs: ['borderRadius'],
+    zm: ['zoom'],
+    tem: ['textEmphasis'],
+    temp: ['textEmphasisPosition', 1],
+    tems: ['textEmphasisStyle', 1],
+    ir: ['imageRendering'],
+  }, ([propName, priority], essenceName) => {
+    mn(essenceName, (
+      p, s, style,
+    ) => {
+      return (s = p.suffix)
+        ? (style = {}, style[propName] = spaceNormalize(s[0] == '_'
+          ? snakeLeftTrim(s)
+          : toKebabCase(s)), styleWrap(style, priority || 0))
+        : 0;
+    });
+  });
+
+  mn(
+    'ratio', (p) => {
+      p.other && throwInvalid();
+      const v = '' + toFixed(100 * floatval(
+        p.oh || p.h || 100, 1, 1,
+      )
+      / floatval(
+        p.w || 100, 1, 1,
+      )) + '%';
       return {
+        exts: ['rlv'],
         style: {
-          outline: 'none', 
-        }, 
-      };
-    }
-    if (c.arg === '0') {
-      return {
-        style: {
-          outline: '0', 
-        }, 
-      };
-    }
-    return {
-      style: {
-        outline: spacedVal(c.arg), 
-      }, 
-    };
-  });
-  mn('olo', (c) => ({
-    style: {
-      outlineOffset: val(c.arg),
-    },
-  }));
-  mn('ols', (c) => ({
-    style: {
-      outlineStyle: kwVal(c.arg),
-    },
-  }));
-  mn('olw', (c) => ({
-    style: {
-      outlineWidth: val(c.arg),
-    },
-  }));
-
-  // ================================================================
-  // Appearance
-  // ================================================================
-  mn('apc', (c) => ({
-    style: {
-      appearance: kwVal(c.arg),
-    },
-  }));
-
-  // ================================================================
-  // Sides (top/right/bottom/left)
-  // ================================================================
-  mn('s', (c) => {
-    const v = c.arg ? val(c.arg) : '0';
-    return {
-      style: {
-        top: v,
-        bottom: v,
-        left: v,
-        right: v,
-      },
-    };
-  });
-  mn('st', (c) => ({
-    style: {
-      top: val(c.arg),
-    },
-  }));
-  mn('sb', (c) => ({
-    style: {
-      bottom: val(c.arg),
-    },
-  }));
-  mn('sl', (c) => ({
-    style: {
-      left: val(c.arg),
-    },
-  }));
-  mn('sr', (c) => ({
-    style: {
-      right: val(c.arg),
-    },
-  }));
-
-  // ================================================================
-  // Stroke / Fill
-  // ================================================================
-  mn('sw', (c) => ({
-    style: {
-      strokeWidth: val(c.arg),
-    },
-  }));
-
-  // ================================================================
-  // List style
-  // ================================================================
-  mn('lis', (c) => ({
-    style: {
-      listStyle: spacedVal(c.arg),
-    },
-  }));
-  mn('lisp', (c) => ({
-    style: {
-      listStylePosition: kwVal(c.arg),
-    },
-  }));
-  mn('list', (c) => ({
-    style: {
-      listStyleType: kwVal(c.arg),
-    },
-  }));
-  mn('lisi', (c) => ({
-    style: {
-      listStyleImage: c.arg,
-    },
-  }));
-
-  // ================================================================
-  // Content / Quotes
-  // ================================================================
-  mn('cnt', (c) => ({
-    style: {
-      content: c.arg ? c.arg.replace(/_/g, ' ') : '""',
-    },
-  }));
-  mn('q', (c) => ({
-    style: {
-      quotes: c.arg ? c.arg.replace(/_/g, ' ') : 'none',
-    },
-  }));
-
-  // ================================================================
-  // Page break
-  // ================================================================
-  mn('pgbb', (c) => ({
-    style: {
-      breakBefore: kwVal(c.arg),
-    },
-  }));
-  mn('pgba', (c) => ({
-    style: {
-      breakAfter: kwVal(c.arg),
-    },
-  }));
-  mn('pgbi', (c) => ({
-    style: {
-      breakInside: kwVal(c.arg),
-    },
-  }));
-
-  // ================================================================
-  // Table
-  // ================================================================
-  mn('cps', (c) => ({
-    style: {
-      captionSide: kwVal(c.arg),
-    },
-  }));
-  mn('ec', (c) => ({
-    style: {
-      emptyCells: kwVal(c.arg),
-    },
-  }));
-
-  // ================================================================
-  // Filter / Blend
-  // ================================================================
-  mn('ft', (c) => ({
-    style: {
-      filter: filterVal(c.arg),
-    },
-  }));
-  mn('ftb', (c) => ({
-    style: {
-      backdropFilter: filterVal(c.arg),
-    },
-  }));
-  mn('mbm', (c) => ({
-    style: {
-      mixBlendMode: kwVal(c.arg),
-    },
-  }));
-
-  // ================================================================
-  // Image rendering
-  // ================================================================
-  mn('contrast', () => ({
-    style: {
-      imageRendering: 'pixelated',
-    },
-  }));
-
-  // ================================================================
-  // Aspect ratio
-  // ================================================================
-  mn('ar', (c) => ({
-    style: {
-      aspectRatio: c.arg ? c.arg.replace(/_/g, '/') : '1',
-    },
-  }));
-  mn('ratio', (c) => {
-    const arg = c.arg || '1x1';
-    const m = arg.match(/^(\d+)x(\d+)$/);
-    if (m) {
-      const pct = (parseInt(m[2]) / parseInt(m[1]) * 100) + '%';
-      return {
-        style: {
-          position: 'relative',
-          height: '0',
-          paddingTop: pct,
-          overflow: 'hidden',
+          paddingTop: p.add
+            ? normalizeCalc(
+              v,
+              p.sa + floatNormalize(p.addv),
+              validateUnit(p.addu || 'px'),
+            )
+            : v,
+        },
+        childs: {
+          overlay: {
+            selectors: ['>*'],
+            exts: ['abs' + p.ni, 's' + p.ni],
+          },
         },
       };
-    }
-    return {
-      style: {
-        position: 'relative',
-        height: '0',
-        paddingTop: '100%',
-        overflow: 'hidden',
-      },
-    };
-  });
+      // eslint-disable-next-line
+  }, '^((((\\d+):w)x((\\d+):h))|(\\d+):oh)?(([-+]):sa([0-9\\.]+):addv([a-z%]+):addu?):add?|(.*):other', 1);
 
-  // ================================================================
-  // Clearfix
-  // ================================================================
-  mn.css('.cfx:after', {
-    content: '""',
-    display: 'table',
-    clear: 'both',
+  mn({
+    contrast: styleWrap({
+      imageRendering: ['optimize-contrast', '-webkit-optimize-contrast'],
+    }),
   });
-}
+};

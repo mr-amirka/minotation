@@ -1,3 +1,35 @@
+/**
+ * Minimalist Notation — ядро (v1 API).
+ *
+ * Minimalist Notation (MN) — лаконичный синтаксис для описания CSS-классов
+ * прямо в HTML-атрибутах. Значения атрибутов `class`, `m-n` и др.
+ * компилируются в настоящий CSS.
+ *
+ * ## Основное API
+ *
+ * ```ts
+ * import mnProvider from 'minotation';
+ * const mn = mnProvider({ presets: [styles, medias, synonyms] });
+ *
+ * // Зарегистрировать хендлер
+ * mn('w', (params) => ({ style: { width: params.suffix + 'px' } }));
+ *
+ * // Скомпилировать токены из HTML
+ * mn.getCompiler('class')('w50 w100%+10');
+ * mn.compile();
+ * const css = mn.styles$.getValue();
+ * ```
+ *
+ * ## Архитектура
+ *
+ * - **Хендлеры** (`mn(name, fn)`) — функции, преобразующие токен в стили
+ * - **Сущности** (`mn(name, { exts, childs, include })`) — статические описания
+ * - **Компилятор** (`mn.getCompiler(attrName)`) — сбор токенов из DOM
+ * - **Пресеты** (`mn.setPresets([...])`) — готовые наборы хендлеров и стилей
+ *
+ * @module core
+ */
+
 /* eslint-disable */
 import {
   addOf,
@@ -87,6 +119,14 @@ import {
 // Тип экземпляра MN
 type MnInstance = ReturnType<typeof minimalistNotationProvider>;
 
+/**
+ * Нормализует пробелы в MN-значениях:
+ * `_` → пробел, `\\_` → литерал `_`.
+ *
+ * @example
+ * spaceNormalize('10px_solid_red')  // → '10px solid red'
+ * spaceNormalize('a\\_b')           // → 'a_b'
+ */
 const REGEXP_SPACE_NORMALIZE = /(\\_)|(_)/g;
 
 function replacerSpaceNormalize(_all: string, escaped: string): string {
@@ -96,6 +136,11 @@ function spaceNormalize(v: string): string {
   return v.replace(REGEXP_SPACE_NORMALIZE, replacerSpaceNormalize);
 }
 
+/**
+ * Простая реализация Observable.
+ *
+ * Используется для `mn.styles$` (поток стилей) и `mn.error$` (поток ошибок).
+ */
 type Observer<T> = {
   getValue: () => T;
   emit: (value: T) => void;
@@ -397,6 +442,27 @@ function __compileProvider(attrName) {
   return instance;
 }
 
+/**
+ * Создаёт экземпляр Minimalist Notation.
+ *
+ * @param options — конфигурация
+ * @param options.presets — массив функций-пресетов `(mn) => void`
+ * @param options.media — объект медиа-запросов `{ name: { query, selector, priority } }`
+ * @param options.onError — обработчик ошибок
+ * @param options.selectorPrefix — префикс для всех селекторов
+ * @param options.altColor — включить альтернативные цвета (по умолчанию `true`)
+ * @returns экземпляр MN
+ *
+ * @example
+ * const mn = minimalistNotationProvider({
+ *   presets: [presetStyles, presetMedias],
+ * });
+ *
+ * mn('w', (p) => ({ style: { width: p.suffix + 'px' } }));
+ * mn.getCompiler('class')('w50');
+ * mn.compile();
+ * console.log(mn.styles$.getValue()); // [{ content: '.w50{width:50px}' }]
+ */
 function minimalistNotationProvider(options) {
   options = options || {};
   function setPresets(presets) {
@@ -548,6 +614,14 @@ function minimalistNotationProvider(options) {
     styleRender();
   }, mn);
 
+  /**
+   * Возвращает компилятор для указанного атрибута.
+   *
+   * Компилятор собирает токены из DOM-атрибутов (например `class="w50 cF00"`).
+   *
+   * @param attrName — имя атрибута (`'class'`, `'id'`, `'m-n'` и др.)
+   * @returns компилятор с методами `clear()`, `getNext()`, `checkNode()`, `recursiveCheck()`
+   */
   mn.getCompiler = getCompiler;
   mn.recursiveCheckByAttrs = withResult((node, attrs) => {
     (eachApply as any)((map as any)(map(isString(attrs) ? [attrs] : attrs, getCompiler as any),
@@ -866,6 +940,19 @@ function minimalistNotationProvider(options) {
     }
   }
 
+  /**
+   * Назначает селекторам комбо-имена (статические привязки).
+   *
+   * Используется в пресетах для связи CSS-правил с селекторами.
+   *
+   * @param selectors — строка селекторов или объект `{ [selector]: comboNames }`
+   * @param comboNames — комбо-имена (если selectors — строка)
+   * @param defaultMediaName — медиа по умолчанию (`'all'`)
+   *
+   * @example
+   * mn.assign('*, *:before, *:after', 'bxzBB');
+   * mn.assign({ html: 'lh115%', body: 'm' });
+   */
   mn.assign = withResult((
     selectors, comboNames, defaultMediaName,
   ) => {
@@ -1133,6 +1220,15 @@ function minimalistNotationProvider(options) {
     // eslint-disable-next-line
     setStyle('css', (joinOnly as any)((reduceIn as any)($$css[0], __cssReducer, [])), MN_DEFAULT_CSS_PRIORITY);
   }, mn);
+
+  /**
+   * Компилирует накопленные токены в CSS-стили.
+   *
+   * Должен вызываться после того, как все токены собраны через `getCompiler()`.
+   * Результат доступен через `mn.styles$.getValue()`.
+   *
+   * @returns mn (чейнинг)
+   */
   const __render = mn.compile = withResult(() => {
     let attrName: any;
     updateOptions();
@@ -1163,6 +1259,13 @@ function minimalistNotationProvider(options) {
     $$force = 1;
     return deferCompile();
   };
+  /**
+   * Регистрирует @keyframes-анимацию.
+   *
+   * @param name — имя анимации
+   * @param body — тело анимации (строка или объект `{ '0%': {...}, '100%': {...} }`)
+   * @param ifEmpty — если `true`, не перезаписывать существующую
+   */
   mn.setKeyframes = withResult((
     name, body, ifEmpty,
   ) => {
@@ -1183,6 +1286,17 @@ function minimalistNotationProvider(options) {
     }
     $$keyframes[1] = 1;
   }, mn);
+
+  /**
+   * Добавляет сырой CSS.
+   *
+   * @param selector — CSS-селектор (строка) или объект `{ [selector]: cssProps }`
+   * @param css — CSS-свойства (строка или объект)
+   *
+   * @example
+   * mn.css('.myClass', { color: 'red', margin: '10px' });
+   * mn.css({ '.a': { color: 'red' }, '.b': 'margin:0' });
+   */
   mn.css = withResult((selector, css) => {
     const cssMap = $$css[0];
     function baseSetCSS(css, s) {
@@ -1208,12 +1322,34 @@ function minimalistNotationProvider(options) {
       : baseSetCSS(css, selector);
     $$css[1] = 1;
   }, mn);
+
+  /**
+   * Регистрирует синонимы селекторов.
+   *
+   * @param synonym — имя синонима (строка) или объект `{ [name]: selectors }`
+   * @param selectors — селекторы (строка или объект)
+   *
+   * @example
+   * mn.synonyms('big', '.big');
+   * mn.synonyms({ big: '.big', small: '.small' });
+   */
   mn.synonyms = withResult((synonym, selectors) => {
     isObject(synonym)
       ? forIn(synonym, baseSetSynonyms)
       : baseSetSynonyms(selectors, synonym);
   }, mn);
 
+  /**
+   * Загружает пресеты (наборы хендлеров и стилей).
+   *
+   * Каждый пресет — функция `(mn) => void`, которая регистрирует хендлеры
+   * и CSS через API экземпляра.
+   *
+   * @param presets — массив функций-пресетов
+   *
+   * @example
+   * mn.setPresets([presetStyles, presetMedias, presetSynonyms]);
+   */
   mn.setPresets = withResult(setPresets, mn);
   mn.utils = extend(extend({}, utils), {
     color: (v) => color(v, $$altColor),

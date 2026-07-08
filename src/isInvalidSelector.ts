@@ -20,7 +20,7 @@
  * isInvalidSelector('.0leading')  // → true (цифра сразу после точки)
  */
 // eslint-disable-next-line no-useless-escape
-const REGEXP_INVALID = /\.[#[\].*^$()><+~=|:,"'`\s@%!\/0-9]/g;
+const REGEXP_INVALID = /\.[#[\].*^$()><+~=|:,"'`\s@%!\/0-9]/;
 
 /** Закавыченные строки и CSS-escape последовательности (удаляются перед проверкой). */
 const REGEXP_IN_QUOTES_AND_ESCAPED = /("[^"]*"|'[^']*'|\\.)/g;

@@ -55,7 +55,7 @@ function suffixesReduce(suffixes: StrMap<StrMap<number>>,
 }
 
 /**
- * Провайдер компиляции селекторов Minimalist Notation.
+ * Провайдер компиляции селекторов Minotation.
  *
  * Разбирает MN-комбо-имя (значение атрибута `class`, `id`, etc.) на
  * карту селекторов с медиа-привязками.

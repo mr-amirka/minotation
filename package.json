@@ -1,7 +1,7 @@
 {
   "name": "minotation",
   "version": "0.0.1",
-  "description": "Minimalist Notation — CSS generation from compact notation",
+  "description": "Minotation — CSS generation from compact notation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

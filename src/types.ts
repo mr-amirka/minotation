@@ -1,5 +1,5 @@
 /**
- * Типы для Minimalist Notation.
+ * Типы для Minotation.
  *
  * @module types
  */
@@ -37,7 +37,7 @@ export type MnCssMap = Record<string, Record<string, string>>;
 export type MnSynonymsMap = Record<string, string>;
 
 /**
- * Экземпляр Minimalist Notation, передаваемый в пресеты.
+ * Экземпляр Minotation, передаваемый в пресеты.
  *
  * Используется как функция `mn(name, handler)` и как объект с методами.
  */

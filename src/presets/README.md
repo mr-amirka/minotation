@@ -1,4 +1,4 @@
-# Minimalist Notation Default Presets
+# Minotation Default Presets
 
 
 **The MN library includes this default presets if other is not seated.**

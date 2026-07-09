@@ -1,7 +1,7 @@
 // @ts-nocheck
 /* eslint-disable */
 /**
- * Тесты calc()-значений и оператора "+" в токенах Minimalist Notation.
+ * Тесты calc()-значений и оператора "+" в токенах Minotation.
  *
  * Плюс (+) в CSS-значениях — это оператор calc(), а не спецсимвол MN.
  * В генерируемых CSS-классах он экранируется как \+ через escapeCss.
@@ -12,7 +12,7 @@
  *   w50%+10px  → селектор .w50%\+10px, значение width: calc(50% + 10px)
  */
 
-const mnProvider = require('../core').default || require('../core').minimalistNotationProvider;
+const mnProvider = require('../core').default || require('../core').minotationProvider;
 
 /**
  * Создаёт экземпляр MN с простым w-хендлером.

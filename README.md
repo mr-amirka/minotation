@@ -1,6 +1,6 @@
 # minotation
 
-Minimalist Notation — компактная нотация для генерации CSS.
+Minotation — компактная нотация для генерации CSS.
 Наследник [minimalist-notation](https://github.com/mr-amirka/minimalist-notation) (1.x).
 
 ```bash

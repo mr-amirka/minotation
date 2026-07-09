@@ -1,12 +1,12 @@
 // @ts-nocheck
 /* eslint-disable */
 /**
- * Тесты стандартного пресета Minimalist Notation.
+ * Тесты стандартного пресета Minotation.
  *
  * Проверяет ключевые хендлеры: размеры, отступы, цвета, позиционирование.
  */
 
-const mnProvider = require('../index').default || require('../index').minimalistNotationProvider;
+const mnProvider = require('../index').default || require('../index').minotationProvider;
 const presetStandard = require('../presets/standard').default || require('../presets/standard');
 
 function css(token) {

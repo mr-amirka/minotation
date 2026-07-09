@@ -14,7 +14,7 @@ export default (mn: MnInstance) => {
     c: ':checked',
     d: ':disabled',
     f: ':focus',
-    h: ':hover@mouse',
+    h: ':hover',
     i: ':(:-webkit-input-|:-moz-|-ms-input-|:)placeholder',
     even: ':nth-child\\(2n\\)',
     odd: ':nth-child\\(2n+1\\)',

@@ -8,10 +8,7 @@ import {
 } from '../types';
 
 const WEBKIT = '-webkit-',
-  MOZ = '-moz-',
-  OPERA = '-o-',
-  MS = '-ms-',
-  KHTML = '-khtml-';
+  MOZ = '-moz-';
 
 export default (mn: MnInstance) => {
   const {

@@ -1,14 +1,14 @@
 /**
- * Minimalist Notation — точка входа.
+ * Minotation — точка входа.
  * Реэкспортирует все публичные модули.
  */
 
 export {
-  minimalistNotationProvider,
-} from './core';
+  minotationProvider,
+} from './core/index';
 export {
   default,
-} from './core';
+} from './core/index';
 export {
   selectorsCompileProvider,
   extractMedia,

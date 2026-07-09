@@ -1,5 +1,5 @@
 /**
- * Нормализация селектора Minimalist Notation → CSS-селектор.
+ * Нормализация селектора Minotation → CSS-селектор.
  *
  * ## Обработка
  *
@@ -12,7 +12,7 @@
  *
  * 3. **Wildcard-id (`#*`)** — `#*idName` → `[id*=idName]`.
  *
- * @param minimalistNotationSelector — селектор в синтаксисе MN
+ * @param minotationSelector — селектор в синтаксисе MN
  * @returns нормализованный CSS-совместимый селектор
  *
  * @example
@@ -44,8 +44,8 @@ const REGEXP_CLASS_SUBSTR = /\.\*([A-Za-z0-9-_$]+)/g;
 /** `#*idName` → `[id*=idName]` */
 const REGEXP_ID_SUBSTR = /#\*([A-Za-z0-9-_$]+)/g;
 
-export function selectorNormalize(minimalistNotationSelector: string): string {
-  return splitReverse(minimalistNotationSelector)
+export function selectorNormalize(minotationSelector: string): string {
+  return splitReverse(minotationSelector)
     .reverse()
     .join('')
     .replace(REGEXP_CLASS_SUBSTR, '[class*=$1]')

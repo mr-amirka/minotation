@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * @overview Minimalist-Notation preset "normalize.css"
  * @description This is a fork of the normalize.css v8.0.1
@@ -9,7 +8,11 @@
 
 /* eslint quote-props: ["error", "as-needed"] */
 
-export default (mn: any) => {
+import {
+  MnInstance,
+} from '../types';
+
+export default (mn: MnInstance) => {
   mn.assign({
     /* Document
   ========================================================================== */

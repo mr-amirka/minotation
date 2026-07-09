@@ -3,7 +3,11 @@
  * @author Amir Absaliamov <amir.absolutely@gmail.com>
  */
 
-export default (mn: any) => {
+import {
+  MnInstance,
+} from '../types';
+
+export default (mn: MnInstance) => {
   const {
     media,
     utils,

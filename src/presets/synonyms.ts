@@ -1,10 +1,13 @@
-/* eslint-disable */
+import {
+  MnInstance,
+} from '../types';
+
 /**
  * @overview MinimalistNotation preset "synonyms"
  * @author Amir Absaliamov <amir.absolutely@gmail.com>
  */
 
-export default (mn: any) => {
+export default (mn: MnInstance) => {
   // synonyms
   mn.synonyms({
     a: ':active',

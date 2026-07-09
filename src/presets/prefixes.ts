@@ -1,18 +1,19 @@
-/* eslint-disable */
-// @ts-nocheck
 /**
  * @overview Minimalist-Notation preset "prefixes"
  * @author Amir Absaliamov <amir.absolutely@gmail.com>
  */
 
-const // eslint-disable-line
-  WEBKIT = '-webkit-',
-  MOZ = '-moz-',
-  OPERA = '-o-',// eslint-disable-line
-  MS = '-ms-'; // eslint-disable-line
-  KHTML = '-khtml-'; // eslint-disable-line
+import {
+  MnInstance,
+} from '../types';
 
-export default (mn: any) => {
+const WEBKIT = '-webkit-',
+  MOZ = '-moz-',
+  OPERA = '-o-',
+  MS = '-ms-',
+  KHTML = '-khtml-';
+
+export default (mn: MnInstance) => {
   const {
     utils,
     propertiesStringify,

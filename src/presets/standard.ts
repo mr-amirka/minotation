@@ -332,8 +332,12 @@ function normalizeDefault(p, def) {
   };
 }
 
+import {
+  MnInstance,
+} from '../types';
 
-export default (mn: any) => {
+
+export default (mn: MnInstance) => {
   const {
     utils,
     setKeyframes,

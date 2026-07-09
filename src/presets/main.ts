@@ -8,7 +8,11 @@
 
 
 /* eslint quote-props: ["error", "as-needed"] */
-export default (mn: any) => {
+import {
+  MnInstance,
+} from '../types';
+
+export default (mn: MnInstance) => {
   mn.css({
     html: {
       '-webkit-tap-highlight-color': '#000',

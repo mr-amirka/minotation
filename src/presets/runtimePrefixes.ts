@@ -1,10 +1,13 @@
-/* eslint-disable */
+import {
+  MnInstance,
+} from '../types';
+
 /**
  * @overview Minimalist-Notation preset "runtime prefixes"
  * @author Amir Absaliamov <amir.absolutely@gmail.com>
  */
 
-export default (mn: any) => {
+export default (mn: MnInstance) => {
   const {
     utils, propertiesStringify,
   } = mn;

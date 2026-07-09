@@ -1,8 +1,7 @@
 /* eslint-disable */
-// @ts-nocheck
 /**
  * @overview MinimalistNotation preset "synonyms"
- * @author Amir Absaliamov <mr.amirka@ya.ru>
+ * @author Amir Absaliamov <amir.absolutely@gmail.com>
  */
 
 export default (mn: any) => {

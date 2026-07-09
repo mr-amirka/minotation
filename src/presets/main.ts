@@ -1,8 +1,6 @@
-/* eslint-disable */
-// @ts-nocheck
 /**
  * @overview Minimalist-Notation preset "main"
- * @author Amir Absaliamov <mr.amirka@ya.ru>
+ * @author Amir Absaliamov <amir.absolutely@gmail.com>
  * @dependencies
  * minimalist-notation/presets/styles
  * minimalist-notation/presets/medias
@@ -21,7 +19,7 @@ export default (mn: any) => {
     html: 'lh115% tsa',
     body: 'm',
     a: 'cr@mouse bgTransparent',
-    img: 'dB b0',
+    img: 'dB b0 bsN',
     iframe: 'dB b0 bcTransparent',
     // eslint-disable-next-line
     'aside, article, main, section, header, footer, nav, video, canvas, input, textarea':
@@ -76,11 +74,6 @@ export default (mn: any) => {
 
     /* Embedded content
   ========================================================================== */
-
-    /**
-     * Remove the border on images inside links in IE 10.
-     */
-    img: 'bsN',
 
     /* Forms
   ========================================================================== */

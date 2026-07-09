@@ -2,7 +2,7 @@
 // @ts-nocheck
 /**
  * @overview Minimalist-Notation preset "prefixes"
- * @author Amir Absaliamov <mr.amirka@ya.ru>
+ * @author Amir Absaliamov <amir.absolutely@gmail.com>
  */
 
 const // eslint-disable-line

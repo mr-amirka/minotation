@@ -1,8 +1,6 @@
-/* eslint-disable */
-// @ts-nocheck
 /**
  * @overview Minimalist-Notation preset "default medias"
- * @author Amir Absaliamov <mr.amirka@ya.ru>
+ * @author Amir Absaliamov <amir.absolutely@gmail.com>
  */
 
 export default (mn: any) => {

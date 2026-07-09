@@ -14,7 +14,7 @@
  * | **Отступы** | `p`, `m` + стороны (`t`,`b`,`l`,`r`,`x`,`y`) | `padding`, `margin` |
  * | **Границы** | `b`, `bs`, `bc`, `bi` + стороны | `border-*` |
  * | **Цвета** | `c`, `bg`, `bga`, `bgi`, `bgo`, `bgr`, `bgs` | `color`, `background-*` |
- * | **Флекс** | `fha`, `fva`, `fx` | `flex`, `align-*`, `justify-*` |
+ * | **Флекс** | `fxa`, `fya`, `fx` | `flex`, `align-*`, `justify-*` |
  * | **Позиция** | `pos`, `abs`, `ar`, `ai`, `ac`, `as` | `position`, `align/justify` |
  * | **Тени** | `bxsh`, `tsh` | `box-shadow`, `text-shadow` |
  * | **Фильтры** | `blur`, `gray`, `bright`, `contrast`, `hue`, `invert`, `saturate`, `sepia` | `filter` |
@@ -36,7 +36,7 @@
  * `+` в середине значения — оператор `calc()`, не требует экранирования.
  *
  * @module presetStyles
- * @author Amir Absaliamov <mr.amirka@ya.ru>
+ * @author Amir Absaliamov <amir.absolutely@gmail.com>
  */
 
 /* eslint-disable */
@@ -341,6 +341,7 @@ export default (mn: any) => {
   const {
     isDefined,
     map,
+    mapIn,
     filter,
     forIn,
     forEach,
@@ -350,6 +351,7 @@ export default (mn: any) => {
     camelToKebabCase,
     isArray,
     flags,
+    reduce,
     size,
     intval,
     floatval,
@@ -401,7 +403,9 @@ export default (mn: any) => {
         output[i] = toKebabCase(symonyms && symonyms[otherName] || otherName);
         continue;
       }
-      p.vl || throwInvalid();
+      // NOTE: p.vl не работает из-за бага routeParseProvider в fundamentool.
+      // Используем p.num/p.otherName/p.vv как признаки наличия значения.
+      (p.num != null || p.otherName || p.vv) || throwInvalid();
       num = p.num;
       vv = p.vv;
       add = p.add;
@@ -489,7 +493,7 @@ export default (mn: any) => {
     };
   }
 
-  forIn(map(SIDES_MAP, (sides) => flags(sides)), (sides, suffix) => {
+  forIn(mapIn(SIDES_MAP, (sides) => reduce(sides, (dst, key) => { dst[key] = 1; return dst; }, {})), (sides, suffix) => {
     const priority = suffix ? (4 - size(sides)) : 0;
     const bsSidesSet = sidesSetter((side) => 'border' + side + '-style');
     const bcSidesSet = sidesSetter((side) => 'border' + side + '-color');
@@ -497,8 +501,7 @@ export default (mn: any) => {
 
     function sidesSetter(handle) {
       const propsMap = {};
-      let propSide;
-      for (propSide in sides) propsMap[handle(propSide)] = 1; // eslint-disable-line
+      forIn(sides, (val, propSide) => { propsMap[handle(propSide)] = 1; });
       return (v) => {
         isDefined(v) || throwInvalid();
         let style = {}, pName; // eslint-disable-line
@@ -693,9 +696,9 @@ export default (mn: any) => {
   }, (
     style, essenceName, name,
   ) => {
-    mn(name = 'fha' + (essenceName = upperFirst(essenceName)),
+    mn(name = 'fxa' + (essenceName = upperFirst(essenceName)),
       styleWrap(style, 1));
-    mn('fha' + essenceName[0], name);
+    mn('fxa' + essenceName[0], name);
   });
 
   // flex vertical align
@@ -721,7 +724,7 @@ export default (mn: any) => {
       alignContent: 'stretch',
     },
   }, (style, essenceName) => {
-    mn('fva' + upperFirst(essenceName), styleWrap(style, 1));
+    mn('fya' + upperFirst(essenceName), styleWrap(style, 1));
   });
 
   forIn({
@@ -731,7 +734,7 @@ export default (mn: any) => {
     A: 'Around',
     ST: 'Stretch',
   }, (essenceName, abbr) => {
-    mn('fva' + abbr, 'fva' + essenceName);
+    mn('fya' + abbr, 'fya' + essenceName);
   });
 
   forIn({
@@ -795,12 +798,6 @@ export default (mn: any) => {
   });
 
   forIn({
-    textAlign: {
-      tl: 'left',
-      tc: 'center',
-      tr: 'right',
-      tj: 'justify',
-    },
     float: {
       lt: 'left',
       jt: 'none',
@@ -1073,37 +1070,6 @@ export default (mn: any) => {
             display: 'table',
           },
         },
-      },
-    },
-
-    tbl: synonymProvider('tableLayout', {
-      A: 'Auto',
-      F: 'Fixed',
-    }),
-
-    layout: styleWrap({
-      display: [
-        '-webkit-box',
-        '-webkit-flex',
-        'flex',
-      ],
-    }),
-
-    layoutRow: {
-      exts: ['layout'],
-      style: {
-        boxDirection: 'normal',
-        boxOrient: 'horizontal',
-        flexDirection: 'row',
-      },
-    },
-
-    layoutColumn: {
-      exts: ['layout'],
-      style: {
-        boxDirection: 'normal',
-        boxOrient: 'vertical',
-        flexDirection: 'column',
       },
     },
 
@@ -1391,6 +1357,16 @@ export default (mn: any) => {
       PD: 'PanDown',
       PZ: 'PinchZoom',
     }),
+    ta: synonymProvider(
+      'textAlign', {
+        L: 'Left',
+        C: 'Center',
+        R: 'Right',
+        J: 'Justify',
+        E: 'End',
+        S: 'Start',
+      },
+    ),
     tal: synonymProvider(
       'textAlignLast', {
         A: 'Auto',

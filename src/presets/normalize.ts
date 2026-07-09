@@ -1,5 +1,4 @@
 /* eslint-disable */
-// @ts-nocheck
 /**
  * @overview Minimalist-Notation preset "normalize.css"
  * @description This is a fork of the normalize.css v8.0.1

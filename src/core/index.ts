@@ -16,7 +16,6 @@ import {
   isPlainObject,
   isString,
   keys,
-  map,
   noop,
   push,
   values,
@@ -262,17 +261,17 @@ function minotationProvider(options?: MnOptions) {
    */
   mn.getCompiler = getCompiler;
   mn.recursiveCheckByAttrs = withResult((node, attrs) => {
-    eachApply(map(map(isString(attrs) ? [attrs] : attrs, getCompiler),
-      'recursiveCheck'), [node]);
+    eachApply((isString(attrs) ? [attrs] : attrs).map(getCompiler)
+      .map(x => x.recursiveCheck), [node]);
   }, mn);
   mn.checkOneNodeByAttrs = withResult((node, attrs) => {
-    eachApply(map(map(isString(attrs) ? [attrs] : attrs, getCompiler),
-      'checkNode'), [node]);
+    eachApply((isString(attrs) ? [attrs] : attrs).map(getCompiler)
+      .map(x => x.checkNode), [node]);
   }, mn);
   mn.checkByAttrs = withResult((v, attrs) => {
     isString(attrs)
       ? getCompiler(attrs)(v)
-      : eachApply(map(attrs, getCompiler), [v]);
+      : eachApply(attrs.map(getCompiler), [v]);
   }, mn);
   mn.setStyle = (
     name, content, priority,

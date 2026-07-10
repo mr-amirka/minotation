@@ -1,10 +1,9 @@
 /**
- * Minotation — ядро (v1 API).
+ * Minotation — ядро.
  *
  * @module core
  */
 
-/* eslint-disable */
 import {
   eachApply,
   eachTry,
@@ -34,7 +33,7 @@ import {
   withDefer,
   withResult,
   getBase,
-  baseSet,
+  set as baseSet,
 } from 'fundamentool';
 import {
   selectorsCompileProvider,
@@ -80,46 +79,62 @@ import {
   __compileProvider,
   spaceNormalize,
 } from './utils';
+import type {
+  MnData,
+  MnStatics,
+  MnStyleEntry,
+  MnCompiler,
+  MnMediaEntry,
+  MnContextEssence,
+  MnEssenceResult,
+  MnEssenceParams,
+  MnOptions,
+} from './types';
 
 // Присваиваем utils статическому свойству (нужно для обратной совместимости)
 minotationProvider.utils = baseUtils;
 
-function minotationProvider(options) {
+function minotationProvider(options?: MnOptions) {
   options = options || {};
-  function setPresets(presets) {
-    isArray(presets) && (eachTry as any)(
-      presets, [mn], mn, emitError,
+  function setPresets(presets: Array<(mn: any) => void>) {
+    eachTry(
+      presets,
+      [mn],
+      mn,
+      emitError,
     );
   }
-  function styleRender() {
-    emit((values as any)($$stylesMap).sort(priotitySort));
+  function styleRender(): void {
+    emit((values)($$stylesMap).sort(priotitySort));
   }
-  function updateOptions() {
+  function updateOptions(): void {
     const options = mn.options || {};
     $$onError = options.onError || noop;
     $$selectorPrefixes = keys(selectorsValidateFilter(normalizeSelectors(options.selectorPrefix || '')));
     $$altColor = options.altColor !== 'off';
   }
   function mn(
-    essencePath, extendedEssence, paramsMatchPath, skip,
-  ) {
+    essencePath: string | Record<string, any>,
+    extendedEssence?: any,
+    paramsMatchPath?: string,
+    skip?: number,
+  ): any {
     const type = typeof essencePath;
     type === OBJECT
-      ? (forIn as any)(essencePath, baseSetMapIteratee)
+      ? (forIn)(essencePath as Record<string, any>, baseSetMapIteratee)
       : (
         !essencePath || type !== STRING
           ? console.warn('MN: essencePath value must be an string', essencePath)
           : mnBaseSet(
-            extendedEssence, essencePath, paramsMatchPath, skip, undefined,
+            extendedEssence, essencePath as string, paramsMatchPath, skip, undefined,
           )
       );
     return mn;
   }
-  mn.set = mn;
 
   function mnBaseSet(
-    extendedEssence, essencePath, paramsMatchPath, skip, v,
-  ) {
+    extendedEssence: any, essencePath: string, paramsMatchPath?: string, skip?: number, v?: any,
+  ): void {
     const type = typeof(extendedEssence);
     type === FUNCTION
       ? (
@@ -144,17 +159,19 @@ function minotationProvider(options) {
       );
   }
 
-  function baseSetMapIteratee(extendedEssence, essencePath) {
+  function baseSetMapIteratee(extendedEssence: any, essencePath: string): void {
     isArray(extendedEssence)
       ? mnBaseSet(
         extendedEssence[0], essencePath, extendedEssence[1], undefined, undefined,
       )
-      : mnBaseSet(extendedEssence, essencePath, undefined, undefined, undefined);
+      : mnBaseSet(
+        extendedEssence, essencePath, undefined, undefined, undefined,
+      );
   }
 
   function baseSetEssenseBase(
-    name, path, extendedEssence,
-  ) {
+    name: string, path: string[], extendedEssence: Record<string, any>,
+  ): void {
     $$staticsEssences[name] || ($$staticsEssences[name] = __normalize({
       inited: 1,
     }));
@@ -163,7 +180,7 @@ function minotationProvider(options) {
     );
   }
 
-  function baseSetEssense(_essencePath, extendedEssence) {
+  function baseSetEssense(_essencePath: string, extendedEssence: Record<string, any>): void {
     const essencePath = _essencePath.split('.');
     const essenceName = essencePath[0];
     const path = [essenceName];
@@ -186,14 +203,14 @@ function minotationProvider(options) {
     );
   }
 
-  function getCompiler(attrName) {
+  function getCompiler(attrName: string): MnCompiler {
     return $$compilers[attrName]
       || ($$compilers[attrName] = __compileProvider(attrName));
   }
 
   function setStyle(
-    name, content, priority,
-  ) {
+    name: string, content: string, priority: number,
+  ): any {
     $$stylesMap[name] = {
       name,
       priority: priority || 0,
@@ -213,23 +230,23 @@ function minotationProvider(options) {
   const updateAttrByMap = mn.updateAttrByMap = withResult((comboNamesMap, attrName) => {
     // eslint-disable-next-line
     let parseComboName: any = withCatchParseComboNameDecorate(parseComboNameProvider(attrName)), comboName: any;
-    for (comboName in comboNamesMap) (forEach as any)( // eslint-disable-line
+    for (comboName in comboNamesMap) (forEach)( // eslint-disable-line
       parseComboName(comboName), updateSelectorIteratee);
   }, mn as any);
   // eslint-disable-next-line
   const updateAttrByValues = mn.updateAttrByValues = withResult((comboNames, attrName) => {
     // eslint-disable-next-line
     const parseComboName: any = withCatchParseComboNameDecorate(parseComboNameProvider(attrName));
-    (forEach as any)(comboNames, (comboName: any) => {
-      (forEach as any)(parseComboName(comboName), updateSelectorIteratee);
+    (forEach)(comboNames, (comboName: any) => {
+      (forEach)(parseComboName(comboName), updateSelectorIteratee);
     });
   }, mn);
 
   mn.recompileFrom = withResult((attrsMap) => {
     __clear();
     updateOptions();
-    (forIn as any)(attrsMap, updateAttrByMap);
-    (forIn as any)($$root, generate);
+    (forIn)(attrsMap, updateAttrByMap);
+    (forIn)($$root, generate);
     cssRender();
     keyframesRender();
     styleRender();
@@ -245,17 +262,17 @@ function minotationProvider(options) {
    */
   mn.getCompiler = getCompiler;
   mn.recursiveCheckByAttrs = withResult((node, attrs) => {
-    (eachApply as any)((map as any)(map(isString(attrs) ? [attrs] : attrs, getCompiler as any),
+    (eachApply)((map)(map(isString(attrs) ? [attrs] : attrs, getCompiler),
       'recursiveCheck'), [node]);
   }, mn);
   mn.checkOneNodeByAttrs = withResult((node, attrs) => {
-    (eachApply as any)((map as any)(map(isString(attrs) ? [attrs] : attrs, getCompiler as any),
+    (eachApply)((map)(map(isString(attrs) ? [attrs] : attrs, getCompiler),
       'checkNode'), [node]);
   }, mn);
   mn.checkByAttrs = withResult((v, attrs) => {
     isString(attrs)
       ? getCompiler(attrs)(v)
-      : (eachApply as any)((map as any)(attrs, getCompiler as any), [v]);
+      : (eachApply)((map)(attrs, getCompiler), [v]);
   }, mn);
   mn.setStyle = (
     name, content, priority,
@@ -263,37 +280,38 @@ function minotationProvider(options) {
     'custom.' + name, content, priority || MN_DEFAULT_OTHER_CSS_PRIORITY,
   );
 
-  mn.options = extend({}, options);
-  const $$data: any = mn.data = {};
-  const $$compilers = $$data.compilers = {};
+  mn.options = extend({}, options) as MnOptions;
+  const $$data = mn.data = {} as MnData;
+  const $$compilers: Record<string, MnCompiler> = $$data.compilers = {};
   const cssPropertiesStringify = mn.propertiesStringify
     = cssPropertiesStringifyProvider() as any;
-  const emit = (mn.styles$ = observableProvider([])).emit;
-  const error$ = mn.error$ = observableProvider<any>(undefined);
+  const emit = (mn.styles$ = observableProvider<MnStyleEntry[]>([])).emit;
+  const error$ = mn.error$ = observableProvider<Error | undefined>(undefined);
   const emitError = error$.emit;
-  let $$onError: any = noop;
-  let $$updated;
-  let $$essences;
-  let $$root;
-  let $$statics;
-  let $$staticsAssigned;
-  let $$staticsEssences;
-  let $$keyframes;
-  let $$css;
-  let $$stylesMap = $$data.stylesMap = {};
-  let $$assigned = $$data.assigned = {};
-  let $$media = mn.media = options.media || {};
-  let $$handlerMap = mn.handlerMap = {};
-  let $$force;
-  let $$selectorPrefixes;
-  let $$altColor;
+  let $$onError = noop as (e: Error) => void;
+  let $$updated: number;
+  let $$essences: Record<string, MnEssenceResult>;
+  let $$root: Record<string, Record<string, MnContextEssence>>;
+  let $$statics: MnStatics;
+  let $$staticsAssigned: Record<string, Record<string, Record<string, number>>>;
+  let $$staticsEssences: Record<string, MnEssenceResult>;
+  let $$keyframes: [Record<string, string>, number];
+  let $$css: [Record<string, { css: Record<string, string>;
+content?: string }>, number];
+  let $$stylesMap: Record<string, MnStyleEntry> = $$data.stylesMap = {};
+  let $$assigned: Record<string, Record<string, Record<string, number>>> = $$data.assigned = {};
+  let $$media: Record<string, MnMediaEntry> = mn.media = options.media || {};
+  let $$handlerMap: Record<string, (p: MnEssenceParams) => MnEssenceResult | void> = mn.handlerMap = {};
+  let $$force: number;
+  let $$selectorPrefixes: string[];
+  let $$altColor: boolean;
   let $$revision = 0;
 
-  (error$ as any).on((error: any) => {
+  (error$ as any).on((error: Error) => {
     $$onError(error);
   });
 
-  function withCatchParseComboNameDecorate(parseComboNameFn) {
+  function withCatchParseComboNameDecorate(parseComboNameFn: (...args: any[]) => any): (...args: any[]) => any {
     return function() {
       try {
         // eslint-disable-next-line
@@ -305,7 +323,7 @@ function minotationProvider(options) {
     };
   }
 
-  function selectorsValidateFilter(selectorsMap) {
+  function selectorsValidateFilter(selectorsMap: Record<string, any>): Record<string, any> {
     let selector, output = {}; // eslint-disable-line
     for (selector in selectorsMap) { // eslint-disable-line
       isInvalidSelector(selector)
@@ -315,7 +333,7 @@ function minotationProvider(options) {
     return output;
   }
 
-  function parseMediaExpression(mediaExpression) {
+  function parseMediaExpression(mediaExpression: string): Array<[string, number | undefined, string, string] | []> {
     if (!mediaExpression) {
       return [[]];
     }
@@ -390,7 +408,7 @@ function minotationProvider(options) {
     return medias;
   }
 
-  function parseMediaTemplate(mediaName) {
+  function parseMediaTemplate(mediaName: string): [string] | [string, number | undefined] {
     if (mediaName === 'x') {
       return [mediaName];
     }
@@ -398,17 +416,17 @@ function minotationProvider(options) {
     let queries = [], mp, v, priority, input = mediaName.split('x');
     try {
       (mp = parseMediaPart(input[0])) && (
-        (v = mp[0]) && (push as any)(queries, '(min-width: ' + v + 'px)'),
+        (v = mp[0]) && (push)(queries, '(min-width: ' + v + 'px)'),
         (v = mp[1]) && (
           priority = -v,
-          (push as any)(queries, '(max-width: ' + v + 'px)')
+          (push)(queries, '(max-width: ' + v + 'px)')
         )
       );
       (mp = parseMediaPart(input[1])) && (
-        (v = mp[0]) && (push as any)(queries, '(min-height: ' + v + 'px)'),
+        (v = mp[0]) && (push)(queries, '(min-height: ' + v + 'px)'),
         (v = mp[1]) && (
           isDefined(priority) || (priority = -v),
-          (push as any)(queries, '(max-height: ' + v + 'px)')
+          (push)(queries, '(max-height: ' + v + 'px)')
         )
       );
     } catch (ex) {
@@ -418,7 +436,7 @@ function minotationProvider(options) {
   }
   mn.parseMediaExpression = parseMediaExpression;
 
-  function generate(context, mediaExpression) {
+  function generate(context: Record<string, MnContextEssence>, mediaExpression: string): void {
     const medias = parseMediaExpression(mediaExpression);
     const lMedia = medias.length;
     const updated = {};
@@ -459,12 +477,12 @@ function minotationProvider(options) {
         : (mediaSelector ? [mediaSelector] : 0);
 
       selectorsIteratee = selectorPrefixes
-        ? ((selectors: any) => (
+        ? ((selectors: string[]) => (
           joinComma(joinArrays(
             selectorPrefixes, selectors, ' ',
           )) + cssText
         ))
-        : ((selectors: any) => joinComma(selectors) + cssText);
+        : ((selectors: string[]) => joinComma(selectors) + cssText);
 
       for (essenceName in context) { // eslint-disable-line
         (contextEssence = context[essenceName])
@@ -478,7 +496,9 @@ function minotationProvider(options) {
                 const sels = getEessenceSelectors(contextEssence[MN_CONTEXT_ESSENCE_MAP]);
                 const result: string[] = [];
                 for (let si = 0; si < sels.length; si++) {
-                  result[si] = selectorsIteratee(sels[si], si, sels as any);
+                  result[si] = selectorsIteratee(
+                    sels[si], si, sels as any,
+                  );
                 }
                 return result;
               })())
@@ -488,8 +508,8 @@ function minotationProvider(options) {
 
       isContinue || (
         output = joinOnly((() => {
-          const sorted = (values as any)(context).sort(priotitySortContext);
-          const result: any[] = [];
+          const sorted = (values)(context).sort(priotitySortContext);
+          const result: string[] = [];
           for (let si = 0; si < sorted.length; si++) {
             result[si] = sorted[si][MN_CONTEXT_ESSENCE_CONTENT][mediaName];
           }
@@ -516,8 +536,12 @@ function minotationProvider(options) {
   }
 
   function __assignCore(
-    assigned: any, comboNames: any, selectors: any, defaultMediaName: any, excludes?: any,
-  ) {
+    assigned: Record<string, Record<string, Record<string, number>>>,
+    comboNames: Record<string, number>,
+    selectors: Record<string, number>,
+    defaultMediaName?: string,
+    excludes?: Record<string, number>,
+  ): void {
     defaultMediaName = defaultMediaName || 'all';
     let name;
     let selector;
@@ -586,13 +610,13 @@ function minotationProvider(options) {
       );
     }
     isPlainObject(selectors)
-      ? (forIn as any)(selectors, iteratee)
+      ? (forIn)(selectors, iteratee)
       : iteratee(comboNames, selectors);
   }, mn);
 
   function __initEssence(
     value: any, matchs?: any, ni?: any, name?: any, handle?: any, essence?: any, params?: any, suffix?: any, err?: any,
-  ): any {
+  ): Record<string, any> | false | void {
     try {
       if (matchs = REGEXP_MATCH_VAR.exec(value)) {
         params = {};
@@ -632,8 +656,8 @@ function minotationProvider(options) {
     }
   }
   function initEssence(
-    essenceName, essence, excludes,
-  ) {
+    essenceName: string, essence: Record<string, any>, excludes: Record<string, number>,
+  ): void {
     let _essence;
     const staticEssence = $$staticsEssences[essenceName];
     const tmpEssence = staticEssence
@@ -654,10 +678,10 @@ function minotationProvider(options) {
     const important = essence.important;
 
     function __childsHandle(
-      childs: any, separator: any, withStatic?: any,
-    ) {
+      childs: Record<string, any> | undefined, separator: string, withStatic?: number,
+    ): void {
       const __prefix = essenceName + separator;
-      (forIn as any)(childs, withStatic ? (_childEssence: any, _childName: any) => {
+      (forIn)(childs, withStatic ? (_childEssence: any, _childName: any) => {
         const childEssenceName = __prefix + _childName;
         const childStaticEssence = $$staticsEssences[childEssenceName];
         childs[_childName] = compileMixedEssence(
@@ -683,8 +707,8 @@ function minotationProvider(options) {
     );
   }
   function compileMixedEssence(
-    dst: any, src: any, excludes: any, important?: any,
-  ) {
+    dst: Record<string, any>, src: Record<string, any>, excludes: Record<string, number>, important?: number,
+  ): Record<string, any> {
     const include = src.include;
     let // eslint-disable-line
       i = include && include.length,
@@ -706,8 +730,8 @@ function minotationProvider(options) {
     return dst;
   }
   function createContextEssence(
-    essenceName, essence, excludes,
-  ) {
+    essenceName: string, essence: MnEssenceResult, excludes: Record<string, number>,
+  ): MnContextEssence {
     essence.inited || initEssence(
       essenceName, essence, excludes,
     );
@@ -721,8 +745,12 @@ function minotationProvider(options) {
     ];
   }
   function updateEssence(
-    essenceName: any, selectors: any, mediaName: any, _excludes?: any, essence?: any,
-  ): any {
+    essenceName: string,
+    selectors: Record<string, number>,
+    mediaName: string,
+    _excludes?: Record<string, number>,
+    essence?: Record<string, any>,
+  ): Record<string, any> | void {
     const excludes = extend({}, _excludes);
     if (excludes[essenceName]) {
       return;
@@ -731,7 +759,7 @@ function minotationProvider(options) {
     excludes[essenceName] = 1;
     essence || (essence = $$essences[essenceName] || {});
     const context = $$root[mediaName] || ($$root[mediaName] = {});
-    const contextEssence = context[essenceName] || (context[essenceName]
+    const contextEssence: MnContextEssence = context[essenceName] || (context[essenceName]
       = createContextEssence(
         essenceName, essence, excludes,
       ));
@@ -741,8 +769,8 @@ function minotationProvider(options) {
     contextEssence[MN_CONTEXT_ESSENCE_UPDATED] = 1;
     extend(contextEssence[MN_CONTEXT_ESSENCE_MAP],
       selectors = joinMaps(selectors, contextEssence[MN_CONTEXT_ESSENCE_SELECTORS]));
-    function __childsHandle(childs, separator) {
-      let childName;
+    function __childsHandle(childs: Record<string, any>, separator: string): void {
+      let childName: string;
       for (childName in childs) updateEssence( // eslint-disable-line
         essenceName + separator + childName,
         selectors,
@@ -763,7 +791,7 @@ function minotationProvider(options) {
     );
     return essence;
   }
-  function updateSelectorIteratee(item) {
+  function updateSelectorIteratee(item: [Record<string, number>, Record<string, string>]): void {
     let selector;
     let essenceName;
     let mediaName;
@@ -781,19 +809,19 @@ function minotationProvider(options) {
       }
     }
   }
-  function baseSetSynonyms(selectors, name) {
+  function baseSetSynonyms(selectors: string | Record<string, any>, name: string): void {
     // eslint-disable-next-line
     let selectorsMedias = {}, from, to, mediaNames;
     selectors = normalizeSelectors(selectors);
-    for (from in selectors) { // eslint-disable-line
+    for (from in selectors as Record<string, any>) { // eslint-disable-line
       to = extractMedia(mediaNames = [], from);
       selectorsMedias[to] = [0, mediaNames[0]];
     }
     ((mn as any)._synonyms || ((mn as any)._synonyms = {}))[name] = selectorsMedias;
   }
 
-  function __assignItemCompile(actx, mediaName) {
-    (forIn as any)(actx, (selectors: any, essenceName: any) => {
+  function __assignItemCompile(actx: Record<string, Record<string, number>>, mediaName: string): void {
+    (forIn)(actx, (selectors: Record<string, number>, essenceName: string) => {
       updateEssence(
         essenceName, selectors, mediaName,
       );
@@ -804,18 +832,21 @@ function minotationProvider(options) {
     $$handlerMap = mn.handlerMap || (mn.handlerMap = {});
     $$essences = $$data.essences = {};
     $$root = $$data.root = {};
-    $$statics = $$data.statics || ($$data.statics = {});
+    $$statics = $$data.statics || ($$data.statics = {
+      essences: {},
+      assigned: {}, 
+    });
 
     $$staticsEssences = $$statics.essences || ($$statics.essences = {});
     $$keyframes = $$data.keyframes || ($$data.keyframes = [{}, 0]);
     $$css = $$data.css = $$data.css || [{}, 0];
     $$stylesMap = $$data.stylesMap = {};
     $$assigned = $$data.assigned = {};
-      (forIn as any)($$staticsAssigned = $$statics.assigned || ($$statics.assigned = {}),
-        __assignItemCompile);
+    (forIn)($$staticsAssigned = $$statics.assigned || ($$statics.assigned = {}),
+      __assignItemCompile);
   }
   __clear();
-  mn.clear = withResult((attrName) => {
+  mn.clear = withResult((attrName?: string) => {
     // eslint-disable-next-line
     for (attrName in $$compilers) $$compilers[attrName].clear();
     __clear();
@@ -826,11 +857,11 @@ function minotationProvider(options) {
     const keyframesPrefix = MN_KEYFRAMES_TOKEN + ' ';
     const prefixes = cssPropertiesStringify.prefixes;
     // eslint-disable-next-line
-    setStyle(MN_KEYFRAMES_TOKEN, (joinOnly as any)((reduceIn as any)($$keyframes[0], (output: any, v: any, k: any) => {
+    setStyle(MN_KEYFRAMES_TOKEN, (joinOnly)((reduceIn)($$keyframes[0], (output: string[], v: string, k: string): string[] => {
       let prefix: string;
-      for (prefix in prefixes) (push as any)( // eslint-disable-line
+      for (prefix in prefixes) (push)( // eslint-disable-line
         output, '@' + prefix + keyframesPrefix + k + v);
-      (push as any)(output, '@' + keyframesPrefix + k + v);
+      (push)(output, '@' + keyframesPrefix + k + v);
       return output;
     }, [],
     )), MN_DEFAULT_CSS_PRIORITY,
@@ -839,7 +870,7 @@ function minotationProvider(options) {
   const cssRender = mn.cssCompile = withResult(() => {
     $$css[1] = 0;
     // eslint-disable-next-line
-    setStyle('css', (joinOnly as any)((reduceIn as any)($$css[0], __cssReducer, [])), MN_DEFAULT_CSS_PRIORITY);
+    setStyle('css', (joinOnly)((reduceIn)($$css[0], __cssReducer, [])), MN_DEFAULT_CSS_PRIORITY);
   }, mn);
 
   /**
@@ -851,7 +882,7 @@ function minotationProvider(options) {
    * @returns mn (чейнинг)
    */
   const __render = mn.compile = withResult(() => {
-    let attrName: any;
+    let attrName: string;
     updateOptions();
     if ($$force) {
       __clear();
@@ -867,7 +898,7 @@ function minotationProvider(options) {
     }
     $$keyframes[1] && keyframesRender();
     $$css[1] && cssRender();
-    (forIn as any)($$root, generate);
+    (forIn)($$root, generate);
     $$updated && styleRender();
     $$updated = $$force = 0;
   }, mn);
@@ -897,7 +928,7 @@ function minotationProvider(options) {
     if (body) {
       const output = ['{'];
       isObject(body)
-        ? (forIn as any)(body, (css: any, k: any) => (push as any)(output, k + '{'
+        ? (forIn)(body, (css: string | Record<string, any>, k: string) => (push)(output, k + '{'
           + (isObject(css) ? (cssPropertiesStringify as any)(css) : css) + '}'))
         : push(output, body);
       push(output, '}');
@@ -920,7 +951,7 @@ function minotationProvider(options) {
    */
   mn.css = withResult((selector, css) => {
     const cssMap = $$css[0];
-    function baseSetCSS(css, s) {
+    function baseSetCSS(css: string | Record<string, any>, s: string): void {
       s = joinComma(keys(normalizeSelectorsIteratee({}, s)));
       if (css) {
         const instance = cssMap[s] || (cssMap[s] = {
@@ -930,7 +961,7 @@ function minotationProvider(options) {
           s,
           '{',
           cssPropertiesStringify(isObject(css)
-            ? (extend as any)(instance.css, css)
+            ? (extend)(instance.css, css)
             : (cssPropertiesParseSimple as any)(css, instance.css)),
           '}',
         ]);
@@ -978,7 +1009,7 @@ function minotationProvider(options) {
   });
 
   updateOptions();
-  setPresets(options.presets);
+  options.presets?.length && setPresets(options.presets);
 
   return mn;
 }

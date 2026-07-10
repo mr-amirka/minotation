@@ -30,7 +30,7 @@
  * @module core
  */
 
-/* eslint-disable */
+/* eslint-disable @typescript-eslint/no-explicit-any, no-useless-escape, no-cond-assign */
 import {
   addOf,
   aggregate,
@@ -418,7 +418,7 @@ export function __compileProvider(attrName) {
     _cache = (instance as any).cache = {};
     _values = [];
   })();
-  instance.getNext = (node: any) => {
+  instance.getNext = (_node: any) => {
     const values = _values;
     _values = [];
     return values;

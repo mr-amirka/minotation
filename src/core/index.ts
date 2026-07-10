@@ -105,7 +105,7 @@ function minotationProvider(options?: MnOptions) {
     );
   }
   function styleRender(): void {
-    emit((values)($$stylesMap).sort(priotitySort));
+    emit(values($$stylesMap).sort(priotitySort));
   }
   function updateOptions(): void {
     const options = mn.options || {};
@@ -121,7 +121,7 @@ function minotationProvider(options?: MnOptions) {
   ): any {
     const type = typeof essencePath;
     type === OBJECT
-      ? (forIn)(essencePath as Record<string, any>, baseSetMapIteratee)
+      ? forIn(essencePath as Record<string, any>, baseSetMapIteratee)
       : (
         !essencePath || type !== STRING
           ? console.warn('MN: essencePath value must be an string', essencePath)
@@ -230,23 +230,23 @@ function minotationProvider(options?: MnOptions) {
   const updateAttrByMap = mn.updateAttrByMap = withResult((comboNamesMap, attrName) => {
     // eslint-disable-next-line
     let parseComboName: any = withCatchParseComboNameDecorate(parseComboNameProvider(attrName)), comboName: any;
-    for (comboName in comboNamesMap) (forEach)( // eslint-disable-line
+    for (comboName in comboNamesMap) forEach( // eslint-disable-line
       parseComboName(comboName), updateSelectorIteratee);
   }, mn as any);
   // eslint-disable-next-line
   const updateAttrByValues = mn.updateAttrByValues = withResult((comboNames, attrName) => {
     // eslint-disable-next-line
     const parseComboName: any = withCatchParseComboNameDecorate(parseComboNameProvider(attrName));
-    (forEach)(comboNames, (comboName: any) => {
-      (forEach)(parseComboName(comboName), updateSelectorIteratee);
+    forEach(comboNames, (comboName: any) => {
+      forEach(parseComboName(comboName), updateSelectorIteratee);
     });
   }, mn);
 
   mn.recompileFrom = withResult((attrsMap) => {
     __clear();
     updateOptions();
-    (forIn)(attrsMap, updateAttrByMap);
-    (forIn)($$root, generate);
+    forIn(attrsMap, updateAttrByMap);
+    forIn($$root, generate);
     cssRender();
     keyframesRender();
     styleRender();
@@ -262,17 +262,17 @@ function minotationProvider(options?: MnOptions) {
    */
   mn.getCompiler = getCompiler;
   mn.recursiveCheckByAttrs = withResult((node, attrs) => {
-    (eachApply)((map)(map(isString(attrs) ? [attrs] : attrs, getCompiler),
+    eachApply(map(map(isString(attrs) ? [attrs] : attrs, getCompiler),
       'recursiveCheck'), [node]);
   }, mn);
   mn.checkOneNodeByAttrs = withResult((node, attrs) => {
-    (eachApply)((map)(map(isString(attrs) ? [attrs] : attrs, getCompiler),
+    eachApply(map(map(isString(attrs) ? [attrs] : attrs, getCompiler),
       'checkNode'), [node]);
   }, mn);
   mn.checkByAttrs = withResult((v, attrs) => {
     isString(attrs)
       ? getCompiler(attrs)(v)
-      : (eachApply)((map)(attrs, getCompiler), [v]);
+      : eachApply(map(attrs, getCompiler), [v]);
   }, mn);
   mn.setStyle = (
     name, content, priority,
@@ -416,17 +416,17 @@ content?: string }>, number];
     let queries = [], mp, v, priority, input = mediaName.split('x');
     try {
       (mp = parseMediaPart(input[0])) && (
-        (v = mp[0]) && (push)(queries, '(min-width: ' + v + 'px)'),
+        (v = mp[0]) && push(queries, '(min-width: ' + v + 'px)'),
         (v = mp[1]) && (
           priority = -v,
-          (push)(queries, '(max-width: ' + v + 'px)')
+          push(queries, '(max-width: ' + v + 'px)')
         )
       );
       (mp = parseMediaPart(input[1])) && (
-        (v = mp[0]) && (push)(queries, '(min-height: ' + v + 'px)'),
+        (v = mp[0]) && push(queries, '(min-height: ' + v + 'px)'),
         (v = mp[1]) && (
           isDefined(priority) || (priority = -v),
-          (push)(queries, '(max-height: ' + v + 'px)')
+          push(queries, '(max-height: ' + v + 'px)')
         )
       );
     } catch (ex) {
@@ -508,7 +508,7 @@ content?: string }>, number];
 
       isContinue || (
         output = joinOnly((() => {
-          const sorted = (values)(context).sort(priotitySortContext);
+          const sorted = values(context).sort(priotitySortContext);
           const result: string[] = [];
           for (let si = 0; si < sorted.length; si++) {
             result[si] = sorted[si][MN_CONTEXT_ESSENCE_CONTENT][mediaName];
@@ -610,7 +610,7 @@ content?: string }>, number];
       );
     }
     isPlainObject(selectors)
-      ? (forIn)(selectors, iteratee)
+      ? forIn(selectors, iteratee)
       : iteratee(comboNames, selectors);
   }, mn);
 
@@ -681,7 +681,7 @@ content?: string }>, number];
       childs: Record<string, any> | undefined, separator: string, withStatic?: number,
     ): void {
       const __prefix = essenceName + separator;
-      (forIn)(childs, withStatic ? (_childEssence: any, _childName: any) => {
+      forIn(childs, withStatic ? (_childEssence: any, _childName: any) => {
         const childEssenceName = __prefix + _childName;
         const childStaticEssence = $$staticsEssences[childEssenceName];
         childs[_childName] = compileMixedEssence(
@@ -821,7 +821,7 @@ content?: string }>, number];
   }
 
   function __assignItemCompile(actx: Record<string, Record<string, number>>, mediaName: string): void {
-    (forIn)(actx, (selectors: Record<string, number>, essenceName: string) => {
+    forIn(actx, (selectors: Record<string, number>, essenceName: string) => {
       updateEssence(
         essenceName, selectors, mediaName,
       );
@@ -842,7 +842,7 @@ content?: string }>, number];
     $$css = $$data.css = $$data.css || [{}, 0];
     $$stylesMap = $$data.stylesMap = {};
     $$assigned = $$data.assigned = {};
-    (forIn)($$staticsAssigned = $$statics.assigned || ($$statics.assigned = {}),
+    forIn($$staticsAssigned = $$statics.assigned || ($$statics.assigned = {}),
       __assignItemCompile);
   }
   __clear();
@@ -857,11 +857,11 @@ content?: string }>, number];
     const keyframesPrefix = MN_KEYFRAMES_TOKEN + ' ';
     const prefixes = cssPropertiesStringify.prefixes;
     // eslint-disable-next-line
-    setStyle(MN_KEYFRAMES_TOKEN, (joinOnly)((reduceIn)($$keyframes[0], (output: string[], v: string, k: string): string[] => {
+    setStyle(MN_KEYFRAMES_TOKEN, joinOnly(reduceIn($$keyframes[0], (output: string[], v: string, k: string): string[] => {
       let prefix: string;
-      for (prefix in prefixes) (push)( // eslint-disable-line
+      for (prefix in prefixes) push( // eslint-disable-line
         output, '@' + prefix + keyframesPrefix + k + v);
-      (push)(output, '@' + keyframesPrefix + k + v);
+      push(output, '@' + keyframesPrefix + k + v);
       return output;
     }, [],
     )), MN_DEFAULT_CSS_PRIORITY,
@@ -870,7 +870,7 @@ content?: string }>, number];
   const cssRender = mn.cssCompile = withResult(() => {
     $$css[1] = 0;
     // eslint-disable-next-line
-    setStyle('css', (joinOnly)((reduceIn)($$css[0], __cssReducer, [])), MN_DEFAULT_CSS_PRIORITY);
+    setStyle('css', joinOnly(reduceIn($$css[0], __cssReducer, [])), MN_DEFAULT_CSS_PRIORITY);
   }, mn);
 
   /**
@@ -898,7 +898,7 @@ content?: string }>, number];
     }
     $$keyframes[1] && keyframesRender();
     $$css[1] && cssRender();
-    (forIn)($$root, generate);
+    forIn($$root, generate);
     $$updated && styleRender();
     $$updated = $$force = 0;
   }, mn);
@@ -928,7 +928,7 @@ content?: string }>, number];
     if (body) {
       const output = ['{'];
       isObject(body)
-        ? (forIn)(body, (css: string | Record<string, any>, k: string) => (push)(output, k + '{'
+        ? forIn(body, (css: string | Record<string, any>, k: string) => push(output, k + '{'
           + (isObject(css) ? (cssPropertiesStringify as any)(css) : css) + '}'))
         : push(output, body);
       push(output, '}');
@@ -961,7 +961,7 @@ content?: string }>, number];
           s,
           '{',
           cssPropertiesStringify(isObject(css)
-            ? (extend)(instance.css, css)
+            ? extend(instance.css, css)
             : (cssPropertiesParseSimple as any)(css, instance.css)),
           '}',
         ]);

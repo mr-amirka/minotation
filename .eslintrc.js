@@ -51,4 +51,16 @@ module.exports = {
     'coverage/',
     'scripts/',
   ],
+  overrides: [
+    {
+      // CSS-селекторы как ключи объекта — требуют смешанного quote-props
+      files: [
+        'src/presets/main.ts',
+        'src/presets/normalize.ts',
+      ],
+      rules: {
+        'quote-props': ['error', 'as-needed'],
+      },
+    },
+  ],
 };

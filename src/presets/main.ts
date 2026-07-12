@@ -1,5 +1,5 @@
 /**
- * @overview Minimalist-Notation preset "main"
+ * @overview Minotation preset "main"
  * @author Amir Absaliamov <amir.absolutely@gmail.com>
  * @dependencies
  * minimalist-notation/presets/styles
@@ -7,7 +7,6 @@
  */
 
 
-/* eslint quote-props: ["error", "as-needed"] */
 import {
   MnInstance,
 } from '../types';

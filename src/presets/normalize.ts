@@ -1,12 +1,10 @@
 /**
- * @overview Minimalist-Notation preset "normalize.css"
+ * @overview Minotation preset "normalize.css"
  * @description This is a fork of the normalize.css v8.0.1
  * | github.com/necolas/normalize.css
  * @dependencies
  * minimalist-notation/presets/styles
  */
-
-/* eslint quote-props: ["error", "as-needed"] */
 
 import {
   MnInstance,

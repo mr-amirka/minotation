@@ -1,5 +1,5 @@
 /**
- * @overview Minimalist-Notation preset "default medias"
+ * @overview Minotation preset "default medias"
  * @author Amir Absaliamov <amir.absolutely@gmail.com>
  */
 

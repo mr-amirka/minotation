@@ -42,13 +42,13 @@
 /* eslint-disable */
 // @ts-nocheck
 /** @constant {RegExp} Разделитель запятых с пробелами */
-const regexpComma = /(?:\s*,\s*)+/;
-const regexpTrimSnakeLeft = /^_+/g;
-const regexpTrimKebabLeft = /^-+/g;
-const reZero =/^0+|\.?0+$/g;
-const regexpFilterName = /^([A-Za-z]+)([0-9]*)(.*)$/;
-const regexpFilterSep = /_+/;
-const regexpDots = /\./g;
+const REGEXP_COMMA = /(?:\s*,\s*)+/;
+const REGEXP_TRIM_SNAKE_LEFT = /^_+/g;
+const REGEXP_TRIM_KEBAB_LEFT = /^-+/g;
+const RE_ZERO =/^0+|\.?0+$/g;
+const REGEXP_FILTER_NAME = /^([A-Za-z]+)([0-9]*)(.*)$/;
+const REGEXP_FILTER_SEP = /_+/;
+const REGEXP_DOTS = /\./g;
 
 
 const PATTERN_VAR = '((-):env?((--[^;,]+)(,\\d+([a-z%]+):vu?):va?):vv;?)';
@@ -120,7 +120,7 @@ const COLOR_SYNONYMS = {
   CT: 'CurrentColor',
   T: 'Transparent',
 };
-const borderStyleSynonyms = {
+const BORDER_STYLE_SYNONYMS = {
   N: 'None',
   H: 'Hidden',
   DT: 'Dotted',
@@ -135,11 +135,11 @@ const borderStyleSynonyms = {
   I: 'Inset',
   O: 'Outset',
 };
-const sizeSynonyms = {
+const SIZE_SYNONYMS = {
   A: 'Auto',
   N: 'None',
 };
-const tdSynonyms = {
+const TD_SYNONYMS = {
   '': 'None',
   N: 'None',
   U: 'Underline',
@@ -147,7 +147,7 @@ const tdSynonyms = {
   L: 'LineThrough',
   I: 'Inherit',
 };
-const breakAfterSynonyms = {
+const BREAK_AFTER_SYNONYMS = {
   A: 'Auto',
   AW: 'Always',
   AV: 'Avoid',
@@ -162,13 +162,13 @@ const breakAfterSynonyms = {
   RE: 'Recto',
   VE: 'Verso',
 };
-const fontWeightSynonyms = {
+const FONT_WEIGHT_SYNONYMS = {
   N: 'Normal',
   B: 'Bold',
   BR: 'Bolder',
   LR: 'Lighter',
 };
-const outlineStyleSynonyms = {
+const OUTLINE_STYLE_SYNONYMS = {
   N: 'None',
   DT: 'Dotted',
   DS: 'Dashed',
@@ -179,7 +179,7 @@ const outlineStyleSynonyms = {
   I: 'Inset',
   O: 'Outset',
 };
-const positionSynonyms = {
+const POSITION_SYNONYMS = {
   '': 'Relative',
   R: 'Relative',
   A: 'Absolute',
@@ -188,7 +188,7 @@ const positionSynonyms = {
   SK: 'Sticky',
 };
 
-const overscrollBehaviorPriorities = {
+const OVERSCROLL_BEHAVIOR_PRIORITIES = {
   A: 'Auto',
   CT: 'Contain',
   N: 'None',
@@ -198,7 +198,7 @@ const overscrollBehaviorPriorities = {
   U: 'Unset',
 };
 
-const positionPriorities = {
+const POSITION_PRIORITIES = {
   relative: 0,
   absolute: 1,
   fixed: 2,
@@ -277,7 +277,7 @@ function throwInvalid(message) {
   throw new Error(message || 'Parameter is invalid');
 }
 function floatNormalize(v, nosign) {
-  const m = v && v.match(regexpDots);
+  const m = v && v.match(REGEXP_DOTS);
   (m && m.length > 1 || isNaN(v = parseFloat(v)) || (v < 0 && nosign))
     && throwInvalid();
   return v;
@@ -290,7 +290,7 @@ function replace(
 }
 function snakeLeftTrim(v) {
   return replace(
-    v, regexpTrimSnakeLeft, '',
+    v, REGEXP_TRIM_SNAKE_LEFT, '',
   );
 }
 function styleWrap(style, priority) {
@@ -302,7 +302,7 @@ function styleWrap(style, priority) {
 function toFixed(v) {
   isNaN(v = v * 100) && throwInvalid();
   return replace(
-    (Math.floor(v) * 0.01).toFixed(2), reZero, '',
+    (Math.floor(v) * 0.01).toFixed(2), RE_ZERO, '',
   ) || '0';
 }
 function __wr(v) {
@@ -523,11 +523,11 @@ export default (mn: MnInstance) => {
         if (!(suffix = p.suffix)) {
           return normalizeDefault(p, 0);
         }
-        if (synonym = sizeSynonyms[suffix]) {
+        if (synonym = SIZE_SYNONYMS[suffix]) {
           return normalizeDefault(p, synonym);
         }
         const v = getVal(
-          suffix, nosign, one, 'px', 0, sizeSynonyms,
+          suffix, nosign, one, 'px', 0, SIZE_SYNONYMS,
         );
         return styleWrap(sidesSet(v[0]), priority + v[1]);
       };
@@ -561,7 +561,7 @@ export default (mn: MnInstance) => {
       's' + suffix, handleProvider(
         suffix
           ? sidesSetter((side) => replace(
-            side, regexpTrimKebabLeft, '',
+            side, REGEXP_TRIM_KEBAB_LEFT, '',
           ))
           : (v) => (isDefined(v) ? {
             top: v,
@@ -576,7 +576,7 @@ export default (mn: MnInstance) => {
     mn('bs' + suffix, (
       p, s, synonym,
     ) => {
-      return (synonym = borderStyleSynonyms[s = p.suffix])
+      return (synonym = BORDER_STYLE_SYNONYMS[s = p.suffix])
         ? normalizeDefault(p, synonym)
         : (
           s
@@ -629,12 +629,12 @@ export default (mn: MnInstance) => {
           if (!suffix) {
             return normalizeDefault(p, '100%');
           }
-          const synonym = sizeSynonyms[suffix];
+          const synonym = SIZE_SYNONYMS[suffix];
           if (synonym) {
             return normalizeDefault(p, synonym);
           }
           const v = getVal(
-            suffix, 1, 1, 'px', 0, sizeSynonyms,
+            suffix, 1, 1, 'px', 0, SIZE_SYNONYMS,
           );
           const [value] = v;
           const style = {};
@@ -652,12 +652,12 @@ export default (mn: MnInstance) => {
       if (!suffix) {
         return normalizeDefault(p, '100%');
       }
-      const synonym = sizeSynonyms[suffix];
+      const synonym = SIZE_SYNONYMS[suffix];
       if (synonym) {
         return normalizeDefault(p, synonym);
       }
       const v = getVal(
-        suffix, 1, 1, 'px', 0, sizeSynonyms,
+        suffix, 1, 1, 'px', 0, SIZE_SYNONYMS,
       );
       return styleWrap({
         gap: v[0],
@@ -1048,7 +1048,7 @@ export default (mn: MnInstance) => {
   mn('pos', (
     p, s, synonym, v,
   ) => {
-    return (synonym = positionSynonyms[s = p.suffix])
+    return (synonym = POSITION_SYNONYMS[s = p.suffix])
       ? normalizeDefault(p, synonym)
       : (
         s ? (
@@ -1057,7 +1057,7 @@ export default (mn: MnInstance) => {
             : toKebabCase(s)),
           styleWrap({
             position: v,
-          }, positionPriorities[v] || 0)
+          }, POSITION_PRIORITIES[v] || 0)
         ) : 0
       );
   });
@@ -1087,7 +1087,7 @@ export default (mn: MnInstance) => {
       p, camel, synonym,
     ) => {
       camel = p.camel;
-      synonym = camel && fontWeightSynonyms[camel];
+      synonym = camel && FONT_WEIGHT_SYNONYMS[camel];
       return synonym ? normalizeDefault(p, synonym) : !p.negative && styleWrap({
         fontWeight: camel
           ? toKebabCase(camel)
@@ -1207,9 +1207,9 @@ export default (mn: MnInstance) => {
       U: 'Unset',
     }),
 
-    ovb: synonymProvider('overscrollBehavior', overscrollBehaviorPriorities),
-    ovbx: synonymProvider('overscrollBehaviorX', overscrollBehaviorPriorities),
-    ovby: synonymProvider('overscrollBehaviorY', overscrollBehaviorPriorities),
+    ovb: synonymProvider('overscrollBehavior', OVERSCROLL_BEHAVIOR_PRIORITIES),
+    ovbx: synonymProvider('overscrollBehaviorX', OVERSCROLL_BEHAVIOR_PRIORITIES),
+    ovby: synonymProvider('overscrollBehaviorY', OVERSCROLL_BEHAVIOR_PRIORITIES),
 
     maskt: synonymProvider('maskType', {
       L: 'Luminance',
@@ -1382,9 +1382,9 @@ export default (mn: MnInstance) => {
         S: 'Start',
       }, 1,
     ),
-    td: synonymProvider('textDecoration', tdSynonyms),
+    td: synonymProvider('textDecoration', TD_SYNONYMS),
     tdl: synonymProvider(
-      'textDecorationLine', tdSynonyms, 1,
+      'textDecorationLine', TD_SYNONYMS, 1,
     ),
     tj: synonymProvider(
       'textJustify', {
@@ -1507,9 +1507,9 @@ export default (mn: MnInstance) => {
         EN: `'\\201C'_'\\201D'_'\\2018'_'\\2019'`,
       }, 1,
     ),
-    ol: synonymProvider('outline', outlineStyleSynonyms),
+    ol: synonymProvider('outline', OUTLINE_STYLE_SYNONYMS),
     ols: synonymProvider(
-      'outlineStyle', outlineStyleSynonyms, 1,
+      'outlineStyle', OUTLINE_STYLE_SYNONYMS, 1,
     ),
     cps: synonymProvider('captionSide', {
       T: 'Top',
@@ -1560,8 +1560,8 @@ export default (mn: MnInstance) => {
         C: 'Circle',
       }, 1,
     ),
-    pgbb: synonymProvider(['pageBreakBefore', 'breakBefore'], breakAfterSynonyms),
-    pgba: synonymProvider(['pageBreakAfter', 'breakAfter'], breakAfterSynonyms),
+    pgbb: synonymProvider(['pageBreakBefore', 'breakBefore'], BREAK_AFTER_SYNONYMS),
+    pgba: synonymProvider(['pageBreakAfter', 'breakAfter'], BREAK_AFTER_SYNONYMS),
     pgbi: synonymProvider(['pageBreakInside', 'breakInside'], {
       A: 'Auto',
       AV: 'Avoid',
@@ -1651,7 +1651,7 @@ export default (mn: MnInstance) => {
     },
     ff: (p, s) => {
       return (s = p.suffix) && styleWrap({
-        fontFamily: map(fontNameNormalize(s).split(regexpComma), __wr)
+        fontFamily: map(fontNameNormalize(s).split(REGEXP_COMMA), __wr)
           .join(','),
       }, 1);
     },
@@ -1672,11 +1672,11 @@ export default (mn: MnInstance) => {
     return (
       p, v, s,
     ) => {
-      return (v = filter(map(p.suffix.split(regexpFilterSep),
+      return (v = filter(map(p.suffix.split(REGEXP_FILTER_SEP),
         (
           v, matchs, name, options,
         ) => {
-          return v && (matchs = regexpFilterName.exec(v)) ? (
+          return v && (matchs = REGEXP_FILTER_NAME.exec(v)) ? (
             options = FILTER_MAP[name = lowerFirst(matchs[1])],
             camelToKebabCase(options && options[0] || name)
                 + '(' + (matchs[2] || options && options[1] || '')

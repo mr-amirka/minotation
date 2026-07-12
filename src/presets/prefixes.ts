@@ -1,5 +1,5 @@
 /**
- * @overview Minimalist-Notation preset "prefixes"
+ * @overview Minotation preset "prefixes"
  * @author Amir Absaliamov <amir.absolutely@gmail.com>
  */
 

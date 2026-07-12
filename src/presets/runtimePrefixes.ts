@@ -3,7 +3,7 @@ import {
 } from '../types';
 
 /**
- * @overview Minimalist-Notation preset "runtime prefixes"
+ * @overview Minotation preset "runtime prefixes"
  * @author Amir Absaliamov <amir.absolutely@gmail.com>
  */
 

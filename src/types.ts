@@ -4,6 +4,64 @@
  * @module types
  */
 
+import type {
+  forEach,
+  flags,
+  extend,
+  isDefined,
+  map,
+  mapIn,
+  filter,
+  forIn,
+  upperFirst,
+  lowerFirst,
+  toUpper,
+  camelToKebabCase,
+  isArray,
+  reduce,
+  size,
+  intval,
+  floatval,
+  routeParseProvider,
+  indexOf,
+} from 'fundamentool';
+import type {
+  spaceNormalize,
+} from './core/utils';
+
+/**
+ * Утилиты, доступные пресетам через `mn.utils`.
+ *
+ * Реальный объект собирается в `baseUtils` (`core/utils.ts`) и содержит
+ * больше методов из fundamentool — здесь перечислены только те, что
+ * реально деструктурируются в пресетах (`presets/*.ts`).
+ */
+export interface MnUtils {
+  forEach: typeof forEach;
+  flags: typeof flags;
+  extend: typeof extend;
+  isDefined: typeof isDefined;
+  map: typeof map;
+  mapIn: typeof mapIn;
+  filter: typeof filter;
+  forIn: typeof forIn;
+  upperFirst: typeof upperFirst;
+  lowerFirst: typeof lowerFirst;
+  toUpper: typeof toUpper;
+  camelToKebabCase: typeof camelToKebabCase;
+  isArray: typeof isArray;
+  reduce: typeof reduce;
+  size: typeof size;
+  intval: typeof intval;
+  floatval: typeof floatval;
+  // Переопределены в createMn(): `alt`-аргумент зафиксирован через $$altColor
+  color: (v: string) => string[];
+  colorGetBackground: (v: string) => string[];
+  spaceNormalize: typeof spaceNormalize;
+  routeParseProvider: typeof routeParseProvider;
+  indexOf: typeof indexOf;
+}
+
 /** Значение токена MN — строка или массив строк (множественные значения) */
 export type MnTokenValue = string | string[];
 
@@ -55,7 +113,7 @@ export interface MnInstance {
   synonyms: (map: MnSynonymsMap) => void;
 
   // Сервисы (опционально — не все пресеты используют)
-  utils?: any;
+  utils?: MnUtils;
   setKeyframes?: any;
   propertiesStringify?: any;
   media?: any;

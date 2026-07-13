@@ -382,7 +382,6 @@ export default (mn: MnInstance) => {
     defaultUnit,
     noOtherName,
     symonyms,
-    seprarator,
   ) {
     defaultUnit = defaultUnit || 'px';
     const parts = ('' + suffix).split('_');
@@ -439,7 +438,7 @@ export default (mn: MnInstance) => {
               + validateUnit(p.addu || defaultUnit)),
       ) : val;
     }
-    return [output.join(seprarator || ' '), l - 1];
+    return [output.join(' '), l - 1];
   }
 
   function toKebabCase(v) {
@@ -456,12 +455,12 @@ export default (mn: MnInstance) => {
       ));
   }
   function synonymProvider(
-    propName, synonyms, priority, _style, props,
+    propName, synonyms, priority, _style,
   ) {
+    let props;
     return isArray(propName)
-      ? (props = flags(propName), ((
-        p, s, style, synonym, propName,
-      ) => {
+      ? (props = flags(propName), ((p) => {
+        let s, style, synonym, propName;
         if (synonym = synonyms[s = p.suffix]) {
           return normalizeDefault(p, synonym);
         }
@@ -472,9 +471,8 @@ export default (mn: MnInstance) => {
           return styleWrap(style, priority);
         }
       }))
-      : ((
-        p, s, style, synonym,
-      ) => {
+      : ((p) => {
+        let s, style, synonym;
         return (synonym = synonyms[s = p.suffix])
           ? normalizeDefault(p, synonym)
           : (
@@ -487,9 +485,8 @@ export default (mn: MnInstance) => {
   }
 
   function backgroundProvider(propName) {
-    return (
-      p, v, style,
-    ) => {
+    return (p) => {
+      let v, style;
       p.negative && throwInvalid();
       return (v = p.suffix)
         ? (style = {}, style[propName] = colorGetBackground(v), styleWrap(style))
@@ -505,7 +502,7 @@ export default (mn: MnInstance) => {
 
     function sidesSetter(handle) {
       const propsMap = {};
-      forIn(sides, (val, propSide) => { propsMap[handle(propSide)] = 1; });
+      forIn(sides, (_val, propSide) => { propsMap[handle(propSide)] = 1; });
       return (v) => {
         isDefined(v) || throwInvalid();
         let style = {}, pName; // eslint-disable-line
@@ -517,9 +514,8 @@ export default (mn: MnInstance) => {
     function handleProvider(
       sidesSet, nosign, one,
     ) {
-      return (
-        p, suffix, synonym,
-      ) => {
+      return (p) => {
+        let suffix, synonym;
         if (!(suffix = p.suffix)) {
           return normalizeDefault(p, 0);
         }
@@ -573,9 +569,8 @@ export default (mn: MnInstance) => {
         1,
       ), 0, 1,
     );
-    mn('bs' + suffix, (
-      p, s, synonym,
-    ) => {
+    mn('bs' + suffix, (p) => {
+      let s, synonym;
       return (synonym = BORDER_STYLE_SYNONYMS[s = p.suffix])
         ? normalizeDefault(p, synonym)
         : (
@@ -585,9 +580,8 @@ export default (mn: MnInstance) => {
         );
     });
     mn(
-      'bc' + suffix, (
-        p, v, suffix, synonym,
-      ) => {
+      'bc' + suffix, (p) => {
+        let v, suffix, synonym;
         return (synonym = COLOR_SYNONYMS[suffix = p.suffix || 'CT'])
           ? normalizeDefault(p, synonym)
           : (
@@ -597,7 +591,8 @@ export default (mn: MnInstance) => {
           );
       }, PATTERN_COLOR, 1,
     );
-    mn('bi' + suffix, (p, s) => {
+    mn('bi' + suffix, (p) => {
+      let s;
       return styleWrap(biSidesSet((s = p.suffix)
         ? spaceNormalize(s[0] == '_' ? snakeLeftTrim(s) : toKebabCase(s))
         : 'none'), priority + 1);
@@ -659,6 +654,8 @@ export default (mn: MnInstance) => {
       const v = getVal(
         suffix, 1, 1, 'px', 0, SIZE_SYNONYMS,
       );
+      // gap задаёт ровно 1 CSS-свойство — priority = 2 - 1, как у соседних w/h (props.length === 1)
+      const priority = 1;
       return styleWrap({
         gap: v[0],
       }, priority + v[1]);
@@ -697,9 +694,8 @@ export default (mn: MnInstance) => {
       boxPack: 'justify',
       justifyContent: 'space-between',
     },
-  }, (
-    style, essenceName, name,
-  ) => {
+  }, (style, essenceName) => {
+    let name;
     mn(name = 'fxa' + (essenceName = upperFirst(essenceName)),
       styleWrap(style, 1));
     mn('fxa' + essenceName[0], name);
@@ -745,7 +741,8 @@ export default (mn: MnInstance) => {
     dn: 'transitionDuration',
     delay: 'transitionDelay',
   }, (propName, essenceName) => {
-    mn(essenceName, (p, num) => {
+    mn(essenceName, (p) => {
+      let num;
       return p.camel || p.negative ? 0 : ((num = p.num)
         ? styleWrap({
           [propName]: num + 'ms',
@@ -767,9 +764,8 @@ export default (mn: MnInstance) => {
     const propName = options[0];
     const priority = options[1] || 0;
     mn(
-      pfx, (
-        p, s, suffix, v, synonym,
-      ) => {
+      pfx, (p) => {
+        let s, suffix, v, synonym;
         return (synonym = COLOR_SYNONYMS[suffix = p.suffix || 'CT'])
           ? normalizeDefault(p, synonym)
           : (
@@ -790,9 +786,8 @@ export default (mn: MnInstance) => {
     lisi: 'listStyleImage',
     maski: 'maskImage',
   }, (propName, name) => {
-    mn(name, (
-      p, style, url,
-    ) => {
+    mn(name, (p) => {
+      let style, url;
       style = {};
       style[propName] = (url = snakeLeftTrim(p.suffix))
         ? ('url("' + url + '")')
@@ -838,7 +833,8 @@ export default (mn: MnInstance) => {
     + PATTERN_DIGITS + ':angle([a-z]+):unit?)?$',
   );
 
-  mn('spnr', (p, v) => {
+  mn('spnr', (p) => {
+    let v;
     return isNaN(v = (v = p.value) ? parseInt(v) : 3000) || v < 1 ? 0 : (
       setKeyframes(
         'spinner-animate', {
@@ -862,7 +858,8 @@ export default (mn: MnInstance) => {
     'z',
   ], (suffix) => {
     const prefix = 'rotate' + toUpper(suffix) + '(';
-    mn('r' + suffix, (p, v) => {
+    mn('r' + suffix, (p) => {
+      let v;
       return (v = p.value) ? styleWrap({
         transform: prefix + v + (p.unit || 'deg') + ')',
       }) : normalizeDefault(p, 180);
@@ -871,7 +868,8 @@ export default (mn: MnInstance) => {
 
   forIn(SHADOW_HANDLERS, ([propName, handler], pfx) => {
     mn(
-      pfx, (p, output) => {
+      pfx, (p) => {
+        let output;
         const suffix = p.suffix;
         const style = {};
         if (suffix[0] === '_') {
@@ -996,9 +994,8 @@ export default (mn: MnInstance) => {
       const priority = options[2] || 0;
       const one = options[3];
       const synonyms = options[4] || {};
-      mn(pfx, (
-        p, style, suffix, synonym, v,
-      ) => {
+      mn(pfx, (p) => {
+        let style, suffix, synonym, v;
         return (synonym = synonyms[suffix = p.suffix])
           ? normalizeDefault(p, synonym)
           : (
@@ -1045,9 +1042,8 @@ export default (mn: MnInstance) => {
     });
   });
 
-  mn('pos', (
-    p, s, synonym, v,
-  ) => {
+  mn('pos', (p) => {
+    let s, synonym, v;
     return (synonym = POSITION_SYNONYMS[s = p.suffix])
       ? normalizeDefault(p, synonym)
       : (
@@ -1083,9 +1079,8 @@ export default (mn: MnInstance) => {
     bg: backgroundProvider('background'),
 
     // font-weight
-    fw: (
-      p, camel, synonym,
-    ) => {
+    fw: (p) => {
+      let camel, synonym;
       camel = p.camel;
       synonym = camel && FONT_WEIGHT_SYNONYMS[camel];
       return synonym ? normalizeDefault(p, synonym) : !p.negative && styleWrap({
@@ -1111,19 +1106,20 @@ export default (mn: MnInstance) => {
       whiteSpace: 'normal',
       wordBreak: 'break-word',
     }),
-    z: (p, num) => {
+    z: (p) => {
+      let num;
       return p.camel ? 0 : ((num = p.num) ? styleWrap({
         zIndex: num,
       }) : normalizeDefault(p, 1));
     },
-    o: (p, num) => {
+    o: (p) => {
+      let num;
       return p.camel || p.negative ? 0 : ((num = p.num) ? styleWrap({
         opacity: toFixed((p.num || 0) * 0.01),
       }) : normalizeDefault(p));
     },
-    lh: (
-      p, num, unit,
-    ) => {
+    lh: (p) => {
+      let num, unit;
       return p.camel ? 0 : (
         unit = p.unit,
         (num = p.num) ? styleWrap({
@@ -1133,27 +1129,24 @@ export default (mn: MnInstance) => {
         }) : normalizeDefault(p, '100%')
       );
     },
-    tsa: (
-      p, num, camel,
-    ) => {
+    tsa: (p) => {
+      let num, camel;
       return p.negative ? 0 : (p.value ? styleWrap({
         textSizeAdjust: (camel = p.camel)
           ? toKebabCase(camel)
           : ((num = p.num) == '0' ? num : (num + (p.unit || 'px'))),
       }) : normalizeDefault(p, '100%'));
     },
-    fsa: (
-      p, num, camel,
-    ) => {
+    fsa: (p) => {
+      let num, camel;
       return p.negative ? 0 : (p.value ? styleWrap({
         fontSizeAdjust: (camel = p.camel)
           ? (camel == 'N' ? 'none' : toKebabCase(camel))
           : ((num = p.num) == '0' ? num : (num + (p.unit || 'px'))),
       }) : 0);
     },
-    olo: (
-      p, num, camel,
-    ) => {
+    olo: (p) => {
+      let num, camel;
       return (p.value ? styleWrap({
         outlineOffset: (camel = p.camel)
           ? toKebabCase(camel)
@@ -1644,20 +1637,21 @@ export default (mn: MnInstance) => {
         U: 'Unset',
       }, 1,
     ),
-    font: (p, s) => {
+    font: (p) => {
+      let s;
       return (s = p.suffix) && styleWrap({
         font: spaceNormalize(s),
       });
     },
-    ff: (p, s) => {
+    ff: (p) => {
+      let s;
       return (s = p.suffix) && styleWrap({
         fontFamily: map(fontNameNormalize(s).split(REGEXP_COMMA), __wr)
           .join(','),
       }, 1);
     },
-    cnt: (
-      p, s, v,
-    ) => {
+    cnt: (p) => {
+      let s;
       return (s = p.suffix) == '_'
         ? normalizeDefault(p, '\'_\'')
         : styleWrap({
@@ -1669,13 +1663,11 @@ export default (mn: MnInstance) => {
   });
 
   function ftProvider(propName) {
-    return (
-      p, v, s,
-    ) => {
+    return (p) => {
+      let v, s;
       return (v = filter(map(p.suffix.split(REGEXP_FILTER_SEP),
-        (
-          v, matchs, name, options,
-        ) => {
+        (v) => {
+          let matchs, name, options;
           return v && (matchs = REGEXP_FILTER_NAME.exec(v)) ? (
             options = FILTER_MAP[name = lowerFirst(matchs[1])],
             camelToKebabCase(options && options[0] || name)
@@ -1746,9 +1738,8 @@ export default (mn: MnInstance) => {
     tems: ['textEmphasisStyle', 1],
     ir: ['imageRendering'],
   }, ([propName, priority], essenceName) => {
-    mn(essenceName, (
-      p, s, style,
-    ) => {
+    mn(essenceName, (p) => {
+      let s, style;
       return (s = p.suffix)
         ? (style = {}, style[propName] = spaceNormalize(s[0] == '_'
           ? snakeLeftTrim(s)

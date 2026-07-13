@@ -77,6 +77,10 @@ describe('Standard preset — отступы', () => {
     expect(result).toContain('margin-left:auto');
     expect(result).toContain('margin-right:auto');
   });
+
+  test('gap10 → gap:10px (регресс: priority не была объявлена в хендлере)', () => {
+    expect(css('gap10')).toContain('gap:10px');
+  });
 });
 
 // ================================================================

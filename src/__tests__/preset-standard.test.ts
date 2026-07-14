@@ -98,6 +98,33 @@ describe('Standard preset — цвета', () => {
   test('bgF00 → background:#f00', () => {
     expect(css('bgF00')).toContain('background:#f00');
   });
+
+  test('bgTransparent → background:transparent (регресс: colorGetBackground падал на именованных синонимах)', () => {
+    expect(css('bgTransparent')).toContain('background:transparent');
+  });
+
+  test('bgCT → background:currentColor', () => {
+    expect(css('bgCT')).toContain('background:currentColor');
+  });
+});
+
+// ================================================================
+// Filter
+// ================================================================
+describe('Standard preset — filter', () => {
+  test('ft_blur5 → filter:blur(5px) (регресс: filter() без 2-го аргумента падал в fundamentool)', () => {
+    expect(css('ft_blur5')).toContain('filter:blur(5px)');
+  });
+
+  test('ftb_blur5 → backdrop-filter:blur(5px)', () => {
+    expect(css('ftb_blur5')).toContain('backdrop-filter:blur(5px)');
+  });
+
+  test('ft_blur5_gray50 → комбинация фильтров', () => {
+    const result = css('ft_blur5_gray50');
+    expect(result).toContain('blur(5px)');
+    expect(result).toContain('grayscale(50%)');
+  });
 });
 
 // ================================================================

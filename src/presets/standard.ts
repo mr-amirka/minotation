@@ -1674,7 +1674,7 @@ export default (mn: MnInstance) => {
                 + '(' + (matchs[2] || options && options[1] || '')
                 + (matchs[3] || options && options[2] || '') + ')'
           ) : 0;
-        })).join(' ')) ? (
+        }), Boolean).join(' ')) ? (
           s = {},
           s[propName] = v,
           styleWrap(s)

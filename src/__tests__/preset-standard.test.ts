@@ -112,18 +112,22 @@ describe('Standard preset — цвета', () => {
 // Filter
 // ================================================================
 describe('Standard preset — filter', () => {
-  test('ft_blur5 → filter:blur(5px) (регресс: filter() без 2-го аргумента падал в fundamentool)', () => {
-    expect(css('ft_blur5')).toContain('filter:blur(5px)');
+  test('ftBlur5 → filter:blur(5px) (регресс: filter() без 2-го аргумента падал в fundamentool)', () => {
+    expect(css('ftBlur5')).toContain('filter:blur(5px)');
   });
 
-  test('ftb_blur5 → backdrop-filter:blur(5px)', () => {
-    expect(css('ftb_blur5')).toContain('backdrop-filter:blur(5px)');
+  test('ftbBlur5 → backdrop-filter:blur(5px)', () => {
+    expect(css('ftbBlur5')).toContain('backdrop-filter:blur(5px)');
   });
 
-  test('ft_blur5_gray50 → комбинация фильтров', () => {
-    const result = css('ft_blur5_gray50');
+  test('ftBlur5_gray50 → комбинация фильтров', () => {
+    const result = css('ftBlur5_gray50');
     expect(result).toContain('blur(5px)');
     expect(result).toContain('grayscale(50%)');
+  });
+
+  test('ft_blur5 (альтернативный синтаксис с подчёркиванием) → тот же результат', () => {
+    expect(css('ft_blur5')).toContain('filter:blur(5px)');
   });
 });
 
@@ -141,6 +145,18 @@ describe('Standard preset — позиционирование', () => {
 
   test('posF → position:fixed', () => {
     expect(css('posF')).toContain('position:fixed');
+  });
+
+  test('static → position:static', () => {
+    expect(css('static')).toContain('position:static');
+  });
+
+  test('sticky → position:sticky', () => {
+    expect(css('sticky')).toContain('position:sticky');
+  });
+
+  test('dirRTL → direction:rtl', () => {
+    expect(css('dirRTL')).toContain('direction:rtl');
   });
 });
 
@@ -172,6 +188,14 @@ describe('Standard preset — overflow', () => {
   test('ovA → overflow:auto', () => {
     expect(css('ovA')).toContain('overflow:auto');
   });
+
+  test('ovbCT → overscroll-behavior:contain', () => {
+    expect(css('ovbCT')).toContain('overscroll-behavior:contain');
+  });
+
+  test('ovbxN → overscroll-behavior-x:none', () => {
+    expect(css('ovbxN')).toContain('overscroll-behavior-x:none');
+  });
 });
 
 // ================================================================
@@ -184,5 +208,112 @@ describe('Standard preset — шрифт', () => {
 
   test('taC → text-align:center', () => {
     expect(css('taC')).toContain('text-align:center');
+  });
+
+  test('fsaN → font-size-adjust:none', () => {
+    expect(css('fsaN')).toContain('font-size-adjust:none');
+  });
+});
+
+// ================================================================
+// Text emphasis
+// ================================================================
+describe('Standard preset — text-emphasis', () => {
+  test('tem_filled_circle → text-emphasis:filled circle', () => {
+    expect(css('tem_filled_circle')).toContain('text-emphasis:filled circle');
+  });
+
+  test('tempOver → text-emphasis-position:over', () => {
+    expect(css('tempOver')).toContain('text-emphasis-position:over');
+  });
+
+  test('temsCircle → text-emphasis-style:circle', () => {
+    expect(css('temsCircle')).toContain('text-emphasis-style:circle');
+  });
+});
+
+// ================================================================
+// Object / Mask
+// ================================================================
+describe('Standard preset — object-fit / mask', () => {
+  test('ofCV → object-fit:cover', () => {
+    expect(css('ofCV')).toContain('object-fit:cover');
+  });
+
+  test('maski_a.png → mask-image:url("a.png")', () => {
+    expect(css('maski_a.png')).toContain('mask-image:url("a.png")');
+  });
+
+  test('maskbgF00 → mask-image:#f00', () => {
+    expect(css('maskbgF00')).toContain('mask-image:#f00');
+  });
+
+  test('masktL → mask-type:luminance', () => {
+    expect(css('masktL')).toContain('mask-type:luminance');
+  });
+
+  test('maskmMS → mask-mode:match-source', () => {
+    expect(css('maskmMS')).toContain('mask-mode:match-source');
+  });
+});
+
+// ================================================================
+// Touch / Outline / Слои
+// ================================================================
+describe('Standard preset — touch-action, outline, zoom', () => {
+  test('tchaN → touch-action:none', () => {
+    expect(css('tchaN')).toContain('touch-action:none');
+  });
+
+  test('olcI → outline-color:invert', () => {
+    expect(css('olcI')).toContain('outline-color:invert');
+  });
+
+  test('olwTN/olwM/olwTC → outline-width: thin/medium/thick', () => {
+    expect(css('olwTN')).toContain('outline-width:thin');
+    expect(css('olwM')).toContain('outline-width:medium');
+    expect(css('olwTC')).toContain('outline-width:thick');
+  });
+
+  test('zm150% → zoom:150%', () => {
+    expect(css('zm150%')).toContain('zoom:150%');
+  });
+});
+
+// ================================================================
+// Aspect ratio / Image rendering
+// ================================================================
+describe('Standard preset — aspect-ratio, image-rendering', () => {
+  test('ar16/9 → aspect-ratio:16/9', () => {
+    expect(css('ar16/9')).toContain('aspect-ratio:16/9');
+  });
+
+  test('irPixelated → image-rendering:pixelated', () => {
+    expect(css('irPixelated')).toContain('image-rendering:pixelated');
+  });
+});
+
+// ================================================================
+// Многоколоночная вёрстка / Counters
+// ================================================================
+describe('Standard preset — columns, counters', () => {
+  test('col3 → columns:3', () => {
+    expect(css('col3')).toContain('columns:3');
+  });
+
+  test('wid2 → widows:2', () => {
+    expect(css('wid2')).toContain('widows:2');
+  });
+
+  test('orp2 → orphans:2', () => {
+    expect(css('orp2')).toContain('orphans:2');
+  });
+
+  test('coi_counter → counter-increment:counter', () => {
+    expect(css('coi_counter')).toContain('counter-increment:counter');
+  });
+
+  test('cor_counter → counter-reset:counter', () => {
+    expect(css('cor_counter')).toContain('counter-reset:counter');
   });
 });

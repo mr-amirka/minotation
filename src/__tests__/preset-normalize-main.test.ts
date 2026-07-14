@@ -45,6 +45,16 @@ describe('presetNormalize', () => {
     expect(css).toContain('a{');
     expect(css).toMatch(/a\{[^}]*background:transparent/);
   });
+
+  test('abbr[title] — регресс: атрибутный селектор не терялся (flags() корёжил "." и "[...]" как путь)', () => {
+    const { css } = compile([presetStandard, presetNormalize]);
+    expect(css).toContain('abbr[title]{text-decoration:underline}');
+  });
+
+  test('button, [type=(button|reset|submit)] — регресс: группа-альтернатива в атрибутном селекторе не терялась', () => {
+    const { css } = compile([presetStandard, presetNormalize]);
+    expect(css).toContain('button,[type=button],[type=reset],[type=submit]{appearance:button}');
+  });
 });
 
 describe('presetMain', () => {

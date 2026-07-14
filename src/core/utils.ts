@@ -52,6 +52,7 @@ import {
   extendDepth,
   filter,
   flags,
+  flatFlags,
   forEach,
   forIn,
   get,
@@ -274,17 +275,9 @@ export const REGEXP_MEDIA_PRIORITY = /^(.*)\^(-?[0-9]+)$/;
 export const REGEXP_IMPORTANT = /-i$/;
 export const JOIN_AND = joinProvider(' and ');
 
-// flatFlags — не fundamentool.flags(): та трактует '.'/'[...]' как путь (nested
+// flatFlags (не fundamentool.flags()): та трактует '.'/'[...]' как путь (nested
 // set), а имена эссенций (`f1.5em`) и CSS-селекторы (`[type=button]`, `.foo`)
 // должны оставаться плоскими непрозрачными строковыми ключами.
-function flatFlags(items: string[], dst: Record<string, number>): Record<string, number> {
-  let i = 0;
-  const len = items.length;
-  for (; i < len; i++) {
-    dst[items[i]] = 1;
-  }
-  return dst;
-}
 export const normalizeSelectors = normalizeMapProvider(normalizeSelectorsIteratee);
 export const normalizeComboNames = normalizeMapProvider((namesMap, name) => {
   return flatFlags(SPLIT_SPACE(name), namesMap);

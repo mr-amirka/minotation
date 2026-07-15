@@ -89,6 +89,10 @@ import type {
   MnEssenceParams,
   MnOptions,
 } from './types';
+import type {
+  MnEntity,
+  MnHandler,
+} from '../types';
 
 // Присваиваем utils статическому свойству (нужно для обратной совместимости)
 minotationProvider.utils = baseUtils;
@@ -113,14 +117,14 @@ function minotationProvider(options?: MnOptions) {
     $$altColor = options.altColor !== 'off';
   }
   function mn(
-    essencePath: string | Record<string, any>,
-    extendedEssence?: any,
+    essencePath: string | Record<string, MnHandler | MnEntity | string>,
+    extendedEssence?: MnHandler | MnEntity | string,
     paramsMatchPath?: string,
     skip?: number,
   ): any {
     const type = typeof essencePath;
     type === OBJECT
-      ? forIn(essencePath as Record<string, any>, baseSetMapIteratee)
+      ? forIn(essencePath as Record<string, MnHandler | MnEntity | string>, baseSetMapIteratee)
       : (
         !essencePath || type !== STRING
           ? console.warn('MN: essencePath value must be an string', essencePath)
@@ -134,7 +138,7 @@ function minotationProvider(options?: MnOptions) {
   function mnBaseSet(
     extendedEssence: any, essencePath: string, paramsMatchPath?: string, skip?: number, v?: any,
   ): void {
-    const type = typeof(extendedEssence);
+    const type = typeof extendedEssence;
     type === FUNCTION
       ? (
         v = $$handlerMap[essencePath] = paramsMatchPath

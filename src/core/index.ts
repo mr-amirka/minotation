@@ -173,7 +173,7 @@ function minotationProvider(options?: MnOptions) {
   ): void {
     $$staticsEssences[name] || ($$staticsEssences[name] = __normalize({
       inited: 1,
-    }));
+    }) as MnEssenceResult);
     baseSet(
       $$staticsEssences, path, __mergeDepth([getBase($$staticsEssences, path), __normalize(extendedEssence)], {}),
     );

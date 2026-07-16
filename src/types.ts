@@ -88,8 +88,8 @@ export interface MnEntity {
 /** Запись в mn.assign() */
 export type MnAssignMap = Record<string, string>;
 
-/** Запись в mn.css() */
-export type MnCssMap = Record<string, Record<string, string>>;
+/** Запись в mn.css() — значение: объект CSS-свойств или строка (`'margin:0'`) */
+export type MnCssMap = Record<string, Record<string, string> | string>;
 
 /** Запись в mn.synonyms() — строковые значения, не объекты */
 export type MnSynonymsMap = Record<string, string>;
@@ -113,9 +113,13 @@ export interface MnInstance {
   (map: Record<string, MnHandler | MnEntity | string>): void;
 
   // Методы
-  assign: (map: MnAssignMap) => void;
-  css: (map: MnCssMap) => void;
-  synonyms: (map: MnSynonymsMap) => void;
+  assign(map: MnAssignMap): void;
+  assign(selectors: string, comboNames: string | string[], defaultMediaName?: string): void;
+  css(map: MnCssMap): void;
+  css(selector: string, css: Record<string, string> | string): void;
+  synonyms(map: MnSynonymsMap): void;
+  // selectors: произвольная вложенная форма, см. baseSetSynonyms/normalizeSelectors в core/index.ts.
+  synonyms(synonym: string, selectors: string | Record<string, any>): void; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   // Сервисы (опционально — не все пресеты используют)
   utils?: MnUtils;

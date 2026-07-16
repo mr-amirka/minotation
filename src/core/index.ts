@@ -29,6 +29,7 @@ import {
   colorGetBackground,
   cssPropertiesParseSimple,
   cssPropertiesStringifyProvider,
+  type IStringifyCss,
   withDefer,
   withResult,
   getBase,
@@ -92,14 +93,18 @@ import type {
 import type {
   MnEntity,
   MnHandler,
+  MnInstance,
 } from '../types';
+import type {
+  MnEssenceRaw,
+} from './utils';
 
 // Присваиваем utils статическому свойству (нужно для обратной совместимости)
 minotationProvider.utils = baseUtils;
 
 function minotationProvider(options?: MnOptions) {
   options = options || {};
-  function setPresets(presets: Array<(mn: any) => void>) {
+  function setPresets(presets: Array<(mn: MnInstance) => void>) {
     eachTry(
       presets,
       [mn],
@@ -129,30 +134,37 @@ function minotationProvider(options?: MnOptions) {
         !essencePath || type !== STRING
           ? console.warn('MN: essencePath value must be an string', essencePath)
           : mnBaseSet(
-            extendedEssence, essencePath as string, paramsMatchPath, skip, undefined,
+            extendedEssence,
+            essencePath as string,
+            paramsMatchPath,
+            skip,
           )
       );
     return mn;
   }
 
   function mnBaseSet(
-    extendedEssence: any, essencePath: string, paramsMatchPath?: string, skip?: number, v?: any,
+    extendedEssence: MnHandler | MnEntity | string,
+    essencePath: string,
+    paramsMatchPath?: string,
+    skip?: number,
   ): void {
+    let v: (((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number }) | undefined;
     const type = typeof extendedEssence;
     type === FUNCTION
       ? (
         v = $$handlerMap[essencePath] = paramsMatchPath
-          ? handlerWrap(extendedEssence, paramsMatchPath)
-          : extendedEssence,
+          ? handlerWrap(extendedEssence as MnHandler, paramsMatchPath)
+          : extendedEssence as (p: MnEssenceParams) => MnEssenceRaw | void | 0,
         v.skip = skip || 0
       )
       : (
         type === OBJECT
-          ? baseSetEssense(essencePath, extendedEssence)
+          ? baseSetEssense(essencePath, extendedEssence as MnEntity)
           : (
             type === STRING
               ? baseSetEssense(essencePath, {
-                exts: extendedEssence,
+                exts: extendedEssence as string,
               })
               : console.warn(
                 'MN: extendedEssence value must be an object on',
@@ -162,18 +174,21 @@ function minotationProvider(options?: MnOptions) {
       );
   }
 
-  function baseSetMapIteratee(extendedEssence: any, essencePath: string): void {
+  // isArray-ветка (тюпл [handler, pattern]) — легальна на уровне реализации, но нигде
+  // не используется в presets/*.ts или тестах и не задокументирована в MnInstance.
+  function baseSetMapIteratee(extendedEssence: MnHandler | MnEntity | string | [MnHandler, string], essencePath: string): void {
     isArray(extendedEssence)
       ? mnBaseSet(
-        extendedEssence[0], essencePath, extendedEssence[1], undefined, undefined,
+        extendedEssence[0],
+        essencePath,
+        extendedEssence[1],
       )
-      : mnBaseSet(
-        extendedEssence, essencePath, undefined, undefined, undefined,
-      );
+      : mnBaseSet(extendedEssence,
+        essencePath);
   }
 
   function baseSetEssenseBase(
-    name: string, path: string[], extendedEssence: Record<string, any>,
+    name: string, path: string[], extendedEssence: MnEssenceRaw,
   ): void {
     $$staticsEssences[name] || ($$staticsEssences[name] = __normalize({
       inited: 1,
@@ -183,7 +198,7 @@ function minotationProvider(options?: MnOptions) {
     );
   }
 
-  function baseSetEssense(_essencePath: string, extendedEssence: Record<string, any>): void {
+  function baseSetEssense(_essencePath: string, extendedEssence: MnEssenceRaw): void {
     const essencePath = _essencePath.split('.');
     const essenceName = essencePath[0];
     const path = [essenceName];
@@ -229,23 +244,22 @@ function minotationProvider(options?: MnOptions) {
   const parseComboNameProvider = (mn as any).parseComboNameProvider;
   const __parseComboName: any = withCatchParseComboNameDecorate((mn as any).parseComboName);
 
-  // eslint-disable-next-line
-  const updateAttrByMap = mn.updateAttrByMap = withResult((comboNamesMap, attrName) => {
+  const updateAttrByMap = mn.updateAttrByMap = withResult((comboNamesMap: Record<string, number>, attrName: string) => {
     // eslint-disable-next-line
-    let parseComboName: any = withCatchParseComboNameDecorate(parseComboNameProvider(attrName)), comboName: any;
+    let parseComboName: any = withCatchParseComboNameDecorate(parseComboNameProvider(attrName));
+    let comboName: string;
     for (comboName in comboNamesMap) forEach( // eslint-disable-line
       parseComboName(comboName), updateSelectorIteratee);
-  }, mn as any);
-  // eslint-disable-next-line
-  const updateAttrByValues = mn.updateAttrByValues = withResult((comboNames, attrName) => {
+  }, mn);
+  const updateAttrByValues = mn.updateAttrByValues = withResult((comboNames: string[], attrName: string) => {
     // eslint-disable-next-line
     const parseComboName: any = withCatchParseComboNameDecorate(parseComboNameProvider(attrName));
-    forEach(comboNames, (comboName: any) => {
+    forEach(comboNames, (comboName: string) => {
       forEach(parseComboName(comboName), updateSelectorIteratee);
     });
   }, mn);
 
-  mn.recompileFrom = withResult((attrsMap) => {
+  mn.recompileFrom = withResult((attrsMap: Record<string, Record<string, number>>) => {
     __clear();
     updateOptions();
     forIn(attrsMap, updateAttrByMap);
@@ -264,21 +278,21 @@ function minotationProvider(options?: MnOptions) {
    * @returns компилятор с методами `clear()`, `getNext()`, `checkNode()`, `recursiveCheck()`
    */
   mn.getCompiler = getCompiler;
-  mn.recursiveCheckByAttrs = withResult((node, attrs) => {
+  mn.recursiveCheckByAttrs = withResult((node: any, attrs: string | string[]) => {
     eachApply((isString(attrs) ? [attrs] : attrs).map(getCompiler)
       .map(x => x.recursiveCheck), [node]);
   }, mn);
-  mn.checkOneNodeByAttrs = withResult((node, attrs) => {
+  mn.checkOneNodeByAttrs = withResult((node: any, attrs: string | string[]) => {
     eachApply((isString(attrs) ? [attrs] : attrs).map(getCompiler)
       .map(x => x.checkNode), [node]);
   }, mn);
-  mn.checkByAttrs = withResult((v, attrs) => {
+  mn.checkByAttrs = withResult((v: string, attrs: string | string[]) => {
     isString(attrs)
       ? getCompiler(attrs)(v)
       : eachApply(attrs.map(getCompiler), [v]);
   }, mn);
   mn.setStyle = (
-    name, content, priority,
+    name: string, content: string, priority?: number,
   ) => setStyle(
     'custom.' + name, content, priority || MN_DEFAULT_OTHER_CSS_PRIORITY,
   );
@@ -286,8 +300,8 @@ function minotationProvider(options?: MnOptions) {
   mn.options = extend({}, options) as MnOptions;
   const $$data = mn.data = {} as MnData;
   const $$compilers: Record<string, MnCompiler> = $$data.compilers = {};
-  const cssPropertiesStringify = mn.propertiesStringify
-    = cssPropertiesStringifyProvider() as any;
+  const cssPropertiesStringify: IStringifyCss = mn.propertiesStringify
+    = cssPropertiesStringifyProvider();
   const emit = (mn.styles$ = observableProvider<MnStyleEntry[]>([])).emit;
   const error$ = mn.error$ = observableProvider<Error | undefined>(undefined);
   const emitError = error$.emit;
@@ -304,13 +318,13 @@ content?: string }>, number];
   let $$stylesMap: Record<string, MnStyleEntry> = $$data.stylesMap = {};
   let $$assigned: Record<string, Record<string, Record<string, number>>> = $$data.assigned = {};
   let $$media: Record<string, MnMediaEntry> = mn.media = options.media || {};
-  let $$handlerMap: Record<string, (p: MnEssenceParams) => MnEssenceResult | void> = mn.handlerMap = {};
+  let $$handlerMap: Record<string, ((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number }> = mn.handlerMap = {};
   let $$force: number;
   let $$selectorPrefixes: string[];
   let $$altColor: boolean;
   let $$revision = 0;
 
-  (error$ as any).on((error: Error) => {
+  error$.on((error: Error) => {
     $$onError(error);
   });
 
@@ -326,8 +340,9 @@ content?: string }>, number];
     };
   }
 
-  function selectorsValidateFilter(selectorsMap: Record<string, any>): Record<string, any> {
-    let selector, output = {}; // eslint-disable-line
+  function selectorsValidateFilter<T>(selectorsMap: Record<string, T>): Record<string, T> {
+    let selector: string;
+    const output: Record<string, T> = {};
     for (selector in selectorsMap) { // eslint-disable-line
       isInvalidSelector(selector)
         ? emitError(new Error('Invalid selector: "' + selector + '"'))
@@ -341,27 +356,28 @@ content?: string }>, number];
       return [[]];
     }
 
-    let mediaPriority;
-    let priority;
-    let selector;
-    let query;
-    let partsAnd;
-    let iAnd;
-    let lAnd;
-    let fragment;
-    let outputQuery;
-    let outputSelector;
-    let tmp;
-    let name;
-    let media;
-    const medias = [];
-    const names = [];
-    const queries = [];
+    let mediaPriority: number | undefined;
+    let priority: number | undefined;
+    let selector: string | undefined;
+    let query: string;
+    let partsAnd: string[];
+    let iAnd: number;
+    let lAnd: number;
+    let fragment: string;
+    let outputQuery: string[];
+    let outputSelector: string[];
+    let priorityMatch: RegExpExecArray | null;
+    let mediaTemplate: [string] | [string, number | undefined];
+    let name: string;
+    let media: MnMediaEntry | undefined;
+    const medias: Array<[string, number | undefined, string, string] | []> = [];
+    const names: string[] = [];
+    const queries: string[] = [];
 
     // get media priority
-    if (tmp = REGEXP_MEDIA_PRIORITY.exec(mediaExpression)) {
-      mediaExpression = tmp[1];
-      mediaPriority = parseInt(tmp[2]);
+    if (priorityMatch = REGEXP_MEDIA_PRIORITY.exec(mediaExpression)) {
+      mediaExpression = priorityMatch[1];
+      mediaPriority = parseInt(priorityMatch[2]);
     }
 
     // eslint-disable-next-line
@@ -380,9 +396,9 @@ content?: string }>, number];
             (selector = media.selector) && push(outputSelector, selector),
             isDefined(priority) || (priority = media.priority)
           ) : (
-            tmp = parseMediaTemplate(fragment),
-            (query = tmp[0]) && push(outputQuery, query),
-            isDefined(priority) || (priority = tmp[1])
+            mediaTemplate = parseMediaTemplate(fragment),
+            (query = mediaTemplate[0]) && push(outputQuery, query),
+            isDefined(priority) || (priority = mediaTemplate[1])
           )
         );
       }
@@ -415,8 +431,11 @@ content?: string }>, number];
     if (mediaName === 'x') {
       return [mediaName];
     }
-    // eslint-disable-next-line
-    let queries = [], mp, v, priority, input = mediaName.split('x');
+    const queries: string[] = [];
+    let mp: [number, number] | undefined;
+    let v: number;
+    let priority: number | undefined;
+    const input = mediaName.split('x');
     try {
       (mp = parseMediaPart(input[0])) && (
         (v = mp[0]) && push(queries, '(min-width: ' + v + 'px)'),
@@ -442,22 +461,22 @@ content?: string }>, number];
   function generate(context: Record<string, MnContextEssence>, mediaExpression: string): void {
     const medias = parseMediaExpression(mediaExpression);
     const lMedia = medias.length;
-    const updated = {};
+    const updated: Record<string, number> = {};
     const globalSelectorPrefixes = $$selectorPrefixes;
     const lGSP = globalSelectorPrefixes.length;
     let iMedia = 0;
-    let media;
-    let mediaPriority;
-    let mediaQuery;
-    let essenceName;
-    let contextEssence;
-    let cssText;
-    let output;
-    let selectorPrefixes;
-    let selectorsIteratee;
-    let isContinue;
-    let mediaName;
-    let mediaSelector;
+    let media: [string, number | undefined, string, string] | [];
+    let mediaPriority: number | undefined;
+    let mediaQuery: string;
+    let essenceName: string;
+    let contextEssence: MnContextEssence | undefined;
+    let cssText: string;
+    let output: string;
+    let selectorPrefixes: string[] | 0;
+    let selectorsIteratee: (selectors: string[]) => string;
+    let isContinue: number;
+    let mediaName: string;
+    let mediaSelector: string;
 
     for (; iMedia < lMedia; iMedia++) {
       isContinue = 1;
@@ -482,7 +501,7 @@ content?: string }>, number];
       selectorsIteratee = selectorPrefixes
         ? ((selectors: string[]) => (
           joinComma(joinArrays(
-            selectorPrefixes, selectors, ' ',
+            selectorPrefixes as string[], selectors, ' ',
           )) + cssText
         ))
         : ((selectors: string[]) => joinComma(selectors) + cssText);
@@ -499,9 +518,7 @@ content?: string }>, number];
                 const sels = getEessenceSelectors(contextEssence[MN_CONTEXT_ESSENCE_MAP]);
                 const result: string[] = [];
                 for (let si = 0; si < sels.length; si++) {
-                  result[si] = selectorsIteratee(
-                    sels[si], si, sels as any,
-                  );
+                  result[si] = selectorsIteratee(sels[si]);
                 }
                 return result;
               })())
@@ -546,24 +563,25 @@ content?: string }>, number];
     excludes?: Record<string, number>,
   ): void {
     defaultMediaName = defaultMediaName || 'all';
-    let name;
-    let selector;
-    let l;
-    let i;
-    let items;
-    let essenceName;
-    let item;
-    let selectorsMedias;
-    let essencesNames;
-    let childSelectors;
-    let childSelector;
-    let mediaName;
-    let actx;
+    let name: string;
+    let selector: string;
+    let l: number;
+    let i: number;
+    let items: Array<[Record<string, number>, Record<string, string>]>;
+    let essenceName: string;
+    let item: [Record<string, number>, Record<string, string>];
+    let selectorsMedias: Record<string, string>;
+    let essencesNames: Record<string, number>;
+    let childSelectors: Record<string, number>;
+    let childSelector: string;
+    let mediaName: string;
+    let actx: Record<string, Record<string, number>>;
 
     for (name in comboNames) { // eslint-disable-line
       for (selector in selectors) { // eslint-disable-line
         for (
-          items = __parseComboName(name, selector), l = items.length, i = 0;
+          items = __parseComboName(name, selector) as Array<[Record<string, number>, Record<string, string>]>,
+          l = items.length, i = 0;
           i < l;
           i++
         ) {
@@ -601,10 +619,15 @@ content?: string }>, number];
    * mn.assign('*, *:before, *:after', 'bxzBB');
    * mn.assign({ html: 'lh115%', body: 'm' });
    */
+  // selectors/comboNames: произвольная вложенная форма (строка/массив/объект), см. normalizeSelectors/normalizeComboNames.
   mn.assign = withResult((
-    selectors, comboNames, defaultMediaName,
+    selectors: string | Record<string, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
+    comboNames?: string | Record<string, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
+    defaultMediaName?: string,
   ) => {
-    function iteratee(comboNames, s) {
+    // comboNames: произвольная вложенная форма, см. normalizeComboNames.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function iteratee(comboNames: string | string[] | Record<string, any>, s: string): void {
       __assignCore(
         $$staticsAssigned,
         normalizeComboNames(comboNames),
@@ -617,15 +640,21 @@ content?: string }>, number];
       : iteratee(comboNames, selectors);
   }, mn);
 
-  function __initEssence(
-    value: any, matchs?: any, ni?: any, name?: any, handle?: any, essence?: any, params?: any, suffix?: any, err?: any,
-  ): Record<string, any> | false | void {
+  function __initEssence(value: string): MnEssenceRaw | 0 | null | void {
+    let matchs: RegExpExecArray | null;
+    let name: string;
+    let ni: string | undefined;
+    let suffix: string;
+    let handle: (((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number }) | undefined;
+    let params: MnEssenceParams;
+    let essence: MnEssenceRaw | void | 0;
+    let err: Error;
     try {
       if (matchs = REGEXP_MATCH_VAR.exec(value)) {
-        params = {};
-        params[matchs[1]] = spaceNormalize(matchs[2]);
+        const varStyle: Record<string, string> = {};
+        varStyle[matchs[1]] = spaceNormalize(matchs[2]);
         return {
-          style: params,
+          style: varStyle,
         };
       }
       return (matchs = REGEXP_MATCH_NAME.exec(value)) && (
@@ -659,9 +688,9 @@ content?: string }>, number];
     }
   }
   function initEssence(
-    essenceName: string, essence: Record<string, any>, excludes: Record<string, number>,
+    essenceName: string, essence: MnEssenceResult, excludes: Record<string, number>,
   ): void {
-    let _essence;
+    let _essence: MnEssenceRaw | 0 | null | void;
     const staticEssence = $$staticsEssences[essenceName];
     const tmpEssence = staticEssence
       ? (
@@ -681,10 +710,10 @@ content?: string }>, number];
     const important = essence.important;
 
     function __childsHandle(
-      childs: Record<string, any> | undefined, separator: string, withStatic?: number,
+      childs: Record<string, MnEssenceResult> | undefined, separator: string, withStatic?: number,
     ): void {
       const __prefix = essenceName + separator;
-      forIn(childs, withStatic ? (_childEssence: any, _childName: any) => {
+      forIn(childs, withStatic ? (_childEssence: MnEssenceResult, _childName: string) => {
         const childEssenceName = __prefix + _childName;
         const childStaticEssence = $$staticsEssences[childEssenceName];
         childs[_childName] = compileMixedEssence(
@@ -696,7 +725,7 @@ content?: string }>, number];
             : _childEssence,
           excludes, important,
         );
-      } : (_childEssence: any, _childName: any) => {
+      } : (_childEssence: MnEssenceResult, _childName: string) => {
         childs[_childName] = compileMixedEssence(
           $$essences[__prefix + _childName] = {},
           _childEssence,
@@ -710,25 +739,26 @@ content?: string }>, number];
     );
   }
   function compileMixedEssence(
-    dst: Record<string, any>, src: Record<string, any>, excludes: Record<string, number>, important?: number,
-  ): Record<string, any> {
+    dst: MnEssenceResult, src: MnEssenceResult, excludes: Record<string, number>, important?: number,
+  ): MnEssenceResult {
     const include = src.include;
-    let // eslint-disable-line
-      i = include && include.length,
-      mergingMixins, style;
+    let i = include ? include.length : 0;
+    let mergingMixins: MnEssenceResult[];
+    let styleObj: Record<string, string | string[]> | undefined;
+    let styleText: string | undefined;
     if (i) {
       mergingMixins = new Array(i + 1);
       mergingMixins[i] = src;
       // eslint-disable-next-line
-      for (; i--;) mergingMixins[i] = updateEssence(include[i], {}, '', excludes);
+      for (; i--;) mergingMixins[i] = updateEssence(include[i], {}, '', excludes) as MnEssenceResult;
       __mergeDepth(mergingMixins, dst);
     } else {
       extend(dst, src);
     }
 
-    dst.cssText = (style = dst.style)
-      && (style = (cssPropertiesStringify as any)(style, dst.important || important))
-      ? ('{' + style + '}') : '';
+    dst.cssText = (styleObj = dst.style)
+      && (styleText = (cssPropertiesStringify as any)(styleObj, dst.important || important))
+      ? ('{' + styleText + '}') : '';
     dst.inited = 1;
     return dst;
   }
@@ -752,8 +782,8 @@ content?: string }>, number];
     selectors: Record<string, number>,
     mediaName: string,
     _excludes?: Record<string, number>,
-    essence?: Record<string, any>,
-  ): Record<string, any> | void {
+    essence?: MnEssenceResult,
+  ): MnEssenceResult | void {
     const excludes = extend({}, _excludes);
     if (excludes[essenceName]) {
       return;
@@ -772,7 +802,7 @@ content?: string }>, number];
     contextEssence[MN_CONTEXT_ESSENCE_UPDATED] = 1;
     extend(contextEssence[MN_CONTEXT_ESSENCE_MAP],
       selectors = joinMaps(selectors, contextEssence[MN_CONTEXT_ESSENCE_SELECTORS]));
-    function __childsHandle(childs: Record<string, any>, separator: string): void {
+    function __childsHandle(childs: Record<string, MnEssenceResult>, separator: string): void {
       let childName: string;
       for (childName in childs) updateEssence( // eslint-disable-line
         essenceName + separator + childName,
@@ -795,10 +825,10 @@ content?: string }>, number];
     return essence;
   }
   function updateSelectorIteratee(item: [Record<string, number>, Record<string, string>]): void {
-    let selector;
-    let essenceName;
-    let mediaName;
-    let selectors;
+    let selector: string;
+    let essenceName: string;
+    let mediaName: string;
+    let selectors: Record<string, number>;
     const essences = item[0];
     const selectorsMedias = selectorsValidateFilter(item[1]);
     for (selector in selectorsMedias) { // eslint-disable-line
@@ -812,14 +842,20 @@ content?: string }>, number];
       }
     }
   }
+  // selectors: произвольная вложенная форма, см. normalizeSelectors.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function baseSetSynonyms(selectors: string | Record<string, any>, name: string): void {
-    // eslint-disable-next-line
-    let selectorsMedias = {}, from, to, mediaNames;
-    selectors = normalizeSelectors(selectors);
-    for (from in selectors as Record<string, any>) { // eslint-disable-line
+    const selectorsMedias: Record<string, [number, string]> = {};
+    let from: string;
+    let to: string;
+    let mediaNames: string[];
+    const normalizedSelectors = normalizeSelectors(selectors);
+    for (from in normalizedSelectors) { // eslint-disable-line
       to = extractMedia(mediaNames = [], from);
       selectorsMedias[to] = [0, mediaNames[0]];
     }
+    // _synonyms: внутреннее expando-свойство, не часть публичного MnInstance.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ((mn as any)._synonyms || ((mn as any)._synonyms = {}))[name] = selectorsMedias;
   }
 
@@ -921,8 +957,11 @@ content?: string }>, number];
    * @param body — тело анимации (строка или объект `{ '0%': {...}, '100%': {...} }`)
    * @param ifEmpty — если `true`, не перезаписывать существующую
    */
+  // body/css: произвольная вложенная форма (строка или объект CSS-свойств).
   mn.setKeyframes = withResult((
-    name, body, ifEmpty,
+    name: string,
+    body: string | Record<string, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
+    ifEmpty?: number,
   ) => {
     const keyframes = $$keyframes[0];
     if (ifEmpty && keyframes[name]) {
@@ -931,8 +970,9 @@ content?: string }>, number];
     if (body) {
       const output = ['{'];
       isObject(body)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ? forIn(body, (css: string | Record<string, any>, k: string) => push(output, k + '{'
-          + (isObject(css) ? (cssPropertiesStringify as any)(css) : css) + '}'))
+          + (isObject(css) ? cssPropertiesStringify(css) : css) + '}'))
         : push(output, body);
       push(output, '}');
       keyframes[name] = joinOnly(output);
@@ -952,8 +992,11 @@ content?: string }>, number];
    * mn.css('.myClass', { color: 'red', margin: '10px' });
    * mn.css({ '.a': { color: 'red' }, '.b': 'margin:0' });
    */
-  mn.css = withResult((selector, css) => {
+  // selector/css: произвольная вложенная форма (строка, селектор->свойства).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mn.css = withResult((selector: string | Record<string, any>, css?: string | Record<string, any>) => {
     const cssMap = $$css[0];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function baseSetCSS(css: string | Record<string, any>, s: string): void {
       s = joinComma(keys(normalizeSelectorsIteratee({}, s)));
       if (css) {
@@ -965,6 +1008,7 @@ content?: string }>, number];
           '{',
           cssPropertiesStringify(isObject(css)
             ? extend(instance.css, css)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- см. finding 10 в PLAN.md: TCssMap мельче, чем $$css
             : (cssPropertiesParseSimple as any)(css, instance.css)),
           '}',
         ]);
@@ -988,7 +1032,9 @@ content?: string }>, number];
    * mn.synonyms('big', '.big');
    * mn.synonyms({ big: '.big', small: '.small' });
    */
-  mn.synonyms = withResult((synonym, selectors) => {
+  // synonym/selectors: произвольная вложенная форма, см. baseSetSynonyms/normalizeSelectors.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mn.synonyms = withResult((synonym: string | Record<string, any>, selectors?: string | Record<string, any>) => {
     isObject(synonym)
       ? forIn(synonym, baseSetSynonyms)
       : baseSetSynonyms(selectors, synonym);
@@ -1007,8 +1053,8 @@ content?: string }>, number];
    */
   mn.setPresets = withResult(setPresets, mn);
   mn.utils = extend(extend({}, baseUtils), {
-    color: (v) => color(v, $$altColor),
-    colorGetBackground: (v) => colorGetBackground(v, $$altColor),
+    color: (v: string) => color(v, $$altColor),
+    colorGetBackground: (v: string) => colorGetBackground(v, $$altColor),
   });
 
   updateOptions();

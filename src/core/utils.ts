@@ -304,8 +304,8 @@ export function parseMediaPart(mediaPart?: string): [number, number] | undefined
     ? [v, parseMediaValue(parts[1])]
     : [0, v];
 }
-export function handlerWrap(essenceHandler: (p: MnEssenceParams) => MnEssenceResult | void,
-  paramsMatchPath: string | string[]): (p: MnEssenceParams) => MnEssenceResult | void {
+export function handlerWrap(essenceHandler: (p: MnEssenceParams) => MnEssenceRaw | void | 0,
+  paramsMatchPath: string | string[]): (p: MnEssenceParams) => MnEssenceRaw | void | 0 {
   const parse = isArray(paramsMatchPath)
     ? aggregate(map(paramsMatchPath, routeParseProvider), eachApply)
     : routeParseProvider(paramsMatchPath);
@@ -331,7 +331,7 @@ export function __iterateeCheckImportant(v: string): string {
  * значения от автора пресета (строка/массив), которые `__normalize()`
  * мутирует на месте в `Record<string, number>`/`string[]` (см. `MnEssenceResult`).
  */
-type MnEssenceRaw = Omit<MnEssenceResult, 'selectors' | 'exts' | 'include' | 'childs' | 'media'> & {
+export type MnEssenceRaw = Omit<MnEssenceResult, 'selectors' | 'exts' | 'include' | 'childs' | 'media'> & {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- «сырое» значение от автора пресета до normalizeSelectors/normalizeComboNames, форма произвольная.
   selectors?: string | string[] | Record<string, any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- см. selectors выше.
@@ -341,10 +341,10 @@ type MnEssenceRaw = Omit<MnEssenceResult, 'selectors' | 'exts' | 'include' | 'ch
   media?: Record<string, MnEssenceRaw>;
 };
 
-export function __normalize(essence: MnEssenceRaw | false | void): MnEssenceResult | false | void {
+export function __normalize(essence: MnEssenceRaw | 0 | null | false | void): MnEssenceResult | 0 | null | false | void {
   if (!essence) {
-    // strictNullChecks выключен — TS не сужает essence до `false | void` здесь.
-    return essence as false | void;
+    // strictNullChecks выключен — TS не сужает essence здесь.
+    return essence as 0 | null | false | void;
   }
   const {
     selectors, exts, include, important,

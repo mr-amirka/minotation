@@ -4,6 +4,10 @@
  * @module core/types
  */
 
+import type {
+  MnInstance,
+} from '../types';
+
 // ============================================================================
 //  Стили и компиляция
 // ============================================================================
@@ -110,7 +114,7 @@ export interface MnData {
 
 /** Опции провайдера */
 export interface MnOptions {
-  presets?: Array<(mn: any) => void>;
+  presets?: Array<(mn: MnInstance) => void>;
   media?: Record<string, MnMediaEntry>;
   onError?: (e: Error) => void;
   selectorPrefix?: string;

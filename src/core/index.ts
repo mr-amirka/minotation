@@ -102,6 +102,23 @@ import type {
 // Присваиваем utils статическому свойству (нужно для обратной совместимости)
 minotationProvider.utils = baseUtils;
 
+/**
+ * Создаёт независимый экземпляр Minotation.
+ *
+ * Возвращает функцию `mn`, вызываемую и как регистратор хендлеров/эссенций
+ * (`mn(name, handler)`), и как объект с методами API (`mn.compile()`, `mn.css()`, ...) —
+ * см. {@link MnInstance}. Несколько экземпляров полностью независимы: своё состояние
+ * (`$$essences`, `$$root`, `$$staticsEssences` и т.д.), свои пресеты, свой `styles$`.
+ *
+ * @param options — `presets` (загружаются сразу), `media`, `onError`, `selectorPrefix`, `altColor`
+ * @returns экземпляр `mn`
+ *
+ * @example
+ * const mn = minotationProvider({ presets: [presetStandard] });
+ * mn.check('w50 cF00');
+ * mn.compile();
+ * mn.styles$.getValue(); // → скомпилированные CSS-стили
+ */
 function minotationProvider(options?: MnOptions) {
   options = options || {};
   function setPresets(presets: Array<(mn: MnInstance) => void>) {
@@ -121,6 +138,17 @@ function minotationProvider(options?: MnOptions) {
     $$selectorPrefixes = keys(selectorsValidateFilter(normalizeSelectors(options.selectorPrefix || '')));
     $$altColor = options.altColor !== 'off';
   }
+  /**
+   * Регистрирует эссенцию (хендлер/статический объект) под именем/путём —
+   * или, если первый аргумент объект, пачкой (`{ [essencePath]: extendedEssence }`).
+   * Возвращает сам `mn` для чейнинга. Полные перегрузки и семантика `skip` — {@link MnInstance}.
+   *
+   * @param essencePath — имя эссенции (`'w'`) или карта `{ имя: хендлер/эссенция }`
+   * @param extendedEssence — хендлер, статическая эссенция или строка (`exts`), если `essencePath` — строка
+   * @param paramsMatchPath — паттерн для {@link handlerWrap}, если хендлеру нужен собственный разбор суффикса
+   * @param skip — 0/1: пропустить авто-парсинг значения из суффикса токена
+   * @returns сам `mn` (чейнинг)
+   */
   function mn(
     essencePath: string | Record<string, MnHandler | MnEntity | string>,
     extendedEssence?: MnHandler | MnEntity | string,
@@ -226,6 +254,16 @@ function minotationProvider(options?: MnOptions) {
       || ($$compilers[attrName] = __compileProvider(attrName));
   }
 
+  /**
+   * Записывает готовый CSS-текст под ключом в `$$stylesMap` и помечает `$$updated`.
+   * Используется как для внутренних источников (`'css'`, `MN_KEYFRAMES_TOKEN`),
+   * так и для произвольного пользовательского CSS через {@link MnInstance.setStyle}.
+   *
+   * @param name — уникальный ключ записи в `$$stylesMap` (не CSS-селектор)
+   * @param content — готовый CSS-текст
+   * @param priority — порядок сортировки при финальной сборке (`priotitySort`)
+   * @returns сам `mn` (чейнинг)
+   */
   function setStyle(
     name: string, content: string, priority: number,
   ): any {
@@ -244,6 +282,14 @@ function minotationProvider(options?: MnOptions) {
   const parseComboNameProvider = (mn as any).parseComboNameProvider;
   const __parseComboName: any = withCatchParseComboNameDecorate((mn as any).parseComboName);
 
+  /**
+   * Пересчитывает CSS-правила для набора комбо-имён одного атрибута, переданных
+   * КАРТОЙ `{ comboName: 1 }` (например снимок `MnCompiler.cache` — полный набор
+   * текущих значений атрибута на странице).
+   *
+   * @param comboNamesMap — карта комбо-имён атрибута `attrName`
+   * @param attrName — имя атрибута (`'class'`, `'id'` и т.д.)
+   */
   const updateAttrByMap = mn.updateAttrByMap = withResult((comboNamesMap: Record<string, number>, attrName: string) => {
     // eslint-disable-next-line
     let parseComboName: any = withCatchParseComboNameDecorate(parseComboNameProvider(attrName));
@@ -251,6 +297,13 @@ function minotationProvider(options?: MnOptions) {
     for (comboName in comboNamesMap) forEach( // eslint-disable-line
       parseComboName(comboName), updateSelectorIteratee);
   }, mn);
+  /**
+   * То же, что {@link updateAttrByMap}, но для СПИСКА новых комбо-имён
+   * (например `MnCompiler.getNext()` — только что появившиеся значения атрибута).
+   *
+   * @param comboNames — массив комбо-имён атрибута `attrName`
+   * @param attrName — имя атрибута
+   */
   const updateAttrByValues = mn.updateAttrByValues = withResult((comboNames: string[], attrName: string) => {
     // eslint-disable-next-line
     const parseComboName: any = withCatchParseComboNameDecorate(parseComboNameProvider(attrName));
@@ -259,6 +312,13 @@ function minotationProvider(options?: MnOptions) {
     });
   }, mn);
 
+  /**
+   * Полная пересборка CSS с нуля по явно переданному снимку атрибутов —
+   * `{ attrName: { comboName: 1 } }` (в отличие от {@link MnInstance.compile},
+   * не читает состояние компиляторов из `getCompiler`).
+   *
+   * @param attrsMap — снимок `{ attrName: comboNamesMap }` по всем нужным атрибутам
+   */
   mn.recompileFrom = withResult((attrsMap: Record<string, Record<string, number>>) => {
     __clear();
     updateOptions();
@@ -278,19 +338,54 @@ function minotationProvider(options?: MnOptions) {
    * @returns компилятор с методами `clear()`, `getNext()`, `checkNode()`, `recursiveCheck()`
    */
   mn.getCompiler = getCompiler;
+  /**
+   * Рекурсивно обходит поддерево DOM от `node` и проверяет узлы по каждому из `attrs`
+   * (см. `MnCompiler.recursiveCheck`) — используется для первичного скана/после
+   * массовых DOM-изменений (SSR-гидрация, вставка большого фрагмента).
+   *
+   * @param node — корневой DOM-узел обхода
+   * @param attrs — имя атрибута или список имён (`'class'`, `['class', 'id']`)
+   */
   mn.recursiveCheckByAttrs = withResult((node: any, attrs: string | string[]) => {
     eachApply((isString(attrs) ? [attrs] : attrs).map(getCompiler)
       .map(x => x.recursiveCheck), [node]);
   }, mn);
+  /**
+   * Проверяет ОДИН узел (без рекурсии в потомков) по каждому из `attrs` —
+   * дешевле {@link MnInstance.recursiveCheckByAttrs} для точечных обновлений
+   * (например реакция на мутацию одного элемента).
+   *
+   * @param node — DOM-узел для проверки
+   * @param attrs — имя атрибута или список имён
+   */
   mn.checkOneNodeByAttrs = withResult((node: any, attrs: string | string[]) => {
     eachApply((isString(attrs) ? [attrs] : attrs).map(getCompiler)
       .map(x => x.checkNode), [node]);
   }, mn);
+  /**
+   * Прогоняет ГОТОВОЕ значение атрибута (не DOM-узел) через компилятор(ы) —
+   * когда значение известно без чтения DOM (SSR, ручная генерация классов).
+   *
+   * @param v — значение атрибута (например `'w50 cF00'`)
+   * @param attrs — имя атрибута или список имён, каждому передаётся то же `v`
+   */
   mn.checkByAttrs = withResult((v: string, attrs: string | string[]) => {
     isString(attrs)
       ? getCompiler(attrs)(v)
       : eachApply(attrs.map(getCompiler), [v]);
   }, mn);
+  /**
+   * Добавляет произвольный именованный CSS-блок в стили экземпляра
+   * (обёртка над {@link setStyle} с префиксом `'custom.'` и дефолтным приоритетом).
+   *
+   * @param name — уникальное имя блока (ключ, не селектор)
+   * @param content — готовый CSS-текст
+   * @param priority — порядок сортировки (default `MN_DEFAULT_OTHER_CSS_PRIORITY`)
+   * @returns сам `mn` (чейнинг)
+   *
+   * @example
+   * mn.setStyle('reset', '*{box-sizing:border-box}');
+   */
   mn.setStyle = (
     name: string, content: string, priority?: number,
   ) => setStyle(
@@ -351,6 +446,19 @@ content?: string }>, number];
     return output;
   }
 
+  /**
+   * Разбирает `@`-медиа-выражение в список готовых медиа-записей.
+   *
+   * Грамматика (полностью — `AGENT_DRAFT/SPEC/04-grammar-04-media.md`):
+   * `media-expr ::= media-atom ('&' media-atom)* (',' media-expr)?` — `&` объединяет
+   * атомы через AND в одном `@media (...)`, `,` заводит отдельную альтернативную запись.
+   * Каждый атом — либо зарегистрированное имя медиа (`$$media`, добавляется через
+   * `options.media`/`mn.media`), либо шаблон `WIDTHxHEIGHT` ({@link parseMediaTemplate})
+   * с опциональным `^приоритет`.
+   *
+   * @param mediaExpression — например `'m&dark,tablet'`
+   * @returns массив кортежей `[имя, приоритет, query, доп.селектор]`; `[[]]` — пустое выражение
+   */
   function parseMediaExpression(mediaExpression: string): Array<[string, number | undefined, string, string] | []> {
     if (!mediaExpression) {
       return [[]];
@@ -456,6 +564,7 @@ content?: string }>, number];
     }
     return [JOIN_AND(queries), priority];
   }
+  /** Публичный доступ к {@link parseMediaExpression} — разбор `@`-медиа-выражения без побочных эффектов. */
   mn.parseMediaExpression = parseMediaExpression;
 
   function generate(context: Record<string, MnContextEssence>, mediaExpression: string): void {
@@ -885,12 +994,18 @@ content?: string }>, number];
       __assignItemCompile);
   }
   __clear();
+  /**
+   * Полностью сбрасывает состояние экземпляра: карту эссенций, `$$root`, кэши
+   * компиляторов атрибутов (`$$compilers[*].clear()`) и накопленный CSS.
+   * Следующий {@link MnInstance.compile} пересоберёт всё с нуля.
+   */
   mn.clear = withResult((attrName?: string) => {
     // eslint-disable-next-line
     for (attrName in $$compilers) $$compilers[attrName].clear();
     __clear();
   }, mn);
 
+  /** Пересобирает CSS-блок `@keyframes` (`MN_KEYFRAMES_TOKEN`) из `$$keyframes[0]`, включая браузерные префиксы. Вызывается автоматически из {@link MnInstance.compile}, когда есть неприменённые изменения (`$$keyframes[1]`). */
   const keyframesRender = mn.keyframesCompile = withResult(() => {
     $$keyframes[1] = 0;
     const keyframesPrefix = MN_KEYFRAMES_TOKEN + ' ';
@@ -906,6 +1021,7 @@ content?: string }>, number];
     )), MN_DEFAULT_CSS_PRIORITY,
     );
   }, mn);
+  /** Пересобирает CSS-блок `'css'` (сырой CSS из {@link MnInstance.css}) из `$$css[0]`. Вызывается автоматически из {@link MnInstance.compile}, когда есть неприменённые изменения (`$$css[1]`). */
   const cssRender = mn.cssCompile = withResult(() => {
     $$css[1] = 0;
     // eslint-disable-next-line
@@ -917,6 +1033,10 @@ content?: string }>, number];
    *
    * Должен вызываться после того, как все токены собраны через `getCompiler()`.
    * Результат доступен через `mn.styles$.getValue()`.
+   *
+   * Инкрементально: по умолчанию читает только НОВЫЕ значения атрибутов
+   * (`$$compilers[*].getNext()`) — уже обработанные не пересчитываются
+   * (§16 `coding.md`, паттерн «два буфера»). Полный пересчёт — {@link MnInstance.recompile}.
    *
    * @returns mn (чейнинг)
    */
@@ -941,11 +1061,21 @@ content?: string }>, number];
     $$updated && styleRender();
     $$updated = $$force = 0;
   }, mn);
+  /**
+   * Форсирует ПОЛНЫЙ пересчёт CSS (в отличие от инкрементального {@link MnInstance.compile}) —
+   * очищает состояние и заново читает ВЕСЬ кэш каждого компилятора (`$$compilers[*].cache`),
+   * а не только новые значения. Нужен, например, после смены `options` (`selectorPrefix`,
+   * `altColor`), меняющей вывод для уже обработанных токенов.
+   *
+   * @returns mn (чейнинг)
+   */
   mn.recompile = withResult(() => {
     $$force = 1;
     __render();
   }, mn);
+  /** Отложенная (debounced/batched через `withDefer`) версия {@link MnInstance.compile} — несколько синхронных вызовов схлопываются в один реальный проход компиляции. */
   const deferCompile = mn.deferCompile = withDefer(__render, mn);
+  /** Отложенная версия {@link MnInstance.recompile} (полный пересчёт), см. {@link deferCompile}. */
   mn.deferRecompile = () => {
     $$force = 1;
     return deferCompile();
@@ -1052,6 +1182,13 @@ content?: string }>, number];
    * mn.setPresets([presetStyles, presetMedias, presetSynonyms]);
    */
   mn.setPresets = withResult(setPresets, mn);
+  /**
+   * Утилиты, доступные пресетам внутри `(mn) => {...}` (см. {@link MnUtils}).
+   *
+   * `baseUtils` (`core/utils.ts`) + `color`/`colorGetBackground`, переопределённые
+   * здесь с зафиксированным `$$altColor` (из `options.altColor`, читается в
+   * {@link updateOptions}) — сами пресеты передают только цвет, без второго аргумента.
+   */
   mn.utils = extend(extend({}, baseUtils), {
     color: (v: string) => color(v, $$altColor),
     colorGetBackground: (v: string) => colorGetBackground(v, $$altColor),

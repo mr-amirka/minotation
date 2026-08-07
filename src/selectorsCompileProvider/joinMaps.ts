@@ -68,8 +68,17 @@ export function joinMapsWithFirstValue(
  *
  * @param prefix — префиксная строка (например `'.w50'`)
  * @param suffixes — карта суффиксов
- * @param pv — значение для `tmp[0]` (медиа-приоритет или имя медиа)
+ * @param pv — на практике всегда строка (имя медиа с текущего уровня) или `undefined`;
+ *   если задана — ЗАМЕНЯЕТ собой весь первый элемент `tmp[0]` (не кортеж `AltEntry`,
+ *   а голая строка) — типовая неточность `AltMap`/`AltEntry`, унаследованная из v1
+ *   (см. finding 6 в плане типизации `core/index.ts`, `PLAN.md` minotation); если `pv`
+ *   не задан — первый элемент остаётся как в исходном `suffixes`
  * @returns AltMap с ключами `prefix + suffix`
+ *
+ * @example
+ * // suffixes: { '.b': [[0, 'desktop']] }
+ * joinPrefixWithFirstValue('.a', suffixes, 'mobile')
+ * // → { '.a.b': ['mobile', 'desktop'] } — tmp[0] заменён строкой, не кортежем
  */
 export function joinPrefixWithFirstValue(
   prefix: string,

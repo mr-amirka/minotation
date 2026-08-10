@@ -240,8 +240,8 @@ describe('Standard preset — object-fit / mask', () => {
     expect(css('ofCV')).toContain('object-fit:cover');
   });
 
-  test('maski_a.png → mask-image:url("a.png")', () => {
-    expect(css('maski_a.png')).toContain('mask-image:url("a.png")');
+  test('maski_a\\.png → mask-image:url("a.png") (точка в значении требует экранирования)', () => {
+    expect(css('maski_a\\.png')).toContain('mask-image:url("a.png")');
   });
 
   test('maskbgF00 → mask-image:#f00', () => {

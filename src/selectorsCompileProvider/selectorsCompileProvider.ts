@@ -42,9 +42,20 @@ import {
   joinPrefixWithFirstValue,
 } from './joinMaps';
 
-/** Разворачивает `(a|b)`-группы в comboName в список плоских вариантов (`variants()[0]`, глубина не нужна). */
+/**
+ * Разворачивает `(a|b)`-группы в comboName в список плоских вариантов (глубина не нужна).
+ *
+ * `applyUnslash: false` — экранирования (`\.` и т.п.) должны дожить до {@link suffixesReduce}/
+ * `extractSuffix`, чей собственный escape-механизм (`splitSelector`/`extractSuffix`'s
+ * `/\\.|[.+]\d/`) как раз и защищает их от трактовки как границы селектора; сняты они будут
+ * позже, явным `unslash()` в `suffixesReduce`. Раньше здесь снимался unslash преждевременно
+ * (`variants(comboName)[0]`, без `false`) — экранирование терялось до того, как
+ * `extractSuffix` успевал его увидеть, из-за чего `\.` в значении (например, `maski_a\.png`)
+ * не защищало точку от трактовки как self-class-границы. Найдено и исправлено 2026-08-10
+ * вместе со связанным багом regex в `constants.ts` (`splitSelector`/`extractSuffix`).
+ */
 function variantsBase(comboName: string): string[] {
-  return variants(comboName)[0];
+  return variants(comboName, false)[0];
 }
 
 /**

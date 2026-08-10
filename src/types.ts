@@ -102,13 +102,17 @@ export type MnSynonymsMap = Record<string, string>;
 export interface MnInstance {
   // Вызов как функция: регистрация хендлера
   (name: string, handler: MnHandler): void;
-  (name: string, handler: MnHandler, pattern: string): void;
+  /**
+   * `pattern` — маршрут(ы) для `routeParseProvider` (см. `handlerWrap` в `core/utils.ts`);
+   * `string[]` — несколько альтернативных маршрутов разбора суффикса для одного хендлера.
+   */
+  (name: string, handler: MnHandler, pattern: string | string[]): void;
   /**
    * `skip` — не приоритет: 0/1-флаг, при `1` пропускает авто-парсинг значения
    * из суффикса токена (`REGEXP_MATCH_VALUE` в `core/index.ts`) — используется,
    * когда хендлер сам разбирает суффикс через свой `pattern`.
    */
-  (name: string, handler: MnHandler, pattern: string, skip: number): void;
+  (name: string, handler: MnHandler, pattern: string | string[], skip: number): void;
   (name: string, entity: MnEntity | string): void;
   (map: Record<string, MnHandler | MnEntity | string>): void;
 

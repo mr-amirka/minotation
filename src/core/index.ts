@@ -152,7 +152,7 @@ function minotationProvider(options?: MnOptions) {
   function mn(
     essencePath: string | Record<string, MnHandler | MnEntity | string>,
     extendedEssence?: MnHandler | MnEntity | string,
-    paramsMatchPath?: string,
+    paramsMatchPath?: string | string[],
     skip?: number,
   ): any {
     const type = typeof essencePath;
@@ -174,7 +174,7 @@ function minotationProvider(options?: MnOptions) {
   function mnBaseSet(
     extendedEssence: MnHandler | MnEntity | string,
     essencePath: string,
-    paramsMatchPath?: string,
+    paramsMatchPath?: string | string[],
     skip?: number,
   ): void {
     let v: (((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number }) | undefined;

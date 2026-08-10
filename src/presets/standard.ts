@@ -39,8 +39,6 @@
  * @author Amir Absaliamov <amir.absolutely@gmail.com>
  */
 
-/* eslint-disable */
-// @ts-nocheck
 /** @constant {RegExp} Разделитель запятых с пробелами */
 const REGEXP_COMMA = /(?:\s*,\s*)+/;
 const REGEXP_TRIM_SNAKE_LEFT = /^_+/g;
@@ -206,7 +204,7 @@ const POSITION_PRIORITIES = {
   sticky: 4,
 };
 
-const SHADOW_HANDLERS = {
+const SHADOW_HANDLERS: Record<string, [string, (x: any, y: any, value: any, r: any, color: any) => any[]]> = {
   bxsh: ['boxShadow', function(
     x, y, value, r, color,
   ) {
@@ -273,10 +271,10 @@ const FILTER_MAP = {
 };
 const UNITS = 'em,ex,%,px,cm,mm,in,pt,pc,ch,rem,vh,vw,vmin,vmax'.split(',');
 
-function throwInvalid(message) {
+function throwInvalid(message?: string): never {
   throw new Error(message || 'Parameter is invalid');
 }
-function floatNormalize(v, nosign) {
+function floatNormalize(v: any, nosign?: number): number {
   const m = v && v.match(REGEXP_DOTS);
   (m && m.length > 1 || isNaN(v = parseFloat(v)) || (v < 0 && nosign))
     && throwInvalid();
@@ -284,28 +282,28 @@ function floatNormalize(v, nosign) {
 }
 
 function replace(
-  v, from, to,
-) {
+  v: any, from: string | RegExp, to: string,
+): string {
   return ('' + v).replace(from, to);
 }
-function snakeLeftTrim(v) {
+function snakeLeftTrim(v: string): string {
   return replace(
     v, REGEXP_TRIM_SNAKE_LEFT, '',
   );
 }
-function styleWrap(style, priority) {
+function styleWrap(style: Record<string, any>, priority?: number): MnHandlerResult {
   return {
     style,
     priority: priority || 0,
   };
 }
-function toFixed(v) {
+function toFixed(v: any): string {
   isNaN(v = v * 100) && throwInvalid();
   return replace(
     (Math.floor(v) * 0.01).toFixed(2), RE_ZERO, '',
   ) || '0';
 }
-function __wr(v) {
+function __wr(v: string): string {
   return v[0] == '-'
     ? '"' + v.substr(1) + '"'
     : (
@@ -313,20 +311,20 @@ function __wr(v) {
     );
 }
 function calc(
-  v, sign, add,
-) {
+  v: any, sign: string, add: any,
+): string {
   return 'calc(' + v + ' ' + sign + ' ' + add + ')';
 }
 function normalizeCalc(
-  base, signAndVal, unit,
-) {
+  base: any, signAndVal: string, unit?: string,
+): string {
   const sign = signAndVal[0];
   const val = signAndVal.slice(1);
   return calc(
     base, sign, val + (unit || ''),
   );
 }
-function normalizeDefault(p, def) {
+function normalizeDefault(p: any, def?: string | number): MnHandlerResult {
   return {
     exts: [p.name + (def || 0) + p.ni],
   };
@@ -334,6 +332,8 @@ function normalizeDefault(p, def) {
 
 import {
   MnInstance,
+  MnHandler,
+  MnHandlerResult,
 } from '../types';
 
 
@@ -369,36 +369,36 @@ export default (mn: MnInstance) => {
   const parseVals = routeParseProvider(PATTERN_VAL);
 
 
-  function validateUnit(unit) {
+  function validateUnit(unit?: string): string | undefined {
     if (!unit || indexOf(UNITS, unit) > -1) {
       return unit;
     }
     throwInvalid('Unit "' + unit + '" is invalid');
   }
   function getVal(
-    suffix,
-    positive,
-    one,
-    defaultUnit,
-    noOtherName,
-    symonyms,
-  ) {
+    suffix: any,
+    positive?: number,
+    one?: number,
+    defaultUnit?: string,
+    noOtherName?: number,
+    symonyms?: Record<string, any>,
+  ): [string, number] {
     defaultUnit = defaultUnit || 'px';
     const parts = ('' + suffix).split('_');
     const l = parts.length;
     one && l > 1 && throwInvalid('There must be one parameter');
     l > 4 && throwInvalid('There should not be more than 4 parameters');
-    const output = new Array(l);
+    const output: string[] = new Array(l);
     let i = 0;
-    let otherName;
-    let add;
-    let total;
-    let vv;
-    let vva;
-    let num;
-    let val;
-    let p;
-    let sa;
+    let otherName: string | undefined;
+    let add: string | undefined;
+    let total: string | undefined;
+    let vv: string | undefined;
+    let vva: string | undefined;
+    let num: string | undefined;
+    let val: string;
+    let p: Record<string, any>;
+    let sa: string | undefined;
     for (; i < l; i++) {
       parseVals(parts[i], p = {});
       if (otherName = p.otherName) {
@@ -441,11 +441,11 @@ export default (mn: MnInstance) => {
     return [output.join(' '), l - 1];
   }
 
-  function toKebabCase(v) {
+  function toKebabCase(v: string): string {
     return camelToKebabCase(lowerFirst(v));
   }
-  function fontNameNormalize(s, c) {
-    c = s[0];
+  function fontNameNormalize(s: string): string {
+    const c = s[0];
     return spaceNormalize(c == '_'
       ? snakeLeftTrim(s)
       : (
@@ -455,12 +455,12 @@ export default (mn: MnInstance) => {
       ));
   }
   function synonymProvider(
-    propName, synonyms, priority, _style,
-  ) {
-    let props;
+    propName: string | string[], synonyms: Record<string, any>, priority?: number, _style?: Record<string, any>,
+  ): MnHandler {
+    let props: Record<string, number>;
     return isArray(propName)
-      ? (props = flags(propName), ((p) => {
-        let s, style, synonym, propName;
+      ? (props = flags(propName), ((p: any) => {
+        let s: string; let style: Record<string, any>; let synonym: any; let propName: string;
         if (synonym = synonyms[s = p.suffix]) {
           return normalizeDefault(p, synonym);
         }
@@ -471,12 +471,12 @@ export default (mn: MnInstance) => {
           return styleWrap(style, priority);
         }
       }))
-      : ((p) => {
-        let s, style, synonym;
+      : ((p: any) => {
+        let s: string; let style: Record<string, any>; let synonym: any;
         return (synonym = synonyms[s = p.suffix])
           ? normalizeDefault(p, synonym)
           : (
-            s ? (style = {}, style[propName] = spaceNormalize(s[0] == '_'
+            s ? (style = {}, style[propName as string] = spaceNormalize(s[0] == '_'
               ? snakeLeftTrim(s)
               : toKebabCase(s)), styleWrap(style, priority))
               : (_style ? styleWrap(_style, priority) : 0)
@@ -484,9 +484,9 @@ export default (mn: MnInstance) => {
       });
   }
 
-  function backgroundProvider(propName) {
-    return (p) => {
-      let v, style;
+  function backgroundProvider(propName: string): MnHandler {
+    return (p: any) => {
+      let v: string; let style: Record<string, any>;
       p.negative && throwInvalid();
       return (v = p.suffix)
         ? (style = {}, style[propName] = colorGetBackground(v), styleWrap(style))
@@ -494,28 +494,35 @@ export default (mn: MnInstance) => {
     };
   }
 
-  forIn(mapIn(SIDES_MAP, (sides) => reduce(sides, (dst, key) => { dst[key] = 1; return dst; }, {})), (sides, suffix) => {
+  forIn(mapIn(SIDES_MAP, (sides) => reduce(
+    sides, (dst, key) => {
+      dst[key] = 1; return dst; 
+    }, {},
+  )), (sides, suffix) => {
     const priority = suffix ? (4 - size(sides)) : 0;
     const bsSidesSet = sidesSetter((side) => 'border' + side + '-style');
     const bcSidesSet = sidesSetter((side) => 'border' + side + '-color');
     const biSidesSet = sidesSetter((side) => 'border' + side + '-image');
 
-    function sidesSetter(handle) {
-      const propsMap = {};
-      forIn(sides, (_val, propSide) => { propsMap[handle(propSide)] = 1; });
-      return (v) => {
+    function sidesSetter(handle: (side: string) => string): (v: any) => Record<string, any> {
+      const propsMap: Record<string, number> = {};
+      forIn(sides, (_val, propSide) => {
+        propsMap[handle(propSide)] = 1; 
+      });
+      return (v: any) => {
         isDefined(v) || throwInvalid();
-        let style = {}, pName; // eslint-disable-line
+        const style: Record<string, any> = {};
+        let pName: string;
         for (pName in propsMap) style[pName] = v; // eslint-disable-line
         return style;
       };
     }
 
     function handleProvider(
-      sidesSet, nosign, one,
-    ) {
-      return (p) => {
-        let suffix, synonym;
+      sidesSet: (v: any) => Record<string, any>, nosign?: any, one?: any,
+    ): MnHandler {
+      return (p: any) => {
+        let suffix: string; let synonym: any;
         if (!(suffix = p.suffix)) {
           return normalizeDefault(p, 0);
         }
@@ -541,7 +548,7 @@ export default (mn: MnInstance) => {
         '-width',
         1,
       ],
-    }, (args, pfx) => {
+    }, (args: any[], pfx: string) => {
       const propName = args[0];
       const propSuffix = args[1] || '';
       mn(
@@ -549,7 +556,7 @@ export default (mn: MnInstance) => {
           sidesSetter((side) => propName + side + propSuffix),
           args[2],
           suffix,
-        ), 0, 1,
+        ), '', 1,
       );
     });
 
@@ -567,7 +574,7 @@ export default (mn: MnInstance) => {
           } : throwInvalid()),
         0,
         1,
-      ), 0, 1,
+      ), '', 1,
     );
     mn('bs' + suffix, (p) => {
       let s, synonym;
@@ -581,8 +588,8 @@ export default (mn: MnInstance) => {
     });
     mn(
       'bc' + suffix, (p) => {
-        let v, suffix, synonym;
-        return (synonym = COLOR_SYNONYMS[suffix = p.suffix || 'CT'])
+        let v: string; let synonym: any;
+        return (synonym = COLOR_SYNONYMS[p.suffix || 'CT'])
           ? normalizeDefault(p, synonym)
           : (
             (v = p.value)
@@ -636,7 +643,7 @@ export default (mn: MnInstance) => {
           let propName;
         for (propName in propMap) style[propName] = value; // eslint-disable-line
           return styleWrap(style, priority + v[1]);
-        }, 0, 1,
+        }, '', 1,
       );
     });
   });
@@ -659,7 +666,7 @@ export default (mn: MnInstance) => {
       return styleWrap({
         gap: v[0],
       }, priority + v[1]);
-    }, 0, 1,
+    }, '', 1,
   );
 
   mn('tbl', styleWrap({
@@ -695,10 +702,10 @@ export default (mn: MnInstance) => {
       justifyContent: 'space-between',
     },
   }, (style, essenceName) => {
-    let name;
-    mn(name = 'fxa' + (essenceName = upperFirst(essenceName)),
-      styleWrap(style, 1));
-    mn('fxa' + essenceName[0], name);
+    const capitalized = upperFirst(essenceName);
+    const name = 'fxa' + capitalized;
+    mn(name, styleWrap(style, 1));
+    mn('fxa' + capitalized[0], name);
   });
 
   // flex vertical align
@@ -760,13 +767,13 @@ export default (mn: MnInstance) => {
     bgc: ['backgroundColor', 1],
     temc: ['textEmphasisColor', 1],
     tdc: ['textDecorationColor', 1],
-  }, (options, pfx) => {
+  }, (options: any[], pfx: string) => {
     const propName = options[0];
     const priority = options[1] || 0;
     mn(
       pfx, (p) => {
-        let s, suffix, v, synonym;
-        return (synonym = COLOR_SYNONYMS[suffix = p.suffix || 'CT'])
+        let s: Record<string, any>; let v: string; let synonym: any;
+        return (synonym = COLOR_SYNONYMS[p.suffix || 'CT'])
           ? normalizeDefault(p, synonym)
           : (
             v = p.value,
@@ -787,8 +794,8 @@ export default (mn: MnInstance) => {
     maski: 'maskImage',
   }, (propName, name) => {
     mn(name, (p) => {
-      let style, url;
-      style = {};
+      const style: Record<string, any> = {};
+      let url: string;
       style[propName] = (url = snakeLeftTrim(p.suffix))
         ? ('url("' + url + '")')
         : 'none';
@@ -918,7 +925,7 @@ export default (mn: MnInstance) => {
       return styleWrap({
         borderRadius: v[0],
       }, v[1]);
-    }, 0, 1,
+    }, '', 1,
   );
 
 
@@ -937,79 +944,77 @@ export default (mn: MnInstance) => {
           p.suffix || 10000, 1, 1, 'px', 1,
         )[0];
         return styleWrap(style, 2);
-      }, 0, 1,
+      }, '', 1,
     );
   });
 
 
-  forIn(
-    {
-      f: [
-        'fontSize',
-        '',
-        1,
-        1,
-        {
-          I: 'Inherit',
-        },
-      ],
-      sw: ['strokeWidth', 0],
-      olw: [
-        'outlineWidth',
-        0,
-        1,
-      ],
-      gg: [
-        'gridGap',
-        0,
-        1,
-        0,
-        {
-          U: 'Unset',
-        },
-      ],
-      ggc: [
-        'gridColumnGap',
-        0,
-        2,
-        0,
-        {
-          U: 'Unset',
-          R: 'Revert',
-          N: 'Normal',
-        },
-      ],
-      ggr: [
-        'gridRowGap',
-        0,
-        2,
-        0,
-        {
-          U: 'Unset',
-          R: 'Revert',
-        },
-      ],
-    }, (options, pfx) => {
-      const [propName, defaultValue] = options;
-      const priority = options[2] || 0;
-      const one = options[3];
-      const synonyms = options[4] || {};
-      mn(pfx, (p) => {
-        let style, suffix, synonym, v;
-        return (synonym = synonyms[suffix = p.suffix])
-          ? normalizeDefault(p, synonym)
-          : (
-            v = getVal(
-              suffix || defaultValue,
-              1, one, 'px', 0, synonyms,
-            ),
-            style = {},
-            style[propName] = v[0],
-            styleWrap(style, priority + v[1])
-          );
-      });
-    }, 0, 1,
-  );
+  forIn({
+    f: [
+      'fontSize',
+      '',
+      1,
+      1,
+      {
+        I: 'Inherit',
+      },
+    ],
+    sw: ['strokeWidth', 0],
+    olw: [
+      'outlineWidth',
+      0,
+      1,
+    ],
+    gg: [
+      'gridGap',
+      0,
+      1,
+      0,
+      {
+        U: 'Unset',
+      },
+    ],
+    ggc: [
+      'gridColumnGap',
+      0,
+      2,
+      0,
+      {
+        U: 'Unset',
+        R: 'Revert',
+        N: 'Normal',
+      },
+    ],
+    ggr: [
+      'gridRowGap',
+      0,
+      2,
+      0,
+      {
+        U: 'Unset',
+        R: 'Revert',
+      },
+    ],
+  }, (options: any[], pfx: string) => {
+    const [propName, defaultValue] = options;
+    const priority = options[2] || 0;
+    const one = options[3];
+    const synonyms = options[4] || {};
+    mn(pfx, (p) => {
+      let style, suffix, synonym, v;
+      return (synonym = synonyms[suffix = p.suffix])
+        ? normalizeDefault(p, synonym)
+        : (
+          v = getVal(
+            suffix || defaultValue,
+            1, one, 'px', 0, synonyms,
+          ),
+          style = {},
+          style[propName] = v[0],
+          styleWrap(style, priority + v[1])
+        );
+    });
+  });
 
 
   forIn({
@@ -1080,9 +1085,8 @@ export default (mn: MnInstance) => {
 
     // font-weight
     fw: (p) => {
-      let camel, synonym;
-      camel = p.camel;
-      synonym = camel && FONT_WEIGHT_SYNONYMS[camel];
+      const camel = p.camel;
+      const synonym = camel && FONT_WEIGHT_SYNONYMS[camel];
       return synonym ? normalizeDefault(p, synonym) : !p.negative && styleWrap({
         fontWeight: camel
           ? toKebabCase(camel)
@@ -1113,8 +1117,7 @@ export default (mn: MnInstance) => {
       }) : normalizeDefault(p, 1));
     },
     o: (p) => {
-      let num;
-      return p.camel || p.negative ? 0 : ((num = p.num) ? styleWrap({
+      return p.camel || p.negative ? 0 : (p.num ? styleWrap({
         opacity: toFixed((p.num || 0) * 0.01),
       }) : normalizeDefault(p));
     },
@@ -1354,16 +1357,14 @@ export default (mn: MnInstance) => {
       PD: 'PanDown',
       PZ: 'PinchZoom',
     }),
-    ta: synonymProvider(
-      'textAlign', {
-        L: 'Left',
-        C: 'Center',
-        R: 'Right',
-        J: 'Justify',
-        E: 'End',
-        S: 'Start',
-      },
-    ),
+    ta: synonymProvider('textAlign', {
+      L: 'Left',
+      C: 'Center',
+      R: 'Right',
+      J: 'Justify',
+      E: 'End',
+      S: 'Start',
+    }),
     tal: synonymProvider(
       'textAlignLast', {
         A: 'Auto',
@@ -1662,12 +1663,12 @@ export default (mn: MnInstance) => {
     ftb: ftProvider('backdropFilter'),
   });
 
-  function ftProvider(propName) {
-    return (p) => {
-      let v, s;
+  function ftProvider(propName: string): MnHandler {
+    return (p: any) => {
+      let v: string; let s: Record<string, any>;
       return (v = filter(map(p.suffix.split(REGEXP_FILTER_SEP),
-        (v) => {
-          let matchs, name, options;
+        (v: string) => {
+          let matchs: RegExpExecArray | null; let name: string; let options: any;
           return v && (matchs = REGEXP_FILTER_NAME.exec(v)) ? (
             options = FILTER_MAP[name = lowerFirst(matchs[1])],
             camelToKebabCase(options && options[0] || name)
@@ -1737,7 +1738,7 @@ export default (mn: MnInstance) => {
     temp: ['textEmphasisPosition', 1],
     tems: ['textEmphasisStyle', 1],
     ir: ['imageRendering'],
-  }, ([propName, priority], essenceName) => {
+  }, ([propName, priority]: [string, number?], essenceName: string) => {
     mn(essenceName, (p) => {
       let s, style;
       return (s = p.suffix)

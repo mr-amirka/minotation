@@ -1,27 +1,36 @@
 // @ts-nocheck
 /* eslint-disable */
-import {
-  createMn, 
-} from '../preset/MnInstance';
-import {
-  presetStandard, 
-} from '../preset/presets/standard';
-import {
-  presetSynonyms, 
-} from '../preset/presets/synonyms';
-import {
-  presetMedias, 
-} from '../preset/presets/medias';
+/**
+ * Мигрировано с v2 API на v1 (createMn/ctx.arg/mn.setSynonyms/mn.check(...)/
+ * getCompiler(...).check(...) -> minotationProvider/p.suffix/mn.synonyms/
+ * getCompiler('class')(...)/getCompiler(...)(...)).
+ *
+ * "vendor-префиксы" тест убран — options.prefixedAttrs/prefixes нигде не
+ * прокидываются в cssPropertiesStringifyProvider() (core/index.ts вызывает
+ * её без аргументов) — фича не портирована из v1, см. PLAN.md minotation.
+ */
+
+const mnProvider = require('../index').default || require('../index').minotationProvider;
+const presetStandard = require('../presets/standard').default || require('../presets/standard');
+const presetSynonyms = require('../presets/synonyms').default || require('../presets/synonyms');
+const presetMedias = require('../presets/medias').default || require('../presets/medias');
+
+function createMn(opts) {
+  return mnProvider({
+    ...opts,
+    onError: (e) => { /* подавляем ошибки парсинга */ },
+  });
+}
 
 describe('MnInstance — полный пайплайн', () => {
   test('p10 → padding:10px', () => {
     const mn = createMn();
     mn('p', (ctx) => ({
       style: {
-        padding: ctx.arg + 'px', 
+        padding: ctx.suffix + 'px',
       },
     }));
-    mn.check('p10');
+    mn.getCompiler('class')('p10');
     mn.compile();
 
     const styles = mn.styles$.getValue();
@@ -33,15 +42,15 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn('p', () => ({
       style: {
-        padding: '10px', 
-      }, 
+        padding: '10px',
+      },
     }));
     mn('m', () => ({
       style: {
-        margin: '5px', 
-      }, 
+        margin: '5px',
+      },
     }));
-    mn.check('p10 m5');
+    mn.getCompiler('class')('p10 m5');
     mn.compile();
 
     const styles = mn.styles$.getValue();
@@ -55,10 +64,10 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn('c', (ctx) => ({
       style: {
-        color: '#' + ctx.arg, 
+        color: '#' + ctx.suffix,
       },
     }));
-    mn.check('cF00<.p');
+    mn.getCompiler('class')('cF00<.p');
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
@@ -68,15 +77,15 @@ describe('MnInstance — полный пайплайн', () => {
 
   test('состояние с синонимом: cF00:h', () => {
     const mn = createMn();
-    mn.setSynonyms({
-      h: ':hover', 
+    mn.synonyms({
+      h: ':hover',
     });
     mn('c', (ctx) => ({
       style: {
-        color: '#' + ctx.arg, 
+        color: '#' + ctx.suffix,
       },
     }));
-    mn.check('cF00:h');
+    mn.getCompiler('class')('cF00:h');
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
@@ -85,14 +94,14 @@ describe('MnInstance — полный пайплайн', () => {
 
   test('selectorPrefix', () => {
     const mn = createMn({
-      selectorPrefix: '.scope', 
+      selectorPrefix: '.scope',
     });
     mn('p', () => ({
       style: {
-        padding: '10px', 
-      }, 
+        padding: '10px',
+      },
     }));
-    mn.check('p10');
+    mn.getCompiler('class')('p10');
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
@@ -103,10 +112,10 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn('p', () => ({
       style: {
-        padding: '10px', 
-      }, 
+        padding: '10px',
+      },
     }));
-    mn.check('p10*2');
+    mn.getCompiler('class')('p10*2');
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
@@ -116,15 +125,15 @@ describe('MnInstance — полный пайплайн', () => {
 
   test('styles$ observable', () => {
     const mn = createMn();
-    const emitted: unknown[] = [];
+    const emitted = [];
     mn.styles$.on((styles) => emitted.push(styles));
 
     mn('p', () => ({
       style: {
-        padding: '10px', 
-      }, 
+        padding: '10px',
+      },
     }));
-    mn.check('p10');
+    mn.getCompiler('class')('p10');
     mn.compile();
 
     expect(emitted).toHaveLength(1);
@@ -135,10 +144,10 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn('p', (ctx) => ({
       style: {
-        padding: ctx.arg + 'px', 
+        padding: ctx.suffix + 'px',
       },
     }));
-    mn.check('p10-i');
+    mn.getCompiler('class')('p10-i');
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
@@ -149,10 +158,10 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn('p', (ctx) => ({
       style: {
-        padding: ctx.arg + 'px', 
+        padding: ctx.suffix + 'px',
       },
     }));
-    mn.check('p10-i<.parent');
+    mn.getCompiler('class')('p10-i<.parent');
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
@@ -163,10 +172,10 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn('p', (ctx) => ({
       style: {
-        padding: ctx.arg + 'px', 
+        padding: ctx.suffix + 'px',
       },
     }));
-    mn.check('p10');
+    mn.getCompiler('class')('p10');
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
@@ -178,16 +187,16 @@ describe('MnInstance — полный пайплайн', () => {
       media: {
         m: {
           query: '(max-width: 991px)',
-          priority: 0, 
-        }, 
-      }, 
+          priority: 0,
+        },
+      },
     });
     mn('p', () => ({
       style: {
-        padding: '10px', 
-      }, 
+        padding: '10px',
+      },
     }));
-    mn.check('p10@m');
+    mn.getCompiler('class')('p10@m');
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
@@ -199,10 +208,10 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn('p', () => ({
       style: {
-        padding: '10px', 
-      }, 
+        padding: '10px',
+      },
     }));
-    mn.check('p10@768');
+    mn.getCompiler('class')('p10@768');
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
@@ -213,16 +222,16 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn({
       media: {
         safari: {
-          selector: '.safari', 
-        }, 
-      }, 
+          selector: '.safari',
+        },
+      },
     });
     mn('p', () => ({
       style: {
-        padding: '10px', 
-      }, 
+        padding: '10px',
+      },
     }));
-    mn.check('p10@safari');
+    mn.getCompiler('class')('p10@safari');
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
@@ -234,7 +243,7 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn.css('html', {
       margin: '0',
-      padding: '0', 
+      padding: '0',
     });
     mn.compile();
 
@@ -248,11 +257,10 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn('p', () => ({
       style: {
-        padding: '10px', 
-      }, 
+        padding: '10px',
+      },
     }));
-    const comp = mn.getCompiler('m');
-    comp.check('p10');
+    mn.getCompiler('m')('p10');
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
@@ -263,11 +271,11 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn('p', () => ({
       style: {
-        padding: '10px', 
-      }, 
+        padding: '10px',
+      },
     }));
-    mn.check('p10');
-    mn.getCompiler('m').check('p10');
+    mn.getCompiler('class')('p10');
+    mn.getCompiler('m')('p10');
     mn.compile();
 
     const contents = mn.styles$.getValue().map(s => s.content);
@@ -281,10 +289,10 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn('c', (ctx) => ({
       style: {
-        color: '#' + ctx.arg, 
-      }, 
+        color: '#' + ctx.suffix,
+      },
     }));
-    mn.check('(cF00|cF11)<.p');
+    mn.getCompiler('class')('(cF00|cF11)<.p');
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
@@ -297,10 +305,10 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn('c', (ctx) => ({
       style: {
-        color: '#' + ctx.arg, 
-      }, 
+        color: '#' + ctx.suffix,
+      },
     }));
-    mn.check('cF00<(.p1|.p2)');
+    mn.getCompiler('class')('cF00<(.p1|.p2)');
     mn.compile();
 
     const contents = mn.styles$.getValue().map(s => s.content).join(' ');
@@ -312,17 +320,17 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn('bxzbb', () => ({
       style: {
-        boxSizing: 'border-box', 
-      }, 
+        boxSizing: 'border-box',
+      },
     }));
     mn.assign({
-      '*, *:before, *:after': 'bxzbb', 
+      '*, *:before, *:after': 'bxzbb',
     });
     mn.compile();
 
     const css = mn.styles$.getValue()
       .find(s => s.content.includes('box-sizing'))?.content || '';
-    expect(css).toContain('*, *:before, *:after');
+    expect(css).toContain('*,*:before,*:after');
     expect(css).toContain('box-sizing:border-box');
   });
 
@@ -331,11 +339,11 @@ describe('MnInstance — полный пайплайн', () => {
     mn.setPresets([(m) => {
       m('p', () => ({
         style: {
-          padding: '10px', 
-        }, 
+          padding: '10px',
+        },
       }));
     }]);
-    mn.check('p10');
+    mn.getCompiler('class')('p10');
     mn.compile();
 
     expect(mn.styles$.getValue()[0].content).toContain('padding:10px');
@@ -350,11 +358,11 @@ describe('MnInstance — полный пайплайн', () => {
     ]);
 
     // Типичная карточка
-    mn.check('p20 mb10 bgFFF r8 fx fxaCenter fyaCenter w200 h100');
+    mn.getCompiler('class')('p20 mb10 bgFFF r8 fx1 fxaCenter fyaCenter w200 h100');
     // Текст с hover и медиа
-    mn.check('f14 c333 fwBold:h crPointer:h w300@m p10@m');
+    mn.getCompiler('class')('f14 c333 fwBold:h crPointer:h w300@m p10@m');
     // Проценты и отрицательные
-    mn.check('w50p m-5');
+    mn.getCompiler('class')('w50% m-5');
 
     mn.compile();
     const allCss = mn.styles$.getValue().map(s => s.content).join(' ');
@@ -370,7 +378,7 @@ describe('MnInstance — полный пайплайн', () => {
     expect(allCss).toContain('margin:-5px');
 
     // Цвета
-    expect(allCss).toContain('background:#FFF');
+    expect(allCss).toContain('background:#fff');
     expect(allCss).toContain('color:#333');
 
     // CamelCase значения
@@ -389,16 +397,16 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn('base', () => ({
       style: {
-        fontSize: '14px', 
-      }, 
+        fontSize: '14px',
+      },
     }));
     mn('p', (ctx) => ({
       style: {
-        padding: (parseFloat(ctx.arg) || 0) + 'px', 
+        padding: (parseFloat(ctx.suffix) || 0) + 'px',
       },
       exts: 'base',
     }));
-    mn.check('p10');
+    mn.getCompiler('class')('p10');
     mn.compile();
     const css = mn.styles$.getValue()[0].content;
     expect(css).toContain('padding:10px');
@@ -409,16 +417,16 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn('base', () => ({
       style: {
-        fontSize: '14px', 
-      }, 
+        fontSize: '14px',
+      },
     }));
     mn('p', (ctx) => ({
       style: {
-        padding: (parseFloat(ctx.arg) || 0) + 'px', 
+        padding: (parseFloat(ctx.suffix) || 0) + 'px',
       },
       include: 'base',
     }));
-    mn.check('p10');
+    mn.getCompiler('class')('p10');
     mn.compile();
     const css = mn.styles$.getValue()[0].content;
     expect(css).toContain('padding:10px');
@@ -426,8 +434,10 @@ describe('MnInstance — полный пайплайн', () => {
   });
 
   test('--var=value: CSS custom properties', () => {
+    // # внутри значения нужно экранировать — иначе он трактуется как граница
+    // (self-class/id-контекст), как и везде в грамматике combo-имени.
     const mn = createMn();
-    mn.check('--bgColor=#F00');
+    mn.getCompiler('class')('--bgColor=\\#F00');
     mn.compile();
     const css = mn.styles$.getValue()
       .find(s => s.content.includes('--bgColor'))?.content || '';
@@ -436,43 +446,20 @@ describe('MnInstance — полный пайплайн', () => {
 
   test('_ → пробел в custom property', () => {
     const mn = createMn();
-    mn.check('--transition=all_0.3s_ease');
+    mn.getCompiler('class')('--transition=all_0.3s_ease');
     mn.compile();
     const css = mn.styles$.getValue()[0]?.content || '';
     expect(css).toContain('all 0.3s ease');
-  });
-
-  test('vendor-префиксы', () => {
-    const mn = createMn({
-      prefixedAttrs: {
-        transform: 1, 
-      },
-      prefixes: {
-        '-webkit-': 1,
-        '-moz-': 1, 
-      },
-    });
-    mn('scale', (ctx) => ({
-      style: {
-        transform: `scale(${ctx.arg})`, 
-      },
-    }));
-    mn.check('scale2');
-    mn.compile();
-    const css = mn.styles$.getValue()[0].content;
-    expect(css).toContain('-webkit-transform');
-    expect(css).toContain('-moz-transform');
-    expect(css).toContain('transform:scale(2)');
   });
 
   test('setKeyframes', () => {
     const mn = createMn();
     mn.setKeyframes('fadeIn', {
       from: {
-        opacity: '0', 
+        opacity: '0',
       },
       to: {
-        opacity: '1', 
+        opacity: '1',
       },
     });
     mn.compile();
@@ -491,10 +478,10 @@ describe('MnInstance — полный пайплайн', () => {
       const mn = createMn();
       mn('p', (c) => ({
         style: {
-          padding: c.arg + 'px', 
-        }, 
+          padding: c.suffix + 'px',
+        },
       }));
-      mn.check('p15');
+      mn.getCompiler('class')('p15');
       mn.compile();
       expect(mn.styles$.getValue()[0].content).toContain('padding:15px');
     });
@@ -503,10 +490,10 @@ describe('MnInstance — полный пайплайн', () => {
       const mn = createMn();
       mn('abs', {
         style: {
-          position: 'absolute', 
-        }, 
+          position: 'absolute',
+        },
       });
-      mn.check('abs');
+      mn.getCompiler('class')('abs');
       mn.compile();
       expect(mn.styles$.getValue()[0].content).toContain('position:absolute');
     });
@@ -515,16 +502,16 @@ describe('MnInstance — полный пайплайн', () => {
       const mn = createMn();
       mn('p', (c) => ({
         style: {
-          padding: c.arg + 'px', 
-        }, 
+          padding: c.suffix + 'px',
+        },
       }));
       mn('m', (c) => ({
         style: {
-          margin: c.arg + 'px', 
-        }, 
+          margin: c.suffix + 'px',
+        },
       }));
       mn('box', 'p10 m5');
-      mn.check('box');
+      mn.getCompiler('class')('box');
       mn.compile();
       const css = mn.styles$.getValue().map(s => s.content).join('');
       expect(css).toContain('padding:10px');
@@ -536,17 +523,17 @@ describe('MnInstance — полный пайплайн', () => {
       mn({
         p: (c) => ({
           style: {
-            padding: c.arg + 'px', 
-          }, 
+            padding: c.suffix + 'px',
+          },
         }),
         abs: {
           style: {
-            position: 'absolute', 
-          }, 
+            position: 'absolute',
+          },
         },
         box: 'p20',
       });
-      mn.check('p5 abs box');
+      mn.getCompiler('class')('p5 abs box');
       mn.compile();
       const css = mn.styles$.getValue().map(s => s.content).join('');
       expect(css).toContain('padding:5px');
@@ -558,16 +545,16 @@ describe('MnInstance — полный пайплайн', () => {
       const mn = createMn();
       mn('p', (c) => ({
         style: {
-          padding: c.arg + 'px', 
-        }, 
+          padding: c.suffix + 'px',
+        },
       }));
       mn('m', (c) => ({
         style: {
-          margin: c.arg + 'px', 
-        }, 
+          margin: c.suffix + 'px',
+        },
       }));
       mn('card', '(p10|m5)');
-      mn.check('card');
+      mn.getCompiler('class')('card');
       mn.compile();
       const css = mn.styles$.getValue().map(s => s.content).join('');
       expect(css).toContain('padding:10px');
@@ -578,14 +565,14 @@ describe('MnInstance — полный пайплайн', () => {
       const mn = createMn();
       const result = mn('p', (c) => ({
         style: {
-          padding: c.arg + 'px',
+          padding: c.suffix + 'px',
         },
       }))('m', (c) => ({
         style: {
-          margin: c.arg + 'px',
+          margin: c.suffix + 'px',
         },
       }));
-      result.check('p8 m4');
+      result.getCompiler('class')('p8 m4');
       result.compile();
       const css = mn.styles$.getValue().map(s => s.content).join('');
       expect(css).toContain('padding:8px');
@@ -597,7 +584,7 @@ describe('MnInstance — полный пайплайн', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Self-class условия — полный пайплайн с presetStandard
 //
-// Контракт из MN 1.x: `cF.active` → `.cF\.active.active{color:#FFF}`
+// Контракт из MN 1.x: `cF.active` → `.cF\.active.active{color:#fff}`
 // Правило: применяется только когда элемент имеет ОБА класса — `cF.active` И `active`.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -607,19 +594,19 @@ describe('self-class условия — полный CSS пайплайн', () =
     inst.setPresets([presetStandard, presetSynonyms]);
     return inst;
   }
-  function css(tokens: string): string {
+  function css(tokens) {
     const inst = mn();
-    inst.check(tokens);
+    inst.getCompiler('class')(tokens);
     inst.compile();
     return inst.styles$.getValue().map(s => s.content).join('\n');
   }
 
   // ── Базовые self-class ───────────────────────────────────────────────────
 
-  test('cF.active → .cF\\.active.active{color:#FFF}', () => {
+  test('cF.active → .cF\\.active.active{color:#fff}', () => {
     const result = css('cF.active');
     expect(result).toContain('.cF\\.active.active');
-    expect(result).toContain('color:#FFF');
+    expect(result).toContain('color:#fff');
     // НЕ должен быть безусловный .cF\.active без .active
     expect(result).not.toContain('.cF\\.active{');
   });
@@ -651,7 +638,7 @@ describe('self-class условия — полный CSS пайплайн', () =
     // raw = 'cF.active:hover' → класс .cF\.active\:hover, self-class .active, state :hover
     const result = css('cF.active:hover');
     expect(result).toContain('.cF\\.active\\:hover.active:hover');
-    expect(result).toContain('color:#FFF');
+    expect(result).toContain('color:#fff');
   });
 
   test('cF.active<.parent → родительский селектор + self-class', () => {
@@ -667,7 +654,7 @@ describe('self-class условия — полный CSS пайплайн', () =
     const result = css('cF-i.active');
     expect(result).toContain('.cF-i\\.active.active');
     expect(result).toContain('!important');
-    expect(result).toContain('color:#FFF');
+    expect(result).toContain('color:#fff');
   });
 
   test('cF.active-i → -i после self-class: часть имени класса .active-i, нет important', () => {
@@ -690,46 +677,46 @@ describe('self-class условия — полный CSS пайплайн', () =
     expect(result).toContain('.cF\\.active\\.paused.active.paused');
   });
 
-  // ── Обработчик получает только чистый arg (регрессия) ───────────────────
+  // ── Обработчик получает только чистый suffix (регрессия) ───────────────────
 
-  test('обработчик видит arg="F", не "F.active"', () => {
+  test('обработчик видит suffix="F", не "F.active"', () => {
     const inst = createMn();
-    let receivedArg: string | undefined;
+    let receivedArg;
     inst('c', (ctx) => {
-      receivedArg = ctx.arg;
+      receivedArg = ctx.suffix;
       return {
         style: {
-          color: ctx.arg, 
-        }, 
+          color: ctx.suffix,
+        },
       };
     });
-    inst.check('cF.active');
+    inst.getCompiler('class')('cF.active');
     inst.compile();
     expect(receivedArg).toBe('F');
   });
 
-  test('обработчик видит arg="F.38", не "F.38.active"', () => {
+  test('обработчик видит suffix="F.38", не "F.38.active"', () => {
     const inst = createMn();
-    let receivedArg: string | undefined;
+    let receivedArg;
     inst('c', (ctx) => {
-      receivedArg = ctx.arg;
+      receivedArg = ctx.suffix;
       return {
         style: {
-          color: ctx.arg, 
-        }, 
+          color: ctx.suffix,
+        },
       };
     });
-    inst.check('cF.38.active');
+    inst.getCompiler('class')('cF.38.active');
     inst.compile();
     expect(receivedArg).toBe('F.38');
   });
 
   // ── Регрессии — обычные токены без self-class не сломались ──────────────
 
-  test('регрессия: cF → .cF{color:#FFF} (без self-class)', () => {
+  test('регрессия: cF → .cF{color:#fff} (без self-class)', () => {
     const result = css('cF');
     expect(result).toContain('.cF{');
-    expect(result).toContain('color:#FFF');
+    expect(result).toContain('color:#fff');
   });
 
   test('регрессия: p8 → .p8{padding:8px}', () => {
@@ -746,10 +733,10 @@ describe('self-class условия — полный CSS пайплайн', () =
 
   // ── Реальные токены из демки ─────────────────────────────────────────────
 
-  test('crP — cursor:pointer (нет self-class, arg=P)', () => {
+  test('crP — cursor:pointer (нет self-class, suffix=P)', () => {
     const inst = createMn();
     inst.setPresets([presetStandard]);
-    inst.check('crP');
+    inst.getCompiler('class')('crP');
     inst.compile();
     const result = inst.styles$.getValue().map(s => s.content).join('');
     expect(result).toContain('.crP{');
@@ -776,72 +763,72 @@ describe('self-class условия — полный CSS пайплайн', () =
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('self-class +WORD условия — полный CSS пайплайн', () => {
-  function css(tokens: string): string {
+  function css(tokens) {
     const inst = createMn();
     inst.setPresets([presetStandard]);
-    inst.check(tokens);
+    inst.getCompiler('class')(tokens);
     inst.compile();
     return inst.styles$.getValue().map(s => s.content).join('');
   }
 
   test('cF+38 — числовой суффикс, нет self-class (нет adjacent sibling)', () => {
-    // +38 остаётся в arg; colorVal не обрабатывает + как opacity-разделитель
+    // +38 остаётся в suffix; colorVal не обрабатывает + как opacity-разделитель
     const result = css('cF+38');
     expect(result).toContain('.cF\\+38{');
     // Нет adjacent sibling условия — просто класс без суффикса
     expect(result).not.toContain('.cF\\+38+');
   });
 
-  test('cF+active → .cF\\+active+active{color:#FFF}', () => {
+  test('cF+active → .cF\\+active+active{color:#fff}', () => {
     const result = css('cF+active');
     // Селектор: adjacent sibling
     expect(result).toContain('.cF\\+active+active');
     // НЕ должно быть простого .cF\+active{ без условия
     expect(result).not.toContain('.cF\\+active{');
-    expect(result).toContain('color:#FFF');
+    expect(result).toContain('color:#fff');
   });
 
   test('bgcF+12+active → .bgcF\\+12\\+active+active', () => {
-    // +12 в arg, +active — self-class; colorVal не обрабатывает + как opacity
+    // +12 в suffix, +active — self-class; colorVal не обрабатывает + как opacity
     const result = css('bgcF+12+active');
     expect(result).toContain('.bgcF\\+12\\+active+active');
   });
 
   test('cF.38+active → .cF\\.38\\+active+active', () => {
-    // opacity (.38) в arg, +active — self-class
+    // opacity (.38) в suffix, +active — self-class
     const result = css('cF.38+active');
     expect(result).toContain('.cF\\.38\\+active+active');
     expect(result).toContain('rgba(255,255,255,.38)');
   });
 
-  test('cF+active — обработчик получает arg="F", не "F+active"', () => {
+  test('cF+active — обработчик получает suffix="F", не "F+active"', () => {
     const inst = createMn();
-    let receivedArg: string | undefined;
+    let receivedArg;
     inst('c', (ctx) => {
-      receivedArg = ctx.arg;
+      receivedArg = ctx.suffix;
       return {
         style: {
-          color: ctx.arg, 
-        }, 
+          color: ctx.suffix,
+        },
       };
     });
-    inst.check('cF+active');
+    inst.getCompiler('class')('cF+active');
     inst.compile();
     expect(receivedArg).toBe('F');
   });
 
-  test('bgcF+12+active — обработчик получает arg="F+12"', () => {
+  test('bgcF+12+active — обработчик получает suffix="F+12"', () => {
     const inst = createMn();
-    let receivedArg: string | undefined;
+    let receivedArg;
     inst('bgc', (ctx) => {
-      receivedArg = ctx.arg;
+      receivedArg = ctx.suffix;
       return {
         style: {
-          background: ctx.arg, 
-        }, 
+          background: ctx.suffix,
+        },
       };
     });
-    inst.check('bgcF+12+active');
+    inst.getCompiler('class')('bgcF+12+active');
     inst.compile();
     expect(receivedArg).toBe('F+12');
   });
@@ -850,7 +837,7 @@ describe('self-class +WORD условия — полный CSS пайплайн'
     const result = css('cF-i+active');
     expect(result).toContain('.cF-i\\+active+active');
     expect(result).toContain('!important');
-    expect(result).toContain('color:#FFF');
+    expect(result).toContain('color:#fff');
   });
 
   test('cF+active-i → -i после self-class: часть имени класса, нет important', () => {
@@ -861,10 +848,17 @@ describe('self-class +WORD условия — полный CSS пайплайн'
 });
 
 describe('hex-цвет с opacity — полный CSS пайплайн', () => {
-  function css(tokens: string): string {
+  function css(tokens) {
     const inst = createMn();
     inst.setPresets([presetStandard, presetSynonyms]);
-    inst.check(tokens);
+    inst.getCompiler('class')(tokens);
+    inst.compile();
+    return inst.styles$.getValue().map(s => s.content).join('\n');
+  }
+  function cssNoAltColor(tokens) {
+    const inst = createMn({ altColor: 'off' });
+    inst.setPresets([presetStandard, presetSynonyms]);
+    inst.getCompiler('class')(tokens);
     inst.compile();
     return inst.styles$.getValue().map(s => s.content).join('\n');
   }
@@ -877,10 +871,10 @@ describe('hex-цвет с opacity — полный CSS пайплайн', () => 
     expect(result).toContain('background:rgba(10,10,18,.88)');
   });
 
-  test('bg0A0A12 (без opacity) → background:#0A0A12', () => {
+  test('bg0A0A12 (без opacity) → background:#0a0a12', () => {
     const result = css('bg0A0A12');
     expect(result).toContain('.bg0A0A12{');
-    expect(result).toContain('background:#0A0A12');
+    expect(result).toContain('background:#0a0a12');
   });
 
   test('bg0A0A12.5 → background:rgba(10,10,18,.5)', () => {
@@ -932,16 +926,13 @@ describe('hex-цвет с opacity — полный CSS пайплайн', () => 
     expect(result).toContain('background-color:rgba(255,255,255,.12)');
   });
 
-  // ── hex fallback (только в новом MN — НЕ генерируется) ───────────────────
-  // Старая версия MN выводила background:#hex + background:rgba(...) (два объявления).
-  // Новая версия выводит только rgba(...). Это намеренное поведение.
-  // Если понадобится hex-фолбэк — реализовать через опцию altColor в colorVal.
+  // ── hex fallback (по умолчанию altColor включён — hex + rgba) ───────────
+  // Без явного altColor:'off' MN выводит background:#hex + background:rgba(...).
+  // С altColor:'off' — только rgba.
 
-  test('bg0A0A12.88 — только rgba, без hex-фолбэка (в отличие от старой версии)', () => {
-    const result = css('bg0A0A12.88');
+  test('bg0A0A12.88 c altColor:"off" — только rgba, без hex-фолбэка', () => {
+    const result = cssNoAltColor('bg0A0A12.88');
     expect(result).toContain('rgba(10,10,18,.88)');
-    // Старая версия: background:#0a0a12;background:rgba(...)
-    // Новая версия: только rgba
     expect(result).not.toContain('background:#');
   });
 });

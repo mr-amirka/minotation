@@ -8,7 +8,6 @@ import {
   reduce,
   reduceIn,
   repeat,
-  scopeSplit,
   unslash,
   variants,
 } from 'fundamentool';
@@ -30,6 +29,10 @@ import {
   splitParent,
   splitState,
 } from './constants';
+import {
+  scopeSplit2,
+  type ScopeNode,
+} from './scopeSplit2';
 import {
   extractMedia,
   mediaFilterIteratee,
@@ -293,17 +296,17 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   /**
    * Разбирает `:state`-часть суффикса (после первого `:` в {@link getEssence}) в AltMap.
    *
-   * `value` сначала делится на вложенные scope через `scopeSplit(value, SCOPE_START, SCOPE_END)`
-   * (границы `[`/`]`), затем на каждом уровне текст сегмента — на `:`-разделённые токены
-   * ({@link StrMap} `splitState`). Первый токен уровня — литеральный префикс (не ищется
-   * как состояние), остальные разрешаются по приоритету:
+   * `value` сначала делится на вложенные scope через `scopeSplit2(value, SCOPE_START, SCOPE_END)`
+   * (границы `[`/`]`; локальный порт `mn-utils/scopeSplit2` из v1 — `fundamentool.scopeSplit`
+   * возвращает другую, несовместимую форму, см. `scopeSplit2.ts`), затем на каждом уровне
+   * текст сегмента — на `:`-разделённые токены ({@link StrMap} `splitState`). Первый токен
+   * уровня — литеральный префикс (не ищется как состояние), остальные разрешаются по приоритету:
    * 1. `mn.synonyms(...)`-регистрация (`$$synonyms[state]`) — раскрывается в её AltMap;
    * 2. именованная группа состояний из `instance.states` (`$$states[state]`, публичный,
    *    но ничем в этом пакете не заполняется — точка расширения для потребителя);
    * 3. иначе — как обычный CSS-псевдокласс, литерально `:state`.
-   * Вложенный scope (потомок в дереве `scopeSplit`) оборачивается в `(...)` на верхнем
-   * уровне и в `[...]` глубже — механика унаследована из v1, отдельными тестами/SPEC
-   * не закреплена.
+   * Вложенный scope (потомок в дереве `scopeSplit2`) оборачивается в `(...)` на верхнем
+   * уровне и в `[...]` глубже — механика унаследована из v1.
    *
    * @param value — `:state`-суффикс (например `:hover`, `:(hover|focus)`)
    * @returns AltMap раскрытых состояний
@@ -312,19 +315,19 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     let alts: AltMap = {
       '': [], 
     };
-    base(scopeSplit(
+    base(scopeSplit2(
       value, SCOPE_START, SCOPE_END,
     ), 1);
     return alts;
 
-    function base(scopes: any, hasTop: number): void {
+    function base(scopes: ScopeNode[], hasTop: number): void {
       const scopesL = scopes.length;
       let scopesI = 0;
-      let scope: any;
+      let scope: ScopeNode;
       let state: string;
       let _state: string;
       let states: string[];
-      let childs: any;
+      let childs: ScopeNode[] | undefined;
       let ns: string[];
       let si: number;
       let statesL: number;

@@ -4,8 +4,9 @@
  *
  * Основная точка входа — {@link selectorsCompileProvider}; остальное — утилиты,
  * переиспользуемые и вне провайдера (`getCombinator`, `extractMedia`). `joinMaps.ts`
- * (`joinMapsWithFirstValue`/`joinPrefixWithFirstValue`) сюда не реэкспортирован —
- * используется только внутри `selectorsCompileProvider.ts`.
+ * (`joinMapsWithFirstValue`/`joinPrefixWithFirstValue`) и `scopeSplit2.ts` (порт
+ * `mn-utils/scopeSplit2` из v1, см. его module-doc) сюда не реэкспортированы —
+ * используются только внутри `selectorsCompileProvider.ts`.
  *
  * @module selectorsCompileProvider/index
  */

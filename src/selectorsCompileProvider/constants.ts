@@ -53,7 +53,7 @@ export const REGEXP_DEPTH = /^(\d+)(.*)$/;
 export const REGEXP_MULTIPLIER = /^(.*)\*([0-9]+)$/;
 /** Имя состояния/scope + произвольный суффикс после него (используется в `getSynonyms`). */
 export const REGEXP_SCOPE_SUFFIX = /^([A-Za-z0-9-_$]+)(.*)$/;
-/** Открывающая граница вложенного scope в значении синонима, см. `scopeSplit` в `getSynonyms`. */
+/** Открывающая граница вложенного scope в значении синонима, см. `scopeSplit2` в `getSynonyms`. */
 export const SCOPE_START = '[';
-/** Закрывающая граница вложенного scope в значении синонима, см. `scopeSplit` в `getSynonyms`. */
+/** Закрывающая граница вложенного scope в значении синонима, см. `scopeSplit2` в `getSynonyms`. */
 export const SCOPE_END = ']';

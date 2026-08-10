@@ -1,12 +1,14 @@
 // @ts-nocheck
 /* eslint-disable */
 /**
- * Тесты wildcard-селекторов (.*WORD, #*WORD) для minotation v2.
+ * Тесты wildcard-селекторов (.*WORD, #*WORD).
  *
  * `.*WORD` → `[class*=WORD]` — элемент, класс которого СОДЕРЖИТ WORD.
  * `#*WORD` → `[id*=WORD]`   — элемент, id которого СОДЕРЖИТ WORD.
  *
- * Все ожидания верифицированы v1-кодом и v2-реализацией (v1 parity).
+ * Мигрировано с v2 API на v1 (createMn/mn.check -> minotationProvider/getCompiler).
+ * Оригинальные "Parser unit tests" (parseLexeme) убраны — в v1-коде нет такого
+ * промежуточного AST, self-class/context разбираются напрямую в selectorsCompileProvider.
  *
  * §A  — self-class .*WORD
  * §B  — parent <.*WORD
@@ -23,74 +25,42 @@
  * §M  — parent .*WORD + child .*WORD
  */
 
-import {
-  createMn, parseLexeme, 
-} from '../index';
+const mnProvider = require('../index').default || require('../index').minotationProvider;
 
-function css(mn: ReturnType<typeof createMn>): string {
+function css(mn) {
   mn.compile();
   return mn.styles$.getValue().map(s => s.content).join('');
 }
 
 function makeBase() {
-  const mn = createMn({
+  const mn = mnProvider({
     media: {
       sm:     {
         query: '(max-width:640px)',
-        priority: 0, 
+        priority: 0,
       },
       safari: {
-        selector: '.safari', 
+        selector: '.safari',
       },
     },
+    onError: (e) => { /* подавляем ошибки парсинга */ },
   });
-  mn('c', (s) => ({
+  mn('c', (p) => ({
     style: {
-      color: '#' + s.arg, 
-    }, 
+      color: '#' + p.suffix,
+    },
   }));
-  mn('d', (s) => ({
+  mn('d', (p) => ({
     style: {
-      display: s.arg, 
-    }, 
+      display: p.suffix,
+    },
   }));
   return mn;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Parser unit tests — parseLexeme корректно извлекает self-class
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe('parseLexeme — wildcard self-class extraction', () => {
-  test('cF.*-active: selfClasses = [".*-active"], arg = "F"', () => {
-    const l = parseLexeme('cF.*-active');
-    expect(l.selfClasses).toEqual(['.*-active']);
-    expect(l.stem.arg).toBe('F');
-  });
-
-  test('cF#*-disabled: selfClasses = ["#*-disabled"], arg = "F"', () => {
-    const l = parseLexeme('cF#*-disabled');
-    expect(l.selfClasses).toEqual(['#*-disabled']);
-    expect(l.stem.arg).toBe('F');
-  });
-
-  test('dB>.*MuiSlider: no selfClasses, child selector нормализован', () => {
-    const l = parseLexeme('dB>.*MuiSlider');
-    expect(l.selfClasses).toEqual([]);
-    expect(l.context[0]).toMatchObject({
-      kind: 'child',
-      selector: '[class*=MuiSlider]', 
-    });
-  });
-
-  test('cF<.*-active: parent selector нормализован к [class*=-active]', () => {
-    const l = parseLexeme('cF<.*-active');
-    expect(l.context[0]).toMatchObject({
-      kind: 'parent',
-      selector: '[class*=-active]', 
-    });
-  });
-});
+function check(mn, token) {
+  mn.getCompiler('class')(token);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // §A: self-class .*WORD
@@ -99,7 +69,7 @@ describe('parseLexeme — wildcard self-class extraction', () => {
 describe('§A self-class .*WORD → [class*=WORD] на самом элементе', () => {
   test('cF.*-active → CLASS[class*=-active]{color:#F}', () => {
     const mn = makeBase();
-    mn.check('cF.*-active');
+    check(mn, 'cF.*-active');
     expect(css(mn)).toBe('.cF\\.\\*-active[class*=-active]{color:#F}');
   });
 });
@@ -111,7 +81,7 @@ describe('§A self-class .*WORD → [class*=WORD] на самом элемент
 describe('§B parent <.*WORD → [class*=WORD] CLASS', () => {
   test('cF<.*-active → [class*=-active] CLASS{color:#F}', () => {
     const mn = makeBase();
-    mn.check('cF<.*-active');
+    check(mn, 'cF<.*-active');
     expect(css(mn)).toBe('[class*=-active] .cF\\<\\.\\*-active{color:#F}');
   });
 });
@@ -123,7 +93,7 @@ describe('§B parent <.*WORD → [class*=WORD] CLASS', () => {
 describe('§C child >.*WORD → CLASS [class*=WORD]', () => {
   test('dB>.*MuiSlider → CLASS [class*=MuiSlider]{display:B}', () => {
     const mn = makeBase();
-    mn.check('dB>.*MuiSlider');
+    check(mn, 'dB>.*MuiSlider');
     expect(css(mn)).toBe('.dB\\>\\.\\*MuiSlider [class*=MuiSlider]{display:B}');
   });
 });
@@ -135,7 +105,7 @@ describe('§C child >.*WORD → CLASS [class*=WORD]', () => {
 describe('§D self-class .*WORD + child >.*WORD', () => {
   test('cF.*-active>.*MuiSlider → CLASS[class*=-active] [class*=MuiSlider]', () => {
     const mn = makeBase();
-    mn.check('cF.*-active>.*MuiSlider');
+    check(mn, 'cF.*-active>.*MuiSlider');
     expect(css(mn)).toBe('.cF\\.\\*-active\\>\\.\\*MuiSlider[class*=-active] [class*=MuiSlider]{color:#F}');
   });
 });
@@ -147,7 +117,7 @@ describe('§D self-class .*WORD + child >.*WORD', () => {
 describe('§E self-class #*WORD → [id*=WORD] на самом элементе', () => {
   test('cF#*-disabled → CLASS[id*=-disabled]{color:#F}', () => {
     const mn = makeBase();
-    mn.check('cF#*-disabled');
+    check(mn, 'cF#*-disabled');
     expect(css(mn)).toBe('.cF\\#\\*-disabled[id*=-disabled]{color:#F}');
   });
 });
@@ -159,7 +129,7 @@ describe('§E self-class #*WORD → [id*=WORD] на самом элементе'
 describe('§F parent <#*WORD → [id*=WORD] CLASS', () => {
   test('cF<#*MuiSlider → [id*=MuiSlider] CLASS{color:#F}', () => {
     const mn = makeBase();
-    mn.check('cF<#*MuiSlider');
+    check(mn, 'cF<#*MuiSlider');
     expect(css(mn)).toBe('[id*=MuiSlider] .cF\\<\\#\\*MuiSlider{color:#F}');
   });
 });
@@ -171,7 +141,7 @@ describe('§F parent <#*WORD → [id*=WORD] CLASS', () => {
 describe('§G child >#*WORD → CLASS [id*=WORD]', () => {
   test('cF>#*Mui-content → CLASS [id*=Mui-content]{color:#F}', () => {
     const mn = makeBase();
-    mn.check('cF>#*Mui-content');
+    check(mn, 'cF>#*Mui-content');
     expect(css(mn)).toBe('.cF\\>\\#\\*Mui-content [id*=Mui-content]{color:#F}');
   });
 });
@@ -183,7 +153,7 @@ describe('§G child >#*WORD → CLASS [id*=WORD]', () => {
 describe('§H .*WORD + state (:hover)', () => {
   test('cF.*-active:hover → CLASS[class*=-active]:hover', () => {
     const mn = makeBase();
-    mn.check('cF.*-active:hover');
+    check(mn, 'cF.*-active:hover');
     expect(css(mn)).toBe('.cF\\.\\*-active\\:hover[class*=-active]:hover{color:#F}');
   });
 });
@@ -195,7 +165,7 @@ describe('§H .*WORD + state (:hover)', () => {
 describe('§I plain parent <.cls + child >.*WORD', () => {
   test('cF<.parent>.*child-item → .parent CLASS [class*=child-item]', () => {
     const mn = makeBase();
-    mn.check('cF<.parent>.*child-item');
+    check(mn, 'cF<.parent>.*child-item');
     expect(css(mn)).toBe('.parent .cF\\<\\.parent\\>\\.\\*child-item [class*=child-item]{color:#F}');
   });
 });
@@ -207,7 +177,7 @@ describe('§I plain parent <.cls + child >.*WORD', () => {
 describe('§J .*WORD + @media', () => {
   test('cF.*-active@sm → @media sm { CLASS[class*=-active] }', () => {
     const mn = makeBase();
-    mn.check('cF.*-active@sm');
+    check(mn, 'cF.*-active@sm');
     expect(css(mn)).toBe('@media (max-width:640px){.cF\\.\\*-active\\@sm[class*=-active]{color:#F}}');
   });
 });
@@ -219,7 +189,7 @@ describe('§J .*WORD + @media', () => {
 describe('§K .*WORD + @media&selector combinator', () => {
   test('cF.*-active@sm&safari → @media sm { .safari CLASS[class*=-active] }', () => {
     const mn = makeBase();
-    mn.check('cF.*-active@sm&safari');
+    check(mn, 'cF.*-active@sm&safari');
     expect(css(mn)).toBe('@media (max-width:640px){.safari .cF\\.\\*-active\\@sm&safari[class*=-active]{color:#F}}');
   });
 });
@@ -231,7 +201,7 @@ describe('§K .*WORD + @media&selector combinator', () => {
 describe('§L variant group (a|b).*WORD', () => {
   test('(cF|cA).*-active → два тела под одним CLASS[class*=-active]', () => {
     const mn = makeBase();
-    mn.check('(cF|cA).*-active');
+    check(mn, '(cF|cA).*-active');
     const result = css(mn);
     expect(result).toContain('.\\(cF\\|cA\\)\\.\\*-active[class*=-active]{color:#F}');
     expect(result).toContain('.\\(cF\\|cA\\)\\.\\*-active[class*=-active]{color:#A}');
@@ -245,7 +215,7 @@ describe('§L variant group (a|b).*WORD', () => {
 describe('§M parent <.*WORD + child >.*WORD', () => {
   test('cF<.*-active>.*MuiSlider → [class*=-active] CLASS [class*=MuiSlider]', () => {
     const mn = makeBase();
-    mn.check('cF<.*-active>.*MuiSlider');
+    check(mn, 'cF<.*-active>.*MuiSlider');
     expect(css(mn)).toBe('[class*=-active] .cF\\<\\.\\*-active\\>\\.\\*MuiSlider [class*=MuiSlider]{color:#F}');
   });
 });

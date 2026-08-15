@@ -32,18 +32,23 @@ export type {
 // см. minotation-vite/minotation-webpack). package.json's "exports" объявляет
 // только корневой "." subpath, поэтому import presetStandard from 'minotation/presets/standard'
 // у реального потребителя не резолвится — единственный рабочий путь отсюда.
-export {
-  default as presetStandard,
-} from './presets/standard';
-export {
-  default as presetSynonyms,
-} from './presets/synonyms';
-export {
-  default as presetMedias,
-} from './presets/medias';
-export {
-  default as presetNormalize,
-} from './presets/normalize';
-export {
-  default as presetMain,
-} from './presets/main';
+//
+// ВАЖНО: `export { default as X } from '...'` компилируется (esModuleInterop)
+// в геттер `get() { return __importDefault(mod).default; }` — эту форму
+// не распознаёт cjs-module-lexer (статический анализ именованных экспортов
+// CJS-модуля для Node ESM/CJS-интеропа): `import { presetStandard } from
+// 'minotation'` из чужого ESM-кода (например minotation-vite) падал с
+// "does not provide an export named 'presetStandard'", хотя `require()`
+// видел его нормально. Явный default-импорт + `export const` компилируется
+// в простое `exports.presetStandard = ...` — лексер такое находит.
+import presetStandardDefault from './presets/standard';
+import presetSynonymsDefault from './presets/synonyms';
+import presetMediasDefault from './presets/medias';
+import presetNormalizeDefault from './presets/normalize';
+import presetMainDefault from './presets/main';
+
+export const presetStandard = presetStandardDefault;
+export const presetSynonyms = presetSynonymsDefault;
+export const presetMedias = presetMediasDefault;
+export const presetNormalize = presetNormalizeDefault;
+export const presetMain = presetMainDefault;

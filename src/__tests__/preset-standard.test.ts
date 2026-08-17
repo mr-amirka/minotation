@@ -317,3 +317,48 @@ describe('Standard preset — columns, counters', () => {
     expect(css('cor_counter')).toContain('counter-reset:counter');
   });
 });
+
+// ================================================================
+// Box-shadow / text-shadow
+// ================================================================
+// SHADOW_PATTERNS (bxsh/tsh) — независимые regex-маршруты (r/x/y/m/c/in),
+// каждый ищет СВОЙ фрагмент где угодно в общем суффиксе токена (не только
+// когда суффикс СОСТОИТ ЦЕЛИКОМ из одного маршрута). До фикса `handlerWrap`
+// (anchored=false для паттернов-массивов, core/utils.ts) комбинированные
+// суффиксы вроде `19r3c43F` теряли r/x/y/c/in — оставался только blur.
+// Поведение сверено с оригиналом v1 (`old/minimalist-notation`).
+describe('Standard preset — box-shadow / text-shadow', () => {
+  test('bxsh19 → только blur', () => {
+    expect(css('bxsh19')).toContain('box-shadow:0px 0px 19px 0px #000');
+  });
+
+  test('bxsh19r3 → blur + spread', () => {
+    expect(css('bxsh19r3')).toContain('box-shadow:0px 0px 19px 3px #000');
+  });
+
+  test('bxsh19c43F → blur + цвет', () => {
+    expect(css('bxsh19c43F')).toContain('box-shadow:0px 0px 19px 0px #43f');
+  });
+
+  test('bxsh19r3c43F → blur + spread + цвет (регрессия)', () => {
+    expect(css('bxsh19r3c43F')).toContain('box-shadow:0px 0px 19px 3px #43f');
+  });
+
+  test('bxsh19x5y5r3c43F → offset + blur + spread + цвет', () => {
+    expect(css('bxsh19x5y5r3c43F')).toContain('box-shadow:5px 5px 19px 3px #43f');
+  });
+
+  test('tsh10r2c00F → text-shadow: blur + spread + цвет', () => {
+    // tsh-хендлер не использует r в сборке строки (см. SHADOW_HANDLERS.tsh) —
+    // spread молча отбрасывается уже на уровне самого хендлера, это не баг.
+    expect(css('tsh10r2c00F')).toContain('text-shadow:0px 0px 10px #00f');
+  });
+
+  test('bxshR3 → изолированный r без ведущего числа даёт "Rpx" в blur-слоте (известное ограничение, унаследовано из v1)', () => {
+    expect(css('bxshR3')).toContain('box-shadow:0px 0px Rpx 3px #000');
+  });
+
+  test('bxsh19In → inset не поддерживается (известное ограничение, унаследовано из v1)', () => {
+    expect(css('bxsh19In')).toContain('box-shadow:0px 0px 19px 0px #000');
+  });
+});

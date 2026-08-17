@@ -306,8 +306,13 @@ export function parseMediaPart(mediaPart?: string): [number, number] | undefined
 }
 export function handlerWrap(essenceHandler: (p: MnEssenceParams) => MnEssenceRaw | void | 0,
   paramsMatchPath: string | string[]): (p: MnEssenceParams) => MnEssenceRaw | void | 0 {
+  // Паттерны-массивы (напр. SHADOW_PATTERNS) — независимые regex'ы, каждый ищет
+  // СВОЙ фрагмент где угодно в общем суффиксе (`19r3c43F` → r-паттерн находит "r3",
+  // c-паттерн — "c43F", независимо друг от друга) — anchored=false, как было в
+  // v1 (mn-utils.routeParseProvider не анкорил вообще). Одиночная строка-паттерн
+  // (PATTERN_VAL и т.п.) уже embed'ит собственные `^`/`$` и матчит суффикс целиком.
   const parse = isArray(paramsMatchPath)
-    ? aggregate(map(paramsMatchPath, routeParseProvider), eachApply)
+    ? aggregate(map(paramsMatchPath, (pattern: string) => routeParseProvider(pattern, false)), eachApply)
     : routeParseProvider(paramsMatchPath);
   return (p) => {
     parse(p.suffix, p);

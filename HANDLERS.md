@@ -1,6 +1,9 @@
 # Minotation — справочник хендлеров
 
-Примеры проверены тестами (`presets.test.ts`) и верифицированы пользователем.
+Примеры проверены прямыми вызовами `minotationProvider` + `presetStandard` (и где
+нужно — `presetSynonyms`/`presetMedias`) против собранного `dist/`, не по тестам —
+`presets.test.ts`, на который ссылался этот файл раньше, удалён (заменён на
+`css-validation.test.ts` + `preset-standard.test.ts`).
 
 ---
 
@@ -14,7 +17,8 @@
 {tag}{arg}<.parent   → inside .parent
 ```
 
-- **tag** — начальная последовательность строчных латинских букв (`splitStem` останавливается на первом не-строчном символе)
+- **tag** — начальная последовательность строчных латинских букв (`REGEXP_MATCH_NAME`
+  в `core/index.ts` останавливается на первом не-строчном символе)
 - **arg** — всё остальное (цифры, `-`, `_`, `.`, заглавные буквы, `%`, …)
 - `-i` в конце аргумента → `!important`
 
@@ -26,20 +30,24 @@
 
 | Токен | CSS |
 |-------|-----|
-| `cF` | `color: #FFF` |
-| `cF.38` | `color: rgba(255,255,255,0.38)` |
-| `cF.75` | `color: rgba(255,255,255,0.75)` |
-| `c0` | `color: #000` |
-| `c0.5` | `color: rgba(0,0,0,0.5)` |
-| `cF00` | `color: #F00` |
-| `c0A0A12` | `color: #0A0A12` |
+| `cF` | `color:#fff` |
+| `cF.38` | `color:rgba(255,255,255,.38)` |
+| `cF.75` | `color:rgba(255,255,255,.75)` |
+| `c0` | `color:#000` |
+| `c0.5` | `color:rgba(0,0,0,.5)` |
+| `cF00` | `color:#f00` |
+| `c0A0A12` | `color:#0a0a12` |
 
-Синонимы: `F` = `#FFF`, `D` = `#DDD`, `L` = `#EEE`, `T` = `transparent`, `CT` = `currentColor`.
+Hex всегда в нижнем регистре независимо от регистра токена. Alpha в `rgba(...)` — без
+ведущего нуля (`.38`, не `0.38`).
+
+Синонимы: `F` = `#fff`, `D` = `#ddd`, `T` = `transparent`, `CT` = `currentColor`.
+(`L` синонимом **не является** — `cL` даёт буквальное `color:l`, не `#eee`.)
 
 `color()` ищет последнюю точку → всё после неё = alpha (0–1):
 ```
-F.38      → hex=F → #FFF → rgba(255,255,255,0.38)
-0A0A12.75 → hex=0A0A12 → rgb(10,10,18) → rgba(10,10,18,0.75)
+F.38      → hex=F → #fff → rgba(255,255,255,.38)
+0A0A12.75 → hex=0A0A12 → rgb(10,10,18) → rgba(10,10,18,.75)
 ```
 
 ---
@@ -58,6 +66,9 @@ F.38      → hex=F → #FFF → rgba(255,255,255,0.38)
 | `A` | `auto` |
 | `N` | `none` |
 
+**`p` НЕ является сокращением для `%`** — `w50p` падает с ошибкой парсинга
+(«Unit "p" is invalid»), нужно писать литеральный процент: `w50%`.
+
 ---
 
 ## Отступы
@@ -66,21 +77,21 @@ F.38      → hex=F → #FFF → rgba(255,255,255,0.38)
 
 | Токен | CSS |
 |-------|-----|
-| `p10` | `padding: 10px` |
-| `px8` | `padding-left: 8px; padding-right: 8px` |
-| `py4` | `padding-top: 4px; padding-bottom: 4px` |
-| `px1.5` | `padding-left: 1.5px; padding-right: 1.5px` |
-| `pt4` | `padding-top: 4px` |
-| `pb4` | `padding-bottom: 4px` |
-| `pl4` | `padding-left: 4px` |
-| `pr4` | `padding-right: 4px` |
-| `m0` | `margin: 0` |
-| `mx4` | `margin-left: 4px; margin-right: 4px` |
-| `my12` | `margin-top: 12px; margin-bottom: 12px` |
-| `mxA` | `margin-left: auto; margin-right: auto` |
-| `mb8` | `margin-bottom: 8px` |
-| `mt8` | `margin-top: 8px` |
-| `mx0` | `margin-left: 0; margin-right: 0` |
+| `p10` | `padding:10px` |
+| `px8` | `padding-left:8px;padding-right:8px` |
+| `py4` | `padding-top:4px;padding-bottom:4px` |
+| `px1.5` | `padding-left:1.5px;padding-right:1.5px` |
+| `pt4` | `padding-top:4px` |
+| `pb4` | `padding-bottom:4px` |
+| `pl4` | `padding-left:4px` |
+| `pr4` | `padding-right:4px` |
+| `m0` | `margin:0` |
+| `mx4` | `margin-left:4px;margin-right:4px` |
+| `my12` | `margin-top:12px;margin-bottom:12px` |
+| `mxA` | `margin-left:auto;margin-right:auto` |
+| `mb8` | `margin-bottom:8px` |
+| `mt8` | `margin-top:8px` |
+| `mx0` | `margin-left:0;margin-right:0` |
 
 ---
 
@@ -88,13 +99,13 @@ F.38      → hex=F → #FFF → rgba(255,255,255,0.38)
 
 | Токен | CSS |
 |-------|-----|
-| `w` | `width: 100%` |
-| `w320` | `width: 320px` |
-| `w50p` | `width: 50%` |
-| `h75` | `height: 75px` |
-| `sq32` | `width: 32px; height: 32px` |
-| `sq44` | `width: 44px; height: 44px` |
-| `wmin60` | `min-width: 60px` |
+| `w` | `width:100%` |
+| `w320` | `width:320px` |
+| `w50%` | `width:50%` |
+| `h75` | `height:75px` |
+| `sq32` | `width:32px;height:32px` |
+| `sq44` | `width:44px;height:44px` |
+| `wmin60` | `min-width:60px` |
 
 ---
 
@@ -102,37 +113,64 @@ F.38      → hex=F → #FFF → rgba(255,255,255,0.38)
 
 | Токен | CSS |
 |-------|-----|
-| `fixed` | `position: fixed` |
-| `abs` | `position: absolute` |
-| `rlv` | `position: relative` |
-| `sticky` | `position: sticky` |
-| `st16` | `top: 16px` |
-| `sr16` | `right: 16px` |
-| `sb24` | `bottom: 24px` |
-| `sl50p` | `left: 50%` |
-| `s0` | `top/right/bottom/left: 0` |
-| `z1200` | `z-index: 1200` |
+| `fixed` | `position:fixed` |
+| `abs` | `position:absolute` |
+| `rlv` | `position:relative` |
+| `sticky` | `position:sticky` |
+| `st16` | `top:16px` |
+| `sr16` | `right:16px` |
+| `sb24` | `bottom:24px` |
+| `sl50%` | `left:50%` |
+| `s0` | `top:0;right:0;bottom:0;left:0` |
+| `z1200` | `z-index:1200` |
 
 ---
 
 ## Flex
 
+`fx` — только `flex`-shorthand (`fx1` → `flex:1`), **не** `display:flex` (для этого — `dF`,
+см. Типографику/Display ниже). Без аргумента (`fx` без числа) хендлер не срабатывает —
+**всегда указывайте значение** (`fx1`, `fx0_1_Auto`, …).
+
 | Токен | CSS |
 |-------|-----|
-| `fx` | `display: flex` |
-| `fxdC` | `flex-direction: column` |
-| `aiC` | `align-items: center` |
-| `aiS` | `align-items: start` |
-| `jcC` | `justify-content: center` |
-| `jcB` | `justify-content: space-between` |
-| `fxg1` | `flex-grow: 1` |
-| `fxs0` | `flex-shrink: 0` |
-| `asT` | `align-self: stretch` |
-| `gap2` | `gap: 2px` |
-| `fxwWrap` | `flex-wrap: wrap` |
+| `fx1` | `flex:1` |
+| `fxdC` | `flex-direction:column` |
+| `aiC` | `align-items:center` |
+| `aiS` | `align-items:stretch` |
+| `jcC` | `justify-content:center` |
+| `jcSB` | `justify-content:space-between` |
+| `fxg1` | `flex-grow:1` |
+| `fxs0` | `flex-shrink:0` |
+| `asST` | `align-self:stretch` |
+| `acC` | `align-content:center` |
+| `gap2` | `gap:2px` |
+| `fxwWrap` | `flex-wrap:wrap` |
 
-Значения `alignVal`: `C`=center, `S`=start, `E`=end, `F`=flex-start, `L`=flex-end,
-`B`=space-between, `A`=space-around, `V`=space-evenly, `T`=stretch.
+**У `jc`/`ai`/`as` — РАЗНЫЕ карты синонимов** (общей таблицы `alignVal` не существует):
+
+| Токен | `jc` (justify-content) | `ai` (align-items) | `as` (align-self) |
+|-------|------------------------|---------------------|---------------------|
+| `C` | Center | Center | Center |
+| `FE` | FlexEnd | FlexEnd | FlexEnd |
+| `FS` | FlexStart | FlexStart | FlexStart |
+| `SA` | SpaceAround | — | — |
+| `SB` | SpaceBetween | — | — |
+| `B` | — | Baseline | Baseline |
+| `S` | — | Stretch | Start |
+| `ST` | — | — | Stretch |
+| `E` | — | — | End |
+| `SS`/`SE` | — | — | SelfStart/SelfEnd |
+| `A`/`N` | — | — | Auto/Normal |
+
+Незнакомая буква не даёт ошибку — падает в буквальный `toKebabCase` (например `jcB` даёт
+`justify-content:b`, а не `space-between`; нужно `jcSB`).
+
+⚠️ **Известная проблема** (не входит в эту документацию, зафиксировано в `PLAN.md`):
+`fx0_1_Auto` и подобные значения с заглавной буквой внутри multi-value ломаются —
+`toKebabCase` вставляет `-` перед заглавной буквой, считая её началом camelCase, а не
+началом отдельного ключевого слова. Не используйте заглавные буквы в multi-value
+аргументах `fx`/`fxw` до починки.
 
 ---
 
@@ -140,38 +178,53 @@ F.38      → hex=F → #FFF → rgba(255,255,255,0.38)
 
 | Токен | CSS |
 |-------|-----|
-| `f12` | `font-size: 12px` |
-| `f14` | `font-size: 14px` |
-| `f22` | `font-size: 22px` |
-| `fw5` | `font-weight: 500` |
-| `fwBold` | `font-weight: bold` |
-| `lh1` | `line-height: 1` (без единиц) |
-| `lh1.4` | `line-height: 1.4` |
-| `lh20px` | `line-height: 20px` |
-| `lts1.5` | `letter-spacing: 1.5px` |
-| `ttU` | `text-transform: uppercase` |
-| `tc` | `text-align: center` |
-| `tr` | `text-align: right` |
-| `tl` | `text-align: left` |
-| `dB` | `display: block` |
-| `dN` | `display: none` |
-| `crP` | `cursor: pointer` |
-| `usN` | `user-select: none` |
+| `f12` | `font-size:12px` |
+| `f14` | `font-size:14px` |
+| `f22` | `font-size:22px` |
+| `fw5` | `font-weight:500` |
+| `fwBold` | `font-weight:bold` |
+| `lh1` | `line-height:1px` |
+| `lh1.4` | `line-height:1.4px` |
+| `lh20px` | `line-height:20px` |
+| `lts1.5` | `letter-spacing:1.5` (без единицы!) |
+| `ttU` | `text-transform:uppercase` |
+| `taC` | `text-align:center` |
+| `taR` | `text-align:right` |
+| `taL` | `text-align:left` |
+| `dB` | `display:block` |
+| `dN` | `display:none` |
+| `dF` | `display:flex` |
+| `crP` | `cursor:pointer` |
+| `usN` | `user-select:none` |
+
+`line-height` **всегда получает `px`**, даже без явной единицы (`lh1` → `1px`, не
+безразмерное `1`) — если нужен множитель без единиц, указывайте явно через CSS-переменную
+или проверяйте фактический вывод. `letter-spacing`, наоборот, **не получает** `px`
+автоматически.
+
+Text-align — тег `ta` + буква (`taC`/`taR`/`taL`/`taJ`/`taE`/`taS`), а **не** отдельные
+теги `tc`/`tr`/`tl` — их не существует, токен просто не даёт CSS без ошибки.
 
 ---
 
 ## Цвет фона / фон
 
-| Токен | CSS |
+По умолчанию `altColor` включён — background/color-хендлеры выводят **и** hex, **и**
+`rgba(...)` (браузерный fallback), даже если запрошена только rgba-форма. Чтобы получить
+только `rgba(...)`, нужно явно передать `altColor: 'off'` в опции `minotationProvider`.
+
+| Токен | CSS (default, `altColor` не задан) |
 |-------|-----|
-| `bg0` | `background: #000` |
-| `bgF` | `background: #FFF` |
-| `bgF.1` | `background: rgba(255,255,255,0.1)` |
-| `bg0A0A12.75` | `background: rgba(10,10,18,0.75)` |
-| `bg0A0A12.88` | `background: rgba(10,10,18,0.88)` |
-| `bgcF.12` | `background-color: rgba(255,255,255,0.12)` |
-| `bgcF.15` | `background-color: rgba(255,255,255,0.15)` |
-| `bgcF.28` | `background-color: rgba(255,255,255,0.28)` |
+| `bg0` | `background:#000` |
+| `bgF` | `background:#fff` |
+| `bgF.1` | `background:#fff;background:rgba(255,255,255,.1)` |
+| `bg0A0A12.75` | `background:#0a0a12;background:rgba(10,10,18,.75)` |
+| `bg0A0A12.88` | `background:#0a0a12;background:rgba(10,10,18,.88)` |
+| `bgcF.12` | `background-color:#fff;background-color:rgba(255,255,255,.12)` |
+| `bgcF.15` | `background-color:#fff;background-color:rgba(255,255,255,.15)` |
+| `bgcF.28` | `background-color:#fff;background-color:rgba(255,255,255,.28)` |
+
+С `altColor: 'off'`: `bgF.1` → только `background:rgba(255,255,255,.1)`.
 
 ---
 
@@ -186,9 +239,9 @@ border: '1px solid rgba(255,255,255,0.1)'
 
 | Токен | CSS |
 |-------|-----|
-| `b1` | `border-width: 1px` |
-| `bsS` | `border-style: solid` |
-| `bcF.1` | `border-color: rgba(255,255,255,0.1)` |
+| `b1` | `border-width:1px` |
+| `bsS` | `border-style:solid` |
+| `bcF.1` | `border-color:#fff;border-color:rgba(255,255,255,.1)` (см. `altColor` выше) |
 
 Паттерн сторон: суффикс `l/r/t/b` к каждому из трёх токенов:
 
@@ -212,10 +265,10 @@ border-bottom: '1px solid rgba(255,255,255,0.08)'  →  bb1  bsbS  bcbF.08
 
 | Токен | CSS |
 |-------|-----|
-| `r` | `border-radius: 9999px` (полный круг) |
-| `r1` | `border-radius: 1px` |
-| `r4` | `border-radius: 4px` |
-| `r8` | `border-radius: 8px` |
+| `r` | `border-radius:10000px` (полный круг — умолчание, не 9999) |
+| `r1` | `border-radius:1px` |
+| `r4` | `border-radius:4px` |
+| `r8` | `border-radius:8px` |
 
 ---
 
@@ -223,34 +276,31 @@ border-bottom: '1px solid rgba(255,255,255,0.08)'  →  bb1  bsbS  bcbF.08
 
 | Токен | CSS |
 |-------|-----|
-| `bxzBB` | `box-sizing: border-box` |
-| `bxzCB` | `box-sizing: content-box` |
-
-(`BB` и `CB` — двухбуквенные сокращения `kwVal`)
+| `bxzBB` | `box-sizing:border-box` |
+| `bxzCB` | `box-sizing:content-box` |
 
 ---
 
 ## Box-shadow
 
-Мини-DSL: `bxsh{offset}[r{blur}][x{x}][y{y}][c{color}][in]`
-
-| Часть | Значение |
-|-------|---------|
-| `{число}` | базовый offset (x и y, если нет явных x/y) |
-| `r{число}` | blur-radius в px |
-| `x{число}` | x-offset в px |
-| `y{число}` | y-offset в px |
-| `c{hex[.alpha]}` | цвет в MN-нотации |
-| `in` | `inset` |
+⚠️ **Проверено — рабочий только базовый вариант, "мини-DSL" из старой версии этого файла
+не подтвердился.** Единственная надёжно работающая форма — голое число сразу после `bxsh`
+(попадает в позицию blur):
 
 | Токен | CSS |
 |-------|-----|
-| `bxsh0r18cF.25` | `box-shadow: 0 0 18px rgba(255,255,255,0.25)` |
-| `bxsh5r7` | `box-shadow: 5px 5px 7px #000` |
-| `bxsh5in` | `box-shadow: inset 5px 5px 0 #000` |
-| `bxsh0r18cF.25:h` | то же, только on `:hover` |
+| `bxsh18` | `box-shadow:0px 0px 18px 0px #000` |
+| `bxsh18In` | `box-shadow:0px 0px 18px 0px #000` (`In` ничего не меняет — inset не применяется) |
 
-Аналогично `tsh` для `text-shadow`.
+Проверены и **не работают** (значение молча теряется, x/y/spread/цвет остаются
+дефолтными `0`/`#000`, `inset` никогда не появляется): явные `X{n}`, `Y{n}`, `R{n}`
+(spread), `c{hex}` (цвет), `In` (inset) — ни один из этих модификаторов не долетает до
+финального CSS ни отдельно, ни в комбинации с голым числом. Дальше не разбирался вглубь —
+похоже на реальный баг в маппинге `SHADOW_HANDLERS`/`SHADOW_PATTERNS`
+(`presets/standard.ts`), не зафиксирован в `PLAN.md` — стоит завести отдельно, если
+box-shadow с цветом/offset'ом/inset нужен на практике.
+
+Аналогично устроен `tsh` (`text-shadow`) — та же ограниченность.
 
 ---
 
@@ -258,10 +308,10 @@ border-bottom: '1px solid rgba(255,255,255,0.08)'  →  bb1  bsbS  bcbF.08
 
 | Токен | CSS |
 |-------|-----|
-| `dn` | `transition-duration: 250ms` |
-| `dn150` | `transition-duration: 150ms` |
-| `dn200` | `transition-duration: 200ms` |
-| `dn300` | `transition-duration: 300ms` |
+| `dn` | `transition-duration:250ms` |
+| `dn150` | `transition-duration:150ms` |
+| `dn200` | `transition-duration:200ms` |
+| `dn300` | `transition-duration:300ms` |
 
 `transition-property` по умолчанию — `all` (CSS-умолчание). Для большинства кейсов достаточно просто `dn200` без уточнения отдельных свойств.
 
@@ -273,37 +323,49 @@ border-bottom: '1px solid rgba(255,255,255,0.08)'  →  bb1  bsbS  bcbF.08
 
 | Токен | CSS |
 |-------|-----|
-| `ftBlur10` | `filter: blur(10px)` |
-| `ftBlur4` | `filter: blur(4px)` |
-| `ftGrayscale100` | `filter: grayscale(100%)` |
-| `ftBrightness150` | `filter: brightness(150%)` |
+| `ftBlur10` | `filter:blur(10px)` |
+| `ftBlur4` | `filter:blur(4px)` |
+| `ftGrayscale100` | `filter:grayscale(100)` (без `%`) |
+| `ftBrightness150` | `filter:brightness(150)` (без `%`) |
 
 Тег `ftb` = `backdrop-filter`:
 
 | Токен | CSS |
 |-------|-----|
-| `ftbBlur8` | `backdrop-filter: blur(8px)` |
-| `ftbBlur10` | `backdrop-filter: blur(10px)` |
-| `ftbBlur12` | `backdrop-filter: blur(12px)` |
+| `ftbBlur8` | `backdrop-filter:blur(8px)` |
+| `ftbBlur10` | `backdrop-filter:blur(10px)` |
+| `ftbBlur12` | `backdrop-filter:blur(12px)` |
 
-Единицы по умолчанию: `blur` → `px`, `hue-rotate` → `deg`, остальное → `%`.
-Несколько функций через `_`: `ftBlur3_Invert20` → `filter: blur(3px) invert(20%)`.
+Единицы по умолчанию: `blur` → `px`, `hue-rotate` → `deg`, остальное — **без единицы**
+для одиночного вызова (см. `ftGrayscale100`/`ftBrightness150` выше).
+
+Несколько функций через `_` — в этой форме единица `%` уже появляется:
+`ftBlur3_Invert20` → `filter:blur(3px) invert(20%)`.
 
 ---
 
 ## Transform
 
-Весь transform — через один хендлер `x` с мини-DSL в аргументе:
+Весь transform — через один хендлер `x` с единым мини-DSL в аргументе (не отдельные
+`translateX`/`translateY`/`scale`/`rotate` вызовы — `translate(x,y)` **всегда**
+присутствует как база, даже если x/y не заданы):
 
-| Префикс аргумента | CSS | Пример |
-|-------------------|-----|--------|
-| `-?{число}[единица]` | `translateX(…)` | `x-50%` → `translateX(-50%)` |
-| `Y-?{число}[единица]` | `translateY(…)` | `xY-50%` → `translateY(-50%)` |
-| `S{десятичное}` | `scale(…)` | `xS1.5` → `scale(1.5)` |
-| `Rz{число}` | `rotateZ(…deg)` | `xRz70` → `rotateZ(70deg)` |
-| `Rx{число}` | `rotateX(…deg)` | `xRx-60` → `rotateX(-60deg)` |
+```
+x{число}[%][Y{число}[%]][Z{число}[%]][S{число}][R{x|y|z}{число}{unit}]
+```
 
-Все трансформации — только через `x`-DSL. Отдельных хендлеров `rx/ry/rz/scale` нет.
+| Токен | CSS |
+|-------|-----|
+| `x-50%` | `transform:translate(-50%,0px)` |
+| `xY-50%` | `transform:translate(0px,-50%)` |
+| `xS150` | `transform:translate(0px,0px) scale(1.5)` |
+| `xRz70` | `transform:translate(0px,0px) rotateZ(70deg)` |
+| `xRx-60` | `transform:translate(0px,0px) rotateX(-60deg)` |
+| `x50Y30S150Rz45` | `transform:translate(50px,30px) scale(1.5) rotateZ(45deg)` |
+
+**`S{n}` — это `n / 100`, не буквальный множитель CSS `scale()`**: `xS150` → `scale(1.5)`,
+не `xS1.5` (это даст `scale(0.015)` — `1.5 / 100`). Направление у `R` — строго одна из
+строчных букв `x`/`y`/`z` сразу после `R`.
 
 ---
 
@@ -311,10 +373,10 @@ border-bottom: '1px solid rgba(255,255,255,0.08)'  →  bb1  bsbS  bcbF.08
 
 | Токен | CSS |
 |-------|-----|
-| `ov` | `overflow: hidden` |
-| `ovyAuto` | `overflow-y: auto` |
-| `contrast` | `image-rendering: pixelated` |
-| `ratio3x2` | `position: relative; padding-top: 66.67%` |
+| `ov` | `overflow:hidden` |
+| `ovyAuto` | `-webkit-overflow-scrolling:touch;overflow-y:auto` |
+| `contrast` | `image-rendering:optimize-contrast;image-rendering:-webkit-optimize-contrast` |
+| `ratio3x2` | `padding-top:66.66%` + `>*{position:absolute;top:0;right:0;bottom:0;left:0}` |
 
 ---
 
@@ -326,15 +388,25 @@ cF.38.paused         → color when element has class "paused"
 bgcF.12.active       → background-color when element has class "active"
 ```
 
+| Токен | CSS |
+|-------|-----|
+| `bgF.1:h` | `.bgF\.1\:h:hover{background:#fff;background:rgba(255,255,255,.1)}` |
+| `cF.38.paused` | `.cF\.38\.paused.paused{color:#fff;color:rgba(255,255,255,.38)}` |
+| `bgcF.12.active` | `.bgcF\.12\.active.active{background-color:#fff;background-color:rgba(255,255,255,.12)}` |
+
 **Паттерн модификатора:** токен с `.cls` всегда статически присутствует в className,
 а сам класс `cls` добавляется условно.
 
 ```tsx
-// правильно: оба токена статически видны парсеру
+// правильно: оба токена статически видны сканеру
 className={`cF cF.38.paused ${musicPaused ? 'paused' : ''}`}
 
-// неправильно: cF.38 может не попасть в сканирование
-className={`${musicPaused ? 'cF.38' : 'cF'}`}
+// работает и так — mnVite/mnWebpack теперь сканируют и template literals,
+// но динамическая часть (${...}) из строки вырезается перед разбором на токены,
+// поэтому сам токен-модификатор ('cF.38.paused') всё равно должен быть виден
+// как ЛИТЕРАЛЬНЫЙ текст где-то в файле — просто вставить его целиком внутрь
+// ${...} недостаточно
+className={`${musicPaused ? 'cF.38.paused' : 'cF'}`}
 ```
 
 ### Пример замены MUI `sx` на MN
@@ -371,10 +443,10 @@ import './mn/preset.mn';   // подключается как side-effect
 
 ```ts
 // src/mn/app.mn.ts
-import type { MnFn } from 'minotation';
+import type { MnInstance } from 'minotation';
 
-export function presetApp(mn: MnFn): void {
-  mn.register('card', () => ({ style: { borderRadius: '8px' } }));
+export function presetApp(mn: MnInstance): void {
+  mn('card', () => ({ style: { borderRadius: '8px' } }));
   mn.setKeyframes('pulse', {
     '0%, 100%': { opacity: '0.6' },
     '50%':      { opacity: '1'   },
@@ -413,31 +485,42 @@ mnVite({
 
 ## Нетривиальные механизмы
 
-### Как `splitStem` разбивает токен
+### Как разбирается токен (реальный код, не `splitStem`/`parseLexeme`)
 
-Тег — начальная последовательность строчных `a-z`. Останавливается на первом символе вне `a-z`.
+Внутренних модулей `splitStem`/`parseLexeme`, на которые раньше ссылался этот раздел,
+**в текущем коде не существует** — это были модули упразднённой v2-архитектуры. Реальный
+разбор — прямой regex-матчинг в `core/index.ts`/`selectorsCompileProvider/`:
 
-```
-ftBlur10    →  tag="ft",  arg="Blur10"
-ftbBlur8    →  tag="ftb", arg="Blur8"
-b1          →  tag="b",   arg="1"
-x-50%       →  tag="x",   arg="-50%"
-cF.38       →  tag="c",   arg="F.38"
-```
+- **Имя эссенции**: `REGEXP_MATCH_NAME = /^([a-z]+)(.*)$/` — тег = ведущая
+  последовательность строчных `a-z`, всё остальное — суффикс (аргумент).
+  ```
+  ftBlur10    →  tag="ft",  suffix="Blur10"
+  ftbBlur8    →  tag="ftb", suffix="Blur8"
+  b1          →  tag="b",   suffix="1"
+  x-50%       →  tag="x",   suffix="-50%"
+  cF.38       →  tag="c",   suffix="F.38"
+  ```
+- **Контекстные границы** (для построения CSS-селектора, не для значения эссенции):
+  `< > : . [ ] # + ~ @ !` — **точка ЯВЛЯЕТСЯ границей** (self-class-механизм,
+  `cF.active` → `.cF\.active.active`), в отличие от того, что утверждалось здесь раньше.
+  Экранированная точка (`\.`) или точка перед цифрой (десятичное значение вроде `f1.5em`)
+  границей не считается.
 
-### Контекстные маркеры `parseLexeme`
+### Ограничение mnVite/mnWebpack-сканера
 
-Только `< > : @`. Точка, запятая, скобки, цифры — НЕ маркеры.
-Поэтому `cF.38.paused` — один стем, `cF00:h` разбивается на стем + `:h`.
+Токены извлекаются функцией `extractTokens` (`minotation` core) из значений атрибута в
+одной из форм: `attr="..."`, `attr='...'`, `attr={'...'}`, `attr={"..."}"`,
+`` attr={`...`} `` (template literal — **берутся только литеральные сегменты**,
+`${...}`-интерполяции вырезаются целиком перед разбором на токены).
 
-### Ограничение mnVite-сканера
+**Не поддерживаются** (токен не попадёт в CSS): объектные литералы вида
+`slotProps={{ root: { className: '...' } }}` (MUI slotProps и т.п.).
 
-Сканер токенов работает только со статическими `className="..."` строками.
-Template literals (`className={...}`) **не сканируются** — токены из них не попадут в CSS.
-
-Правило: токены, нужные в нескольких состояниях, обязательно должны присутствовать
-как статические строки хотя бы в одном месте.
+Правило то же, что и раньше: токены, нужные в нескольких состояниях, обязательно должны
+присутствовать как литеральный текст хотя бы в одном месте файла — динамически
+СКОНСТРУИРОВАННая строка (`` `cF${suffix}` ``) не даст извлечь токен.
 
 ---
 
-*Примеры верифицированы в `presets.test.ts`.*
+*Примеры проверены прямыми вызовами `minotationProvider`+`presetStandard` против
+собранного `dist/` (не через тесты) — дата последней сверки: см. `CHANGELOG.md` minotation.*

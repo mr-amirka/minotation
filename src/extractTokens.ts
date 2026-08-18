@@ -13,9 +13,15 @@
  *    сегменты (между `` ` `` и `${`, между `}` и следующим `${`/`` ` ``);
  *    `${...}`-интерполяции целиком отбрасываются — динамические токены заведомо
  *    непредсказуемы на этапе сборки, не пытаемся их разрешить.
+ * 4. **Свойство объектного литерала** (напр. MUI `slotProps`):
+ *    `{ className: 'p10 w50' }`, `{ className: "p10 w50" }` — в т.ч. вложенное,
+ *    `slotProps={{ paper: { className: 'p10 w50' } }}`. Различие с формой 1 — `:`
+ *    вместо `=` перед значением, оба варианта разбираются одним regexp'ом
+ *    (`[:=]`). Вложенность объекта не важна — regexp ищет `attrName` где угодно
+ *    в тексте, не разбирает структуру объекта.
  *
- * Объектные литералы (`slotProps={{ root: { className: '...' } }}`) — **не
- * поддерживаются** (см. `PLAN.md` minotation, открытый пункт).
+ * Динамические значения свойства (`{ className: cond ? 'a' : 'b' }`, вычисляемые
+ * выражения) — не поддерживаются, как и раньше: извлекается только буквальный текст.
  *
  * @module extractTokens
  */
@@ -34,7 +40,9 @@ const REGEXP_ESCAPE = /[.*+?^${}()|[\]\\]/g;
 
 function buildAttrRegexp(attrName: string): RegExp {
   const name = attrName.replace(REGEXP_ESCAPE, '\\$&');
-  return new RegExp(name + '\\s*=\\s*(?:"([^"]*)"'
+  // `[:=]` — принимает как JSX-атрибут (`attr=`), так и свойство объектного
+  // литерала (`attr:`, включая вложенное — напр. MUI `slotProps={{ paper: { className: ... } }}`).
+  return new RegExp(name + '\\s*[:=]\\s*(?:"([^"]*)"'
       + '|\'([^\']*)\''
       + '|\\{\\s*\'([^\']*)\'\\s*\\}'
       + '|\\{\\s*"([^"]*)"\\s*\\}'
@@ -52,6 +60,7 @@ function buildAttrRegexp(attrName: string): RegExp {
  * extractTokens('<div class="p10 w50">', 'class')                  // → ['p10', 'w50']
  * extractTokens('<div className={"m5"}>', 'className')             // → ['m5']
  * extractTokens('<div className={`fx1 ${x} h100`}>', 'className')  // → ['fx1', 'h100']
+ * extractTokens('slotProps={{ paper: { className: \'w320 dF\' } }}', 'className')  // → ['w320', 'dF']
  */
 export function extractTokens(source: string, attrName: string): string[] {
   const regexp = buildAttrRegexp(attrName);

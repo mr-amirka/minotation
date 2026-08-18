@@ -57,4 +57,34 @@ describe('extractTokens', () => {
   test('пустая строка-значение — пустой массив', () => {
     expect(extractTokens('<div class="">', 'class')).toEqual([]);
   });
+
+  test('свойство объектного литерала (двойные кавычки)', () => {
+    expect(extractTokens('{ className: "p10 w50" }', 'className')).toEqual(['p10', 'w50']);
+  });
+
+  test('свойство объектного литерала (одинарные кавычки)', () => {
+    expect(extractTokens("{ className: 'p10 w50' }", 'className')).toEqual(['p10', 'w50']);
+  });
+
+  test('вложенное свойство объектного литерала (MUI slotProps)', () => {
+    const source = `
+      slotProps={{
+        paper: {
+          className: 'w320 bg0A0A12.88 bl1 bslS bclF.1 ftbBlur12 cF dF fxdC ov',
+        },
+      }}
+    `;
+    expect(extractTokens(source, 'className')).toEqual([
+      'w320',
+      'bg0A0A12.88',
+      'bl1',
+      'bslS',
+      'bclF.1',
+      'ftbBlur12',
+      'cF',
+      'dF',
+      'fxdC',
+      'ov',
+    ]);
+  });
 });

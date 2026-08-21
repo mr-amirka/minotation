@@ -9,6 +9,7 @@ import {
   eachTry,
   forEach,
   forIn,
+  includes,
   isArray,
   isDefined,
   isEmpty,
@@ -408,7 +409,7 @@ function minotationProvider(options?: MnOptions) {
   let $$staticsAssigned: Record<string, Record<string, Record<string, number>>>;
   let $$staticsEssences: Record<string, MnEssenceResult>;
   let $$keyframes: [Record<string, string>, number];
-  let $$css: [Record<string, { css: Record<string, string>;
+  let $$css: [Record<string, { css: Record<string, string[]>;
 content?: string }>, number];
   let $$stylesMap: Record<string, MnStyleEntry> = $$data.stylesMap = {};
   let $$assigned: Record<string, Record<string, Record<string, number>>> = $$data.assigned = {};
@@ -1133,13 +1134,25 @@ content?: string }>, number];
         const instance = cssMap[s] || (cssMap[s] = {
           css: {},
         });
+        // Оба ветвления (объект/строка) пишут в один и тот же instance.css —
+        // должны накапливать значения ОДИНАКОВО (массивом на свойство), иначе
+        // при чередовании форм на одном селекторе (mn.css('.a', {color:'red'})
+        // затем mn.css('.a', 'color:blue')) объектная ветка перезаписывала бы
+        // значение голой строкой, а cssPropertiesParseSimple падал на
+        // .push() к строке. Объектную форму нормализуем вручную тем же
+        // способом (dedupe + push), а не через extend().
+        isObject(css)
+          ? forIn(css as Record<string, string>, (v: string, k: string) => {
+            const existing = instance.css[k];
+            existing
+              ? (includes(existing, v) || existing.push(v))
+              : (instance.css[k] = [v]);
+          })
+          : cssPropertiesParseSimple(css, instance.css);
         instance.content = joinOnly([
           s,
           '{',
-          cssPropertiesStringify(isObject(css)
-            ? extend(instance.css, css)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- см. finding 10 в PLAN.md: TCssMap мельче, чем $$css
-            : (cssPropertiesParseSimple as any)(css, instance.css)),
+          cssPropertiesStringify(instance.css),
           '}',
         ]);
       } else {

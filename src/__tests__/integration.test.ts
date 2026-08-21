@@ -5,9 +5,9 @@
  * getCompiler(...).check(...) -> minotationProvider/p.suffix/mn.synonyms/
  * getCompiler('class')(...)/getCompiler(...)(...)).
  *
- * "vendor-префиксы" тест убран — options.prefixedAttrs/prefixes нигде не
- * прокидываются в cssPropertiesStringifyProvider() (core/index.ts вызывает
- * её без аргументов) — фича не портирована из v1, см. PLAN.md minotation.
+ * "vendor-префиксы" тест убран отсюда — фича теперь отдельный пресет
+ * (`presetPrefixes`, `presets/prefixes.ts`), покрыта `preset-prefixes.test.ts`
+ * (2026-08-21).
  */
 
 const mnProvider = require('../index').default || require('../index').minotationProvider;
@@ -251,6 +251,46 @@ describe('MnInstance — полный пайплайн', () => {
       .find(s => s.content.includes('html'))?.content || '';
     expect(content).toContain('margin:0');
     expect(content).toContain('padding:0');
+  });
+
+  // Регрессия (2026-08-21): смешение объектной и строковой формы mn.css() на
+  // одном селекторе падало с "values.push is not a function" — объектная
+  // ветка писала instance.css[k] голой строкой, а cssPropertiesParseSimple
+  // ожидал там уже массив. Найдено при разборе типового расхождения $$css
+  // vs cssPropertiesParseSimple (Q3, open-questions).
+  test('mn.css() — смешение объектной и строковой формы на одном селекторе не падает', () => {
+    const mn = createMn();
+    mn.css('.a', { color: 'green' });
+    mn.css('.a', 'color:red');
+    mn.compile();
+
+    const content = mn.styles$.getValue()
+      .find(s => s.content.includes('.a'))?.content || '';
+    expect(content).toContain('color:green');
+    expect(content).toContain('color:red');
+  });
+
+  test('mn.css() — строковая форма затем объектная на одном селекторе', () => {
+    const mn = createMn();
+    mn.css('.a', 'color:red');
+    mn.css('.a', { color: 'green' });
+    mn.compile();
+
+    const content = mn.styles$.getValue()
+      .find(s => s.content.includes('.a'))?.content || '';
+    expect(content).toContain('color:red');
+    expect(content).toContain('color:green');
+  });
+
+  test('mn.css() — объектная форма дедуплицирует повторное значение', () => {
+    const mn = createMn();
+    mn.css('.a', { color: 'red' });
+    mn.css('.a', { color: 'red' });
+    mn.compile();
+
+    const content = mn.styles$.getValue()
+      .find(s => s.content.includes('.a'))?.content || '';
+    expect(content.match(/color:red/g)).toHaveLength(1);
   });
 
   test('атрибутный компилятор: getCompiler("m")', () => {

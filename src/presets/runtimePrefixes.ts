@@ -23,7 +23,7 @@ export default (mn: MnInstance) => {
     'ms',
     'khtml',
   ], (prefix) => {
-    style[prefix + 'Transform'] && (prefixes['-' + prefix + '-'] = 1);
+    style[prefix + 'Transform'] && (prefixes['-' + prefix + '-'] = true);
   });
   flags([
     'appearance',

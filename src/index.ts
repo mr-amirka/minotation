@@ -46,9 +46,11 @@ import presetSynonymsDefault from './presets/synonyms';
 import presetMediasDefault from './presets/medias';
 import presetNormalizeDefault from './presets/normalize';
 import presetMainDefault from './presets/main';
+import presetPrefixesDefault from './presets/prefixes';
 
 export const presetStandard = presetStandardDefault;
 export const presetSynonyms = presetSynonymsDefault;
 export const presetMedias = presetMediasDefault;
 export const presetNormalize = presetNormalizeDefault;
 export const presetMain = presetMainDefault;
+export const presetPrefixes = presetPrefixesDefault;

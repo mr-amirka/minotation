@@ -24,6 +24,7 @@ import type {
   floatval,
   routeParseProvider,
   indexOf,
+  IStringifyCss,
 } from 'fundamentool';
 import type {
   spaceNormalize,
@@ -128,6 +129,6 @@ export interface MnInstance {
   // Сервисы (опционально — не все пресеты используют)
   utils?: MnUtils;
   setKeyframes?: any;
-  propertiesStringify?: any;
+  propertiesStringify?: IStringifyCss;
   media?: any;
 }

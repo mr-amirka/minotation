@@ -47,6 +47,7 @@ const RE_ZERO =/^0+|\.?0+$/g;
 const REGEXP_FILTER_NAME = /^([A-Za-z]+)([0-9]*)(.*)$/;
 const REGEXP_FILTER_SEP = /_+/;
 const REGEXP_DOTS = /\./g;
+const REGEXP_UNESCAPED_UNDERSCORE = /(?<!\\)_/;
 
 
 const PATTERN_VAR = '((-):env?((--[^;,]+)(,\\d+([a-z%]+):vu?):va?):vv;?)';
@@ -443,6 +444,14 @@ export default (mn: MnInstance) => {
 
   function toKebabCase(v: string): string {
     return camelToKebabCase(lowerFirst(v));
+  }
+  function toKebabCaseMultiValue(v: string): string {
+    // Каждый '_'-разделённый сегмент кебабируется НЕЗАВИСИМО. Иначе camelToKebabCase
+    // видит всю склеенную '_'-строку одним словом и вставляет "-" перед заглавной
+    // буквой внутри отдельного сегмента: 'fx0_1_Auto' → toKebabCase('0_1_Auto') даёт
+    // '0_1_-auto' (лишний '-' перед 'auto'), а не ожидаемое '0_1_auto'. Экранированный
+    // '_' (`\_`) не трогаем — spaceNormalize разворачивает его в литеральный '_' позже.
+    return v.split(REGEXP_UNESCAPED_UNDERSCORE).map(toKebabCase).join('_');
   }
   function fontNameNormalize(s: string): string {
     const c = s[0];
@@ -1638,6 +1647,13 @@ export default (mn: MnInstance) => {
         U: 'Unset',
       }, 1,
     ),
+    fxw: synonymProvider(
+      'flexWrap', {
+        NW: 'Nowrap',
+        W: 'Wrap',
+        WR: 'WrapReverse',
+      }, 1,
+    ),
     font: (p) => {
       let s;
       return (s = p.suffix) && styleWrap({
@@ -1720,7 +1736,6 @@ export default (mn: MnInstance) => {
     fx: ['flex'],
     fxb: ['flexBasis', 1],
     fxf: ['flexFlow', 1],
-    fxw: ['flexWrap', 1],
     fxg: ['flexGrow', 1],
     fxs: ['flexShrink', 1],
 
@@ -1744,7 +1759,7 @@ export default (mn: MnInstance) => {
       return (s = p.suffix)
         ? (style = {}, style[propName] = spaceNormalize(s[0] == '_'
           ? snakeLeftTrim(s)
-          : toKebabCase(s)), styleWrap(style, priority || 0))
+          : toKebabCaseMultiValue(s)), styleWrap(style, priority || 0))
         : 0;
     });
   });

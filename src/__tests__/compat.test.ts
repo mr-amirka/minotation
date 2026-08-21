@@ -72,6 +72,30 @@ describe('Flex-direction — новый MN (совместим)', () => {
 });
 
 // ================================================================
+// Flex-wrap (fxw) — вынесен из generic-хендлера в synonymProvider (2026-08-21):
+// короткие формы (NW/W/WR) теперь тоже работают, полная форма не сломана.
+// ================================================================
+describe('Flex-wrap fxw — короткие и полные формы', () => {
+  test('fxwNW → flex-wrap:nowrap', () => expect(css('fxwNW')).toContain('flex-wrap:nowrap'));
+  test('fxwW → flex-wrap:wrap', () => expect(css('fxwW')).toContain('flex-wrap:wrap'));
+  test('fxwWR → flex-wrap:wrap-reverse', () => expect(css('fxwWR')).toContain('flex-wrap:wrap-reverse'));
+  test('fxwWrap (полная форма) → flex-wrap:wrap', () => expect(css('fxwWrap')).toContain('flex-wrap:wrap'));
+  test('fxwNowrap (полная форма) → flex-wrap:nowrap', () => expect(css('fxwNowrap')).toContain('flex-wrap:nowrap'));
+  test('fxwWrapReverse (полная форма) → flex-wrap:wrap-reverse', () => expect(css('fxwWrapReverse')).toContain('flex-wrap:wrap-reverse'));
+});
+
+// ================================================================
+// fx-shorthand с '_'-разделёнными значениями — сегменты кебабируются независимо
+// (2026-08-21): раньше заглавная буква внутри одного сегмента ('Auto') ошибочно
+// триггерила camelCase-детектор через границу '_' и добавляла лишний '-'.
+// ================================================================
+describe('fx-shorthand — multi-value через _', () => {
+  test('fx0_1_Auto → flex:0 1 auto', () => expect(css('fx0_1_Auto')).toContain('flex:0 1 auto'));
+  test('fx0_1_auto (уже строчными) → flex:0 1 auto', () => expect(css('fx0_1_auto')).toContain('flex:0 1 auto'));
+  test('fx1_1_0% → flex:1 1 0%', () => expect(css('fx1_1_0%')).toContain('flex:1 1 0%'));
+});
+
+// ================================================================
 // Flex-align (переименованы: fha→fxa, fva→fya)
 //
 // Реально зарегистрированы только буквы из карт в presets/standard.ts:

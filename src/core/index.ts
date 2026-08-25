@@ -410,7 +410,7 @@ function minotationProvider(options?: MnOptions) {
   let $$staticsEssences: Record<string, MnEssenceResult>;
   let $$keyframes: [Record<string, string>, number];
   let $$css: [Record<string, { css: Record<string, string[]>;
-content?: string }>, number];
+    content?: string }>, number];
   let $$stylesMap: Record<string, MnStyleEntry> = $$data.stylesMap = {};
   let $$assigned: Record<string, Record<string, Record<string, number>>> = $$data.assigned = {};
   let $$media: Record<string, MnMediaEntry> = mn.media = options.media || {};

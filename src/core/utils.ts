@@ -280,7 +280,7 @@ export function normalizeSelectorsIteratee(selectorsMap: Record<string, number>,
   return selectorsMap;
 }
 export function __cssReducer(output: string[], v: { css: Record<string, string>;
-content?: string }): string[] {
+  content?: string }): string[] {
   push(output, v.content);
   return output;
 }

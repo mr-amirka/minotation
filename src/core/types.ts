@@ -109,7 +109,8 @@ export interface MnData {
   root: Record<string, Record<string, MnContextEssence>>;
   statics: MnStatics;
   keyframes: [Record<string, string>, number];
-  css: [Record<string, { css: Record<string, string[]>; content?: string }>, number];
+  css: [Record<string, { css: Record<string, string[]>;
+    content?: string }>, number];
 }
 
 /** Опции провайдера */

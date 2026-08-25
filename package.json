@@ -26,14 +26,15 @@
     "validate": "npm run lint && npm run test"
   },
   "dependencies": {
-    "fundamentool": "1.0.0"
+    "fundamentool": "^1.0.0"
   },
   "devDependencies": {
-    "@stylistic/eslint-plugin": "^3.1.0",
+    "@eslint/js": "^10.0.1",
+    "@stylistic/eslint-plugin": "^5.10.0",
     "@types/jest": "^29.0.0",
-    "@typescript-eslint/eslint-plugin": "^7.18.0",
-    "@typescript-eslint/parser": "^7.18.0",
-    "eslint": "^8.57.1",
+    "@typescript-eslint/eslint-plugin": "^8.68.0",
+    "@typescript-eslint/parser": "^8.68.0",
+    "eslint": "^10.9.1",
     "fast-check": "^4.8.0",
     "jest": "^29.0.0",
     "postcss": "^8.5.15",

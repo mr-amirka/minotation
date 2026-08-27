@@ -10,7 +10,8 @@
     "sourceMap": true,
     "strict": false,
     "noImplicitAny": false,
-    "noUnusedLocals": true
+    "noUnusedLocals": true,
+    "types": ["node", "jest"]
   },
   "exclude": ["node_modules", "dist", "**/*.tmp.*"],
   "include": ["src/**/*"]

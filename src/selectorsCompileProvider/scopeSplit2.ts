@@ -49,7 +49,7 @@ export function scopeSplit2(
   let lastOffset = 0;
 
   function pushFragment(toOffset: number): void {
-    push(level, [input.substr(lastOffset, toOffset - lastOffset)] as ScopeNode);
+    push(level, [input.slice(lastOffset, toOffset)] as ScopeNode);
   }
   function scopeClose(): void {
     --depth;

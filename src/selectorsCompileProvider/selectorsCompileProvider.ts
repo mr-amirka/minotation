@@ -408,7 +408,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       ? [name, {
         '': [], 
       }]
-      : [unslash(name.substr(0, i)), getSynonyms(name.substr(i))];
+      : [unslash(name.slice(0, i)), getSynonyms(name.slice(i))];
   }
 
   return extend(instance || (instance = parseComboName as ParseComboNameFn),

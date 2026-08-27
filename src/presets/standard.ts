@@ -306,7 +306,7 @@ function toFixed(v: any): string {
 }
 function __wr(v: string): string {
   return v[0] == '-'
-    ? '"' + v.substr(1) + '"'
+    ? '"' + v.slice(1) + '"'
     : (
       v.indexOf(' ') > -1 ? '"' + v + '"' : v
     );

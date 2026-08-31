@@ -759,7 +759,16 @@ function minotationProvider(options?: MnOptions) {
       : iteratee(comboNames, selectors);
   }, mn);
 
-  function __initEssence(value: string): MnEssenceRaw | 0 | null | void {
+  /**
+   * Разбирает токен, вызывает хендлер пресета и СРАЗУ нормализует результат
+   * (`__normalize`) — наружу (обоим вызывающим в {@link initEssence}) никогда
+   * не попадает "сырой" `MnEssenceRaw` от автора пресета, только уже готовый
+   * кортеж `MnEssenceResult`. Автор пресета по-прежнему пишет обычный объект
+   * (`{ style: {...} }`) — удобство холодного пути не меняется; движок
+   * перестраивает его во внутреннее представление ровно в точке появления,
+   * не давая "сырой" форме просочиться дальше по компиляционному пайплайну.
+   */
+  function __initEssence(value: string): MnEssenceResult | 0 | null | false | void {
     let matchs: RegExpExecArray | null;
     let name: string;
     let ni: string | undefined;
@@ -772,9 +781,9 @@ function minotationProvider(options?: MnOptions) {
       if (matchs = REGEXP_MATCH_VAR.exec(value)) {
         const varStyle: Record<string, string> = {};
         varStyle[matchs[1]] = spaceNormalize(matchs[2]);
-        return {
+        return __normalize({
           style: varStyle,
-        };
+        });
       }
       return (matchs = REGEXP_MATCH_NAME.exec(value)) && (
         name = matchs[1],
@@ -797,7 +806,7 @@ function minotationProvider(options?: MnOptions) {
             params.other = matchs[7]
           ),
           (essence = handle(params)) && (essence.important = ni ? 1 : 0),
-          essence
+          __normalize(essence)
         )
       );
     } catch (ex) {
@@ -809,16 +818,16 @@ function minotationProvider(options?: MnOptions) {
   function initEssence(
     essenceName: string, essence: MnEssenceResult, excludes: Record<string, number>,
   ): void {
-    let _essence: MnEssenceRaw | 0 | null | void;
+    let _essence: MnEssenceResult | 0 | null | false | void;
     const staticEssence = $$staticsEssences[essenceName];
     const tmpEssence = staticEssence
       ? (
         staticEssence[MN_ESSENCE_INITED]
           ? staticEssence
           : (_essence = __initEssence(essenceName))
-            && mergeEssenceDepth([staticEssence, __normalize(_essence) as MnEssenceResult], [])
+            && mergeEssenceDepth([staticEssence, _essence], [])
       )
-      : __normalize(__initEssence(essenceName));
+      : __initEssence(essenceName);
 
     if (!tmpEssence) {
       return;

@@ -54,6 +54,16 @@ import {
   MN_CONTEXT_ESSENCE_CSS_TEXT,
   MN_CONTEXT_ESSENCE_UPDATED,
   MN_CONTEXT_ESSENCE_CONTENT,
+  MN_ESSENCE_STYLE,
+  MN_ESSENCE_PRIORITY,
+  MN_ESSENCE_IMPORTANT,
+  MN_ESSENCE_EXTS,
+  MN_ESSENCE_SELECTORS,
+  MN_ESSENCE_CHILDS,
+  MN_ESSENCE_MEDIA,
+  MN_ESSENCE_INCLUDE,
+  MN_ESSENCE_CSS_TEXT,
+  MN_ESSENCE_INITED,
   MN_KEYFRAMES_TOKEN,
   MN_DEFAULT_PRIORITY,
   MN_DEFAULT_CSS_PRIORITY,
@@ -73,7 +83,8 @@ import {
   parseMediaPart,
   handlerWrap,
   __normalize,
-  __mergeDepth,
+  mergeEssenceInto,
+  mergeEssenceDepth,
   priotitySort,
   priotitySortContext,
   getEessenceSelectors,
@@ -88,6 +99,7 @@ import type {
   MnMediaEntry,
   MnContextEssence,
   MnEssenceResult,
+  MnEssenceRaw,
   MnEssenceParams,
   MnOptions,
 } from './types';
@@ -96,9 +108,6 @@ import type {
   MnHandler,
   MnInstance,
 } from '../types';
-import type {
-  MnEssenceRaw,
-} from './utils';
 
 // Присваиваем utils статическому свойству (нужно для обратной совместимости)
 minotationProvider.utils = baseUtils;
@@ -223,7 +232,7 @@ function minotationProvider(options?: MnOptions) {
       inited: 1,
     }) as MnEssenceResult);
     baseSet(
-      $$staticsEssences, path, __mergeDepth([getBase($$staticsEssences, path), __normalize(extendedEssence)], {}),
+      $$staticsEssences, path, mergeEssenceDepth([getBase($$staticsEssences, path) || [], __normalize(extendedEssence) as MnEssenceResult], []),
     );
   }
 
@@ -804,10 +813,10 @@ function minotationProvider(options?: MnOptions) {
     const staticEssence = $$staticsEssences[essenceName];
     const tmpEssence = staticEssence
       ? (
-        staticEssence.inited
+        staticEssence[MN_ESSENCE_INITED]
           ? staticEssence
           : (_essence = __initEssence(essenceName))
-            && __mergeDepth([staticEssence, __normalize(_essence)], {})
+            && mergeEssenceDepth([staticEssence, __normalize(_essence) as MnEssenceResult], [])
       )
       : __normalize(__initEssence(essenceName));
 
@@ -817,7 +826,7 @@ function minotationProvider(options?: MnOptions) {
     compileMixedEssence(
       essence, tmpEssence, excludes,
     );
-    const important = essence.important;
+    const important = essence[MN_ESSENCE_IMPORTANT];
 
     function __childsHandle(
       childs: Record<string, MnEssenceResult> | undefined, separator: string, withStatic?: number,
@@ -827,31 +836,31 @@ function minotationProvider(options?: MnOptions) {
         const childEssenceName = __prefix + _childName;
         const childStaticEssence = $$staticsEssences[childEssenceName];
         childs[_childName] = compileMixedEssence(
-          $$essences[childEssenceName] = {},
+          $$essences[childEssenceName] = [],
           childStaticEssence
-            ? (childStaticEssence.inited
+            ? (childStaticEssence[MN_ESSENCE_INITED]
               ? childStaticEssence
-              : __mergeDepth([childStaticEssence, _childEssence], {}))
+              : mergeEssenceDepth([childStaticEssence, _childEssence], []))
             : _childEssence,
           excludes, important,
         );
       } : (_childEssence: MnEssenceResult, _childName: string) => {
         childs[_childName] = compileMixedEssence(
-          $$essences[__prefix + _childName] = {},
+          $$essences[__prefix + _childName] = [],
           _childEssence,
           excludes, important,
         );
       });
     }
-    __childsHandle(essence.childs, '.');
+    __childsHandle(essence[MN_ESSENCE_CHILDS], '.');
     __childsHandle(
-      essence.media, '@', 1,
+      essence[MN_ESSENCE_MEDIA], '@', 1,
     );
   }
   function compileMixedEssence(
     dst: MnEssenceResult, src: MnEssenceResult, excludes: Record<string, number>, important?: number,
   ): MnEssenceResult {
-    const include = src.include;
+    const include = src[MN_ESSENCE_INCLUDE];
     let i = include ? include.length : 0;
     let mergingMixins: MnEssenceResult[];
     let styleObj: Record<string, string | string[]> | undefined;
@@ -861,28 +870,28 @@ function minotationProvider(options?: MnOptions) {
       mergingMixins[i] = src;
       // eslint-disable-next-line
       for (; i--;) mergingMixins[i] = updateEssence(include[i], {}, '', excludes) as MnEssenceResult;
-      __mergeDepth(mergingMixins, dst);
+      mergeEssenceDepth(mergingMixins, dst);
     } else {
-      extend(dst, src);
+      mergeEssenceInto(dst, src);
     }
 
-    dst.cssText = (styleObj = dst.style)
-      && (styleText = (cssPropertiesStringify as any)(styleObj, dst.important || important))
+    dst[MN_ESSENCE_CSS_TEXT] = (styleObj = dst[MN_ESSENCE_STYLE])
+      && (styleText = (cssPropertiesStringify as any)(styleObj, dst[MN_ESSENCE_IMPORTANT] || important))
       ? ('{' + styleText + '}') : '';
-    dst.inited = 1;
+    dst[MN_ESSENCE_INITED] = 1;
     return dst;
   }
   function createContextEssence(
     essenceName: string, essence: MnEssenceResult, excludes: Record<string, number>,
   ): MnContextEssence {
-    essence.inited || initEssence(
+    essence[MN_ESSENCE_INITED] || initEssence(
       essenceName, essence, excludes,
     );
     return [
       {},
-      essence.selectors,
-      essence.priority || 0,
-      essence.cssText,
+      essence[MN_ESSENCE_SELECTORS],
+      essence[MN_ESSENCE_PRIORITY] || 0,
+      essence[MN_ESSENCE_CSS_TEXT],
       0,
       {},
     ];
@@ -900,7 +909,7 @@ function minotationProvider(options?: MnOptions) {
     }
     mediaName = mediaName || 'all';
     excludes[essenceName] = 1;
-    essence || (essence = $$essences[essenceName] || {});
+    essence || (essence = $$essences[essenceName] || []);
     const context = $$root[mediaName] || ($$root[mediaName] = {});
     const contextEssence: MnContextEssence = context[essenceName] || (context[essenceName]
       = createContextEssence(
@@ -922,11 +931,9 @@ function minotationProvider(options?: MnOptions) {
         childs[childName],
       );
     }
-    const {
-      childs,
-      media,
-      exts,
-    } = essence;
+    const childs = essence[MN_ESSENCE_CHILDS];
+    const media = essence[MN_ESSENCE_MEDIA];
+    const exts = essence[MN_ESSENCE_EXTS];
     childs && __childsHandle(childs, '.');
     media && __childsHandle(media, '@');
     exts && __assignCore(

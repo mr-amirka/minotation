@@ -109,6 +109,7 @@ import type {
   MnCompiler,
   MnContextEssence,
   MnEssenceParams,
+  MnEssenceRaw,
   MnEssenceResult,
   MnStyleEntry,
 } from './types';
@@ -247,7 +248,19 @@ export const MN_CONTEXT_ESSENCE_CSS_TEXT = 3;
 export const MN_CONTEXT_ESSENCE_UPDATED = 4;
 export const MN_CONTEXT_ESSENCE_CONTENT = 5;
 
-export const MN_MERGE_DEPTH = 50;
+// Индексы MnEssenceResult (кортеж, см. core/types.ts) — экспериментальный
+// перевод с объекта на кортеж (§2 coding.md), сравнение по бенчмарку.
+export const MN_ESSENCE_STYLE = 0;
+export const MN_ESSENCE_PRIORITY = 1;
+export const MN_ESSENCE_IMPORTANT = 2;
+export const MN_ESSENCE_EXTS = 3;
+export const MN_ESSENCE_SELECTORS = 4;
+export const MN_ESSENCE_CHILDS = 5;
+export const MN_ESSENCE_MEDIA = 6;
+export const MN_ESSENCE_INCLUDE = 7;
+export const MN_ESSENCE_CSS_TEXT = 8;
+export const MN_ESSENCE_INITED = 9;
+
 export const MN_KEYFRAMES_TOKEN = 'keyframes';
 export const MN_DEFAULT_PRIORITY = -2000;
 export const MN_DEFAULT_CSS_PRIORITY = MN_DEFAULT_PRIORITY - 2000;
@@ -319,7 +332,9 @@ export function handlerWrap(essenceHandler: (p: MnEssenceParams) => MnEssenceRaw
     return essenceHandler(p);
   };
 }
-export function iterateeAddImportant(v: MnEssenceResult): void {
+// Вызывается на "сырых" (ещё не нормализованных) childs/media-значениях
+// (см. __normalize/childAddNormalize ниже) — тип MnEssenceRaw, не MnEssenceResult.
+export function iterateeAddImportant(v: MnEssenceRaw): void {
   v.important = 1;
 }
 export function iterateeCheckImportant(
@@ -332,50 +347,54 @@ export function __iterateeCheckImportant(v: string): string {
   return REGEXP_IMPORTANT.test(v) ? v : (v + '-i');
 }
 /**
- * Форма эссенции ДО `__normalize()`: `selectors`/`exts`/`include` — «сырые»
- * значения от автора пресета (строка/массив), которые `__normalize()`
- * мутирует на месте в `Record<string, number>`/`string[]` (см. `MnEssenceResult`).
+ * Строит новый кортеж `MnEssenceResult` из "сырого" объекта `MnEssenceRaw`
+ * (childs/media рекурсивно) — НЕ мутирует `essence` на месте (в отличие от
+ * дообъектной версии): вход остаётся объектом (холодный путь регистрации
+ * пресета), выход — кортеж (горячий путь компиляции).
  */
-export type MnEssenceRaw = Omit<MnEssenceResult, 'selectors' | 'exts' | 'include' | 'childs' | 'media'> & {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- «сырое» значение от автора пресета до normalizeSelectors/normalizeComboNames, форма произвольная.
-  selectors?: string | string[] | Record<string, any>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- см. selectors выше.
-  exts?: string | string[] | Record<string, any>;
-  include?: string | string[];
-  childs?: Record<string, MnEssenceRaw>;
-  media?: Record<string, MnEssenceRaw>;
-};
-
 export function __normalize(essence: MnEssenceRaw | 0 | null | false | void): MnEssenceResult | 0 | null | false | void {
   if (!essence) {
     // strictNullChecks выключен — TS не сужает essence здесь.
     return essence as 0 | null | false | void;
   }
   const {
-    selectors, exts, include, important,
+    selectors, exts, include, important, childs, media,
   } = essence;
-  function childAddNormalize(childs?: Record<string, MnEssenceRaw>): void {
-    important && forIn(childs, iterateeAddImportant);
-    forIn(childs, __normalize);
+  return [
+    essence.style,
+    essence.priority,
+    important,
+    exts
+      ? (important
+        ? reduceIn(
+          normalizeComboNames(exts), iterateeCheckImportant, {},
+        )
+        : normalizeComboNames(exts))
+      : undefined,
+    selectors ? normalizeSelectors(selectors) : {
+      '': 1,
+    },
+    childs && childAddNormalize(childs, important),
+    media && childAddNormalize(media, important),
+    include
+      ? (important
+        ? map(normalizeInclude(include), __iterateeCheckImportant)
+        : normalizeInclude(include))
+      : undefined,
+    essence.cssText,
+    essence.inited,
+  ];
+}
+function childAddNormalize(childs: Record<string, MnEssenceRaw>, important?: number): Record<string, MnEssenceResult> {
+  const result: Record<string, MnEssenceResult> = {};
+  let key: string;
+  let child: MnEssenceRaw;
+  for (key in childs) {
+    child = childs[key];
+    important && (child.important = 1);
+    result[key] = __normalize(child) as MnEssenceResult;
   }
-  essence.selectors = selectors ? normalizeSelectors(selectors) : {
-    '': 1,
-  };
-  exts && (
-    essence.exts = important
-      ? reduceIn(
-        normalizeComboNames(exts), iterateeCheckImportant, {},
-      )
-      : normalizeComboNames(exts)
-  );
-  include && (
-    essence.include = important
-      ? map(normalizeInclude(include), __iterateeCheckImportant)
-      : normalizeInclude(include)
-  );
-  childAddNormalize(essence.childs);
-  childAddNormalize(essence.media);
-  return essence as MnEssenceResult;
+  return result;
 }
 // Вход normalizeMapProvider может быть строкой, массивом или произвольным объектом от вызывающей стороны.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -426,13 +445,96 @@ export function getEessenceSelectors(selectorsMap: Record<string, Record<string,
   }
   return outputSelectors;
 }
-// mergeDepth (fundamentool) сам типизирован как any: рекурсивный deep-merge
-// без осмысленно более узкого типа — параметры/возврат намеренно остаются any.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function __mergeDepth(src: any[], dst: Record<string, any>): Record<string, any> {
-  return mergeDepth(
-    src, dst, MN_MERGE_DEPTH,
-  );
+/**
+ * Глубокий merge двух эссенций-кортежей — заменяет `__mergeDepth`/`extendDepth`
+ * (fundamentool) специально для `MnEssenceResult`: та генерика умеет мержить
+ * только ПЛОСКИЕ объекты с именованными ключами (`isPlainObject()` явно
+ * исключает массивы) — теперь, когда сама эссенция стала кортежем, обобщённый
+ * merge молча перестал бы рекурсивно сливать `childs`/`media` (каждый
+ * следующий src просто перезаписывал бы весь дочерний кортеж целиком вместо
+ * слияния полей). Семантика 1:1 повторяет старую (объектную): `style`/`exts`/
+ * `selectors` — плоское слияние ключей (их значения — строки/числа/массивы,
+ * не вложенные объекты, глубже мержить нечего); `childs`/`media` — слияние
+ * по имени, при совпадении имени — РЕКУРСИВНЫЙ вызов этой же функции;
+ * `priority`/`important`/`include`/`cssText`/`inited` — перезапись значением
+ * `src`, если оно задано. Мутирует `dst` на месте (как и оригинал —
+ * `$$essences`-кеш переиспользуется, а не пересоздаётся, §16 coding.md).
+ *
+ * @param dst — накопитель (мутируется)
+ * @param src — источник, накладывается поверх `dst`
+ * @returns тот же `dst`
+ */
+export function mergeEssenceInto(dst: MnEssenceResult, src: MnEssenceResult | 0 | null | void): MnEssenceResult {
+  // Оригинальный generic merge (extendDepth.base) мержил через `for k in src` —
+  // безопасный no-op при src=undefined/null. Индексный доступ src[N] так не
+  // умеет — guard явно, чтобы не потерять эту терпимость (updateEssence может
+  // вернуть void при циклической ссылке include, см. compileMixedEssence).
+  if (!src) {
+    return dst;
+  }
+  let v: unknown;
+  if ((v = src[MN_ESSENCE_STYLE]) !== undefined) {
+    dst[MN_ESSENCE_STYLE] = dst[MN_ESSENCE_STYLE]
+      ? extend(dst[MN_ESSENCE_STYLE], v as Record<string, string | string[]>)
+      : extend({}, v as Record<string, string | string[]>);
+  }
+  if ((v = src[MN_ESSENCE_PRIORITY]) !== undefined) {
+    dst[MN_ESSENCE_PRIORITY] = v as number;
+  }
+  if ((v = src[MN_ESSENCE_IMPORTANT]) !== undefined) {
+    dst[MN_ESSENCE_IMPORTANT] = v as number;
+  }
+  if ((v = src[MN_ESSENCE_EXTS]) !== undefined) {
+    dst[MN_ESSENCE_EXTS] = dst[MN_ESSENCE_EXTS]
+      ? extend(dst[MN_ESSENCE_EXTS], v as Record<string, number>)
+      : extend({}, v as Record<string, number>);
+  }
+  if ((v = src[MN_ESSENCE_SELECTORS]) !== undefined) {
+    dst[MN_ESSENCE_SELECTORS] = dst[MN_ESSENCE_SELECTORS]
+      ? extend(dst[MN_ESSENCE_SELECTORS], v as Record<string, number>)
+      : extend({}, v as Record<string, number>);
+  }
+  if ((v = src[MN_ESSENCE_CHILDS]) !== undefined) {
+    dst[MN_ESSENCE_CHILDS] = mergeEssenceMap(dst[MN_ESSENCE_CHILDS], v as Record<string, MnEssenceResult>);
+  }
+  if ((v = src[MN_ESSENCE_MEDIA]) !== undefined) {
+    dst[MN_ESSENCE_MEDIA] = mergeEssenceMap(dst[MN_ESSENCE_MEDIA], v as Record<string, MnEssenceResult>);
+  }
+  if ((v = src[MN_ESSENCE_INCLUDE]) !== undefined) {
+    dst[MN_ESSENCE_INCLUDE] = v as string[];
+  }
+  if ((v = src[MN_ESSENCE_CSS_TEXT]) !== undefined) {
+    dst[MN_ESSENCE_CSS_TEXT] = v as string;
+  }
+  if ((v = src[MN_ESSENCE_INITED]) !== undefined) {
+    dst[MN_ESSENCE_INITED] = v as number;
+  }
+  return dst;
+}
+/** `childs`/`media`-карты: слияние по имени, рекурсия в `mergeEssenceInto` при совпадении. Мутирует `dst` на месте. */
+function mergeEssenceMap(dst: Record<string, MnEssenceResult> | undefined,
+  src: Record<string, MnEssenceResult>): Record<string, MnEssenceResult> {
+  dst || (dst = {});
+  let key: string;
+  let existing: MnEssenceResult | undefined;
+  for (key in src) {
+    existing = dst[key];
+    dst[key] = existing ? mergeEssenceInto(existing, src[key]) : src[key];
+  }
+  return dst;
+}
+/**
+ * Мержит несколько эссенций-источников В `dst` последовательно (порядок —
+ * позже в массиве побеждает при конфликте скаляров) — прямая замена
+ * `__mergeDepth(sources, dst)`, специализированная под `MnEssenceResult`.
+ */
+export function mergeEssenceDepth(sources: Array<MnEssenceResult | 0 | null | void>, dst: MnEssenceResult): MnEssenceResult {
+  let i = 0;
+  const l = sources.length;
+  for (; i < l; i++) {
+    mergeEssenceInto(dst, sources[i]);
+  }
+  return dst;
 }
 export function __compileProvider(attrName: string): MnCompiler {
   let _cache: Record<string, number>;

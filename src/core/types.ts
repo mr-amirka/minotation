@@ -50,21 +50,51 @@ export interface MnEssenceParams {
 /**
  * Результат хендлера — форма ПОСЛЕ `__normalize()`.
  *
+ * Кортеж (§2 coding.md — горячий путь компиляции: `updateEssence`/
+ * `compileMixedEssence`/`initEssence` читают и мержат это на каждый уникальный
+ * essence-токен). Индексы — именованные константы `MN_ESSENCE_*` (`core/utils.ts`),
+ * доступ по числу без табличного поиска по строковому ключу.
+ *
  * До нормализации `exts`/`selectors` — «сырое» значение от автора пресета
- * (`string | string[]`, см. `MnEntity`/`MnHandlerResult` в `src/types.ts`),
- * мутируется на месте в `Record<string, number>` внутри `__normalize()`.
- * Этот интерфейс описывает уже нормализованный (сохранённый) объект —
- * входной параметр `__normalize()` типизирован отдельно и шире.
+ * (`string | string[]`, см. `MnEntity`/`MnHandlerResult` в `src/types.ts`,
+ * `MnEssenceRaw` ниже — остаётся ОБЪЕКТОМ, холодный путь регистрации пресета,
+ * §3 coding.md). `__normalize()` строит НОВЫЙ кортеж из объекта-аргумента —
+ * не мутирует его на месте, в отличие от дообъектной версии.
  */
-export interface MnEssenceResult {
+export type MnEssenceResult = [
+  style?: Record<string, string | string[]>,
+  priority?: number,
+  important?: number,
+  exts?: Record<string, number>,
+  selectors?: Record<string, number>,
+  childs?: Record<string, MnEssenceResult>,
+  media?: Record<string, MnEssenceResult>,
+  include?: string[],
+  cssText?: string,
+  inited?: number,
+];
+
+/**
+ * Форма эссенции ДО `__normalize()` — «сырое» значение от автора пресета.
+ * Остаётся объектом с именованными полями (холодный путь регистрации,
+ * §3 coding.md) — только итоговый нормализованный `MnEssenceResult` кортеж.
+ *
+ * `selectors`/`exts` — произвольная сырая форма (строка/массив/объект) до
+ * `normalizeSelectors`/`normalizeComboNames`; `childs`/`media` — вложенные
+ * ТОЖЕ сырые объекты (не кортежи) — `__normalize()` разворачивает их
+ * рекурсивно в `Record<string, MnEssenceResult>`.
+ */
+export interface MnEssenceRaw {
   style?: Record<string, string | string[]>;
   priority?: number;
   important?: number;
-  exts?: Record<string, number>;
-  selectors?: Record<string, number>;
-  childs?: Record<string, MnEssenceResult>;
-  media?: Record<string, MnEssenceResult>;
-  include?: string[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- «сырое» значение от автора пресета до normalizeSelectors/normalizeComboNames, форма произвольная.
+  selectors?: string | string[] | Record<string, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- см. selectors выше.
+  exts?: string | string[] | Record<string, any>;
+  childs?: Record<string, MnEssenceRaw>;
+  media?: Record<string, MnEssenceRaw>;
+  include?: string | string[];
   cssText?: string;
   inited?: number;
 }

@@ -40,6 +40,9 @@ import {
   selectorsCompileProvider,
   extractMedia,
 } from '../selectorsCompileProvider';
+import type {
+  ParseComboNameFn,
+} from '../selectorsCompileProvider';
 import {
   isInvalidSelector,
 } from '../isInvalidSelector';
@@ -145,7 +148,10 @@ function minotationProvider(options?: MnOptions) {
   function updateOptions(): void {
     const options = mn.options || {};
     $$onError = options.onError || noop;
-    $$selectorPrefixes = keys(selectorsValidateFilter(normalizeSelectors(options.selectorPrefix || '')));
+    options.selectorPrefix === $$lastSelectorPrefix || (
+      $$lastSelectorPrefix = options.selectorPrefix,
+      $$selectorPrefixes = keys(selectorsValidateFilter(normalizeSelectors(options.selectorPrefix || '')))
+    );
     $$altColor = options.altColor !== 'off';
   }
   /**
@@ -292,6 +298,12 @@ function minotationProvider(options?: MnOptions) {
   const parseComboNameProvider = (mn as any).parseComboNameProvider;
   const __parseComboName: any = withCatchParseComboNameDecorate((mn as any).parseComboName);
 
+  /** Кэширующая обёртка над `parseComboNameProvider(attrName)` — сама обёртка (try/catch) не пересоздаётся на каждый вызов {@link updateAttrByMap}/{@link updateAttrByValues}, а живёт всё время жизни инстанса, как {@link getCompiler}. */
+  function getParseComboName(attrName: string): ParseComboNameFn {
+    return $$parseComboNameCache[attrName]
+      || ($$parseComboNameCache[attrName] = withCatchParseComboNameDecorate(parseComboNameProvider(attrName)));
+  }
+
   /**
    * Пересчитывает CSS-правила для набора комбо-имён одного атрибута, переданных
    * КАРТОЙ `{ comboName: 1 }` (например снимок `MnCompiler.cache` — полный набор
@@ -301,8 +313,8 @@ function minotationProvider(options?: MnOptions) {
    * @param attrName — имя атрибута (`'class'`, `'id'` и т.д.)
    */
   const updateAttrByMap = mn.updateAttrByMap = withResult((comboNamesMap: Record<string, number>, attrName: string) => {
-    // eslint-disable-next-line
-    let parseComboName: any = withCatchParseComboNameDecorate(parseComboNameProvider(attrName));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parseComboName: any = getParseComboName(attrName);
     let comboName: string;
     for (comboName in comboNamesMap) forEach( // eslint-disable-line
       parseComboName(comboName), updateSelectorIteratee);
@@ -315,8 +327,8 @@ function minotationProvider(options?: MnOptions) {
    * @param attrName — имя атрибута
    */
   const updateAttrByValues = mn.updateAttrByValues = withResult((comboNames: string[], attrName: string) => {
-    // eslint-disable-next-line
-    const parseComboName: any = withCatchParseComboNameDecorate(parseComboNameProvider(attrName));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parseComboName: any = getParseComboName(attrName);
     forEach(comboNames, (comboName: string) => {
       forEach(parseComboName(comboName), updateSelectorIteratee);
     });
@@ -405,6 +417,8 @@ function minotationProvider(options?: MnOptions) {
   mn.options = extend({}, options) as MnOptions;
   const $$data = mn.data = {} as MnData;
   const $$compilers: Record<string, MnCompiler> = $$data.compilers = {};
+  const $$parseComboNameCache: Record<string, ParseComboNameFn> = {};
+  let $$lastSelectorPrefix: string | undefined | 0 = 0; // 0 — сентинел "ещё не считали", отличим от валидного undefined
   const cssPropertiesStringify: IStringifyCss = mn.propertiesStringify
     = cssPropertiesStringifyProvider();
   const emit = (mn.styles$ = observableProvider<MnStyleEntry[]>([])).emit;
@@ -577,6 +591,25 @@ function minotationProvider(options?: MnOptions) {
   /** Публичный доступ к {@link parseMediaExpression} — разбор `@`-медиа-выражения без побочных эффектов. */
   mn.parseMediaExpression = parseMediaExpression;
 
+  /** Хелпер {@link generate} — вынесен из тела цикла по essence, чтобы не создавать замыкание на каждую essence, только на каждый media-контекст. */
+  function mapEssenceSelectors(map: Record<string, Record<string, number>>, selectorsIteratee: (selectors: string[]) => string): string[] {
+    const sels = getEessenceSelectors(map);
+    const result: string[] = [];
+    for (let si = 0; si < sels.length; si++) {
+      result[si] = selectorsIteratee(sels[si]);
+    }
+    return result;
+  }
+
+  /** Хелпер {@link generate} — вынесен из инлайн-IIFE, собирает контент всех essence по имени медиа-контекста. */
+  function mapContentByMediaName(sortedContext: MnContextEssence[], mediaName: string): string[] {
+    const result: string[] = [];
+    for (let si = 0; si < sortedContext.length; si++) {
+      result[si] = sortedContext[si][MN_CONTEXT_ESSENCE_CONTENT][mediaName];
+    }
+    return result;
+  }
+
   function generate(context: Record<string, MnContextEssence>, mediaExpression: string): void {
     const medias = parseMediaExpression(mediaExpression);
     const lMedia = medias.length;
@@ -633,27 +666,13 @@ function minotationProvider(options?: MnOptions) {
             updated[essenceName] = 1,
             cssText = contextEssence[MN_CONTEXT_ESSENCE_CSS_TEXT],
             contextEssence[MN_CONTEXT_ESSENCE_CONTENT][mediaName] = cssText
-              ? joinOnly((() => {
-                const sels = getEessenceSelectors(contextEssence[MN_CONTEXT_ESSENCE_MAP]);
-                const result: string[] = [];
-                for (let si = 0; si < sels.length; si++) {
-                  result[si] = selectorsIteratee(sels[si]);
-                }
-                return result;
-              })())
+              ? joinOnly(mapEssenceSelectors(contextEssence[MN_CONTEXT_ESSENCE_MAP], selectorsIteratee))
               : ''
           );
       }
 
       isContinue || (
-        output = joinOnly((() => {
-          const sorted = values(context).sort(priotitySortContext);
-          const result: string[] = [];
-          for (let si = 0; si < sorted.length; si++) {
-            result[si] = sorted[si][MN_CONTEXT_ESSENCE_CONTENT][mediaName];
-          }
-          return result;
-        })()),
+        output = joinOnly(mapContentByMediaName(values(context).sort(priotitySortContext), mediaName)),
         mediaQuery && mediaQuery !== 'all' && output
           && (output = joinOnly([
             '@media ',

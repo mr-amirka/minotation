@@ -24,6 +24,11 @@ describe('minotation-vite — smoke', () => {
     expect(typeof plugin.handleHotUpdate).toBe('function');
   });
 
+  test('mnVite() — имеет хук buildStart (подстраховка для сборщиков без transformIndexHtml, напр. Astro)', () => {
+    const plugin: any = mnVite();
+    expect(typeof plugin.buildStart).toBe('function');
+  });
+
   test('mnVite({ attr: "className" }) — принимает опции', () => {
     const plugin: any = mnVite({ attr: 'className' });
     expect(plugin.name).toBe('minotation');

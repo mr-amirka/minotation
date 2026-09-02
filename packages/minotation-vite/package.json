@@ -2,6 +2,7 @@
   "name": "minotation-vite",
   "version": "0.0.1",
   "description": "Vite plugin for Minimalist Notation",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -9,9 +10,9 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "jest --config=./jest.config.js --no-coverage",
-    "test:watch": "jest --watch --no-coverage --config=./jest.config.js",
-    "test:coverage": "jest --coverage --config=./jest.config.js"
+    "test": "jest --config=./jest.config.cjs --no-coverage",
+    "test:watch": "jest --watch --no-coverage --config=./jest.config.cjs",
+    "test:coverage": "jest --coverage --config=./jest.config.cjs"
   },
   "dependencies": {
     "esbuild": "^0.28.0"

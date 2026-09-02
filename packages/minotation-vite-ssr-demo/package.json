@@ -1,0 +1,22 @@
+{
+  "name": "minotation-vite-ssr-demo",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Минимальный ручной Vite SSR-проект — проверка minotation-vite на классическом client+SSR сплите (не RSC), тот же класс риска, что нашёлся в Next.js App Router.",
+  "scripts": {
+    "build:client": "vite build --outDir dist/client",
+    "build:server": "vite build --outDir dist/server --ssr src/entry-server.tsx"
+  },
+  "dependencies": {
+    "minotation-vite": "file:../minotation-vite",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.0.0",
+    "vite": "^6.4.3"
+  }
+}

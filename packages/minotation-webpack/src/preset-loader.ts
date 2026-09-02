@@ -24,7 +24,7 @@ import { getState } from './state';
 
 const presetLoader: LoaderDefinitionFunction = function (source) {
   const id = this.resourcePath;
-  const state = getState(this._compiler!);
+  const state = getState();
 
   try {
     const loaderName = id.endsWith('.tsx') ? 'tsx' : id.endsWith('.ts') ? 'ts' : 'js';

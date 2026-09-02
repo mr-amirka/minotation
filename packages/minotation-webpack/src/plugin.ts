@@ -78,7 +78,7 @@ export class MnWebpackPlugin {
           stage: Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL,
         },
         () => {
-          const state = getState(compiler);
+          const state = getState();
           this._emitCss(compilation, state);
         },
       );

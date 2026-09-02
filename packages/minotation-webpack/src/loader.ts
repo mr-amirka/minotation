@@ -29,7 +29,7 @@ interface MnLoaderOptions {
 const loader: LoaderDefinitionFunction<MnLoaderOptions> = function (source) {
   const options = this.getOptions() as MnLoaderOptions;
   const attrNames = options.attrs || ['class'];
-  const state = getState(this._compiler!);
+  const state = getState();
 
   for (const attr of attrNames) {
     for (const t of extractTokens(source as string, attr)) {

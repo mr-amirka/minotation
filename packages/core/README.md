@@ -155,6 +155,9 @@ mn.setKeyframes('fadeIn', {
 | `minotation-vite` | Vite-плагин (прототип) |
 | `minotation-webpack` | Webpack loader + plugin (прототип) |
 | `minotation-next` | Next.js `withMn()` (прототип, webpack-only) |
+| `minotation-rollup` | Rollup-плагин (прототип) |
+| `minotation-astro` | Astro-интеграция (прототип, обёртка над `minotation-vite`) |
+| `minotation-esbuild` | esbuild-плагин (прототип) |
 
 ## Миграция с 1.x
 

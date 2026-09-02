@@ -1,0 +1,14 @@
+{
+  "name": "minotation-astro-demo",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Минимальный Astro-проект для сквозной проверки minotation-astro на реальной сборке (не мок).",
+  "scripts": {
+    "build": "astro build"
+  },
+  "dependencies": {
+    "astro": "^7",
+    "cookie": "^2.0.1",
+    "minotation-astro": "file:../minotation-astro"
+  }
+}

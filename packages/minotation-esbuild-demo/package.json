@@ -1,0 +1,13 @@
+{
+  "name": "minotation-esbuild-demo",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Минимальный esbuild-проект для сквозной проверки minotation-esbuild на реальной сборке (не мок).",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "esbuild": "^0.28.0",
+    "minotation-esbuild": "file:../minotation-esbuild"
+  }
+}

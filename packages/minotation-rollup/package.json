@@ -1,0 +1,30 @@
+{
+  "name": "minotation-rollup",
+  "version": "0.0.1",
+  "description": "Rollup plugin for Minimalist Notation",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "jest --config=./jest.config.js --no-coverage",
+    "test:watch": "jest --watch --no-coverage --config=./jest.config.js",
+    "test:coverage": "jest --coverage --config=./jest.config.js"
+  },
+  "dependencies": {
+    "esbuild": "^0.28.0"
+  },
+  "peerDependencies": {
+    "minotation": "0.0.1",
+    "rollup": "^3.0.0 || ^4.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0",
+    "rollup": "^4",
+    "ts-jest": "^29.4.11",
+    "typescript": "^5.0.0"
+  }
+}

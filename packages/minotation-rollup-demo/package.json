@@ -1,0 +1,15 @@
+{
+  "name": "minotation-rollup-demo",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Минимальный Rollup-проект для сквозной проверки minotation-rollup на реальной сборке (не мок).",
+  "scripts": {
+    "build": "rollup -c"
+  },
+  "dependencies": {
+    "minotation-rollup": "file:../minotation-rollup"
+  },
+  "devDependencies": {
+    "rollup": "^4"
+  }
+}

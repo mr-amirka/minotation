@@ -40,6 +40,9 @@ import {
 import {
   getCombinator,
 } from './getCombinator';
+import type {
+  MnDepthCheck,
+} from './getCombinator';
 import {
   joinMapsWithFirstValue,
   joinPrefixWithFirstValue,
@@ -114,6 +117,7 @@ function suffixesReduce(suffixes: StrMap<StrMap<number>>,
 export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   let $$states: StrMap<string[]>;
   let $$synonyms: StrMap<AltMap>;
+  let $$depthCheck: MnDepthCheck;
 
   const $$parsers: StrMap<ParseComboNameFn> = {
     'id': parseId,
@@ -179,7 +183,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * @param childName — один `>`-сегмент суффикса (может нести свой depth-префикс и `<`-цепочку)
    */
   function childsIteratee(alts: AltMap, childName: string): AltMap {
-    const part = getCombinator(childName);
+    const part = getCombinator(childName, $$depthCheck);
     return joinMapsWithFirstValue(
       alts,
       getParents(
@@ -210,6 +214,19 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     targetName: string): Array<[StrMap<number>, AltMap]> {
     $$states = (instance as any).states || {};
     $$synonyms = (instance as any)._synonyms || {};
+    const $$mnOptions = (instance as any).options || {};
+    $$depthCheck = {
+      maxDepth: $$mnOptions.maxDepth,
+      maxDepthMode: $$mnOptions.maxDepthMode,
+      token: comboName,
+      onExceed: (depth: number, maxDepth: number) => {
+        (instance as any)._collectWarning?.({
+          type: 'max-depth-exceeded',
+          token: comboName,
+          message: `Глубина контекстного селектора (${depth}) превышает maxDepth (${maxDepth})`,
+        });
+      },
+    };
 
     let name = comboName;
     let tgt = targetName;
@@ -278,7 +295,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
 
     for (; i < l; i++) {
       mediaNames = [];
-      part = getCombinator(extractMedia(mediaNames, parts[i]));
+      part = getCombinator(extractMedia(mediaNames, parts[i]), $$depthCheck);
       essence = getEssence(part[1]);
       alts = joinMapsWithFirstValue(
         joinPrefixWithFirstValue(

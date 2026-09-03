@@ -143,11 +143,65 @@ export interface MnData {
     content?: string }>, number];
 }
 
+/**
+ * Ошибка разбора аргумента/токена — бросается точечно (утилитой или движком),
+ * ловится централизованно в `withCatchParseComboNameDecorate`/`__initEssence`
+ * (`core/index.ts`) и конвертируется в {@link MnWarning}, а не пробрасывается
+ * пользователю: токен, вызвавший `MnParseError`, просто не даёт CSS-правила в
+ * этом цикле компиляции. См. `AGENT_DRAFT/SPEC/10-error-warnings.md`.
+ */
+export class MnParseError extends Error {
+  constructor(
+    message: string,
+    public readonly context: {
+      token: string;
+      handler: string;
+      arg: string;
+      utility?: string;
+    },
+  ) {
+    super(message);
+    this.name = 'MnParseError';
+  }
+}
+
+/** Тип предупреждения — что именно не удалось обработать. */
+export type MnWarningType = 'parse-error' | 'unknown-handler' | 'max-depth-exceeded';
+
+/** Предупреждение, собранное при компиляции (`mn.warnings$`). */
+export interface MnWarning {
+  type: MnWarningType;
+  token: string;
+  handler?: string;
+  arg?: string;
+  utility?: string;
+  message: string;
+  error?: MnParseError;
+}
+
 /** Опции провайдера */
 export interface MnOptions {
   presets?: Array<(mn: MnInstance) => void>;
   media?: Record<string, MnMediaEntry>;
   onError?: (e: Error) => void;
+  /**
+   * Реакция на {@link MnWarning} (парсинг-ошибки в утилитах, неизвестный
+   * хендлер, превышение `maxDepth` в режиме `'warn'`). @default 'console'
+   */
+  onWarning?: 'silent' | 'console' | ((warning: MnWarning) => void);
+  /**
+   * Мягкий лимит глубины контекстных `<`/`>`-селекторов (`2Parent`, `3Child` и т.п.).
+   * Не задан по умолчанию — действует только жёсткий потолок (см.
+   * `MN_MAX_DEPTH_HARD_LIMIT` в `getCombinator.ts`, всегда 30, не настраивается).
+   */
+  maxDepth?: number;
+  /**
+   * Поведение при превышении {@link MnOptions.maxDepth}:
+   * `'warn'` (по умолчанию) — предупреждение, токен всё равно компилируется
+   * (глубина при этом всё равно не может превысить жёсткий потолок 30);
+   * `'block'` — токен не даёт CSS-правила вообще (как `MnParseError`).
+   */
+  maxDepthMode?: 'warn' | 'block';
   selectorPrefix?: string;
   altColor?: string;
 }

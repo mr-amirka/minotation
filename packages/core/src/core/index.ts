@@ -105,6 +105,10 @@ import type {
   MnEssenceRaw,
   MnEssenceParams,
   MnOptions,
+  MnWarning,
+} from './types';
+import {
+  MnParseError,
 } from './types';
 import type {
   MnEntity,
@@ -114,6 +118,11 @@ import type {
 
 // Присваиваем utils статическому свойству (нужно для обратной совместимости)
 minotationProvider.utils = baseUtils;
+
+/** `MnOptions.onWarning` по умолчанию — `'console'` (см. `AGENT_DRAFT/SPEC/10-error-warnings.md` §4, Q2). */
+function defaultOnWarning(warning: MnWarning): void {
+  console.warn('[minotation] ' + warning.token + ': ' + warning.message);
+}
 
 /**
  * Создаёт независимый экземпляр Minotation.
@@ -148,11 +157,29 @@ function minotationProvider(options?: MnOptions) {
   function updateOptions(): void {
     const options = mn.options || {};
     $$onError = options.onError || noop;
+    $$onWarning = options.onWarning === 'silent'
+      ? noop
+      : typeof options.onWarning === 'function'
+        ? options.onWarning
+        : defaultOnWarning;
     options.selectorPrefix === $$lastSelectorPrefix || (
       $$lastSelectorPrefix = options.selectorPrefix,
       $$selectorPrefixes = keys(selectorsValidateFilter(normalizeSelectors(options.selectorPrefix || '')))
     );
     $$altColor = options.altColor !== 'off';
+  }
+  /**
+   * Собирает {@link MnWarning} (парсинг-ошибка/неизвестный хендлер/превышение
+   * `maxDepth`) — не бросает, не блокирует компиляцию. Дедуп по токену (§10-error-warnings.md,
+   * Q3): повторное предупреждение для уже отмеченного токена не добавляется повторно.
+   * `warnings$` копится между `compile()`, сбрасывается только в `__clear()` (см. ниже).
+   */
+  function collectWarning(warning: MnWarning): void {
+    if ($$warningTokens[warning.token]) return;
+    $$warningTokens[warning.token] = 1;
+    $$warnings = $$warnings.concat([warning]);
+    $$onWarning(warning);
+    emitWarnings($$warnings);
   }
   /**
    * Регистрирует эссенцию (хендлер/статический объект) под именем/путём —
@@ -425,6 +452,11 @@ function minotationProvider(options?: MnOptions) {
   const error$ = mn.error$ = observableProvider<Error | undefined>(undefined);
   const emitError = error$.emit;
   let $$onError = noop as (e: Error) => void;
+  const warnings$ = mn.warnings$ = observableProvider<MnWarning[]>([]);
+  const emitWarnings = warnings$.emit;
+  let $$onWarning = defaultOnWarning;
+  let $$warnings: MnWarning[] = [];
+  let $$warningTokens: Record<string, number> = {};
   let $$updated: number;
   let $$essences: Record<string, MnEssenceResult>;
   let $$root: Record<string, Record<string, MnContextEssence>>;
@@ -446,6 +478,10 @@ function minotationProvider(options?: MnOptions) {
   error$.on((error: Error) => {
     $$onError(error);
   });
+  // Позволяет selectorsCompileProvider (отдельный модуль, свой замкнутый scope)
+  // сообщать о превышении maxDepth в режиме 'warn' — по тому же соглашению,
+  // что и уже существующие internal-геттеры (mn.states/mn._synonyms).
+  (mn as any)._collectWarning = collectWarning;
 
   function withCatchParseComboNameDecorate(parseComboNameFn: (...args: any[]) => any): (...args: any[]) => any {
     return function() {
@@ -453,7 +489,19 @@ function minotationProvider(options?: MnOptions) {
         // eslint-disable-next-line
         return parseComboNameFn.apply(this, arguments);
       } catch (ex) {
-        emitError(ex);
+        if (ex instanceof MnParseError) {
+          collectWarning({
+            type: ex.context.utility === 'getCombinator' ? 'max-depth-exceeded' : 'parse-error',
+            token: ex.context.token,
+            handler: ex.context.handler,
+            arg: ex.context.arg,
+            utility: ex.context.utility,
+            message: ex.message,
+            error: ex,
+          });
+        } else {
+          emitError(ex);
+        }
       }
       return [];
     };
@@ -810,25 +858,42 @@ function minotationProvider(options?: MnOptions) {
           suffix = matchs[1],
           ni = matchs[2]
         ),
-        (handle = $$handlerMap[name]) && (
-          params = {
-            name: name,
-            suffix: suffix,
-            ni: ni || '',
-          },
-          handle.skip || (matchs = REGEXP_MATCH_VALUE.exec(suffix)) && (
-            params.value = matchs[2],
-            params.camel = matchs[3],
-            params.num = matchs[4],
-            params.negative = matchs[5],
-            params.unit = matchs[6],
-            params.other = matchs[7]
-          ),
-          (essence = handle(params)) && (essence.important = ni ? 1 : 0),
-          __normalize(essence)
-        )
+        (handle = $$handlerMap[name])
+          ? (
+            params = {
+              name: name,
+              suffix: suffix,
+              ni: ni || '',
+            },
+            handle.skip || (matchs = REGEXP_MATCH_VALUE.exec(suffix)) && (
+              params.value = matchs[2],
+              params.camel = matchs[3],
+              params.num = matchs[4],
+              params.negative = matchs[5],
+              params.unit = matchs[6],
+              params.other = matchs[7]
+            ),
+            (essence = handle(params)) && (essence.important = ni ? 1 : 0),
+            __normalize(essence)
+          )
+          : (
+            collectWarning({
+              type: 'unknown-handler',
+              token: value,
+              handler: name,
+              message: 'Неизвестный хендлер "' + name + '" (токен "' + value + '")',
+            }),
+            undefined
+          )
       );
     } catch (ex) {
+      if (ex instanceof MnParseError) {
+        collectWarning({
+          type: 'parse-error', token: ex.context.token, handler: ex.context.handler,
+          arg: ex.context.arg, utility: ex.context.utility, message: ex.message, error: ex,
+        });
+        return;
+      }
       err = new Error('MN parsing error for essence "'
         + value + '": ' + ex.message);
       emitError(err);
@@ -1028,6 +1093,11 @@ function minotationProvider(options?: MnOptions) {
     $$assigned = $$data.assigned = {};
     forIn($$staticsAssigned = $$statics.assigned || ($$statics.assigned = {}),
       __assignItemCompile);
+    // Отдельный mn.clearWarnings() не нужен (§10-error-warnings.md, Q3) —
+    // recompile()/__clear() уже "чистый лист" для остального состояния.
+    $$warnings = [];
+    $$warningTokens = {};
+    emitWarnings($$warnings);
   }
   __clear();
   /**

@@ -118,7 +118,7 @@ export default (mn: MnInstance) => {
     /**
     * Correct the padding in Firefox.
     */
-    fieldset: 'pt0.35em ph0.75em pb0.625em',
+    fieldset: 'pt0.35em px0.75em pb0.625em',
 
     /**
      * 1. Correct the text wrapping in Edge and IE.

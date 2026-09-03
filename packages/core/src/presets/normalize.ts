@@ -38,7 +38,7 @@ export default (mn: MnInstance) => {
      * Correct the font size and margin on `h1` elements within `section` and
      * `article` contexts in Chrome, Firefox, and Safari.
      */
-    h1: 'f2em mv0.67em mh',
+    h1: 'f2em my0.67em mx0',
 
     /* Grouping content
   ========================================================================== */
@@ -145,7 +145,7 @@ export default (mn: MnInstance) => {
     /**
     * Correct the padding in Firefox.
     */
-    fieldset: 'pt0.35em ph0.75em pb0.625em',
+    fieldset: 'pt0.35em px0.75em pb0.625em',
 
     /**
      * 1. Correct the text wrapping in Edge and IE.

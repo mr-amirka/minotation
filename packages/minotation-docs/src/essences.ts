@@ -1,18 +1,20 @@
 /**
  * Справочник хендлеров minotation для сайта документации.
  *
- * Источник — HANDLERS.md (`packages/minotation/packages/core/HANDLERS.md`),
- * уже сверенный прямыми вызовами `minotationProvider`+`presetStandard` против
- * собранного dist/. Каждый `examples`-токен здесь — литерал из HANDLERS.md
- * (не переизобретён и не скопирован из старого 1.x essences.js) — реальный
- * CSS для него компилируется здесь же, в браузере, на старте приложения
- * (см. `data.ts`), а не хранится как текст.
+ * Первый блок записей (до "Границы (доп.)") — источник `HANDLERS.md`
+ * (`packages/minotation/packages/core/HANDLERS.md`), уже сверенный прямыми
+ * вызовами `minotationProvider`+`presetStandard` против собранного dist/.
  *
- * Не является 1:1 построчным портом старого `old/mn-docs/src/essences/index.js`
- * (1012 строк на ~150 хендлеров 1.x с ручными regex-описаниями `params`) —
- * тот источник частично устарел (изменившиеся хендлеры вроде `fx`/`fxw`,
- * упразднённые вроде `contrast`→`image-rendering`-only). Здесь — то, что
- * реально задокументировано и проверено для текущего v1-порта.
+ * Остальные записи (с 2026-09-04) — полный порт `old/mn-docs/src/essences/index.js`
+ * (1.x, 158 хендлеров): каждый пример НЕ скопирован из старого файла буквально —
+ * сверен заново прямой live-компиляцией против собранного dist/ (см. методологию
+ * MEMORY `feedback_bundler_plugins_need_real_builds.md` — старые описания могли
+ * устареть, часть уже была изменена в v1-порту, напр. `fx`/`fxw`). Из 158 старых
+ * тегов 7 подтверждённо более не существуют (не дают CSS в реальной компиляции) —
+ * сознательно не портированы: `layout`, `fha`, `fva`, `tl`, `tr`, `tc` (устарели —
+ * `ta`+буква заменил `tl`/`tr`/`tc`), `break`. Каждый `examples`-токен здесь
+ * компилируется здесь же, в браузере, на старте приложения (см. `data.ts`),
+ * а не хранится как статичный текст.
  */
 
 export interface MnDocEntry {
@@ -186,4 +188,143 @@ export const ESSENCES: MnDocEntry[] = [
     name: 'ratio', props: 'padding-top (+ дочерний position:absolute)', keywords: ['aspect', 'ratio', 'соотношение сторон'],
     examples: ['ratio3x2'],
   },
+
+  // --- Границы (доп.) — портировано из старого 1.x essences.js, проверено live-компиляцией ---
+  { name: 'bi', props: 'border-image', keywords: ['border', 'image'], description: 'без аргумента — none; url()/gradient() — camelCase/snakeCase строка', examples: ['bi'] },
+  { name: 'bdcl', props: 'border-collapse', keywords: ['border', 'collapse', 'table'], examples: ['bdclC', 'bdclS'] },
+  { name: 'bsp', props: 'border-spacing', keywords: ['border', 'spacing', 'table'], description: '_ = пробел между двумя значениями', examples: ['bsp0', 'bsp5px_1rem'] },
+
+  // --- Размеры (доп.) ---
+  { name: 'sqmin', props: 'min-width, min-height', description: 'min-square', keywords: ['square', 'min'], examples: ['sqmin10'] },
+  { name: 'sqmax', props: 'max-width, max-height', description: 'max-square', keywords: ['square', 'max'], examples: ['sqmax10'] },
+  { name: 'hmin', props: 'min-height', examples: ['hmin10'] },
+  { name: 'hmax', props: 'max-height', examples: ['hmax10'] },
+
+  // --- Таблицы ---
+  { name: 'tbl', props: 'display', description: 'display:table — центрирование дочернего элемента до появления flex', keywords: ['table', 'display'], examples: ['tbl'] },
+  { name: 'cps', props: 'caption-side', keywords: ['caption', 'table'], examples: ['cpsTop', 'cpsB'] },
+  { name: 'ec', props: 'empty-cells', keywords: ['table'], examples: ['ecShow', 'ecH'] },
+
+  // --- Float / clear ---
+  { name: 'cl', props: 'clear', examples: ['cl', 'clLeft'] },
+  { name: 'cfx', props: 'clear', description: 'clearfix: :before/:after{content, clear:both, display:table}', keywords: ['clearfix'], examples: ['cfx'] },
+  { name: 'lt', props: 'float', description: '(float) left', examples: ['lt'] },
+  { name: 'rt', props: 'float', description: '(float) right', examples: ['rt'] },
+  { name: 'jt', props: 'float', description: '(float) none — "justify"', examples: ['jt'] },
+
+  // --- Переходы (доп.) ---
+  { name: 'delay', props: 'transition-delay', keywords: ['transition', 'delay'], examples: ['delay150'] },
+  { name: 'tn', props: 'transition', keywords: ['transition'], description: '_ = пробел между значениями', examples: ['tn_all_1s_ease_0s'] },
+  { name: 'tp', props: 'transition-property', keywords: ['transition'], examples: ['tp_color'] },
+  { name: 'ttf', props: 'transition-timing-function', keywords: ['transition'], examples: ['ttfEaseIn'] },
+
+  // --- SVG / outline / доп. цвет ---
+  { name: 'stroke', props: 'stroke', keywords: ['svg', 'color'], examples: ['strokeF', 'stroke0'] },
+  { name: 'fill', props: 'fill', keywords: ['svg', 'color'], examples: ['fillF'] },
+  { name: 'sw', props: 'stroke-width', keywords: ['svg'], examples: ['sw2'] },
+  { name: 'olc', props: 'outline-color', keywords: ['outline', 'color'], examples: ['olcF'] },
+  { name: 'olw', props: 'outline-width', keywords: ['outline'], examples: ['olw2'] },
+  { name: 'ol', props: 'outline', keywords: ['outline'], description: 'shorthand', examples: ['olSolid', 'olDashed_red'] },
+  { name: 'ols', props: 'outline-style', keywords: ['outline', 'style'], examples: ['olsSolid'] },
+  { name: 'olo', props: 'outline-offset', keywords: ['outline', 'offset'], examples: ['olo10'] },
+  { name: 'temc', props: 'text-emphasis-color', keywords: ['text', 'emphasis', 'color'], examples: ['temcF'] },
+  { name: 'tdc', props: 'text-decoration-color', keywords: ['text', 'decoration', 'color'], examples: ['tdcF'] },
+
+  // --- Фон (доп.) ---
+  { name: 'bgi', props: 'background-image', keywords: ['background', 'image'], description: 'без аргумента — none; url — camelCase/snakeCase путь', examples: ['bgi'] },
+  { name: 'bgp', props: 'background-position', keywords: ['background', 'position'], examples: ['bgpTop'] },
+  { name: 'bgpx', props: 'background-position-x', keywords: ['background', 'position'], examples: ['bgpxRight_32px'] },
+  { name: 'bgpy', props: 'background-position-y', keywords: ['background', 'position'], examples: ['bgpyBottom_32px'] },
+  { name: 'bgs', props: 'background-size', keywords: ['background', 'size'], examples: ['bgsContain'] },
+  { name: 'bga', props: 'background-attachment', keywords: ['background'], examples: ['bgaFixed'] },
+  { name: 'bgbk', props: 'background-break', keywords: ['background'], examples: ['bgbkBB'] },
+  { name: 'bgcp', props: 'background-clip', keywords: ['background', 'clip'], examples: ['bgcpBorderBox'] },
+  { name: 'bgr', props: 'background-repeat', keywords: ['background', 'repeat'], examples: ['bgrNoRepeat'] },
+  { name: 'bgo', props: 'background-origin', keywords: ['background', 'origin'], examples: ['bgoBorderBox'] },
+
+  // --- text-align (доп.) ---
+  { name: 'tj', props: 'text-align', description: 'text-justify', examples: ['tj'] },
+
+  // --- Позиционирование (доп.) ---
+  { name: 'pos', props: 'position', description: 'без аргумента — relative; A/R/F/S — синонимы значений', examples: ['pos', 'posA'] },
+  { name: 'static', props: 'position', examples: ['static'] },
+
+  // --- Transform (доп.) ---
+  { name: 'spnr', props: 'transform, animation', description: 'бесконечный спиннер (rotate keyframes)', keywords: ['spinner', 'rotate', 'animation'], examples: ['spnr1000'] },
+  { name: 'rx', props: 'transform', description: 'rotateX', examples: ['rx90'] },
+  { name: 'ry', props: 'transform', description: 'rotateY', examples: ['ry90'] },
+  { name: 'rz', props: 'transform', description: 'rotateZ', examples: ['rz90'] },
+
+  // --- Прочее ---
+  { name: 'o', props: 'opacity', description: 'значение 0-100 → 0-1', examples: ['o100'] },
+  { name: 'tsa', props: 'text-size-adjust', examples: ['tsa0'] },
+  { name: 'apc', props: 'appearance', examples: ['apcNone'] },
+  { name: 'ovx', props: 'overflow-x', examples: ['ovxHidden'] },
+  { name: 'ovs', props: 'overflow-style', examples: ['ovsAuto'] },
+  { name: 'ovsc', props: '-webkit-overflow-scrolling', examples: ['ovscTouch'] },
+  { name: 'cp', props: 'clip', examples: ['cpAuto'] },
+  { name: 'rsz', props: 'resize', examples: ['rszBoth'] },
+
+  // --- Grid ---
+  { name: 'g', props: 'grid', examples: ['gNone'] },
+  { name: 'gt', props: 'grid-template', examples: ['gt100px_1fr'] },
+  { name: 'gtc', props: 'grid-template-columns', examples: ['gtc100px_1fr'] },
+  { name: 'gtr', props: 'grid-template-rows', examples: ['gtr100px_1fr'] },
+  { name: 'gac', props: 'grid-auto-columns', examples: ['gacAuto'] },
+  { name: 'gar', props: 'grid-auto-rows', examples: ['garAuto'] },
+  { name: 'gaf', props: 'grid-auto-flow', examples: ['gafRow_dense'] },
+  { name: 'gg', props: 'grid-gap', examples: ['gg10px_20px'] },
+  { name: 'ggc', props: 'grid-column-gap', examples: ['ggc1em'] },
+  { name: 'ggr', props: 'grid-row-gap', examples: ['ggr1em'] },
+  { name: 'gc', props: 'grid-column', description: 'простое значение; диапазоны с "/" не поддержаны сканером-эскейпингом', examples: ['gc1'] },
+  { name: 'gr', props: 'grid-row', description: 'простое значение; диапазоны с "/" не поддержаны сканером-эскейпингом', examples: ['gr1'] },
+
+  // --- Flex (доп.) ---
+  { name: 'fxb', props: 'flex-basis', examples: ['fxb100px'] },
+  { name: 'fxf', props: 'flex-flow', examples: ['fxfRow_wrap'] },
+  { name: 'or', props: 'order', keywords: ['flex', 'order'], examples: ['or1'] },
+
+  // --- Текст (доп.) ---
+  { name: 'tw', props: 'text-wrap', examples: ['twNormal'] },
+  { name: 'td', props: 'text-decoration', examples: ['tdUnderline'] },
+  { name: 'tdl', props: 'text-decoration-line', examples: ['tdlUnderline'] },
+  { name: 'tds', props: 'text-decoration-skip', examples: ['tdsInk'] },
+  { name: 'tdsi', props: 'text-decoration-skip-ink', examples: ['tdsiAuto'] },
+  { name: 'tdt', props: 'text-decoration-thickness', examples: ['tdt3px'] },
+  { name: 'ti', props: 'text-indent', examples: ['ti40px'] },
+  { name: 'tov', props: 'text-overflow', examples: ['tovEllipsis'] },
+  { name: 'ws', props: 'white-space', examples: ['wsNowrap'] },
+  { name: 'wsc', props: 'white-space-collapse', examples: ['wscNormal'] },
+  { name: 'wb', props: 'word-break', examples: ['wbBreakAll'] },
+  { name: 'ww', props: 'word-wrap', examples: ['wwNormal'] },
+  { name: 'wos', props: 'word-spacing', examples: ['wos1rem'] },
+  { name: 'q', props: 'quotes', examples: ['qNone'] },
+  { name: 'va', props: 'vertical-align', keywords: ['vertical', 'align'], examples: ['vaBaseline'] },
+  { name: 'e', props: 'pointer-events', examples: ['eNone'] },
+  { name: 'wm', props: 'writing-mode', keywords: ['writing', 'mode'], examples: ['wm'] },
+  { name: 'v', props: 'visibility', examples: ['vHidden'] },
+  { name: 'ts', props: 'transform-style', keywords: ['transform', 'style'], examples: ['tsFlat'] },
+  { name: 'mbm', props: 'mix-blend-mode', keywords: ['mix', 'blend', 'mode'], examples: ['mbmMultiply'] },
+
+  // --- Шрифт ---
+  { name: 'font', props: 'font', description: 'shorthand', examples: ['fontCaption'] },
+  { name: 'ff', props: 'font-family', keywords: ['font', 'family'], examples: ['ffSerif'] },
+  { name: 'fs', props: 'font-style', keywords: ['font', 'style'], examples: ['fsItalic'] },
+  { name: 'fv', props: 'font-variant', keywords: ['font', 'variant'], examples: ['fvSmallCaps'] },
+  { name: 'fef', props: 'font-effect', description: 'нестандартное CSS-свойство (старый vendor draft)', keywords: ['font', 'effect'], examples: ['fefEngrave'] },
+  { name: 'fsm', props: 'font-smooth', keywords: ['font', 'smooth'], examples: ['fsmAuto'] },
+  { name: 'fst', props: 'font-stretch', keywords: ['font', 'stretch'], examples: ['fstCondensed'] },
+  { name: 'tal', props: 'text-align-last', keywords: ['text', 'align'], examples: ['talCenter'] },
+
+  // --- Контент / списки ---
+  { name: 'cnt', props: 'content', examples: ['cntNormal'] },
+  { name: 'lis', props: 'list-style', keywords: ['list', 'style'], examples: ['lisSquare'] },
+  { name: 'lisp', props: 'list-style-position', keywords: ['list', 'style', 'position'], examples: ['lispInside'] },
+  { name: 'list', props: 'list-style-type', keywords: ['list', 'style', 'type'], examples: ['listCircle'] },
+  { name: 'lisi', props: 'list-style-image', description: 'без аргумента — none', keywords: ['list', 'style', 'image'], examples: ['lisi'] },
+
+  // --- Page-break ---
+  { name: 'pgbb', props: 'page-break-before, break-before', keywords: ['page', 'break'], examples: ['pgbbAlways'] },
+  { name: 'pgba', props: 'page-break-after, break-after', keywords: ['page', 'break'], examples: ['pgbaAlways'] },
+  { name: 'pgbi', props: 'page-break-inside, break-inside', keywords: ['page', 'break'], examples: ['pgbiAvoid'] },
 ];

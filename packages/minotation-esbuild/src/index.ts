@@ -126,9 +126,15 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
  *   и динамические пресет-файлы — по расширениям, а не по графу зависимостей esbuild
  *   (тот же blanket-scan, что и у `minotation-vite`/`minotation-rollup` — защищает
  *   от пропуска токенов из модулей, не попавших в текущий конкретный бандл).
- * - `onLoad`: дополнительно накапливает токены из каждого реально загружаемого
- *   esbuild'ом файла. Контент НЕ подменяется — callback явно возвращает `undefined`,
- *   чтобы esbuild продолжил грузить файл своим штатным лоадером.
+ * - `onLoad` (пресет-файлы): перехватывает реальный side-effect импорт
+ *   `import './mn/app.mn'` из кода приложения — `*.mn.ts`/`.mn.js`/`.mn.tsx`
+ *   по умолчанию. Оценивает файл через `evalPresetFile` (как и blanket-скан
+ *   в `onStart`, так что дубли безопасны — `dynamicPresets` это `Map` по пути)
+ *   и возвращает заглушку (`export default {}`), чтобы реальный код пресета
+ *   (расcчитанный на Node-контекст, не на браузер) не попал в клиентский бандл.
+ * - `onLoad` (файлы приложения): дополнительно накапливает токены из каждого реально
+ *   загружаемого esbuild'ом файла. Контент НЕ подменяется — callback явно возвращает
+ *   `undefined`, чтобы esbuild продолжил грузить файл своим штатным лоадером.
  * - `onEnd`: компилирует все накопленные токены в CSS и пишет как файл рядом
  *   с `outdir`/`outfile` (esbuild, в отличие от Rollup/Vite, не умеет "эмитировать
  *   asset" декларативно — плагин пишет файл на диск напрямую).
@@ -209,6 +215,13 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
             }
           } catch (_) { /* skip unreadable */ }
         }
+      });
+
+      build.onLoad({ filter: /./ }, args => {
+        if (!presetExts.some(ext => args.path.endsWith(ext))) return undefined;
+        const preset = evalPresetFile(args.path);
+        if (preset) dynamicPresets.set(args.path, preset);
+        return { contents: 'export default {};', loader: 'js' };
       });
 
       build.onLoad({ filter: /./ }, args => {

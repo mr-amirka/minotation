@@ -18,7 +18,7 @@ describe('minotation-esbuild — smoke', () => {
     expect(typeof plugin.setup).toBe('function');
   });
 
-  test('setup(build) — регистрирует onStart/onLoad/onEnd', () => {
+  test('setup(build) — регистрирует onStart/onLoad(x2: пресет-файлы + файлы приложения)/onEnd', () => {
     const plugin = mnEsbuild({ attr: 'className' });
     const onStart = jest.fn();
     const onLoad = jest.fn();
@@ -26,7 +26,7 @@ describe('minotation-esbuild — smoke', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     plugin.setup({ onStart, onLoad, onEnd, initialOptions: {} } as any);
     expect(onStart).toHaveBeenCalledTimes(1);
-    expect(onLoad).toHaveBeenCalledTimes(1);
+    expect(onLoad).toHaveBeenCalledTimes(2);
     expect(onEnd).toHaveBeenCalledTimes(1);
   });
 });

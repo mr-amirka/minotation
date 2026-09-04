@@ -166,7 +166,7 @@ export class MnParseError extends Error {
 }
 
 /** Тип предупреждения — что именно не удалось обработать. */
-export type MnWarningType = 'parse-error' | 'unknown-handler' | 'max-depth-exceeded';
+export type MnWarningType = 'parse-error' | 'unknown-handler' | 'max-depth-exceeded' | 'invalid-css-value';
 
 /** Предупреждение, собранное при компиляции (`mn.warnings$`). */
 export interface MnWarning {

@@ -78,6 +78,7 @@ import {
   REGEXP_MATCH_NAME,
   REGEXP_MATCH_IMPORTANT,
   REGEXP_MATCH_VALUE,
+  REGEXP_INVALID_CSS_VALUE,
   JOIN_AND,
   normalizeSelectors,
   normalizeComboNames,
@@ -180,6 +181,40 @@ function minotationProvider(options?: MnOptions) {
     $$warnings = $$warnings.concat([warning]);
     $$onWarning(warning);
     emitWarnings($$warnings);
+  }
+  /**
+   * Проверяет `essence.style` (CSS-значения, УЖЕ вернувшиеся из хендлера) на
+   * узнаваемый признак битого CSS ({@link REGEXP_INVALID_CSS_VALUE}) — "где-то
+   * в ядре после возврата CSS из обработчиков" (решение пользователя
+   * 2026-09-04), а не точечные `throw` по каждому хендлеру отдельно. Первое
+   * найденное битое значение — весь essence отбраковывается (не частично).
+   *
+   * @returns `true`, если `style` не содержит подозрительных значений (или его нет вовсе)
+   */
+  function validateEssenceStyle(essence: MnEssenceRaw, token: string, handlerName: string): boolean {
+    const style = essence.style;
+    if (!style) return true;
+    let prop: string;
+    let v: string | string[];
+    let bad: string | undefined;
+    for (prop in style) { // eslint-disable-line
+      v = style[prop];
+      bad = isArray(v)
+        ? (v as string[]).find((s) => REGEXP_INVALID_CSS_VALUE.test(s))
+        : (REGEXP_INVALID_CSS_VALUE.test(v as string) ? v as string : undefined);
+      if (bad !== undefined) {
+        collectWarning({
+          type: 'invalid-css-value',
+          token,
+          handler: handlerName,
+          arg: prop + ':' + bad,
+          message: 'Хендлер "' + handlerName + '" вернул похожее на битое CSS-значение для "'
+            + prop + '": "' + bad + '"',
+        });
+        return false;
+      }
+    }
+    return true;
   }
   /**
    * Регистрирует эссенцию (хендлер/статический объект) под именем/путём —
@@ -874,6 +909,7 @@ function minotationProvider(options?: MnOptions) {
               params.other = matchs[7]
             ),
             (essence = handle(params)) && (essence.important = ni ? 1 : 0),
+            essence && !validateEssenceStyle(essence, value, name) && (essence = undefined),
             __normalize(essence)
           )
           : (

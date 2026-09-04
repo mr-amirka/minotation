@@ -354,8 +354,11 @@ describe('Standard preset — box-shadow / text-shadow', () => {
     expect(css('tsh10r2c00F')).toContain('text-shadow:0px 0px 10px #00f');
   });
 
-  test('bxshR3 → изолированный r без ведущего числа даёт "Rpx" в blur-слоте (известное ограничение, унаследовано из v1)', () => {
-    expect(css('bxshR3')).toContain('box-shadow:0px 0px Rpx 3px #000');
+  test('bxshR3 → изолированный r без ведущего числа даёт "Rpx" в blur-слоте — теперь ловится валидацией CSS-вывода (2026-09-04), CSS не эмитится', () => {
+    // Раньше (известное ограничение, унаследовано из v1) — "box-shadow:0px 0px Rpx 3px #000"
+    // молча уходило в бандл. С добавлением REGEXP_INVALID_CSS_VALUE (core/utils.ts) —
+    // такой essence бракуется целиком, warning уходит в mn.warnings$/onWarning.
+    expect(css('bxshR3')).toBe('');
   });
 
   test('bxsh19In → inset не поддерживается (известное ограничение, унаследовано из v1)', () => {

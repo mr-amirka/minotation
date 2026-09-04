@@ -276,6 +276,24 @@ export const REGEXP_MATCH_VALUE = /^((([A-Z][A-Za-z]*)|((-)?[0-9.]+))([a-z%]+)?)
 export const REGEXP_BROWSER_PREFIX = /((::-?|:-)([a-z]+-)?)/;
 export const REGEXP_MEDIA_PRIORITY = /^(.*)\^(-?[0-9]+)$/;
 export const REGEXP_IMPORTANT = /-i$/;
+/**
+ * Точечная эвристика "похоже на битое CSS-значение", не полный грамматический
+ * разбор (см. `AGENT_DRAFT/SPEC/10-error-warnings.md` — валидация итогового
+ * CSS-вывода целиком признана отдельным, более поздним этапом; это её первый,
+ * узкий проход). Ловит класс багов "буквы вместо числа перед юнитом" —
+ * например `bxshR3` → `box-shadow:...Rpx...` (см. `HANDLERS.md`, унаследовано
+ * из v1: изолированный `r`/`R`-модификатор без ведущего blur-числа) — плюс
+ * `NaN`/`undefined`/`null`, протёкшие в значение из JS. НЕ ловит: неверные
+ * ключевые слова (`display:flexx`), несочетаемые значения — тут нужен полный
+ * per-свойству грамматический разбор, сознательно не делается.
+ *
+ * Юниты `ex`/`ch`/`in` сознательно ИСКЛЮЧЕНЫ из списка — слишком много
+ * обычных CSS-ключевых слов случайно оканчиваются на эти буквосочетания
+ * (`flex`, `complex`, `index` → ложно матчат `ex`; `thin`, `within`, `chain` →
+ * `in`) — найдено эмпирически: `dF`→`display:flex` ложно браковался при
+ * первой версии этого регэкспа (6 упавших тестов), см. `CHANGELOG.md` 2026-09-04.
+ */
+export const REGEXP_INVALID_CSS_VALUE = /\b(?:undefined|null|NaN)\b|(?:^|[\s,(])(?:undefined|null|NaN|[A-Za-z]{1,3})(?:px|em|rem|deg|vh|vw|vmin|vmax|pt|pc|cm|mm|fr)(?=[\s,)]|$)/;
 export const JOIN_AND = joinProvider(' and ');
 
 // flatFlags (не fundamentool.flags()): та трактует '.'/'[...]' как путь (nested

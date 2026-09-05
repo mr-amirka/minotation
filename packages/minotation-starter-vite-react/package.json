@@ -1,0 +1,23 @@
+{
+  "name": "minotation-starter-vite-react",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Стартовый шаблон: Vite + React + minotation. Клонируйте и начинайте писать className-токены сразу.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "minotation": "file:../core",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.1",
+    "minotation-vite": "file:../minotation-vite",
+    "typescript": "^5.0.0",
+    "vite": "^6.4.3"
+  }
+}

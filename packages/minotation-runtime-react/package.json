@@ -1,0 +1,32 @@
+{
+  "name": "minotation-runtime-react",
+  "version": "0.0.1",
+  "description": "React adapter for minotation-runtime — lifecycle wiring for the framework-agnostic DOM runtime",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "jest --config=./jest.config.js --no-coverage",
+    "test:watch": "jest --watch --no-coverage --config=./jest.config.js",
+    "test:coverage": "jest --coverage --config=./jest.config.js"
+  },
+  "peerDependencies": {
+    "minotation": "0.0.1",
+    "minotation-runtime": "0.0.1",
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "ts-jest": "^29.4.11",
+    "typescript": "^5.0.0"
+  }
+}

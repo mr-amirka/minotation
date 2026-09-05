@@ -1,0 +1,26 @@
+{
+  "name": "minotation-runtime",
+  "version": "0.0.1",
+  "description": "Framework-agnostic DOM runtime for Minimalist Notation — no build step, no bundler plugin required",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "jest --config=./jest.config.js --no-coverage",
+    "test:watch": "jest --watch --no-coverage --config=./jest.config.js",
+    "test:coverage": "jest --coverage --config=./jest.config.js"
+  },
+  "peerDependencies": {
+    "minotation": "0.0.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "ts-jest": "^29.4.11",
+    "typescript": "^5.0.0"
+  }
+}

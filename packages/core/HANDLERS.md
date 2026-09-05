@@ -489,6 +489,28 @@ mnVite({
 
 ---
 
+## Валидация CSS-значений
+
+Помимо универсальной эвристики `REGEXP_INVALID_CSS_VALUE` (см. Box-shadow выше) —
+с **2026-09-05** для ~40 CSS-свойств, которые ядро само формирует из числового/
+цветового ввода (не пропускает пользовательский текст насквозь), действует
+строгая per-свойству грамматика (`cssGrammar.ts`): `padding`/`margin`/`width`/
+`height`/`top`/`right`/`bottom`/`left`/`border-radius`/`gap`/`flex-basis` —
+длина/проценты/`calc()`/`auto`; `border-*-color`/`background(-color)`/`color`/
+`outline-color`/`fill`/`stroke` — hex/`rgba()`/CSS-идентификатор (именованные
+цвета типа `red`, keyword-значения типа `invert` не enum'ятся отдельно —
+идентификатор-по-форме уже достаточно узкий фильтр); `opacity`/`z-index`/
+`order`/`flex-grow`/`flex-shrink`/`font-weight` — число/integer; `border-width`/
+`outline-width` — длина или `thin`/`medium`/`thick`; `transition-duration`/
+`transition-delay` — время (`s`/`ms`); `line-height` — длина или голое число
+(из `%`-ввода). Свойства ВНЕ этого набора (в основном permissive
+camelCase/snakeCase pass-through хендлеры — `apc`, `bga`, `ff`, `td` и т.п.)
+по-прежнему проверяются только универсальной эвристикой — строгий enum для
+них означал бы заново изобретать сознательно permissive дизайн этих хендлеров.
+Детали и обоснование границ — JSDoc `core/src/cssGrammar.ts`.
+
+---
+
 ## Нетривиальные механизмы
 
 ### Как разбирается токен (реальный код, не `splitStem`/`parseLexeme`)

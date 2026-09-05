@@ -1,16 +1,16 @@
 /**
  * Next.js интеграция для Minimalist Notation.
  *
- * **Важно:** работает только с webpack-режимом Next.js.
- * Для Turbopack (по умолчанию в Next.js 15+) — нужен флаг `--webpack`
- * или `experimental.turbo: false` в next.config.
+ * **Важно:** работает только с webpack-бандлером Next.js. Проверено эмпирически
+ * (`next build --help` + реальная сборка, Next.js 15.5.19) — `next build`/
+ * `next dev` БЕЗ флагов уже используют webpack, `--turbopack` — opt-in
+ * пользователя, не умолчание; никакого `--webpack`-флага в CLI не существует.
+ * Просто не включайте `--turbopack`/`--turbo`.
  *
- * Использование (next.config.ts):
- *   import { withMn } from 'minotation-next';
+ * Использование (next.config.js):
+ *   const { withMn } = require('minotation-next');
  *
- *   export default withMn({
- *     experimental: { turbo: false },  // отключаем Turbopack
- *   }, {
+ *   module.exports = withMn({}, {
  *     output: 'static/mn.css',
  *   });
  */

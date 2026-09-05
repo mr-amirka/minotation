@@ -57,3 +57,6 @@ export function useMnRuntime(mn: MnRuntimeInstance, options: UseMnRuntimeOptions
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mn]);
 }
+
+export { MnIframe } from './MnIframe';
+export type { MnIframeProps } from './MnIframe';

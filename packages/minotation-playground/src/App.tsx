@@ -10,6 +10,9 @@ import {
   Box,
   Snackbar,
 } from '@mui/material';
+import CodeMirror from '@uiw/react-codemirror';
+import { html as htmlLang } from '@codemirror/lang-html';
+import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 import { compilePreviewCss, PRESET_OPTIONS, DEFAULT_PRESET_IDS } from './compile';
 import { encodeStateToHash, decodeStateFromHash } from './share';
 
@@ -63,23 +66,17 @@ export function App() {
         </Toolbar>
       </AppBar>
       <Box className="dF" sx={{ flex: 1, minHeight: 0 }}>
-        <Box
-          component="textarea"
-          value={html}
-          onChange={(e) => setHtml((e.target as HTMLTextAreaElement).value)}
-          spellCheck={false}
-          sx={{
-            width: '50%',
-            border: 0,
-            borderRight: '1px solid #ddd',
-            outline: 'none',
-            resize: 'none',
-            padding: '12px',
-            fontFamily: 'ui-monospace, SFMono-Regular, monospace',
-            fontSize: 13,
-            lineHeight: 1.5,
-          }}
-        />
+        <Box sx={{ width: '50%', borderRight: '1px solid #333', overflow: 'auto' }}>
+          <CodeMirror
+            value={html}
+            height="100%"
+            theme={vscodeDark}
+            extensions={[htmlLang()]}
+            onChange={(value) => setHtml(value)}
+            basicSetup={{ foldGutter: false }}
+            style={{ height: '100%', fontSize: 13 }}
+          />
+        </Box>
         <Box
           component="iframe"
           title="preview"

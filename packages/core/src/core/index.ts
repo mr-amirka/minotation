@@ -95,6 +95,7 @@ import {
   __compileProvider,
   spaceNormalize,
 } from './utils';
+import { isValidCssPropertyValue } from '../cssGrammar';
 import type {
   MnData,
   MnStatics,
@@ -183,14 +184,25 @@ function minotationProvider(options?: MnOptions) {
     emitWarnings($$warnings);
   }
   /**
-   * Проверяет `essence.style` (CSS-значения, УЖЕ вернувшиеся из хендлера) на
-   * узнаваемый признак битого CSS ({@link REGEXP_INVALID_CSS_VALUE}) — "где-то
-   * в ядре после возврата CSS из обработчиков" (решение пользователя
+   * Проверяет `essence.style` (CSS-значения, УЖЕ вернувшиеся из хендлера) —
+   * "где-то в ядре после возврата CSS из обработчиков" (решение пользователя
    * 2026-09-04), а не точечные `throw` по каждому хендлеру отдельно. Первое
    * найденное битое значение — весь essence отбраковывается (не частично).
    *
+   * Два уровня проверки на значение (см. {@link isBadCssValue}):
+   * 1. {@link REGEXP_INVALID_CSS_VALUE} — узнаваемый мусор (`undefined`/`NaN`/`Rpx`),
+   *    универсально для ЛЮБОГО свойства.
+   * 2. {@link isValidCssPropertyValue} (`cssGrammar.ts`, решение пользователя
+   *    2026-09-05 — "полная валидация") — строгая грамматика ПО КОНКРЕТНОМУ
+   *    свойству, для той части CSS-поверхности, где ядро само формирует
+   *    значение из числа/цвета (не для permissive pass-through хендлеров —
+   *    см. `cssGrammar.ts`'s module doc про границы охвата).
+   *
    * @returns `true`, если `style` не содержит подозрительных значений (или его нет вовсе)
    */
+  function isBadCssValue(prop: string, v: string): boolean {
+    return REGEXP_INVALID_CSS_VALUE.test(v) || !isValidCssPropertyValue(prop, v);
+  }
   function validateEssenceStyle(essence: MnEssenceRaw, token: string, handlerName: string): boolean {
     const style = essence.style;
     if (!style) return true;
@@ -200,8 +212,8 @@ function minotationProvider(options?: MnOptions) {
     for (prop in style) { // eslint-disable-line
       v = style[prop];
       bad = isArray(v)
-        ? (v as string[]).find((s) => REGEXP_INVALID_CSS_VALUE.test(s))
-        : (REGEXP_INVALID_CSS_VALUE.test(v as string) ? v as string : undefined);
+        ? (v as string[]).find((s) => isBadCssValue(prop, s))
+        : (isBadCssValue(prop, v as string) ? v as string : undefined);
       if (bad !== undefined) {
         collectWarning({
           type: 'invalid-css-value',

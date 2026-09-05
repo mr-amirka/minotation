@@ -1,0 +1,35 @@
+{
+  "name": "minotation-runtime-angular",
+  "version": "0.0.1",
+  "description": "Angular adapter for minotation-runtime — lifecycle wiring for the framework-agnostic DOM runtime",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "ng-packagr -p ng-package.json",
+    "test": "jest --config=./jest.config.js --no-coverage",
+    "test:watch": "jest --watch --no-coverage --config=./jest.config.js",
+    "test:coverage": "jest --coverage --config=./jest.config.js"
+  },
+  "peerDependencies": {
+    "@angular/core": "^19.0.0",
+    "minotation": "0.0.1",
+    "minotation-runtime": "0.0.1"
+  },
+  "devDependencies": {
+    "@angular/common": "^19.2.25",
+    "@angular/compiler": "^19.2.25",
+    "@angular/compiler-cli": "^19.2.25",
+    "@angular/core": "^19.2.25",
+    "@angular/platform-browser": "^19.2.25",
+    "@angular/platform-browser-dynamic": "^19.2.25",
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jest-preset-angular": "^14.5.5",
+    "ng-packagr": "^19.2.2",
+    "rxjs": "^7.8.1",
+    "typescript": "^5.0.0",
+    "zone.js": "~0.15.0"
+  }
+}

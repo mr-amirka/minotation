@@ -8,7 +8,7 @@
     "build:server": "vite build --outDir dist/server --ssr src/entry-server.tsx"
   },
   "dependencies": {
-    "minotation-vite": "file:../minotation-vite",
+    "minotation-vite": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

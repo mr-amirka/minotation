@@ -9,6 +9,6 @@
   "dependencies": {
     "astro": "^7",
     "cookie": "^2.0.1",
-    "minotation-astro": "file:../minotation-astro"
+    "minotation-astro": "workspace:*"
   }
 }

@@ -13,8 +13,8 @@
   },
   "peerDependencies": {
     "@angular/core": "^19.0.0",
-    "minotation": "0.0.1",
-    "minotation-runtime": "0.0.1"
+    "minotation": "workspace:*",
+    "minotation-runtime": "workspace:*"
   },
   "devDependencies": {
     "@angular/common": "^19.2.25",

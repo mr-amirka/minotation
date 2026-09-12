@@ -16,8 +16,8 @@
   },
   "peerDependencies": {
     "astro": "^7.0.0",
-    "minotation": "0.0.1",
-    "minotation-vite": "0.0.1"
+    "minotation": "workspace:*",
+    "minotation-vite": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

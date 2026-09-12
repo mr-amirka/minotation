@@ -14,7 +14,7 @@
     "test:coverage": "jest --coverage --config=./jest.config.js"
   },
   "peerDependencies": {
-    "minotation": "0.0.1"
+    "minotation": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

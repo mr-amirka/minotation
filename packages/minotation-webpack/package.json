@@ -12,7 +12,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "minotation": "*"
+    "minotation": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

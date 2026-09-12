@@ -12,8 +12,8 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "minotation": "*",
-    "minotation-webpack": "*"
+    "minotation": "workspace:*",
+    "minotation-webpack": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

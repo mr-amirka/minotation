@@ -12,6 +12,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "esbuild": "^0.28.0",
     "minotation": "workspace:*"
   },
   "devDependencies": {

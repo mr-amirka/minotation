@@ -3,6 +3,7 @@
  */
 import type { Compiler } from 'webpack';
 import { Compilation } from 'webpack';
+import type { MnWarning } from 'minotation';
 import {
   minotationProvider,
   presetStandard,
@@ -20,6 +21,13 @@ export interface MnWebpackPluginOptions {
   output?: string;
   /** Глобальный CSS-префикс для всех генерируемых селекторов. */
   selectorPrefix?: string;
+  /**
+   * Что делать с предупреждениями компиляции. По умолчанию плагин
+   * перехватывает их и кладёт в `compilation.warnings` (вместо `console`
+   * ядра) — так они попадают в отчёт сборки и в CI. `'silent'` — не выводить
+   * вовсе; своя функция вызывается как есть.
+   */
+  onWarning?: 'silent' | 'console' | ((warning: MnWarning) => void);
   /** Карта именованных медиа-контекстов. */
   media?: Record<string, { query?: string; selector?: string; priority?: number }>;
   /**
@@ -112,7 +120,23 @@ export class MnWebpackPlugin {
       return;
     }
 
-    const mn = minotationProvider({ selectorPrefix, media });
+    const collected: MnWarning[] = [];
+    const userOnWarning = this.options.onWarning;
+    const mn = minotationProvider({
+      selectorPrefix,
+      media,
+      // Перехватываем всегда: ядро по умолчанию пишет в console, а у webpack
+      // свой канал — `compilation.warnings`, который попадает в отчёт сборки
+      // и в CI. Явный 'silent' уважаем; пользовательскую функцию вызываем тоже.
+      onWarning: (warning: MnWarning) => {
+        if (userOnWarning !== 'silent') {
+          collected.push(warning);
+        }
+        if (typeof userOnWarning === 'function') {
+          userOnWarning(warning);
+        }
+      },
+    });
     const presets = this.options.presets || DEFAULT_PRESETS;
     mn.setPresets([...presets, ...state.dynamicPresets.values()]);
 
@@ -123,6 +147,15 @@ export class MnWebpackPlugin {
     const compile = mn.getCompiler('class');
     for (const token of state.tokens) compile(token);
     mn.compile();
+
+    for (let i = 0; i < collected.length; i++) {
+      const warning = collected[i];
+      compilation.warnings.push(
+        new compilation.compiler.webpack.WebpackError(
+          '[minotation] ' + warning.token + ': ' + warning.message,
+        ),
+      );
+    }
 
     const css = mn.styles$.getValue()
       .map((s: { content: string }) => s.content)

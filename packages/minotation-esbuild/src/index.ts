@@ -1,4 +1,5 @@
 import type { Plugin, PluginBuild } from 'esbuild';
+import type { MnWarning } from 'minotation';
 import {
   minotationProvider,
   extractTokens,
@@ -47,6 +48,12 @@ export interface MnEsbuildOptions {
   mn?: {
     selectorPrefix?: string;
     media?: Record<string, { query?: string; selector?: string; priority?: number }>;
+    /**
+     * Что делать с предупреждениями компиляции. По умолчанию плагин
+     * перехватывает их и пересылает в лог сборщика (вместо `console` ядра).
+     * `'silent'` — не выводить вовсе; своя функция вызывается как есть.
+     */
+    onWarning?: 'silent' | 'console' | ((warning: MnWarning) => void);
   };
 }
 
@@ -175,16 +182,44 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
   const dynamicPresets = new Map<string, (mn: MnInstance) => void>();
 
   /** Компилирует все накопленные токены + пресеты в CSS. Свежий mn-инстанс на каждый вызов. */
+
+  /** Предупреждения последней компиляции — пересылаются в лог сборщика. */
+  let lastWarnings: MnWarning[] = [];
+
+  function flushWarnings(ctx: { warn: (message: string) => void }): void {
+    for (let i = 0; i < lastWarnings.length; i++) {
+      const warning = lastWarnings[i];
+      ctx.warn('[minotation] ' + warning.token + ': ' + warning.message);
+    }
+    lastWarnings = [];
+  }
+
   function recompile(): string {
     const allTokens = new Set<string>();
     for (const tokens of fileTokens.values()) {
       for (const t of tokens) allTokens.add(t);
     }
-    const fresh = minotationProvider(options.mn);
+    const collected: MnWarning[] = [];
+    const userOnWarning = options.mn && options.mn.onWarning;
+    const fresh = minotationProvider({
+      ...options.mn,
+      // Перехватываем всегда: ядро по умолчанию пишет в console, а у сборщика
+      // свой канал вывода. Явный 'silent' уважаем; пользовательскую функцию
+      // вызываем дополнительно.
+      onWarning: (warning: MnWarning) => {
+        if (userOnWarning !== 'silent') {
+          collected.push(warning);
+        }
+        if (typeof userOnWarning === 'function') {
+          userOnWarning(warning);
+        }
+      },
+    });
     fresh.setPresets([...staticPresets, ...dynamicPresets.values()]);
     const compile = fresh.getCompiler('class');
     for (const token of allTokens) compile(token);
     fresh.compile();
+    lastWarnings = collected;
     return fresh.styles$.getValue()
       .map((s: { content: string }) => s.content)
       .join('\n');
@@ -236,8 +271,15 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
         return undefined; // не подменяем контент — пусть грузит штатный loader
       });
 
-      build.onEnd(() => {
+      build.onEnd((result) => {
         const css = recompile();
+        // esbuild собирает предупреждения в result.warnings — пишем туда же,
+        // чтобы они попали в общий отчёт сборки, а не только в stdout.
+        flushWarnings({
+          warn: (message: string) => {
+            (result.warnings || []).push({ text: message } as never);
+          },
+        });
         if (!css) return;
         const outDir = resolveOutDir(build);
         mkdirSync(outDir, { recursive: true });

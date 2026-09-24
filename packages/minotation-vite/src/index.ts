@@ -8,7 +8,7 @@ import {
   presetNormalize,
   presetMain,
 } from 'minotation';
-import type { MnInstance } from 'minotation';
+import type { MnInstance, MnWarning } from 'minotation';
 import {
   readFileSync,
   readdirSync,
@@ -51,11 +51,113 @@ export interface MnViteOptions {
    * import './mn/preset.mn';  // ← подключается как side-effect
    */
   presetExtensions?: string[];
-  /** Опции создания mn-инстанса (selectorPrefix, media, …). */
+  /**
+   * Токены, которые нужно скомпилировать всегда, даже если они не встретились
+   * в литеральном атрибуте `class="…"`.
+   *
+   * Плагин извлекает токены **статически**: из значений `class`/`className`
+   * в исходниках. Классы, собранные в переменных или выражениях
+   * (`const th = 'py12 px14'`, `clsx(...)`, вычисляемые строки), при таком
+   * разборе не видны, и соответствующий CSS в сборку не попадает. Для таких
+   * случаев — перечислить токены здесь.
+   *
+   * @default []
+   *
+   * @example
+   * mnVite({ safelist: ['py12 px14 r8', 'crP', 'taL'] })
+   */
+  safelist?: string[];
+  /**
+   * Суффиксы имён переменных, значения которых считаются списком MN-токенов.
+   *
+   * Дополняет статическое извлечение из `class="…"`: классы, собранные в
+   * переменной, плагин иначе не видит (он разбирает исходник текстом, а не
+   * исполняет его). Достаточно назвать переменную с суффиксом — и токены
+   * из её строкового значения попадут в CSS:
+   *
+   * ```ts
+   * const thClass = 'py12 px14 bb1 bsS';   // ← извлекается
+   * const th = 'py12 px14';                // ← не извлекается
+   * ```
+   *
+   * Распознаются присваивание (`=`) и свойство объекта (`:`), строки в любых
+   * кавычках, включая шаблонные; подстановки `${…}` пропускаются, статические
+   * части вокруг них — берутся. Сравнение суффикса регистрозависимое.
+   *
+   * Пустой массив отключает механизм; всегда доступен запасной путь — {@link safelist}.
+   *
+   * @default ['Class']
+   *
+   * @example
+   * mnVite({ classVarSuffixes: ['Class', 'Cls', 'Styles'] })
+   */
+  classVarSuffixes?: string[];
+  /** Опции создания mn-инстанса (selectorPrefix, media, strict, …). */
   mn?: {
     selectorPrefix?: string;
     media?: Record<string, { query?: string; selector?: string; priority?: number }>;
+    /**
+     * `true` — предупреждения (неизвестный хендлер, битое CSS-значение и т.п.),
+     * накопленные за цикл компиляции, роняют сборку (`MnStrictError`) вместо
+     * тихого `console.warn`. @default false — см. `MnOptions.strict` в `minotation`.
+     */
+    strict?: boolean;
+    /**
+     * Что делать с предупреждениями компиляции. По умолчанию плагин
+     * перехватывает их и пишет в лог Vite (вместо `console` ядра).
+     * `'silent'` — не выводить вовсе; своя функция вызывается как есть,
+     * дополнительно к логу сборщика.
+     */
+    onWarning?: 'silent' | 'console' | ((warning: MnWarning) => void);
   };
+}
+
+/** Экранирует спецсимволы регулярного выражения в суффиксе из пользовательской опции. */
+function escapeRe(v: string): string {
+  return v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Собирает регексп для поиска `…<Суффикс> = 'токены'` и `{ …<Суффикс>: 'токены' }`.
+ *
+ * Группы: 1 — кавычка (для обратной ссылки), 2 — содержимое строки.
+ * После суффикса обязателен не-идентификаторный символ, иначе `thClassy`
+ * совпал бы с суффиксом `Class`.
+ *
+ * @param suffixes - суффиксы имён переменных (`['Class']`)
+ * @returns регексп с флагом `g` или `undefined`, если суффиксов нет
+ */
+function classVarRegExp(suffixes: string[]): RegExp | undefined {
+  if (suffixes.length === 0) return undefined;
+  const alt = suffixes.map(escapeRe).join('|');
+  return new RegExp(
+    '[\\w$]*(?:' + alt + ')(?![\\w$])'      // имя переменной с суффиксом
+    + '\\s*(?::[^=;\\n]+)?'                  // необязательная аннотация типа
+    + '\\s*[=:]\\s*'                         // присваивание или свойство объекта
+    + '([\'"`])((?:\\\\.|[^\\\\])*?)\\1',        // строка в кавычках
+    'g',
+  );
+}
+
+/**
+ * Извлекает MN-токены из строковых значений переменных с заданными суффиксами.
+ *
+ * @param source - исходный текст файла
+ * @param re - регексп из {@link classVarRegExp}
+ * @returns список токенов (с возможными повторами)
+ */
+function extractClassVarTokens(source: string, re: RegExp | undefined): string[] {
+  if (!re) return [];
+  const out: string[] = [];
+  re.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(source)) !== null) {
+    // `${…}` — вычисляемая часть, её содержимое статически неизвестно; берём остальное.
+    for (const token of m[2].replace(/\$\{[^}]*\}/g, ' ').split(/\s+/)) {
+      if (token) out.push(token);
+    }
+  }
+  return out;
 }
 
 /**
@@ -178,6 +280,16 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
   const attr = options.attr || 'class';
   const exts = options.extensions || ['.html', '.jsx', '.tsx', '.vue', '.svelte'];
   const presetExts = options.presetExtensions || ['.mn.ts', '.mn.js', '.mn.tsx'];
+  // Плоский набор: элементы safelist могут содержать несколько токенов через пробел.
+  const classVarRe = classVarRegExp(
+    options.classVarSuffixes === undefined ? ['Class'] : options.classVarSuffixes,
+  );
+  const safelist: string[] = [];
+  for (const line of options.safelist || []) {
+    for (const token of line.split(/\s+/)) {
+      if (token) safelist.push(token);
+    }
+  }
   const staticPresets = options.presets || [
     presetStandard,
     presetSynonyms,
@@ -213,12 +325,39 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
    *
    * @returns строка CSS
    */
+  /**
+   * Предупреждения последней компиляции — ядро отдаёт их через `onWarning`,
+   * а плагин пересылает в лог сборщика (см. {@link flushWarnings}).
+   * Перезаписывается на каждый {@link recompile}, потому что инстанс каждый раз
+   * свежий и набор токенов пересчитывается целиком.
+   */
+  let lastWarnings: MnWarning[] = [];
+
+  /** Логгер Vite из `configResolved` — канал вывода там, где нет PluginContext. */
+  let logger: { warn: (message: string) => void } | undefined;
+
   function recompile(): string {
-    const allTokens = new Set<string>();
+    const allTokens = new Set<string>(safelist);
     for (const tokens of fileTokens.values()) {
       for (const t of tokens) allTokens.add(t);
     }
-    const fresh = minotationProvider(options.mn);
+    const collected: MnWarning[] = [];
+    const userOnWarning = options.mn && options.mn.onWarning;
+    const fresh = minotationProvider({
+      ...options.mn,
+      // Перехватываем всегда: по умолчанию ядро пишет в console, а у сборщика
+      // есть свой канал вывода — иначе предупреждение либо теряется в потоке
+      // сборки, либо дублируется. Пользовательскую функцию вызываем как есть;
+      // явный 'silent' уважаем и в лог сборщика тоже ничего не шлём.
+      onWarning: (warning: MnWarning) => {
+        if (userOnWarning !== 'silent') {
+          collected.push(warning);
+        }
+        if (typeof userOnWarning === 'function') {
+          userOnWarning(warning);
+        }
+      },
+    });
     fresh.setPresets([...staticPresets, ...dynamicPresets.values()]);
     // §6.3: кешируем compile — без property lookup на каждой итерации.
     // 'class' — все токены компилируются как class-селекторы независимо от того,
@@ -227,9 +366,19 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
     const compile = fresh.getCompiler('class');
     for (const token of allTokens) compile(token);
     fresh.compile();
+    lastWarnings = collected;
     return fresh.styles$.getValue()
       .map((s: { content: string }) => s.content)
       .join('\n');
+  }
+
+  /** Пересылает предупреждения последней компиляции в лог Vite. */
+  function flushWarnings(ctx: { warn: (message: string) => void }): void {
+    for (let i = 0; i < lastWarnings.length; i++) {
+      const warning = lastWarnings[i];
+      ctx.warn('[minotation] ' + warning.token + ': ' + warning.message);
+    }
+    lastWarnings = [];
   }
 
   /**
@@ -241,7 +390,7 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
     for (const file of walkFiles(srcDir, exts)) {
       try {
         const source = readFileSync(file, 'utf-8');
-        const tokens = extractTokens(source, attr);
+        const tokens = extractTokens(source, attr).concat(extractClassVarTokens(source, classVarRe));
         if (tokens.length > 0) {
           fileTokens.set(file, new Set(tokens));
         }
@@ -268,6 +417,7 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
     configResolved(config) {
       root = config.root;
       command = config.command;
+      logger = config.logger;
     },
 
     /**
@@ -302,7 +452,7 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
 
     transform(source: string, id: string) {
       if (!exts.some(ext => id.endsWith(ext))) return null;
-      const tokens = extractTokens(source, attr);
+      const tokens = extractTokens(source, attr).concat(extractClassVarTokens(source, classVarRe));
       if (tokens.length > 0) {
         fileTokens.set(id, new Set(tokens));
       }
@@ -315,11 +465,16 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
         // Загружаем пресеты и токены ДО компиляции — transform-хуки ещё не отработали
         scanPresetFiles();
         scanProject();
-        const tokens = extractTokens(html, attr);
+        const tokens = extractTokens(html, attr).concat(extractClassVarTokens(html, classVarRe));
         if (tokens.length > 0) {
           fileTokens.set('index.html', new Set(tokens));
         }
         cssOutput = recompile();
+        // В transformIndexHtml PluginContext недоступен — пишем через логгер
+        // конфигурации, он и в dev, и в build один и тот же.
+        flushWarnings({
+          warn: (message: string) => (logger || console).warn(message),
+        });
         const tags: Array<{ tag: string; attrs: Record<string, string>; children: string }> = [];
         if (cssOutput) {
           // MutationObserver: держит <style data-mn> последним в <head> —
@@ -376,7 +531,7 @@ if (import.meta.hot) {
         return;
       }
 
-      const tokens = extractTokens(source, attr);
+      const tokens = extractTokens(source, attr).concat(extractClassVarTokens(source, classVarRe));
       if (tokens.length > 0) {
         fileTokens.set(file, new Set(tokens));
       } else {
@@ -388,6 +543,7 @@ if (import.meta.hot) {
 
     generateBundle() {
       cssOutput = recompile();
+      flushWarnings(this);
       if (cssOutput) {
         this.emitFile({ type: 'asset', fileName: 'mn.css', source: cssOutput });
       }

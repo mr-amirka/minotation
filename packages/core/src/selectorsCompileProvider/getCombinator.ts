@@ -17,7 +17,9 @@ import {
 import {
   REGEXP_DEPTH,
 } from './constants';
-import { MnParseError } from '../core/types';
+import {
+  MnParseError, 
+} from '../core/types';
 
 /**
  * Жёсткий потолок глубины контекстного селектора — НЕ настраивается опциями
@@ -71,18 +73,78 @@ export interface MnDepthCheck {
  * getCombinator('1Child')    // → ['>', 'Child']
  * getCombinator('2Parent')   // → ['>*>', 'Parent']
  */
+/**
+ * Вырожденная форма контекстного сегмента — §13/§14 спеки
+ * (`AGENT_DRAFT/SPEC/04-grammar-02-parent-selectors.md`).
+ *
+ * Все они в v1 «работали», но давали не то, что имел в виду автор токена:
+ * пустой `<` и `<N` без селектора разворачивались в универсальный `*`
+ * (правило цеплялось ко всему подряд), `<0` склеивал классы на одном элементе,
+ * а отрицательная глубина молча ИНВЕРТИРОВАЛА направление (`<-1` вёл себя как
+ * `>1`). Поэтому решение владельца 2026-09-24 — «выдаёт предупреждение и не
+ * компилирует ничего в этих кейсах»: бросаем {@link MnParseError}, ядро
+ * превращает его в warning `parse-error`, и токен не даёт CSS-правила вовсе.
+ *
+ * Контекст заполняется не полностью — имя хендлера и сам токен подставит
+ * `__initEssence` (`core/index.ts`), там они известны.
+ */
+function throwDegenerate(
+  message: string, name: string, depthCheck?: MnDepthCheck,
+): never {
+  throw new MnParseError(message, {
+    token: depthCheck ? depthCheck.token : '',
+    handler: '',
+    arg: name,
+    utility: 'getCombinator',
+  });
+}
+
+/** Отрицательная глубина: `<-1`, `>-2`. В v1 инвертировала направление. */
+const REGEXP_NEGATIVE_DEPTH = /^-\d/;
+
 export function getCombinator(name: string, depthCheck?: MnDepthCheck): [string, string] {
   const depthMatchs = REGEXP_DEPTH.exec(name);
   if (!depthMatchs) {
+    if (!name) {
+      throwDegenerate(
+        'Пустой контекстный сегмент: укажите конкретный селектор вместо голого "<"/">"',
+        name, depthCheck,
+      );
+    }
+    if (REGEXP_NEGATIVE_DEPTH.test(name)) {
+      throwDegenerate(
+        'Отрицательная глубина контекстного селектора ("' + name
+          + '") запрещена: в v1 она незаметно инвертировала направление',
+        name, depthCheck,
+      );
+    }
     return [' ', name];
   }
   const depth = parseInt(depthMatchs[1]);
+  if (depth === 0) {
+    throwDegenerate(
+      'Глубина 0 запрещена: она склеивает оба класса на одном элементе — '
+        + 'используйте прямой селектор без "<"/">"',
+      name, depthCheck,
+    );
+  }
+  if (!depthMatchs[2]) {
+    throwDegenerate(
+      'Глубина (' + depth + ') без селектора запрещена: правило цеплялось бы '
+        + 'к любому предку ("*")',
+      name, depthCheck,
+    );
+  }
   if (depthCheck && depthCheck.maxDepth !== undefined && depth > depthCheck.maxDepth) {
     if (depthCheck.maxDepthMode === 'block') {
-      throw new MnParseError(
-        `Глубина контекстного селектора (${depth}) превышает maxDepth (${depthCheck.maxDepth})`,
-        { token: depthCheck.token, handler: '', arg: name, utility: 'getCombinator' },
-      );
+      throw new MnParseError(`Глубина контекстного селектора (${depth}) превышает maxDepth (${depthCheck.maxDepth})`,
+        {
+          token: depthCheck.token,
+          handler: '',
+          arg: name,
+          utility: 'getCombinator',
+          warningType: 'max-depth-exceeded',
+        });
     }
     depthCheck.onExceed(depth, depthCheck.maxDepth);
   }

@@ -10,34 +10,54 @@ import {
   isLengthOrWidthKeywordValue,
   canonicalizeCssPropertyName,
   isValidCssPropertyValue,
+  isSpacingValue,
 } from '../cssGrammar';
 
 describe('cssGrammar — примитивы', () => {
   test.each([
-    ['10', true], ['-10', true], ['+10', true], ['.5', true], ['10.5', true],
-    ['inherit', true], ['initial', true],
-    ['10px', false], ['abc', false], ['', false],
+    ['10', true],
+    ['-10', true],
+    ['+10', true],
+    ['.5', true],
+    ['10.5', true],
+    ['inherit', true],
+    ['initial', true],
+    ['10px', false],
+    ['abc', false],
+    ['', false],
   ])('isNumberValue(%s) === %s', (v, expected) => {
     expect(isNumberValue(v)).toBe(expected);
   });
 
   test.each([
-    ['10', true], ['-10', true], ['+10', true],
-    ['10.5', false], ['10px', false],
+    ['10', true],
+    ['-10', true],
+    ['+10', true],
+    ['10.5', false],
+    ['10px', false],
   ])('isIntegerValue(%s) === %s', (v, expected) => {
     expect(isIntegerValue(v)).toBe(expected);
   });
 
   test.each([
-    ['0', true], ['10px', true], ['1.5em', true], ['50%', true], ['-50%', true],
-    ['+10px', true], ['calc(50% + 10px)', true],
-    ['10', false], ['Rpx', false], ['undefined', false], ['px', false],
+    ['0', true],
+    ['10px', true],
+    ['1.5em', true],
+    ['50%', true],
+    ['-50%', true],
+    ['+10px', true],
+    ['calc(50% + 10px)', true],
+    ['10', false],
+    ['Rpx', false],
+    ['undefined', false],
+    ['px', false],
   ])('isLengthValue(%s) === %s', (v, expected) => {
     expect(isLengthValue(v)).toBe(expected);
   });
 
   test.each([
-    ['auto', true], ['10px', true],
+    ['auto', true],
+    ['10px', true],
     ['random', false],
   ])('isLengthOrAutoValue(%s) === %s', (v, expected) => {
     expect(isLengthOrAutoValue(v)).toBe(expected);
@@ -50,18 +70,34 @@ describe('cssGrammar — примитивы', () => {
   });
 
   test.each([
-    ['250ms', true], ['1s', true],
-    ['250', false], ['250px', false],
+    ['250ms', true],
+    ['1s', true],
+    ['250', false],
+    ['250px', false],
   ])('isTimeValue(%s) === %s', (v, expected) => {
     expect(isTimeValue(v)).toBe(expected);
   });
 
   test.each([
-    ['#fff', true], ['#0a0a12', true], ['#F', true], ['#AB', true],
-    ['rgba(255,255,255,.38)', true], ['rgb(0,0,0)', true],
-    ['red', true], ['currentColor', true], ['ButtonText', true], ['invert', true],
-    ['undefined', true], // форма идентификатора — реальный мусор ловит REGEXP_INVALID_CSS_VALUE отдельно
-    ['#gg', false], ['rgba(1,2)', false], ['123', false],
+    ['#fff', true],
+    ['#0a0a12', true],
+    ['#F', true],
+    ['#AB', true],
+    ['rgba(255,255,255,.38)', true],
+    ['rgb(0,0,0)', true],
+    // Именованные цвета больше не принимаются — только коды (2026-09-24).
+    ['red', false],
+    ['currentColor', true],
+    // Системные цвета остаются: кодом их не выразить, берутся из темы ОС.
+    ['ButtonText', true],
+    // `invert` убран 2026-09-24: невалиден по текущей спецификации ни у
+    // `outline-color`, ни у `outline` — остаток CSS 2.1. Фильтр `invert()` —
+    // другое значение, он не тронут.
+    ['invert', false],
+    ['undefined', false], // форма идентификатора — реальный мусор ловит REGEXP_INVALID_CSS_VALUE отдельно
+    ['#gg', false],
+    ['rgba(1,2)', false],
+    ['123', false],
   ])('isColorValue(%s) === %s', (v, expected) => {
     expect(isColorValue(v)).toBe(expected);
   });
@@ -120,12 +156,111 @@ describe('cssGrammar — isValidCssPropertyValue (реальные баг-пат
     expect(isValidCssPropertyValue('zIndex', '1.5')).toBe(false);
   });
 
-  test('color-family: битый undefined/NaN всё равно ловится (форма идентификатора не спасает)', () => {
-    // isColorValue сама по себе сочла бы "undefined" валидным identifier-подобным
-    // значением — но isBadCssValue в core/index.ts комбинирует эту проверку
-    // с REGEXP_INVALID_CSS_VALUE, так что здесь проверяем именно эту функцию
-    // в изоляции: isValidCssPropertyValue НЕ отвечает за REGEXP_INVALID_CSS_VALUE,
-    // это отдельный уровень — см. core/index.ts's isBadCssValue.
-    expect(isValidCssPropertyValue('color', 'undefined')).toBe(true);
+  test('color-family: битый undefined ловится уже самой грамматикой', () => {
+    // До 2026-09-24 `isColorValue` пропускала ЛЮБОЙ идентификатор, поэтому
+    // "undefined" проходил её и отсекался только вторым уровнем
+    // (REGEXP_INVALID_CSS_VALUE в core/index.ts's isBadCssValue).
+    // Теперь список словесных значений закрытый — мусор не проходит и здесь.
+    expect(isValidCssPropertyValue('color', 'undefined')).toBe(false);
+    expect(isValidCssPropertyValue('color', 'NaN')).toBe(false);
+    // Код, системный цвет и currentColor — по-прежнему валидны.
+    expect(isValidCssPropertyValue('color', '#f00')).toBe(true);
+    expect(isValidCssPropertyValue('color', 'currentColor')).toBe(true);
+    expect(isValidCssPropertyValue('outline-color', 'ButtonText')).toBe(true);
+  });
+});
+
+describe('shorthand-свойства с несколькими значениями', () => {
+  test.each([
+    [
+      'padding',
+      '10px 20px',
+      true,
+    ],
+    [
+      'padding',
+      '1px 2px 3px 4px',
+      true,
+    ],
+    [
+      'padding',
+      '1px 2px 3px 4px 5px',
+      false,
+    ],
+    [
+      'margin',
+      '0 auto',
+      true,
+    ],
+    [
+      'padding',
+      'calc(20px - 5px) 10px',
+      true,
+    ],
+    [
+      'border-radius',
+      'calc(10px - 5px)',
+      true,
+    ],
+    [
+      'padding',
+      '10px  20px',
+      true,
+    ],
+    [
+      'padding',
+      '10px 20px ',
+      true,
+    ],
+    [
+      'padding',
+      'Rpx 20px',
+      false,
+    ],
+    [
+      'gap',
+      '10px 20px 30px',
+      false,
+    ],
+    [
+      'border-color',
+      '#f00 #0f0',
+      true,
+    ],
+    [
+      'width',
+      'var(--w)',
+      true,
+    ],
+    [
+      'color',
+      'env(--c)',
+      true,
+    ],
+  ])('%s: %p → %p', (
+    prop, value, expected,
+  ) => {
+    expect(isValidCssPropertyValue(prop, value)).toBe(expected);
+  });
+});
+
+describe('isSpacingValue — letter-spacing принимает длину, множитель и normal', () => {
+  test.each([
+    ['0.06em', true],
+    ['-0.02em', true],
+    ['1px', true],
+    ['1.5', true],
+    ['normal', true],
+    ['NORMAL', true],
+    ['0', true],
+    ['red', false],
+    ['undefined', false],
+  ])('isSpacingValue(%s) → %s', (v, ok) => {
+    expect(isSpacingValue(v)).toBe(ok);
+  });
+  test('через isValidCssPropertyValue с camelCase-ключом', () => {
+    expect(isValidCssPropertyValue('letterSpacing', '0.06em')).toBe(true);
+    expect(isValidCssPropertyValue('letter-spacing', 'normal')).toBe(true);
+    expect(isValidCssPropertyValue('letterSpacing', 'red')).toBe(false);
   });
 });

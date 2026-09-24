@@ -5,6 +5,10 @@
  */
 
 import type {
+  MnOptions,
+  MnMediaEntry,
+} from './core/types';
+import type {
   forEach,
   flags,
   extend,
@@ -24,6 +28,7 @@ import type {
   floatval,
   routeParseProvider,
   indexOf,
+  toFixed,
   IStringifyCss,
 } from 'fundamentool';
 import type {
@@ -61,6 +66,7 @@ export interface MnUtils {
   spaceNormalize: typeof spaceNormalize;
   routeParseProvider: typeof routeParseProvider;
   indexOf: typeof indexOf;
+  toFixed: typeof toFixed;
 }
 
 /** Значение токена MN — строка или массив строк (множественные значения) */
@@ -75,7 +81,17 @@ export interface MnHandlerResult {
   childs?: Record<string, MnHandlerResult>;
 }
 
-/** Функция-хендлер токена */
+/**
+ * Функция-хендлер токена.
+ *
+ * `params` — намеренно `any`: набор полей зависит от `pattern`, с которым
+ * хендлер зарегистрирован (`mn(name, handler, pattern)`), и достраивается
+ * парсером во время выполнения — у `p10` это `num`/`unit`, у `cF00` —
+ * `color`/`camel`, у произвольного пресета — что угодно своё. Статически
+ * это объединение не выражается: {@link MnEssenceParams} описывает лишь
+ * общую часть, а хендлеры читают и поля сверх неё.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- см. комментарий выше
 export type MnHandler = (params: any) => MnHandlerResult | void | 0;
 
 /** Сущность MN (статическая) */
@@ -88,9 +104,6 @@ export interface MnEntity {
 
 /** Запись в mn.assign() */
 export type MnAssignMap = Record<string, string>;
-
-/** Запись в mn.css() — значение: объект CSS-свойств или строка (`'margin:0'`) */
-export type MnCssMap = Record<string, Record<string, string> | string>;
 
 /** Запись в mn.synonyms() — строковые значения, не объекты */
 export type MnSynonymsMap = Record<string, string>;
@@ -120,15 +133,30 @@ export interface MnInstance {
   // Методы
   assign(map: MnAssignMap): void;
   assign(selectors: string, comboNames: string | string[], defaultMediaName?: string): void;
-  css(map: MnCssMap): void;
-  css(selector: string, css: Record<string, string> | string): void;
   synonyms(map: MnSynonymsMap): void;
   // selectors: произвольная вложенная форма, см. baseSetSynonyms/normalizeSelectors в core/index.ts.
   synonyms(synonym: string, selectors: string | Record<string, any>): void; // eslint-disable-line @typescript-eslint/no-explicit-any
+  /**
+   * Переконфигурирует инстанс после создания — слияние с текущими опциями
+   * (частичное обновление, не замена целиком). Единственный поддерживаемый
+   * способ поменять `onError`/`onWarning`/`selectorPrefix`/`altColor`/`strict`
+   * на уже созданном `mn`: эти поля читаются из замыкания один раз при
+   * создании и на каждый вызов `setOptions()`, не на каждой компиляции.
+   * Прямая мутация `mn.options` эффекта не имеет — это только снимок для
+   * чтения/отладки. Введено 2026-09-23.
+   *
+   * @example
+   * mn.setOptions({ selectorPrefix: '.app' });
+   * mn.recompile();
+   */
+  setOptions(partialOptions: Partial<MnOptions>): void;
 
   // Сервисы (опционально — не все пресеты используют)
   utils?: MnUtils;
-  setKeyframes?: any;
+  setKeyframes?: (
+    name: string, body: string | Record<string, string | Record<string, string | number>>,
+    ifEmpty?: number,
+  ) => MnInstance;
   propertiesStringify?: IStringifyCss;
-  media?: any;
+  media?: Record<string, MnMediaEntry>;
 }

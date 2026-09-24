@@ -12,18 +12,15 @@ import {
 } from '../types';
 
 export default (mn: MnInstance) => {
-  mn.css({
-    html: {
-      '-webkit-tap-highlight-color': '#000',
-    },
-  });
   mn.assign({
     '*, *:before, *:after': 'bxzBB',
-    html: 'lh115% tsa',
+    // thc0 — -webkit-tap-highlight-color:#000 (обработчик `thc`, presets/standard.ts);
+    // раньше задавалось отдельным mn.css({html:{'-webkit-tap-highlight-color':'#000'}})
+    html: 'lh1.15 tsa thc0',
     body: 'm',
-    a: 'cr@mouse bgTransparent',
+    a: 'cr@mouse bgT',
     img: 'dB b0 bsN',
-    iframe: 'dB b0 bcTransparent',
+    iframe: 'dB b0 bcT',
     // eslint-disable-next-line
     'aside, article, main, section, header, footer, nav, video, canvas, input, textarea':
       'dB',
@@ -85,7 +82,7 @@ export default (mn: MnInstance) => {
      * 1. Change the font styles in all browsers.
      * 2. Remove the margin in Firefox and Safari.
      */
-    'button, input, optgroup, select, textarea': 'ffInherit f100% lh115% m',
+    'button, input, optgroup, select, textarea': 'ffInherit f100% lh1.15 m',
 
     /**
      * Show the overflow in IE.

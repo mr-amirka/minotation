@@ -72,7 +72,8 @@ export function extractTokens(source: string, attrName: string): string[] {
   let i: number;
 
   while ((match = regexp.exec(source))) {
-    raw = match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5] ?? '';
+    // одна из пяти альтернатив regexp'а всегда совпала — иначе не было бы матча
+    raw = (match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5]) as string;
     literal = raw.replace(REGEXP_INTERPOLATION, ' ');
     parts = literal.split(REGEXP_SPACE);
     for (i = 0; i < parts.length; i++) {

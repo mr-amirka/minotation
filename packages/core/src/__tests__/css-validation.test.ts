@@ -34,7 +34,7 @@ describe('CSS validation', () => {
       presetNormalize,
       presetMain,
     ]);
-    mn.getCompiler('class')('w1/2 w1/3 w50p p10 cF00<.p:h bgFFF fx1 fxdColumn');
+    mn.getCompiler('class')('w1/2 w1/3 w50p p10 cF00<.p:h bgF fx1 fxdColumn');
     mn.compile();
     const css = mn.styles$.getValue().map(s => s.content).join('\n');
     expect(() => postcss.parse(css)).not.toThrow();
@@ -125,7 +125,7 @@ describe('CSS validation', () => {
       'h100vh',
       'p10@m',
       'cF00<.p:h',
-      'bgFFF',
+      'bgF',
       'fx1',
       'fxdColumn',
       'fxaCenter',
@@ -143,5 +143,103 @@ describe('CSS validation', () => {
     mn.compile();
     const css = mn.styles$.getValue().map(s => s.content).join('\n');
     expect(() => postcss.parse(css)).not.toThrow();
+  });
+});
+
+/**
+ * Согласованность валидатора (`cssGrammar`) с тем, что реально строит ядро.
+ *
+ * Корень класса багов: `PROPERTY_VALIDATORS` — ручная таблица «CSS-свойство →
+ * валидатор», которая живёт отдельно от хендлеров. Хендлер учится отдавать
+ * новую форму значения, таблица об этом не знает — и корректный CSS молча
+ * отбраковывается: правило не попадает в вывод, остаётся только warning.
+ * Так было с `var()` (до 2026-09-17), с многозначными shorthand'ами,
+ * с градиентами и с `gap:normal` (оба — 2026-09-23).
+ */
+describe('валидатор не бракует то, что ядро построило из осмысленного ввода', () => {
+  function cssOf(token: string): string {
+    const mn = mnProvider({
+      onWarning: 'silent',
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')(token);
+    mn.compile();
+    const m = mn.styles$.getValue().map((s) => s.content).join('')
+      .match(/\{([^}]*)\}\s*$/);
+    return m ? m[1] : '';
+  }
+
+  test.each([
+    // Градиенты: ядро строит их само, валидатор держал для `background`
+    // чистый isColorValue и браковал каждый.
+    ['bgF00-00F', 'background:linear-gradient(180deg,#f00 0%,#00f 100%)'],
+    // `normal` — initial value у column-gap/row-gap.
+    ['ggcN', 'grid-column-gap:normal'],
+    // Подстановка переменной допустима в значении любого свойства.
+    ['w--v', 'width:var(--v)'],
+    ['bg--v', 'background:var(--v)'],
+    // Многозначный shorthand.
+    ['p10_20', 'padding:10px 20px'],
+    // calc.
+    ['w100%-20px', 'width:calc(100% - 20px)'],
+  ])('%s → %s', (token, expected) => {
+    expect(cssOf(token)).toBe(expected);
+  });
+
+  test('сторожа: настоящий мусор по-прежнему отбраковывается', () => {
+    // Иначе «починка» валидатора превратилась бы в его отключение.
+    expect(cssOf('bgUndefined')).toBe('');
+    // Нераспознанная буква синонима падает в буквальный kebab: `display:a`.
+    expect(cssOf('dA')).toBe('');
+    expect(cssOf('p8-12')).toBe('');
+  });
+});
+
+/**
+ * Трек `notation-ergonomics`, задача 1 (2026-09-24). Валидатор считал
+ * `width`/`min-*`/`max-*` одним семейством с общей грамматикой, хотя она у них
+ * разная: у `max-*` initial value это `none`, а `auto` наоборот невалиден.
+ * Плюс ни у одного не проходили ключевые слова внутреннего размера.
+ *
+ * Живой случай: `.uVerdict { max-width: none }` в медиазапросе — единственная
+ * причина, по которой правило осталось обычным CSS в проекте affiliate.
+ */
+describe('размерные свойства: none, auto и внутренние размеры', () => {
+  function cssOf(token) {
+    const mn = mnProvider({
+      onWarning: 'silent',
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')(token);
+    mn.compile();
+    const m = mn.styles$.getValue().map((s) => s.content).join('')
+      .match(/\{([^}]*)\}\s*$/);
+    return m ? m[1] : '';
+  }
+
+  test.each([
+    // `none` — только у max-*, и это их initial value.
+    ['wmaxN', 'max-width:none'],
+    ['wmaxNone', 'max-width:none'],
+    ['hmaxN', 'max-height:none'],
+    // Внутренние размеры валидны у всех размерных свойств.
+    ['wFitContent', 'width:fit-content'],
+    ['wMinContent', 'width:min-content'],
+    ['wMaxContent', 'width:max-content'],
+    ['wmaxFitContent', 'max-width:fit-content'],
+    ['hminMinContent', 'min-height:min-content'],
+    // Обычные формы не задеты.
+    ['wmax100', 'max-width:100px'],
+    ['wA', 'width:auto'],
+    ['wminA', 'min-width:auto'],
+  ])('%s → %s', (token, expected) => {
+    expect(cssOf(token)).toBe(expected);
+  });
+
+  test('max-* не принимает auto — у него другая грамматика', () => {
+    // Браузер такое правило отбрасывает, поэтому оно и не должно доходить
+    // до CSS. Раньше пропускалось, потому что валидатор был общий с `width`.
+    expect(cssOf('wmaxA')).toBe('');
+    expect(cssOf('hmaxA')).toBe('');
   });
 });

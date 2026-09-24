@@ -1,15 +1,30 @@
 /**
  * Minotation — ядро.
  *
+ * ## Про `any` и присваивание внутри условия
+ *
+ * Оба отключённых ниже правила — осознанный стиль этого модуля, а не недосмотр.
+ *
+ * `no-explicit-any`: ядро принимает структуры, форма которых определяется
+ * во время выполнения и статически не выражается — объекты параметров хендлера
+ * (зависят от `pattern`, с которым хендлер зарегистрирован), «сырые» значения
+ * пресетов до нормализации, узлы дерева неизвестного происхождения (ядро
+ * работает и вне браузера). Там, где тип выразим, он указан явно — кортежи
+ * эссенций (`MnEssenceResult`), опции, предупреждения.
+ *
+ * `no-cond-assign`: `if (m = re.exec(v))` — сквозная идиома компилятора,
+ * унаследованная от v1. Разворот в две строки на горячем пути разбора токенов
+ * добавил бы переменных и переходов, не прибавив ясности.
+ *
  * @module core
  */
+/* eslint-disable @typescript-eslint/no-explicit-any, no-cond-assign -- см. комментарий выше */
 
 import {
   eachApply,
   eachTry,
   forEach,
   forIn,
-  includes,
   isArray,
   isDefined,
   isEmpty,
@@ -28,11 +43,9 @@ import {
   reduceIn,
   color,
   colorGetBackground,
-  cssPropertiesParseSimple,
   cssPropertiesStringifyProvider,
   type IStringifyCss,
   withDefer,
-  withResult,
   getBase,
   set as baseSet,
 } from 'fundamentool';
@@ -82,8 +95,6 @@ import {
   JOIN_AND,
   normalizeSelectors,
   normalizeComboNames,
-  normalizeSelectorsIteratee,
-  __cssReducer,
   parseMediaPart,
   handlerWrap,
   __normalize,
@@ -95,7 +106,9 @@ import {
   __compileProvider,
   spaceNormalize,
 } from './utils';
-import { isValidCssPropertyValue } from '../cssGrammar';
+import {
+  isValidCssPropertyValue, 
+} from '../cssGrammar';
 import type {
   MnData,
   MnStatics,
@@ -111,6 +124,7 @@ import type {
 } from './types';
 import {
   MnParseError,
+  MnStrictError,
 } from './types';
 import type {
   MnEntity,
@@ -130,7 +144,7 @@ function defaultOnWarning(warning: MnWarning): void {
  * Создаёт независимый экземпляр Minotation.
  *
  * Возвращает функцию `mn`, вызываемую и как регистратор хендлеров/эссенций
- * (`mn(name, handler)`), и как объект с методами API (`mn.compile()`, `mn.css()`, ...) —
+ * (`mn(name, handler)`), и как объект с методами API (`mn.compile()`, `mn.assign()`, ...) —
  * см. {@link MnInstance}. Несколько экземпляров полностью независимы: своё состояние
  * (`$$essences`, `$$root`, `$$staticsEssences` и т.д.), свои пресеты, свой `styles$`.
  *
@@ -145,30 +159,51 @@ function defaultOnWarning(warning: MnWarning): void {
  */
 function minotationProvider(options?: MnOptions) {
   options = options || {};
-  function setPresets(presets: Array<(mn: MnInstance) => void>) {
+  function setPresets(presets: Array<(mn: MnInstance) => void>): any {
     eachTry(
       presets,
       [mn],
       mn,
       emitError,
     );
+    return mn;
   }
   function styleRender(): void {
     emit(values($$stylesMap).sort(priotitySort));
   }
-  function updateOptions(): void {
-    const options = mn.options || {};
+  /**
+   * Пересчитывает производные из `options` значения ($$onError/$$onWarning/
+   * $$selectorPrefixes/$$altColor/$$strict) и публикует снимок в `mn.options`.
+   *
+   * ПЕРЕСМОТРЕНО 2026-09-23: раньше называлась `updateOptions()` и вызывалась
+   * на КАЖДОМ `compile()`/`recompileFrom()`, перечитывая `mn.options` заново —
+   * расчёт был на то, что потребитель может мутировать `mn.options` напрямую
+   * между компиляциями и ожидать, что это подхватится. Проверка (по вопросу
+   * владельца) показала: нигде в монорепе (плагины, runtime-адаптеры, docs,
+   * playground) так никто не делает — единственным свидетельством был
+   * собственный тест, написанный в этой же сессии для другого повода. Опции
+   * теперь читаются из ЗАМЫКАНИЯ (`options`, параметр конструктора), эта
+   * функция вызывается только явно: один раз при создании и из
+   * {@link MnInstance.setOptions} — не на каждой компиляции. Изменить
+   * конфигурацию уже созданного инстанса теперь можно только через
+   * `mn.setOptions(partial)` — прямая мутация `mn.options` эффекта не имеет
+   * (снимок для чтения/отладки, обновляется этой же функцией).
+   */
+  function applyOptions(): void {
+    mn.options = extend({}, options) as MnOptions;
+    const nextSelectorPrefix = options.selectorPrefix || '';
     $$onError = options.onError || noop;
     $$onWarning = options.onWarning === 'silent'
       ? noop
       : typeof options.onWarning === 'function'
         ? options.onWarning
         : defaultOnWarning;
-    options.selectorPrefix === $$lastSelectorPrefix || (
-      $$lastSelectorPrefix = options.selectorPrefix,
-      $$selectorPrefixes = keys(selectorsValidateFilter(normalizeSelectors(options.selectorPrefix || '')))
+    nextSelectorPrefix === $$lastSelectorPrefix || (
+      $$lastSelectorPrefix = nextSelectorPrefix,
+      $$selectorPrefixes = keys(selectorsValidateFilter(normalizeSelectors(nextSelectorPrefix)))
     );
-    $$altColor = options.altColor !== 'off';
+    $$altColor = options.altColor === true;
+    $$strict = !!options.strict;
   }
   /**
    * Собирает {@link MnWarning} (парсинг-ошибка/неизвестный хендлер/превышение
@@ -177,7 +212,9 @@ function minotationProvider(options?: MnOptions) {
    * `warnings$` копится между `compile()`, сбрасывается только в `__clear()` (см. ниже).
    */
   function collectWarning(warning: MnWarning): void {
-    if ($$warningTokens[warning.token]) return;
+    if ($$warningTokens[warning.token]) {
+      return;
+    }
     $$warningTokens[warning.token] = 1;
     $$warnings = $$warnings.concat([warning]);
     $$onWarning(warning);
@@ -203,9 +240,13 @@ function minotationProvider(options?: MnOptions) {
   function isBadCssValue(prop: string, v: string): boolean {
     return REGEXP_INVALID_CSS_VALUE.test(v) || !isValidCssPropertyValue(prop, v);
   }
-  function validateEssenceStyle(essence: MnEssenceRaw, token: string, handlerName: string): boolean {
+  function validateEssenceStyle(
+    essence: MnEssenceRaw, token: string, handlerName: string,
+  ): boolean {
     const style = essence.style;
-    if (!style) return true;
+    if (!style) {
+      return true;
+    }
     let prop: string;
     let v: string | string[];
     let bad: string | undefined;
@@ -316,15 +357,20 @@ function minotationProvider(options?: MnOptions) {
     );
   }
 
+  const MN_ESSENCE_CHILDS_KEY = '' + MN_ESSENCE_CHILDS;
   function baseSetEssense(_essencePath: string, extendedEssence: MnEssenceRaw): void {
     const essencePath = _essencePath.split('.');
     const essenceName = essencePath[0];
     const path = [essenceName];
     const l = essencePath.length;
     let i = 1;
+    // Эссенция — кортеж по индексам (см. utils.ts MN_ESSENCE_*): дочерняя часть
+    // `tbl.cell` лежит в essence[MN_ESSENCE_CHILDS].cell, а не в свойстве `childs`
+    // (строковый ключ на массиве компилятор не видит — регрессия миграции на кортежи,
+    // найдена сверкой с v1 2026-09-17: `tbl` терял `.tbl>*{display:table-cell}`).
     for (;i < l; i++) {
       push(
-        path, 'childs', essencePath[i],
+        path, MN_ESSENCE_CHILDS_KEY, essencePath[i],
       );
     }
     baseSetEssenseBase(
@@ -386,13 +432,14 @@ function minotationProvider(options?: MnOptions) {
    * @param comboNamesMap — карта комбо-имён атрибута `attrName`
    * @param attrName — имя атрибута (`'class'`, `'id'` и т.д.)
    */
-  const updateAttrByMap = mn.updateAttrByMap = withResult((comboNamesMap: Record<string, number>, attrName: string) => {
+  const updateAttrByMap = mn.updateAttrByMap = (comboNamesMap: Record<string, number>, attrName: string): any => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parseComboName: any = getParseComboName(attrName);
     let comboName: string;
     for (comboName in comboNamesMap) forEach( // eslint-disable-line
       parseComboName(comboName), updateSelectorIteratee);
-  }, mn);
+    return mn;
+  };
   /**
    * То же, что {@link updateAttrByMap}, но для СПИСКА новых комбо-имён
    * (например `MnCompiler.getNext()` — только что появившиеся значения атрибута).
@@ -400,13 +447,14 @@ function minotationProvider(options?: MnOptions) {
    * @param comboNames — массив комбо-имён атрибута `attrName`
    * @param attrName — имя атрибута
    */
-  const updateAttrByValues = mn.updateAttrByValues = withResult((comboNames: string[], attrName: string) => {
+  const updateAttrByValues = mn.updateAttrByValues = (comboNames: string[], attrName: string): any => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parseComboName: any = getParseComboName(attrName);
     forEach(comboNames, (comboName: string) => {
       forEach(parseComboName(comboName), updateSelectorIteratee);
     });
-  }, mn);
+    return mn;
+  };
 
   /**
    * Полная пересборка CSS с нуля по явно переданному снимку атрибутов —
@@ -415,15 +463,14 @@ function minotationProvider(options?: MnOptions) {
    *
    * @param attrsMap — снимок `{ attrName: comboNamesMap }` по всем нужным атрибутам
    */
-  mn.recompileFrom = withResult((attrsMap: Record<string, Record<string, number>>) => {
+  mn.recompileFrom = (attrsMap: Record<string, Record<string, number>>): any => {
     __clear();
-    updateOptions();
     forIn(attrsMap, updateAttrByMap);
     forIn($$root, generate);
-    cssRender();
     keyframesRender();
     styleRender();
-  }, mn);
+    return mn;
+  };
 
   /**
    * Возвращает компилятор для указанного атрибута.
@@ -442,10 +489,11 @@ function minotationProvider(options?: MnOptions) {
    * @param node — корневой DOM-узел обхода
    * @param attrs — имя атрибута или список имён (`'class'`, `['class', 'id']`)
    */
-  mn.recursiveCheckByAttrs = withResult((node: any, attrs: string | string[]) => {
+  mn.recursiveCheckByAttrs = (node: any, attrs: string | string[]): any => {
     eachApply((isString(attrs) ? [attrs] : attrs).map(getCompiler)
       .map(x => x.recursiveCheck), [node]);
-  }, mn);
+    return mn;
+  };
   /**
    * Проверяет ОДИН узел (без рекурсии в потомков) по каждому из `attrs` —
    * дешевле {@link MnInstance.recursiveCheckByAttrs} для точечных обновлений
@@ -454,10 +502,11 @@ function minotationProvider(options?: MnOptions) {
    * @param node — DOM-узел для проверки
    * @param attrs — имя атрибута или список имён
    */
-  mn.checkOneNodeByAttrs = withResult((node: any, attrs: string | string[]) => {
+  mn.checkOneNodeByAttrs = (node: any, attrs: string | string[]): any => {
     eachApply((isString(attrs) ? [attrs] : attrs).map(getCompiler)
       .map(x => x.checkNode), [node]);
-  }, mn);
+    return mn;
+  };
   /**
    * Прогоняет ГОТОВОЕ значение атрибута (не DOM-узел) через компилятор(ы) —
    * когда значение известно без чтения DOM (SSR, ручная генерация классов).
@@ -465,11 +514,12 @@ function minotationProvider(options?: MnOptions) {
    * @param v — значение атрибута (например `'w50 cF00'`)
    * @param attrs — имя атрибута или список имён, каждому передаётся то же `v`
    */
-  mn.checkByAttrs = withResult((v: string, attrs: string | string[]) => {
+  mn.checkByAttrs = (v: string, attrs: string | string[]): any => {
     isString(attrs)
       ? getCompiler(attrs)(v)
       : eachApply(attrs.map(getCompiler), [v]);
-  }, mn);
+    return mn;
+  };
   /**
    * Добавляет произвольный именованный CSS-блок в стили экземпляра
    * (обёртка над {@link setStyle} с префиксом `'custom.'` и дефолтным приоритетом).
@@ -511,8 +561,6 @@ function minotationProvider(options?: MnOptions) {
   let $$staticsAssigned: Record<string, Record<string, Record<string, number>>>;
   let $$staticsEssences: Record<string, MnEssenceResult>;
   let $$keyframes: [Record<string, string>, number];
-  let $$css: [Record<string, { css: Record<string, string[]>;
-    content?: string }>, number];
   let $$stylesMap: Record<string, MnStyleEntry> = $$data.stylesMap = {};
   let $$assigned: Record<string, Record<string, Record<string, number>>> = $$data.assigned = {};
   let $$media: Record<string, MnMediaEntry> = mn.media = options.media || {};
@@ -520,6 +568,7 @@ function minotationProvider(options?: MnOptions) {
   let $$force: number;
   let $$selectorPrefixes: string[];
   let $$altColor: boolean;
+  let $$strict: boolean;
   let $$revision = 0;
 
   error$.on((error: Error) => {
@@ -538,7 +587,7 @@ function minotationProvider(options?: MnOptions) {
       } catch (ex) {
         if (ex instanceof MnParseError) {
           collectWarning({
-            type: ex.context.utility === 'getCombinator' ? 'max-depth-exceeded' : 'parse-error',
+            type: ex.context.warningType || 'parse-error',
             token: ex.context.token,
             handler: ex.context.handler,
             arg: ex.context.arg,
@@ -678,7 +727,7 @@ function minotationProvider(options?: MnOptions) {
           push(queries, '(max-height: ' + v + 'px)')
         )
       );
-    } catch (ex) {
+    } catch {
       return [mediaName];
     }
     return [JOIN_AND(queries), priority];
@@ -850,14 +899,14 @@ function minotationProvider(options?: MnOptions) {
    *
    * @example
    * mn.assign('*, *:before, *:after', 'bxzBB');
-   * mn.assign({ html: 'lh115%', body: 'm' });
+   * mn.assign({ html: 'lh1.15', body: 'm' });
    */
   // selectors/comboNames: произвольная вложенная форма (строка/массив/объект), см. normalizeSelectors/normalizeComboNames.
-  mn.assign = withResult((
+  mn.assign = (
     selectors: string | Record<string, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
     comboNames?: string | Record<string, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
     defaultMediaName?: string,
-  ) => {
+  ): any => {
     // comboNames: произвольная вложенная форма, см. normalizeComboNames.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function iteratee(comboNames: string | string[] | Record<string, any>, s: string): void {
@@ -871,7 +920,8 @@ function minotationProvider(options?: MnOptions) {
     isPlainObject(selectors)
       ? forIn(selectors, iteratee)
       : iteratee(comboNames, selectors);
-  }, mn);
+    return mn;
+  };
 
   /**
    * Разбирает токен, вызывает хендлер пресета и СРАЗУ нормализует результат
@@ -921,24 +971,37 @@ function minotationProvider(options?: MnOptions) {
               params.other = matchs[7]
             ),
             (essence = handle(params)) && (essence.important = ni ? 1 : 0),
-            essence && !validateEssenceStyle(essence, value, name) && (essence = undefined),
+            essence && !validateEssenceStyle(
+              essence, value, name,
+            ) && (essence = undefined),
             __normalize(essence)
           )
-          : (
-            collectWarning({
-              type: 'unknown-handler',
-              token: value,
-              handler: name,
-              message: 'Неизвестный хендлер "' + name + '" (токен "' + value + '")',
-            }),
-            undefined
-          )
+          // Хендлера с таким именем нет — значит это вообще не MN-токен, а
+          // чужой CSS-класс (`container`, `btn`, `swiper-slide`, семантика из
+          // собственного CSS проекта). Молчим: сам синтаксис нотации
+          // предполагает соседство с любыми другими классами
+          // (`cF00.active`), а чужих имён может быть сколько угодно — на
+          // каждое из них предупреждать означает забивать вывод мусором.
+          // Предупреждение остаётся там, где автор ЯВНО писал MN-токен и
+          // ошибся в аргументе: хендлер найден, но разбор не удался
+          // (`parse-error`, ниже). Решение владельца 2026-09-24 —
+          // см. OPEN_QUESTIONS.md, Q-12.
+          : undefined
       );
     } catch (ex) {
       if (ex instanceof MnParseError) {
+        // Контекст может быть пустым: `throwInvalid()` в пресетах зовётся из
+        // глубины разбора значения, где ни токена, ни имени хендлера не видно
+        // (см. его JSDoc в `presets/standard.ts`). Здесь они известны —
+        // дозаполняем, чтобы предупреждение указывало на конкретный токен.
         collectWarning({
-          type: 'parse-error', token: ex.context.token, handler: ex.context.handler,
-          arg: ex.context.arg, utility: ex.context.utility, message: ex.message, error: ex,
+          type: 'parse-error',
+          token: ex.context.token || value,
+          handler: ex.context.handler || name,
+          arg: ex.context.arg || suffix,
+          utility: ex.context.utility,
+          message: ex.message,
+          error: ex,
         });
         return;
       }
@@ -950,16 +1013,12 @@ function minotationProvider(options?: MnOptions) {
   function initEssence(
     essenceName: string, essence: MnEssenceResult, excludes: Record<string, number>,
   ): void {
-    let _essence: MnEssenceResult | 0 | null | false | void;
     const staticEssence = $$staticsEssences[essenceName];
-    const tmpEssence = staticEssence
-      ? (
-        staticEssence[MN_ESSENCE_INITED]
-          ? staticEssence
-          : (_essence = __initEssence(essenceName))
-            && mergeEssenceDepth([staticEssence, _essence], [])
-      )
-      : __initEssence(essenceName);
+    // Ветка "staticEssence не MN_ESSENCE_INITED" убрана 2026-09-23: единственное
+    // место записи в $$staticsEssences (baseSetEssenseBase, см. ниже) заводит
+    // запись ВСЕГДА с inited=1 — прочитанный отсюда staticEssence гарантированно
+    // уже инициализирован. Подтверждено сверкой с v1 (та же гарантия там же).
+    const tmpEssence = staticEssence || __initEssence(essenceName);
 
     if (!tmpEssence) {
       return;
@@ -976,6 +1035,16 @@ function minotationProvider(options?: MnOptions) {
       forIn(childs, withStatic ? (_childEssence: MnEssenceResult, _childName: string) => {
         const childEssenceName = __prefix + _childName;
         const childStaticEssence = $$staticsEssences[childEssenceName];
+        // ОТКАЧЕНО 2026-09-23: правка "childStaticEssence || _childEssence" (тот же
+        // приём, что и у staticEssence ниже) была отменена по решению владельца.
+        // Эта ветка (withStatic=1, применяется для МЕДИА-детей, см. вызов ниже с
+        // separator='@') — часть механизма статического переопределения essence
+        // внутри конкретного медиа-контекста (`mn('name@sm', {...})`), который
+        // проверкой найден РАБОЧИМ, но не до конца проработанным: переопределение
+        // подмешивается без обёртки в @media, а собственный `media`-блок хендлера
+        // для того же контекста при этом теряется (воспроизведено эмпирически,
+        // не тестами). Владелец подтвердил: известная, ранее не доведённая до
+        // конца область — трогать отдельной задачей, не заодно с покрытием веток.
         childs[_childName] = compileMixedEssence(
           $$essences[childEssenceName] = [],
           childStaticEssence
@@ -1125,8 +1194,10 @@ function minotationProvider(options?: MnOptions) {
     });
   }
   function __clear() {
-    $$media = mn.media || (mn.media = {});
-    $$handlerMap = mn.handlerMap || (mn.handlerMap = {});
+    // mn.media/mn.handlerMap заведены при создании инстанса (см. выше) —
+    // фолбэк на пустой объект здесь не нужен
+    $$media = mn.media;
+    $$handlerMap = mn.handlerMap;
     $$essences = $$data.essences = {};
     $$root = $$data.root = {};
     $$statics = $$data.statics || ($$data.statics = {
@@ -1134,13 +1205,12 @@ function minotationProvider(options?: MnOptions) {
       assigned: {}, 
     });
 
-    $$staticsEssences = $$statics.essences || ($$statics.essences = {});
+    // обе половины $$statics заводятся вместе (либо из $$data.statics, либо тут же выше)
+    $$staticsEssences = $$statics.essences;
     $$keyframes = $$data.keyframes || ($$data.keyframes = [{}, 0]);
-    $$css = $$data.css = $$data.css || [{}, 0];
     $$stylesMap = $$data.stylesMap = {};
     $$assigned = $$data.assigned = {};
-    forIn($$staticsAssigned = $$statics.assigned || ($$statics.assigned = {}),
-      __assignItemCompile);
+    forIn($$staticsAssigned = $$statics.assigned, __assignItemCompile);
     // Отдельный mn.clearWarnings() не нужен (§10-error-warnings.md, Q3) —
     // recompile()/__clear() уже "чистый лист" для остального состояния.
     $$warnings = [];
@@ -1153,14 +1223,15 @@ function minotationProvider(options?: MnOptions) {
    * компиляторов атрибутов (`$$compilers[*].clear()`) и накопленный CSS.
    * Следующий {@link MnInstance.compile} пересоберёт всё с нуля.
    */
-  mn.clear = withResult((attrName?: string) => {
+  mn.clear = (attrName?: string): any => {
     // eslint-disable-next-line
     for (attrName in $$compilers) $$compilers[attrName].clear();
     __clear();
-  }, mn);
+    return mn;
+  };
 
   /** Пересобирает CSS-блок `@keyframes` (`MN_KEYFRAMES_TOKEN`) из `$$keyframes[0]`, включая браузерные префиксы. Вызывается автоматически из {@link MnInstance.compile}, когда есть неприменённые изменения (`$$keyframes[1]`). */
-  const keyframesRender = mn.keyframesCompile = withResult(() => {
+  const keyframesRender = mn.keyframesCompile = (): any => {
     $$keyframes[1] = 0;
     const keyframesPrefix = MN_KEYFRAMES_TOKEN + ' ';
     const prefixes = cssPropertiesStringify.prefixes;
@@ -1174,14 +1245,8 @@ function minotationProvider(options?: MnOptions) {
     }, [],
     )), MN_DEFAULT_CSS_PRIORITY,
     );
-  }, mn);
-  /** Пересобирает CSS-блок `'css'` (сырой CSS из {@link MnInstance.css}) из `$$css[0]`. Вызывается автоматически из {@link MnInstance.compile}, когда есть неприменённые изменения (`$$css[1]`). */
-  const cssRender = mn.cssCompile = withResult(() => {
-    $$css[1] = 0;
-    // eslint-disable-next-line
-    setStyle('css', joinOnly(reduceIn($$css[0], __cssReducer, [])), MN_DEFAULT_CSS_PRIORITY);
-  }, mn);
-
+    return mn;
+  };
   /**
    * Компилирует накопленные токены в CSS-стили.
    *
@@ -1194,9 +1259,8 @@ function minotationProvider(options?: MnOptions) {
    *
    * @returns mn (чейнинг)
    */
-  const __render = mn.compile = withResult(() => {
+  const __render = mn.compile = (): any => {
     let attrName: string;
-    updateOptions();
     if ($$force) {
       __clear();
       // eslint-disable-next-line
@@ -1210,11 +1274,19 @@ function minotationProvider(options?: MnOptions) {
       }
     }
     $$keyframes[1] && keyframesRender();
-    $$css[1] && cssRender();
     forIn($$root, generate);
     $$updated && styleRender();
     $$updated = $$force = 0;
-  }, mn);
+    // Бросок ЗДЕСЬ, а не из collectWarning() — там он попал бы в try/catch
+    // вокруг разбора токена (__initEssence) и был бы проглочен как обычный
+    // Error через $$onError (по умолчанию noop). Здесь, после того как вся
+    // работа compile() уже сделана, throw ничем не перехватывается и доходит
+    // до вызывающего кода (сборщика) как есть.
+    if ($$strict && $$warnings.length) {
+      throw new MnStrictError($$warnings);
+    }
+    return mn;
+  };
   /**
    * Форсирует ПОЛНЫЙ пересчёт CSS (в отличие от инкрементального {@link MnInstance.compile}) —
    * очищает состояние и заново читает ВЕСЬ кэш каждого компилятора (`$$compilers[*].cache`),
@@ -1223,10 +1295,11 @@ function minotationProvider(options?: MnOptions) {
    *
    * @returns mn (чейнинг)
    */
-  mn.recompile = withResult(() => {
+  mn.recompile = (): any => {
     $$force = 1;
     __render();
-  }, mn);
+    return mn;
+  };
   /** Отложенная (debounced/batched через `withDefer`) версия {@link MnInstance.compile} — несколько синхронных вызовов схлопываются в один реальный проход компиляции. */
   const deferCompile = mn.deferCompile = withDefer(__render, mn);
   /** Отложенная версия {@link MnInstance.recompile} (полный пересчёт), см. {@link deferCompile}. */
@@ -1242,14 +1315,14 @@ function minotationProvider(options?: MnOptions) {
    * @param ifEmpty — если `true`, не перезаписывать существующую
    */
   // body/css: произвольная вложенная форма (строка или объект CSS-свойств).
-  mn.setKeyframes = withResult((
+  mn.setKeyframes = (
     name: string,
     body: string | Record<string, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
     ifEmpty?: number,
-  ) => {
+  ): any => {
     const keyframes = $$keyframes[0];
     if (ifEmpty && keyframes[name]) {
-      return;
+      return mn;
     }
     if (body) {
       const output = ['{'];
@@ -1264,59 +1337,8 @@ function minotationProvider(options?: MnOptions) {
       delete keyframes[name];
     }
     $$keyframes[1] = 1;
-  }, mn);
-
-  /**
-   * Добавляет сырой CSS.
-   *
-   * @param selector — CSS-селектор (строка) или объект `{ [selector]: cssProps }`
-   * @param css — CSS-свойства (строка или объект)
-   *
-   * @example
-   * mn.css('.myClass', { color: 'red', margin: '10px' });
-   * mn.css({ '.a': { color: 'red' }, '.b': 'margin:0' });
-   */
-  // selector/css: произвольная вложенная форма (строка, селектор->свойства).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mn.css = withResult((selector: string | Record<string, any>, css?: string | Record<string, any>) => {
-    const cssMap = $$css[0];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function baseSetCSS(css: string | Record<string, any>, s: string): void {
-      s = joinComma(keys(normalizeSelectorsIteratee({}, s)));
-      if (css) {
-        const instance = cssMap[s] || (cssMap[s] = {
-          css: {},
-        });
-        // Оба ветвления (объект/строка) пишут в один и тот же instance.css —
-        // должны накапливать значения ОДИНАКОВО (массивом на свойство), иначе
-        // при чередовании форм на одном селекторе (mn.css('.a', {color:'red'})
-        // затем mn.css('.a', 'color:blue')) объектная ветка перезаписывала бы
-        // значение голой строкой, а cssPropertiesParseSimple падал на
-        // .push() к строке. Объектную форму нормализуем вручную тем же
-        // способом (dedupe + push), а не через extend().
-        isObject(css)
-          ? forIn(css as Record<string, string>, (v: string, k: string) => {
-            const existing = instance.css[k];
-            existing
-              ? (includes(existing, v) || existing.push(v))
-              : (instance.css[k] = [v]);
-          })
-          : cssPropertiesParseSimple(css, instance.css);
-        instance.content = joinOnly([
-          s,
-          '{',
-          cssPropertiesStringify(instance.css),
-          '}',
-        ]);
-      } else {
-        delete cssMap[s];
-      }
-    }
-    isObject(selector)
-      ? forIn(selector, baseSetCSS)
-      : baseSetCSS(css, selector);
-    $$css[1] = 1;
-  }, mn);
+    return mn;
+  };
 
   /**
    * Регистрирует синонимы селекторов.
@@ -1330,11 +1352,12 @@ function minotationProvider(options?: MnOptions) {
    */
   // synonym/selectors: произвольная вложенная форма, см. baseSetSynonyms/normalizeSelectors.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mn.synonyms = withResult((synonym: string | Record<string, any>, selectors?: string | Record<string, any>) => {
+  mn.synonyms = (synonym: string | Record<string, any>, selectors?: string | Record<string, any>): any => {
     isObject(synonym)
       ? forIn(synonym, baseSetSynonyms)
       : baseSetSynonyms(selectors, synonym);
-  }, mn);
+    return mn;
+  };
 
   /**
    * Загружает пресеты (наборы хендлеров и стилей).
@@ -1347,20 +1370,42 @@ function minotationProvider(options?: MnOptions) {
    * @example
    * mn.setPresets([presetStyles, presetMedias, presetSynonyms]);
    */
-  mn.setPresets = withResult(setPresets, mn);
+  mn.setPresets = setPresets;
   /**
    * Утилиты, доступные пресетам внутри `(mn) => {...}` (см. {@link MnUtils}).
    *
    * `baseUtils` (`core/utils.ts`) + `color`/`colorGetBackground`, переопределённые
    * здесь с зафиксированным `$$altColor` (из `options.altColor`, читается в
-   * {@link updateOptions}) — сами пресеты передают только цвет, без второго аргумента.
+   * {@link applyOptions}) — сами пресеты передают только цвет, без второго аргумента.
    */
   mn.utils = extend(extend({}, baseUtils), {
     color: (v: string) => color(v, $$altColor),
     colorGetBackground: (v: string) => colorGetBackground(v, $$altColor),
   });
 
-  updateOptions();
+  /**
+   * Переконфигурирует инстанс после создания — слияние с текущими опциями
+   * (частичное обновление, не замена целиком). Единственный поддерживаемый
+   * способ поменять `onError`/`onWarning`/`selectorPrefix`/`altColor`/`strict`
+   * на уже созданном `mn` — эти поля читаются из замыкания и пересчитываются
+   * только здесь и при создании инстанса, не на каждой компиляции (см.
+   * {@link applyOptions}, пересмотрено 2026-09-23). Прямая мутация `mn.options`
+   * эффекта не имеет — это только снимок для чтения/отладки.
+   *
+   * @param partialOptions — поля {@link MnOptions} для обновления
+   * @returns mn (чейнинг)
+   *
+   * @example
+   * mn.setOptions({ selectorPrefix: '.app' });
+   * mn.recompile();
+   */
+  mn.setOptions = (partialOptions: Partial<MnOptions>): any => {
+    options = extend(extend({}, options), partialOptions) as MnOptions;
+    applyOptions();
+    return mn;
+  };
+
+  applyOptions();
   options.presets?.length && setPresets(options.presets);
 
   return mn;

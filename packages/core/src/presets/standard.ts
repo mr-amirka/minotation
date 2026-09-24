@@ -43,7 +43,6 @@
 const REGEXP_COMMA = /(?:\s*,\s*)+/;
 const REGEXP_TRIM_SNAKE_LEFT = /^_+/g;
 const REGEXP_TRIM_KEBAB_LEFT = /^-+/g;
-const RE_ZERO =/^0+|\.?0+$/g;
 const REGEXP_FILTER_NAME = /^([A-Za-z]+)([0-9]*)(.*)$/;
 const REGEXP_FILTER_SEP = /_+/;
 const REGEXP_DOTS = /\./g;
@@ -56,7 +55,12 @@ const PATTERN_VAR_ADD = '(-):nva?((--[^;,]+)(,[0-9\\.]+([a-z%]+):vua?):vaa?):vva
 const PATTERN_DIGITS = '(-?[0-9\\.]+)';
 
 // eslint-disable-next-line
-const PATTERN_BASE_COLOR = '([A-Z][a-z][A-Za-z]+):camel|([A-Fa-f0-9]+(\\.[0-9]+)?):color|(-?--[^;]+):vv';
+// `;?` после имени переменной — тот же необязательный терминатор, что в
+// PATTERN_VAR. Цветовому пути он не нужен для разбора (здесь нет разреза по
+// `_`, поэтому `c--my_ink` работает и без него), но пишущий токен не обязан
+// помнить, какой хендлер каким путём разбирается: без `;?` привычное
+// `c--my_ink;` молча не давало правила (2026-09-23).
+const PATTERN_BASE_COLOR = '([A-Z][a-z][A-Za-z]+):camel|([A-Fa-f0-9]+(\\.[0-9]+)?):color|(-?--[^;]+):vv;?';
 const PATTERN_COLOR = '^(' + PATTERN_BASE_COLOR + '):value';
 
 const PATTERN_VAL = '^(((([A-Za-z]+):otherName|([-]):sign?'
@@ -115,9 +119,42 @@ const SIDES_MAP = {
   lb: [BOTTOM, LEFT],
   rb: [BOTTOM, RIGHT],
 };
+/**
+ * Словесные значения цвета — только те, что кодом не выразить, и каждое с
+ * краткой формой (решение владельца 2026-09-24: «вместо них можно сделать
+ * аббревиатуры»).
+ *
+ * Системные цвета (CSS Color 4) берутся из темы ОС: `cBT` вместо
+ * `cButtonText`. Аббревиатура — первые буквы слов, `T` на конце для `…Text`.
+ *
+ * ⚠️ Длинные формы (`cButtonText`) пока тоже работают: `normalizeDefault`
+ * разворачивает синоним в АЛИАС на длинное имя (`exts: ['cButtonText']`), то
+ * есть она нужна как цель ссылки. Отключение дублирующих записей требует
+ * смены механизма алиасов — см. Р-1 в `DECISIONS-NEEDED.md`.
+ */
 const COLOR_SYNONYMS = {
   CT: 'CurrentColor',
   T: 'Transparent',
+  // Системные цвета.
+  BT: 'ButtonText',
+  BF: 'ButtonFace',
+  BB: 'ButtonBorder',
+  CV: 'Canvas',
+  CVT: 'CanvasText',
+  FLD: 'Field',
+  FLDT: 'FieldText',
+  GT: 'GrayText',
+  HL: 'Highlight',
+  HLT: 'HighlightText',
+  LT: 'LinkText',
+  VT: 'VisitedText',
+  AT: 'ActiveText',
+  MK: 'Mark',
+  MKT: 'MarkText',
+  AC: 'AccentColor',
+  ACT: 'AccentColorText',
+  SI: 'SelectedItem',
+  SIT: 'SelectedItemText',
 };
 const BORDER_STYLE_SYNONYMS = {
   N: 'None',
@@ -134,6 +171,14 @@ const BORDER_STYLE_SYNONYMS = {
   I: 'Inset',
   O: 'Outset',
 };
+/** Ключевые слова позиции — общие для `background-position`/`object-position`. */
+const POSITION_KEYWORDS = {
+  L: 'Left',
+  C: 'Center',
+  R: 'Right',
+  T: 'Top',
+  B: 'Bottom',
+};
 const SIZE_SYNONYMS = {
   A: 'Auto',
   N: 'None',
@@ -145,6 +190,9 @@ const TD_SYNONYMS = {
   O: 'Overline',
   L: 'LineThrough',
   I: 'Inherit',
+  BL: 'Blink',
+  SPE: 'SpellingError',
+  GRE: 'GrammarError',
 };
 const BREAK_AFTER_SYNONYMS = {
   A: 'Auto',
@@ -177,6 +225,12 @@ const OUTLINE_STYLE_SYNONYMS = {
   R: 'Ridge',
   I: 'Inset',
   O: 'Outset',
+  // `auto` — стиль по усмотрению браузера (обычно системное кольцо фокуса).
+  A: 'Auto',
+  // Толщина: валидна у шортката `outline`, у `outline-style` игнорируется.
+  TH: 'Thin',
+  M: 'Medium',
+  TK: 'Thick',
 };
 const POSITION_SYNONYMS = {
   '': 'Relative',
@@ -272,11 +326,34 @@ const FILTER_MAP = {
 };
 const UNITS = 'em,ex,%,px,cm,mm,in,pt,pc,ch,rem,vh,vw,vmin,vmax'.split(',');
 
+/**
+ * Бракует токен: аргумент хендлера не разобрался.
+ *
+ * Бросает {@link MnParseError}, а не обычный `Error`, чтобы ядро увело это в
+ * {@link MnInstance.warnings$} (тип `parse-error`), а не в `error$`: битый
+ * аргумент — ошибка автора токена, а не сбой библиотеки. Контекст здесь
+ * заполнить нечем — `throwInvalid()` зовут из глубины разбора значения
+ * (`getVal`, `normalizeDefault`, …), где ни имени хендлера, ни самого токена
+ * уже не видно. Поля остаются пустыми, а ядро подставляет реальные в
+ * `__initEssence` (`core/index.ts`), где и токен, и имя хендлера известны.
+ */
 function throwInvalid(message?: string): never {
-  throw new Error(message || 'Parameter is invalid');
+  throw new MnParseError(message || 'Parameter is invalid', {
+    token: '',
+    handler: '',
+    arg: '',
+  });
 }
 function floatNormalize(v: any, nosign?: number): number {
   const m = v && v.match(REGEXP_DOTS);
+  // ИСПРАВЛЕНО 2026-09-23: предыдущая попытка (тем же числом) убрать
+  // `v < 0 && nosign` как "недостижимое" опиралась только на `num` (числитель
+  // в getVal's total-ветке, знак у него отдельной группой `sign`, не бывает
+  // отрицательным). Но PATTERN_DIGITS = `(-?[0-9.]+)` допускает знак и у
+  // ЗНАМЕНАТЕЛЯ (`total`) — `w1/-2` реально даёт отрицательный `total`, и v1
+  // на нём throwInvalid()'ит (пустой вывод), а без этой проверки v2 молча
+  // считал `-50%`. Ветка ЖИВАЯ — просто её не было в тест-сьюте; тест на
+  // `w1/-2` добавлен, `positive`/`nosign` в сигнатуру возвращены.
   (m && m.length > 1 || isNaN(v = parseFloat(v)) || (v < 0 && nosign))
     && throwInvalid();
   return v;
@@ -298,11 +375,102 @@ function styleWrap(style: Record<string, any>, priority?: number): MnHandlerResu
     priority: priority || 0,
   };
 }
-function toFixed(v: any): string {
-  isNaN(v = v * 100) && throwInvalid();
-  return replace(
-    (Math.floor(v) * 0.01).toFixed(2), RE_ZERO, '',
-  ) || '0';
+/**
+ * `--name` → `var(--name)`, `---name` → `env(--name)`; для суффикса другой формы — `undefined`.
+ *
+ * Нужна хендлерам, которые разбирают суффикс сами, а не через общий `val()`
+ * (`ff`, `lh`): там CSS-переменная иначе молча превращается в мусор —
+ * `ff--mono` давал `font-family:"-mono"` (ведущий `-` в {@link __wr} означает
+ * «взять имя шрифта в кавычки»), а `lh--tight` проваливался в значение по
+ * умолчанию и давал `line-height:1`.
+ *
+ * Форма с запасным значением (`--mono,serif` → `var(--mono,serif)`) входит сюда
+ * же: запятая допускается внутри имени. Раньше она была исключена (`[^,\s]+`) с
+ * пометкой «разбирается по месту», но по месту не разбиралась нигде —
+ * `ff--font,serif` давал `font-family:"-font",serif` (2026-09-23).
+ *
+ * Завершающий `;` — явный конец имени (`--border_size;`, см.
+ * {@link splitValueParts}); в само имя он не входит.
+ */
+const REGEXP_CSS_VAR = /^(---?)([^;\s]+);?$/;
+function cssVarValue(s: string): string | undefined {
+  const m = REGEXP_CSS_VAR.exec(s);
+  return m ? (m[1].length === 3 ? 'env(--' : 'var(--') + m[2] + ')' : undefined;
+}
+/**
+ * Режет значение на `_`-части, НЕ трогая `_` внутри явно завершённого имени
+ * переменной: `ol--border_size;_solid_--marker` → `['--border_size;', 'solid',
+ * '--marker']`.
+ *
+ * Зачем: `_` — разделитель частей значения, поэтому имя переменной с `_`
+ * иначе недостижимо (`--border_size` разваливается на `var(--border)` и
+ * `size`). Экранирование здесь не вариант — обратный слэш снимается раньше, на
+ * разборе токена, и до хендлера не доходит вовсе. Завершающий `;` в грамматике
+ * значений был заложен изначально (`PATTERN_VAR`: имя `--[^;,]+`, затем `;?`),
+ * но не работал: и `getVal()`, и {@link valueNormalize} резали строку по `_`
+ * ДО парсера. Доведено до конца 2026-09-23 по предложению владельца.
+ *
+ * `_` внутри имени подменяется на служебный `\0` только на время разреза и
+ * возвращается обратно в каждой части, поэтому наружу `\0` не попадает.
+ * Значения без `;` идут коротким путём, без замен.
+ *
+ * @param byEscaped `1` — резать по неэкранированным `_` (`\_` — литерал),
+ *   иначе по любому `_`.
+ * @param keepHidden `1` — оставить `_` имени подменённым на `\0`; нужно
+ *   вызывающему, который потом прогоняет части через `spaceNormalize` (та
+ *   превратила бы восстановленный `_` в пробел уже внутри имени). Такой
+ *   вызывающий обязан сам вернуть `\0` → `_` в самом конце.
+ */
+const REGEXP_VAR_TERMINATED = /(---?[^;\s]+);/g;
+const REGEXP_UNDERSCORE_ALL = /_/g;
+const REGEXP_VAR_UNDERSCORE = /\0/g;
+function varUnderscoreHide(_all: string, name: string): string {
+  return name.replace(REGEXP_UNDERSCORE_ALL, '\0') + ';';
+}
+function splitValueParts(
+  v: string, byEscaped?: 1, keepHidden?: 1,
+): string[] {
+  const parts = (v.indexOf(';') < 0
+    ? v
+    : v.replace(REGEXP_VAR_TERMINATED, varUnderscoreHide)
+  ).split(byEscaped ? REGEXP_UNESCAPED_UNDERSCORE : '_');
+  if (keepHidden) {
+    return parts;
+  }
+  let i = parts.length;
+  while (i--) {
+    parts[i] = parts[i].replace(REGEXP_VAR_UNDERSCORE, '_');
+  }
+  return parts;
+}
+/**
+ * Дописывает `px` к каждой части значения, которая осталась голым числом.
+ *
+ * В нотации «голое число = px» — сквозное правило (`p10` → `padding:10px`,
+ * `w10`, `mt10`, `lts2`). Свойства-длины из общего блока свободных значений
+ * (`ti`, `wos`, `bsp`, `fxb`, `tdt`, `tuo`) из него выпадали: `ti10` давало
+ * `text-indent:10` — невалидный CSS, который браузер отбрасывает. У части из
+ * них это ещё и молча проходило мимо валидатора, потому что свойства нет в
+ * его таблице (2026-09-23).
+ *
+ * `0` не трогаем — он валиден без единицы. Уже готовые части (`10px`, `50%`,
+ * `auto`, `calc(…)`, `var(…)`) не подходят под «голое число» и проходят мимо.
+ */
+const REGEXP_BARE_NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)$/;
+function defaultUnitNormalize(v: string): string {
+  if (v.indexOf(' ') < 0) {
+    return v !== '0' && REGEXP_BARE_NUMBER.test(v) ? v + 'px' : v;
+  }
+  const parts = v.split(' ');
+  let i = parts.length;
+  let part: string;
+  while (i--) {
+    part = parts[i];
+    if (part !== '0' && REGEXP_BARE_NUMBER.test(part)) {
+      parts[i] = part + 'px';
+    }
+  }
+  return parts.join(' ');
 }
 function __wr(v: string): string {
   return v[0] == '-'
@@ -317,12 +485,16 @@ function calc(
   return 'calc(' + v + ' ' + sign + ' ' + add + ')';
 }
 function normalizeCalc(
-  base: any, signAndVal: string, unit?: string,
+  base: any, signAndVal: string, unit: string,
 ): string {
   const sign = signAndVal[0];
   const val = signAndVal.slice(1);
+  // Единственный вызов (ratio-хендлер) всегда передаёт третьим аргументом
+  // validateUnit(p.addu || 'px') — тот никогда не возвращает пустую строку
+  // при непустом входе, поэтому фолбэк на '' здесь недостижим (2026-09-23,
+  // подтверждено и в v1 — тот же единственный вызов).
   return calc(
-    base, sign, val + (unit || ''),
+    base, sign, val + unit,
   );
 }
 function normalizeDefault(p: any, def?: string | number): MnHandlerResult {
@@ -336,6 +508,9 @@ import {
   MnHandler,
   MnHandlerResult,
 } from '../types';
+import {
+  MnParseError,
+} from '../core/types';
 
 
 export default (mn: MnInstance) => {
@@ -365,6 +540,7 @@ export default (mn: MnInstance) => {
     spaceNormalize,
     routeParseProvider,
     indexOf,
+    toFixed,
   } = utils;
 
   const parseVals = routeParseProvider(PATTERN_VAL);
@@ -384,8 +560,13 @@ export default (mn: MnInstance) => {
     noOtherName?: number,
     symonyms?: Record<string, any>,
   ): [string, number] {
+    // Все 6 вызовов getVal в этом файле передают defaultUnit='px' явно —
+    // фолбэк недостижим (подтверждено и в v1, 2026-09-23). Параметр остаётся
+    // опциональным в сигнатуре (иначе конфликт с предшествующими optional
+    // positive/one — TS1016), реальное значение гарантирует вызывающая сторона.
+    /* istanbul ignore next */
     defaultUnit = defaultUnit || 'px';
-    const parts = ('' + suffix).split('_');
+    const parts = splitValueParts('' + suffix);
     const l = parts.length;
     one && l > 1 && throwInvalid('There must be one parameter');
     l > 4 && throwInvalid('There should not be more than 4 parameters');
@@ -424,8 +605,7 @@ export default (mn: MnInstance) => {
               + (p.va ? (validateUnit(p.vu) ? '' : defaultUnit) : '') + ')'
           ) : (p.sign || '') + (
             total
-              ? toFixed(100 * floatNormalize(num, positive)
-                / floatNormalize(total, positive)) + '%'
+              ? toFixed(100 * floatNormalize(num, positive) / floatNormalize(total, positive)) + '%'
               : toFixed(num) + validateUnit(p.unit || defaultUnit)
           )
         );
@@ -445,13 +625,39 @@ export default (mn: MnInstance) => {
   function toKebabCase(v: string): string {
     return camelToKebabCase(lowerFirst(v));
   }
-  function toKebabCaseMultiValue(v: string): string {
-    // Каждый '_'-разделённый сегмент кебабируется НЕЗАВИСИМО. Иначе camelToKebabCase
-    // видит всю склеенную '_'-строку одним словом и вставляет "-" перед заглавной
-    // буквой внутри отдельного сегмента: 'fx0_1_Auto' → toKebabCase('0_1_Auto') даёт
-    // '0_1_-auto' (лишний '-' перед 'auto'), а не ожидаемое '0_1_auto'. Экранированный
-    // '_' (`\_`) не трогаем — spaceNormalize разворачивает его в литеральный '_' позже.
-    return v.split(REGEXP_UNESCAPED_UNDERSCORE).map(toKebabCase).join('_');
+  /**
+   * Нормализует «свободное» значение хендлера, которое не разбирается общим
+   * `getVal()`: `_` — разделитель частей (`\_` — литеральный символ), каждая
+   * часть ОТДЕЛЬНО проверяется на CSS-переменную (`--name` → `var(--name)`,
+   * `---name` → `env(--name)`) и только потом кебабится.
+   *
+   * Посегментно — по двум независимым причинам. (1) `camelToKebabCase` по всей
+   * склеенной `_`-строке видит её одним словом и вставляет `-` перед заглавной
+   * буквой внутри отдельного сегмента: `fx0_1_Auto` дало бы `0_1_-auto` вместо
+   * `0_1_auto`. (2) Имя переменной кебабить нельзя — `--myInk` должен дать
+   * `var(--myInk)`, а не `var(--my-ink)`; в `getVal()`-пути имена уже
+   * сохраняются как есть, здесь — так же.
+   *
+   * Ведущий `_` — режим «значение уже готово, не кебабить». Развёртка
+   * переменных выполняется и в нём: `--name` в позиции CSS-значения не имеет
+   * смысла как литерал, а без этого не работали составные шорткаты — суффикс
+   * `ol_3px_solid_--marker` начинается с `_` и целиком уходил в сырой режим,
+   * давая невалидное `outline:3px solid --marker` (2026-09-23).
+   */
+  function valueNormalize(v: string): string {
+    const raw = v[0] == '_';
+    const parts = splitValueParts(
+      raw ? snakeLeftTrim(v) : v, 1, 1,
+    );
+    let i = parts.length;
+    let part: string;
+    while (i--) {
+      part = parts[i];
+      parts[i] = cssVarValue(part) || (raw ? part : toKebabCase(part));
+    }
+    // `\0` возвращается в `_` ТОЛЬКО после spaceNormalize — иначе та превратила
+    // бы его в пробел уже внутри имени переменной (см. splitValueParts).
+    return spaceNormalize(parts.join('_')).replace(REGEXP_VAR_UNDERSCORE, '_');
   }
   function fontNameNormalize(s: string): string {
     const c = s[0];
@@ -463,18 +669,49 @@ export default (mn: MnInstance) => {
           : toKebabCase(s)
       ));
   }
+  /**
+   * Хендлер со словарём кратких записей значения.
+   *
+   * Синоним разворачивается в ЗНАЧЕНИЕ напрямую. Раньше это был алиас на
+   * длинную форму (`dF` → `exts: ['dFlex']`), из-за чего длинная форма была
+   * несущей и убрать её было нельзя — а она даёт вторую запись того же
+   * результата и второе правило в CSS. Механизм заменён 2026-09-24 по
+   * указанию владельца; после этого {@link assertSynonymAbbr} бракует
+   * длинные формы, у которых есть краткая.
+   */
   function synonymProvider(
     propName: string | string[], synonyms: Record<string, any>, priority?: number, _style?: Record<string, any>,
   ): MnHandler {
     let props: Record<string, number>;
+    // Обратный индекс: длинное слово → краткая запись, строится из самого
+    // словаря, поэтому новый синоним сразу начинает бракать свою длинную форму.
+    const byWord: Record<string, string> = {};
+    forIn(synonyms, (word: string, abbr: string) => {
+      abbr && (byWord[valueNormalize(word)] = abbr);
+    });
+    function assertSynonymAbbr(p: any, value: string): void {
+      const abbr = byWord[value];
+      if (abbr && p.suffix !== abbr) {
+        throwInvalid('Записывается короче: "' + p.name + abbr
+          + '" вместо "' + p.name + p.suffix + '" — то же значение');
+      }
+    }
     return isArray(propName)
       ? (props = flags(propName), ((p: any) => {
         let s: string; let style: Record<string, any>; let synonym: any; let propName: string;
         if (synonym = synonyms[s = p.suffix]) {
-          return normalizeDefault(p, synonym);
+          style = {};
+          s = valueNormalize(synonym);
+          for (propName in props) style[propName] = s; // eslint-disable-line
+          return styleWrap(style, priority);
         }
         if (s) {
-          s = fontNameNormalize(s);
+          // valueNormalize, а не fontNameNormalize: массивную форму используют
+          // только page-break-хендлеры (`pgba`/`pgbb`/`pgbi`), к именам шрифтов
+          // отношения не имеющие. Через fontNameNormalize переменная уходила в
+          // CSS литералом — `pgba--v` давал `page-break-after:--v` (2026-09-23).
+          s = valueNormalize(s);
+          assertSynonymAbbr(p, s);
           style = {};
           for (propName in props) style[propName] = s; // eslint-disable-line
           return styleWrap(style, priority);
@@ -482,21 +719,226 @@ export default (mn: MnInstance) => {
       }))
       : ((p: any) => {
         let s: string; let style: Record<string, any>; let synonym: any;
-        return (synonym = synonyms[s = p.suffix])
-          ? normalizeDefault(p, synonym)
-          : (
-            s ? (style = {}, style[propName as string] = spaceNormalize(s[0] == '_'
-              ? snakeLeftTrim(s)
-              : toKebabCase(s)), styleWrap(style, priority))
-              : (_style ? styleWrap(_style, priority) : 0)
-          );
+        if (synonym = synonyms[s = p.suffix]) {
+          style = {};
+          style[propName as string] = valueNormalize(synonym);
+          return styleWrap(style, priority);
+        }
+        if (!s) {
+          return _style ? styleWrap(_style, priority) : 0;
+        }
+        s = valueNormalize(s);
+        assertSynonymAbbr(p, s);
+        style = {};
+        style[propName as string] = s;
+        return styleWrap(style, priority);
       });
   }
+
+  /**
+ * Ведущая решётка перед hex — лишний символ: цвет в нотации пишется без неё
+ * (`bgF00`, а не `bg#F00`). Бракуем, чтобы не плодить вторую запись того же
+ * результата (решение владельца 2026-09-24: «браковать кейсы, где решётка
+ * используется без необходимости»).
+ *
+ * Внутренние решётки не трогаем — там они часть значения-функции
+ * (`bgLinear-gradient\(180deg,#f00,#00f\)`), и именно ради них `#` перед hex
+ * перестал быть границей селектора.
+ */
+  /**
+ * Короткая запись ТОГО ЖЕ цвета, если она есть, иначе `undefined`.
+ *
+ * Один цвет записывался несколькими способами: `cF`, `cFF`, `cFFF`, `cFFFFFF`
+ * — все дают `#fff`, но каждый порождает СВОЁ правило в CSS. Решение
+ * владельца 2026-09-24: такие записи браковать с подсказкой, чтобы в проекте
+ * осталась одна форма.
+ *
+ * Как сокращается (в нотации длина hex задаёт форму, см. HANDLERS.md):
+ * `AABBCC` → `ABC`, `AABBCCDD` → `ABCD` (одинаковые пары);
+ * `AAA` → `A`, `AAAB` → `AB` (одинаковые R/G/B — остаётся цвет и альфа).
+ * Применяется повторно: `FFFFFF` → `FFF` → `F`.
+ */
+  function shorterHex(hex: string): string | undefined {
+    let current = hex;
+    let step: string | undefined;
+    do {
+      step = shorterHexStep(current);
+      step && (current = step);
+    } while (step);
+    return current === hex ? undefined : current;
+  }
+  function shorterHexStep(hex: string): string | undefined {
+    const l = hex.length;
+    let i: number;
+    // Полностью непрозрачная альфа ничего не добавляет: `cFF` = `cF`,
+    // `cF00F` = `cF00`, `c0A0A12F` = `c0A0A12`. Альфа — последний символ при
+    // длине 2/4/7 и последние два при 8.
+    if ((l === 2 || l === 4 || l === 7) && hex[l - 1].toLowerCase() === 'f') {
+      return hex.slice(0, l - 1);
+    }
+    if (l === 8 && hex.slice(6).toLowerCase() === 'ff') {
+      return hex.slice(0, 6);
+    }
+    if (l === 6 || l === 8) {
+      for (i = 0; i < l; i += 2) {
+        if (hex[i].toLowerCase() !== hex[i + 1].toLowerCase()) {
+          return;
+        }
+      }
+      let halved = '';
+      for (i = 0; i < l; i += 2) {
+        halved += hex[i];
+      }
+      return halved;
+    }
+    // `AAA` → `A`, `AAAB` → `AB`: первые три задают цвет, четвёртый — альфа.
+    if ((l === 3 || l === 4)
+    && hex[0].toLowerCase() === hex[1].toLowerCase()
+    && hex[1].toLowerCase() === hex[2].toLowerCase()) {
+      return hex[0] + hex.slice(3);
+    }
+  }
+  /**
+   * Альфа-канал: сколько символов занимает и каков делитель. Длина значения
+   * задаёт форму (см. HANDLERS.md): 2 = цвет+альфа, 4 = RGB+альфа,
+   * 7 = RRGGBB+альфа, 8 = RRGGBB+AA.
+   */
+  const HEX_ALPHA_FORM: Record<number, [number, number]> = {
+    2: [1, 15],
+    4: [1, 15],
+    7: [1, 15],
+    8: [2, 255],
+  };
+  /**
+   * Каноничная запись альфа-канала, если текущая не такова.
+   *
+   * Альфа всегда пишется десятичной дробью: `cA.67`, `cF00.5`, `c0.0`.
+   * Hex-альфа (`cAA`) требует считать в уме, а значения обычно копируют из
+   * макета в процентах. Решение владельца 2026-09-24; отдельное исключение для
+   * полной прозрачности (`c00`) рассматривалось и отклонено им же — две формы
+   * записи одного и того же сложнее запомнить, чем одну.
+   */
+  function canonicalAlpha(hex: string): string | undefined {
+    // Уже десятичная — ничего не меняем.
+    if (hex.indexOf('.') > -1) {
+      return;
+    }
+    const form = HEX_ALPHA_FORM[hex.length];
+    if (!form) {
+      return;
+    }
+    const alpha = parseInt(hex.slice(hex.length - form[0]), 16);
+    return hex.slice(0, hex.length - form[0]) + '.'
+      + toFixed(alpha / form[1]).replace(REGEXP_LEADING_ZERO, '');
+  }
+  /** Значение-функция: `color-mix(…)`, `oklch(…)`, `light-dark(…)`. */
+  const REGEXP_COLOR_FUNCTION = /^[a-z][a-z0-9-]*\(/i;
+  /** CSS-переменная с альфой: `--warn.3` → 30% непрозрачности. */
+  const REGEXP_VAR_WITH_ALPHA = /^(---?[^.;\s]+)\.([0-9]+)$/;
+  /**
+   * Значение цвета, которое НЕ разбирается как код: функция или переменная
+   * с альфой. Возвращает готовый CSS или `undefined`, если это обычный цвет.
+   *
+   * Два случая, ради которых заведено (решение владельца 2026-09-25 —
+   * «нужно решение, а не обходной путь»):
+   *
+   * 1. `bc--warn.3` → `color-mix(in srgb, var(--warn) 30%, transparent)`.
+   *    Точка-альфа уже работает для кодов (`cF00.5` → `rgba(…,.5)`), здесь
+   *    то же правило распространено на переменные. До этого `bc--warn.3`
+   *    молча давал `var(--warn.3)` — переменной с точкой в имени не бывает,
+   *    то есть это был битый CSS.
+   * 2. `bcColor-mix\(in_srgb,var\(--warn\)_30%,transparent\)` — любая
+   *    функция отдаётся как есть. Запасной выход для `oklch()`/`light-dark()`
+   *    и прочего, чего нет отдельным хендлером.
+   *
+   * Разбирается СЫРОЙ суффикс: `PATTERN_COLOR` обрезает функцию на первой
+   * скобке (`Color-mix(a,b)` → `camel: 'Color'`), поэтому по разобранным
+   * полям её не восстановить.
+   */
+  function rawColorValue(suffix: string): string | undefined {
+    if (!suffix) {
+      return;
+    }
+    if (REGEXP_COLOR_FUNCTION.test(suffix)) {
+      return valueNormalize(suffix);
+    }
+    const withAlpha = REGEXP_VAR_WITH_ALPHA.exec(suffix);
+    if (withAlpha) {
+      // `.3` → 30%, `.67` → 67% — как у кодов.
+      return 'color-mix(in srgb, var(' + withAlpha[1] + ') '
+        + toFixed(parseFloat('0.' + withAlpha[2]) * 100) + '%, transparent)';
+    }
+  }
+  /** Бракует цвет, у которого есть более короткая или более читаемая запись. */
+  function assertShortestHex(p: any, hex: string): void {
+    if (!hex) {
+      return;
+    }
+    const shorter = shorterHex(hex);
+    const best = canonicalAlpha(shorter || hex) || shorter;
+    if (best && best !== hex) {
+      throwInvalid('Цвет записывается как "' + p.name + best
+        + '" вместо "' + p.name + hex + '" — то же самое значение');
+    }
+  }
+  /** Ведущий `0` перед точкой — в нотации альфа пишется как `.67`, не `0.67`. */
+  const REGEXP_LEADING_ZERO = /^0?\./;
+  const REGEXP_LEADING_HASH_HEX = /^#[0-9A-Fa-f]{3,8}$/;
+  /**
+ * Обратный индекс `COLOR_SYNONYMS`: длинное слово → аббревиатура.
+ *
+ * Нужен, чтобы забраковать вторую запись того же цвета: `cCurrentColor` при
+ * наличии `cCT`. Стало возможно после 2026-09-24, когда синонимы перестали
+ * разворачиваться в АЛИАС на длинную форму (`exts: ['cCurrentColor']`) и
+ * начали отдавать значение напрямую — до этого длинная форма была нужна как
+ * цель ссылки и убрать её было нельзя.
+ */
+  const COLOR_SYNONYM_BY_WORD: Record<string, string> = {};
+  forIn(COLOR_SYNONYMS, (word: string, abbr: string) => {
+    COLOR_SYNONYM_BY_WORD[word.toLowerCase()] = abbr;
+  });
+  /** Бракует длинную запись цвета, у которой есть аббревиатура. */
+  function assertColorAbbr(p: any): void {
+    const abbr = p.camel && COLOR_SYNONYM_BY_WORD[p.camel.toLowerCase()];
+    if (abbr) {
+      throwInvalid('Цвет записывается короче: "' + p.name + abbr
+      + '" вместо "' + p.name + p.camel + '"');
+    }
+  }
+  /** Одиночный hex без альфы/градиента — только цифры. */
+  const REGEXP_PLAIN_HEX = /^[0-9A-Fa-f]+$/;
 
   function backgroundProvider(propName: string): MnHandler {
     return (p: any) => {
       let v: string; let style: Record<string, any>;
       p.negative && throwInvalid();
+      if (REGEXP_LEADING_HASH_HEX.test(p.suffix)) {
+        throwInvalid('Лишняя решётка: цвет пишется без неё — "'
+          + p.name + p.suffix.slice(1) + '" вместо "' + p.name + p.suffix + '"');
+      }
+      // Синонимы проверяем ДО разбора как цвета: буквы аббревиатур бывают
+      // валидными hex-цифрами, и без этого `bgAC` (AccentColor) уходил в
+      // `#aaa`, `bgBB` (ButtonBorder) — в `#bb` (2026-09-24).
+      const raw = rawColorValue(p.suffix);
+      if (raw) {
+        style = {};
+        style[propName] = raw;
+        return styleWrap(style);
+      }
+      const synonym = COLOR_SYNONYMS[p.suffix];
+      if (synonym) {
+        // Значение НАПРЯМУЮ, без алиаса на длинную форму (`bgCurrentColor`):
+        // иначе длинная форма нужна как цель ссылки и её нельзя забраковать,
+        // а она даёт вторую запись того же цвета. Смена механизма 2026-09-24.
+        style = {};
+        style[propName] = getColor(synonym);
+        return styleWrap(style);
+      }
+      // Одиночный цвет (не градиент, не переменная) — проверяем, нет ли записи
+      // короче. Градиент (`bgF00-00F`) разбирается своим парсером, части в нём
+      // проверять здесь нечем.
+      assertColorAbbr(p);
+      REGEXP_PLAIN_HEX.test(p.suffix) && assertShortestHex(p, p.suffix);
       return (v = p.suffix)
         ? (style = {}, style[propName] = colorGetBackground(v), styleWrap(style))
         : normalizeDefault(p);
@@ -591,26 +1033,39 @@ export default (mn: MnInstance) => {
         ? normalizeDefault(p, synonym)
         : (
           s
-            ? styleWrap(bsSidesSet(toKebabCase(s)), priority + 1)
+            ? styleWrap(bsSidesSet(valueNormalize(s)), priority + 1)
             : normalizeDefault(p, 'Solid')
         );
     });
     mn(
       'bc' + suffix, (p) => {
         let v: string; let synonym: any;
+        const raw = rawColorValue(p.suffix);
+        if (raw) {
+          return styleWrap(bcSidesSet(raw), priority + 1);
+        }
         return (synonym = COLOR_SYNONYMS[p.suffix || 'CT'])
-          ? normalizeDefault(p, synonym)
+          ? styleWrap(bcSidesSet(getColor(synonym)), priority + 1)
           : (
             (v = p.value)
-              ? styleWrap(bcSidesSet(getColor(v)), priority + 1)
-              : normalizeDefault(p)
+              ? (assertColorAbbr(p),
+              assertShortestHex(p, p.color),
+              styleWrap(bcSidesSet(getColor(v)), priority + 1))
+              // Суффикс есть, но PATTERN_COLOR его не разобрал (напр. второй
+              // цвет через `_` — множественные border-color не поддерживаются,
+              // см. HANDLERS.md) — бракуем токен, а не тихо подставляем чёрный
+              // (`normalizeDefault(p)` без 2-го аргумента = дефолт essence
+              // `bc0`). Пустой суффикс (голый `bc`) — единственный легитимный
+              // случай default: он уже отфильтрован веткой выше. Найдено и
+              // исправлено 2026-09-23 по замечанию владельца.
+              : (p.suffix ? throwInvalid() : normalizeDefault(p))
           );
       }, PATTERN_COLOR, 1,
     );
     mn('bi' + suffix, (p) => {
       let s;
       return styleWrap(biSidesSet((s = p.suffix)
-        ? spaceNormalize(s[0] == '_' ? snakeLeftTrim(s) : toKebabCase(s))
+        ? valueNormalize(s)
         : 'none'), priority + 1);
     });
   });
@@ -657,11 +1112,22 @@ export default (mn: MnInstance) => {
     });
   });
 
-  mn(
-    'gap', (p) => {
+  /**
+   * `gap8` → `gap:8px` (обе оси разом). Для разных значений по осям —
+   * атомарные `gapx` (column-gap, горизонталь) / `gapy` (row-gap, вертикаль),
+   * по образцу `px`/`py` у padding/margin. Многозначной формы `gap8_16`
+   * намеренно нет (D-003, atomicity) — `gapx16 gapy8` вместо неё.
+   */
+  function gapHandlerProvider(propName: string) {
+    return (p: any) => {
       const suffix = p.suffix;
       if (!suffix) {
         return normalizeDefault(p, '100%');
+      }
+      // `normal` — initial value у row-gap/column-gap. В общую SIZE_SYNONYMS
+      // его не добавить: там размеры (`w`/`h`/`p`/`m`), которым оно не подходит.
+      if (suffix === 'N') {
+        return normalizeDefault(p, 'Normal');
       }
       const synonym = SIZE_SYNONYMS[suffix];
       if (synonym) {
@@ -670,12 +1136,21 @@ export default (mn: MnInstance) => {
       const v = getVal(
         suffix, 1, 1, 'px', 0, SIZE_SYNONYMS,
       );
-      // gap задаёт ровно 1 CSS-свойство — priority = 2 - 1, как у соседних w/h (props.length === 1)
+      // 1 CSS-свойство — priority = 2 - 1, как у соседних w/h (props.length === 1)
       const priority = 1;
-      return styleWrap({
-        gap: v[0],
-      }, priority + v[1]);
-    }, '', 1,
+      const style: Record<string, any> = {};
+      style[propName] = v[0];
+      return styleWrap(style, priority + v[1]);
+    };
+  }
+  mn(
+    'gap', gapHandlerProvider('gap'), '', 1,
+  );
+  mn(
+    'gapx', gapHandlerProvider('columnGap'), '', 1,
+  );
+  mn(
+    'gapy', gapHandlerProvider('rowGap'), '', 1,
   );
 
   mn('tbl', styleWrap({
@@ -776,17 +1251,31 @@ export default (mn: MnInstance) => {
     bgc: ['backgroundColor', 1],
     temc: ['textEmphasisColor', 1],
     tdc: ['textDecorationColor', 1],
+    // WebkitTapHighlightColor — вендорное свойство без нестандартного аналога
+    // (camelCase с ведущей заглавной буквы camelToKebabCase превращает в
+    // '-webkit-tap-highlight-color', см. fundamentool). Добавлено 2026-09-23
+    // взамен ручного mn.css({html:{'-webkit-tap-highlight-color':'#000'}})
+    // в presets/main.ts — единственного оставшегося в проекте вызова mn.css.
+    thc: ['WebkitTapHighlightColor', 1],
   }, (options: any[], pfx: string) => {
     const propName = options[0];
     const priority = options[1] || 0;
     mn(
       pfx, (p) => {
         let s: Record<string, any>; let v: string; let synonym: any;
+        const raw = rawColorValue(p.suffix);
+        if (raw) {
+          s = {};
+          s[propName] = raw;
+          return styleWrap(s, priority);
+        }
         return (synonym = COLOR_SYNONYMS[p.suffix || 'CT'])
-          ? normalizeDefault(p, synonym)
+          ? (s = {}, s[propName] = getColor(synonym), styleWrap(s, priority))
           : (
             v = p.value,
             v || throwInvalid(),
+            assertColorAbbr(p),
+            assertShortestHex(p, p.color),
             s = {},
             s[propName] = getColor(v),
             styleWrap(s, priority)
@@ -805,8 +1294,12 @@ export default (mn: MnInstance) => {
     mn(name, (p) => {
       const style: Record<string, any> = {};
       let url: string;
+      // Переменная подставляется как значение целиком, а не заворачивается в
+      // url(): `bgi--hero` — это `background-image:var(--hero)` (сама
+      // переменная и содержит `url(…)`), а не `url("--hero")`, которое
+      // ссылалось бы на файл с таким именем (2026-09-23).
       style[propName] = (url = snakeLeftTrim(p.suffix))
-        ? ('url("' + url + '")')
+        ? (cssVarValue(url) || ('url("' + url + '")'))
         : 'none';
       return styleWrap(style, 1);
     });
@@ -889,7 +1382,7 @@ export default (mn: MnInstance) => {
         const suffix = p.suffix;
         const style = {};
         if (suffix[0] === '_') {
-          output = spaceNormalize(snakeLeftTrim(suffix));
+          output = valueNormalize(suffix);
         } else {
           const repeatCount = intval(
             p.m, 1, 0,
@@ -981,6 +1474,7 @@ export default (mn: MnInstance) => {
       0,
       {
         U: 'Unset',
+        N: 'Normal',
       },
     ],
     ggc: [
@@ -1002,6 +1496,7 @@ export default (mn: MnInstance) => {
       {
         U: 'Unset',
         R: 'Revert',
+        N: 'Normal',
       },
     ],
   }, (options: any[], pfx: string) => {
@@ -1039,6 +1534,8 @@ export default (mn: MnInstance) => {
         H: 'Hidden',
         S: 'Scroll',
         A: 'Auto',
+        // `clip` — как `hidden`, но без создания scroll-контейнера.
+        C: 'Clip',
       }, priority,
     );
 
@@ -1062,9 +1559,7 @@ export default (mn: MnInstance) => {
       ? normalizeDefault(p, synonym)
       : (
         s ? (
-          v = spaceNormalize(s[0] == '_'
-            ? snakeLeftTrim(s)
-            : toKebabCase(s)),
+          v = valueNormalize(s),
           styleWrap({
             position: v,
           }, POSITION_PRIORITIES[v] || 0)
@@ -1087,8 +1582,6 @@ export default (mn: MnInstance) => {
       },
     },
 
-    olcI: 'olcInvert',
-
     // background: (...)
     bg: backgroundProvider('background'),
 
@@ -1096,12 +1589,20 @@ export default (mn: MnInstance) => {
     fw: (p) => {
       const camel = p.camel;
       const synonym = camel && FONT_WEIGHT_SYNONYMS[camel];
+      // `fw6` → 600 (цифра-сокращение) и `fw600` → 600 (значение CSS как есть).
+      // До 2026-09-22 второе молча давало 900: число всегда умножалось на 100
+      // и зажималось в 1..9, то есть самая естественная запись была неверной.
+      const num = p.num;
       return synonym ? normalizeDefault(p, synonym) : !p.negative && styleWrap({
         fontWeight: camel
           ? toKebabCase(camel)
-          : (100 * intval(
-            p.num, 1, 1, 9,
-          )),
+          : (num >= 100
+            ? 100 * intval(
+              num / 100, 1, 1, 9,
+            )
+            : 100 * intval(
+              num, 1, 1, 9,
+            )),
       }, 1);
     },
 
@@ -1125,37 +1626,71 @@ export default (mn: MnInstance) => {
         zIndex: num,
       }) : normalizeDefault(p, 1));
     },
+    /**
+     * `opacity`. Число — проценты (`o50` → `.5`), как в 1.x. Дробь меньше единицы
+     * трактуется как готовая доля (`o0.5` → `.5`): до 2026-09-22 такая запись
+     * молча давала `opacity:0` (0.5 % округлялось в ноль), хотя это самый
+     * естественный для CSS вариант записи.
+     */
     o: (p) => {
-      return p.camel || p.negative ? 0 : (p.num ? styleWrap({
-        opacity: toFixed((p.num || 0) * 0.01),
-      }) : normalizeDefault(p));
+      let v, num;
+      return p.camel || p.negative ? 0 : (
+        (v = cssVarValue(p.suffix || '')) ? styleWrap({
+          opacity: v, 
+        }) : ((num = p.num) ? styleWrap({
+          opacity: (num > 0 && num < 1) ? toFixed(num) : toFixed(num * 0.01),
+        }) : normalizeDefault(p))
+      );
     },
+    /**
+     * `line-height`. **Один способ на каждый смысл:** голое число — безразмерный
+     * множитель, как в CSS (`lh1.5` → `line-height:1.5`; потомки наследуют
+     * коэффициент); любая единица пишется явно и проходит как есть
+     * (`lh20px`, `lh1.2em`, `lh150%` → `line-height:150%`).
+     *
+     * Изменено 2026-09-22 по двум причинам. Первая: голое число молча получало
+     * `px` (`lh1` → `line-height:1px`) — единственный хендлер, где умолчание
+     * нотации «число = px» расходилось со смыслом CSS-свойства. Вторая: проценты
+     * пересчитывались в множитель (`lh150%` → `1.5`), то есть на одно значение
+     * приходилось два способа записи, да ещё и с подменой семантики —
+     * `150%` наследуется вычисленным значением, а `1.5` коэффициентом.
+     */
     lh: (p) => {
-      let num, unit;
+      let num, unit, v;
       return p.camel ? 0 : (
-        unit = p.unit,
-        (num = p.num) ? styleWrap({
-          lineHeight: num == '0' ? num : (
-            unit === '%' ? toFixed(num * 0.01) : (num + (unit || 'px'))
-          ),
-        }) : normalizeDefault(p, '100%')
+        (v = cssVarValue(p.suffix || '')) ? styleWrap({
+          lineHeight: v, 
+        }) : (
+          unit = p.unit,
+          (num = p.num) ? styleWrap({
+            lineHeight: num == '0' ? num : (unit ? num + unit : num),
+          }) : normalizeDefault(p, '1')
+        )
       );
     },
     tsa: (p) => {
-      let num, camel;
-      return p.negative ? 0 : (p.value ? styleWrap({
-        textSizeAdjust: (camel = p.camel)
-          ? toKebabCase(camel)
-          : ((num = p.num) == '0' ? num : (num + (p.unit || 'px'))),
-      }) : normalizeDefault(p, '100%'));
+      let num, camel, v;
+      return p.negative ? 0 : (
+        (v = cssVarValue(p.suffix || '')) ? styleWrap({
+          textSizeAdjust: v, 
+        }) : (p.value ? styleWrap({
+          textSizeAdjust: (camel = p.camel)
+            ? toKebabCase(camel)
+            : ((num = p.num) == '0' ? num : (num + (p.unit || 'px'))),
+        }) : normalizeDefault(p, '100%'))
+      );
     },
     fsa: (p) => {
-      let num, camel;
-      return p.negative ? 0 : (p.value ? styleWrap({
-        fontSizeAdjust: (camel = p.camel)
-          ? (camel == 'N' ? 'none' : toKebabCase(camel))
-          : ((num = p.num) == '0' ? num : (num + (p.unit || 'px'))),
-      }) : 0);
+      let num, camel, v;
+      return p.negative ? 0 : (
+        (v = cssVarValue(p.suffix || '')) ? styleWrap({
+          fontSizeAdjust: v, 
+        }) : (p.value ? styleWrap({
+          fontSizeAdjust: (camel = p.camel)
+            ? (camel == 'N' ? 'none' : toKebabCase(camel))
+            : ((num = p.num) == '0' ? num : (num + (p.unit || 'px'))),
+        }) : 0)
+      );
     },
     olo: (p) => {
       let num, camel;
@@ -1201,6 +1736,18 @@ export default (mn: MnInstance) => {
       RBBG: 'RubyBaseGroup',
       RBT: 'RubyText',
       RBTG: 'RubyTextGroup',
+      // Современные значения (добавлено 2026-09-22): раньше `dG` падало в
+      // буквальный `display:g` — короткие формы должны работать, а не ломаться.
+      G: 'Grid',
+      IG: 'InlineGrid',
+      FR: 'FlowRoot',
+      CN: 'Contents',
+      // `F` занято `flex`, `FR` — `flow-root`, поэтому `flow` — `FW`.
+      FW: 'Flow',
+      ILI: 'InlineListItem',
+      RBBC: 'RubyBaseContainer',
+      RBTC: 'RubyTextContainer',
+      IFR: 'InlineFlowRoot',
     }),
 
     dir: synonymProvider('direction', {
@@ -1243,6 +1790,8 @@ export default (mn: MnInstance) => {
       N: 'None',
       L: 'Left',
       R: 'Right',
+      IS: 'InlineStart',
+      IE: 'InlineEnd',
     }),
     v: synonymProvider('visibility', {
       '': 'Hidden',
@@ -1273,7 +1822,16 @@ export default (mn: MnInstance) => {
       B: 'Both',
       H: 'Horizontal',
       V: 'Vertical',
+      // Логические оси: `BL`, а не `B` — та уже занята `both`.
+      BL: 'Block',
+      IL: 'Inline',
     }),
+    /**
+     * `cursor`. Однобуквенные заняты исторически (`C` — crosshair, `P` — pointer,
+     * `A` — auto), поэтому добавленные 2026-09-24 значения берут по две буквы.
+     * Курсоры изменения размера — направление + `R`: `crER` (e-resize),
+     * `crNWR` (nw-resize), `crNSR` (ns-resize).
+     */
     cr: synonymProvider('cursor', {
       '': 'Pointer',
       A: 'Auto',
@@ -1286,6 +1844,33 @@ export default (mn: MnInstance) => {
       T: 'Text',
       N: 'None',
       NA: 'NotAllowed',
+      W: 'Wait',
+      PR: 'Progress',
+      CM: 'ContextMenu',
+      CE: 'Cell',
+      VT: 'VerticalText',
+      AL: 'Alias',
+      CO: 'Copy',
+      ND: 'NoDrop',
+      G: 'Grab',
+      GG: 'Grabbing',
+      ZI: 'ZoomIn',
+      ZO: 'ZoomOut',
+      AS: 'AllScroll',
+      CR: 'ColResize',
+      RR: 'RowResize',
+      ER: 'EResize',
+      NR: 'NResize',
+      SR: 'SResize',
+      WR: 'WResize',
+      NER: 'NeResize',
+      NWR: 'NwResize',
+      SER: 'SeResize',
+      SWR: 'SwResize',
+      EWR: 'EwResize',
+      NSR: 'NsResize',
+      NESWR: 'NeswResize',
+      NWSER: 'NwseResize',
     }),
     jc: synonymProvider('justifyContent', {
       '': 'Center',
@@ -1294,6 +1879,14 @@ export default (mn: MnInstance) => {
       FS: 'FlexStart',
       SA: 'SpaceAround',
       SB: 'SpaceBetween',
+      // Добавлено 2026-09-22 — набор приведён к `ac`/`as`, где эти ключи уже были.
+      S: 'Start',
+      E: 'End',
+      SE: 'SpaceEvenly',
+      N: 'Normal',
+      ST: 'Stretch',
+      L: 'Left',
+      R: 'Right',
     }),
     ai: synonymProvider('alignItems', {
       '': 'Center',
@@ -1301,7 +1894,19 @@ export default (mn: MnInstance) => {
       B: 'Baseline',
       FE: 'FlexEnd',
       FS: 'FlexStart',
-      S: 'Stretch',
+      // 2026-09-22: буквы приведены к `as`/`ac` — `S` это Start, `ST` — Stretch.
+      // Раньше `aiS` значило Stretch, и одна и та же буква у трёх родственных
+      // свойств означала разное. Ломающее изменение, но v2 не публиковалась,
+      // а в самой библиотеке `aiS` нигде не использовался.
+      S: 'Start',
+      ST: 'Stretch',
+      E: 'End',
+      N: 'Normal',
+      SS: 'SelfStart',
+      SE: 'SelfEnd',
+      FB: 'First_baseline',
+      LB: 'Last_baseline',
+      AC: 'AnchorCenter',
     }),
     bxz: synonymProvider('boxSizing', {
       '': 'BorderBox',
@@ -1316,10 +1921,47 @@ export default (mn: MnInstance) => {
         O: 'Oblique',
       }, 1,
     ),
+    /**
+     * `font-variant` — шорткат над семейством `font-variant-*`. Было два
+     * синонима из ~30 значений; добавлены 2026-09-24. Практически ходовые тут
+     * `fvTN` (`tabular-nums` — цифры одной ширины в таблицах), `fvSZ`
+     * (`slashed-zero`) и капитель.
+     */
     fv: synonymProvider(
       'fontVariant', {
         N: 'Normal',
+        NO: 'None',
         SC: 'SmallCaps',
+        ASC: 'AllSmallCaps',
+        PC: 'PetiteCaps',
+        APC: 'AllPetiteCaps',
+        U: 'Unicase',
+        TC: 'TitlingCaps',
+        // Лигатуры.
+        CL: 'CommonLigatures',
+        NCL: 'NoCommonLigatures',
+        DL: 'DiscretionaryLigatures',
+        NDL: 'NoDiscretionaryLigatures',
+        HL: 'HistoricalLigatures',
+        NHL: 'NoHistoricalLigatures',
+        C: 'Contextual',
+        NC: 'NoContextual',
+        HF: 'HistoricalForms',
+        // Цифры.
+        LN: 'LiningNums',
+        ON: 'OldstyleNums',
+        PN: 'ProportionalNums',
+        TN: 'TabularNums',
+        DF: 'DiagonalFractions',
+        SF: 'StackedFractions',
+        O: 'Ordinal',
+        SZ: 'SlashedZero',
+        // Восточноазиатские.
+        S: 'Simplified',
+        T: 'Traditional',
+        FW: 'FullWidth',
+        PW: 'ProportionalWidth',
+        R: 'Ruby',
       }, 1,
     ),
     fef: synonymProvider(
@@ -1335,6 +1977,15 @@ export default (mn: MnInstance) => {
         A: 'Auto',
         N: 'Never',
         AW: 'Always',
+        // Абсолютные размеры — порог, ниже которого сглаживание отключается.
+        XXS: 'XxSmall',
+        XS: 'XSmall',
+        S: 'Small',
+        M: 'Medium',
+        L: 'Large',
+        XL: 'XLarge',
+        XXL: 'XxLarge',
+        XXXL: 'XxxLarge',
       }, 1,
     ),
     fst: synonymProvider(
@@ -1373,6 +2024,7 @@ export default (mn: MnInstance) => {
       J: 'Justify',
       E: 'End',
       S: 'Start',
+      MP: 'MatchParent',
     }),
     tal: synonymProvider(
       'textAlignLast', {
@@ -1385,13 +2037,30 @@ export default (mn: MnInstance) => {
         S: 'Start',
       }, 1,
     ),
-    td: synonymProvider('textDecoration', TD_SYNONYMS),
+    /**
+     * `text-decoration` — шорткат: линия + стиль + толщина + цвет. Стили
+     * (`solid`/`wavy`/…) и толщина (`auto`/`from-font`) добавлены 2026-09-24
+     * ТОЛЬКО сюда: `text-decoration-line` их не принимает, а карту `TD_SYNONYMS`
+     * они делят.
+     */
+    td: synonymProvider('textDecoration', {
+      ...TD_SYNONYMS,
+      S: 'Solid',
+      DB: 'Double',
+      DT: 'Dotted',
+      DS: 'Dashed',
+      W: 'Wavy',
+      A: 'Auto',
+      FF: 'FromFont',
+    }),
     tdl: synonymProvider(
       'textDecorationLine', TD_SYNONYMS, 1,
     ),
     tj: synonymProvider(
       'textJustify', {
         A: 'Auto',
+        N: 'None',
+        ICH: 'InterCharacter',
         IW: 'InterWord',
         II: 'InterIdeograph',
         IC: 'InterCluster',
@@ -1415,16 +2084,45 @@ export default (mn: MnInstance) => {
       L: 'Lowercase',
       FL: 'FullWidth',
       FSK: 'FullSizeKana',
+      MA: 'MathAuto',
     }),
+    /**
+     * `text-wrap`. Карта синонимов пересобрана 2026-09-24: прежние `N`/`NO`/`U`/`S`
+     * (`normal`/`none`/`unrestricted`/`suppress`) — значения из черновика CSS Text 3,
+     * которого не стало; ни одно из них не валидно по текущей спецификации, то есть
+     * `twN` давал CSS, молча отбрасываемый браузером. Заодно не было сокращений у
+     * ВСЕХ шести реальных значений, включая ходовые `balance` и `pretty`.
+     */
     tw: synonymProvider('textWrap', {
-      N: 'Normal',
-      NO: 'None',
-      U: 'Unrestricted',
-      S: 'Suppress',
+      W: 'Wrap',
+      NW: 'Nowrap',
+      B: 'Balance',
+      P: 'Pretty',
+      S: 'Stable',
+      A: 'Auto',
     }),
-    lts: synonymProvider('letterSpacing', {
-      N: 'Normal',
-    }),
+    /**
+     * `letter-spacing`. Голое число получает `px` (`lts2` → `2px`), как и остальные
+     * размеры в нотации; единицы указываются явно (`lts0.06em`). До 2026-09-22
+     * значение выводилось без единицы (`lts1.5` → `letter-spacing:1.5`) — невалидный CSS,
+     * который браузер отбрасывал.
+     */
+    lts: (p) => {
+      let num, v;
+      return p.suffix === 'N'
+        ? normalizeDefault(p, 'Normal')
+        : ((v = cssVarValue(p.suffix || '')) ? styleWrap({
+          letterSpacing: v, 
+        }) : (
+          p.camel ? styleWrap({
+            letterSpacing: toKebabCase(p.camel), 
+          }) : (
+            (num = p.num) != null ? styleWrap({
+              letterSpacing: num == '0' ? num : ((p.sign || '') + num + (p.unit || 'px')),
+            }) : 0
+          )
+        ));
+    },
     ws: synonymProvider('whiteSpace', {
       '': 'Nowrap',
       N: 'Normal',
@@ -1433,25 +2131,46 @@ export default (mn: MnInstance) => {
       PW: 'PreWrap',
       PL: 'PreLine',
       BS: 'BreakSpaces',
+      // CSS Text 4: `white-space` стал шорткатом над `white-space-collapse`
+      // и `text-wrap`. `P` уже занято `pre`, поэтому `preserve` — `PR`.
+      C: 'Collapse',
+      PR: 'Preserve',
+      PRB: 'PreserveBreaks',
+      PRS: 'PreserveSpaces',
+      W: 'Wrap',
     }),
+    /**
+     * `white-space-collapse`. Карта пересобрана 2026-09-24: прежние
+     * `N`/`K`/`L`/`BS`/`BA` (`normal`/`keep-all`/`loose`/`break-strict`/`break-all`)
+     * — значения `word-break`/`line-break`, к этому свойству не относящиеся;
+     * НИ ОДНО из них не валидно, то есть любой токен `wsc*` давал CSS, молча
+     * отбрасываемый браузером.
+     */
     wsc: synonymProvider('whiteSpaceCollapse', {
-      N: 'Normal',
-      K: 'KeepAll',
-      L: 'Loose',
-      BS: 'BreakStrict',
-      BA: 'BreakAll',
+      C: 'Collapse',
+      P: 'Preserve',
+      PB: 'PreserveBreaks',
+      PS: 'PreserveSpaces',
+      BS: 'BreakSpaces',
     }),
     wb: synonymProvider('wordBreak', {
       N: 'Normal',
       K: 'KeepAll',
       BA: 'BreakAll',
+      BW: 'BreakWord',
+      AP: 'AutoPhrase',
     }),
+    /**
+     * `word-wrap` (исторический алиас `overflow-wrap`). Значения `none`,
+     * `unrestricted`, `suppress` убраны 2026-09-24 — невалидны по спецификации,
+     * давали нерабочий CSS; добавлено `anywhere`.
+     */
     ww: synonymProvider('wordWrap', {
-      N: 'None',
+      N: 'Normal',
       NM: 'Normal',
-      U: 'Unrestricted',
-      S: 'Suppress',
       B: 'BreakWord',
+      BW: 'BreakWord',
+      A: 'Anywhere',
     }),
     bgr: synonymProvider(
       'backgroundRepeat', {
@@ -1486,6 +2205,7 @@ export default (mn: MnInstance) => {
         CB: 'ContentBox',
         NC: 'NoClip',
         T: 'Text',
+        BA: 'BorderArea',
       }, 1,
     ),
     bgo: synonymProvider(
@@ -1578,6 +2298,8 @@ export default (mn: MnInstance) => {
       T: 'Text',
       C: 'Contain',
       E: 'Element',
+      // `A` занято `auto`, поэтому `all` — `AL`.
+      AL: 'All',
     }),
     e: synonymProvider('pointerEvents', {
       A: 'Auto',
@@ -1589,7 +2311,46 @@ export default (mn: MnInstance) => {
       P: 'Painted',
       F: 'Fill',
       S: 'Stroke',
+      // `A` занято `auto`, поэтому `all` — `AL`.
+      AL: 'All',
     }),
+    /**
+     * `object-position`. Общий хендлер здесь остаётся: атомарных
+     * `object-position-x/y` в CSS не существует, разложить не на что.
+     * Составные формы — свободным значением: `op_left_top`, `op50%_0`.
+     *
+     * `background-position` (`bgp`) убран 2026-09-24 — трек
+     * `notation-ergonomics`, задача 5: общий хендлер порождал уникальный класс
+     * на каждую комбинацию осей, тогда как атомарные `bgpx`/`bgpy`
+     * переиспользуются между комбинациями.
+     */
+    op: synonymProvider(
+      'objectPosition', POSITION_KEYWORDS, 1,
+    ),
+    /**
+     * Оси `background-position`. Ключевые слова у них РАЗНЫЕ: горизонтальная
+     * принимает `left`/`right`/`x-start`/`x-end`, вертикальная —
+     * `top`/`bottom`/`y-start`/`y-end`. До 2026-09-24 карт не было вовсе, и
+     * `bgpxL` давало мусор `background-position-x:l`.
+     */
+    bgpx: synonymProvider(
+      'backgroundPositionX', {
+        L: 'Left',
+        C: 'Center',
+        R: 'Right',
+        XS: 'XStart',
+        XE: 'XEnd',
+      }, 2,
+    ),
+    bgpy: synonymProvider(
+      'backgroundPositionY', {
+        T: 'Top',
+        C: 'Center',
+        B: 'Bottom',
+        YS: 'YStart',
+        YE: 'YEnd',
+      }, 2,
+    ),
     as: synonymProvider('alignSelf', {
       A: 'Auto',
       N: 'Normal',
@@ -1604,6 +2365,46 @@ export default (mn: MnInstance) => {
       ST: 'Stretch',
       FB: 'First_baseline',
       LB: 'Last_baseline',
+      AC: 'AnchorCenter',
+    }),
+    /**
+     * `justify-self` / `justify-items` — grid-раскладка. Буквы `S`/`ST`/`E`/`C`/`N`/`B`
+     * согласованы с `jc`/`ai`/`as`/`ac` (D-002); `L`/`R` — как у `jc`, `justify-items`
+     * и `justify-self` их тоже принимают (унаследовано от `text-align`).
+     */
+    js: synonymProvider('justifySelf', {
+      A: 'Auto',
+      N: 'Normal',
+      B: 'Baseline',
+      C: 'Center',
+      S: 'Start',
+      E: 'End',
+      ST: 'Stretch',
+      SS: 'SelfStart',
+      SE: 'SelfEnd',
+      L: 'Left',
+      R: 'Right',
+      FB: 'First_baseline',
+      LB: 'Last_baseline',
+      AC: 'AnchorCenter',
+      FS: 'FlexStart',
+      FE: 'FlexEnd',
+    }),
+    ji: synonymProvider('justifyItems', {
+      N: 'Normal',
+      B: 'Baseline',
+      C: 'Center',
+      S: 'Start',
+      E: 'End',
+      ST: 'Stretch',
+      SS: 'SelfStart',
+      SE: 'SelfEnd',
+      L: 'Left',
+      R: 'Right',
+      LG: 'Legacy',
+      AC: 'AnchorCenter',
+      FS: 'FlexStart',
+      FE: 'FlexEnd',
     }),
     ac: synonymProvider('alignContent', {
       S: 'Start',
@@ -1614,9 +2415,15 @@ export default (mn: MnInstance) => {
       SB: 'SpaceBetween',
       SA: 'SpaceAround',
       ST: 'Stretch',
+      SE: 'SpaceEvenly',
+      N: 'Normal',
+      B: 'Baseline',
     }),
     va: synonymProvider('verticalAlign', {
       SUP: 'Super',
+      // `S` свободна: `super` исторически занял `SUP`, а не `S`.
+      S: 'Sub',
+      SUB: 'Sub',
       T: 'Top',
       TT: 'TextTop',
       M: 'Middle',
@@ -1635,6 +2442,8 @@ export default (mn: MnInstance) => {
       TBR: 'TbRl',
       HT: 'HorizontalTb',
       HB: 'HorizontalBt',
+      SRL: 'SidewaysRl',
+      SLR: 'SidewaysLr',
       VR: 'VerticalRl',
       VL: 'VerticalLr',
     }),
@@ -1657,13 +2466,13 @@ export default (mn: MnInstance) => {
     font: (p) => {
       let s;
       return (s = p.suffix) && styleWrap({
-        font: spaceNormalize(s),
+        font: valueNormalize(s),
       });
     },
     ff: (p) => {
       let s;
       return (s = p.suffix) && styleWrap({
-        fontFamily: map(fontNameNormalize(s).split(REGEXP_COMMA), __wr)
+        fontFamily: cssVarValue(s) || map(fontNameNormalize(s).split(REGEXP_COMMA), __wr)
           .join(','),
       }, 1);
     },
@@ -1672,7 +2481,10 @@ export default (mn: MnInstance) => {
       return (s = p.suffix) == '_'
         ? normalizeDefault(p, '\'_\'')
         : styleWrap({
-          content: s ? spaceNormalize(s[0] == '_' ? (snakeLeftTrim(s) || '" "') : toKebabCase(s)) : 'none',
+          // Особый случай против общего valueNormalize: суффикс из одних `_`
+          // схлопывается в пустую строку, которая для `content` невалидна —
+          // подставляем пробел в кавычках.
+          content: s ? (valueNormalize(s) || '" "') : 'none',
         });
     },
     ft: ftProvider('filter'),
@@ -1707,20 +2519,24 @@ export default (mn: MnInstance) => {
     orp: ['orphans'],
     coi: ['counterIncrement'],
     cor: ['counterReset'],
-    wos: ['wordSpacing'],
+    wos: [
+      'wordSpacing',
+      0,
+      1,
+    ],
     apc: ['appearance'],
 
-    ti: ['textIndent'],
+    ti: [
+      'textIndent',
+      0,
+      1,
+    ],
 
     tn: ['transition'],
     tp: ['transitionProperty', 1],
     ttf: ['transitionTimingFunction', 1],
 
 
-    op: ['objectPosition', 1],
-    bgp: ['backgroundPosition', 1],
-    bgpx: ['backgroundPositionX', 2],
-    bgpy: ['backgroundPositionY', 2],
 
     g: ['grid'],
     gt: ['gridTemplate', 1],
@@ -1734,7 +2550,11 @@ export default (mn: MnInstance) => {
     gc: ['gridColumn', 1],
 
     fx: ['flex'],
-    fxb: ['flexBasis', 1],
+    fxb: [
+      'flexBasis',
+      1,
+      1,
+    ],
     fxf: ['flexFlow', 1],
     fxg: ['flexGrow', 1],
     fxs: ['flexShrink', 1],
@@ -1742,25 +2562,50 @@ export default (mn: MnInstance) => {
     or: ['order'],
     tds: ['textDecorationSkip', 1],
     tdsi: ['textDecorationSkipInk', 2],
-    tdt: ['textDecorationThickness', 1],
+    tdt: [
+      'textDecorationThickness',
+      1,
+      1,
+    ],
+    tdst: ['textDecorationStyle', 2],
+    tuo: [
+      'textUnderlineOffset',
+      2,
+      1,
+    ],
+    tup: ['textUnderlinePosition', 2],
 
     ts: ['transformStyle'],
     mbm: ['mixBlendMode'],
-    bsp: ['borderSpacing'],
+    bsp: [
+      'borderSpacing',
+      0,
+      1,
+    ],
     // bdrs: ['borderRadius'],
     zm: ['zoom'],
     tem: ['textEmphasis'],
     temp: ['textEmphasisPosition', 1],
     tems: ['textEmphasisStyle', 1],
     ir: ['imageRendering'],
-  }, ([propName, priority]: [string, number?], essenceName: string) => {
+  }, ([
+    propName,
+    priority,
+    lengthy]: [string, number?, number?,
+  ], essenceName: string) => {
     mn(essenceName, (p) => {
       let s, style;
-      return (s = p.suffix)
-        ? (style = {}, style[propName] = spaceNormalize(s[0] == '_'
-          ? snakeLeftTrim(s)
-          : toKebabCaseMultiValue(s)), styleWrap(style, priority || 0))
-        : 0;
+      style = {};
+      if (!(s = p.suffix)) {
+        // Свойству-длине пустой суффикс даёт `0`, как у `p`/`m`/`b`; остальным
+        // значения по умолчанию нет — они принимают произвольное слово, и
+        // угадывать за автора нечего.
+        return lengthy ? (style[propName] = '0', styleWrap(style, priority || 0)) : 0;
+      }
+      style[propName] = lengthy
+        ? defaultUnitNormalize(valueNormalize(s))
+        : valueNormalize(s);
+      return styleWrap(style, priority || 0);
     });
   });
 

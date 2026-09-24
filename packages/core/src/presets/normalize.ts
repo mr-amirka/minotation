@@ -19,7 +19,7 @@ export default (mn: MnInstance) => {
      * 1. Correct the line height in all browsers.
      * 2. Prevent adjustments of font size after orientation changes in iOS.
      */
-    html: 'lh115% tsa',
+    html: 'lh1.15 tsa',
 
     /* Sections
   ========================================================================== */
@@ -61,7 +61,7 @@ export default (mn: MnInstance) => {
     /**
      * Remove the gray background on active links in IE 10.
      */
-    a: 'bgTransparent',
+    a: 'bgT',
 
     /**
      * 1. Remove the bottom border in Chrome 57-
@@ -112,7 +112,7 @@ export default (mn: MnInstance) => {
      * 1. Change the font styles in all browsers.
      * 2. Remove the margin in Firefox and Safari.
      */
-    'button, input, optgroup, select, textarea': 'ffInherit f100% lh115% m',
+    'button, input, optgroup, select, textarea': 'ffInherit f100% lh1.15 m',
 
     /**
      * Show the overflow in IE.

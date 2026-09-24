@@ -20,7 +20,16 @@ export interface MnStyleEntry {
   revision: number;
 }
 
-/** Компилятор атрибутов */
+/**
+ * Компилятор атрибутов.
+ *
+ * `node` — намеренно `any`: ядро работает и в браузере, и вне его, конкретный
+ * тип узла задаёт потребитель (DOM `Element`, узел виртуального дерева,
+ * объект-заглушка в тестах). Сузить до `Element` нельзя — это привязало бы
+ * ядро к DOM; `unknown` потребовал бы каста у каждого вызывающего, ничего не
+ * давая взамен, потому что ядро читает у узла только атрибуты и детей.
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any -- см. комментарий выше про node */
 export interface MnCompiler {
   cache?: Record<string, number>;
   clear: () => void;
@@ -29,6 +38,7 @@ export interface MnCompiler {
   recursiveCheck: (node: any) => void;
   (v: string): void;
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // ============================================================================
 //  Сущности (essences)
@@ -139,8 +149,6 @@ export interface MnData {
   root: Record<string, Record<string, MnContextEssence>>;
   statics: MnStatics;
   keyframes: [Record<string, string>, number];
-  css: [Record<string, { css: Record<string, string[]>;
-    content?: string }>, number];
 }
 
 /**
@@ -151,22 +159,47 @@ export interface MnData {
  * этом цикле компиляции. См. `AGENT_DRAFT/SPEC/10-error-warnings.md`.
  */
 export class MnParseError extends Error {
-  constructor(
-    message: string,
+  constructor(message: string,
     public readonly context: {
       token: string;
       handler: string;
       arg: string;
       utility?: string;
-    },
-  ) {
+      /**
+       * Во что превратить эту ошибку в {@link MnInstance.warnings$}. Задаётся
+       * явно там, где тип не `'parse-error'` — например превышение `maxDepth`.
+       * Без него ловящая сторона считает ошибку обычной ошибкой разбора.
+       */
+      warningType?: MnWarningType;
+    }) {
     super(message);
     this.name = 'MnParseError';
   }
 }
 
 /** Тип предупреждения — что именно не удалось обработать. */
-export type MnWarningType = 'parse-error' | 'unknown-handler' | 'max-depth-exceeded' | 'invalid-css-value';
+/**
+ * `'unknown-handler'` убран 2026-09-24: незнакомое имя — это чужой CSS-класс,
+ * а не ошибка. Предупреждения остаются только там, где автор явно писал
+ * MN-токен: хендлер найден, но аргумент не разобрался (`parse-error`),
+ * превышена глубина контекста (`max-depth-exceeded`), хендлер вернул битое
+ * CSS-значение (`invalid-css-value`).
+ */
+export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'invalid-css-value';
+
+/**
+ * Бросается из {@link MnInstance.compile}, когда `MnOptions.strict: true` и за цикл
+ * компиляции накоплен хотя бы один {@link MnWarning}. Бросок происходит ПОСЛЕ основной
+ * работы `compile()` (генерация CSS уже завершена, вне try/catch парсинга токенов) —
+ * не подменяет и не отменяет обычный `onWarning`, только добавляет жёсткий отказ поверх.
+ */
+export class MnStrictError extends Error {
+  constructor(public readonly warnings: MnWarning[]) {
+    super('MN strict: ' + warnings.length + ' warning(s) during compile:\n'
+      + warnings.map((w) => '  ' + w.token + ': ' + w.message).join('\n'));
+    this.name = 'MnStrictError';
+  }
+}
 
 /** Предупреждение, собранное при компиляции (`mn.warnings$`). */
 export interface MnWarning {
@@ -203,5 +236,31 @@ export interface MnOptions {
    */
   maxDepthMode?: 'warn' | 'block';
   selectorPrefix?: string;
-  altColor?: string;
+  /**
+   * `true` — рядом с `rgba()`-значением выводить запасное непрозрачное
+   * объявление на случай браузера без поддержки `rgba()`:
+   * `color:#000;color:rgba(0,0,0,0)`.
+   *
+   * @default false — выключено с 2026-09-24 (решение владельца: «пусть он
+   * будет отключен по умолчанию, чтоб другие так же не ловили траблы»).
+   * Раньше было включено, и каждый цвет с альфа-каналом молча давал ДВА
+   * объявления вместо одного — лишний байт в выводе и неожиданный `#000`
+   * там, где просили прозрачность. Запас нужен только для браузеров без
+   * `rgba()` (IE8 и старше), включать его сегодня осмысленно разве что
+   * точечно.
+   */
+  altColor?: boolean;
+  /**
+   * `true` — накопленные за цикл {@link MnInstance.compile} предупреждения (см.
+   * {@link MnWarning}) приводят к броску {@link MnStrictError} вместо тихого
+   * `warn-and-continue`. `onWarning` при этом всё равно вызывается как обычно —
+   * `strict` не заменяет его, а добавляет отказ поверх.
+   *
+   * @default false — по умолчанию выключено: токены пользовательского кода часто
+   * пересекаются с обычными CSS-классами и прочей разметкой, случайно попадающей
+   * под парсер минотации, и `strict: true` в общем случае может ломать сборку
+   * на ложных срабатываниях. Включать точечно, в конкретных сборках, где состав
+   * токенов контролируется.
+   */
+  strict?: boolean;
 }

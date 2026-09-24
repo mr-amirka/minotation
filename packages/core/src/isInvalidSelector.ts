@@ -25,6 +25,43 @@ const REGEXP_INVALID = /\.[#[\].*^$()><+~=|:,"'`\s@%!\/0-9]/;
 /** Закавыченные строки и CSS-escape последовательности (удаляются перед проверкой). */
 const REGEXP_IN_QUOTES_AND_ESCAPED = /("[^"]*"|'[^']*'|\\.)/g;
 
+/**
+ * Незаэкранированная запятая где угодно в селекторе, построенном из токена.
+ *
+ * В CSS это разделитель списка, поэтому такое правило применяется совсем не к
+ * тому, что имел в виду автор: `.cF00\#a\,b#a,b` читается как «`.cF00\#a\,b#a`
+ * ИЛИ `b`» — второй кусок цепляет каждый `<b>` на странице. Появляется, когда в
+ * условии селектора (`#a,b`, `[a,b]`, `:not(.a,.b)`) есть запятая: она попадает
+ * в вывод как есть. Решение владельца 2026-09-24 — такой селектор не выпускать.
+ *
+ * Экранированные (`\,`) и закавыченные запятые сюда не попадают: их снимает
+ * {@link REGEXP_IN_QUOTES_AND_ESCAPED} до проверки.
+ */
+const REGEXP_BARE_COMMA = /,/;
+
+/**
+ * Содержимое круглых скобок — вырезается перед проверкой на запятую.
+ *
+ * Внутри `:not()`, `:is()`, `:where()` запятая это ШТАТНЫЙ разделитель списка
+ * селекторов (Selectors Level 4), а не ошибка: `cF00:not[.a,.b]` даёт
+ * `:not(.a,.b)` и работает. Экранировать её там нельзя — `\,` превратит
+ * разделитель в литеральную запятую внутри имени класса.
+ *
+ * Вложенные скобки снимаются повторным применением: регулярка матчит только
+ * пары без скобок внутри, поэтому цикл идёт от внутренних к внешним.
+ */
+const REGEXP_IN_PARENS = /\([^()]*\)/;
+
 export function isInvalidSelector(selector: string): boolean {
-  return REGEXP_INVALID.test(selector.replace(REGEXP_IN_QUOTES_AND_ESCAPED, ''));
+  const bare = selector.replace(REGEXP_IN_QUOTES_AND_ESCAPED, '');
+  if (REGEXP_INVALID.test(bare)) {
+    return true;
+  }
+  let outside = bare;
+  let prev: string;
+  do {
+    prev = outside;
+    outside = outside.replace(REGEXP_IN_PARENS, '');
+  } while (outside !== prev);
+  return REGEXP_BARE_COMMA.test(outside);
 }

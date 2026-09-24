@@ -203,11 +203,6 @@ See source:
 
 ```js
 module.exports = (mn) => {;
-  mn.css({
-    html: {
-      '-webkit-tap-highlight-color': '#000',
-    },
-  });
   mn.assign({
     '*, *:before, *:after': 'bxzBorderBox',
     html: 'ovxHidden tsa',

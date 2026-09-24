@@ -95,6 +95,7 @@ import {
   size,
   slice,
   splitProvider,
+  toFixed,
   toUpper,
   trim,
   unslash,
@@ -225,6 +226,7 @@ export const baseUtils = merge([{
   escapeCss,
   escapedHalfProvider,
   trim,
+  toFixed,
   toUpper,
   upperFirst,
   lowerFirst,
@@ -310,11 +312,6 @@ export function normalizeSelectorsIteratee(selectorsMap: Record<string, number>,
   });
   return selectorsMap;
 }
-export function __cssReducer(output: string[], v: { css: Record<string, string>;
-  content?: string }): string[] {
-  push(output, v.content);
-  return output;
-}
 export function parseMediaValue(v: string | undefined): number {
   if (!v) {
     return 0;
@@ -349,11 +346,6 @@ export function handlerWrap(essenceHandler: (p: MnEssenceParams) => MnEssenceRaw
     parse(p.suffix, p);
     return essenceHandler(p);
   };
-}
-// Вызывается на "сырых" (ещё не нормализованных) childs/media-значениях
-// (см. __normalize/childAddNormalize ниже) — тип MnEssenceRaw, не MnEssenceResult.
-export function iterateeAddImportant(v: MnEssenceRaw): void {
-  v.important = 1;
 }
 export function iterateeCheckImportant(
   a: Record<string, number>, v: number, k: string,
@@ -568,7 +560,8 @@ export function __compileProvider(attrName: string): MnCompiler {
       return;
     }
     let k: string;
-    const vs = SPLIT_SPACE(v || '');
+    // пустое значение уже отсеяно выше — дополнительный фолбэк не нужен
+    const vs = SPLIT_SPACE(v);
     const l = vs.length;
     let i = 0;
     for (; i < l; i++) {
@@ -605,7 +598,7 @@ export function __compileProvider(attrName: string): MnCompiler {
  * @param options.media — объект медиа-запросов `{ name: { query, selector, priority } }`
  * @param options.onError — обработчик ошибок
  * @param options.selectorPrefix — префикс для всех селекторов
- * @param options.altColor — включить альтернативные цвета (по умолчанию `true`)
+ * @param options.altColor — запасное непрозрачное объявление рядом с `rgba()` (по умолчанию `false`)
  * @returns экземпляр MN
  *
  * @example

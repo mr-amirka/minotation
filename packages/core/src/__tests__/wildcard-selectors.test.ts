@@ -50,9 +50,12 @@ function makeBase() {
       color: '#' + p.suffix,
     },
   }));
-  mn('d', (p) => ({
+  // Заглушка для проверки селекторов: значение должно быть валидным CSS —
+  // с 2026-09-22 ядро бракует нераспознанные однобуквенные значения
+  // перечислимых свойств (`display:B` → «похоже на неразобранный синоним»).
+  mn('d', () => ({
     style: {
-      display: p.suffix,
+      display: 'block',
     },
   }));
   return mn;
@@ -91,10 +94,10 @@ describe('§B parent <.*WORD → [class*=WORD] CLASS', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('§C child >.*WORD → CLASS [class*=WORD]', () => {
-  test('dB>.*MuiSlider → CLASS [class*=MuiSlider]{display:B}', () => {
+  test('dB>.*MuiSlider → CLASS [class*=MuiSlider]{display:block}', () => {
     const mn = makeBase();
     check(mn, 'dB>.*MuiSlider');
-    expect(css(mn)).toBe('.dB\\>\\.\\*MuiSlider [class*=MuiSlider]{display:B}');
+    expect(css(mn)).toBe('.dB\\>\\.\\*MuiSlider [class*=MuiSlider]{display:block}');
   });
 });
 

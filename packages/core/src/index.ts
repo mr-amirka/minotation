@@ -12,7 +12,9 @@
 // `require()` видел его нормально. Тот же баг, что уже чинили для пресетов
 // (2026-08-15) — здесь применён ко всем остальным реэкспортам. Явный импорт +
 // `export const` компилируется в простое `exports.X = ...` — лексер находит.
-import { minotationProvider as minotationProviderImpl } from './core/index';
+import {
+  minotationProvider as minotationProviderImpl, 
+} from './core/index';
 import coreDefault from './core/index';
 import {
   selectorsCompileProvider as selectorsCompileProviderImpl,
@@ -20,9 +22,15 @@ import {
   getCombinatorByDepth as getCombinatorByDepthImpl,
   getCombinator as getCombinatorImpl,
 } from './selectorsCompileProvider';
-import { selectorNormalize as selectorNormalizeImpl } from './selectorNormalize';
-import { isInvalidSelector as isInvalidSelectorImpl } from './isInvalidSelector';
-import { extractTokens as extractTokensImpl } from './extractTokens';
+import {
+  selectorNormalize as selectorNormalizeImpl, 
+} from './selectorNormalize';
+import {
+  isInvalidSelector as isInvalidSelectorImpl, 
+} from './isInvalidSelector';
+import {
+  extractTokens as extractTokensImpl, 
+} from './extractTokens';
 import presetStandardDefault from './presets/standard';
 import presetSynonymsDefault from './presets/synonyms';
 import presetMediasDefault from './presets/medias';
@@ -42,6 +50,20 @@ export const extractTokens = extractTokensImpl;
 export type {
   MnInstance,
 } from './types';
+
+/**
+ * Типы системы предупреждений — нужны сборочным плагинам, которые пересылают
+ * `warnings$` в собственный канал вывода (Q-07, 2026-09-24).
+ */
+export type {
+  MnWarning,
+  MnWarningType,
+  MnOptions,
+} from './core/types';
+export {
+  MnParseError,
+  MnStrictError,
+} from './core/types';
 
 export const presetStandard = presetStandardDefault;
 export const presetSynonyms = presetSynonymsDefault;

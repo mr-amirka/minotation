@@ -239,59 +239,10 @@ describe('MnInstance — полный пайплайн', () => {
     expect(content).not.toContain('@media');
   });
 
-  test('mn.css() — raw CSS', () => {
-    const mn = createMn();
-    mn.css('html', {
-      margin: '0',
-      padding: '0',
-    });
-    mn.compile();
-
-    const content = mn.styles$.getValue()
-      .find(s => s.content.includes('html'))?.content || '';
-    expect(content).toContain('margin:0');
-    expect(content).toContain('padding:0');
-  });
-
-  // Регрессия (2026-08-21): смешение объектной и строковой формы mn.css() на
-  // одном селекторе падало с "values.push is not a function" — объектная
-  // ветка писала instance.css[k] голой строкой, а cssPropertiesParseSimple
-  // ожидал там уже массив. Найдено при разборе типового расхождения $$css
-  // vs cssPropertiesParseSimple (Q3, open-questions).
-  test('mn.css() — смешение объектной и строковой формы на одном селекторе не падает', () => {
-    const mn = createMn();
-    mn.css('.a', { color: 'green' });
-    mn.css('.a', 'color:red');
-    mn.compile();
-
-    const content = mn.styles$.getValue()
-      .find(s => s.content.includes('.a'))?.content || '';
-    expect(content).toContain('color:green');
-    expect(content).toContain('color:red');
-  });
-
-  test('mn.css() — строковая форма затем объектная на одном селекторе', () => {
-    const mn = createMn();
-    mn.css('.a', 'color:red');
-    mn.css('.a', { color: 'green' });
-    mn.compile();
-
-    const content = mn.styles$.getValue()
-      .find(s => s.content.includes('.a'))?.content || '';
-    expect(content).toContain('color:red');
-    expect(content).toContain('color:green');
-  });
-
-  test('mn.css() — объектная форма дедуплицирует повторное значение', () => {
-    const mn = createMn();
-    mn.css('.a', { color: 'red' });
-    mn.css('.a', { color: 'red' });
-    mn.compile();
-
-    const content = mn.styles$.getValue()
-      .find(s => s.content.includes('.a'))?.content || '';
-    expect(content.match(/color:red/g)).toHaveLength(1);
-  });
+  // Тесты на mn.css() (4 шт., включая регрессию 2026-08-21 на смешение
+  // объектной/строковой формы) убраны вместе с самим методом 2026-09-23
+  // (владелец: убрать mn.css() из публичного API, использовать только
+  // mn.assign()).
 
   test('атрибутный компилятор: getCompiler("m")', () => {
     const mn = createMn();
@@ -398,9 +349,9 @@ describe('MnInstance — полный пайплайн', () => {
     ]);
 
     // Типичная карточка
-    mn.getCompiler('class')('p20 mb10 bgFFF r8 fx1 fxaCenter fyaCenter w200 h100');
+    mn.getCompiler('class')('p20 mb10 bgF r8 fx1 fxaCenter fyaCenter w200 h100');
     // Текст с hover и медиа
-    mn.getCompiler('class')('f14 c333 fwBold:h crPointer:h w300@m p10@m');
+    mn.getCompiler('class')('f14 c3 fwBold:h crPointer:h w300@m p10@m');
     // Проценты и отрицательные
     mn.getCompiler('class')('w50% m-5');
 
@@ -649,6 +600,17 @@ describe('self-class условия — полный CSS пайплайн', () =
     expect(result).toContain('color:#fff');
     // НЕ должен быть безусловный .cF\.active без .active
     expect(result).not.toContain('.cF\\.active{');
+  });
+
+  test('cF\\.active (экранированная точка) → без self-class условия, весь суффикс — один класс', () => {
+    // HANDLERS.md «Экранирование»: `\` перед точкой подавляет её трактовку как
+    // границы self-class — в отличие от cF.active (см. тест выше), ".active"
+    // здесь НЕ становится отдельным CSS-условием, а сама экранирующая обратная
+    // косая черта остаётся в токене и удваивается при экранировании для CSS
+    // (итог: три `\` подряд — один от исходного экранирования, два от escapeCss
+    // самого символа `\`).
+    const result = css('cF\\.active');
+    expect(result).toBe('.cF\\\\\\.active{color:#fff}');
   });
 
   test('cF.38 (только opacity — НЕ self-class) → .cF\\.38{color:rgba(255,255,255,.38)}', () => {

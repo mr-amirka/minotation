@@ -17,13 +17,15 @@
   },
   "scripts": {
     "build": "tsc",
+    "prepare": "tsc",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix --quiet",
     "test": "jest --no-coverage",
     "test:watch": "jest --watch --no-coverage",
     "test:coverage": "jest --coverage",
     "test:dist": "npm run build && node scripts/smoke-dist.js",
-    "validate": "npm run lint && npm run test"
+    "validate": "npm run lint && npm run test",
+    "try": "node scripts/try.mjs"
   },
   "dependencies": {
     "fundamentool": "workspace:*"
@@ -34,6 +36,7 @@
     "@types/jest": "^29.0.0",
     "@typescript-eslint/eslint-plugin": "^8.68.0",
     "@typescript-eslint/parser": "^8.68.0",
+    "css-tree": "^3.2.1",
     "eslint": "^10.9.1",
     "fast-check": "^4.8.0",
     "jest": "^29.0.0",

@@ -212,6 +212,14 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    */
   function parseComboName(comboName: string,
     targetName: string): Array<[StrMap<number>, AltMap]> {
+    // ИСПРАВЛЕНО 2026-09-23: `states` заводится безусловно в момент
+    // selectorsCompileProvider(instance) — НО это не делает фолбэк мёртвым,
+    // как я сперва решил: `instance.states` документирован здесь же ниже
+    // (см. getSynonyms) как ПУБЛИЧНАЯ "точка расширения для потребителя" —
+    // внешний код имеет полное право присвоить `mn.states = {...}` целиком
+    // (не домешивая в существующий объект), и тогда фолбэк на `{}` — не
+    // страховка от гипотетической ошибки, а рабочий путь. `_synonyms` тем же
+    // способом лениво заводится только при первом `mn.synonyms(...)`.
     $$states = (instance as any).states || {};
     $$synonyms = (instance as any)._synonyms || {};
     const $$mnOptions = (instance as any).options || {};

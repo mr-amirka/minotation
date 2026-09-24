@@ -75,13 +75,23 @@ describe('Flex-direction — новый MN (совместим)', () => {
 // Flex-wrap (fxw) — вынесен из generic-хендлера в synonymProvider (2026-08-21):
 // короткие формы (NW/W/WR) теперь тоже работают, полная форма не сломана.
 // ================================================================
-describe('Flex-wrap fxw — короткие и полные формы', () => {
+describe('Flex-wrap fxw — только краткая форма', () => {
   test('fxwNW → flex-wrap:nowrap', () => expect(css('fxwNW')).toContain('flex-wrap:nowrap'));
   test('fxwW → flex-wrap:wrap', () => expect(css('fxwW')).toContain('flex-wrap:wrap'));
   test('fxwWR → flex-wrap:wrap-reverse', () => expect(css('fxwWR')).toContain('flex-wrap:wrap-reverse'));
-  test('fxwWrap (полная форма) → flex-wrap:wrap', () => expect(css('fxwWrap')).toContain('flex-wrap:wrap'));
-  test('fxwNowrap (полная форма) → flex-wrap:nowrap', () => expect(css('fxwNowrap')).toContain('flex-wrap:nowrap'));
-  test('fxwWrapReverse (полная форма) → flex-wrap:wrap-reverse', () => expect(css('fxwWrapReverse')).toContain('flex-wrap:wrap-reverse'));
+
+  // С 2026-09-24 полная форма бракуется: она давала ВТОРОЕ правило с тем же
+  // результатом. До этого синоним разворачивался в алиас на неё, поэтому
+  // отключить её было нельзя — механизм заменён на прямое значение.
+  test.each([
+    ['fxwWrap', 'fxwW'],
+    ['fxwNowrap', 'fxwNW'],
+    ['fxwWrapReverse', 'fxwWR'],
+  ])('%s бракуется — есть %s', (long) => {
+    // Хелпер `css()` подключает пресет-сброс, поэтому вывод не пустой —
+    // проверяем, что правила именно для этого токена в нём нет.
+    expect(css(long)).not.toContain('.' + long);
+  });
 });
 
 // ================================================================

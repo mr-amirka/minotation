@@ -10,13 +10,13 @@ npm install minotation
 ## Быстрый старт
 
 ```ts
-import { createMn, presetStandard, presetSynonyms, presetMedias } from 'minotation';
+import { minotationProvider, presetStandard, presetSynonyms, presetMedias } from 'minotation';
 
-const mn = createMn();
+const mn = minotationProvider();
 mn.setPresets([presetStandard, presetSynonyms, presetMedias]);
 
-// Скармливаем токены
-mn.check('p10 cF00 fx bgFFF fwBold:h');
+// Скармливаем токены (компилятор по атрибуту: 'class' / 'className')
+mn.getCompiler('class')('p10 cF00 fx bgFFF fwBold:h');
 
 // Компилируем
 mn.compile();
@@ -27,6 +27,37 @@ for (const block of mn.styles$.getValue()) {
 }
 // → .p10{padding:10px}.cF00{color:#F00}.fx{display:flex}...
 ```
+
+## CSS-переменные в значениях
+
+Любой хендлер значения принимает `--name` и отдаёт `var(--name)`; тройной дефис — `env()`.
+
+```
+w--sidebar     → width: var(--sidebar)
+c--ink         → color: var(--ink)
+bg--panel      → background: var(--panel)
+bc--line       → border-color: var(--line)
+ff--mono       → font-family: var(--mono)
+w--gap,10px    → width: var(--gap,10px)
+pt---safe-top  → padding-top: env(--safe-top)
+```
+
+`_` разделяет части значения, и каждая часть проверяется отдельно — поэтому переменные
+работают и внутри шорткатов:
+
+```
+ol3px_solid_--marker  → outline: 3px solid var(--marker)
+tn_all_0.2s_--ease    → transition: all 0.2s var(--ease)
+```
+
+Если `_` нужен в самом имени переменной — имя закрывают `;`:
+
+```
+w--my_width;                   → width: var(--my_width)
+ol--border_size;_solid_--marker → outline: var(--border_size) solid var(--marker)
+```
+
+Это рабочий способ темизации (светлая/тёмная тема на переменных) без дублирования классов.
 
 ## Токены
 
@@ -59,15 +90,16 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 | `presetMedias` | Медиа-запросы: `m`/`d` (mobile/desktop), `mouse`, `dark` |
 | `presetNormalize` | Лёгкий сброс (box-sizing, margin, img) |
 | `presetMain` | Полный CSS-сброс (аналог normalize.css) |
+| `presetPrefixes` | Опциональные `-webkit-`/`-moz-` дубли для заданного списка свойств (`transform`, `flexDirection`, `appearance`, …) |
 
 ## API
 
-### `createMn(options?)`
+### `minotationProvider(options?)`
 
 Создаёт экземпляр MN.
 
 ```ts
-const mn = createMn({
+const mn = minotationProvider({
   selectorPrefix: '#app',          // префикс для селекторов
   media: { m: { query: '(max-width: 767px)' } },
   prefixedAttrs: { transform: 1 }, // авто-вендорные префиксы
@@ -83,12 +115,13 @@ const mn = createMn({
 mn.setPresets([presetStandard, presetSynonyms]);
 ```
 
-### `mn.check(tokens)`
+### `mn.getCompiler(attr)(tokens)`
 
-Принимает строку токенов (обычно значение `class`).
+Возвращает компилятор для атрибута (`'class'`, `'className'`) и принимает строку токенов.
 
 ```ts
-mn.check('p10 cF00 fx:h');
+const compile = mn.getCompiler('class');
+compile('p10 cF00 fx:h');
 ```
 
 ### `mn.compile()`
@@ -99,23 +132,16 @@ mn.check('p10 cF00 fx:h');
 
 Возвращает массив `StyleBlock[]` — скомпилированные CSS-блоки.
 
-### `mn.register(tag, handler)`
+### `mn(tag, handler)`
 
-Регистрирует обработчик стиля.
+Регистрирует обработчик стиля. Экземпляр вызывается как функция; аргумент хендлера —
+объект разбора токена, имя которого лежит в **`suffix`** (не `arg`).
 
 ```ts
-mn.register('cool', (c) => ({
-  style: { color: '#' + c.arg },
+mn('cool', (p) => ({
+  style: { color: '#' + p.suffix },
 }));
 // coolF00 → color:#F00
-```
-
-### `mn.css(selector, rules)`
-
-Регистрирует сырые CSS-правила.
-
-```ts
-mn.css('html', { margin: '0', padding: '0' });
 ```
 
 ### `mn.assign(selectors)`
@@ -163,10 +189,10 @@ mn.setKeyframes('fadeIn', {
 
 | 1.x (`minimalist-notation`) | v2 (`minotation`) |
 |---|---|
-| `mnProvider()` | `createMn()` |
-| `mn('tag', handler, ...)` | `mn.register('tag', handler)` |
+| `mnProvider()` | `minotationProvider()` |
+| `mn('tag', handler, ...)` | `mn('tag', handler)` (без изменений) |
 | `mn.presets([...])` | `mn.setPresets([...])` |
-| `mn.getCompiler('class')(tokens)` | `mn.check(tokens)` |
+| `mn.getCompiler('class')(tokens)` | `mn.getCompiler('class')(tokens)` (без изменений) |
 | `mn.styles$.getValue()` | `mn.styles$.getValue()` ✅ |
 | `require('.../presets/styles')` | `import { presetStandard }` |
 | `require('.../presets/main')` | `import { presetMain }` |

@@ -6,7 +6,8 @@
  */
 import { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
-import { MnIframe } from '../src/MnIframe';
+import { presetStandard } from 'minotation';
+import { MnIframe } from '../src/index';
 
 function flushMicrotasks(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
@@ -74,5 +75,79 @@ describe('MnIframe — изоляция стилей между инстанса
     expect(css1).not.toContain('bgF');
     expect(css2).toContain('.bgF{background:#fff}');
     expect(css2).not.toContain('.c0{');
+  });
+
+  test('iframe уже загружен к моменту эффекта: монтирование идёт синхронно, без ожидания load', async () => {
+    // В jsdom свежесозданный <iframe> на момент useEffect ещё в readyState
+    // 'loading' — в реальном браузере about:blank часто готов сразу. Второй
+    // путь ветвления воспроизводится подменой readyState на прототипе:
+    // сам contentDocument остаётся настоящим, событие load не диспатчится.
+    const orig = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentDocument')!;
+    Object.defineProperty(HTMLIFrameElement.prototype, 'contentDocument', {
+      configurable: true,
+      get(this: HTMLIFrameElement) {
+        const d = orig.get!.call(this) as Document | null;
+        if (d && d.readyState !== 'complete') {
+          Object.defineProperty(d, 'readyState', { configurable: true, get: () => 'complete' });
+        }
+        return d;
+      },
+    });
+
+    try {
+      await act(async () => {
+        root = createRoot(container);
+        root.render(<MnIframe title="ready"><div className="p10">готов сразу</div></MnIframe>);
+      });
+      await flushMicrotasks();
+
+      const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+      expect(iframe.contentDocument!.body.textContent).toBe('готов сразу');
+      expect(iframe.contentDocument!.querySelector('style[data-mn-runtime]')?.textContent)
+        .toContain('.p10{padding:10px}');
+    } finally {
+      Object.defineProperty(HTMLIFrameElement.prototype, 'contentDocument', orig);
+    }
+  });
+
+  test('cross-origin iframe (contentDocument === null): монтирования нет, ошибки нет', async () => {
+    const orig = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentDocument')!;
+    Object.defineProperty(HTMLIFrameElement.prototype, 'contentDocument', { configurable: true, get: () => null });
+
+    try {
+      await act(async () => {
+        root = createRoot(container);
+        root.render(<MnIframe title="cross-origin"><div className="p10">не смонтируется</div></MnIframe>);
+      });
+      const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+      await act(async () => {
+        iframe.dispatchEvent(new Event('load'));
+      });
+      await flushMicrotasks();
+
+      expect(document.querySelector('style[data-mn-runtime]')).toBeNull();
+    } finally {
+      Object.defineProperty(HTMLIFrameElement.prototype, 'contentDocument', orig);
+    }
+  });
+
+  test('кастомные presets и attr применяются вместо умолчаний', async () => {
+    await act(async () => {
+      root = createRoot(container);
+      root.render(
+        <MnIframe title="custom" presets={[presetStandard]} attr="data-mn">
+          <div data-mn="p10 c0">через data-mn</div>
+        </MnIframe>,
+      );
+    });
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+    await act(async () => {
+      iframe.dispatchEvent(new Event('load'));
+    });
+    await flushMicrotasks();
+
+    const css = iframe.contentDocument!.querySelector('style[data-mn-runtime]')?.textContent || '';
+    expect(css).toContain('[data-mn~="p10"]{padding:10px}');
+    expect(css).toContain('[data-mn~="c0"]{color:#000}');
   });
 });

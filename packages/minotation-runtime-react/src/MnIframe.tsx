@@ -61,6 +61,8 @@ export function MnIframe({ children, presets, attr, className, style, title }: M
 
   useEffect(() => {
     const iframe = iframeRef.current;
+    /* istanbul ignore if — ref на элемент гарантированно привязан к моменту
+       useEffect (контракт React); проверка только для TS-narrowing */
     if (!iframe) return undefined;
     function handleLoad(): void {
       setDoc(iframe!.contentDocument);

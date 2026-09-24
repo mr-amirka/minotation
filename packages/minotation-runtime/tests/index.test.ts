@@ -87,6 +87,96 @@ describe('minotation-runtime — реальный DOM', () => {
     expect(css).not.toContain('fw5');
   });
 
+  test('без options: корень — document целиком, дефолтные attr/styleAttr', async () => {
+    document.body.innerHTML = '<div class="p10"></div>';
+    const runtime = createMnRuntime(makeMn());
+    await flushMicrotasks();
+
+    const style = document.querySelector('style[data-mn-runtime]');
+    expect(style?.textContent).toContain('.p10{padding:10px}');
+    runtime.stop();
+  });
+
+  test('кастомный attr: токены берутся из него, class игнорируется', async () => {
+    document.body.innerHTML = '<div data-mn="p10" class="mt4"></div>';
+    const runtime = createMnRuntime(makeMn(), { root: document.body, attr: 'data-mn' });
+    await flushMicrotasks();
+
+    const css = document.querySelector('style[data-mn-runtime]')?.textContent || '';
+    // При нестандартном attr ядро генерирует атрибутный селектор, не классовый
+    expect(css).toContain('[data-mn~="p10"]{padding:10px}');
+    expect(css).not.toContain('margin-top');
+    runtime.stop();
+  });
+
+  test('кастомный styleAttr: <style> помечается им, а не data-mn-runtime', async () => {
+    document.body.innerHTML = '<div class="p10"></div>';
+    const runtime = createMnRuntime(makeMn(), { root: document.body, styleAttr: 'data-custom-mn' });
+    await flushMicrotasks();
+
+    expect(document.querySelector('style[data-mn-runtime]')).toBeNull();
+    expect(document.querySelector('style[data-custom-mn]')?.textContent).toContain('.p10{padding:10px}');
+    runtime.stop();
+    document.head.querySelectorAll('style[data-custom-mn]').forEach((el) => el.remove());
+  });
+
+  test('пустой атрибут и лишние пробелы не ломают скан', async () => {
+    document.body.innerHTML = '<div class=""></div><div class="  p10   mt4  "></div>';
+    const runtime = createMnRuntime(makeMn(), { root: document.body });
+    await flushMicrotasks();
+
+    const css = document.querySelector('style[data-mn-runtime]')?.textContent || '';
+    expect(css).toContain('.p10{padding:10px}');
+    expect(css).toContain('.mt4{margin-top:4px}');
+    runtime.stop();
+  });
+
+  test('добавленный текстовый узел не считается изменением (нет лишней компиляции)', async () => {
+    document.body.innerHTML = '';
+    const mn = makeMn();
+    let compileCalls = 0;
+    const origCompile = mn.compile.bind(mn);
+    mn.compile = () => {
+      compileCalls++;
+      origCompile();
+    };
+    const runtime = createMnRuntime(mn, { root: document.body });
+    await flushMicrotasks();
+    const afterStart = compileCalls;
+
+    document.body.appendChild(document.createTextNode('просто текст'));
+    await flushMicrotasks();
+
+    expect(compileCalls).toBe(afterStart);
+    runtime.stop();
+  });
+
+  test('несколько мутаций в одном тике дают один flush (дебаунс)', async () => {
+    document.body.innerHTML = '';
+    const mn = makeMn();
+    let compileCalls = 0;
+    const origCompile = mn.compile.bind(mn);
+    mn.compile = () => {
+      compileCalls++;
+      origCompile();
+    };
+    const runtime = createMnRuntime(mn, { root: document.body });
+    await flushMicrotasks();
+    const afterStart = compileCalls;
+
+    for (let i = 0; i < 3; i++) {
+      const div = document.createElement('div');
+      div.className = 'p' + (i + 1);
+      document.body.appendChild(div);
+    }
+    await flushMicrotasks();
+
+    expect(compileCalls).toBe(afterStart + 1);
+    const css = document.querySelector('style[data-mn-runtime]')?.textContent || '';
+    expect(css).toContain('.p3{padding:3px}');
+    runtime.stop();
+  });
+
   test('вложенный узел (не прямой child) в добавленном поддереве тоже сканируется', async () => {
     document.body.innerHTML = '';
     const runtime = createMnRuntime(makeMn(), { root: document.body });

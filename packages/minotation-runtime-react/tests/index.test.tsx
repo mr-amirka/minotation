@@ -10,6 +10,7 @@
 import { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { minotationProvider, presetStandard } from 'minotation';
+import { useRef } from 'react';
 import { useMnRuntime } from '../src/index';
 
 function makeMn() {
@@ -109,5 +110,66 @@ describe('minotation-runtime-react — реальный React 18 (automatic JSX 
     expect(css).toContain('.crP{cursor:pointer}');
     outside.remove();
     scoped.remove();
+  });
+
+  test('без options: рантайм стартует на document целиком', async () => {
+    const mn = makeMn();
+    function Plain() {
+      useMnRuntime(mn);
+      return <div className="mt4">widget</div>;
+    }
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<Plain />);
+    });
+    await flushMicrotasks();
+
+    const css = document.querySelector('style[data-mn-runtime]')?.textContent || '';
+    expect(css).toContain('.mt4{margin-top:4px}');
+  });
+
+  test('rootRef, оставшийся null, не ломает старт — рантайм падает обратно на document', async () => {
+    const mn = makeMn();
+    function WithEmptyRef() {
+      // ref объявлен, но ни к какому узлу не привязан (условный рендер не сработал)
+      const rootRef = useRef<HTMLDivElement>(null);
+      useMnRuntime(mn, { rootRef });
+      return <div className="fw5">widget</div>;
+    }
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<WithEmptyRef />);
+    });
+    await flushMicrotasks();
+
+    const css = document.querySelector('style[data-mn-runtime]')?.textContent || '';
+    expect(css).toContain('.fw5{font-weight:500}');
+  });
+
+  test('среда без DOM (React Native и прочие не-DOM рендереры): рантайм не стартует и не падает', async () => {
+    // useEffect выполняется и там, где глобального `document` нет вовсе —
+    // проверяется ровно эта защита. React DOM создаёт узлы через ownerDocument
+    // контейнера, поэтому сам рендер без глобального document проходит.
+    const mn = makeMn();
+    let effectRan = false;
+    function Plain() {
+      useMnRuntime(mn);
+      effectRan = true;
+      return <div className="p10">widget</div>;
+    }
+
+    const realDocument = globalThis.document;
+    Object.defineProperty(globalThis, 'document', { value: undefined, configurable: true });
+    try {
+      await act(async () => {
+        root = createRoot(container);
+        root.render(<Plain />);
+      });
+    } finally {
+      Object.defineProperty(globalThis, 'document', { value: realDocument, configurable: true });
+    }
+
+    expect(effectRan).toBe(true);
+    expect(document.querySelector('style[data-mn-runtime]')).toBeNull();
   });
 });

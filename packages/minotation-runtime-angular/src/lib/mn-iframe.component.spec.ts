@@ -8,6 +8,7 @@
  */
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { presetStandard } from 'minotation';
 import { MnIframeComponent } from './mn-iframe.component';
 
 function flushMicrotasks(): Promise<void> {
@@ -82,6 +83,91 @@ describe('MnIframeComponent', () => {
 
     const css = iframeDoc.querySelector('style[data-mn-runtime]')?.textContent || '';
     expect(css).not.toContain('crP');
+  });
+
+  it('iframe ещё грузится: монтирование откладывается до события load', async () => {
+    // В jsdom contentDocument доступен сразу (readyState === 'complete'), поэтому
+    // реальный браузерный тайминг «iframe ещё не загружен» воспроизводится
+    // подменой геттера: до load документа нет, после — есть. Сам компонент
+    // настоящий, монтирование идёт через реальный createApplication.
+    const iframe = document.createElement('iframe');
+    document.body.appendChild(iframe);
+    const realDoc = iframe.contentDocument!;
+    let loaded = false;
+    Object.defineProperty(iframe, 'contentDocument', { get: () => (loaded ? realDoc : null) });
+
+    const cmp = new MnIframeComponent();
+    cmp.component = WidgetA;
+    cmp.title = 'deferred';
+    (cmp as unknown as { iframeElRef: { nativeElement: HTMLIFrameElement } }).iframeElRef = { nativeElement: iframe };
+
+    cmp.ngAfterViewInit();
+    await flushMicrotasks();
+    expect(realDoc.querySelector('[data-testid="inner"]')).toBeNull();
+
+    loaded = true;
+    iframe.dispatchEvent(new Event('load'));
+    await flushMicrotasks();
+
+    expect(realDoc.querySelector('[data-testid="inner"]')?.textContent).toBe('внутри iframe');
+    expect(realDoc.querySelector('style[data-mn-runtime]')?.textContent).toContain('.p10{padding:10px}');
+
+    cmp.ngOnDestroy();
+    iframe.remove();
+  });
+
+  it('load пришёл, а contentDocument так и нет — монтирования нет, destroy не падает', async () => {
+    const iframe = document.createElement('iframe');
+    document.body.appendChild(iframe);
+    Object.defineProperty(iframe, 'contentDocument', { get: () => null });
+
+    const cmp = new MnIframeComponent();
+    cmp.component = WidgetA;
+    cmp.title = 'never-loads';
+    (cmp as unknown as { iframeElRef: { nativeElement: HTMLIFrameElement } }).iframeElRef = { nativeElement: iframe };
+
+    cmp.ngAfterViewInit();
+    expect(() => {
+      iframe.dispatchEvent(new Event('load'));
+    }).not.toThrow();
+    await flushMicrotasks();
+
+    // ngOnDestroy при неинициализированных runtime/childApp
+    expect(() => {
+      cmp.ngOnDestroy();
+    }).not.toThrow();
+    iframe.remove();
+  });
+
+  it('кастомные presets и attr применяются вместо умолчаний', async () => {
+    @Component({
+      standalone: true,
+      template: `<div data-mn="p10 c0">через data-mn</div>`,
+    })
+    class WidgetAttr {}
+
+    @Component({
+      standalone: true,
+      imports: [MnIframeComponent],
+      template: `<mn-iframe [component]="widget" [presets]="presets" attr="data-mn" title="custom" />`,
+    })
+    class CustomHost {
+      widget = WidgetAttr;
+      presets = [presetStandard];
+    }
+
+    const fixture = TestBed.createComponent(CustomHost);
+    document.body.appendChild(fixture.nativeElement);
+    fixture.detectChanges();
+    await flushMicrotasks();
+
+    const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement;
+    const css = iframe.contentDocument!.querySelector('style[data-mn-runtime]')?.textContent || '';
+    expect(css).toContain('[data-mn~="p10"]{padding:10px}');
+    expect(css).toContain('[data-mn~="c0"]{color:#000}');
+
+    fixture.destroy();
+    fixture.nativeElement.remove();
   });
 
   it('два mn-iframe изолированы друг от друга', async () => {

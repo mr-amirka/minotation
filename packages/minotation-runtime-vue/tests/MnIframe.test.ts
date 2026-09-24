@@ -4,7 +4,8 @@
  * ИЗОЛИРОВАНЫ (стили одного не текут в другой/в родительский документ).
  */
 import { createApp, h } from 'vue';
-import { MnIframe } from '../src/MnIframe';
+import { presetStandard } from 'minotation';
+import { MnIframe } from '../src/index';
 
 function flushMicrotasks(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
@@ -63,5 +64,50 @@ describe('MnIframe (Vue) — изоляция стилей между инста
     expect(css1).not.toContain('bgF');
     expect(css2).toContain('.bgF{background:#fff}');
     expect(css2).not.toContain('.c0{');
+  });
+
+  test('без слота: iframe монтируется пустым, ошибки нет', async () => {
+    app = createApp({ render: () => h(MnIframe, { title: 'empty' }) });
+    app.mount(container);
+    await flushMicrotasks();
+
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+    expect(iframe.getAttribute('title')).toBe('empty');
+    expect(iframe.contentDocument!.body.textContent).toBe('');
+  });
+
+  test('кастомные presets и attr применяются вместо умолчаний', async () => {
+    app = createApp({
+      render: () => h(MnIframe, { title: 'custom', presets: [presetStandard], attr: 'data-mn' }, {
+        default: () => h('div', { 'data-mn': 'p10 c0' }, 'через data-mn'),
+      }),
+    });
+    app.mount(container);
+    await flushMicrotasks();
+
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+    const css = iframe.contentDocument!.querySelector('style[data-mn-runtime]')?.textContent || '';
+    expect(css).toContain('[data-mn~="p10"]{padding:10px}');
+    expect(css).toContain('[data-mn~="c0"]{color:#000}');
+  });
+
+  test('cross-origin iframe (contentDocument === null после load): монтирования нет, ошибки нет', async () => {
+    app = createApp({
+      render: () => h(MnIframe, { title: 'cross-origin' }, { default: () => h('div', { class: 'p10' }) }),
+    });
+    app.mount(container);
+    await flushMicrotasks();
+
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+    const realDoc = iframe.contentDocument!;
+    // Первый монтаж уже случился (readyState === 'complete' в jsdom) — проверяется
+    // повторный load с пропавшим contentDocument: он не должен ничего ломать.
+    Object.defineProperty(iframe, 'contentDocument', { get: () => null });
+    expect(() => {
+      iframe.dispatchEvent(new Event('load'));
+    }).not.toThrow();
+    await flushMicrotasks();
+
+    expect(realDoc.querySelector('style[data-mn-runtime]')).toBeTruthy();
   });
 });

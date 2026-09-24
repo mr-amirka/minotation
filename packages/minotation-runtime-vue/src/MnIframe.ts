@@ -63,9 +63,13 @@ export const MnIframe = defineComponent({
 
     onMounted(() => {
       const iframe = iframeRef.value;
+      /* istanbul ignore if — template ref на элемент гарантированно привязан
+         к моменту onMounted (контракт Vue); проверка только для TS-narrowing */
       if (!iframe) return;
       function handleLoad(): void {
-        doc.value = iframe!.contentDocument;
+        const contentDoc = iframe!.contentDocument;
+        // cross-origin iframe: после load contentDocument === null — монтировать некуда
+        if (contentDoc) doc.value = contentDoc;
       }
       if (iframe.contentDocument?.readyState === 'complete') {
         handleLoad();
@@ -77,6 +81,7 @@ export const MnIframe = defineComponent({
     // (readyState уже 'complete' + сам event) безопасно: Vue не триггерит
     // watcher повторно на идентичное значение ref (та же ссылка на Document).
     watch(doc, (iframeDoc) => {
+      /* istanbul ignore if — null отфильтрован в handleLoad, здесь только TS-narrowing */
       if (!iframeDoc) return;
       const ChildRoot = defineComponent({
         render: () => (slots.default ? slots.default() : null),

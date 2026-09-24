@@ -111,8 +111,10 @@ export function createMnRuntime(mn: MnRuntimeInstance, options: MnRuntimeOptions
 
   function scanSubtree(el: Element): void {
     scanElement(el);
-    const nested = el.querySelectorAll ? el.querySelectorAll('[' + attr + ']') : null;
-    if (nested) for (let i = 0; i < nested.length; i++) scanElement(nested[i]);
+    // `el` — всегда Element (корень резолвится в `documentElement`, узлы мутаций
+    // фильтруются по `nodeType === 1`), поэтому `querySelectorAll` есть всегда.
+    const nested = el.querySelectorAll('[' + attr + ']');
+    for (let i = 0; i < nested.length; i++) scanElement(nested[i]);
   }
 
   scanSubtree(rootEl);

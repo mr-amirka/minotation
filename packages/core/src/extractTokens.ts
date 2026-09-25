@@ -47,7 +47,7 @@ const $$attrRegexps: Record<string, RegExp> = {};
 function buildAttrRegexp(attrName: string): RegExp {
   const name = attrName.replace(REGEXP_ESCAPE, '\\$&');
   // `[:=]` — принимает как JSX-атрибут (`attr=`), так и свойство объектного
-  // литерала (`attr:`, включая вложенное — напр. MUI `slotProps={{ paper: { className: ... } }}`).
+  // литерала (`attr:`, включая вложенное — напр. MUI `slotProps={{ paper: { className:... } }}`).
   return new RegExp(name + '\\s*[:=]\\s*(?:"([^"]*)"'
       + '|\'([^\']*)\''
       + '|\\{\\s*\'([^\']*)\'\\s*\\}'
@@ -58,7 +58,7 @@ function buildAttrRegexp(attrName: string): RegExp {
 
 /**
  * @param source — полный текст файла
- * @param attrName — имя атрибута (`'class'`, `'className'`, ...)
+ * @param attrName — имя атрибута (`'class'`, `'className'`,...)
  * @returns массив токенов (может содержать дубликаты — вызывающая сторона обычно
  *   складывает результат в `Set` для дедупликации)
  *

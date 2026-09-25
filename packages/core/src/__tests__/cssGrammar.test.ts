@@ -91,7 +91,7 @@ describe('cssGrammar — примитивы', () => {
     // Системные цвета остаются: кодом их не выразить, берутся из темы ОС.
     ['ButtonText', true],
     // `invert` убран 2026-09-24: невалиден по текущей спецификации ни у
-    // `outline-color`, ни у `outline` — остаток CSS 2.1. Фильтр `invert()` —
+    // `outline-color`, ни у `outline` — остаток CSS 2.1. Фильтр `invert` —
     // другое значение, он не тронут.
     ['invert', false],
     ['undefined', false], // форма идентификатора — реальный мусор ловит REGEXP_INVALID_CSS_VALUE отдельно

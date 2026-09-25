@@ -12,7 +12,7 @@
  * Мигрировано с v2 API на v1 (createMn/mn.check/s.arg/mn.setSynonyms ->
  * minotationProvider/getCompiler/p.suffix/mn.synonyms).
  *
- * Spec: LABARATORY/PROJECTS_CONTEXT/minotation/AGENT_DRAFT/SPEC/13-media-advanced.md
+ * Spec: LABARATORY/
  */
 
 const mnProvider = require('../index').default || require('../index').minotationProvider;
@@ -358,7 +358,7 @@ describe('§13.5 Комплексные комбинации — v1 parity', () 
 });
 
 /**
- * Q-05: статические медиа-переопределения `mn('name@sm', {...})`.
+ * Статические медиа-переопределения `mn('name@sm', {...})`.
  *
  * До 2026-09-25 механизм был наполовину рабочим:
  *   - `media`-блок эссенции рендерился с медиа РОДИТЕЛЯ (обычно пустым), то есть
@@ -369,7 +369,7 @@ describe('§13.5 Комплексные комбинации — v1 parity', () 
  *   - а если своего `media`-блока у хендлера не было вовсе — переопределение
  *     не применялось вообще, молча.
  */
-describe('Q-05: статические медиа-переопределения', () => {
+describe('статические медиа-переопределения', () => {
   function makeMn() {
     return makeBase();
   }

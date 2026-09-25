@@ -58,7 +58,7 @@ import {
  * `applyUnslash: false` — экранирования (`\.` и т.п.) должны дожить до {@link suffixesReduce}/
  * `extractSuffix`, чей собственный escape-механизм (`splitSelector`/`extractSuffix`'s
  * `/\\.|[.+]\d/`) как раз и защищает их от трактовки как границы селектора; сняты они будут
- * позже, явным `unslash()` в `suffixesReduce`. Раньше здесь снимался unslash преждевременно
+ * позже, явным `unslash` в `suffixesReduce`. Раньше здесь снимался unslash преждевременно
  * (`variants(comboName)[0]`, без `false`) — экранирование терялось до того, как
  * `extractSuffix` успевал его увидеть, из-за чего `\.` в значении (например, `maski_a\.png`)
  * не защищало точку от трактовки как self-class-границы. Найдено и исправлено 2026-08-10
@@ -68,7 +68,7 @@ function variantsBase(comboName: string): string[] {
   // Вырожденная группа (скобки без `|`) молча съедала бы сами скобки — см.
   // JSDoc `assertVariantGroups`. Бросается MnParseError: `parseComboName`
   // обёрнут перехватчиком, который превращает её в warning `parse-error`,
-  // и токен не даёт CSS вовсе (то же поведение, что у Q-08).
+  // и токен не даёт CSS вовсе — как и у вырожденных контекстных сегментов.
   assertTrailingSeparator(comboName, 'variants');
   assertVariantGroups(
     comboName, 'variants', 1,
@@ -122,7 +122,7 @@ function suffixesReduce(suffixes: StrMap<StrMap<number>>,
  * @returns расширенный экземпляр с методами парсинга
  *
  * @example
- * const scp = selectorsCompileProvider();
+ * const scp = selectorsCompileProvider;
  * const result = scp.parseClass('w50');
  * // → [[{ w50: 1 }, { '.w50': [[0, undefined]] }]]
  */
@@ -233,7 +233,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * (`<parent`/`>child`/`:state`/`@media`, {@link suffixesReduce}) → для каждой группы —
    * `<`-цепочка предков через {@link getParents}, затем последовательные `>`-сегменты
    * через {@link childsIteratee} → схлопывание медиа-дублей ({@link mediaFilterIteratee}).
-   * Полная грамматика контекстов — `AGENT_DRAFT/SPEC/04-grammar-02-parent-selectors.md`.
+   * Полная грамматика контекстов.
    *
    * Хвостовой множитель `*N` (см. `REGEXP_MULTIPLIER`) дублирует `targetName` N раз
    * ПОДРЯД без разделителя — это буст CSS-специфичности (`.el*3` → `.el.el.el`), а не
@@ -255,7 +255,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     // способом лениво заводится только при первом `mn.synonyms(...)`.
     $$states = (instance as any).states || {};
     $$synonyms = (instance as any)._synonyms || {};
-    // Опции читаются на каждый разбор: `mn.setOptions()` может поменять лимит
+    // Опции читаются на каждый разбор: `mn.setOptions` может поменять лимит
     // между вызовами. Обновляем три поля вместо аллокации объекта с замыканием.
     const $$mnOptions = (instance as any).options || {};
     $$depthCheck.maxDepth = $$mnOptions.maxDepth;
@@ -311,12 +311,12 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * Части, разделённые `<`, идут от цели к самому дальнему предку. Первая часть
    * склеивается с `targetName`; каждая следующая — с накопленным результатом через
    * комбинатор, определяемый её собственным числовым depth-префиксом
-   * (`getCombinator`: `0`/нет → пробел-потомок, `1` → `>`, `2+` → `> *> ...`).
+   * (`getCombinator`: `0`/нет → пробел-потомок, `1` → `>`, `2+` → `> *>...`).
    * Каждая часть может нести собственный `:state`-суффикс, разворачиваемый в
    * {@link getEssence}/{@link getSynonyms}, и `@media`-суффикс ({@link extractMedia}).
    *
    * **Параметр `alt` убран 2026-09-25.** Он подставлял `'*'` (любой элемент), когда
-   * и `targetName`, и имя первой части пусты. С Q-08 (2026-09-24) пустой сегмент
+   * и `targetName`, и имя первой части пусты. С отбраковкой вырожденных контекстных сегментов (2026-09-24) пустой сегмент
    * контекстного селектора бракуется в `getCombinator` и до сюда не доходит —
    * тот же остаток механизма, что и `depthMatchs[2] || ''` там же.
    *

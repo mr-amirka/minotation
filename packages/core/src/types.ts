@@ -60,7 +60,7 @@ export interface MnUtils {
   size: typeof size;
   intval: typeof intval;
   floatval: typeof floatval;
-  // Переопределены в createMn(): `alt`-аргумент зафиксирован через $$altColor
+  // Переопределены в createMn: `alt`-аргумент зафиксирован через $$altColor
   color: (v: string) => string[];
   colorGetBackground: (v: string) => string[];
   spaceNormalize: typeof spaceNormalize;
@@ -141,13 +141,13 @@ export interface MnInstance {
    * (частичное обновление, не замена целиком). Единственный поддерживаемый
    * способ поменять `onError`/`onWarning`/`selectorPrefix`/`altColor`/`strict`
    * на уже созданном `mn`: эти поля читаются из замыкания один раз при
-   * создании и на каждый вызов `setOptions()`, не на каждой компиляции.
+   * создании и на каждый вызов `setOptions`, не на каждой компиляции.
    * Прямая мутация `mn.options` эффекта не имеет — это только снимок для
    * чтения/отладки. Введено 2026-09-23.
    *
    * @example
    * mn.setOptions({ selectorPrefix: '.app' });
-   * mn.recompile();
+   * mn.recompile;
    */
   setOptions(partialOptions: Partial<MnOptions>): void;
 

@@ -254,7 +254,7 @@ function mnValue(token: string): string {
 function collect(
   seen: Record<string, number>, output: string[], value: unknown,
 ): void {
-  // Пустой аргумент отсеивается ДО разбора: `mnClass(...)()` и
+  // Пустой аргумент отсеивается ДО разбора: `mnClass(...)` и
   // `mne(base, props.className)` с пустым className — самые частые вызовы.
   if (!value) {
     return;
@@ -392,7 +392,7 @@ export function mnClass(className?: string | null): (...overrides: Array<string 
  *
  * Ключ включает контекст, поэтому карта плоская, но составная:
  * `f24 f28@sm` → `{ f: '24', 'f@sm': '28' }`. Вложенная форма
- * (`{ f: { '': '24', '@sm': '28' } }`) обсуждается — см. `OPEN_QUESTIONS.md`, S-3.
+ * (`{ f: { '': '24', '@sm': '28' } }`) обсуждается.
  *
  * @param className — строка классов
  * @returns карту `ключ → значение` (значение — часть токена после тега)

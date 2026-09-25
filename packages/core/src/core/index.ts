@@ -137,7 +137,7 @@ import type {
 // Присваиваем utils статическому свойству (нужно для обратной совместимости)
 minotationProvider.utils = baseUtils;
 
-/** `MnOptions.onWarning` по умолчанию — `'console'` (см. `AGENT_DRAFT/SPEC/10-error-warnings.md` §4, Q2). */
+/** `MnOptions.onWarning` по умолчанию — `'console'`. */
 function defaultOnWarning(warning: MnWarning): void {
   console.warn('[minotation] ' + warning.token + ': ' + warning.message);
 }
@@ -146,7 +146,7 @@ function defaultOnWarning(warning: MnWarning): void {
  * Создаёт независимый экземпляр Minotation.
  *
  * Возвращает функцию `mn`, вызываемую и как регистратор хендлеров/эссенций
- * (`mn(name, handler)`), и как объект с методами API (`mn.compile()`, `mn.assign()`, ...) —
+ * (`mn(name, handler)`), и как объект с методами API (`mn.compile`, `mn.assign`,...) —
  * см. {@link MnInstance}. Несколько экземпляров полностью независимы: своё состояние
  * (`$$essences`, `$$root`, `$$staticsEssences` и т.д.), свои пресеты, свой `styles$`.
  *
@@ -156,8 +156,8 @@ function defaultOnWarning(warning: MnWarning): void {
  * @example
  * const mn = minotationProvider({ presets: [presetStandard] });
  * mn.check('w50 cF00');
- * mn.compile();
- * mn.styles$.getValue(); // → скомпилированные CSS-стили
+ * mn.compile;
+ * mn.styles$.getValue; // → скомпилированные CSS-стили
  */
 function minotationProvider(options?: MnOptions) {
   options = options || {};
@@ -177,13 +177,12 @@ function minotationProvider(options?: MnOptions) {
    * Пересчитывает производные из `options` значения ($$onError/$$onWarning/
    * $$selectorPrefixes/$$altColor/$$strict) и публикует снимок в `mn.options`.
    *
-   * ПЕРЕСМОТРЕНО 2026-09-23: раньше называлась `updateOptions()` и вызывалась
-   * на КАЖДОМ `compile()`/`recompileFrom()`, перечитывая `mn.options` заново —
+   * ПЕРЕСМОТРЕНО 2026-09-23: раньше называлась `updateOptions` и вызывалась
+   * на КАЖДОМ `compile`/`recompileFrom`, перечитывая `mn.options` заново —
    * расчёт был на то, что потребитель может мутировать `mn.options` напрямую
-   * между компиляциями и ожидать, что это подхватится. Проверка (по вопросу
-   * владельца) показала: нигде в монорепе (плагины, runtime-адаптеры, docs,
-   * playground) так никто не делает — единственным свидетельством был
-   * собственный тест, написанный в этой же сессии для другого повода. Опции
+   * между компиляциями и ожидать, что это подхватится. Проверка показала: так
+   * не делает никто — ни сборочные плагины, ни runtime-адаптеры, ни playground.
+   * Опции
    * теперь читаются из ЗАМЫКАНИЯ (`options`, параметр конструктора), эта
    * функция вызывается только явно: один раз при создании и из
    * {@link MnInstance.setOptions} — не на каждой компиляции. Изменить
@@ -211,7 +210,7 @@ function minotationProvider(options?: MnOptions) {
    * Собирает {@link MnWarning} (парсинг-ошибка/неизвестный хендлер/превышение
    * `maxDepth`) — не бросает, не блокирует компиляцию. Дедуп по токену (§10-error-warnings.md,
    * Q3): повторное предупреждение для уже отмеченного токена не добавляется повторно.
-   * `warnings$` копится между `compile()`, сбрасывается только в `__clear()` (см. ниже).
+   * `warnings$` копится между `compile`, сбрасывается только в `__clear` (см. ниже).
    */
   function collectWarning(warning: MnWarning): void {
     if ($$warningTokens[warning.token]) {
@@ -464,7 +463,7 @@ function minotationProvider(options?: MnOptions) {
   };
   /**
    * То же, что {@link updateAttrByMap}, но для СПИСКА новых комбо-имён
-   * (например `MnCompiler.getNext()` — только что появившиеся значения атрибута).
+   * (например `MnCompiler.getNext` — только что появившиеся значения атрибута).
    *
    * @param comboNames — массив комбо-имён атрибута `attrName`
    * @param attrName — имя атрибута
@@ -500,7 +499,7 @@ function minotationProvider(options?: MnOptions) {
    * Компилятор собирает токены из DOM-атрибутов (например `class="w50 cF00"`).
    *
    * @param attrName — имя атрибута (`'class'`, `'id'`, `'m-n'` и др.)
-   * @returns компилятор с методами `clear()`, `getNext()`, `checkNode()`, `recursiveCheck()`
+   * @returns компилятор с методами `clear`, `getNext`, `checkNode`, `recursiveCheck`
    */
   mn.getCompiler = getCompiler;
   /**
@@ -588,7 +587,7 @@ function minotationProvider(options?: MnOptions) {
    * Нужен потому, что `mn('box@sm', {...})` кладёт эссенцию под плоским ключом
    * `box@sm`, а рендер обходит `essence[MN_ESSENCE_MEDIA]` самого `box`. Если у
    * хендлера своего `media`-блока для `sm` нет, обходить нечего — и статика
-   * молча не применялась вообще (Q-05). Индекс позволяет завести недостающего
+   * молча не применялась вообще. Индекс позволяет завести недостающего
    * медиа-ребёнка пустым, чтобы статике было куда влиться.
    */
   let $$staticsMedias: Record<string, Record<string, number>> = {};
@@ -649,7 +648,7 @@ function minotationProvider(options?: MnOptions) {
   /**
    * Разбирает `@`-медиа-выражение в список готовых медиа-записей.
    *
-   * Грамматика (полностью — `AGENT_DRAFT/SPEC/04-grammar-04-media.md`):
+   * Грамматика (полностью):
    * `media-expr ::= media-atom ('&' media-atom)* (',' media-expr)?` — `&` объединяет
    * атомы через AND в одном `@media (...)`, `,` заводит отдельную альтернативную запись.
    * Каждый атом — либо зарегистрированное имя медиа (`$$media`, добавляется через
@@ -1038,13 +1037,12 @@ function minotationProvider(options?: MnOptions) {
           // каждое из них предупреждать означает забивать вывод мусором.
           // Предупреждение остаётся там, где автор ЯВНО писал MN-токен и
           // ошибся в аргументе: хендлер найден, но разбор не удался
-          // (`parse-error`, ниже). Решение владельца 2026-09-24 —
-          // см. OPEN_QUESTIONS.md, Q-12.
+          // (`parse-error`, ниже).
           : undefined
       );
     } catch (ex) {
       if (ex instanceof MnParseError) {
-        // Контекст может быть пустым: `throwInvalid()` в пресетах зовётся из
+        // Контекст может быть пустым: `throwInvalid` в пресетах зовётся из
         // глубины разбора значения, где ни токена, ни имени хендлера не видно
         // (см. его JSDoc в `presets/standard.ts`). Здесь они известны —
         // дозаполняем, чтобы предупреждение указывало на конкретный токен.
@@ -1101,8 +1099,8 @@ function minotationProvider(options?: MnOptions) {
       forIn(childs, withStatic ? (_childEssence: MnEssenceResult, _childName: string) => {
         const childEssenceName = __prefix + _childName;
         const childStaticEssence = $$staticsEssences[childEssenceName];
-        // Q-05, решение владельца: статическое переопределение для конкретного
-        // медиа-контекста (`mn('box@sm', {...})`) СЛИВАЕТСЯ с собственным
+        // Статическое переопределение для конкретного медиа-контекста
+        // (`mn('box@sm', {...})`) СЛИВАЕТСЯ с собственным
         // `media`-блоком хендлера, а не затирает его. Раньше ветка
         // `childStaticEssence[MN_ESSENCE_INITED] ? childStaticEssence : …`
         // выбирала статику целиком — а `INITED` стоит у неё ВСЕГДА
@@ -1203,7 +1201,7 @@ function minotationProvider(options?: MnOptions) {
      * @param asMedia — дети из `media`-блока: имя ребёнка И ЕСТЬ его медиа-контекст.
      *   Без этого они рендерились с медиа РОДИТЕЛЯ (обычно пустым), то есть
      *   `media: { sm: {...} }` уезжал в CSS безусловным правилом — ровно та
-     *   утечка, о которой Q-05. Явный медиа-суффикс токена (`box@md`) имеет
+     *   утечка. Явный медиа-суффикс токена (`box@md`) имеет
      *   приоритет: два медиа-контекста на одно правило в плоском выводе не
      *   совместить, а тот, что написан в разметке, ближе к намерению автора.
      */
@@ -1291,8 +1289,8 @@ function minotationProvider(options?: MnOptions) {
     $$stylesMap = $$data.stylesMap = {};
     $$assigned = $$data.assigned = {};
     forIn($$staticsAssigned = $$statics.assigned, __assignItemCompile);
-    // Отдельный mn.clearWarnings() не нужен (§10-error-warnings.md, Q3) —
-    // recompile()/__clear() уже "чистый лист" для остального состояния.
+    // Отдельный mn.clearWarnings не нужен (§10-error-warnings.md, Q3) —
+    // recompile/__clear уже "чистый лист" для остального состояния.
     $$warnings = [];
     $$warningTokens = {};
     emitWarnings($$warnings);
@@ -1300,7 +1298,7 @@ function minotationProvider(options?: MnOptions) {
   __clear();
   /**
    * Полностью сбрасывает состояние экземпляра: карту эссенций, `$$root`, кэши
-   * компиляторов атрибутов (`$$compilers[*].clear()`) и накопленный CSS.
+   * компиляторов атрибутов (`$$compilers[*].clear`) и накопленный CSS.
    * Следующий {@link MnInstance.compile} пересоберёт всё с нуля.
    */
   mn.clear = (attrName?: string): any => {
@@ -1330,11 +1328,11 @@ function minotationProvider(options?: MnOptions) {
   /**
    * Компилирует накопленные токены в CSS-стили.
    *
-   * Должен вызываться после того, как все токены собраны через `getCompiler()`.
-   * Результат доступен через `mn.styles$.getValue()`.
+   * Должен вызываться после того, как все токены собраны через `getCompiler`.
+   * Результат доступен через `mn.styles$.getValue`.
    *
    * Инкрементально: по умолчанию читает только НОВЫЕ значения атрибутов
-   * (`$$compilers[*].getNext()`) — уже обработанные не пересчитываются
+   * (`$$compilers[*].getNext`) — уже обработанные не пересчитываются
    * (§16 `coding.md`, паттерн «два буфера»). Полный пересчёт — {@link MnInstance.recompile}.
    *
    * @returns mn (чейнинг)
@@ -1357,10 +1355,10 @@ function minotationProvider(options?: MnOptions) {
     forIn($$root, generate);
     $$updated && styleRender();
     $$updated = $$force = 0;
-    // Бросок ЗДЕСЬ, а не из collectWarning() — там он попал бы в try/catch
+    // Бросок ЗДЕСЬ, а не из collectWarning — там он попал бы в try/catch
     // вокруг разбора токена (__initEssence) и был бы проглочен как обычный
     // Error через $$onError (по умолчанию noop). Здесь, после того как вся
-    // работа compile() уже сделана, throw ничем не перехватывается и доходит
+    // работа compile уже сделана, throw ничем не перехватывается и доходит
     // до вызывающего кода (сборщика) как есть.
     if ($$strict && $$warnings.length) {
       throw new MnStrictError($$warnings);
@@ -1477,7 +1475,7 @@ function minotationProvider(options?: MnOptions) {
    *
    * @example
    * mn.setOptions({ selectorPrefix: '.app' });
-   * mn.recompile();
+   * mn.recompile;
    */
   mn.setOptions = (partialOptions: Partial<MnOptions>): any => {
     options = extend(extend({}, options), partialOptions) as MnOptions;

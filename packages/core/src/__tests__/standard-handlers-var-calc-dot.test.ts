@@ -83,7 +83,7 @@ function declarationsOf(css: string): string {
 function violations(css: string): string[] {
   const decls = declarationsOf(css);
   const found: string[] = [];
-  // Имя переменной, не завёрнутое в var()/env() — молчаливый литерал в CSS.
+  // Имя переменной, не завёрнутое в var/env — молчаливый литерал в CSS.
   if (decls.replace(/(?:var|env)\([^)]*\)/g, '').includes('--')) {
     found.push('литерал "--" вне var()/env()');
   }
@@ -347,7 +347,7 @@ describe('градиенты: bg / maskbg', () => {
 
   test('одиночное значение остаётся простым цветом, без градиента', () => {
     expect(cssOf('bgF00')).toBe('background:#f00');
-    // Именованные цвета убраны — только коды (решение владельца 2026-09-24).
+    // Именованные цвета убраны — только коды.
     expect(cssOf('bgRed')).toBe('');
     expect(cssOf('bgF00')).toBe('background:#f00');
     expect(cssOf('bg--a')).toBe('background:var(--a)');

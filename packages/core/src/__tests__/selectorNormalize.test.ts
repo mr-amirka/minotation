@@ -66,7 +66,7 @@ describe('selectorNormalize', () => {
 
   describe('комбинированные', () => {
     test('.*active с разворотом: Parent!.*active → [class*=activeParent]', () => {
-      // ! разворачивает: active + Parent = activeParent, затем .* → [class*=]
+      // ! разворачивает: active + Parent = activeParent, затем.* → [class*=]
       expect(selectorNormalize('Parent!.*active')).toBe('[class*=activeParent]');
     });
 
@@ -88,7 +88,7 @@ describe('selectorNormalize', () => {
  * `:not(.a(.b))` вместо `:not(.a[.b])`.
  *
  * Часть веток проверяется прямым вызовом: в пути `mn.assign` экранирование
- * снимает `variants()` ещё до нормализации, поэтому обратный слэш сюда
+ * снимает `variants` ещё до нормализации, поэтому обратный слэш сюда
  * не доходит — а функция экспортирована и обязана вести себя корректно.
  */
 describe('pseudoBrackets', () => {

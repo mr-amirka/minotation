@@ -239,10 +239,10 @@ describe('MnInstance — полный пайплайн', () => {
     expect(content).not.toContain('@media');
   });
 
-  // Тесты на mn.css() (4 шт., включая регрессию 2026-08-21 на смешение
+  // Тесты на mn.css (4 шт., включая регрессию 2026-08-21 на смешение
   // объектной/строковой формы) убраны вместе с самим методом 2026-09-23
-  // (владелец: убрать mn.css() из публичного API, использовать только
-  // mn.assign()).
+  // (mn.css убран из публичного API, используется только
+  // mn.assign).
 
   test('атрибутный компилятор: getCompiler("m")', () => {
     const mn = createMn();
@@ -598,7 +598,7 @@ describe('self-class условия — полный CSS пайплайн', () =
     const result = css('cF.active');
     expect(result).toContain('.cF\\.active.active');
     expect(result).toContain('color:#fff');
-    // НЕ должен быть безусловный .cF\.active без .active
+    // НЕ должен быть безусловный.cF\.active без.active
     expect(result).not.toContain('.cF\\.active{');
   });
 
@@ -637,14 +637,14 @@ describe('self-class условия — полный CSS пайплайн', () =
   // ── Сочетание с другими контекстами ─────────────────────────────────────
 
   test('cF.active:hover → self-class перед pseudo-class', () => {
-    // raw = 'cF.active:hover' → класс .cF\.active\:hover, self-class .active, state :hover
+    // raw = 'cF.active:hover' → класс.cF\.active\:hover, self-class.active, state :hover
     const result = css('cF.active:hover');
     expect(result).toContain('.cF\\.active\\:hover.active:hover');
     expect(result).toContain('color:#fff');
   });
 
   test('cF.active<.parent → родительский селектор + self-class', () => {
-    // raw = 'cF.active<.parent' → класс .cF\.active\<\.parent, self-class .active
+    // raw = 'cF.active<.parent' → класс.cF\.active\<\.parent, self-class.active
     const result = css('cF.active<.parent');
     expect(result).toContain('.parent');
     expect(result).toContain('.cF\\.active\\<\\.parent.active');
@@ -752,10 +752,10 @@ describe('self-class условия — полный CSS пайплайн', () =
     // cF.38 — opacity без условия
     expect(result).toContain('.cF\\.38{');
     expect(result).toContain('rgba(255,255,255,.38)');
-    // cF.active — цвет только с классом .active
+    // cF.active — цвет только с классом.active
     expect(result).toContain('.cF\\.active.active');
     expect(result).not.toContain('.cF\\.active{');
-    // bgcF.12.active — фон с opacity только с классом .active
+    // bgcF.12.active — фон с opacity только с классом.active
     expect(result).toContain('.bgcF\\.12\\.active.active');
   });
 });
@@ -785,7 +785,7 @@ describe('self-class +WORD условия — полный CSS пайплайн'
     const result = css('cF+active');
     // Селектор: adjacent sibling
     expect(result).toContain('.cF\\+active+active');
-    // НЕ должно быть простого .cF\+active{ без условия
+    // НЕ должно быть простого.cF\+active{ без условия
     expect(result).not.toContain('.cF\\+active{');
     expect(result).toContain('color:#fff');
   });

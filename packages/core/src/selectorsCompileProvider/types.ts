@@ -23,6 +23,6 @@ export type AltMap = StrMap<AltEntry[]>;
  * @param targetName — готовый CSS-селектор-цель (`.w50`, `#id`, `[attr~="..."]`);
  *   не задан внутри рекурсивного разбора `childs`/`parents`
  * @returns массив пар `[карта имён эссенций → 1, карта селектор → медиа-альтернативы]` —
- *   по одной паре на каждый уникальный набор суффиксов (`variants()` разворачивает `(a|b)`)
+ *   по одной паре на каждый уникальный набор суффиксов (`variants` разворачивает `(a|b)`)
  */
 export type ParseComboNameFn = (comboName: string, targetName?: string) => Array<[StrMap<number>, AltMap]>;

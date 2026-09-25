@@ -16,8 +16,8 @@
  *
  * // Скомпилировать токены из HTML
  * mn.getCompiler('class')('w50 w100%+10');
- * mn.compile();
- * const css = mn.styles$.getValue();
+ * mn.compile;
+ * const css = mn.styles$.getValue;
  * ```
  *
  * ## Архитектура
@@ -284,7 +284,7 @@ export const REGEXP_MEDIA_PRIORITY = /^(.*)\^(-?[0-9]+)$/;
 export const REGEXP_IMPORTANT = /-i$/;
 /**
  * Точечная эвристика "похоже на битое CSS-значение", не полный грамматический
- * разбор (см. `AGENT_DRAFT/SPEC/10-error-warnings.md` — валидация итогового
+ * разбор (см.  — валидация итогового
  * CSS-вывода целиком признана отдельным, более поздним этапом; это её первый,
  * узкий проход). Ловит класс багов "буквы вместо числа перед юнитом" —
  * например `bxshR3` → `box-shadow:...Rpx...` (см. `HANDLERS.md`, унаследовано
@@ -297,12 +297,12 @@ export const REGEXP_IMPORTANT = /-i$/;
  * обычных CSS-ключевых слов случайно оканчиваются на эти буквосочетания
  * (`flex`, `complex`, `index` → ложно матчат `ex`; `thin`, `within`, `chain` →
  * `in`) — найдено эмпирически: `dF`→`display:flex` ложно браковался при
- * первой версии этого регэкспа (6 упавших тестов), см. `CHANGELOG.md` 2026-09-04.
+ * первой версии этого регэкспа (6 упавших тестов).
  */
 export const REGEXP_INVALID_CSS_VALUE = /\b(?:undefined|null|NaN)\b|(?:^|[\s,(])(?:undefined|null|NaN|[A-Za-z]{1,3})(?:px|em|rem|deg|vh|vw|vmin|vmax|pt|pc|cm|mm|fr)(?=[\s,)]|$)/;
 export const JOIN_AND = joinProvider(' and ');
 
-// flatFlags (не fundamentool.flags()): та трактует '.'/'[...]' как путь (nested
+// flatFlags (не fundamentool.flags): та трактует '.'/'[...]' как путь (nested
 // set), а имена эссенций (`f1.5em`) и CSS-селекторы (`[type=button]`, `.foo`)
 // должны оставаться плоскими непрозрачными строковыми ключами.
 export const normalizeSelectors = normalizeMapProvider<Record<string, number>>(normalizeSelectorsIteratee);
@@ -314,18 +314,18 @@ export const normalizeComboNames = normalizeMapProvider<Record<string, number>>(
  *
  * `(a|b)` — это группа: `p10@(sm|md)` разворачивается в два медиа-контекста,
  * `'(button|[type=submit])'` — в два селектора. А вот скобки БЕЗ `|` группой не
- * являются: `variants()` схлопывает такую группу в единственный вариант, и
+ * являются: `variants` схлопывает такую группу в единственный вариант, и
  * единственный её эффект — молчаливое удаление самих скобок:
  *
  * | Запись | Давала | Ожидалось автором |
  * |---|---|---|
- * | `gtcRepeat(auto-fit,minmax(240px,1fr))` | `grid-template-columns:repeatauto-fit,minmax240px,1fr` | функция `repeat()` |
+ * | `gtcRepeat(auto-fit,minmax(240px,1fr))` | `grid-template-columns:repeatauto-fit,minmax240px,1fr` | функция `repeat` |
  * | `crUrl(a.png)` | `cursor:urla` + `.png` уехал в селектор | `url(a.png)` |
  * | `'button:not(.plain)'` в `mn.assign` | `button:not.plain` | `button:not(.plain)` |
  * | `'li:nth-child(2n)'` в `mn.assign` | `li:nth-child2n` | `li:nth-child(2n)` |
  *
  * Во всех случаях в CSS уезжало правило, которое не сработает никогда, и без
- * единого предупреждения — запрещено D-004. Рабочая запись для функции —
+ * единого предупреждения — молчаливый мусор в CSS недопустим. Рабочая запись для функции —
  * экранировать скобки (`crUrl\(a.png\)`, `'button:not\(.plain\)'`);
  * проверено, что после экранирования обе формы дают корректный CSS.
  *
@@ -391,7 +391,7 @@ export function assertVariantGroups(
       }
       if (!hasAlternative[depth] && !hasContent[depth]) {
         // Пустые скобки бессмысленны в ЛЮБОЙ позиции: ни как группа вариантов,
-        // ни как scope (`p10:h()` добавляет к селектору ровно ничего).
+        // ни как scope (`p10:h` добавляет к селектору ровно ничего).
         // Поэтому бракуются и в контекстной части, в отличие от проверки ниже.
         throwVariantGroup(
           'Пустые скобки в "' + value + '" ничего не задают и будут молча '
@@ -439,7 +439,7 @@ export function assertVariantGroups(
  * Бракует висячий сепаратор в конце имени — контекст без самой части.
  *
  * `<` и `>` сюда не входят: у них свои, более точные сообщения в
- * `getCombinator` (§13 спеки, Q-08). Остальные давали молчаливый мусор, причём
+ * `getCombinator` (см. `getCombinator`). Остальные давали молчаливый мусор, причём
  * в четырёх случаях из пяти — синтаксически битый CSS:
  *
  * | Токен | Давал |
@@ -555,8 +555,8 @@ const REGEXP_MEDIA_NUMERIC = /^[-\d]+$/;
  * | `@760-1200-1500` | `(min 760) and (max 1200)` | `-1500` отброшен |
  * | `@-` | пустой запрос | правила нет, причина не названа |
  *
- * Первое — нарушение «один результат — одна запись» (Р-1), остальные —
- * молчаливо отброшенный хвост (D-004). Названные медиа (`sm`, `safari`) сюда
+ * Первое — нарушение «один результат — одна запись», остальные —
+ * молчаливо отброшенный хвост. Названные медиа (`sm`, `safari`) сюда
  * не попадают: в них есть буквы, и `REGEXP_MEDIA_NUMERIC` их не пропускает.
  */
 export function isBadMediaRange(mediaPart?: string): boolean {
@@ -701,7 +701,7 @@ export function getEessenceSelectors(selectorsMap: Record<string, Record<string,
 /**
  * Глубокий merge двух эссенций-кортежей — заменяет `__mergeDepth`/`extendDepth`
  * (fundamentool) специально для `MnEssenceResult`: та генерика умеет мержить
- * только ПЛОСКИЕ объекты с именованными ключами (`isPlainObject()` явно
+ * только ПЛОСКИЕ объекты с именованными ключами (`isPlainObject` явно
  * исключает массивы) — теперь, когда сама эссенция стала кортежем, обобщённый
  * merge молча перестал бы рекурсивно сливать `childs`/`media` (каждый
  * следующий src просто перезаписывал бы весь дочерний кортеж целиком вместо
@@ -841,7 +841,7 @@ export function __compileProvider(attrName: string): MnCompiler {
  * @param options.media — объект медиа-запросов `{ name: { query, selector, priority } }`
  * @param options.onError — обработчик ошибок
  * @param options.selectorPrefix — префикс для всех селекторов
- * @param options.altColor — запасное непрозрачное объявление рядом с `rgba()` (по умолчанию `false`)
+ * @param options.altColor — запасное непрозрачное объявление рядом с `rgba` (по умолчанию `false`)
  * @returns экземпляр MN
  *
  * @example
@@ -851,6 +851,6 @@ export function __compileProvider(attrName: string): MnCompiler {
  *
  * mn('w', (p) => ({ style: { width: p.suffix + 'px' } }));
  * mn.getCompiler('class')('w50');
- * mn.compile();
- * console.log(mn.styles$.getValue()); // [{ content: '.w50{width:50px}' }]
+ * mn.compile;
+ * console.log(mn.styles$.getValue); // [{ content: '.w50{width:50px}' }]
  */

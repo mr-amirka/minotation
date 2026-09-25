@@ -104,7 +104,7 @@ describe('selectorsCompileProvider', () => {
     });
   });
 
-  // Прямые (не через полный mn()-пайплайн, см. wildcard-selectors.test.ts/
+  // Прямые (не через полный mn-пайплайн, см. wildcard-selectors.test.ts/
   // variant-groups.test.ts/media-advanced.test.ts) юнит-тесты на getParents/
   // getSynonyms — реальные output-строки сверены эмпирически с dist/, не
   // выведены умозрительно.

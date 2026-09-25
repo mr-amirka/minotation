@@ -149,7 +149,7 @@ describe('mn — предупреждения и maxDepth', () => {
     expect(types).toContain('max-depth-exceeded');
   });
 
-  test('незнакомое имя — чужой CSS-класс, молчим (Q-12, 2026-09-24)', () => {
+  test('незнакомое имя — чужой CSS-класс, молчим', () => {
     // Раньше это давало предупреждение `unknown-handler` на КАЖДЫЙ класс,
     // которого нет в пресетах, — то есть на `container`, `btn`, `active` и
     // любую чужую семантику. Нотация рассчитана на соседство с другими
@@ -186,7 +186,7 @@ describe('mn — предупреждения и maxDepth', () => {
       mn.checkByAttrs('p10zz', 'class');
       mn.compile();
     } finally {
-      // снимок до mockRestore(): он сбрасывает накопленные вызовы
+      // снимок до mockRestore: он сбрасывает накопленные вызовы
       calls = warnSpy.mock.calls.slice();
       warnSpy.mockRestore();
     }
@@ -219,7 +219,7 @@ describe('mn — медиа-выражения', () => {
  *
  * Шапка `src/index.ts` предупреждает об этом с 2026-09-03: второй формой
  * `import { X } from 'minotation'` из чужого ESM-кода падал с «does not provide
- * an export named X», хотя `require()` видел символ нормально. `MnParseError`
+ * an export named X», хотя `require` видел символ нормально. `MnParseError`
  * и `MnStrictError` оставались последними в старой форме.
  */
 describe('публичные экспорты точки входа', () => {

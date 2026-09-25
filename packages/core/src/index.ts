@@ -4,14 +4,14 @@
  */
 
 // ВАЖНО: `export { X } from '...'` (и `export { default as X } from '...'`)
-// компилируется (esModuleInterop) в геттер `get() { return mod.X; }` — эту
+// компилируется (esModuleInterop) в геттер `get { return mod.X; }` — эту
 // форму не распознаёт cjs-module-lexer (статический анализ именованных
 // экспортов CJS-модуля для Node ESM/CJS-интеропа): `import { X } from
 // 'minotation'` из чужого ESM-кода (Vite-бандл minotation-docs, см.
 // 2026-09-03) падал с "does not provide an export named 'X'", хотя
-// `require()` видел его нормально. Тот же баг, что уже чинили для пресетов
+// `require` видел его нормально. Тот же баг, что уже чинили для пресетов
 // (2026-08-15) — здесь применён ко всем остальным реэкспортам. Явный импорт +
-// `export const` компилируется в простое `exports.X = ...` — лексер находит.
+// `export const` компилируется в простое `exports.X =...` — лексер находит.
 import {
   minotationProvider as minotationProviderImpl, 
 } from './core/index';
@@ -89,7 +89,7 @@ export type {
 
 /**
  * Типы системы предупреждений — нужны сборочным плагинам, которые пересылают
- * `warnings$` в собственный канал вывода (Q-07, 2026-09-24).
+ * `warnings$` в собственный канал вывода.
  */
 export type {
   MnWarning,

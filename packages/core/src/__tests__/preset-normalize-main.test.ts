@@ -3,7 +3,7 @@
 /**
  * Смоук-тесты presetNormalize и presetMain.
  *
- * mn.assign() в этих пресетах ссылается на эссенции (lh115%, bxzBB, bgTransparent
+ * mn.assign в этих пресетах ссылается на эссенции (lh115%, bxzBB, bgTransparent
  * и т.п.), зарегистрированные presetStandard — поэтому presetStandard обязателен
  * в комбинации, иначе правила молча не срендерятся (essence lookup вернёт пусто).
  */

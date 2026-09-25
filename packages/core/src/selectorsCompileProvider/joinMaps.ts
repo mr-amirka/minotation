@@ -32,7 +32,7 @@ import type {
  * // prefixes: { '.a': [[0, 'mobile']] }
  * // suffixes: { '.b': [[0, 'desktop']] }
  * joinMapsWithFirstValue(prefixes, suffixes, ' ', '')
- * // → { '.a .b': [[0, 'mobile'], [0, 'desktop']] }
+ * // → { '.a.b': [[0, 'mobile'], [0, 'desktop']] }
  */
 export function joinMapsWithFirstValue(
   prefixes: AltMap,
@@ -71,7 +71,7 @@ export function joinMapsWithFirstValue(
  * @param pv — на практике всегда строка (имя медиа с текущего уровня) или `undefined`;
  *   если задана — ЗАМЕНЯЕТ собой весь первый элемент `tmp[0]` (не кортеж `AltEntry`,
  *   а голая строка) — типовая неточность `AltMap`/`AltEntry`, унаследованная из v1
- *   (см. finding 6 в плане типизации `core/index.ts`, `PLAN.md` minotation); если `pv`
+ * ; если `pv`
  *   не задан — первый элемент остаётся как в исходном `suffixes`
  * @returns AltMap с ключами `prefix + suffix`
  *

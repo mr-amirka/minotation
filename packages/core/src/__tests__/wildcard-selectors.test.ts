@@ -10,19 +10,19 @@
  * Оригинальные "Parser unit tests" (parseLexeme) убраны — в v1-коде нет такого
  * промежуточного AST, self-class/context разбираются напрямую в selectorsCompileProvider.
  *
- * §A  — self-class .*WORD
+ * §A  — self-class.*WORD
  * §B  — parent <.*WORD
  * §C  — child >.*WORD
  * §D  — self-class + child комбинация
  * §E  — self-class #*WORD (id wildcard)
  * §F  — parent <#*WORD
  * §G  — child >#*WORD
- * §H  — .*WORD + state (:hover)
- * §I  — parent .plain + child .*WORD
- * §J  — .*WORD + @media
- * §K  — .*WORD + @media&selector combinator
+ * §H  —.*WORD + state (:hover)
+ * §I  — parent.plain + child.*WORD
+ * §J  —.*WORD + @media
+ * §K  —.*WORD + @media&selector combinator
  * §L  — variant group (a|b).*WORD
- * §M  — parent .*WORD + child .*WORD
+ * §M  — parent.*WORD + child.*WORD
  */
 
 const mnProvider = require('../index').default || require('../index').minotationProvider;
@@ -66,7 +66,7 @@ function check(mn, token) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §A: self-class .*WORD
+// §A: self-class.*WORD
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('§A self-class .*WORD → [class*=WORD] на самом элементе', () => {
@@ -102,7 +102,7 @@ describe('§C child >.*WORD → CLASS [class*=WORD]', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §D: self-class + child .*WORD
+// §D: self-class + child.*WORD
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('§D self-class .*WORD + child >.*WORD', () => {
@@ -150,7 +150,7 @@ describe('§G child >#*WORD → CLASS [id*=WORD]', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §H: .*WORD + state
+// §H:.*WORD + state
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('§H .*WORD + state (:hover)', () => {
@@ -162,7 +162,7 @@ describe('§H .*WORD + state (:hover)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §I: plain parent + child .*WORD
+// §I: plain parent + child.*WORD
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('§I plain parent <.cls + child >.*WORD', () => {
@@ -174,7 +174,7 @@ describe('§I plain parent <.cls + child >.*WORD', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §J: .*WORD + @media
+// §J:.*WORD + @media
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('§J .*WORD + @media', () => {
@@ -186,7 +186,7 @@ describe('§J .*WORD + @media', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §K: .*WORD + @media&selector combinator
+// §K:.*WORD + @media&selector combinator
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('§K .*WORD + @media&selector combinator', () => {
@@ -212,7 +212,7 @@ describe('§L variant group (a|b).*WORD', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §M: parent .*WORD + child .*WORD
+// §M: parent.*WORD + child.*WORD
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('§M parent <.*WORD + child >.*WORD', () => {

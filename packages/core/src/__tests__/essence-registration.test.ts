@@ -107,7 +107,7 @@ describe('формы регистрации эссенций', () => {
         }, 
       }))).not.toThrow();
     } finally {
-      // снимок до mockRestore(): он сбрасывает накопленные вызовы
+      // снимок до mockRestore: он сбрасывает накопленные вызовы
       calls = warnSpy.mock.calls.slice();
       warnSpy.mockRestore();
     }

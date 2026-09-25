@@ -10,7 +10,7 @@
  * getCompiler(...).check(...) -> minotationProvider/p.suffix/mn.synonyms/
  * getCompiler(...)(...)).
  *
- * Spec: LABARATORY/PROJECTS_CONTEXT/minotation/AGENT_DRAFT/SPEC/12-variant-groups-css-output.md
+ * Spec: LABARATORY/
  */
 
 const mnProvider = require('../index').default || require('../index').minotationProvider;

@@ -555,3 +555,58 @@ describe('незнакомое слово у хендлера со словар�
     expect(cssOf('crPointer')).toBe('');
   });
 });
+
+/**
+ * Свойства-длины бракуют голое слово.
+ *
+ * `tiA` давало `text-indent:a`, `wosN` — `word-spacing:n`, `fxbZzz` —
+ * `flex-basis:zzz`. Список допустимых слов задан на свойство: у `text-indent`
+ * и `border-spacing` их нет вовсе, у `flex-basis` — пять.
+ */
+describe('голое слово у свойства-длины', () => {
+  function cssOf(token: string): string {
+    const mn = minotationProvider({
+      onWarning: 'silent',
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')(token);
+    mn.compile();
+    const m = mn.styles$.getValue().map((s) => s.content).join('')
+      .match(/\{([^}]*)\}\s*$/);
+    return m ? m[1] : '';
+  }
+
+  test.each([
+    'tiA',
+    'tiN',
+    'wosA',
+    'wosN',
+    'bspA',
+    'bspN',
+    'fxbZzz',
+    'tdtZzz',
+    'tuoN',
+  ])('%s → брак', (token) => {
+    expect(cssOf(token)).toBe('');
+  });
+
+  test.each([
+    ['ti10', 'text-indent:10px'],
+    ['wosNormal', 'word-spacing:normal'],
+    ['fxbAuto', 'flex-basis:auto'],
+    ['fxbFitContent', 'flex-basis:fit-content'],
+    ['tdtFromFont', 'text-decoration-thickness:from-font'],
+    ['tuoAuto', 'text-underline-offset:auto'],
+  ])('%s → %s — ключевое слово своего свойства', (token, expected) => {
+    expect(cssOf(token)).toBe(expected);
+  });
+
+  test.each([['tiInherit', 'text-indent:inherit'], ['bspUnset', 'border-spacing:unset']])('%s → %s — CSS-wide проходят', (token, expected) => {
+    expect(cssOf(token)).toBe(expected);
+  });
+
+  test.each([['apcNone', 'appearance:none'], ['irPixelated', 'image-rendering:pixelated']])('%s → %s — не-длины в том же блоке не задеты', (token, expected) => {
+    // У них значения произвольны и словарём не перечислимы.
+    expect(cssOf(token)).toBe(expected);
+  });
+});

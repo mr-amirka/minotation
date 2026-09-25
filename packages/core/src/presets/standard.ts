@@ -1519,6 +1519,13 @@ export default (mn: MnInstance) => {
           : (
             v = p.value,
             v || throwInvalid(),
+            // При несовпадении PATTERN_COLOR в `p.value` остаётся значение от
+            // generic-разбора ядра, и `c-5` уходило в CSS как `color:-5`.
+            // Цвет считается разобранным, только если сработала одна из веток
+            // самого PATTERN_COLOR: код, переменная или слово.
+            (p.color || p.vv || p.camel) || throwInvalid('Значение "' + p.suffix
+              + '" не распознано как цвет: ожидается код (`F00`), переменная '
+              + 'или ключевое слово'),
             assertColorAbbr(p),
             assertShortestHex(p, p.color),
             s = {},
@@ -2784,6 +2791,10 @@ export default (mn: MnInstance) => {
       'wordSpacing',
       0,
       1,
+      0,
+      {
+        normal: 1,
+      },
     ],
     apc: ['appearance'],
 
@@ -2825,6 +2836,14 @@ export default (mn: MnInstance) => {
       'flexBasis',
       1,
       1,
+      0,
+      {
+        auto: 1,
+        content: 1,
+        'min-content': 1,
+        'max-content': 1,
+        'fit-content': 1,
+      },
     ],
     fxf: ['flexFlow', 1],
     fxg: ['flexGrow', 1],
@@ -2837,12 +2856,21 @@ export default (mn: MnInstance) => {
       'textDecorationThickness',
       1,
       1,
+      0,
+      {
+        auto: 1,
+        'from-font': 1,
+      },
     ],
     tdst: ['textDecorationStyle', 2],
     tuo: [
       'textUnderlineOffset',
       2,
       1,
+      0,
+      {
+        auto: 1,
+      },
     ],
     tup: ['textUnderlinePosition', 2],
 
@@ -2859,12 +2887,13 @@ export default (mn: MnInstance) => {
     temp: ['textEmphasisPosition', 1],
     tems: ['textEmphasisStyle', 1],
     ir: ['imageRendering'],
-  }, ([
-    propName,
-    priority,
-    lengthy,
-    autoRepeat]: [string, number?, number?, number?,
-  ], essenceName: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  }, (options: any[], essenceName: string) => {
+    const propName: string = options[0];
+    const priority: number | undefined = options[1];
+    const lengthy: number | undefined = options[2];
+    const autoRepeat: number | undefined = options[3];
+    const keywords: Record<string, 1> | undefined = options[4];
     // §6.3: `priority || 0` вычислялся на каждый вызов хендлера, причём дважды —
     // выносим на холодный путь регистрации.
     const stylePriority = priority || 0;
@@ -2881,9 +2910,16 @@ export default (mn: MnInstance) => {
         style[propName] = repeated;
         return styleWrap(style, stylePriority);
       }
-      style[propName] = lengthy
-        ? defaultUnitNormalize(valueNormalize(s))
-        : valueNormalize(s);
+      s = valueNormalize(s);
+      // У свойства-длины голое слово почти всегда ошибка: `tiA` давало
+      // `text-indent:a`, `wosN` — `word-spacing:n`. Список слов задан на
+      // свойство; у остальных хендлеров блока значения произвольны
+      // (`apcNone`, `irPixelated`), и проверять там нечего.
+      lengthy && REGEXP_BARE_WORD.test(s) && !GLOBAL_KEYWORDS[s]
+        && !(keywords && keywords[s])
+        && throwInvalid('Значение "' + p.suffix + '" не распознано: у "'
+          + essenceName + '" ожидается длина или ключевое слово этого свойства');
+      style[propName] = lengthy ? defaultUnitNormalize(s) : s;
       return styleWrap(style, stylePriority);
     });
   });

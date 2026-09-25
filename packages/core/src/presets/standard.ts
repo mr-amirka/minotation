@@ -326,6 +326,29 @@ const FILTER_MAP = {
 };
 const UNITS = 'em,ex,%,px,cm,mm,in,pt,pc,ch,rem,vh,vw,vmin,vmax'.split(',');
 
+/** `:name`-аннотации маршрута — та же форма, что вырезает `routeParseProvider`. */
+const REGEXP_ROUTE_KEY = /:[_A-Za-z0-9.]+/g;
+
+/**
+ * Проверка суффикса теней ЦЕЛИКОМ.
+ *
+ * `SHADOW_PATTERNS` — независимые НЕанкоренные regex'ы: каждый ищет свой
+ * фрагмент где угодно в суффиксе (`19r3c43F` → r-паттерн находит `r3`,
+ * c-паттерн — `c43F`). Обратная сторона в том, что неразобранный хвост никто
+ * не замечает: `bxsh10zzz` давал ровно тот же CSS, что `bxsh10`, `bxsh0_2_8_F00`
+ * (забытый ведущий `_`) — `0px 0px 0px 0px #000`, и всё это без единого
+ * предупреждения. Молчаливый мусор запрещён D-004.
+ *
+ * Собирается из тех же `SHADOW_PATTERNS` и того же `UNITS`, чтобы не разъехаться
+ * с ними при правке: добавили модификатор или единицу — проверка узнала сама.
+ * Единица ограничена реальным списком не для красоты: `bxsh10zzz` иначе проходит
+ * (`zzz` попадает в группу единицы generic-разбора ядра и тихо отбрасывается),
+ * тогда как `w10zzz`/`p10zzz` бракуются — поведение должно быть одинаковым.
+ */
+const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:[0-9.]+(?:' + UNITS.join('|') + ')?)?(?:'
+    + SHADOW_PATTERNS.map((pattern) => '(?:' + pattern.replace(REGEXP_ROUTE_KEY, '') + ')').join('|')
+    + ')*$');
+
 /**
  * Бракует токен: аргумент хендлера не разобрался.
  *
@@ -472,6 +495,53 @@ function defaultUnitNormalize(v: string): string {
   }
   return parts.join(' ');
 }
+/**
+ * Сокращение для `repeat(auto-fit|auto-fill, minmax(<size>, <size>))` — Р-5.
+ *
+ * Самый ходовой паттерн адаптивной сетки без него пишется четырьмя
+ * экранированными скобками: `gtcRepeat\(auto-fit,minmax\(240px,1fr\)\)`.
+ *
+ * | Токен | CSS |
+ * |---|---|
+ * | `gtcAF240` | `repeat(auto-fit, minmax(240px, 1fr))` |
+ * | `gtcAF240_300` | `repeat(auto-fit, minmax(240px, 300px))` |
+ * | `gtcAF15em_1fr` | `repeat(auto-fit, minmax(15em, 1fr))` |
+ * | `gtcAFL240` | `repeat(auto-fill, minmax(240px, 1fr))` |
+ *
+ * Второй аргумент необязателен, по умолчанию `1fr` (решение владельца —
+ * вариант Б): умолчание закрывает типовой случай, а редкий
+ * (`minmax(200px, 300px)`) остаётся выразимым без возврата к скобкам.
+ *
+ * `AF` — `auto-fit`, `AFL` — `auto-fill`. Обе аббревиатуры претендуют на `AF`
+ * (первые буквы слов), поэтому более ходовой `auto-fit` получает короткую —
+ * тот же принцип, что у `us`: `A` остался за `auto`, `all` получил `AL`.
+ *
+ * Голое число получает `px` по сквозному правилу нотации; `fr`, `%`, `em`
+ * и прочие явные единицы проходят как написаны.
+ */
+const REGEXP_AUTO_REPEAT = /^AF(L?)([0-9.]+[a-z%]*)(?:_([0-9.]+[a-z%]*))?$/;
+/**
+ * Похоже на сокращение auto-repeat, но не разобралось — вероятная описка.
+ *
+ * Голые `AF`/`AFL` сюда тоже входят: до появления сокращения они уходили в общий
+ * путь свободного значения и давали `grid-template-columns:a-f` — молчаливый
+ * мусор (D-004). Значений, начинающихся с `AF`, у grid-template-свойств нет.
+ */
+const REGEXP_AUTO_REPEAT_LIKE = /^AFL?(?:[0-9.]|$)/;
+
+function autoRepeatValue(suffix: string, essenceName: string): string | undefined {
+  const m = REGEXP_AUTO_REPEAT.exec(suffix);
+  if (!m) {
+    REGEXP_AUTO_REPEAT_LIKE.test(suffix) && throwInvalid('Запись "' + essenceName + suffix + '" похожа на сокращение auto-repeat, но '
+        + 'не разобралась. Форма: "' + essenceName + 'AF240" или "' + essenceName
+        + 'AF240_1fr" (AF — auto-fit, AFL — auto-fill)');
+    return;
+  }
+  return 'repeat(auto-fi' + (m[1] ? 'll' : 't') + ', minmax('
+    + defaultUnitNormalize(m[2]) + ', '
+    + (m[3] ? defaultUnitNormalize(m[3]) : '1fr') + '))';
+}
+
 function __wr(v: string): string {
   return v[0] == '-'
     ? '"' + v.slice(1) + '"'
@@ -1384,6 +1454,9 @@ export default (mn: MnInstance) => {
         if (suffix[0] === '_') {
           output = valueNormalize(suffix);
         } else {
+          REGEXP_SHADOW_SUFFIX.test(suffix) || throwInvalid('Запись "' + p.name + suffix + '" разобрана не полностью: после значения '
+              + 'допустимы только модификаторы x/y/r/m/c/in. Свободная форма пишется '
+              + 'с ведущим "_" — например "' + p.name + '_0_2px_8px_--shadow"');
           const repeatCount = intval(
             p.m, 1, 0,
           );
@@ -2540,8 +2613,18 @@ export default (mn: MnInstance) => {
 
     g: ['grid'],
     gt: ['gridTemplate', 1],
-    gtc: ['gridTemplateColumns', 2],
-    gtr: ['gridTemplateRows', 2],
+    gtc: [
+      'gridTemplateColumns',
+      2,
+      0,
+      1,
+    ],
+    gtr: [
+      'gridTemplateRows',
+      2,
+      0,
+      1,
+    ],
     gac: ['gridAutoColumns', 1],
     gar: ['gridAutoRows', 1],
     gaf: ['gridAutoFlow', 1],
@@ -2591,16 +2674,21 @@ export default (mn: MnInstance) => {
   }, ([
     propName,
     priority,
-    lengthy]: [string, number?, number?,
+    lengthy,
+    autoRepeat]: [string, number?, number?, number?,
   ], essenceName: string) => {
     mn(essenceName, (p) => {
-      let s, style;
+      let s, style, repeated;
       style = {};
       if (!(s = p.suffix)) {
         // Свойству-длине пустой суффикс даёт `0`, как у `p`/`m`/`b`; остальным
         // значения по умолчанию нет — они принимают произвольное слово, и
         // угадывать за автора нечего.
         return lengthy ? (style[propName] = '0', styleWrap(style, priority || 0)) : 0;
+      }
+      if (autoRepeat && (repeated = autoRepeatValue(s, essenceName))) {
+        style[propName] = repeated;
+        return styleWrap(style, priority || 0);
       }
       style[propName] = lengthy
         ? defaultUnitNormalize(valueNormalize(s))

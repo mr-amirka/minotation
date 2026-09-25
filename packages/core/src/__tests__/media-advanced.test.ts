@@ -356,3 +356,157 @@ describe('§13.5 Комплексные комбинации — v1 parity', () 
     expect(css(mn)).toBe('@media (max-width:992px){.w100\\:om:focus{width:100px}}');
   });
 });
+
+/**
+ * Q-05: статические медиа-переопределения `mn('name@sm', {...})`.
+ *
+ * До 2026-09-25 механизм был наполовину рабочим:
+ *   - `media`-блок эссенции рендерился с медиа РОДИТЕЛЯ (обычно пустым), то есть
+ *     уезжал в CSS безусловным правилом;
+ *   - статика для медиа-контекста ЗАТИРАЛА собственный `media`-блок хендлера
+ *     (ветка `childStaticEssence[MN_ESSENCE_INITED]` выбирала её целиком, а
+ *     `INITED` стоит у любой статики);
+ *   - а если своего `media`-блока у хендлера не было вовсе — переопределение
+ *     не применялось вообще, молча.
+ */
+describe('Q-05: статические медиа-переопределения', () => {
+  function makeMn() {
+    return makeBase();
+  }
+
+  function cssOf(mn, token) {
+    check(mn, token);
+    return css(mn);
+  }
+
+  test('media-блок эссенции попадает ВНУТРЬ @media, а не рядом', () => {
+    const mn = makeMn();
+    mn('box', {
+      style: {
+        color: 'red',
+      },
+      media: {
+        sm: {
+          style: {
+            color: 'blue',
+          },
+        },
+      },
+    });
+
+    const css = cssOf(mn, 'box');
+
+    expect(css).toContain('.box{color:red}');
+    expect(css).toContain('@media (max-width:640px){.box{color:blue}}');
+    expect(css.replace(/@media[^{]*\{[^}]*\}/g, '')).not.toContain('color:blue');
+  });
+
+  test('переопределение применяется и когда своего media-блока у эссенции нет', () => {
+    const mn = makeMn();
+    mn('box', {
+      style: {
+        color: 'red',
+      },
+    });
+    mn('box@sm', {
+      style: {
+        fontSize: '20px',
+      },
+    });
+
+    const css = cssOf(mn, 'box');
+
+    expect(css).toContain('.box{color:red}');
+    expect(css).toContain('@media (max-width:640px){.box{font-size:20px}}');
+  });
+
+  test('переопределение СЛИВАЕТСЯ с media-блоком эссенции, а не затирает его', () => {
+    const mn = makeMn();
+    mn('box', {
+      style: {
+        color: 'red',
+      },
+      media: {
+        sm: {
+          style: {
+            color: 'blue',
+          },
+        },
+      },
+    });
+    mn('box@sm', {
+      style: {
+        fontSize: '20px',
+      },
+    });
+
+    const css = cssOf(mn, 'box');
+
+    expect(css).toContain('@media (max-width:640px){.box{color:blue;font-size:20px}}');
+  });
+
+  test('при конфликте свойств побеждает переопределение', () => {
+    const mn = makeMn();
+    mn('box', {
+      media: {
+        sm: {
+          style: {
+            color: 'blue',
+          },
+        },
+      },
+    });
+    mn('box@sm', {
+      style: {
+        color: 'green',
+      },
+    });
+
+    expect(cssOf(mn, 'box')).toContain('@media (max-width:640px){.box{color:green}}');
+  });
+
+  test('явный медиа-суффикс токена имеет приоритет над media-блоком эссенции', () => {
+    // Два медиа-контекста на одно правило в плоском выводе не совместить;
+    // побеждает написанный в разметке — он ближе к намерению автора.
+    const mn = makeMn();
+    mn('box', {
+      style: {
+        color: 'red',
+      },
+      media: {
+        sm: {
+          style: {
+            color: 'blue',
+          },
+        },
+      },
+    });
+
+    const css = cssOf(mn, 'box@md');
+
+    expect(css).toContain('@media (max-width:768px){');
+    expect(css).not.toContain('@media (max-width:640px){');
+  });
+
+  test('обычные childs медиа-контекст родителя не меняют', () => {
+    const mn = makeMn();
+    mn('box', {
+      style: {
+        color: 'red',
+      },
+      childs: {
+        item: {
+          selectors: ['>*'],
+          style: {
+            color: 'blue',
+          },
+        },
+      },
+    });
+
+    const css = cssOf(mn, 'box');
+
+    expect(css).not.toContain('@media');
+    expect(css).toContain('color:blue');
+  });
+});

@@ -598,6 +598,34 @@ x{число}[%][Y{число}[%]][Z{число}[%]][S{число}][R{x|y|z}{ч�
 
 ---
 
+## Grid
+
+| Токен | CSS |
+|-------|-----|
+| `gtc1fr_auto` | `grid-template-columns:1fr auto` |
+| `gtcNone` / `gtcAuto` / `gtcSubgrid` | `grid-template-columns:none` / `auto` / `subgrid` |
+| `gtcAF240` | `grid-template-columns:repeat(auto-fit, minmax(240px, 1fr))` |
+| `gtcAF240_300` | `grid-template-columns:repeat(auto-fit, minmax(240px, 300px))` |
+| `gtcAF15em` | `grid-template-columns:repeat(auto-fit, minmax(15em, 1fr))` |
+| `gtcAFL240` | `grid-template-columns:repeat(auto-fill, minmax(240px, 1fr))` |
+| `gtrAF100` | `grid-template-rows:repeat(auto-fit, minmax(100px, 1fr))` |
+
+**`AF` — `auto-fit`, `AFL` — `auto-fill`.** Обе аббревиатуры претендуют на `AF`
+(первые буквы слов), поэтому короткую получает более ходовой `auto-fit` — тот же
+принцип, что у `us` (`A` остался за `auto`, `all` получил `AL`).
+
+Второй аргумент `minmax` необязателен, по умолчанию `1fr`. Голое число получает `px`
+по сквозному правилу нотации; `fr`, `%`, `em` и прочие явные единицы идут как написаны.
+
+`gtcAF` и `gtcAFL` без размера **бракуются**: до появления сокращения они молча давали
+`grid-template-columns:a-f`.
+
+Сокращение не отменяет полную форму — `minmax()` без auto-repeat, именованные линии
+и прочее по-прежнему пишутся экранированными скобками:
+`gtcRepeat\(auto-fit,minmax\(240px,1fr\)\)`.
+
+---
+
 ## Misc
 
 | Токен | CSS |

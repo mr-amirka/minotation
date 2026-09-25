@@ -75,8 +75,18 @@ describe('паритет с v1: box-shadow inset', () => {
     expect(compile(['bxsh10in']).css).toContain('box-shadow:inset 0px 0px 10px 0px #000');
   });
 
-  test('заглавный `In` модификатором не является — как и в v1', () => {
-    expect(compile(['bxsh10In']).css).toContain('.bxsh10In{box-shadow:0px 0px 10px 0px #000}');
+  test('заглавный `In` бракуется — ОТХОД от v1, сознательный', () => {
+    // В v1 (и в v2 до 2026-09-25) `In` молча отбрасывался: автор писал `In`,
+    // имея в виду inset, и получал правило БЕЗ inset — то есть не то, что
+    // хотел, и без единого предупреждения. Теперь неразобранный хвост суффикса
+    // теней бракует токен целиком (D-004: молчаливый мусор недопустим).
+    // Рабочая форма — строчный `in`, проверена тестом выше.
+    const {
+      css, warnings, 
+    } = compile(['bxsh10In']);
+
+    expect(css).not.toContain('box-shadow');
+    expect(warnings.map((w) => w.type)).toContain('parse-error');
   });
 });
 

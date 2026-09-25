@@ -326,28 +326,36 @@ describe('сокращённые записи значений (Q-13)', () => {
  */
 describe('переменная как слагаемое в calc (PATTERN_VAR_ADD)', () => {
   function cssOf(token: string): string {
+    const m = cssOfFull(token).match(/\{([^}]*)\}\s*$/);
+    return m ? m[1] : '';
+  }
+
+  /** Полное правило вместе с селектором — нужно, чтобы проверять комбинаторы. */
+  function cssOfFull(token: string): string {
     const mn = minotationProvider({
       onWarning: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    const m = mn.styles$.getValue().map((s) => s.content).join('')
-      .match(/\{([^}]*)\}\s*$/);
-    return m ? m[1] : '';
+    return mn.styles$.getValue().map((s) => s.content).join('');
   }
 
   // Три дефиса подряд читаются как «знак операции `-`» + «`--` имени переменной».
-  // Форма со знаком `+` для переменной НЕ работает: `+` забирает разбор токена
-  // как комбинатор соседнего элемента (`w10+--a` → селектор `.w10\+--a+--a`).
-  // Это отдельная находка того же разбора (D-1), решение за владельцем —
-  // сторож на текущее поведение стоит ниже, чтобы изменение не прошло незаметно.
+  // Со знаком `+` то же самое работает с 2026-09-25: до этого `+` всегда был
+  // комбинатором соседа, кроме случая «перед цифрой», и `w10+--a` молча терял
+  // слагаемое (`.w10\+--a+--a{width:10px}`). Исключение добавлено в
+  // `REGEXP_SELECTOR_EXCEPTIONS`.
   test.each([
     ['w10---a', 'width:calc(10px - var(--a))'],
     ['w10----a', 'width:calc(10px - env(--a))'],
     ['w10---a,10px', 'width:calc(10px - var(--a,10px))'],
     ['w10---a,10', 'width:calc(10px - var(--a,10px))'],
     ['w--a;---b', 'width:calc(var(--a) - var(--b))'],
+    ['w10+--a', 'width:calc(10px + var(--a))'],
+    ['w10+---a', 'width:calc(10px + env(--a))'],
+    ['w10+--a,10px', 'width:calc(10px + var(--a,10px))'],
+    ['w--a;+--b', 'width:calc(var(--a) + var(--b))'],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
@@ -358,10 +366,10 @@ describe('переменная как слагаемое в calc (PATTERN_VAR_AD
     expect(cssOf('w10---a,10')).toBe(cssOf('w10---a,10px'));
   });
 
-  test('сторож: слагаемое-переменная через `+` пока не доходит до хендлера', () => {
-    // Баг D-1. Если поведение починят — тест упадёт, и это правильно:
-    // ожидание здесь нужно поменять на 'width:calc(10px + var(--a))'.
-    expect(cssOf('w10+--a')).toBe('width:10px');
+  test('комбинатор соседа не задет: `+` перед обычным селектором работает как был', () => {
+    // Исключение узкое — только `+` непосредственно перед `--`.
+    expect(cssOfFull('p10+div')).toContain('+div{padding:10px}');
+    expect(cssOfFull('p10+.next')).toContain('+.next{padding:10px}');
   });
 
   test('числовое слагаемое не задето', () => {
@@ -390,5 +398,101 @@ describe('hex с непрозрачной альфой канонизирует�
 
   test('прозрачная альфа по-прежнему уводит в десятичную форму', () => {
     expect(compile(['cFF000088']).warnings[0].message).toContain('"cF00.53"');
+  });
+});
+
+/**
+ * Неразобранный хвост суффикса больше не отбрасывается молча (D-004).
+ *
+ * Корень у `ratio` был не в самом хендлере: `routeParseProvider` оборачивал
+ * тело маршрута как `^body$`, и альтернация верхнего уровня разносила якоря
+ * (`^A|B$` — «A с начала ИЛИ B до конца»). Из-за этого `ratio` матчился началом,
+ * а специально заведённая ловушка `(.*):other` не срабатывала никогда.
+ * Починено в `fundamentool` — тело оборачивается в `^(?:body)$`.
+ */
+describe('ratio: хвост, который не разобрался, бракует токен', () => {
+  function compileRatio(token: string): { css: string;
+    warnings: MnWarning[] } {
+    return compile([token]);
+  }
+
+  test.each([
+    ['ratio16/9', 'пропорция пишется через `x`: ratio16x9'],
+    ['ratio56.25', 'дробь в этой позиции шаблон не принимает'],
+    ['ratio9x16zzz', 'мусор в хвосте'],
+  ])('%s → брак (%s)', (token) => {
+    const r = compileRatio(token);
+    expect(r.css).not.toContain('padding-top');
+    expect(r.warnings.map((w) => w.type)).toContain('parse-error');
+  });
+
+  test.each([
+    ['ratio9x16', 'padding-top:177.78%'],
+    ['ratio16', 'padding-top:16%'],
+    ['ratio16+10px', 'padding-top:calc(16% + 10px)'],
+  ])('%s продолжает работать', (token, expected) => {
+    expect(compileRatio(token).css).toContain(expected);
+  });
+});
+
+/**
+ * Р-5 (задача 4 трека `notation-ergonomics`): сокращение для
+ * `repeat(auto-fit, minmax(…))` — самого ходового паттерна адаптивной сетки.
+ * Без него он пишется четырьмя экранированными скобками.
+ */
+describe('auto-repeat: gtcAF240 вместо gtcRepeat\\(auto-fit,minmax\\(240px,1fr\\)\\)', () => {
+  function cssOf(token: string): string {
+    const mn = minotationProvider({
+      onWarning: 'silent',
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')(token);
+    mn.compile();
+    const m = mn.styles$.getValue().map((s) => s.content).join('')
+      .match(/\{([^}]*)\}\s*$/);
+    return m ? m[1] : '';
+  }
+
+  test.each([
+    ['gtcAF240', 'grid-template-columns:repeat(auto-fit, minmax(240px, 1fr))'],
+    ['gtcAF240_1fr', 'grid-template-columns:repeat(auto-fit, minmax(240px, 1fr))'],
+    ['gtcAF240_300', 'grid-template-columns:repeat(auto-fit, minmax(240px, 300px))'],
+    ['gtcAF15em', 'grid-template-columns:repeat(auto-fit, minmax(15em, 1fr))'],
+    ['gtcAF20%_1fr', 'grid-template-columns:repeat(auto-fit, minmax(20%, 1fr))'],
+    ['gtcAFL240', 'grid-template-columns:repeat(auto-fill, minmax(240px, 1fr))'],
+    ['gtrAF100', 'grid-template-rows:repeat(auto-fit, minmax(100px, 1fr))'],
+  ])('%s → %s', (token, expected) => {
+    expect(cssOf(token)).toBe(expected);
+  });
+
+  test('второй аргумент по умолчанию — 1fr, явный 1fr даёт тот же CSS', () => {
+    expect(cssOf('gtcAF240')).toBe(cssOf('gtcAF240_1fr'));
+  });
+
+  test.each([
+    'gtcAF',       // без размера
+    'gtcAFL',
+    'gtcAF240_',   // разделитель без второго аргумента
+    'gtcAF240_1fr_2fr',
+  ])('%s → брак, а не молчаливый мусор', (token) => {
+    // До сокращения `gtcAF` уходил в общий путь свободного значения и давал
+    // `grid-template-columns:a-f` — невалидный CSS без предупреждения.
+    expect(cssOf(token)).toBe('');
+  });
+
+  test.each([
+    ['gtcNone', 'grid-template-columns:none'],
+    ['gtcAuto', 'grid-template-columns:auto'],
+    ['gtc1fr_auto', 'grid-template-columns:1fr auto'],
+    ['gtcSubgrid', 'grid-template-columns:subgrid'],
+  ])('%s — обычные значения не задеты', (token, expected) => {
+    expect(cssOf(token)).toBe(expected);
+  });
+
+  test('полная экранированная форма продолжает работать', () => {
+    // Сокращение её не отменяет: `minmax(200px, 300px)` без auto-repeat,
+    // именованные линии и прочее по-прежнему пишутся скобками.
+    expect(cssOf('gtcRepeat\\(auto-fit,minmax\\(240px,1fr\\)\\)'))
+      .toBe('grid-template-columns:repeat(auto-fit,minmax(240px,1fr))');
   });
 });

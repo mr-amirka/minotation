@@ -382,8 +382,34 @@ describe('Standard preset — box-shadow / text-shadow', () => {
     expect(css('bxshR3')).toBe('');
   });
 
-  test('bxsh19In → inset не поддерживается (известное ограничение, унаследовано из v1)', () => {
-    expect(css('bxsh19In')).toContain('box-shadow:0px 0px 19px 0px #000');
+  test('bxsh19In → брак: заглавный `In` модификатором не является', () => {
+    // Было «известным ограничением, унаследованным из v1»: `In` молча
+    // отбрасывался, и автор получал тень БЕЗ inset, ничего об этом не узнав.
+    // С 2026-09-25 неразобранный хвост суффикса теней бракует токен (D-004).
+    expect(css('bxsh19In')).toBe('');
+  });
+
+  test.each([
+    'bxsh10zzz',        // несуществующая единица — как `w10zzz`/`p10zzz`
+    'bxsh0_2_8_F00',    // свободная форма без ведущего `_`
+    'bxsh0_2_8_--shadow',
+    'bxsh10qq',
+  ])('%s → брак, а не тихо усечённая тень', (token) => {
+    expect(css(token)).toBe('');
+  });
+
+  test.each([
+    ['bxsh', 'box-shadow:none'],
+    ['bxsh18', 'box-shadow:0px 0px 18px 0px #000'],
+    ['bxsh10px', 'box-shadow:0px 0px 10px 0px #000'],
+    ['bxsh1.5em', 'box-shadow:0px 0px 1.5px 0px #000'],
+    ['bxsh10in', 'box-shadow:inset 0px 0px 10px 0px #000'],
+    ['bxsh19x5y5r3c43F', 'box-shadow:5px 5px 19px 3px #43f'],
+    ['bxsh10c--shadow', 'box-shadow:0px 0px 10px 0px var(--shadow)'],
+    ['bxsh_0_0_10px_--shadow', 'box-shadow:0 0 10px var(--shadow)'],
+    ['tsh10x2', 'text-shadow:2px 0px 10px #000'],
+  ])('%s продолжает работать (сторож на отбраковку хвоста)', (token, expected) => {
+    expect(css(token)).toContain(expected);
   });
 });
 

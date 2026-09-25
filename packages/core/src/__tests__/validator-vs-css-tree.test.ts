@@ -227,3 +227,165 @@ describe('валидатор против официальной граммат�
     expect(isValidCssPropertyValue('padding-top', 'env(--safe-top)')).toBe(true);
   });
 });
+
+/**
+ * Списки ключевых слов у семейств хендлеров сверяются с грамматикой CSS.
+ *
+ * Теперь слово в значении бракует сам хендлер, а не валидатор ядра: `pZzz`,
+ * `pRed`, `bcTrue` не доходят до CSS. Чтобы списки не разошлись со
+ * спецификацией, каждое слово прогоняется через `lexer.matchProperty` —
+ * арбитром служит `mdn-data`, а не память автора.
+ */
+describe('ключевые слова семейств совпадают с грамматикой', () => {
+  function cssOf(token: string): string {
+    const mn: any = minotationProvider({
+      onWarning: 'silent',
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')(token);
+    mn.compile();
+    return mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+  }
+
+  /** Токен → CSS-свойство и ожидаемое значение. */
+  const CASES: Array<[string, string, string]> = [
+    [
+      'mA',
+      'margin',
+      'auto',
+    ],
+    [
+      'sA',
+      'top',
+      'auto',
+    ],
+    [
+      'bTN',
+      'border-width',
+      'thin',
+    ],
+    [
+      'bM',
+      'border-width',
+      'medium',
+    ],
+    [
+      'bTC',
+      'border-width',
+      'thick',
+    ],
+    [
+      'olwTN',
+      'outline-width',
+      'thin',
+    ],
+    [
+      'wA',
+      'width',
+      'auto',
+    ],
+    [
+      'wFitContent',
+      'width',
+      'fit-content',
+    ],
+    [
+      'wMinContent',
+      'width',
+      'min-content',
+    ],
+    [
+      'wMaxContent',
+      'width',
+      'max-content',
+    ],
+    [
+      'wmaxN',
+      'max-width',
+      'none',
+    ],
+    [
+      'gapN',
+      'gap',
+      'normal',
+    ],
+  ];
+
+  test.each(CASES)('%s → %s: %s — валидно по грамматике', (
+    token, prop, value,
+  ) => {
+    expect(lexer.matchProperty(prop, value).error).toBeNull();
+    expect(cssOf(token)).toContain(prop + ':' + value);
+  });
+
+  test('ggcN → grid-column-gap:normal — арбитр здесь неточен', () => {
+    // `column-gap: normal` в `mdn-data` валиден, а legacy-алиас
+    // `grid-column-gap: normal` — нет, хотя по спецификации это тот же
+    // синтаксис и браузеры его принимают. Ограничение арбитра, не наше:
+    // компиляцию проверяем, грамматику — нет.
+    expect(lexer.matchProperty('column-gap', 'normal').error).toBeNull();
+    expect(cssOf('ggcN')).toContain('grid-column-gap:normal');
+  });
+
+  /** Слово валидно у одного свойства семейства и невалидно у соседнего. */
+  const CROSS: Array<[string, string, string]> = [
+    [
+      'pA',
+      'padding',
+      'auto',
+    ],
+    [
+      'pN',
+      'padding',
+      'none',
+    ],
+    [
+      'bA',
+      'border-width',
+      'auto',
+    ],
+    [
+      'bN',
+      'border-width',
+      'none',
+    ],
+    [
+      'wN',
+      'width',
+      'none',
+    ],
+    [
+      'gapA',
+      'gap',
+      'auto',
+    ],
+  ];
+
+  test.each(CROSS)('%s не компилируется: %s: %s невалидно', (
+    token, prop, value,
+  ) => {
+    // Грамматика подтверждает, что отбраковка — не перестраховка.
+    expect(lexer.matchProperty(prop, value).error).not.toBeNull();
+    expect(cssOf(token)).toBe('');
+  });
+
+  test.each([
+    'pZzz',
+    'pRed',
+    'sTrue',
+    'bcZzz',
+    'bcRed',
+    'bcTrue',
+    'mNaN',
+  ])('%s — неизвестное слово бракует сам хендлер', (token) => {
+    expect(cssOf(token)).toBe('');
+  });
+
+  test.each([
+    ['pInherit', 'padding:inherit'],
+    ['cInherit', 'color:inherit'],
+    ['mUnset', 'margin:unset'],
+  ])('%s → %s — CSS-wide keywords проходят везде', (token, expected) => {
+    expect(cssOf(token)).toContain(expected);
+  });
+});

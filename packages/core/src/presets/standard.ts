@@ -182,6 +182,32 @@ const SIZE_SYNONYMS = {
   A: 'Auto',
   N: 'None',
 };
+
+/** Внутренние размеры — общая часть для `width`/`height` и их min/max. */
+const KEYWORDS_INTRINSIC: Record<string, 1> = {
+  'min-content': 1,
+  'max-content': 1,
+  'fit-content': 1,
+  stretch: 1,
+};
+/** `width`/`height` и `min-*`: внутренние размеры плюс `auto`. */
+const KEYWORDS_SIZE: Record<string, 1> = {
+  ...KEYWORDS_INTRINSIC,
+  auto: 1,
+};
+/** `max-*`: внутренние размеры плюс `none` (а `auto` — невалиден). */
+const KEYWORDS_SIZE_MAX: Record<string, 1> = {
+  ...KEYWORDS_INTRINSIC,
+  none: 1,
+};
+/** `gap`-семейство, `letter-spacing`, `word-spacing`. */
+const KEYWORDS_NORMAL: Record<string, 1> = {
+  normal: 1,
+};
+/** Краткие записи gap-семейства: `auto`/`none` у него невалидны. */
+const GAP_SYNONYMS = {
+  N: 'Normal',
+};
 const TD_SYNONYMS = {
   '': 'None',
   N: 'None',
@@ -621,6 +647,52 @@ export default (mn: MnInstance) => {
     }
     throwInvalid('Unit "' + unit + '" is invalid');
   }
+  /**
+   * Ключевые слова, допустимые у любого свойства (CSS-wide keywords).
+   * В словарях отдельных хендлеров не перечисляются — они валидны везде.
+   */
+  const GLOBAL_KEYWORDS: Record<string, 1> = {
+    inherit: 1,
+    initial: 1,
+    unset: 1,
+    revert: 1,
+    'revert-layer': 1,
+  };
+
+  /**
+   * Бракует слово, которого хендлер не знает.
+   *
+   * Разбор значения пропускал ЛЮБОЕ camelCase-слово насквозь, только кебабя
+   * его: `pZzz` давал `padding:zzz`, `pRed` — `padding:red`, `sTrue` —
+   * `top:true;bottom:true;…`. Правило здесь локальное, грамматика CSS не нужна:
+   * слово допустимо, если это краткая запись из словаря хендлера, одно из его
+   * ключевых слов или CSS-wide keyword.
+   *
+   * Списки ключевых слов различаются по свойствам даже внутри одного семейства:
+   * `margin:auto` валиден, `padding:auto` — нет; `max-width:none` валиден,
+   * `min-width:none` — нет. Поэтому список приходит от места регистрации,
+   * а не берётся общим на всё семейство.
+   *
+   * @param value — уже кебабнутое значение
+   * @param raw — как оно записано в токене (для сообщения и поиска по словарю)
+   * @param symonyms — словарь кратких записей хендлера
+   * @param keywords — допустимые ключевые слова конкретного свойства
+   */
+  function assertKnownWord(
+    value: string,
+    raw: string,
+    symonyms?: Record<string, any>,
+    keywords?: Record<string, 1>,
+  ): string {
+    if (GLOBAL_KEYWORDS[value]
+      || (symonyms && symonyms[raw])
+      || (keywords && keywords[value])) {
+      return value;
+    }
+    return throwInvalid('Значение "' + raw + '" не распознано: ожидается число '
+      + 'с единицей, переменная, calc или ключевое слово этого свойства');
+  }
+
   function getVal(
     suffix: any,
     positive?: number,
@@ -628,6 +700,7 @@ export default (mn: MnInstance) => {
     defaultUnit?: string,
     noOtherName?: number,
     symonyms?: Record<string, any>,
+    keywords?: Record<string, 1>,
   ): [string, number] {
     // Все 6 вызовов getVal в этом файле передают defaultUnit='px' явно —
     // фолбэк недостижим (подтверждено и в v1, 2026-09-23). Параметр остаётся
@@ -654,7 +727,10 @@ export default (mn: MnInstance) => {
       parseVals(parts[i], p = {});
       if (otherName = p.otherName) {
         noOtherName && throwInvalid();
-        output[i] = toKebabCase(symonyms && symonyms[otherName] || otherName);
+        output[i] = assertKnownWord(
+          toKebabCase(symonyms && symonyms[otherName] || otherName),
+          otherName, symonyms, keywords,
+        );
         continue;
       }
       // NOTE: p.vl не работает из-за бага routeParseProvider в fundamentool.
@@ -963,13 +1039,36 @@ export default (mn: MnInstance) => {
   forIn(COLOR_SYNONYMS, (word: string, abbr: string) => {
     COLOR_SYNONYM_BY_WORD[word.toLowerCase()] = abbr;
   });
-  /** Бракует длинную запись цвета, у которой есть аббревиатура. */
+  /**
+   * Проверяет словесное значение цвета.
+   *
+   * Разбор пропускал ЛЮБОЕ camelCase-слово как цвет: `bcZzz` давал
+   * `border-color:zzz`, `bcTrue` — `border-color:true`. Словарь цветов закрыт
+   * (именованные цвета не принимаются — только коды), поэтому слово допустимо,
+   * только если это ключевое слово из {@link COLOR_SYNONYMS} или CSS-wide.
+   *
+   * У слова, для которого есть аббревиатура, форма одна — краткая.
+   */
   function assertColorAbbr(p: any): void {
-    const abbr = p.camel && COLOR_SYNONYM_BY_WORD[p.camel.toLowerCase()];
+    const camel = p.camel;
+    if (!camel) {
+      return;
+    }
+    const abbr = COLOR_SYNONYM_BY_WORD[camel.toLowerCase()];
     if (abbr) {
       throwInvalid('Цвет записывается короче: "' + p.name + abbr
-      + '" вместо "' + p.name + p.camel + '"');
+      + '" вместо "' + p.name + camel + '"');
     }
+    // `p.camel` заполняет не только разбор цвета, но и generic-разбор ядра:
+    // у `cF00` там окажется `F` (первая заглавная буква кода). Словом значение
+    // считается, только если камель — это ВЕСЬ суффикс и кода/переменной нет.
+    if (camel !== p.suffix || p.color || p.vv
+      || REGEXP_PLAIN_HEX.test(p.suffix)) {
+      return;
+    }
+    GLOBAL_KEYWORDS[toKebabCase(camel)] || throwInvalid('Значение "' + camel
+      + '" не распознано как цвет: ожидается код (`F00`), переменная или '
+      + 'ключевое слово');
   }
   /** Одиночный hex без альфы/градиента — только цифры. */
   const REGEXP_PLAIN_HEX = /^[0-9A-Fa-f]+$/;
@@ -1041,18 +1140,32 @@ export default (mn: MnInstance) => {
     }
 
     function handleProvider(
-      sidesSet: (v: any) => Record<string, any>, nosign?: any, one?: any,
+      sidesSet: (v: any) => Record<string, any>,
+      // Порядок параметров унаследован; `symonyms` обязателен по смыслу, но
+      // объявить его таким нельзя — он идёт после необязательных (TS1016).
+      // Оба вызывающих передают словарь своего семейства.
+      nosign?: any,
+      one?: any,
+      symonyms?: Record<string, string>,
     ): MnHandler {
+      // Словарь задан на семейство, а не общий на все размеры: `mA` →
+      // `margin:auto` валиден, а `pA` → `padding:auto` — нет. Допустимые слова
+      // выводятся из значений словаря, поэтому длинная форма (`bThin`) работает
+      // наравне с краткой (`bTN`).
+      const keywords: Record<string, 1> = {};
+      forIn(symonyms, (word: string) => {
+        keywords[toKebabCase(word)] = 1;
+      });
       return (p: any) => {
         let suffix: string; let synonym: any;
         if (!(suffix = p.suffix)) {
           return normalizeDefault(p, 0);
         }
-        if (synonym = SIZE_SYNONYMS[suffix]) {
+        if (synonym = (symonyms as Record<string, string>)[suffix]) {
           return normalizeDefault(p, synonym);
         }
         const v = getVal(
-          suffix, nosign, one, 'px', 0, SIZE_SYNONYMS,
+          suffix, nosign, one, 'px', 0, symonyms, keywords,
         );
         return styleWrap(sidesSet(v[0]), priority + v[1]);
       };
@@ -1063,12 +1176,26 @@ export default (mn: MnInstance) => {
         'padding',
         0,
         1,
+        // Ключевых слов у padding нет вовсе — только длины и CSS-wide.
+        {},
       ],
-      m: ['margin'],
+      m: [
+        'margin',
+        0,
+        0,
+        {
+          A: 'Auto',
+        },
+      ],
       b: [
         'border',
         '-width',
         1,
+        {
+          TN: 'Thin',
+          M: 'Medium',
+          TC: 'Thick',
+        },
       ],
     }, (args: any[], pfx: string) => {
       const propName = args[0];
@@ -1078,6 +1205,7 @@ export default (mn: MnInstance) => {
           sidesSetter((side) => propName + side + propSuffix),
           args[2],
           suffix,
+          args[3],
         ), '', 1,
       );
     });
@@ -1101,6 +1229,9 @@ export default (mn: MnInstance) => {
           },
         0,
         1,
+        {
+          A: 'Auto',
+        },
       ), '', 1,
     );
     mn('bs' + suffix, (p) => {
@@ -1161,6 +1292,14 @@ export default (mn: MnInstance) => {
       'min',
       'max',
     ], (sfx) => {
+      // `max-*` принимает `none` и НЕ принимает `auto`; `width`/`min-*` —
+      // наоборот. Словарь кратких записей сужается под свой вариант, поэтому
+      // `wmaxN` работает, а `wN` (`width:none`) бракуется.
+      const keywords = sfx === 'max' ? KEYWORDS_SIZE_MAX : KEYWORDS_SIZE;
+      const symonyms: Record<string, string> = {};
+      forIn(SIZE_SYNONYMS, (word: string, abbr: string) => {
+        keywords[toKebabCase(word)] && (symonyms[abbr] = word);
+      });
       const propMap = {};
       let propName, i = 0; // eslint-disable-line
       for (; i < length; i++) {
@@ -1173,12 +1312,12 @@ export default (mn: MnInstance) => {
           if (!suffix) {
             return normalizeDefault(p, '100%');
           }
-          const synonym = SIZE_SYNONYMS[suffix];
+          const synonym = symonyms[suffix];
           if (synonym) {
             return normalizeDefault(p, synonym);
           }
           const v = getVal(
-            suffix, 1, 1, 'px', 0, SIZE_SYNONYMS,
+            suffix, 1, 1, 'px', 0, symonyms, keywords,
           );
           const [value] = v;
           const style = {};
@@ -1202,17 +1341,13 @@ export default (mn: MnInstance) => {
       if (!suffix) {
         return normalizeDefault(p, '100%');
       }
-      // `normal` — initial value у row-gap/column-gap. В общую SIZE_SYNONYMS
-      // его не добавить: там размеры (`w`/`h`/`p`/`m`), которым оно не подходит.
+      // `normal` — initial value у gap-семейства; размерам (`w`/`h`/`p`/`m`)
+      // оно не подходит, поэтому словарь здесь свой.
       if (suffix === 'N') {
         return normalizeDefault(p, 'Normal');
       }
-      const synonym = SIZE_SYNONYMS[suffix];
-      if (synonym) {
-        return normalizeDefault(p, synonym);
-      }
       const v = getVal(
-        suffix, 1, 1, 'px', 0, SIZE_SYNONYMS,
+        suffix, 1, 1, 'px', 0, GAP_SYNONYMS, KEYWORDS_NORMAL,
       );
       // 1 CSS-свойство — priority = 2 - 1, как у соседних w/h (props.length === 1)
       const priority = 1;
@@ -1547,6 +1682,12 @@ export default (mn: MnInstance) => {
       'outlineWidth',
       0,
       1,
+      0,
+      {
+        TN: 'Thin',
+        M: 'Medium',
+        TC: 'Thick',
+      },
     ],
     gg: [
       'gridGap',
@@ -1585,6 +1726,13 @@ export default (mn: MnInstance) => {
     const priority = options[2] || 0;
     const one = options[3];
     const synonyms = options[4] || {};
+    // Допустимые слова выводятся из значений самого словаря: если хендлер
+    // объявил `N: 'Normal'`, то `normal` валиден и полной записью. Отдельная
+    // таблица здесь не нужна — словарь уже задан на свойство, а не на семейство.
+    const keywords: Record<string, 1> = {};
+    forIn(synonyms, (word: string) => {
+      keywords[toKebabCase(word)] = 1;
+    });
     mn(pfx, (p) => {
       let style, suffix, synonym, v;
       return (synonym = synonyms[suffix = p.suffix])
@@ -1592,7 +1740,7 @@ export default (mn: MnInstance) => {
         : (
           v = getVal(
             suffix || defaultValue,
-            1, one, 'px', 0, synonyms,
+            1, one, 'px', 0, synonyms, keywords,
           ),
           style = {},
           style[propName] = v[0],
@@ -1697,9 +1845,6 @@ export default (mn: MnInstance) => {
     'static': 'posS', // eslint-disable-line
     sticky: 'posSK',
 
-    olwTN: 'olwThin',
-    olwM: 'olwMedium',
-    olwTC: 'olwThick',
     'break': styleWrap({ // eslint-disable-line
       whiteSpace: 'normal',
       wordBreak: 'break-word',

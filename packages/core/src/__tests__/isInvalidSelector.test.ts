@@ -146,3 +146,143 @@ describe('битые селекторы из токенов (Р-3)', () => {
     expect(selector).not.toMatch(/(?<!\\)[,()]/);
   });
 });
+
+/**
+ * Задача 10 трека `notation-ergonomics`: скобки без `|` — не группа вариантов.
+ *
+ * `variants()` схлопывает такую группу в единственный вариант, и единственный
+ * её эффект — молчаливое удаление самих скобок. В CSS уезжало правило, которое
+ * не сработает никогда, без единого предупреждения (D-004).
+ */
+describe('вырожденная группа вариантов в значении токена', () => {
+  function compileToken(token: string): { css: string; warnings: MnWarning[] } {
+    const warnings: MnWarning[] = [];
+    const mn: any = minotationProvider({
+      onWarning: (w: MnWarning) => warnings.push(w),
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')(token);
+    mn.compile();
+    return {
+      css: mn.styles$.getValue().map((s: { content: string }) => s.content).join(''),
+      warnings,
+    };
+  }
+
+  test.each([
+    ['gtcRepeat(auto-fit,minmax(240px,1fr))', 'давало grid-template-columns:repeatauto-fit,minmax240px,1fr'],
+    ['gtcRepeat(2,1fr)', 'давало repeat2,1fr'],
+    ['crUrl(a.png)', 'давало cursor:urla и роняло `.png` в селектор'],
+    ['ftBlur(4px)', 'работало по совпадению — каноническая форма ftBlur4'],
+  ])('%s → брак (%s)', (token) => {
+    const r = compileToken(token);
+    expect(r.css).toBe('');
+    expect(r.warnings.map((w) => w.type)).toContain('parse-error');
+    expect(r.warnings[0].message).toContain('не образуют группу вариантов');
+  });
+
+  test.each([
+    ['a)b', 'Непарная закрывающая'],
+    ['p10)', 'Непарная закрывающая'],
+    ['gtcRepeat(2', 'Незакрытая'],
+    ['crUrl(a', 'Незакрытая'],
+  ])('%s → брак: %s скобка', (token, expected) => {
+    const r = compileToken(token);
+    expect(r.css).toBe('');
+    expect(r.warnings[0].message).toContain(expected);
+  });
+
+  test.each([
+    ['p10@(sm|md)', '@media sm{'],
+    ['p10:h(.x)', ':h.x{padding:10px}'],  // без presetMedias `:h` не раскрывается в hover
+    ['cF00:not[.a]', ':not(.a){color:#f00}'],
+    ['gtcRepeat\\(auto-fit,minmax\\(240px,1fr\\)\\)', 'repeat(auto-fit,minmax(240px,1fr))'],
+    ['ftBlur4', 'filter:blur(4px)'],
+  ])('%s не задет', (token, expected) => {
+    expect(compileToken(token).css).toContain(expected);
+  });
+
+  test('скобки после контекстного символа — это scope, а не группа', () => {
+    // `p10:h(.x)` → `:hover.x`: содержимое дописывается к тому же селектору.
+    // Проверка намеренно смотрит только на значение — часть до первого
+    // контекстного символа на нулевой глубине.
+    expect(compileToken('p10:h(.x)').warnings).toHaveLength(0);
+  });
+});
+
+describe('вырожденная группа вариантов в селекторе mn.assign', () => {
+  function assign(selectors: Record<string, string>): string {
+    const mn: any = minotationProvider({
+      onWarning: 'silent',
+    });
+    mn.setPresets([presetStandard]);
+    mn.assign(selectors);
+    mn.compile();
+    return mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+  }
+
+  test.each([
+    'button:not(.plain)',
+    'li:nth-child(2n)',
+  ])('%s → исключение при регистрации, а не битый CSS', (selector) => {
+    // Холодный путь: `mn.assign` зовётся при регистрации пресета, поэтому
+    // fail-fast с понятным сообщением лучше правила `button:not.plain`,
+    // которое молча уехало бы в вывод.
+    expect(() => assign({
+      [selector]: 'p10',
+    })).toThrow(/не образуют группу вариантов/);
+  });
+
+  test('экранированные скобки дают корректный CSS', () => {
+    expect(assign({
+      'button:not\\(.plain\\)': 'p10',
+    })).toContain('button:not(.plain){padding:10px}');
+  });
+
+  test.each([
+    ['button:not[.plain]', 'button:not(.plain){padding:10px}'],
+    ['li:nth-child[2n]', 'li:nth-child(2n){padding:10px}'],
+    ['a:hover[.x[.y]]', 'a:hover(.x[.y]){padding:10px}'],
+  ])('%s → %s (scope работает и в assign)', (selector, expected) => {
+    // Замечание владельца 2026-09-25: `[...]` сразу после состояния — механизм
+    // scope, и в токене он давно разворачивается (`cF00:not[.a]` → `:not(.a)`).
+    // В селекторах `mn.assign` он не работал, и запись уезжала в CSS как есть —
+    // невалидной, потому что `[.plain]` не атрибут.
+    expect(assign({
+      [selector]: 'p10',
+    })).toContain(expected);
+  });
+
+  test.each([
+    '[type=text]',
+    'input[checked]',
+    '.card[data-x=1]',
+  ])('%s — атрибутный селектор не задет', (selector) => {
+    // Граница из замечания владельца: `[` вне позиции состояния начинает
+    // контекстную часть (атрибут), и трогать его нельзя.
+    expect(assign({
+      [selector]: 'p10',
+    })).toContain(selector + '{padding:10px}');
+  });
+
+  test('в токене двойного преобразования не происходит', () => {
+    // `pseudoBrackets` применяется только к пути assign: имена токенов
+    // разворачивают scope своим механизмом, и второй проход дал бы
+    // `:not(.a(.b))` вместо `:not(.a[.b])`.
+    const mn: any = minotationProvider({
+      onWarning: 'silent',
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')('cF00:not[.a[.b]]');
+    mn.compile();
+    const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+
+    expect(css).toContain(':not(.a[.b]){color:#f00}');
+  });
+
+  test('настоящая группа вариантов разворачивается', () => {
+    expect(assign({
+      '(h1|h2)': 'c00F',
+    })).toContain('h1,h2{color:#00f}');
+  });
+});

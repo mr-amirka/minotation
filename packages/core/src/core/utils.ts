@@ -105,7 +105,11 @@ import {
 } from 'fundamentool';
 import {
   selectorNormalize,
+  pseudoBrackets,
 } from '../selectorNormalize';
+import {
+  MnParseError,
+} from './types';
 import type {
   MnCompiler,
   MnContextEssence,
@@ -305,10 +309,123 @@ export const normalizeSelectors = normalizeMapProvider<Record<string, number>>(n
 export const normalizeComboNames = normalizeMapProvider<Record<string, number>>((namesMap, name) => {
   return flatFlags(SPLIT_SPACE(name), namesMap);
 });
+/**
+ * Бракует вырожденную группу вариантов — скобки без `|` внутри.
+ *
+ * `(a|b)` — это группа: `p10@(sm|md)` разворачивается в два медиа-контекста,
+ * `'(button|[type=submit])'` — в два селектора. А вот скобки БЕЗ `|` группой не
+ * являются: `variants()` схлопывает такую группу в единственный вариант, и
+ * единственный её эффект — молчаливое удаление самих скобок:
+ *
+ * | Запись | Давала | Ожидалось автором |
+ * |---|---|---|
+ * | `gtcRepeat(auto-fit,minmax(240px,1fr))` | `grid-template-columns:repeatauto-fit,minmax240px,1fr` | функция `repeat()` |
+ * | `crUrl(a.png)` | `cursor:urla` + `.png` уехал в селектор | `url(a.png)` |
+ * | `'button:not(.plain)'` в `mn.assign` | `button:not.plain` | `button:not(.plain)` |
+ * | `'li:nth-child(2n)'` в `mn.assign` | `li:nth-child2n` | `li:nth-child(2n)` |
+ *
+ * Во всех случаях в CSS уезжало правило, которое не сработает никогда, и без
+ * единого предупреждения — запрещено D-004. Рабочая запись для функции —
+ * экранировать скобки (`crUrl\(a.png\)`, `'button:not\(.plain\)'`);
+ * проверено, что после экранирования обе формы дают корректный CSS.
+ *
+ * Непарные скобки бракуются по той же причине: лишний `)` в `a)b` просто
+ * исчезал, давая `ab`.
+ *
+ * @param value — имя токена или селектор, как его написал автор
+ * @param utility — что подставить в контекст ошибки (`variants`/`selectors`)
+ * @throws {MnParseError} если найдена группа без `|` или непарная скобка
+ */
+export function assertVariantGroups(
+  value: string, utility: string, valueOnly?: number,
+): void {
+  const l = value.length;
+  let i = 0;
+  // Стек «была ли `|` на этом уровне»: индекс — глубина вложенности.
+  const hasAlternative: boolean[] = [];
+  let depth = 0;
+  let ch: string;
+  while (i < l) {
+    ch = value[i];
+    if (ch === '\\') {
+      // Экранированная скобка — часть значения, а не грамматики.
+      i += 2;
+      continue;
+    }
+    if (valueOnly && !depth && CONTEXT_START[ch]) {
+      // Дальше начинается контекст токена (состояние, предок, медиа, условие),
+      // а там скобки — это scope-грамматика, а не группа вариантов:
+      // `p10:h(.x)` даёт `:hover.x`, и это штатное поведение. Проверяем только
+      // значение — часть до первого контекстного символа на нулевой глубине.
+      return;
+    }
+    if (ch === '(') {
+      hasAlternative[depth++] = false;
+    } else if (ch === ')') {
+      if (!depth) {
+        throwVariantGroup(
+          'Непарная закрывающая скобка в "' + value + '": она молча исчезнет из '
+            + 'результата. Экранируйте её — "\\)" — если это часть значения',
+          value, utility,
+        );
+      }
+      if (!hasAlternative[--depth]) {
+        throwVariantGroup(
+          'Скобки в "' + value + '" не образуют группу вариантов: внутри нет "|", '
+            + 'и они будут молча удалены. Группа вариантов пишется как "@(sm|md)". '
+            + 'Если это CSS-функция или часть значения — экранируйте скобки: '
+            + '"\\(" и "\\)". В токене после состояния работает и краткая форма '
+            + 'через scope: "cF00:not[.a]" даёт ":not(.a)"',
+          value, utility,
+        );
+      }
+    } else if (ch === '|' && depth) {
+      hasAlternative[depth - 1] = true;
+    }
+    i++;
+  }
+  if (depth) {
+    throwVariantGroup(
+      'Незакрытая скобка в "' + value + '": остаток строки будет разобран не так, '
+        + 'как написано. Экранируйте её — "\\(" — если это часть значения',
+      value, utility,
+    );
+  }
+}
+
+/** Начала контекстной части токена — дальше скобки принадлежат scope-грамматике. */
+const CONTEXT_START: Record<string, 1> = {
+  ':': 1,
+  '<': 1,
+  '>': 1,
+  '@': 1,
+  '&': 1,
+  '~': 1,
+  '[': 1,
+  '.': 1,
+  '#': 1,
+};
+
+function throwVariantGroup(
+  message: string, value: string, utility: string,
+): never {
+  throw new MnParseError(message, {
+    token: value,
+    handler: '',
+    arg: value,
+    utility: utility,
+  });
+}
+
 export function normalizeSelectorsIteratee(selectorsMap: Record<string, number>, selector: string): Record<string, number> {
   forEach(SPLIT_SELECTOR(trim(selector).replace(RE_SPACE, ' ')), (selector: string) => {
-    selector
-      && flatFlags(map(variants(selector)[0], selectorNormalize), selectorsMap);
+    if (!selector) {
+      return;
+    }
+    assertVariantGroups(selector, 'selectors');
+    // `pseudoBrackets` — только здесь: имена токенов разворачивают scope
+    // собственным механизмом, и второе преобразование их бы испортило.
+    flatFlags(map(map(variants(selector)[0], pseudoBrackets), selectorNormalize), selectorsMap);
   });
   return selectorsMap;
 }

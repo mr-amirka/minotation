@@ -12,6 +12,9 @@ import {
   variants,
 } from 'fundamentool';
 import {
+  assertVariantGroups,
+} from '../core/utils';
+import {
   selectorNormalize,
 } from '../selectorNormalize';
 import type {
@@ -61,6 +64,13 @@ import {
  * вместе со связанным багом regex в `constants.ts` (`splitSelector`/`extractSuffix`).
  */
 function variantsBase(comboName: string): string[] {
+  // Вырожденная группа (скобки без `|`) молча съедала бы сами скобки — см.
+  // JSDoc `assertVariantGroups`. Бросается MnParseError: `parseComboName`
+  // обёрнут перехватчиком, который превращает её в warning `parse-error`,
+  // и токен не даёт CSS вовсе (то же поведение, что у Q-08).
+  assertVariantGroups(
+    comboName, 'variants', 1,
+  );
   return variants(comboName, false)[0];
 }
 

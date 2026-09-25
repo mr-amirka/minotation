@@ -92,6 +92,26 @@ export interface MnViteOptions {
    * mnVite({ classVarSuffixes: ['Class', 'Cls', 'Styles'] })
    */
   classVarSuffixes?: string[];
+  /**
+   * Имена функций слияния токенов, у которых строковые аргументы сканируются.
+   *
+   * `mne('pt26 pb6', props.class)` — токены `pt26` и `pb6` записаны прямо в вызове,
+   * а не в `class="…"` и не в переменной с суффиксом из {@link classVarSuffixes}.
+   * Без этой опции они не попадали в CSS: сборка проходила зелёной, а стили молча
+   * отсутствовали.
+   *
+   * Берутся все строковые литералы внутри вызова, на любой глубине вложенности;
+   * подстановки `${…}` пропускаются, идентификаторы-аргументы игнорируются
+   * (их значения приходят из своих объявлений — их подхватит `classVarSuffixes`).
+   *
+   * Пустой массив отключает механизм.
+   *
+   * @default ['mne', 'mnClass']
+   *
+   * @example
+   * mnVite({ mergeFnNames: ['mne', 'mnClass', 'cx'] })
+   */
+  mergeFnNames?: string[];
   /** Опции создания mn-инстанса (selectorPrefix, media, strict, …). */
   mn?: {
     selectorPrefix?: string;
@@ -155,6 +175,85 @@ function extractClassVarTokens(source: string, re: RegExp | undefined): string[]
     // `${…}` — вычисляемая часть, её содержимое статически неизвестно; берём остальное.
     for (const token of m[2].replace(/\$\{[^}]*\}/g, ' ').split(/\s+/)) {
       if (token) out.push(token);
+    }
+  }
+  return out;
+}
+
+/**
+ * Извлекает MN-токены из строковых аргументов вызовов функций слияния.
+ *
+ * Разбор посимвольный, а не регуляркой: аргументы бывают вложенными
+ * (`mne(base, cond ? a : mne(x, 'p10'))`), и сбалансированность скобок регулярным
+ * выражением не выражается.
+ *
+ * @param source - исходный текст файла
+ * @param names - имена функций (`['mne', 'mnClass']`); пустой массив отключает разбор
+ * @returns список токенов (с возможными повторами)
+ */
+function extractMergeCallTokens(source: string, names: string[]): string[] {
+  if (names.length === 0) {
+    return [];
+  }
+  const out: string[] = [];
+  const l = source.length;
+  for (const name of names) {
+    let from = 0;
+    let at: number;
+    while ((at = source.indexOf(name, from)) !== -1) {
+      from = at + name.length;
+      // Слева не должно быть частью другого идентификатора (`myMne`), справа —
+      // только пробелы до открывающей скобки.
+      const before = at > 0 ? source[at - 1] : ' ';
+      if (/[\w$.]/.test(before)) {
+        continue;
+      }
+      let i = from;
+      while (i < l && (source[i] === ' ' || source[i] === '\n' || source[i] === '\t')) {
+        i++;
+      }
+      if (source[i] !== '(') {
+        continue;
+      }
+      // Идём до закрывающей скобки вызова, собирая литералы по пути.
+      let depth = 0;
+      for (; i < l; i++) {
+        const ch = source[i];
+        if (ch === '(' || ch === '[' || ch === '{') {
+          depth++;
+          continue;
+        }
+        if (ch === ')' || ch === ']' || ch === '}') {
+          depth--;
+          if (depth === 0) {
+            break;
+          }
+          continue;
+        }
+        if (ch !== '\'' && ch !== '"' && ch !== '`') {
+          continue;
+        }
+        // Строковый литерал: дочитываем до парной кавычки, уважая экранирование.
+        const quote = ch;
+        let value = '';
+        for (i++; i < l; i++) {
+          if (source[i] === '\\') {
+            value += source[i] + source[i + 1];
+            i++;
+            continue;
+          }
+          if (source[i] === quote) {
+            break;
+          }
+          value += source[i];
+        }
+        for (const token of value.replace(/\$\{[^}]*\}/g, ' ').split(/\s+/)) {
+          if (token) {
+            out.push(token);
+          }
+        }
+      }
+      from = i;
     }
   }
   return out;
@@ -284,6 +383,13 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
   const classVarRe = classVarRegExp(
     options.classVarSuffixes === undefined ? ['Class'] : options.classVarSuffixes,
   );
+  const mergeFnNames = options.mergeFnNames === undefined
+    ? ['mne', 'mnClass']
+    : options.mergeFnNames;
+  /** Все токены файла: атрибут + переменные с суффиксом + аргументы функций слияния. */
+  const collectTokens = (text: string): string[] => extractTokens(text, attr)
+    .concat(extractClassVarTokens(text, classVarRe))
+    .concat(extractMergeCallTokens(text, mergeFnNames));
   const safelist: string[] = [];
   for (const line of options.safelist || []) {
     for (const token of line.split(/\s+/)) {
@@ -390,7 +496,7 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
     for (const file of walkFiles(srcDir, exts)) {
       try {
         const source = readFileSync(file, 'utf-8');
-        const tokens = extractTokens(source, attr).concat(extractClassVarTokens(source, classVarRe));
+        const tokens = collectTokens(source);
         if (tokens.length > 0) {
           fileTokens.set(file, new Set(tokens));
         }
@@ -452,7 +558,7 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
 
     transform(source: string, id: string) {
       if (!exts.some(ext => id.endsWith(ext))) return null;
-      const tokens = extractTokens(source, attr).concat(extractClassVarTokens(source, classVarRe));
+      const tokens = collectTokens(source);
       if (tokens.length > 0) {
         fileTokens.set(id, new Set(tokens));
       }
@@ -465,7 +571,7 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
         // Загружаем пресеты и токены ДО компиляции — transform-хуки ещё не отработали
         scanPresetFiles();
         scanProject();
-        const tokens = extractTokens(html, attr).concat(extractClassVarTokens(html, classVarRe));
+        const tokens = collectTokens(html);
         if (tokens.length > 0) {
           fileTokens.set('index.html', new Set(tokens));
         }
@@ -539,7 +645,7 @@ if (import.meta.hot) {
         return;
       }
 
-      const tokens = extractTokens(source, attr).concat(extractClassVarTokens(source, classVarRe));
+      const tokens = collectTokens(source);
       if (tokens.length > 0) {
         fileTokens.set(file, new Set(tokens));
       } else {

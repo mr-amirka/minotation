@@ -13,6 +13,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./mne": {
+      "types": "./dist/mne.d.ts",
+      "default": "./dist/mne.js"
     }
   },
   "scripts": {

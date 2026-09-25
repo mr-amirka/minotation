@@ -398,6 +398,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       let matches: RegExpExecArray | null;
       let suffix: string;
       let synonyms: AltMap;
+      let wasEmpty: boolean;
 
       for (; scopesI < scopesL; scopesI++) {
         scope = scopes[scopesI];
@@ -410,6 +411,10 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
         statesI = 0;
 
         for (; statesI < statesL; statesI++) {
+          // Пустое имя — признак псевдоЭЛЕМЕНТА (`p10::before` даёт пару
+          // ['', 'before']). О следующем за ним имени предупреждать не о чем:
+          // `::before` — не состояние и синонимом не заводится.
+          wasEmpty = !states[statesI - 1] && statesI > 0;
           _state = state = unslash(states[statesI]);
           matches = REGEXP_SCOPE_SUFFIX.exec(_state);
           if (matches) {
@@ -433,6 +438,19 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
               }
               alts = joinMapsWithFirstValue(alts, synonyms);
             } else {
+              // Имени нет ни в синонимах, ни в `mn.states` — пропускаем как есть
+              // (псевдокласс может быть специфичен для окружения или ещё не быть
+              // в стандарте), но предупреждаем: `p10:fv` иначе давал мёртвое
+              // правило `.p10\:fv:fv{…}` молча. Пустое имя — это `::before`
+              // и подобные, там предупреждать не о чем.
+              _state && !wasEmpty && (instance as any)._collectWarning?.({
+                type: 'unregistered-state',
+                token: $$depthCheck.token,
+                message: 'Состояние ":' + _state + '" не зарегистрировано — ни синонимом, '
+                  + 'ни в `mn.states`. Оно уйдёт в CSS как есть; если это опечатка, '
+                  + 'правило будет мёртвым. Заведите синоним '
+                  + '(`mn.synonyms({ … })`), чтобы в проекте была одна каноническая запись',
+              });
               _pushSuffix(':' + _state);
             }
           }

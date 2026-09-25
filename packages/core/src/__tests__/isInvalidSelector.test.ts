@@ -286,7 +286,10 @@ describe('вырожденная группа вариантов в значен
     // `p10:h(.x)` → `:hover.x`: содержимое дописывается к тому же селектору.
     // Проверка намеренно смотрит только на значение — часть до первого
     // контекстного символа на нулевой глубине.
-    expect(compileToken('p10:h(.x)').warnings).toHaveLength(0);
+    const r = compileToken('p10:h(.x)');
+
+    expect(r.css).toContain('padding:10px');
+    expect(r.warnings.map((w) => w.type)).not.toContain('parse-error');
   });
 });
 

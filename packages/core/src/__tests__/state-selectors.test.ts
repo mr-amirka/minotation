@@ -203,3 +203,101 @@ describe('вырожденные контекстные селекторы: пр
     expect(compile('p10<').warnings[0].message).toContain('Пустой контекстный сегмент');
   });
 });
+
+/**
+ * Синонимы состояний и предупреждение о незарегистрированном имени.
+ *
+ * Решение владельца 2026-09-25: неизвестное имя НЕ бракуется — псевдокласс
+ * может быть специфичен для окружения или ещё не быть в стандарте. Но и молчать
+ * нельзя: `p10:fv` давал мёртвое правило `.p10\:fv:fv{…}` без признака ошибки.
+ * Предупреждение подсказывает завести синоним и писать одну каноническую форму.
+ */
+describe('синонимы состояний', () => {
+  function compileWith(token: string): { css: string;
+    warnings: any[] } {
+    const warnings: any[] = [];
+    const mn: any = minotationProvider({
+      onWarning: (w: any) => warnings.push(w),
+    });
+    mn.setPresets([presetStandard, presetSynonyms]);
+    mn.getCompiler('class')(token);
+    mn.compile();
+    return {
+      css: mn.styles$.getValue().map((s: { content: string }) => s.content).join(''),
+      warnings,
+    };
+  }
+
+  test.each([
+    ['p10:fv', ':focus-visible'],
+    ['p10:fw', ':focus-within'],
+    ['p10:v', ':visited'],
+    ['p10:link', ':link'],
+    ['p10:al', ':any-link'],
+    ['p10:t', ':target'],
+    ['p10:e', ':empty'],
+    ['p10:root', ':root'],
+    ['p10:r', ':required'],
+    ['p10:opt', ':optional'],
+    ['p10:ro', ':read-only'],
+    ['p10:rw', ':read-write'],
+    ['p10:invalid', ':invalid'],
+    ['p10:valid', ':valid'],
+    ['p10:ir', ':in-range'],
+    ['p10:oor', ':out-of-range'],
+    ['p10:ps', ':placeholder-shown'],
+    ['p10:ind', ':indeterminate'],
+    ['p10:def', ':default'],
+    ['p10:af', ':autofill'],
+    ['p10:fot', ':first-of-type'],
+    ['p10:lot', ':last-of-type'],
+    ['p10:oot', ':only-of-type'],
+    ['p10:nt', ':nth-of-type'],
+    ['p10:nl', ':nth-last-child'],
+    ['p10:nlt', ':nth-last-of-type'],
+  ])('%s → %s, без предупреждения', (token, expected) => {
+    const r = compileWith(token);
+
+    expect(r.css).toContain(expected + '{padding:10px}');
+    expect(r.warnings).toHaveLength(0);
+  });
+
+  test.each([
+    ['p10:not[.a]', ':not(.a)'],
+    ['p10:is[.a]', ':is(.a)'],
+    ['p10:where[.a]', ':where(.a)'],
+    ['p10:has[.a]', ':has(.a)'],
+  ])('%s → %s — функциональные псевдоклассы не предупреждают', (token, expected) => {
+    // Ключ совпадает с именем намеренно: это штатный синтаксис нотации.
+    const r = compileWith(token);
+
+    expect(r.css).toContain(expected + '{padding:10px}');
+    expect(r.warnings).toHaveLength(0);
+  });
+
+  test('псевдоэлемент не считается состоянием', () => {
+    // `p10::before` даёт пару ['', 'before']: пустое имя — признак
+    // псевдоэлемента, о следующем за ним предупреждать не о чем.
+    const r = compileWith('p10::before');
+
+    expect(r.css).toContain('::before{padding:10px}');
+    expect(r.warnings).toHaveLength(0);
+  });
+
+  test('незарегистрированное имя компилируется, но предупреждает', () => {
+    const r = compileWith('p10:fvv');
+
+    expect(r.css).toContain(':fvv{padding:10px}');
+    expect(r.warnings).toHaveLength(1);
+    expect(r.warnings[0].type).toBe('unregistered-state');
+    expect(r.warnings[0].token).toBe('p10:fvv');
+    expect(r.warnings[0].message).toContain('не зарегистрировано');
+  });
+
+  test('полное имя вместо синонима тоже предупреждает — нужна одна форма', () => {
+    // Смысл решения владельца: подтолкнуть к единой канонической записи.
+    // `:h` молчит, `:hover` предупреждает — либо пиши `:h`, либо заведи синоним.
+    expect(compileWith('p10:h').warnings).toHaveLength(0);
+    expect(compileWith('p10:hover').warnings).toHaveLength(1);
+  });
+});

@@ -185,7 +185,17 @@ export class MnParseError extends Error {
  * превышена глубина контекста (`max-depth-exceeded`), хендлер вернул битое
  * CSS-значение (`invalid-css-value`).
  */
-export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'invalid-css-value';
+/**
+ * `'unregistered-state'` добавлен 2026-09-25 по решению владельца. Имя состояния,
+ * которого нет ни в синонимах, ни в `mn.states`, уходит в CSS КАК ЕСТЬ — и это
+ * сделано осознанно: псевдокласс может быть специфичен для окружения или ещё не
+ * попасть в стандарт, браковать его нельзя. Но и молчать нельзя: `p10:fv` давал
+ * мёртвое правило `.p10\:fv:fv{…}` без единого признака ошибки. Предупреждение
+ * не блокирует компиляцию — оно подсказывает завести синоним и писать одну
+ * каноническую форму.
+ */
+export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'invalid-css-value'
+  | 'unregistered-state';
 
 /**
  * Бросается из {@link MnInstance.compile}, когда `MnOptions.strict: true` и за цикл

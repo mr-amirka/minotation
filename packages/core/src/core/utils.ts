@@ -341,26 +341,37 @@ export function assertVariantGroups(
 ): void {
   const l = value.length;
   let i = 0;
-  // Стек «была ли `|` на этом уровне»: индекс — глубина вложенности.
+  // Стеки по глубине вложенности: была ли `|` на этом уровне и есть ли
+  // содержимое у текущей альтернативы.
   const hasAlternative: boolean[] = [];
+  const hasContent: boolean[] = [];
   let depth = 0;
+  let inContext = 0;
   let ch: string;
   while (i < l) {
     ch = value[i];
     if (ch === '\\') {
       // Экранированная скобка — часть значения, а не грамматики.
+      if (depth) {
+        hasContent[depth - 1] = true;
+      }
       i += 2;
       continue;
     }
     if (valueOnly && !depth && CONTEXT_START[ch]) {
-      // Дальше начинается контекст токена (состояние, предок, медиа, условие),
-      // а там скобки — это scope-грамматика, а не группа вариантов:
-      // `p10:h(.x)` даёт `:hover.x`, и это штатное поведение. Проверяем только
-      // значение — часть до первого контекстного символа на нулевой глубине.
-      return;
+      // Дальше начинается контекст токена (состояние, предок, медиа, условие).
+      // Там скобки могут быть и scope-грамматикой (`p10:h(.x)` → `:hover.x`),
+      // поэтому «скобки без `|`» больше не бракуем — но пустые альтернативы
+      // бракуем и здесь: наличие `|` внутри уже доказывает, что это группа.
+      inContext = 1;
     }
     if (ch === '(') {
-      hasAlternative[depth++] = false;
+      if (depth) {
+        hasContent[depth - 1] = true;
+      }
+      hasAlternative[depth] = false;
+      hasContent[depth] = false;
+      depth++;
     } else if (ch === ')') {
       if (!depth) {
         throwVariantGroup(
@@ -369,7 +380,27 @@ export function assertVariantGroups(
           value, utility,
         );
       }
-      if (!hasAlternative[--depth]) {
+      depth--;
+      if (hasAlternative[depth] && !hasContent[depth]) {
+        throwVariantGroup(
+          'Пустая альтернатива в группе "' + value + '": она даёт лишний вариант '
+            + 'без самой части (например "@(sm|)" компилируется и в "@sm", и в '
+            + 'безусловное правило, обесценивая медиа-запрос). Уберите лишний "|"',
+          value, utility,
+        );
+      }
+      if (!hasAlternative[depth] && !hasContent[depth]) {
+        // Пустые скобки бессмысленны в ЛЮБОЙ позиции: ни как группа вариантов,
+        // ни как scope (`p10:h()` добавляет к селектору ровно ничего).
+        // Поэтому бракуются и в контекстной части, в отличие от проверки ниже.
+        throwVariantGroup(
+          'Пустые скобки в "' + value + '" ничего не задают и будут молча '
+            + 'удалены. Уберите их или экранируйте — "\\(" и "\\)" — если это '
+            + 'часть значения',
+          value, utility,
+        );
+      }
+      if (!hasAlternative[depth] && !inContext) {
         throwVariantGroup(
           'Скобки в "' + value + '" не образуют группу вариантов: внутри нет "|", '
             + 'и они будут молча удалены. Группа вариантов пишется как "@(sm|md)". '
@@ -380,7 +411,18 @@ export function assertVariantGroups(
         );
       }
     } else if (ch === '|' && depth) {
+      if (!hasContent[depth - 1]) {
+        throwVariantGroup(
+          'Пустая альтернатива в группе "' + value + '": она даёт лишний вариант '
+            + 'без самой части (например "@(|sm)" компилируется и в "@sm", и в '
+            + 'безусловное правило, обесценивая медиа-запрос). Уберите лишний "|"',
+          value, utility,
+        );
+      }
       hasAlternative[depth - 1] = true;
+      hasContent[depth - 1] = false;
+    } else if (depth && ch !== ' ') {
+      hasContent[depth - 1] = true;
     }
     i++;
   }
@@ -392,6 +434,61 @@ export function assertVariantGroups(
     );
   }
 }
+
+/**
+ * Бракует висячий сепаратор в конце имени — контекст без самой части.
+ *
+ * `<` и `>` сюда не входят: у них свои, более точные сообщения в
+ * `getCombinator` (§13 спеки, Q-08). Остальные давали молчаливый мусор, причём
+ * в четырёх случаях из пяти — синтаксически битый CSS:
+ *
+ * | Токен | Давал |
+ * |---|---|
+ * | `p10@` | `.p10\@{…}` — суффикс медиа молча испарялся |
+ * | `p10:` | `.p10\::{…}` — висячее двоеточие |
+ * | `p10.` | `.p10\..{…}` — висячая точка |
+ * | `p10#` | `.p10\##{…}` — висячая решётка |
+ * | `p10~` | `.p10\~~{…}` — висячий комбинатор |
+ * | `p10@sm&` | `.p10\@sm&{…}` — неэкранированный `&` в имени класса |
+ *
+ * Экранированный сепаратор — часть значения и не задет: `bgi_a\.` останется
+ * как написано.
+ *
+ * @throws {MnParseError} если имя заканчивается неэкранированным сепаратором
+ */
+export function assertTrailingSeparator(value: string, utility: string): void {
+  const l = value.length;
+  if (!l || !TRAILING_SEPARATORS[value[l - 1]]) {
+    return;
+  }
+  // Считаем слэши перед последним символом: чётное число — сепаратор «голый».
+  let slashes = 0;
+  let i = l - 1;
+  while (i-- && value[i] === '\\') {
+    slashes++;
+  }
+  if (slashes % 2) {
+    return;
+  }
+  throwVariantGroup(
+    'Имя "' + value + '" заканчивается на "' + value[l - 1] + '" без самой части: '
+      + 'контекст не задан, а в CSS уедет висячий символ. Допишите часть или '
+      + 'экранируйте символ, если он должен попасть в значение',
+    value, utility,
+  );
+}
+
+/** Сепараторы, висящие в конце имени. `<`/`>` — у `getCombinator` свои сообщения. */
+const TRAILING_SEPARATORS: Record<string, 1> = {
+  '@': 1,
+  ':': 1,
+  '.': 1,
+  '#': 1,
+  '~': 1,
+  '&': 1,
+  '+': 1,
+  '[': 1,
+};
 
 /** Начала контекстной части токена — дальше скобки принадлежат scope-грамматике. */
 const CONTEXT_START: Record<string, 1> = {
@@ -422,6 +519,7 @@ export function normalizeSelectorsIteratee(selectorsMap: Record<string, number>,
     if (!selector) {
       return;
     }
+    assertTrailingSeparator(selector, 'selectors');
     assertVariantGroups(selector, 'selectors');
     // `pseudoBrackets` — только здесь: имена токенов разворачивают scope
     // собственным механизмом, и второе преобразование их бы испортило.

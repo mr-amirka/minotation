@@ -13,6 +13,7 @@ import {
 } from 'fundamentool';
 import {
   assertVariantGroups,
+  assertTrailingSeparator,
 } from '../core/utils';
 import {
   selectorNormalize,
@@ -68,6 +69,7 @@ function variantsBase(comboName: string): string[] {
   // JSDoc `assertVariantGroups`. Бросается MnParseError: `parseComboName`
   // обёрнут перехватчиком, который превращает её в warning `parse-error`,
   // и токен не даёт CSS вовсе (то же поведение, что у Q-08).
+  assertTrailingSeparator(comboName, 'variants');
   assertVariantGroups(
     comboName, 'variants', 1,
   );

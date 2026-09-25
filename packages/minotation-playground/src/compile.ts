@@ -6,7 +6,7 @@
  */
 import {
   minotationProvider,
-  extractTokens,
+  scanTokens,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -37,7 +37,7 @@ export const DEFAULT_PRESET_IDS = ['standard', 'synonyms', 'medias'];
  * @returns CSS, скомпилированный из всех найденных в `html` токенов
  */
 export function compilePreviewCss(html: string, presetIds: string[]): string {
-  const tokens = extractTokens(html, 'class');
+  const tokens = scanTokens(html, { attr: 'class' });
   if (tokens.length === 0) return '';
 
   const mn = minotationProvider();

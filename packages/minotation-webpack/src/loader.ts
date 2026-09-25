@@ -2,7 +2,7 @@
  * Webpack loader: извлекает MN-токены из исходников.
  */
 import type { LoaderDefinitionFunction } from 'webpack';
-import { extractTokens } from 'minotation';
+import { scanTokens } from 'minotation';
 import { getState } from './state';
 
 /** Опции webpack-лоадера MN. */
@@ -12,6 +12,18 @@ interface MnLoaderOptions {
    * @default ['class']
    */
   attrs?: string[];
+  /**
+   * Суффиксы имён переменных, чьё строковое значение считается списком MN-токенов
+   * (`const thClass = 'py12 px14'`). Пустой массив отключает механизм.
+   * @default ['Class']
+   */
+  classVarSuffixes?: string[];
+  /**
+   * Имена функций слияния токенов, чьи строковые аргументы сканируются
+   * (`mne('pt26 pb6', props.class)`). Пустой массив отключает механизм.
+   * @default ['mne', 'mnClass']
+   */
+  mergeFnNames?: string[];
 }
 
 /**
@@ -21,10 +33,10 @@ interface MnLoaderOptions {
  * добавляет найденные токены в shared-стейт и возвращает исходник без изменений.
  * CSS не генерируется здесь — это делает {@link MnWebpackPlugin}.
  *
- * Использует {@link extractTokens} из ядра minotation — поддерживает
- * литеральные строки, JSX-выражения со строкой и template literals
- * (интерполяции `${...}` отбрасываются). Объектные литералы (MUI `slotProps`
- * и т.п.) — пока не поддерживаются, см. `PLAN.md` minotation.
+ * Использует {@link scanTokens} из ядра minotation — одну реализацию сканера на все
+ * сборщики: литеральные строки, JSX-выражения, template literals (интерполяции
+ * `${...}` отбрасываются), объектные литералы (MUI `slotProps`), переменные
+ * с суффиксом `Class` и строковые аргументы `mne`/`mnClass`.
  */
 const loader: LoaderDefinitionFunction<MnLoaderOptions> = function (source) {
   const options = this.getOptions() as MnLoaderOptions;
@@ -33,7 +45,11 @@ const loader: LoaderDefinitionFunction<MnLoaderOptions> = function (source) {
 
   const tokens = new Set<string>();
   for (const attr of attrNames) {
-    for (const t of extractTokens(source as string, attr)) {
+    for (const t of scanTokens(source as string, {
+      attr,
+      classVarSuffixes: options.classVarSuffixes,
+      mergeFnNames: options.mergeFnNames,
+    })) {
       tokens.add(t);
     }
   }

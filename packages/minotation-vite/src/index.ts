@@ -1,7 +1,7 @@
 import type { Plugin, ViteDevServer } from 'vite';
 import {
   minotationProvider,
-  extractTokens,
+  scanTokens,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -138,128 +138,6 @@ function escapeRe(v: string): string {
 }
 
 /**
- * Собирает регексп для поиска `…<Суффикс> = 'токены'` и `{ …<Суффикс>: 'токены' }`.
- *
- * Группы: 1 — кавычка (для обратной ссылки), 2 — содержимое строки.
- * После суффикса обязателен не-идентификаторный символ, иначе `thClassy`
- * совпал бы с суффиксом `Class`.
- *
- * @param suffixes - суффиксы имён переменных (`['Class']`)
- * @returns регексп с флагом `g` или `undefined`, если суффиксов нет
- */
-function classVarRegExp(suffixes: string[]): RegExp | undefined {
-  if (suffixes.length === 0) return undefined;
-  const alt = suffixes.map(escapeRe).join('|');
-  return new RegExp(
-    '[\\w$]*(?:' + alt + ')(?![\\w$])'      // имя переменной с суффиксом
-    + '\\s*(?::[^=;\\n]+)?'                  // необязательная аннотация типа
-    + '\\s*[=:]\\s*'                         // присваивание или свойство объекта
-    + '([\'"`])((?:\\\\.|[^\\\\])*?)\\1',        // строка в кавычках
-    'g',
-  );
-}
-
-/**
- * Извлекает MN-токены из строковых значений переменных с заданными суффиксами.
- *
- * @param source - исходный текст файла
- * @param re - регексп из {@link classVarRegExp}
- * @returns список токенов (с возможными повторами)
- */
-function extractClassVarTokens(source: string, re: RegExp | undefined): string[] {
-  if (!re) return [];
-  const out: string[] = [];
-  re.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(source)) !== null) {
-    // `${…}` — вычисляемая часть, её содержимое статически неизвестно; берём остальное.
-    for (const token of m[2].replace(/\$\{[^}]*\}/g, ' ').split(/\s+/)) {
-      if (token) out.push(token);
-    }
-  }
-  return out;
-}
-
-/**
- * Извлекает MN-токены из строковых аргументов вызовов функций слияния.
- *
- * Разбор посимвольный, а не регуляркой: аргументы бывают вложенными
- * (`mne(base, cond ? a : mne(x, 'p10'))`), и сбалансированность скобок регулярным
- * выражением не выражается.
- *
- * @param source - исходный текст файла
- * @param names - имена функций (`['mne', 'mnClass']`); пустой массив отключает разбор
- * @returns список токенов (с возможными повторами)
- */
-function extractMergeCallTokens(source: string, names: string[]): string[] {
-  if (names.length === 0) {
-    return [];
-  }
-  const out: string[] = [];
-  const l = source.length;
-  for (const name of names) {
-    let from = 0;
-    let at: number;
-    while ((at = source.indexOf(name, from)) !== -1) {
-      from = at + name.length;
-      // Слева не должно быть частью другого идентификатора (`myMne`), справа —
-      // только пробелы до открывающей скобки.
-      const before = at > 0 ? source[at - 1] : ' ';
-      if (/[\w$.]/.test(before)) {
-        continue;
-      }
-      let i = from;
-      while (i < l && (source[i] === ' ' || source[i] === '\n' || source[i] === '\t')) {
-        i++;
-      }
-      if (source[i] !== '(') {
-        continue;
-      }
-      // Идём до закрывающей скобки вызова, собирая литералы по пути.
-      let depth = 0;
-      for (; i < l; i++) {
-        const ch = source[i];
-        if (ch === '(' || ch === '[' || ch === '{') {
-          depth++;
-          continue;
-        }
-        if (ch === ')' || ch === ']' || ch === '}') {
-          depth--;
-          if (depth === 0) {
-            break;
-          }
-          continue;
-        }
-        if (ch !== '\'' && ch !== '"' && ch !== '`') {
-          continue;
-        }
-        // Строковый литерал: дочитываем до парной кавычки, уважая экранирование.
-        const quote = ch;
-        let value = '';
-        for (i++; i < l; i++) {
-          if (source[i] === '\\') {
-            value += source[i] + source[i + 1];
-            i++;
-            continue;
-          }
-          if (source[i] === quote) {
-            break;
-          }
-          value += source[i];
-        }
-        for (const token of value.replace(/\$\{[^}]*\}/g, ' ').split(/\s+/)) {
-          if (token) {
-            out.push(token);
-          }
-        }
-      }
-      from = i;
-    }
-  }
-  return out;
-}
-
-/**
  * Рекурсивно обходит директорию и возвращает пути файлов с заданными расширениями.
  *
  * @param dir - корневая директория
@@ -380,16 +258,14 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
   const exts = options.extensions || ['.html', '.jsx', '.tsx', '.vue', '.svelte'];
   const presetExts = options.presetExtensions || ['.mn.ts', '.mn.js', '.mn.tsx'];
   // Плоский набор: элементы safelist могут содержать несколько токенов через пробел.
-  const classVarRe = classVarRegExp(
-    options.classVarSuffixes === undefined ? ['Class'] : options.classVarSuffixes,
-  );
-  const mergeFnNames = options.mergeFnNames === undefined
-    ? ['mne', 'mnClass']
-    : options.mergeFnNames;
+  // Опции скана собираем один раз на плагин, а не на каждый файл.
+  const scanOptions = {
+    attr,
+    classVarSuffixes: options.classVarSuffixes,
+    mergeFnNames: options.mergeFnNames,
+  };
   /** Все токены файла: атрибут + переменные с суффиксом + аргументы функций слияния. */
-  const collectTokens = (text: string): string[] => extractTokens(text, attr)
-    .concat(extractClassVarTokens(text, classVarRe))
-    .concat(extractMergeCallTokens(text, mergeFnNames));
+  const collectTokens = (text: string): string[] => scanTokens(text, scanOptions);
   const safelist: string[] = [];
   for (const line of options.safelist || []) {
     for (const token of line.split(/\s+/)) {

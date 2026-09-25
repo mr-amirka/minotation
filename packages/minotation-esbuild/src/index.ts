@@ -2,7 +2,7 @@ import type { Plugin, PluginBuild } from 'esbuild';
 import type { MnWarning } from 'minotation';
 import {
   minotationProvider,
-  extractTokens,
+  scanTokens,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -28,6 +28,19 @@ import { createRequire } from 'module';
 export interface MnEsbuildOptions {
   /** Имя атрибута для поиска токенов. @default 'class' */
   attr?: string;
+  /**
+   * Суффиксы имён переменных, чьё строковое значение считается списком MN-токенов
+   * (`const thClass = 'py12 px14'`). Пустой массив отключает механизм.
+   * @default ['Class']
+   */
+  classVarSuffixes?: string[];
+  /**
+   * Имена функций слияния токенов, чьи строковые аргументы сканируются
+   * (`mne('pt26 pb6', props.class)`). Пустой массив отключает механизм.
+   * @default ['mne', 'mnClass']
+   */
+  mergeFnNames?: string[];
+
   /** Расширения файлов приложения, в которых ищем токены. @default ['.html','.jsx','.tsx','.vue','.svelte'] */
   extensions?: string[];
   /** Статические пресеты, подключаемые через конфиг сборщика. */
@@ -163,6 +176,12 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
  */
 export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
   const attr = options.attr || 'class';
+  // Опции скана собираем один раз на плагин, а не на каждый файл.
+  const scanOptions = {
+    attr,
+    classVarSuffixes: options.classVarSuffixes,
+    mergeFnNames: options.mergeFnNames,
+  };
   const exts = options.extensions || ['.html', '.jsx', '.tsx', '.vue', '.svelte'];
   const presetExts = options.presetExtensions || ['.mn.ts', '.mn.js', '.mn.tsx'];
   const fileName = options.fileName || 'mn.css';
@@ -253,7 +272,7 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
         for (const file of walkFiles(root, exts)) {
           try {
             const source = readFileSync(file, 'utf-8');
-            const tokens = extractTokens(source, attr);
+            const tokens = scanTokens(source, scanOptions);
             if (tokens.length > 0) {
               fileTokens.set(file, new Set(tokens));
             }
@@ -272,7 +291,7 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
         if (!exts.some(ext => args.path.endsWith(ext))) return undefined;
         try {
           const source = readFileSync(args.path, 'utf-8');
-          const tokens = extractTokens(source, attr);
+          const tokens = scanTokens(source, scanOptions);
           if (tokens.length > 0) {
             fileTokens.set(args.path, new Set(tokens));
           }

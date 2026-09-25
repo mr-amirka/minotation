@@ -29,7 +29,10 @@ import {
   isInvalidSelector as isInvalidSelectorImpl, 
 } from './isInvalidSelector';
 import {
-  extractTokens as extractTokensImpl, 
+  extractTokens as extractTokensImpl,
+  extractClassVarTokens as extractClassVarTokensImpl,
+  extractMergeCallTokens as extractMergeCallTokensImpl,
+  scanTokens as scanTokensImpl,
 } from './extractTokens';
 import {
   mne as mneImpl,
@@ -55,6 +58,18 @@ export const isInvalidSelector = isInvalidSelectorImpl;
 export const extractTokens = extractTokensImpl;
 
 /**
+ * Сбор токенов для плагинов сборщиков: атрибут + переменные с суффиксом `Class`
+ * + строковые аргументы `mne`/`mnClass`.
+ *
+ * Плагины вызывают именно `scanTokens`, а не собирают механизмы по отдельности —
+ * иначе набор возможностей расходится от сборщика к сборщику (так и было
+ * до 2026-09-25: `classVarSuffixes` работал только в `minotation-vite`).
+ */
+export const scanTokens = scanTokensImpl;
+export const extractClassVarTokens = extractClassVarTokensImpl;
+export const extractMergeCallTokens = extractMergeCallTokensImpl;
+
+/**
  * Слияние наборов токенов без гонки специфичности — см. `mne.ts`.
  *
  * Переопределение вытесняет перекрытый токен из строки, а не побеждает его
@@ -65,6 +80,9 @@ export const mne = mneImpl;
 export const mnClass = mnClassImpl;
 export const mnKey = mnKeyImpl;
 export const mnMap = mnMapImpl;
+export type {
+  ScanTokensOptions,
+} from './extractTokens';
 export type {
   MnInstance,
 } from './types';

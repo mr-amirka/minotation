@@ -147,7 +147,18 @@ describe('паритет с v1: дочерние эссенции x.y', () => {
   });
 });
 
-describe('паритет с v1: синоним :h привязан к @mouse', () => {
+/**
+ * Синоним `:h` — простой `:hover`, ОТХОД от v1-варианта, сознательный.
+ *
+ * 2026-09-17 сюда был скопирован v1-вариант `:hover@mouse` (hover только на
+ * устройствах с указателем, чтобы на тачскринах он не «залипал» после тапа).
+ * Владелец указал 2026-09-25, что в v1 это было сделано осознанно ПРОСТО как
+ * `hover`, а современные устройства отрабатывают его корректно сами.
+ *
+ * Привязка к указателю никуда не делась — она просто стала явной: media-контекст
+ * `mouse` есть в `presetMedias`, и кому нужно, тот пишет `p10:h@mouse`.
+ */
+describe(':h — простой :hover, без обёртки в @mouse', () => {
   function compileWithSynonyms(token: string): string {
     const mn: any = minotationProvider();
     mn.setPresets([
@@ -160,18 +171,26 @@ describe('паритет с v1: синоним :h привязан к @mouse', (
     return mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
   }
 
-  test(':h оборачивается в медиа устройств с указателем', () => {
-    expect(compileWithSynonyms('p10:h')).toBe('@media (pointer: fine) and (hover: hover){.p10\\:h:hover{padding:10px}}');
+  test(':h даёт обычный :hover, без медиа-обёртки', () => {
+    expect(compileWithSynonyms('p10:h')).toBe('.p10\\:h:hover{padding:10px}');
   });
 
-  test(':h@sm — медиа складываются (sm не зарегистрирован в presetMedias — остаётся именем, как в v1)', () => {
-    expect(compileWithSynonyms('p10:h@sm')).toContain('@media sm and (pointer: fine) and (hover: hover)');
+  test('привязка к указателю пишется явно и работает', () => {
+    expect(compileWithSynonyms('p10:h@mouse'))
+      .toBe('@media (pointer: fine) and (hover: hover){.p10\\:h\\@mouse:hover{padding:10px}}');
   });
 
-  test('группа (h|f): только hover уходит под медиа', () => {
+  test(':h@sm — медиа не задвоено (sm не зарегистрирован — остаётся именем, как в v1)', () => {
+    expect(compileWithSynonyms('p10:h@sm')).toBe('@media sm{.p10\\:h\\@sm:hover{padding:10px}}');
+  });
+
+  test('группа (h|f): обе ветки в ОДНОМ правиле', () => {
+    // Побочный выигрыш от снятия `@mouse`: раньше ветки жили в разных
+    // медиа-контекстах и давали два правила, теперь склеиваются в одно.
     const css = compileWithSynonyms('p10:(h|f)');
-    expect(css).toContain('.p10\\:\\(h\\|f\\):focus{padding:10px}');
-    expect(css).toContain('@media (pointer: fine) and (hover: hover){.p10\\:\\(h\\|f\\):hover{padding:10px}}');
+
+    expect(css).toBe('.p10\\:\\(h\\|f\\):hover,.p10\\:\\(h\\|f\\):focus{padding:10px}');
+    expect(css).not.toContain('@media');
   });
 });
 describe('паритет с v1: ветки, изначально ошибочно принятые за недостижимые (2026-09-23)', () => {

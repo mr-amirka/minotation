@@ -143,10 +143,12 @@ let $$important = false;
 function scanToken(token: string): boolean {
   const l = token.length;
   let i = 0;
+  // §6.2: переменная итерации — до цикла.
+  let code: number;
   // Диапазон a–z: сравнение кодов здесь по делу, посимвольное `===` потребовало
   // бы перечислить 26 вариантов.
   while (i < l) {
-    const code = token.charCodeAt(i);
+    code = token.charCodeAt(i);
     if (code < 97 || code > 122) {
       break;
     }

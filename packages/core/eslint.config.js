@@ -100,6 +100,21 @@ module.exports = [
         max: 1, 
       }],
 
+      // §18.2 — механически проверяемая часть §6.2/§6.3.
+      // Тесты и бенчмарки исключены ниже: это холодный путь, где §6 применяется
+      // «по ситуации» (см. §6 «Область»), а читаемость важнее.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: ':matches(ForStatement, WhileStatement, DoWhileStatement) > BinaryExpression > MemberExpression[property.name=/^(length|size)$/]',
+          message: '§6.3: граница цикла (.length/.size) читается на каждой итерации — вынесите в переменную до цикла.',
+        },
+        {
+          selector: ':matches(ForStatement, WhileStatement, DoWhileStatement, ForOfStatement, ForInStatement) > BlockStatement > VariableDeclaration',
+          message: '§6.2: переменная, переприсваиваемая каждую итерацию, объявляется один раз до цикла. Для тела функции-коллбека правило не действует (§6.3.1).',
+        },
+      ],
+
       // §6.8 — if/else/for/while всегда с блоком {}
       curly: ['error', 'all'],
       '@stylistic/brace-style': [
@@ -109,6 +124,17 @@ module.exports = [
           allowSingleLine: false, 
         },
       ],
+    },
+  },
+  {
+    // §6 «Область»: микрооптимизации обязательны на горячих путях; тесты и
+    // бенчмарки — холодный путь, там читаемость важнее экономии на итерации.
+    files: [
+      'src/__tests__/**',
+      'src/__benchmarks__/**',
+    ],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
   {

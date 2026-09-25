@@ -505,6 +505,8 @@ function splitValueParts(
  * `auto`, `calc(…)`, `var(…)`) не подходят под «голое число» и проходят мимо.
  */
 const REGEXP_BARE_NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)$/;
+/** Значение-слово: только буквы и дефисы, без цифр, скобок и единиц. */
+const REGEXP_BARE_WORD = /^[a-z][a-z-]*$/;
 function defaultUnitNormalize(v: string): string {
   if (v.indexOf(' ') < 0) {
     return v !== '0' && REGEXP_BARE_NUMBER.test(v) ? v + 'px' : v;
@@ -834,12 +836,42 @@ export default (mn: MnInstance) => {
     forIn(synonyms, (word: string, abbr: string) => {
       abbr && (byWord[valueNormalize(word)] = abbr);
     });
+    // Допустимые слова — значения самого словаря: словарь задан на свойство,
+    // поэтому отдельная таблица не нужна.
+    const keywords: Record<string, 1> = {};
+    forIn(synonyms, (word: string) => {
+      keywords[valueNormalize(word)] = 1;
+    });
+    /**
+     * Проверяет значение, которого нет в словаре кратких записей.
+     *
+     * Длинная форма бракуется в пользу краткой (две записи одного значения
+     * дают в CSS два правила). Незнакомое слово бракуется вовсе: раньше оно
+     * проходило насквозь и давало мёртвое правило — `ovN` → `overflow:n`,
+     * `posN` → `position:n`, `fwA` → `font-weight:a`.
+     *
+     * Проходят мимо проверки: CSS-wide keywords, переменные и любые функции
+     * (`cursor:url(…)`, `display:var(--v)`) — их словарём не перечислить.
+     */
     function assertSynonymAbbr(p: any, value: string): void {
+      // Сюда доходит только запись, которой НЕТ в словаре кратких форм
+      // (её перехватывает `synonyms[p.suffix]` выше), поэтому если у значения
+      // есть аббревиатура — записано точно длинной формой.
       const abbr = byWord[value];
-      if (abbr && p.suffix !== abbr) {
+      if (abbr) {
         throwInvalid('Записывается короче: "' + p.name + abbr
           + '" вместо "' + p.name + p.suffix + '" — то же значение');
       }
+      // Проверяется только СЛОВО: числа, проценты, длины и функции словарём
+      // не перечислить, и у многих свойств они законны (`bgpx50%`,
+      // `cursor:url(…)`, `display:var(--v)`).
+      //
+      // Ведущий `_` — режим «значение уже готово» (`ol_3px_solid_red`):
+      // составное значение тоже не перечислить.
+      REGEXP_BARE_WORD.test(value) || (value = '');
+      value === '' || p.suffix[0] === '_' || GLOBAL_KEYWORDS[value] || keywords[value]
+        || throwInvalid('Значение "' + p.suffix + '" не распознано: у "' + p.name
+          + '" нет такой краткой записи, а ключевым словом оно не является');
     }
     return isArray(propName)
       ? (props = flags(propName), ((p: any) => {

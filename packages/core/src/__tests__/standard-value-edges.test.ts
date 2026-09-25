@@ -496,3 +496,62 @@ describe('auto-repeat: gtcAF240 вместо gtcRepeat\\(auto-fit,minmax\\(240px
       .toBe('grid-template-columns:repeat(auto-fit,minmax(240px,1fr))');
   });
 });
+
+/**
+ * Хендлеры со словарём кратких записей бракуют незнакомое СЛОВО.
+ *
+ * Раньше оно проходило насквозь и давало мёртвое правило: `ovN` →
+ * `overflow:n`, `posN` → `position:n`. Ловил это только валидатор ядра,
+ * который по плану Q-01 из рантайма уходит.
+ */
+describe('незнакомое слово у хендлера со словарём', () => {
+  function cssOf(token: string): string {
+    const mn = minotationProvider({
+      onWarning: 'silent',
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')(token);
+    mn.compile();
+    const m = mn.styles$.getValue().map((s) => s.content).join('')
+      .match(/\{([^}]*)\}\s*$/);
+    return m ? m[1] : '';
+  }
+
+  test.each([
+    'ovN',
+    'ovxN',
+    'ovyN',
+    'vN',
+  ])('%s → брак: такой краткой записи нет', (token) => {
+    expect(cssOf(token)).toBe('');
+  });
+
+  test.each([
+    ['ovH', 'overflow:hidden'],
+    ['clN', 'clear:none'],
+    ['dF', 'display:flex'],
+    ['crP', 'cursor:pointer'],
+    ['jcC', 'justify-content:center'],
+  ])('%s → %s — краткая запись работает', (token, expected) => {
+    expect(cssOf(token)).toBe(expected);
+  });
+
+  test.each([['ovInherit', 'overflow:inherit'], ['dUnset', 'display:unset']])('%s → %s — CSS-wide keywords проходят', (token, expected) => {
+    expect(cssOf(token)).toBe(expected);
+  });
+
+  test.each([
+    ['d--v', 'display:var(--v)'],
+    ['bgpx50%', 'background-position-x:50%'],
+    ['ol_3px_solid_red', 'outline:3px solid red'],
+  ])('%s → %s — переменные, числа и свободная форма не задеты', (token, expected) => {
+    // Проверяется только СЛОВО: числа, проценты, функции и режим с ведущим `_`
+    // словарём не перечислить, и у многих свойств они законны.
+    expect(cssOf(token)).toBe(expected);
+  });
+
+  test('длинная форма по-прежнему уводит к краткой', () => {
+    expect(cssOf('dFlex')).toBe('');
+    expect(cssOf('crPointer')).toBe('');
+  });
+});

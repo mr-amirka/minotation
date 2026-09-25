@@ -31,10 +31,20 @@ const loader: LoaderDefinitionFunction<MnLoaderOptions> = function (source) {
   const attrNames = options.attrs || ['class'];
   const state = getState();
 
+  const tokens = new Set<string>();
   for (const attr of attrNames) {
     for (const t of extractTokens(source as string, attr)) {
-      state.tokens.add(t);
+      tokens.add(t);
     }
+  }
+
+  // Набор ЗАМЕНЯЕТСЯ целиком, а не дополняется: иначе токен, убранный из
+  // разметки при редактировании, оставался бы в CSS до перезапуска сборки.
+  // Файл без токенов снимается с учёта, чтобы не копить пустые записи.
+  if (tokens.size > 0) {
+    state.tokensByFile.set(this.resourcePath, tokens);
+  } else {
+    state.tokensByFile.delete(this.resourcePath);
   }
 
   return source;

@@ -527,7 +527,15 @@ if (import.meta.hot) {
       try {
         source = readFileSync(file, 'utf-8');
       } catch {
-        fileTokens.delete(file);
+        // Файл удалён (или стал нечитаем) — его токены больше не должны давать
+        // правил. Без пересборки и отправки клиент продолжал бы показывать
+        // стили удалённого файла до ручной перезагрузки страницы.
+        // Пересобираем только если файл действительно был на учёте: чтение
+        // может упасть и на файле, токенов в котором никогда не было.
+        if (fileTokens.delete(file)) {
+          cssOutput = recompile();
+          server.ws.send({ type: 'custom', event: 'mn:update', data: cssOutput });
+        }
         return;
       }
 

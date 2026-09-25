@@ -152,9 +152,12 @@ describe('minotation-vite — реальная сборка', () => {
     expect(readFileSync(join(root, 'dist/mn.css'), 'utf-8')).toContain('padding:10px');
   });
 
-  test('mn.strict: true — неизвестный токен в классе роняет реальную vite-сборку', async () => {
+  test('mn.strict: true — битый аргумент токена роняет реальную vite-сборку', async () => {
+    // Был `totally-unknown-xyz` — после Q-12 (D-014) имя без хендлера считается
+    // чужим CSS-классом и молча игнорируется, поэтому strict на нём больше не
+    // срабатывает. Берём настоящий MN-тег с битым аргументом.
     const root = makeProject({
-      'index.html': '<html><head></head><body><div class="p10 totally-unknown-xyz"></div><script type="module" src="/src/main.js"></script></body></html>',
+      'index.html': '<html><head></head><body><div class="p10 p8-12"></div><script type="module" src="/src/main.js"></script></body></html>',
       'src/main.js': 'export const x = 1;\n',
     });
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);

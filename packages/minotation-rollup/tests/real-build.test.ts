@@ -6,7 +6,7 @@
  */
 import { rollup, type OutputAsset, type OutputChunk } from 'rollup';
 import { join } from 'path';
-import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { mnRollup, type MnRollupOptions } from '../src/index';
 
@@ -215,14 +215,27 @@ describe('проброс предупреждений в rollup (Q-07)', () => {
     expect(mnWarnings.join('\n')).toContain('p10zz');
   });
 
-  test('неизвестный хендлер тоже доходит', async () => {
+  test('чужой класс без хендлера предупреждения НЕ даёт', async () => {
+    // Было наоборот — до Q-12 (D-014) имя без зарегистрированного хендлера
+    // считалось ошибкой. Теперь это обычный чужой CSS-класс: нотация рассчитана
+    // на соседство с любой сторонней разметкой.
     const root = makeProject({
       'src/main.js': 'export default 1;\n',
       'src/app.html': '<div class="totallyunknownxyz1"></div>',
     });
     const warnings = await runCollectingWarnings(root);
 
-    expect(warnings.join('\n')).toContain('totallyunknownxyz1');
+    expect(warnings.join('\n')).not.toContain('totallyunknownxyz1');
+  });
+
+  test('битый аргумент настоящего токена доходит', async () => {
+    const root = makeProject({
+      'src/main.js': 'export default 1;\n',
+      'src/app.html': '<div class="p8-12"></div>',
+    });
+    const warnings = await runCollectingWarnings(root);
+
+    expect(warnings.join('\n')).toContain('p8-12');
   });
 
   test('валидные токены не дают предупреждений', async () => {
@@ -265,5 +278,72 @@ describe('проброс предупреждений в rollup (Q-07)', () => {
 
     expect(seen).toContain('p10zz');
     expect(warnings.filter((w) => w.includes('[minotation]')).length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * Q-09: удаление файла должно убирать его стили из вывода.
+ *
+ * Плагин создаётся ОДИН раз и переиспользуется между сборками — так работает
+ * watch-режим. `fileTokens`/`dynamicPresets` живут в замыкании плагина, и до
+ * фикса `buildStart` только дополнял их, но никогда не чистил: токены
+ * удалённого файла оставались в CSS до перезапуска процесса.
+ */
+describe('minotation-rollup — пересборка тем же инстансом плагина', () => {
+  /** Две сборки подряд одним и тем же плагином, как в watch. */
+  async function buildTwice(
+    root: string, options: MnRollupOptions, between: () => void,
+  ): Promise<[Record<string, string>, Record<string, string>]> {
+    const plugin = mnRollup({ root, ...options });
+
+    const run = async (): Promise<Record<string, string>> => {
+      const bundle = await rollup({
+        input: join(root, 'src/main.js'),
+        plugins: [plugin],
+        onwarn: () => undefined,
+      });
+      const { output } = await bundle.generate({ format: 'es' });
+      await bundle.close();
+      const assets: Record<string, string> = {};
+      for (const item of output) {
+        if (item.type === 'asset') assets[item.fileName] = String((item as OutputAsset).source);
+      }
+      return assets;
+    };
+
+    const first = await run();
+    between();
+    return [first, await run()];
+  }
+
+  test('удалённый файл не даёт правил во второй сборке', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/gone.html': '<div class="p10"></div>',
+      'src/stays.html': '<div class="mt4"></div>',
+    });
+
+    const [first, second] = await buildTwice(
+      root, {}, () => rmSync(join(root, 'src/gone.html')),
+    );
+
+    expect(first['mn.css']).toContain('padding:10px');
+    expect(second['mn.css']).toContain('margin-top:4px');
+    expect(second['mn.css']).not.toContain('padding:10px');
+  });
+
+  test('удалённый *.mn.ts-пресет перестаёт применяться', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/page.html': '<div class="rlToken"></div>',
+      'src/theme.mn.js': "export default (mn) => { mn('rlToken', 'cF00'); };\n",
+    });
+
+    const [first, second] = await buildTwice(
+      root, {}, () => rmSync(join(root, 'src/theme.mn.js')),
+    );
+
+    expect(first['mn.css']).toContain('color:#f00');
+    expect(second['mn.css'] || '').not.toContain('color:#f00');
   });
 });

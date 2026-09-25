@@ -13,7 +13,7 @@ import {
   presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
-import { getState, MnState } from './state';
+import { getState, collectTokens, MnState } from './state';
 
 /** Опции {@link MnWebpackPlugin}. */
 export interface MnWebpackPluginOptions {
@@ -108,7 +108,8 @@ export class MnWebpackPlugin {
     } = this.options;
 
     // Сортируем токены для стабильного слепка — порядок добавления не важен
-    const sorted = Array.from(state.tokens).sort();
+    const tokens = collectTokens(state);
+    const sorted = Array.from(tokens).sort();
     const tokenKey = sorted.join('\0');
 
     // Кеш: если токены не изменились — повторно используем CSS
@@ -145,7 +146,7 @@ export class MnWebpackPlugin {
     // из какого атрибута (class/className) их извлёк лоадер: это одно и то же
     // DOM-свойство, разница только в JSX-синтаксисе.
     const compile = mn.getCompiler('class');
-    for (const token of state.tokens) compile(token);
+    for (const token of tokens) compile(token);
     mn.compile();
 
     for (let i = 0; i < collected.length; i++) {

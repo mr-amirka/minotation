@@ -237,6 +237,15 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
     name: 'minotation',
     setup(build: PluginBuild) {
       build.onStart(() => {
+        // Оба накопителя живут между сборками (плагин создаётся один раз), а в
+        // watch-режиме `onStart` зовётся на каждую пересборку. Без очистки
+        // токены и пресеты УДАЛЁННОГО файла оставались бы в выводе до
+        // перезапуска: обход ниже добавляет записи, но никогда не убирает.
+        // Чистим здесь, а не в `onEnd`, потому что `onLoad` дозаполняет наборы
+        // уже после этого хука.
+        fileTokens.clear();
+        dynamicPresets.clear();
+
         for (const file of walkFiles(root, presetExts)) {
           const preset = evalPresetFile(file);
           if (preset) dynamicPresets.set(file, preset);

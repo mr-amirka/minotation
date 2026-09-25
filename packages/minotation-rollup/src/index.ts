@@ -216,6 +216,15 @@ export function mnRollup(options: MnRollupOptions = {}): Plugin {
     name: 'minotation',
 
     buildStart() {
+      // Оба накопителя живут между сборками (плагин создаётся один раз), а в
+      // watch-режиме `buildStart` зовётся на каждую пересборку. Без очистки
+      // токены и пресеты УДАЛЁННОГО файла оставались бы в выводе до перезапуска:
+      // обход ниже добавляет записи, но никогда не убирает. Чистим здесь, а не
+      // в `generateBundle`, потому что `transform`/`load` дозаполняют наборы
+      // уже после этого хука.
+      fileTokens.clear();
+      dynamicPresets.clear();
+
       for (const file of walkFiles(root, presetExts)) {
         const preset = evalPresetFile(file);
         if (preset) dynamicPresets.set(file, preset);

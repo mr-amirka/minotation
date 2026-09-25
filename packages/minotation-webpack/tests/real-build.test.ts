@@ -9,10 +9,10 @@
  */
 import webpack from 'webpack';
 import { join } from 'path';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { MnWebpackPlugin, loader, presetLoader } from '../src/index';
-import { getState } from '../src/state';
+import { getState, collectTokens } from '../src/state';
 
 jest.setTimeout(60_000);
 
@@ -29,9 +29,27 @@ function makeProject(files: Record<string, string>): string {
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-/** Прогоняет исходник через MN-лоадер с настоящим loader-контекстом. */
-function runLoader(source: string, options: Record<string, unknown> = {}): string {
-  return (loader as any).call({ getOptions: () => options }, source);
+/**
+ * Прогоняет исходник через MN-лоадер с настоящим loader-контекстом.
+ *
+ * Файл создаётся НА ДИСКЕ: стейт хранит токены по файлам, а `collectTokens`
+ * отсеивает записи несуществующих файлов (так снимаются с учёта удалённые).
+ * Без реального файла токены не дошли бы до сборки.
+ */
+function runLoader(
+  source: string, options: Record<string, unknown> = {}, resourcePath?: string,
+): string {
+  const file = resourcePath || join(mkdtempSync(join(tmpdir(), 'mn-loader-')), 'page.html');
+  writeFileSync(file, source);
+  return (loader as any).call({
+    getOptions: () => options,
+    resourcePath: file, 
+  }, source);
+}
+
+/** Плоский отсортированный набор токенов, что сейчас на учёте. */
+function tokensNow(): string[] {
+  return Array.from(collectTokens(getState())).sort();
 }
 
 /** Прогоняет пресет-файл через preset-loader; возвращает warnings, которые он эмитировал. */
@@ -83,7 +101,7 @@ describe('minotation-webpack — лоадеры', () => {
   beforeEach(() => {
     // стейт — синглтон на процесс (см. state.ts), между тестами его надо чистить
     const state = getState();
-    state.tokens.clear();
+    state.tokensByFile.clear();
     state.dynamicPresets.clear();
   });
 
@@ -91,13 +109,13 @@ describe('minotation-webpack — лоадеры', () => {
     const source = '<div class="p10 mt4"></div><span className="mb4"></span>';
 
     expect(runLoader(source)).toBe(source);
-    expect(Array.from(getState().tokens).sort()).toEqual(['mt4', 'p10']);
+    expect(tokensNow()).toEqual(['mt4', 'p10']);
   });
 
   test('лоадер с несколькими атрибутами собирает токены из каждого', () => {
     runLoader('<div class="p10"></div><span className="mb4"></span>', { attrs: ['class', 'className'] });
 
-    expect(Array.from(getState().tokens).sort()).toEqual(['mb4', 'p10']);
+    expect(tokensNow()).toEqual(['mb4', 'p10']);
   });
 
   test('preset-loader выполняет пресет, отдаёт в бандл пустой модуль', () => {
@@ -132,7 +150,7 @@ describe('minotation-webpack — лоадеры', () => {
 describe('minotation-webpack — реальная сборка', () => {
   beforeEach(() => {
     const state = getState();
-    state.tokens.clear();
+    state.tokensByFile.clear();
     state.dynamicPresets.clear();
   });
 
@@ -185,5 +203,61 @@ describe('minotation-webpack — реальная сборка', () => {
     const assets = await runBuild(makeStubProject(), new MnWebpackPlugin({ output: 'mn.css', presets: [] }));
 
     expect(assets['mn.css']).toBeUndefined();
+  });
+});
+
+/**
+ * Q-09: удаление файла должно убирать его стили из вывода.
+ *
+ * Раньше стейт был плоским `Set<string>`, который не очищался никогда —
+ * токен, однажды попавший в набор, оставался в CSS до перезапуска сборки.
+ */
+describe('minotation-webpack — снятие токенов с учёта', () => {
+  beforeEach(() => {
+    const state = getState();
+    state.tokensByFile.clear();
+    state.dynamicPresets.clear();
+  });
+
+  test('удалённый файл больше не даёт своих правил', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mn-unlink-'));
+    const gone = join(dir, 'gone.html');
+    const stays = join(dir, 'stays.html');
+
+    runLoader('<div class="p10"></div>', {}, gone);
+    runLoader('<div class="mt4"></div>', {}, stays);
+    expect(tokensNow()).toEqual(['mt4', 'p10']);
+
+    rmSync(gone);
+
+    expect(tokensNow()).toEqual(['mt4']);
+    const assets = await runBuild(makeStubProject(), new MnWebpackPlugin({ output: 'mn.css' }));
+    expect(assets['mn.css']).toContain('margin-top:4px');
+    expect(assets['mn.css']).not.toContain('padding:10px');
+  });
+
+  test('токен, убранный при редактировании файла, уходит из вывода', async () => {
+    // Лоадер ЗАМЕНЯЕТ набор своего файла, а не дополняет: иначе `p10` остался
+    // бы навсегда, хотя из разметки его убрали.
+    const file = join(mkdtempSync(join(tmpdir(), 'mn-edit-')), 'page.html');
+
+    runLoader('<div class="p10 mt4"></div>', {}, file);
+    expect(tokensNow()).toEqual(['mt4', 'p10']);
+
+    runLoader('<div class="mt4"></div>', {}, file);
+    expect(tokensNow()).toEqual(['mt4']);
+
+    const assets = await runBuild(makeStubProject(), new MnWebpackPlugin({ output: 'mn.css' }));
+    expect(assets['mn.css']).not.toContain('padding:10px');
+  });
+
+  test('файл, где токенов не осталось вовсе, снимается с учёта', () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'mn-empty-')), 'page.html');
+
+    runLoader('<div class="p10"></div>', {}, file);
+    expect(getState().tokensByFile.has(file)).toBe(true);
+
+    runLoader('<div></div>', {}, file);
+    expect(getState().tokensByFile.has(file)).toBe(false);
   });
 });

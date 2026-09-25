@@ -6,7 +6,7 @@
  */
 import { build } from 'esbuild';
 import { join } from 'path';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { mnEsbuild } from '../src/index';
 
@@ -217,5 +217,62 @@ describe('minotation-esbuild — опции и граничные случаи',
       plugins: [mnEsbuild({ root: join(root, 'no-such-dir'), presets: [] })],
     });
     expect(existsSync(join(root, 'out2', 'mn.css'))).toBe(false);
+  });
+});
+/**
+ * Q-09: удаление файла должно убирать его стили из вывода.
+ *
+ * Плагин создаётся ОДИН раз и переиспользуется между сборками — так работает
+ * watch-режим. `fileTokens`/`dynamicPresets` живут в замыкании плагина, и до
+ * фикса `onStart` только дополнял их, но никогда не чистил.
+ */
+describe('minotation-esbuild — пересборка тем же инстансом плагина', () => {
+  async function buildTwice(
+    root: string, between: () => void,
+  ): Promise<[string, string]> {
+    const outDir = join(root, 'out');
+    const plugin = mnEsbuild({ root });
+
+    const run = async (): Promise<string> => {
+      await build({
+        entryPoints: [join(root, 'src/main.js')],
+        bundle: true,
+        outdir: outDir,
+        plugins: [plugin],
+      });
+      const css = join(outDir, 'mn.css');
+      return existsSync(css) ? readFileSync(css, 'utf-8') : '';
+    };
+
+    const first = await run();
+    between();
+    return [first, await run()];
+  }
+
+  test('удалённый файл не даёт правил во второй сборке', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/gone.html': '<div class="p10"></div>',
+      'src/stays.html': '<div class="mt4"></div>',
+    });
+
+    const [first, second] = await buildTwice(root, () => rmSync(join(root, 'src/gone.html')));
+
+    expect(first).toContain('padding:10px');
+    expect(second).toContain('margin-top:4px');
+    expect(second).not.toContain('padding:10px');
+  });
+
+  test('удалённый *.mn.js-пресет перестаёт применяться', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/page.html': '<div class="esbToken"></div>',
+      'src/theme.mn.js': "export default (mn) => { mn('esbToken', 'cF00'); };\n",
+    });
+
+    const [first, second] = await buildTwice(root, () => rmSync(join(root, 'src/theme.mn.js')));
+
+    expect(first).toContain('color:#f00');
+    expect(second).not.toContain('color:#f00');
   });
 });

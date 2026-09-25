@@ -139,19 +139,38 @@ describe('minotation-vite — dev-хуки', () => {
     expect(sent.data).toBe('');
   });
 
-  test('hot update удалённого файла: токены выбывают, клиенту ничего не шлётся', () => {
-    const root = makeProject({ 'src/app.html': '<div class="mt4"></div>' });
-    const plugin = makePlugin(root, 'serve', { presets: [] });
+  test('hot update удалённого файла: токены выбывают И клиент получает обновление', () => {
+    // Q-09. Раньше плагин снимал токены с учёта и молча выходил — у клиента
+    // оставались стили удалённого файла до ручной перезагрузки страницы.
+    const root = makeProject({
+      'src/app.html': '<div class="mt4"></div>',
+      'src/keep.html': '<div class="p10"></div>',
+    });
+    const plugin = makePlugin(root, 'serve');
     transformHtml(plugin, '<html><head></head><body></body></html>');
     const server = makeServer();
 
     rmSync(join(root, 'src/app.html'));
     expect(() => plugin.handleHotUpdate({ file: join(root, 'src/app.html'), server })).not.toThrow();
 
-    // файл нечитаем — плагин снимает его токены и выходит, не рассылая обновление
+    expect(server.ws.send).toHaveBeenCalledTimes(1);
+    const sent = server.ws.send.mock.calls[0][0] as any;
+    expect(sent.event).toBe('mn:update');
+    expect(sent.data).not.toContain('.mt4{');
+    expect(sent.data).toContain('.p10{'); // соседний файл не задет
+  });
+
+  test('hot update файла, которого и не было на учёте: лишней пересборки нет', () => {
+    // Чтение может упасть и на файле, токенов в котором никогда не было —
+    // рассылать по такому поводу обновление незачем.
+    const root = makeProject({ 'src/app.html': '<div class="p10"></div>' });
+    const plugin = makePlugin(root, 'serve', { presets: [] });
+    transformHtml(plugin, '<html><head></head><body></body></html>');
+    const server = makeServer();
+
+    plugin.handleHotUpdate({ file: join(root, 'src/never-existed.html'), server });
+
     expect(server.ws.send).not.toHaveBeenCalled();
-    // следующий проход по HTML подтверждает: токенов удалённого файла больше нет
-    expect(transformHtml(plugin, '<html><head></head><body></body></html>')).toHaveLength(1);
   });
 
   test('hot update постороннего файла игнорируется', () => {

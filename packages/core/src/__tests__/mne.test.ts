@@ -277,6 +277,14 @@ describe('mnMap — разобранные токены для фреймвор�
     expect(mnMap()).toEqual({});
     expect(mnMap('')).toEqual({});
   });
+
+  test('у чужого класса значения нет — ключом становится он сам', () => {
+    expect(mnMap('text-center --gap=10px f20')).toEqual({
+      'text-center': '',
+      '--gap=10px': '',
+      f: '20',
+    });
+  });
 });
 
 /**
@@ -486,5 +494,35 @@ describe('mne — все контекстные конструкции', () => {
   test('экранированное значение целиком остаётся значением', () => {
     expect(mnKey('bgi_img/a\\.png')).toBe('bgi');
     expect(mne('bgi_img/a\\.png', 'bgi_img/b\\.png')).toBe('bgi_img/b\\.png');
+  });
+});
+
+describe('mne — краевые случаи разбора', () => {
+  test('важность без значения сливается со значением', () => {
+    // `p-i` — законный токен (`padding:0!important`). Ключ у него совпадает
+    // с `p10-i` не по логике важности, а потому что чужим путём возвращается
+    // токен целиком, и он случайно равен `тег + '-i'`. Тест держит это
+    // совпадение: если разбор чужих классов поменяют, слияние не должно уехать.
+    expect(mnKey('p-i')).toBe('p-i');
+    expect(mnKey('p10-i')).toBe('p-i');
+    expect(mne('p10-i', 'p-i')).toBe('p-i');
+    expect(mne('p-i', 'p10-i')).toBe('p10-i');
+  });
+
+  test('ключ `constructor` не считается занятым', () => {
+    // `seen` — обычный объект, поэтому проверка строгая (`=== 1`): иначе
+    // унаследованный `Object.prototype.constructor` выглядел бы как уже
+    // встреченный ключ, и токен молча исчезал бы из результата.
+    expect(mne('constructor f20', 'f24')).toBe('constructor f24');
+    expect(mne('toString p10', 'p12')).toBe('toString p12');
+    expect(mnMap('constructor')).toEqual({
+      constructor: '',
+    });
+  });
+
+  test('нестроковые значения не роняют разбор', () => {
+    // В JSX `props.className` бывает чем угодно при ошибке типизации.
+    expect(mne('f20', 0 as never)).toBe('f20');
+    expect(mne('f20', false as never)).toBe('f20');
   });
 });

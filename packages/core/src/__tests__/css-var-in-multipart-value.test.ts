@@ -1,5 +1,5 @@
 /**
- * Развёртка CSS-переменных в СОСТАВНОМ значении (`ol_3px_solid_--marker`).
+ * Развёртка CSS-переменных в СОСТАВНОМ значении (`tn_0.2s_all_--ease`).
  *
  * До 2026-09-23 подстановка `--name` → `var(--name)` работала только там, где
  * значение разбиралось общим `getVal`. Хендлеры со «свободным» значением
@@ -32,29 +32,29 @@ describe('CSS-переменные в составном значении', () =
   test.each([
     // Регрессия, с которой всё началось: суффикс начинается с `_`, поэтому
     // целиком уходил в «сырой» режим и давал `outline:3px solid --marker`.
-    ['ol_3px_solid_--marker', 'outline:3px solid var(--marker)'],
+    ['tn_0.2s_all_--ease', 'transition:0.2s all var(--ease)'],
     // Та же форма без ведущего `_` — другой путь внутри хендлера, тот же итог.
-    ['ol3px_solid_--marker', 'outline:3px solid var(--marker)'],
+    ['tn0.2s_all_--ease', 'transition:0.2s all var(--ease)'],
     // Одиночная переменная у хендлера свободного значения тоже не работала.
-    ['ol--marker', 'outline:var(--marker)'],
+    ['tn--ease', 'transition:var(--ease)'],
     ['tn_all_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
     ['bxsh_0_0_10px_--shadow', 'box-shadow:0 0 10px var(--shadow)'],
     ['font16px/1.55_--font', 'font:16px/1.55 var(--font)'],
     // Несколько переменных в одном значении.
-    ['ol_3px_solid_--marker', 'outline:3px solid var(--marker)'],
+    ['tn_0.2s_all_--ease', 'transition:0.2s all var(--ease)'],
     ['tn_--prop_--dur_--ease', 'transition:var(--prop) var(--dur) var(--ease)'],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
 
   test('тройной дефис в составном значении даёт env(), как и в одиночном', () => {
-    expect(cssOf('ol_3px_solid_---safe')).toBe('outline:3px solid env(--safe)');
+    expect(cssOf('tn_0.2s_all_---safe')).toBe('transition:0.2s all env(--safe)');
   });
 
   test('имя переменной не кебабится — camelCase сохраняется', () => {
     // Иначе `--myInk` превратилось бы в `var(--my-ink)` и ссылалось бы
     // на несуществующую переменную. `getVal`-путь так себя и вёл всегда.
-    expect(cssOf('ol_1px_solid_--myInk')).toBe('outline:1px solid var(--myInk)');
+    expect(cssOf('tn_0.2s_all_--myInk')).toBe('transition:0.2s all var(--myInk)');
     expect(cssOf('c--myInk')).toBe('color:var(--myInk)');
   });
 
@@ -69,8 +69,8 @@ describe('CSS-переменные в составном значении', () =
     // Экранирование (`\_`) здесь не работает и работать не может: обратный слэш
     // снимается раньше, на разборе токена, и в суффикс приходит уже
     // `--line_soft`. Именно поэтому для имён с `_` нужен `;` (тесты ниже).
-    expect(cssOf('ol_1px_solid_--line\\_soft'))
-      .toBe('outline:1px solid var(--line) soft');
+    expect(cssOf('tn_0.2s_all_--line\\_soft'))
+      .toBe('transition:0.2s all var(--line) soft');
   });
 });
 
@@ -78,8 +78,8 @@ describe('`;` — явный конец имени переменной', () => 
   test('кейс, ради которого терминатор доведён до конца', () => {
     // `_` внутри `--border_size;` — часть
     // имени, снаружи — по-прежнему разделитель частей значения.
-    expect(cssOf('ol--border_size;_solid_--marker'))
-      .toBe('outline:var(--border_size) solid var(--marker)');
+    expect(cssOf('tn--border_size;_all_--ease'))
+      .toBe('transition:var(--border_size) all var(--ease)');
   });
 
   test.each([
@@ -90,14 +90,14 @@ describe('`;` — явный конец имени переменной', () => 
     ['w--my_w;+5', 'width:calc(var(--my_w) + 5px)'],
     // Путь «свободного» значения.
     ['ff--my_font;', 'font-family:var(--my_font)'],
-    ['ol--marker;_solid', 'outline:var(--marker) solid'],
+    ['tn--ease;_all', 'transition:var(--ease) all'],
     // Цветовой путь: `_` там и так был доступен, но `;` не должен ломать.
     ['c--my_ink;', 'color:var(--my_ink)'],
     ['bc--my_line;', 'border-color:var(--my_line)'],
     ['olc--my_line;', 'outline-color:var(--my_line)'],
     ['bg--my_bg;', 'background:var(--my_bg)'],
     // Несколько имён с `_` в одном значении.
-    ['ol--a_b;_solid_--c_d;', 'outline:var(--a_b) solid var(--c_d)'],
+    ['tn--a_b;_all_--c_d;', 'transition:var(--a_b) all var(--c_d)'],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
@@ -154,8 +154,8 @@ describe('хендлеры со своим путём разбора — спл�
 
 describe('составные значения без переменных не затронуты', () => {
   test.each([
-    ['ol_3px_solid_red', 'outline:3px solid red'],
-    ['olS', 'outline:solid'],
+    ['tn_0.2s_all_ease', 'transition:0.2s all ease'],
+    ['tnAll', 'transition:all'],
     ['tn_all_0.2s_ease', 'transition:all 0.2s ease'],
     ['bxsh_0_0_10px_red', 'box-shadow:0 0 10px red'],
     ['posSticky', 'position:sticky'],

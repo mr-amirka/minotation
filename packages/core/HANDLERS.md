@@ -49,11 +49,11 @@
 
 | Токен | CSS |
 |-------|-----|
-| `ol3px_solid_--marker` | `outline:3px solid var(--marker)` |
+| `tn0.2s_all_--ease` | `transition:0.2s all var(--ease)` |
 | `tn_all_0.2s_--ease` | `transition:all 0.2s var(--ease)` |
 | `bxsh_0_0_10px_--shadow` | `box-shadow:0 0 10px var(--shadow)` |
 | `font16px/1.55_--font` | `font:16px/1.55 var(--font)` |
-| `ol_1px_solid_---safe` | `outline:1px solid env(--safe)` |
+| `tn_0.2s_all_---safe` | `transition:0.2s all env(--safe)` |
 | `ff--mono,serif` | `font-family:var(--mono,serif)` (с 2026-09-23; раньше `"-mono",serif`) |
 
 Имя переменной сохраняется как есть и не переводится в kebab-case: `c--myInk` →
@@ -66,11 +66,11 @@
 
 | Токен | CSS |
 |-------|-----|
-| `ol--border_size;_solid_--marker` | `outline:var(--border_size) solid var(--marker)` |
+| `tn--border_size;_all_--ease` | `transition:var(--border_size) all var(--ease)` |
 | `w--my_width;` | `width:var(--my_width)` |
 | `p--gap_size;` | `padding:var(--gap_size)` |
 | `w--my_w;+5` | `width:calc(var(--my_w) + 5px)` |
-| `ol--a_b;_solid_--c_d;` | `outline:var(--a_b) solid var(--c_d)` |
+| `tn--a_b;_all_--c_d;` | `transition:var(--a_b) all var(--c_d)` |
 
 Терминатор необязателен: для имени без `_` (`w--gap` и `w--gap;`) результат одинаков —
 его можно ставить всегда, не разбираясь, каким путём разбирается конкретный хендлер.
@@ -646,6 +646,27 @@ active: '', some: 'Class' }`; это та форма, в которой удоб
 
 Модуль ничего не импортирует — ни ядро, ни `fundamentool`: рассчитан на вызов
 на каждый рендер, в том числе там, где `minotation` подключена только плагином сборки.
+
+---
+
+## Общий `ol` убран — только `olw`/`ols`/`olc`
+
+Контур задаётся атомарно:
+
+```
+olw3 olsS olc--marker      outline-width:3px; outline-style:solid; outline-color:var(--marker)
+olwTN olsDT olcBT          толщина, стиль и системный цвет
+```
+
+Общего `ol` (`ol3px_solid_--marker`) больше нет. По числу правил он выигрывал,
+пока контуров в проекте один-два, и проигрывал от четырёх комбинаций — но решающим
+оказалось не это: **два способа задать одно и то же сами по себе хуже, чем один
+менее оптимальный.** Чем больше стилей в проекте, тем вернее побеждает атомарная
+форма, и держать оба способа значит плодить зоопарк.
+
+Составное значение и терминатор `;` никуда не делись — они есть у остальных
+шорткатов, где атомарных аналогов в CSS нет: `tn` (transition), `bxsh` (box-shadow),
+`font`, `bgs`, `fx`.
 
 ---
 

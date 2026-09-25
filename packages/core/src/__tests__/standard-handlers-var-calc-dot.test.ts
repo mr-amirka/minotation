@@ -275,11 +275,11 @@ describe('представители классов разбора — точн�
       ['olc--v', 'outline-color:var(--v)'],
     ]],
     ['свободное значение (synonymProvider)', [
-      ['ol--v', 'outline:var(--v)'],
-      ['ol_--a_--b', 'outline:var(--a) var(--b)'],
-      ['ol3px_solid_--marker', 'outline:3px solid var(--marker)'],
-      ['ol_1px_solid_---safe', 'outline:1px solid env(--safe)'],
-      ['ol_a\\.b', 'outline:a.b'],
+      ['tn--v', 'transition:var(--v)'],
+      ['tn_--a_--b', 'transition:var(--a) var(--b)'],
+      ['tn0.2s_all_--ease', 'transition:0.2s all var(--ease)'],
+      ['tn_0.2s_all_---safe', 'transition:0.2s all env(--safe)'],
+      ['tn_a\\.b', 'transition:a.b'],
       ['pos--v', 'position:var(--v)'],
     ]],
     ['border-style (свой sidesSetter)', [

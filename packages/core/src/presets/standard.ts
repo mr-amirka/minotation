@@ -2498,7 +2498,6 @@ export default (mn: MnInstance) => {
         EN: `'\\201C'_'\\201D'_'\\2018'_'\\2019'`,
       }, 1,
     ),
-    ol: synonymProvider('outline', OUTLINE_STYLE_SYNONYMS),
     ols: synonymProvider(
       'outlineStyle', OUTLINE_STYLE_SYNONYMS, 1,
     ),

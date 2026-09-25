@@ -140,7 +140,7 @@ export default (mn: MnInstance) => {
      * Restore the focus styles unset by the previous rule.
      */
     '(button|[type=(button|reset|submit)]):-moz-focusring':
-      'ol_1px_dotted_ButtonText',
+      'olw1 olsDT olcBT',
 
     /**
     * Correct the padding in Firefox.

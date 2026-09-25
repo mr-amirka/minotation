@@ -273,7 +273,6 @@ describe('сокращённые записи значений', () => {
     ['dFW', 'display:flow'],
     ['tdBL', 'text-decoration:blink'],
     ['tdW', 'text-decoration:wavy'],
-    ['olA', 'outline:auto'],
     ['usAL', 'user-select:all'],
     ['eAL', 'pointer-events:all'],
     ['vaS', 'vertical-align:sub'],
@@ -543,7 +542,7 @@ describe('незнакомое слово у хендлера со словар�
   test.each([
     ['d--v', 'display:var(--v)'],
     ['bgpx50%', 'background-position-x:50%'],
-    ['ol_3px_solid_red', 'outline:3px solid red'],
+    ['tn_0.2s_all_ease', 'transition:0.2s all ease'],
   ])('%s → %s — переменные, числа и свободная форма не задеты', (token, expected) => {
     // Проверяется только СЛОВО: числа, проценты, функции и режим с ведущим `_`
     // словарём не перечислить, и у многих свойств они законны.

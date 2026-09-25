@@ -117,7 +117,30 @@ function suffixesReduce(suffixes: StrMap<StrMap<number>>,
 export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   let $$states: StrMap<string[]>;
   let $$synonyms: StrMap<AltMap>;
-  let $$depthCheck: MnDepthCheck;
+
+  /**
+   * Проверка мягкого `maxDepth` для {@link getCombinator} — ОДИН объект на
+   * провайдер, а не новый на каждый разбор имени.
+   *
+   * Раньше он собирался заново внутри `parseComboName`: новый объект плюс новое
+   * замыкание `onExceed` на каждый токен, причём `onExceed` зовётся только при
+   * превышении лимита, то есть почти никогда. Единственное, что реально менялось
+   * от токена к токену, — `token`; его и обновляем перед разбором, а `onExceed`
+   * читает значение из самого объекта, а не из замыкания над `comboName`.
+   */
+  const $$depthCheck: MnDepthCheck = {
+    maxDepth: undefined,
+    maxDepthMode: undefined,
+    token: '',
+    onExceed: (depth: number, maxDepth: number) => {
+      (instance as any)._collectWarning?.({
+        type: 'max-depth-exceeded',
+        token: $$depthCheck.token,
+        message: 'Глубина контекстного селектора (' + depth
+          + ') превышает maxDepth (' + maxDepth + ')',
+      });
+    },
+  };
 
   const $$parsers: StrMap<ParseComboNameFn> = {
     'id': parseId,
@@ -220,19 +243,12 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     // способом лениво заводится только при первом `mn.synonyms(...)`.
     $$states = (instance as any).states || {};
     $$synonyms = (instance as any)._synonyms || {};
+    // Опции читаются на каждый разбор: `mn.setOptions()` может поменять лимит
+    // между вызовами. Обновляем три поля вместо аллокации объекта с замыканием.
     const $$mnOptions = (instance as any).options || {};
-    $$depthCheck = {
-      maxDepth: $$mnOptions.maxDepth,
-      maxDepthMode: $$mnOptions.maxDepthMode,
-      token: comboName,
-      onExceed: (depth: number, maxDepth: number) => {
-        (instance as any)._collectWarning?.({
-          type: 'max-depth-exceeded',
-          token: comboName,
-          message: `Глубина контекстного селектора (${depth}) превышает maxDepth (${maxDepth})`,
-        });
-      },
-    };
+    $$depthCheck.maxDepth = $$mnOptions.maxDepth;
+    $$depthCheck.maxDepthMode = $$mnOptions.maxDepthMode;
+    $$depthCheck.token = comboName;
 
     let name = comboName;
     let tgt = targetName;
@@ -250,19 +266,31 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     const suffixes = reduceIn(
       variantsBase(name), suffixesReduce, {} as StrMap<StrMap<number>>,
     );
+    $$tgt = tgt;
     return (reduceIn as any)(
-      suffixes,
-      (
-        items: Array<[StrMap<number>, AltMap]>, essences: StrMap<number>, suffix: string,
-      ) => {
-        const childs = splitChild(suffix as any as string);
-        const first = getParents(childs.shift(), tgt);
-        return push(items, [essences, mapIn(reduce(
-          childs, childsIteratee as any, first,
-        ), mediaFilterIteratee as any)]);
-      },
-      [],
+      suffixes, suffixesIteratee, [],
     );
+  }
+
+  /**
+   * Целевой селектор текущего разбора — для {@link suffixesIteratee}.
+   *
+   * Итератор вынесен из тела `parseComboName` (там он создавался заново на
+   * каждый токен, хотя от токена к токену менялся только `tgt`). Тот же приём,
+   * что и с `$$depthCheck.token`: меняющееся значение кладём в поле провайдера,
+   * функцию создаём один раз. Повторного входа в `parseComboName` нет —
+   * `reduceIn` синхронный, рекурсии через него не возникает.
+   */
+  let $$tgt: string;
+
+  function suffixesIteratee(
+    items: Array<[StrMap<number>, AltMap]>, essences: StrMap<number>, suffix: string,
+  ): Array<[StrMap<number>, AltMap]> {
+    const childs = splitChild(suffix as any as string);
+    const first = getParents(childs.shift(), $$tgt);
+    return push(items, [essences, mapIn(reduce(
+      childs, childsIteratee as any, first,
+    ), mediaFilterIteratee as any)]);
   }
 
   /**

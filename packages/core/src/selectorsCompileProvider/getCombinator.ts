@@ -89,10 +89,10 @@ export interface MnDepthCheck {
  * `__initEssence` (`core/index.ts`), там они известны.
  */
 function throwDegenerate(
-  message: string, name: string, depthCheck?: MnDepthCheck,
+  message: string, name: string, token: string,
 ): never {
   throw new MnParseError(message, {
-    token: depthCheck ? depthCheck.token : '',
+    token: token,
     handler: '',
     arg: name,
     utility: 'getCombinator',
@@ -102,20 +102,25 @@ function throwDegenerate(
 /** Отрицательная глубина: `<-1`, `>-2`. В v1 инвертировала направление. */
 const REGEXP_NEGATIVE_DEPTH = /^-\d/;
 
-export function getCombinator(name: string, depthCheck?: MnDepthCheck): [string, string] {
+export function getCombinator(name: string, depthCheck?: MnDepthCheck): [combinator: string, selector: string] {
+  // Единственная проверка существования на весь вызов: дальше идёт уже готовая
+  // строка токена, а блок мягкого лимита ниже заходит внутрь `if (depthCheck)`.
+  // Параметр опционален только ради публичного API — внутри провайдера он
+  // передаётся всегда (`$$depthCheck` в `selectorsCompileProvider`).
+  const token = depthCheck ? depthCheck.token : '';
   const depthMatchs = REGEXP_DEPTH.exec(name);
   if (!depthMatchs) {
     if (!name) {
       throwDegenerate(
         'Пустой контекстный сегмент: укажите конкретный селектор вместо голого "<"/">"',
-        name, depthCheck,
+        name, token,
       );
     }
     if (REGEXP_NEGATIVE_DEPTH.test(name)) {
       throwDegenerate(
         'Отрицательная глубина контекстного селектора ("' + name
           + '") запрещена: в v1 она незаметно инвертировала направление',
-        name, depthCheck,
+        name, token,
       );
     }
     return [' ', name];
@@ -126,7 +131,7 @@ export function getCombinator(name: string, depthCheck?: MnDepthCheck): [string,
     throwDegenerate(
       'Глубина 0 запрещена: она склеивает оба класса на одном элементе — '
         + 'используйте прямой селектор без "<"/">"',
-      name, depthCheck,
+      name, token,
     );
   }
   const selector = depthMatchs[2];
@@ -134,24 +139,26 @@ export function getCombinator(name: string, depthCheck?: MnDepthCheck): [string,
     throwDegenerate(
       'Глубина (' + depth + ') без селектора запрещена: правило цеплялось бы '
         + 'к любому предку ("*")',
-      name, depthCheck,
+      name, token,
     );
   }
-  // §6.3: `depthCheck.maxDepth` читался до трёх раз за вызов — кешируем.
-  const maxDepth = depthCheck && depthCheck.maxDepth;
-  if (maxDepth !== undefined && maxDepth !== null && depth > maxDepth) {
-    if (depthCheck!.maxDepthMode === 'block') {
-      throw new MnParseError('Глубина контекстного селектора (' + depth
-          + ') превышает maxDepth (' + maxDepth + ')',
-      {
-        token: depthCheck!.token,
-        handler: '',
-        arg: name,
-        utility: 'getCombinator',
-        warningType: 'max-depth-exceeded',
-      });
+  if (depthCheck) {
+    // §6.3: `depthCheck.maxDepth` читался до трёх раз за вызов — кешируем.
+    const maxDepth = depthCheck.maxDepth;
+    if (maxDepth !== undefined && depth > maxDepth) {
+      if (depthCheck.maxDepthMode === 'block') {
+        throw new MnParseError('Глубина контекстного селектора (' + depth
+            + ') превышает maxDepth (' + maxDepth + ')',
+        {
+          token: token,
+          handler: '',
+          arg: name,
+          utility: 'getCombinator',
+          warningType: 'max-depth-exceeded',
+        });
+      }
+      depthCheck.onExceed(depth, maxDepth);
     }
-    depthCheck!.onExceed(depth, maxDepth);
   }
   return [getCombinatorByDepth(depth), selector];
 }

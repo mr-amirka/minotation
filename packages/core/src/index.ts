@@ -31,6 +31,12 @@ import {
 import {
   extractTokens as extractTokensImpl, 
 } from './extractTokens';
+import {
+  mne as mneImpl,
+  mnClass as mnClassImpl,
+  mnKey as mnKeyImpl,
+  mnMap as mnMapImpl,
+} from './mne';
 import presetStandardDefault from './presets/standard';
 import presetSynonymsDefault from './presets/synonyms';
 import presetMediasDefault from './presets/medias';
@@ -47,6 +53,18 @@ export const getCombinator = getCombinatorImpl;
 export const selectorNormalize = selectorNormalizeImpl;
 export const isInvalidSelector = isInvalidSelectorImpl;
 export const extractTokens = extractTokensImpl;
+
+/**
+ * Слияние наборов токенов без гонки специфичности — см. `mne.ts`.
+ *
+ * Переопределение вытесняет перекрытый токен из строки, а не побеждает его
+ * повышенной специфичностью (`f24*2`): конфликта в CSS не возникает вовсе.
+ * Модуль ничего не импортирует — рассчитан на вызов на каждый рендер.
+ */
+export const mne = mneImpl;
+export const mnClass = mnClassImpl;
+export const mnKey = mnKeyImpl;
+export const mnMap = mnMapImpl;
 export type {
   MnInstance,
 } from './types';

@@ -97,6 +97,7 @@ import {
   normalizeSelectors,
   normalizeComboNames,
   parseMediaPart,
+  isBadMediaRange,
   handlerWrap,
   __normalize,
   mergeEssenceInto,
@@ -737,6 +738,23 @@ function minotationProvider(options?: MnOptions) {
   function parseMediaTemplate(mediaName: string): [string] | [string, number | undefined] {
     if (mediaName === 'x') {
       return [mediaName];
+    }
+    const badInput = mediaName.split('x');
+    // Проверяем ДО try ниже: тот перехватывает любой throw и трактует имя как
+    // названное медиа, поэтому исключение отсюда до пользователя не дошло бы.
+    if (isBadMediaRange(badInput[0]) || isBadMediaRange(badInput[1])) {
+      collectWarning({
+        type: 'parse-error',
+        token: '@' + mediaName,
+        handler: '',
+        arg: mediaName,
+        utility: 'parseMediaTemplate',
+        message: 'Медиа-шаблон "@' + mediaName + '" записан не по форме. Допустимо: '
+          + '"@760" (max-width), "@760-" (min-width), "@760-1200" (диапазон), '
+          + '"@760x400" (ширина x высота). Ведущий дефис не нужен — "@-760" даёт '
+          + 'ту же max-width, что "@760"',
+      });
+      return [''];
     }
     const queries: string[] = [];
     let mp: [number, number] | undefined;

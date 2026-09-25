@@ -322,6 +322,34 @@ export function parseMediaValue(v: string | undefined): number {
   }
   return n;
 }
+/** Корректная часть числового медиа-шаблона: `760`, `760-`, `760-1200`. */
+const REGEXP_MEDIA_RANGE = /^\d+(?:-\d*)?$/;
+/** Записано цифрами и дефисами — то есть автор явно имел в виду числовой шаблон. */
+const REGEXP_MEDIA_NUMERIC = /^[-\d]+$/;
+
+/**
+ * Часть медиа-шаблона выглядит числовой, но записана не по форме.
+ *
+ * Разбор числового шаблона («сколько частей после split('-')») принимал лишнее
+ * и делал это молча:
+ *
+ * | Запись | Давала | Почему плохо |
+ * |---|---|---|
+ * | `@-760` | `max-width: 760px` | вторая запись того же, что `@760` |
+ * | `@-760-1200` | `max-width: 760px` | `-1200` отброшен |
+ * | `@760-1200-1500` | `(min 760) and (max 1200)` | `-1500` отброшен |
+ * | `@-` | пустой запрос | правила нет, причина не названа |
+ *
+ * Первое — нарушение «один результат — одна запись» (Р-1), остальные —
+ * молчаливо отброшенный хвост (D-004). Названные медиа (`sm`, `safari`) сюда
+ * не попадают: в них есть буквы, и `REGEXP_MEDIA_NUMERIC` их не пропускает.
+ */
+export function isBadMediaRange(mediaPart?: string): boolean {
+  return !!mediaPart
+    && REGEXP_MEDIA_NUMERIC.test(mediaPart)
+    && !REGEXP_MEDIA_RANGE.test(mediaPart);
+}
+
 export function parseMediaPart(mediaPart?: string): [number, number] | undefined {
   if (!mediaPart) {
     return undefined;

@@ -7,6 +7,9 @@ import {
   minotationProvider, 
 } from '../core/index';
 import presetStandard from '../presets/standard';
+import type {
+  MnWarning, 
+} from '../core/types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -23,8 +26,16 @@ describe('медиа-шаблоны в токене', () => {
     expect(compile('p10@600')).toContain('@media (max-width: 600px)');
   });
 
-  test('ведущий минус — та же верхняя граница', () => {
-    expect(compile('p10@-600')).toContain('@media (max-width: 600px)');
+  test.each([
+    'p10@-600',        // вторая запись того же, что `p10@600`
+    'p10@-600-900',    // `-900` отбрасывался молча
+    'p10@600-900-1200', // `-1200` отбрасывался молча
+    'p10@-',           // пустой запрос, причина не называлась
+  ])('%s → брак: числовой шаблон записан не по форме', (token) => {
+    // Ведущий минус давал ТУ ЖЕ max-width, что голое число, — две записи одного
+    // результата дают в CSS два правила («один результат — одна запись», Р-1).
+    // Остальные три — молчаливо отброшенный хвост (D-004).
+    expect(compile(token)).not.toContain('@media');
   });
 
   test('диапазон — нижняя и верхняя границы ширины', () => {
@@ -155,5 +166,38 @@ describe('selectorPrefix и медиа-селектор', () => {
     expect(compile('p10', {
       selectorPrefix: '.app', 
     })).toContain('.app');
+  });
+});
+
+/**
+ * Сторожи к отбраковке числовых медиа-шаблонов: проверка не должна задевать
+ * ни законные формы, ни названные медиа (в них есть буквы, а `REGEXP_MEDIA_NUMERIC`
+ * пропускает только цифры и дефисы).
+ */
+describe('числовой медиа-шаблон: законные формы не задеты', () => {
+  test.each([
+    ['p10@760', '(max-width: 760px)'],
+    ['p10@760-', '(min-width: 760px)'],
+    ['p10@760-1200', '(min-width: 760px)'],
+    ['p10@760x400', '(max-height: 400px)'],
+    ['p10@x600', '(max-height: 600px)'],
+    ['p10@x10-60', '(min-height: 10px)'],
+  ])('%s → %s', (token, expected) => {
+    expect(compile(token)).toContain(expected);
+  });
+
+  test('предупреждение называет токен и подсказывает форму', () => {
+    const warnings: MnWarning[] = [];
+    const mn: any = minotationProvider({
+      onWarning: (w: MnWarning) => warnings.push(w),
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')('p10@-600');
+    mn.compile();
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].type).toBe('parse-error');
+    expect(warnings[0].token).toBe('@-600');
+    expect(warnings[0].message).toContain('"@760"');
   });
 });

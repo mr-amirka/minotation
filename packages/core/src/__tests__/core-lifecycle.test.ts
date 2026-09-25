@@ -6,6 +6,7 @@ import {
   minotationProvider, 
 } from '../core/index';
 import presetStandard from '../presets/standard';
+import presetPrefixes from '../presets/prefixes';
 import {
   MnParseError, MnStrictError, type MnWarning,
 } from '../core/types';
@@ -88,6 +89,21 @@ describe('mn — keyframes и произвольный CSS', () => {
     const css = cssOf(mn);
     expect(css).toContain('@keyframes fadeIn');
     expect(css).toContain('@keyframes spin');
+  });
+
+  test('с presetPrefixes каждая анимация дублируется под вендорный префикс', () => {
+    // Ветка по `prefixes` в `keyframesRender` оставалась непокрытой: по умолчанию
+    // карта префиксов пуста, и цикл не делал ни одной итерации.
+    const mn: any = minotationProvider({
+      onWarning: 'silent',
+    });
+    mn.setPresets([presetStandard, presetPrefixes]);
+    mn.setKeyframes('fadeIn', 'from{opacity:0}to{opacity:1}');
+    mn.compile();
+
+    const css = cssOf(mn);
+    expect(css).toContain('@keyframes fadeIn');
+    expect(css).toContain('@-webkit-keyframes fadeIn');
   });
 
   test('ifEmpty не перезаписывает уже заданную анимацию, пустое тело — удаляет', () => {
@@ -298,5 +314,39 @@ describe('битый аргумент хендлера → warnings$, а не er
     mn.compile();
 
     expect(errors.length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * Граница между двумя каналами на УРОВНЕ РАЗБОРА ИМЕНИ токена.
+ *
+ * `withCatchParseComboNameDecorate` делит исключения: `MnParseError` — ошибка
+ * автора токена, уходит в `warnings$`; всё остальное — сбой библиотеки, уходит
+ * в `error$`. Второй путь долго считался недостижимым: вся начинка разбора
+ * (`getCombinator`, `getEssence`, раскрытие состояний) бросает именно
+ * `MnParseError`. Он достижим через `mn.states` — ПУБЛИЧНУЮ точку расширения
+ * (см. D-014 и урок `MEMORY/feedback_dead_code_public_surface.md`: дважды за
+ * сессию «мёртвым» объявлялось то, что внешний код вправе переприсвоить).
+ */
+describe('разбор имени токена: не-MnParseError уходит в error$', () => {
+  test('сбой в mn.states не превращается в warning', () => {
+    const errors: Error[] = [];
+    const warnings: MnWarning[] = [];
+    const mn: any = minotationProvider({
+      onError: (e: Error) => errors.push(e),
+      onWarning: (w: MnWarning) => warnings.push(w),
+    });
+    mn.setPresets([presetStandard]);
+    mn.states = new Proxy({}, {
+      get() {
+        throw new TypeError('boom from states');
+      },
+    });
+
+    mn.getCompiler('class')('p10:hover');
+    mn.compile();
+
+    expect(errors.map((e) => e.message)).toContain('boom from states');
+    expect(warnings).toHaveLength(0);
   });
 });

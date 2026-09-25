@@ -787,8 +787,11 @@ function minotationProvider(options?: MnOptions) {
   /** Хелпер {@link generate} — вынесен из тела цикла по essence, чтобы не создавать замыкание на каждую essence, только на каждый media-контекст. */
   function mapEssenceSelectors(map: Record<string, Record<string, number>>, selectorsIteratee: (selectors: string[]) => string): string[] {
     const sels = getEessenceSelectors(map);
-    const result: string[] = [];
-    for (let si = 0; si < sels.length; si++) {
+    // §6.3: длина читалась на каждой итерации; §6.2: счётчик — до цикла.
+    const l = sels.length;
+    const result: string[] = new Array(l);
+    let si = 0;
+    for (; si < l; si++) {
       result[si] = selectorsIteratee(sels[si]);
     }
     return result;
@@ -796,8 +799,10 @@ function minotationProvider(options?: MnOptions) {
 
   /** Хелпер {@link generate} — вынесен из инлайн-IIFE, собирает контент всех essence по имени медиа-контекста. */
   function mapContentByMediaName(sortedContext: MnContextEssence[], mediaName: string): string[] {
-    const result: string[] = [];
-    for (let si = 0; si < sortedContext.length; si++) {
+    const l = sortedContext.length;
+    const result: string[] = new Array(l);
+    let si = 0;
+    for (; si < l; si++) {
       result[si] = sortedContext[si][MN_CONTEXT_ESSENCE_CONTENT][mediaName];
     }
     return result;

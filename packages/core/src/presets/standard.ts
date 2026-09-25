@@ -1031,6 +1031,11 @@ export default (mn: MnInstance) => {
         propsMap[handle(propSide)] = 1; 
       });
       return (v: any) => {
+        /* istanbul ignore next — защита фабрики, а не живая ветка: единственный
+           вызывающий (`handleProvider` ниже) передаёт сюда `getVal()[0]`, а тот
+           всегда возвращает строку (`output.join(' ')`), битый же вход роняет
+           сам `getVal`. Страховка оставлена: `sidesSetter` — фабрика, её
+           результат живёт в замыкании и может быть вызван из нового места. */
         isDefined(v) || throwInvalid();
         const style: Record<string, any> = {};
         let pName: string;
@@ -1087,12 +1092,17 @@ export default (mn: MnInstance) => {
           ? sidesSetter((side) => replace(
             side, REGEXP_TRIM_KEBAB_LEFT, '',
           ))
-          : (v) => (isDefined(v) ? {
-            top: v,
-            bottom: v,
-            left: v,
-            right: v,
-          } : throwInvalid()),
+          : (v) => {
+            /* istanbul ignore next — та же защита, что в `sidesSetter` выше:
+               `v` приходит из `getVal()[0]` и строкой быть обязан. */
+            isDefined(v) || throwInvalid();
+            return {
+              top: v,
+              bottom: v,
+              left: v,
+              right: v,
+            };
+          },
         0,
         1,
       ), '', 1,
@@ -1125,10 +1135,12 @@ export default (mn: MnInstance) => {
               // цвет через `_` — множественные border-color не поддерживаются,
               // см. HANDLERS.md) — бракуем токен, а не тихо подставляем чёрный
               // (`normalizeDefault(p)` без 2-го аргумента = дефолт essence
-              // `bc0`). Пустой суффикс (голый `bc`) — единственный легитимный
-              // случай default: он уже отфильтрован веткой выше. Найдено и
-              // исправлено 2026-09-23 по замечанию владельца.
-              : (p.suffix ? throwInvalid() : normalizeDefault(p))
+              // `bc0`). Найдено и исправлено 2026-09-23 по замечанию владельца.
+              //
+              // Проверка `p.suffix ?` убрана 2026-09-25 как недостижимая: пустой
+              // суффикс перехватывает `COLOR_SYNONYMS[p.suffix || 'CT']` выше
+              // (голый `bc` → currentColor), так что сюда доходит только непустой.
+              : throwInvalid()
           );
       }, PATTERN_COLOR, 1,
     );
@@ -1401,7 +1413,7 @@ export default (mn: MnInstance) => {
         'translate(' + (floatNormalize(p.x || '0') + (p.xu || 'px')) + ','
         + (floatNormalize(p.y || '0') + (p.yu || 'px')) + ')'
         + (z ? (' translateZ('
-          + floatNormalize(z || '0') + (p.zu || 'px') + ')') : '')
+          + floatNormalize(z) + (p.zu || 'px') + ')') : '')
         + (scale ? (' scale(' + (0.01 * floatNormalize(scale)) + ')') : '')
         + (angle ? (' rotate' + toUpper(p.dir)
         + '(' + floatNormalize(angle) + (p.unit || 'deg') + ')') : ''),
@@ -1631,6 +1643,9 @@ export default (mn: MnInstance) => {
     return (synonym = POSITION_SYNONYMS[s = p.suffix])
       ? normalizeDefault(p, synonym)
       : (
+        /* istanbul ignore next — ветка `0` недостижима: пустой суффикс
+           разбирает `POSITION_SYNONYMS['']` выше (голый `pos` → `relative`).
+           Оставлена как страховка на случай правки карты синонимов. */
         s ? (
           v = valueNormalize(s),
           styleWrap({
@@ -2677,6 +2692,9 @@ export default (mn: MnInstance) => {
     lengthy,
     autoRepeat]: [string, number?, number?, number?,
   ], essenceName: string) => {
+    // §6.3: `priority || 0` вычислялся на каждый вызов хендлера, причём дважды —
+    // выносим на холодный путь регистрации.
+    const stylePriority = priority || 0;
     mn(essenceName, (p) => {
       let s, style, repeated;
       style = {};
@@ -2684,16 +2702,16 @@ export default (mn: MnInstance) => {
         // Свойству-длине пустой суффикс даёт `0`, как у `p`/`m`/`b`; остальным
         // значения по умолчанию нет — они принимают произвольное слово, и
         // угадывать за автора нечего.
-        return lengthy ? (style[propName] = '0', styleWrap(style, priority || 0)) : 0;
+        return lengthy ? (style[propName] = '0', styleWrap(style, stylePriority)) : 0;
       }
       if (autoRepeat && (repeated = autoRepeatValue(s, essenceName))) {
         style[propName] = repeated;
-        return styleWrap(style, priority || 0);
+        return styleWrap(style, stylePriority);
       }
       style[propName] = lengthy
         ? defaultUnitNormalize(valueNormalize(s))
         : valueNormalize(s);
-      return styleWrap(style, priority || 0);
+      return styleWrap(style, stylePriority);
     });
   });
 

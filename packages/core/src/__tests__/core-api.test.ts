@@ -8,6 +8,14 @@ import {
   minotationProvider, 
 } from '../core/index';
 import presetStandard from '../presets/standard';
+import {
+  MnParseError,
+  MnStrictError,
+} from '../index';
+import {
+  MnParseError as MnParseErrorType,
+  MnStrictError as MnStrictErrorType,
+} from '../core/types';
 import presetSynonyms from '../presets/synonyms';
 import presetMedias from '../presets/medias';
 import type {
@@ -202,5 +210,26 @@ describe('mn — медиа-выражения', () => {
     mn.compile();
 
     expect(cssOf(mn)).toContain('padding:10px');
+  });
+});
+
+/**
+ * Публичная точка входа отдаёт классы ошибок в форме, которую видит
+ * cjs-module-lexer (`export const`, а не `export { X } from`).
+ *
+ * Шапка `src/index.ts` предупреждает об этом с 2026-09-03: второй формой
+ * `import { X } from 'minotation'` из чужого ESM-кода падал с «does not provide
+ * an export named X», хотя `require()` видел символ нормально. `MnParseError`
+ * и `MnStrictError` оставались последними в старой форме.
+ */
+describe('публичные экспорты точки входа', () => {
+  test('классы ошибок доступны из index и это те же самые классы', () => {
+    expect(MnParseError).toBe(MnParseErrorType);
+    expect(MnStrictError).toBe(MnStrictErrorType);
+    expect(new MnParseError('x', {
+      token: 't',
+      handler: '',
+      arg: '',
+    })).toBeInstanceOf(Error);
   });
 });

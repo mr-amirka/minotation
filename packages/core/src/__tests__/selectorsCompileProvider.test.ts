@@ -195,3 +195,39 @@ describe('selectorsCompileProvider', () => {
     });
   });
 });
+
+/**
+ * Вложенные scope в значении состояния — `:not[.a[.b]]`.
+ *
+ * Верхний scope разворачивается в круглые скобки, вложенный остаётся в
+ * квадратных. Ветка квадратных скобок оставалась непокрытой: тесты использовали
+ * только один уровень вложенности, а 100 % покрытия строк это не ловило —
+ * обе ветки живут на одной строке.
+ */
+describe('вложенные scope в состоянии', () => {
+  function cssOf(token: string): string {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { minotationProvider } = require('../core/index');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const presetStandard = require('../presets/standard').default;
+    const mn: any = minotationProvider({
+      onWarning: 'silent',
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')(token);
+    mn.compile();
+    return mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+  }
+
+  test('один уровень → круглые скобки', () => {
+    expect(cssOf('cF00:not[.a]')).toContain(':not(.a){color:#f00}');
+  });
+
+  test('два уровня → внутренний остаётся квадратным', () => {
+    expect(cssOf('cF00:not[.a[.b]]')).toContain(':not(.a[.b]){color:#f00}');
+  });
+
+  test('три уровня', () => {
+    expect(cssOf('cF00:not[.a[.b[.c]]]')).toContain(':not(.a[.b[.c]]){color:#f00}');
+  });
+});

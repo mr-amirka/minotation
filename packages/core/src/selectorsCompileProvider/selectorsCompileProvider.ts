@@ -186,9 +186,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     const part = getCombinator(childName, $$depthCheck);
     return joinMapsWithFirstValue(
       alts,
-      getParents(
-        part[1], 0 as any, '*',
-      ),
+      getParents(part[1], 0 as any),
       part[0],
     );
   }
@@ -258,9 +256,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
         items: Array<[StrMap<number>, AltMap]>, essences: StrMap<number>, suffix: string,
       ) => {
         const childs = splitChild(suffix as any as string);
-        const first = getParents(
-          childs.shift(), tgt, '',
-        );
+        const first = getParents(childs.shift(), tgt);
         return push(items, [essences, mapIn(reduce(
           childs, childsIteratee as any, first,
         ), mediaFilterIteratee as any)]);
@@ -273,29 +269,30 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * Разбирает `<`-цепочку предков (`Child<1Parent<2GrandParent`) в AltMap готовых CSS-селекторов.
    *
    * Части, разделённые `<`, идут от цели к самому дальнему предку. Первая часть
-   * склеивается с `targetName` (или `alt`, если `targetName` пуст); каждая следующая —
-   * с накопленным результатом через комбинатор, определяемый её собственным числовым
-   * depth-префиксом (`getCombinator`: `0`/нет → пробел-потомок, `1` → `>`, `2+` → `> *> ...`).
+   * склеивается с `targetName`; каждая следующая — с накопленным результатом через
+   * комбинатор, определяемый её собственным числовым depth-префиксом
+   * (`getCombinator`: `0`/нет → пробел-потомок, `1` → `>`, `2+` → `> *> ...`).
    * Каждая часть может нести собственный `:state`-суффикс, разворачиваемый в
    * {@link getEssence}/{@link getSynonyms}, и `@media`-суффикс ({@link extractMedia}).
    *
+   * **Параметр `alt` убран 2026-09-25.** Он подставлял `'*'` (любой элемент), когда
+   * и `targetName`, и имя первой части пусты. С Q-08 (2026-09-24) пустой сегмент
+   * контекстного селектора бракуется в `getCombinator` и до сюда не доходит —
+   * тот же остаток механизма, что и `depthMatchs[2] || ''` там же.
+   *
    * @param name — `<`-цепочка (без ведущего разделителя)
    * @param targetName — готовый селектор самого элемента (пусто — используется рекурсивно из {@link childsIteratee})
-   * @param alt — запасной селектор, если `targetName` пуст (`'*'` — любой элемент)
    * @returns AltMap итоговых селекторов предковой цепочки
    */
-  function getParents(
-    name: string,
-    targetName: string,
-    alt: string,
-  ): AltMap {
+  function getParents(name: string,
+    targetName: string): AltMap {
     const parts = splitParent(name);
     const l = parts.length;
     let i = 1;
     let mediaNames: string[] = [];
     let essence = getEssence(extractMedia(mediaNames, parts[0]));
     let alts = joinPrefixWithFirstValue(
-      ((targetName || '') + essence[0]) || alt,
+      (targetName || '') + essence[0],
       essence[1],
       mediaNames[0],
     );
@@ -307,7 +304,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       essence = getEssence(part[1]);
       alts = joinMapsWithFirstValue(
         joinPrefixWithFirstValue(
-          essence[0] || '*',
+          essence[0],
           essence[1],
           mediaNames[0],
         ),

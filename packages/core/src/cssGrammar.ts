@@ -192,10 +192,14 @@ const GLOBAL_KEYWORDS = [
 function multiValue(single: Validator, max = 4): Validator {
   return (v) => {
     const parts = splitTopLevel(v);
-    if (parts.length < 1 || parts.length > max) {
+    // §6.3: длина читается трижды — кешируем.
+    const l = parts.length;
+    if (l < 1 || l > max) {
       return false;
     }
-    for (let i = 0; i < parts.length; i++) {
+    // §6.4: порядок проверки не важен — обратный цикл со сравнением с нулём.
+    let i = l;
+    while (i--) {
       if (!single(parts[i])) {
         return false;
       }
@@ -217,10 +221,14 @@ function multiValueOrKeyword(
 /** Разбивает по пробелам вне скобок: `calc(10px - 5px) 20px` → 2 части, не 4. */
 function splitTopLevel(v: string): string[] {
   const parts: string[] = [];
+  // §6.3: граница цикла читается на каждой итерации — кешируем до него.
+  const l = v.length;
   let depth = 0;
   let start = 0;
   let c: string;
-  for (let i = 0; i < v.length; i++) {
+  // §6.2: счётчик объявлен до цикла; порядок здесь важен, обратный не подходит.
+  let i = 0;
+  for (; i < l; i++) {
     c = v[i];
     if (c === '(') {
       depth++;
@@ -233,7 +241,7 @@ function splitTopLevel(v: string): string[] {
       start = i + 1;
     }
   }
-  if (v.length > start) {
+  if (l > start) {
     parts.push(v.slice(start));
   }
   return parts;

@@ -96,10 +96,15 @@ export type {
   MnWarningType,
   MnOptions,
 } from './core/types';
-export {
-  MnParseError,
-  MnStrictError,
+import {
+  MnParseError as MnParseErrorImpl,
+  MnStrictError as MnStrictErrorImpl,
 } from './core/types';
+// Форма `export { X } from '...'` компилируется в геттер, которого не видит
+// cjs-module-lexer — ровно то, о чём предупреждает шапка этого файла. Эти два
+// символа оставались последними в старой форме (приведены 2026-09-25).
+export const MnParseError = MnParseErrorImpl;
+export const MnStrictError = MnStrictErrorImpl;
 
 export const presetStandard = presetStandardDefault;
 export const presetSynonyms = presetSynonymsDefault;

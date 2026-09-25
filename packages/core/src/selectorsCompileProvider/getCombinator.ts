@@ -120,7 +120,8 @@ export function getCombinator(name: string, depthCheck?: MnDepthCheck): [string,
     }
     return [' ', name];
   }
-  const depth = parseInt(depthMatchs[1]);
+  // Основание явно: без него `parseInt` формально зависит от формы строки.
+  const depth = parseInt(depthMatchs[1], 10);
   if (depth === 0) {
     throwDegenerate(
       'Глубина 0 запрещена: она склеивает оба класса на одном элементе — '
@@ -128,25 +129,29 @@ export function getCombinator(name: string, depthCheck?: MnDepthCheck): [string,
       name, depthCheck,
     );
   }
-  if (!depthMatchs[2]) {
+  const selector = depthMatchs[2];
+  if (!selector) {
     throwDegenerate(
       'Глубина (' + depth + ') без селектора запрещена: правило цеплялось бы '
         + 'к любому предку ("*")',
       name, depthCheck,
     );
   }
-  if (depthCheck && depthCheck.maxDepth !== undefined && depth > depthCheck.maxDepth) {
-    if (depthCheck.maxDepthMode === 'block') {
-      throw new MnParseError(`Глубина контекстного селектора (${depth}) превышает maxDepth (${depthCheck.maxDepth})`,
-        {
-          token: depthCheck.token,
-          handler: '',
-          arg: name,
-          utility: 'getCombinator',
-          warningType: 'max-depth-exceeded',
-        });
+  // §6.3: `depthCheck.maxDepth` читался до трёх раз за вызов — кешируем.
+  const maxDepth = depthCheck && depthCheck.maxDepth;
+  if (maxDepth !== undefined && maxDepth !== null && depth > maxDepth) {
+    if (depthCheck!.maxDepthMode === 'block') {
+      throw new MnParseError('Глубина контекстного селектора (' + depth
+          + ') превышает maxDepth (' + maxDepth + ')',
+      {
+        token: depthCheck!.token,
+        handler: '',
+        arg: name,
+        utility: 'getCombinator',
+        warningType: 'max-depth-exceeded',
+      });
     }
-    depthCheck.onExceed(depth, depthCheck.maxDepth);
+    depthCheck!.onExceed(depth, maxDepth);
   }
-  return [getCombinatorByDepth(depth), depthMatchs[2] || ''];
+  return [getCombinatorByDepth(depth), selector];
 }

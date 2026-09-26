@@ -859,3 +859,50 @@ describe('свойства-картинки оборачивают в url() то
     expect(compile(['bgi--v']).css).toContain('background-image:var(--v)');
   });
 });
+
+describe('сырой режим только там, где значение составное', () => {
+  // Ведущий `_` означает «значение уже готово» и отключает проверку. У
+  // свойства с закрытым перечнем готового значения, которого автор нотации не
+  // предусмотрел, не бывает — там выход только пропускал мусор.
+  test.each([
+    ['ov_solid', 'overflow'],
+    ['ovx_solid', 'overflow-x'],
+    ['of_solid', 'object-fit'],
+    ['ta_solid', 'text-align'],
+    ['wb_solid', 'word-break'],
+    ['us_solid', 'user-select'],
+    ['vis_solid', 'visibility'],
+    ['bxz_solid', 'box-sizing'],
+  ])('%s бракуется — у %s перечень закрыт', (token, prop) => {
+    expect(lexer.matchProperty(prop, 'solid').matched).toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  const COMPOSITE: Array<[string, string]> = [
+    ['d_inline_flow-root', 'display:inline flow-root'],
+    ['lis_disc_inside', 'list-style:disc inside'],
+    ['ovb_contain_auto', 'overscroll-behavior:contain auto'],
+    ['td_underline_wavy_red', 'text-decoration:underline wavy red'],
+    ['tcha_pan-x_pan-y', 'touch-action:pan-x pan-y'],
+    ['op_left_top', 'object-position:left top'],
+  ];
+
+  test.each(COMPOSITE)('%s → %s — составное значение, выход остаётся', (token, expected) => {
+    const at = expected.indexOf(':');
+    expect(lexer.matchProperty(expected.slice(0, at), expected.slice(at + 1)).matched)
+      .toBeTruthy();
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    ['dB', 'display:block'],
+    ['ovA', 'overflow:auto'],
+    ['ofCT', 'object-fit:contain'],
+    ['tdU', 'text-decoration:underline'],
+    ['lisD', 'list-style:disc'],
+    ['tchaA', 'touch-action:auto'],
+    ['ovbCT', 'overscroll-behavior:contain'],
+  ])('%s → %s — обычные записи не задеты', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+});

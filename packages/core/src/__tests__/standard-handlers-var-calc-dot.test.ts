@@ -228,7 +228,10 @@ describe('все хендлеры стандартного пресета: пе�
 
   test('профили распознаны (страховка: пустая выборка молча «проходила» бы всё)', () => {
     expect(NUMERIC_HANDLERS.length).toBeGreaterThan(50);
-    expect(MULTIPART_HANDLERS.length).toBeGreaterThan(50);
+    // Порог снижен с 50 до 30 (2026-09-26): сырой режим `_aa_bb` перестал
+    // работать у свойств с закрытым перечнем, и они законно выпали из выборки.
+    // Страховка от пустой выборки при этом сохраняется.
+    expect(MULTIPART_HANDLERS.length).toBeGreaterThan(30);
     // Градиент строят ровно `bg` и `maskbg` — оба через backgroundProvider.
     expect(GRADIENT_HANDLERS).toEqual(['bg', 'maskbg']);
   });

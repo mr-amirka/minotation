@@ -144,6 +144,35 @@ fallback и сам градиент.
 - **arg** — всё остальное (цифры, `-`, `_`, `.`, заглавные буквы, `%`, …)
 - `-i` в конце аргумента → `!important`
 
+### Ведущий `_` — «значение уже готово»
+
+Подчёркивание в начале аргумента отключает разбор: подчёркивания становятся
+пробелами, `--имя` разворачивается в `var(--имя)`, остальное уходит в CSS как
+написано.
+
+```
+tn_0.2s_all_--ease  →  transition:0.2s all var(--ease)
+ff_Times_New_Roman  →  font-family:"Times New Roman"
+```
+
+**Доступен только там, где значение составное.** У свойства с закрытым перечнем
+готового значения, которого нотация не предусмотрела, не бывает, поэтому такой
+выход там только пропускал мусор: до 2026-09-26 `ov_solid` давал
+`overflow:solid`, `of_solid` — `object-fit:solid`, `d_solid` — `display:solid`.
+
+Составные среди свойств со словарём — пять, плюс позиция объекта:
+
+| Тег | Свойство | Пример |
+|-----|----------|--------|
+| `d` | `display` | `d_inline_flow-root` → `display:inline flow-root` |
+| `lis` | `list-style` | `lis_disc_inside` → `list-style:disc inside` |
+| `ovb` | `overscroll-behavior` | `ovb_contain_auto` |
+| `td` | `text-decoration` | `td_underline_wavy_red` |
+| `tcha` | `touch-action` | `tcha_pan-x_pan-y` |
+| `op` | `object-position` | `op_left_top` |
+
+У остальных пишите краткую или полную запись: `ovA`, `dB`, `ofCT`.
+
 ---
 
 ## Экранирование

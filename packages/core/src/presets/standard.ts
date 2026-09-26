@@ -1279,6 +1279,9 @@ export default (mn: MnInstance) => {
     _style?: Record<string, any>,
     // Свойство принимает не только слова из словаря, но и число/длину.
     numeric?: 1,
+    // Значение свойства составное (`display: inline flow-root`), поэтому у
+    // него остаётся сырой режим — перечислить такие сочетания словарём нельзя.
+    composite?: 1,
   ): MnHandler {
     let props: Record<string, number>;
     // Обратный индекс: длинное слово → краткая запись, строится из самого
@@ -1311,8 +1314,14 @@ export default (mn: MnInstance) => {
      *
      * Проходят мимо проверки: CSS-wide keywords, переменные и любые функции
      * (`cursor:url(…)`, `display:var(--v)`) — их словарём не перечислить.
-     * Ведущий `_` — режим «значение уже готово» (`ol_3px_solid_red`):
-     * составное значение тоже не перечислить.
+     *
+     * Ведущий `_` («значение уже готово») открыт только у свойств, помеченных
+     * `composite`. Раньше он работал у всех, и `ov_solid` давало
+     * `overflow:solid`, `of_solid` — `object-fit:solid`: у свойства с закрытым
+     * перечнем «готового значения, которого автор нотации не предусмотрел», не
+     * бывает, так что выход там только пропускал мусор. Составных среди 38
+     * свойств этого пути пять — `display`, `list-style`, `overscroll-behavior`,
+     * `text-decoration`, `touch-action` (2026-09-26).
      */
     function assertSynonymAbbr(p: any, value: string): void {
       // Сюда доходит только запись, которой НЕТ в словаре кратких форм
@@ -1323,7 +1332,7 @@ export default (mn: MnInstance) => {
         throwInvalid('Записывается короче: "' + p.name + abbr
           + '" вместо "' + p.name + p.suffix + '" — то же значение');
       }
-      if (value.indexOf('(') > -1 || p.suffix[0] === '_'
+      if (value.indexOf('(') > -1 || (composite && p.suffix[0] === '_')
         || GLOBAL_KEYWORDS[value] || keywords[value]) {
         return;
       }
@@ -2525,45 +2534,49 @@ export default (mn: MnInstance) => {
       SD: 'ScaleDown',
     }),
 
-    d: synonymProvider('display', {
-      '': 'Block',
-      B: 'Block',
-      N: 'None',
-      F: 'Flex',
-      IF: 'InlineFlex',
-      I: 'Inline',
-      IB: 'InlineBlock',
-      LI: 'ListItem',
-      RI: 'RunIn',
-      CP: 'Compact',
-      TB: 'Table',
-      ITB: 'InlineTable',
-      TBCP: 'TableCaption',
-      TBCL: 'TableColumn',
-      TBCLG: 'TableColumnGroup',
-      TBHG: 'TableHeaderGroup',
-      TBFG: 'TableFooterGroup',
-      TBR: 'TableRow',
-      TBRG: 'TableRowGroup',
-      TBC: 'TableCell',
-      RB: 'Ruby',
-      RBB: 'RubyBase',
-      RBBG: 'RubyBaseGroup',
-      RBT: 'RubyText',
-      RBTG: 'RubyTextGroup',
-      // Современные значения (добавлено 2026-09-22): раньше `dG` падало в
-      // буквальный `display:g` — короткие формы должны работать, а не ломаться.
-      G: 'Grid',
-      IG: 'InlineGrid',
-      FR: 'FlowRoot',
-      CN: 'Contents',
-      // `F` занято `flex`, `FR` — `flow-root`, поэтому `flow` — `FW`.
-      FW: 'Flow',
-      ILI: 'InlineListItem',
-      RBBC: 'RubyBaseContainer',
-      RBTC: 'RubyTextContainer',
-      IFR: 'InlineFlowRoot',
-    }),
+    d: synonymProvider(
+      'display', {
+        '': 'Block',
+        B: 'Block',
+        N: 'None',
+        F: 'Flex',
+        IF: 'InlineFlex',
+        I: 'Inline',
+        IB: 'InlineBlock',
+        LI: 'ListItem',
+        RI: 'RunIn',
+        CP: 'Compact',
+        TB: 'Table',
+        ITB: 'InlineTable',
+        TBCP: 'TableCaption',
+        TBCL: 'TableColumn',
+        TBCLG: 'TableColumnGroup',
+        TBHG: 'TableHeaderGroup',
+        TBFG: 'TableFooterGroup',
+        TBR: 'TableRow',
+        TBRG: 'TableRowGroup',
+        TBC: 'TableCell',
+        RB: 'Ruby',
+        RBB: 'RubyBase',
+        RBBG: 'RubyBaseGroup',
+        RBT: 'RubyText',
+        RBTG: 'RubyTextGroup',
+        // Современные значения (добавлено 2026-09-22): раньше `dG` падало в
+        // буквальный `display:g` — короткие формы должны работать, а не ломаться.
+        G: 'Grid',
+        IG: 'InlineGrid',
+        FR: 'FlowRoot',
+        CN: 'Contents',
+        // `F` занято `flex`, `FR` — `flow-root`, поэтому `flow` — `FW`.
+        FW: 'Flow',
+        ILI: 'InlineListItem',
+        RBBC: 'RubyBaseContainer',
+        RBTC: 'RubyTextContainer',
+        IFR: 'InlineFlowRoot',
+      // `composite`: внешний и внутренний тип разом
+      // (`display: inline flow-root`).
+      }, 0, 0 as any, 0 as any, 1,
+    ),
 
     dir: synonymProvider('direction', {
       LTR: 'Ltr',
@@ -2574,7 +2587,11 @@ export default (mn: MnInstance) => {
       U: 'Unset',
     }),
 
-    ovb: synonymProvider('overscrollBehavior', OVERSCROLL_BEHAVIOR_PRIORITIES),
+    // `composite`: берёт два значения — по оси X и Y
+    // (`overscroll-behavior: contain auto`).
+    ovb: synonymProvider(
+      'overscrollBehavior', OVERSCROLL_BEHAVIOR_PRIORITIES, 0, 0 as any, 0 as any, 1,
+    ),
     ovbx: synonymProvider('overscrollBehaviorX', OVERSCROLL_BEHAVIOR_PRIORITIES),
     ovby: synonymProvider('overscrollBehaviorY', OVERSCROLL_BEHAVIOR_PRIORITIES),
 
@@ -2816,22 +2833,25 @@ export default (mn: MnInstance) => {
         UE: 'UltraExpanded',
       }, 1,
     ),
-    tcha: synonymProvider('touchAction', {
-      A: 'Auto',
-      N: 'None',
-      M: 'Manipulation',
-      I: 'Initial',
-      R: 'Revert',
-      U: 'Unset',
-      RL: 'RevertLayer',
-      PX: 'PanX',
-      PY: 'PanY',
-      PL: 'PanLeft',
-      PR: 'PanRight',
-      PU: 'PanUp',
-      PD: 'PanDown',
-      PZ: 'PinchZoom',
-    }),
+    tcha: synonymProvider(
+      'touchAction', {
+        A: 'Auto',
+        N: 'None',
+        M: 'Manipulation',
+        I: 'Initial',
+        R: 'Revert',
+        U: 'Unset',
+        RL: 'RevertLayer',
+        PX: 'PanX',
+        PY: 'PanY',
+        PL: 'PanLeft',
+        PR: 'PanRight',
+        PU: 'PanUp',
+        PD: 'PanDown',
+        PZ: 'PinchZoom',
+      // `composite`: оси комбинируются (`touch-action: pan-x pan-y`).
+      }, 0, 0 as any, 0 as any, 1,
+    ),
     ta: synonymProvider('textAlign', {
       L: 'Left',
       C: 'Center',
@@ -2868,9 +2888,10 @@ export default (mn: MnInstance) => {
         W: 'Wavy',
         A: 'Auto',
         FF: 'FromFont',
-      // `numeric`: сокращение включает толщину линии, а она — длина
-      // (`text-decoration: underline 2px`).
-      }, 0, 0 as any, 1,
+      // `numeric`: толщина линии — длина (`text-decoration: underline 2px`).
+      // `composite`: линия, стиль, цвет и толщина в одном значении
+      // (`text-decoration: underline wavy red`).
+      }, 0, 0 as any, 1, 1,
     ),
     tdl: synonymProvider(
       'textDecorationLine', TD_SYNONYMS, 1,
@@ -3069,18 +3090,22 @@ export default (mn: MnInstance) => {
         S: 'Separate',
       }, 1,
     ),
-    lis: synonymProvider('listStyle', {
-      N: 'None',
-      S: 'Square',
-      D: 'Disc',
-      DC: 'Decimal',
-      DCLZ: 'DecimalLeadingZero',
-      LR: 'LowerRoman',
-      UR: 'UpperRoman',
-      C: 'Circle',
-      I: 'Inside',
-      O: 'Outside',
-    }),
+    lis: synonymProvider(
+      'listStyle', {
+        N: 'None',
+        S: 'Square',
+        D: 'Disc',
+        DC: 'Decimal',
+        DCLZ: 'DecimalLeadingZero',
+        LR: 'LowerRoman',
+        UR: 'UpperRoman',
+        C: 'Circle',
+        I: 'Inside',
+        O: 'Outside',
+      // `composite`: тип, позиция и картинка в одном значении
+      // (`list-style: disc inside`).
+      }, 0, 0 as any, 0 as any, 1,
+    ),
     lisp: synonymProvider(
       'listStylePosition', {
         I: 'Inside',
@@ -3140,8 +3165,11 @@ export default (mn: MnInstance) => {
      * на каждую комбинацию осей, тогда как атомарные `bgpx`/`bgpy`
      * переиспользуются между комбинациями.
      */
+    // `composite`: две координаты в одном значении
+    // (`object-position: left top`). Атомарных `object-position-x/y` в CSS нет,
+    // поэтому разложить его, как `bgpx`/`bgpy`, нельзя.
     op: synonymProvider(
-      'objectPosition', POSITION_KEYWORDS, 1,
+      'objectPosition', POSITION_KEYWORDS, 1, 0 as any, 0 as any, 1,
     ),
     /**
      * Оси `background-position`. Ключевые слова у них РАЗНЫЕ: горизонтальная

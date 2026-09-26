@@ -387,8 +387,26 @@ const REGEXP_ROUTE_KEY = /:[_A-Za-z0-9.]+/g;
  * Единица ограничена реальным списком не для красоты: `bxsh10zzz` иначе проходит
  * (`zzz` попадает в группу единицы generic-разбора ядра и тихо отбрасывается),
  * тогда как `w10zzz`/`p10zzz` бракуются — поведение должно быть одинаковым.
+ *
+ * Первая группа захвата — единица; остальные приходят из самих
+ * `SHADOW_PATTERNS` и здесь не нужны. Брать её из `p.unit` нельзя: разбор
+ * значения в ядре считает единицей любой буквенный хвост после числа, и у
+ * `bxsh19r3c43F` туда попадает начало модификаторов (`r`), а не `em`.
+ *
+ * Из списка исключены две единицы.
+ *
+ * `%` — по грамматике тень задаётся `<length>` и процентов не принимает; без
+ * исключения `bxsh10%` давало `0% 0% 10% 0% #000`, правило, которое браузер
+ * отбрасывает целиком.
+ *
+ * `in` — коллизия с модификатором `in` (inset): в `bxsh10in` обе трактовки
+ * подходят, и побеждает первая по порядку. Модификатор здесь важнее — он
+ * документирован и осмыслен, тогда как дюймы в тени на экране не нужны
+ * (`in` вообще единица печати). Кому понадобятся — доступны через свободную
+ * форму: `bxsh_0_0_10in_#000`.
  */
-const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:[0-9.]+(?:' + UNITS.join('|') + ')?)?(?:'
+const SHADOW_UNITS = UNITS.filter((unit) => unit !== '%' && unit !== 'in');
+const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:[0-9.]+(' + SHADOW_UNITS.join('|') + ')?)?(?:'
     + SHADOW_PATTERNS.map((pattern) => '(?:' + pattern.replace(REGEXP_ROUTE_KEY, '') + ')').join('|')
     + ')*$');
 
@@ -1718,7 +1736,8 @@ export default (mn: MnInstance) => {
         if (suffix[0] === '_') {
           output = valueNormalize(suffix);
         } else {
-          REGEXP_SHADOW_SUFFIX.test(suffix) || throwInvalid('Запись "' + p.name + suffix + '" разобрана не полностью: после значения '
+          const parsed = REGEXP_SHADOW_SUFFIX.exec(suffix);
+          parsed || throwInvalid('Запись "' + p.name + suffix + '" разобрана не полностью: после значения '
               + 'допустимы только модификаторы x/y/r/m/c/in. Свободная форма пишется '
               + 'с ведущим "_" — например "' + p.name + '_0_2px_8px_--shadow"');
           const repeatCount = intval(
@@ -1733,6 +1752,12 @@ export default (mn: MnInstance) => {
           const colors = getColor(p.c || '0');
           const prefixIn = p.in ? 'inset ' : '';
           const colorsLength = colors.length;
+          // Единица склейки была жёстко `px`: `bxsh10em` давало
+          // `0px 0px 10px 0px #000` — единица молча терялась, и это ещё
+          // проходило мимо валидатора (`box-shadow` не в его таблице).
+          // Модификаторы x/y/r по грамматике суффикса — целые без единицы,
+          // поэтому единица у записи одна на все её длины.
+          const separator = ((parsed as RegExpExecArray)[1] || 'px') + ' ';
         let sample, v, color, i, ci = 0; // eslint-disable-line
           output = new Array(colorsLength);
 
@@ -1741,7 +1766,7 @@ export default (mn: MnInstance) => {
             sample = prefixIn
             + handler(
               p.x || 0, p.y || 0, value, p.r || 0, color,
-            ).join('px ');
+            ).join(separator);
             v = new Array(repeatCount);
             for (i = repeatCount; i--;) {
               v[i] = sample;

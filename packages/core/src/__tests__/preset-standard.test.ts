@@ -402,7 +402,9 @@ describe('Standard preset — box-shadow / text-shadow', () => {
     ['bxsh', 'box-shadow:none'],
     ['bxsh18', 'box-shadow:0px 0px 18px 0px #000'],
     ['bxsh10px', 'box-shadow:0px 0px 10px 0px #000'],
-    ['bxsh1.5em', 'box-shadow:0px 0px 1.5px 0px #000'],
+    // Единица записи идёт во все её длины. До 2026-09-26 склейка была жёстко
+    // `px` и `em` молча терялся — здесь и было зафиксировано `1.5px`.
+    ['bxsh1.5em', 'box-shadow:0em 0em 1.5em 0em #000'],
     ['bxsh10in', 'box-shadow:inset 0px 0px 10px 0px #000'],
     ['bxsh19x5y5r3c43F', 'box-shadow:5px 5px 19px 3px #43f'],
     ['bxsh10c--shadow', 'box-shadow:0px 0px 10px 0px var(--shadow)'],

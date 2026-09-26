@@ -144,6 +144,44 @@ describe('единицы длины', () => {
   });
 });
 
+describe('единица в тенях идёт во все длины записи', () => {
+  test.each([
+    ['bxsh10', 'box-shadow:0px 0px 10px 0px #000'],
+    ['bxsh1.5em', 'box-shadow:0em 0em 1.5em 0em #000'],
+    ['bxsh10rem', 'box-shadow:0rem 0rem 10rem 0rem #000'],
+    ['bxsh10dvh', 'box-shadow:0dvh 0dvh 10dvh 0dvh #000'],
+    ['tsh10em', 'text-shadow:0em 0em 10em #000'],
+  ])('%s → %s', (token, expected) => {
+    // Склейка была жёстко `px`, и всё кроме него молча терялось. Мимо
+    // валидатора ядра это проходило: `box-shadow` не в его таблице.
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    ['bxsh19r3c43F', 'box-shadow:0px 0px 19px 3px #43f'],
+    ['bxsh10x2y4', 'box-shadow:2px 4px 10px 0px #000'],
+    ['bxsh10emc43F', 'box-shadow:0em 0em 10em 0em #43f'],
+  ])('%s → %s — модификаторы не путаются с единицей', (token, expected) => {
+    // Единицу нельзя брать из `p.unit`: разбор значения в ядре считает
+    // единицей любой буквенный хвост после числа, и туда попадает начало
+    // модификаторов (`r` у `bxsh19r3c43F`).
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test('in остаётся модификатором inset, а не дюймами', () => {
+    expect(compile(['bxsh10in']).css).toContain('box-shadow:inset 0px 0px 10px 0px #000');
+  });
+
+  test('процент бракуется: тень принимает длину, а не проценты', () => {
+    expect(lexer.matchProperty('box-shadow', '0% 0% 10% 0% #000').matched).toBeFalsy();
+    expect(compile(['bxsh10%']).css).toBe('');
+  });
+
+  test('обе недоступные единицы выразимы свободной формой', () => {
+    expect(compile(['bxsh_0_0_10in_#000']).css).toContain('box-shadow:0 0 10in #000');
+  });
+});
+
 describe('знак значения', () => {
   const NEGATIVE_OK: Array<[string, string, string]> = [
     [

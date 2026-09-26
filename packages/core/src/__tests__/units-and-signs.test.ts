@@ -299,6 +299,119 @@ describe('процент и количество значений — по св�
   });
 });
 
+describe('одиночные свойства-длины со своим разбором', () => {
+  // Эти хендлеры собирали значение вручную одной и той же строчкой
+  // `camel ? toKebabCase(camel) : num + (p.unit || 'px')` — ни слово, ни
+  // единица не проверялись, а валидатор ядра ни одного из свойств не знал.
+  test.each([
+    ['olo', 'outline-offset:0'],
+    ['olo2', 'outline-offset:2px'],
+    ['olo-2', 'outline-offset:-2px'],
+    ['olo--v', 'outline-offset:var(--v)'],
+    ['oloInherit', 'outline-offset:inherit'],
+    ['lts2', 'letter-spacing:2px'],
+    ['lts0.06em', 'letter-spacing:0.06em'],
+    ['lts-0.02em', 'letter-spacing:-0.02em'],
+    ['lts10%', 'letter-spacing:10%'],
+    ['ltsN', 'letter-spacing:normal'],
+    ['ltsNormal', 'letter-spacing:normal'],
+    ['lts--v', 'letter-spacing:var(--v)'],
+    ['tsa', 'text-size-adjust:100%'],
+    ['tsaA', 'text-size-adjust:auto'],
+    ['tsaN', 'text-size-adjust:none'],
+    ['fsa0.5', 'font-size-adjust:0.5'],
+    ['fsaN', 'font-size-adjust:none'],
+    ['fsaFromFont', 'font-size-adjust:from-font'],
+  ])('%s → %s', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    'olo10zz',
+    'oloF00',
+    'oloZzz',
+    'oloA',
+    'lts10zz',
+    'ltsF00',
+    'ltsZzz',
+    'ltsA',
+    'tsaZzz',
+    'tsa10zz',
+    'fsaZzz',
+    'fsa10zz',
+  ])('%s бракуется', (token) => {
+    expect(compile([token]).css).toBe('');
+  });
+
+  test('olo10% бракуется: процентов это свойство не принимает', () => {
+    expect(lexer.matchProperty('outline-offset', '10%').matched).toBeFalsy();
+    expect(compile(['olo10%']).css).toBe('');
+  });
+
+  test('переменная в olo больше не теряется', () => {
+    // Ветки `cssVarValue` у `olo` не было вовсе: `olo--v` давало
+    // `outline-offset:0` — умолчание вместо подстановки.
+    expect(compile(['olo--v']).css).toContain('outline-offset:var(--v)');
+  });
+});
+
+describe('line-height, z-index, font-weight', () => {
+  test.each([
+    ['lh', 'line-height:1'],
+    ['lh1.5', 'line-height:1.5'],
+    ['lh10px', 'line-height:10px'],
+    ['lh150%', 'line-height:150%'],
+    ['lh1.2em', 'line-height:1.2em'],
+    ['lh0', 'line-height:0'],
+  ])('%s → %s — безразмерная форма сохраняется', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    'lh10zz',
+    'lh10s',
+    'lh10deg',
+    'lh10fr',
+  ])('%s — единица у line-height теперь проверяется', (token) => {
+    expect(compile([token]).css).toBe('');
+  });
+
+  test.each([
+    ['z', 'z-index:1'],
+    ['z1', 'z-index:1'],
+    ['z-5', 'z-index:-5'],
+    ['z0', 'z-index:0'],
+  ])('%s → %s', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each(['z1.5', 'z10.5'])('%s бракуется — z-index задаётся целым', (token) => {
+    expect(lexer.matchProperty('z-index', '1.5').matched).toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  test.each([
+    ['fwN', 'font-weight:normal'],
+    ['fwB', 'font-weight:bold'],
+    ['fwBR', 'font-weight:bolder'],
+    ['fwLR', 'font-weight:lighter'],
+    ['fwBold', 'font-weight:bold'],
+    ['fwBolder', 'font-weight:bolder'],
+    ['fw6', 'font-weight:600'],
+    ['fw600', 'font-weight:600'],
+  ])('%s → %s', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    'fwF00',
+    'fwA',
+    'fwZzz',
+  ])('%s бракуется — список слов у font-weight закрытый', (token) => {
+    expect(compile([token]).css).toBe('');
+  });
+});
+
 describe('знак значения', () => {
   const NEGATIVE_OK: Array<[string, string, string]> = [
     [

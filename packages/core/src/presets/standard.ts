@@ -240,6 +240,13 @@ const FONT_WEIGHT_SYNONYMS = {
   BR: 'Bolder',
   LR: 'Lighter',
 };
+/** Те же слова полной записью: `fwBolder` работает наравне с `fwBR`. */
+const FONT_WEIGHT_KEYWORDS: Record<string, 1> = {
+  normal: 1,
+  bold: 1,
+  bolder: 1,
+  lighter: 1,
+};
 const OUTLINE_STYLE_SYNONYMS = {
   N: 'None',
   DT: 'Dotted',
@@ -560,6 +567,8 @@ function splitValueParts(
 const REGEXP_BARE_NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)$/;
 /** Значение-слово: только буквы и дефисы, без цифр, скобок и единиц. */
 const REGEXP_BARE_WORD = /^[a-z][a-z-]*$/;
+/** Целое со знаком — `z-index` дробей не принимает. */
+const REGEXP_INTEGER = /^[-+]?\d+$/;
 function defaultUnitNormalize(v: string): string {
   if (v.indexOf(' ') < 0) {
     return v !== '0' && REGEXP_BARE_NUMBER.test(v) ? v + 'px' : v;
@@ -584,19 +593,45 @@ function defaultUnitNormalize(v: string): string {
 const REGEXP_LENGTH_PART = new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:'
   + UNITS.join('|') + '))$');
 /**
- * Что принимает свойство-длина — третья позиция в таблице ниже.
+ * Что именно принимает свойство-длина — флаги, третья позиция в таблице ниже.
  *
- * Свойства делятся по двум признакам, и делятся по-разному, поэтому одного
- * флага «это длина» мало: `text-indent:10%` валиден, `word-spacing:10%` — нет;
- * `border-spacing:10px 20px` валиден, `text-indent:10px 20px` — нет. Проверено
- * арбитром (`css-tree` + `mdn-data`), а не на глаз.
+ * Признаков три, и свойства делятся по каждому независимо, поэтому одного флага
+ * «это длина» мало: `text-indent:10%` валиден, `word-spacing:10%` — нет;
+ * `border-spacing:10px 20px` валиден, `text-indent:10px 20px` — нет;
+ * `text-indent:-5px` валиден, `flex-basis:-5px` — нет. Каждое разрешение
+ * сверено с арбитром (`css-tree` + `mdn-data`), а не поставлено на глаз.
+ *
+ * Голый `0` означает «длина без единственной поблажки»; комбинируются через
+ * `|`, например `LENGTH_PERCENT | LENGTH_SIGN` у `text-indent`.
  */
-/** Одно значение, проценты допустимы (`ti`, `fxb`, `tdt`, `tuo`). */
-const LENGTH_ANY = 1;
-/** Одно значение, только длина — без процентов (`wos`). */
-const LENGTH_NO_PERCENT = 2;
-/** Несколько значений, только длина (`bsp` — `border-spacing` берёт два). */
-const LENGTH_MULTI = 3;
+/**
+ * Ключевые слова одиночных свойств-длин. Пусто означает «только CSS-wide»:
+ * `outline-offset:auto` и `letter-spacing:auto` по грамматике невалидны, хотя
+ * оба свойства выглядят так, будто `auto` должны принимать.
+ */
+const EMPTY_KEYWORDS: Record<string, 1> = {};
+const LETTER_SPACING_KEYWORDS: Record<string, 1> = {
+  normal: 1,
+};
+const TEXT_SIZE_ADJUST_KEYWORDS: Record<string, 1> = {
+  auto: 1,
+  none: 1,
+};
+/** Краткие записи `tsa`: `tsaA` → `auto`, `tsaN` → `none`. */
+const TEXT_SIZE_ADJUST_SYNONYMS: Record<string, string> = {
+  A: 'Auto',
+  N: 'None',
+};
+const FONT_SIZE_ADJUST_KEYWORDS: Record<string, 1> = {
+  none: 1,
+  'from-font': 1,
+};
+/** Проценты допустимы: `text-indent:10%`, но не `word-spacing:10%`. */
+const LENGTH_PERCENT = 1;
+/** Несколько значений через `_`: `border-spacing:10px 20px`. */
+const LENGTH_MULTI = 2;
+/** Отрицательные значения: `text-indent:-5px`, но не `flex-basis:-5px`. */
+const LENGTH_SIGN = 4;
 /**
  * Бракует значение свойства-длины, которое длиной не является.
  *
@@ -612,28 +647,30 @@ const LENGTH_MULTI = 3;
  * разбирать его содержимое здесь нечем, а по спецификации подстановка валидна у
  * любого свойства.
  *
- * @param kind — что именно свойство принимает, см. {@link LENGTH_ANY}
+ * @param allow — что именно свойство принимает, см. {@link LENGTH_PERCENT}
  */
 function assertLengthValue(
-  v: string, essenceName: string, raw: string, kind: number,
+  v: string, essenceName: string, raw: string, allow: number,
 ): string {
   if (v.indexOf('(') > -1) {
     return v;
   }
+  const prefix = 'Значение "' + raw + '" не распознано: у "' + essenceName + '" ';
   const parts = v.split(' ');
   let i = parts.length;
-  (i < 2 || kind === LENGTH_MULTI)
-    || throwInvalid('Значение "' + raw + '" не распознано: у "'
-      + essenceName + '" ожидается одно значение');
+  let part: string;
+  (i < 2 || (allow & LENGTH_MULTI))
+    || throwInvalid(prefix + 'ожидается одно значение');
   while (i--) {
+    part = parts[i];
     // Слово сюда доходит только разрешённое: список ключевых слов свойства
     // проверен выше по `assertKnownWord`-правилу вызывающего блока.
-    REGEXP_LENGTH_PART.test(parts[i]) || REGEXP_BARE_WORD.test(parts[i])
-      || throwInvalid('Значение "' + raw + '" не распознано: у "'
-        + essenceName + '" ожидается длина');
-    (kind === LENGTH_ANY || parts[i].indexOf('%') < 0)
-      || throwInvalid('Значение "' + raw + '" не распознано: у "'
-        + essenceName + '" ожидается длина, процент недопустим');
+    REGEXP_LENGTH_PART.test(part) || REGEXP_BARE_WORD.test(part)
+      || throwInvalid(prefix + 'ожидается длина');
+    (part.indexOf('%') < 0 || (allow & LENGTH_PERCENT))
+      || throwInvalid(prefix + 'ожидается длина, процент недопустим');
+    (part[0] !== '-' || (allow & LENGTH_SIGN))
+      || throwInvalid(prefix + 'отрицательное значение недопустимо');
   }
   return v;
 }
@@ -829,6 +866,51 @@ export default (mn: MnInstance) => {
     }
     return throwInvalid('Значение "' + raw + '" не распознано: ожидается число '
       + 'с единицей, переменная, calc или ключевое слово этого свойства');
+  }
+
+  /**
+   * Значение одиночного свойства-длины: либо слово из его списка, либо число с
+   * единицей.
+   *
+   * Хендлеры вида `olo`, `lts`, `tsa`, `fsa` собирали значение вручную одной и
+   * той же строчкой `camel ? toKebabCase(camel) : num + (p.unit || 'px')`, и ни
+   * слово, ни единица там не проверялись: `oloZzz` давало `outline-offset:zzz`,
+   * `oloF00` — `outline-offset:f`, `lts10zz` — `letter-spacing:10zz`,
+   * `olo10%` — `outline-offset:10%` (процентов это свойство не принимает).
+   * Валидатор ядра ни одно из этих свойств не знал.
+   *
+   * @param p — параметры хендлера
+   * @param keywords — ключевые слова конкретного свойства
+   * @param allow — флаги допустимого, см. {@link LENGTH_PERCENT}
+   * @param defaultUnit — единица для голого числа
+   */
+  function lengthOrWord(
+    p: any,
+    keywords: Record<string, 1>,
+    allow: number,
+    defaultUnit: string,
+    symonyms?: Record<string, string>,
+  ): string {
+    const camel = p.camel;
+    if (camel) {
+      return assertKnownWord(
+        toKebabCase(symonyms && symonyms[camel] || camel),
+        camel, symonyms, keywords,
+      );
+    }
+    const num = p.num;
+    if (num == '0') {
+      return num;
+    }
+    const unit = p.unit;
+    unit === '%' && !(allow & LENGTH_PERCENT) && throwInvalid('Значение "'
+      + p.suffix + '" не распознано: у этого свойства процент недопустим');
+    // Знак здесь не проверяется: все четыре свойства этого пути
+    // (`outline-offset`, `letter-spacing`, `text-size-adjust`,
+    // `font-size-adjust`) отрицательные значения принимают. Появится пятое,
+    // которое не принимает, — проверка добавится вместе с ним, а мёртвой
+    // ветки до тех пор нет.
+    return (p.sign || '') + num + (validateUnit(unit) || defaultUnit);
   }
 
   /**
@@ -2071,7 +2153,12 @@ export default (mn: MnInstance) => {
       const num = p.num;
       return synonym ? normalizeDefault(p, synonym) : !p.negative && styleWrap({
         fontWeight: camel
-          ? toKebabCase(camel)
+          // Слово не проверялось: `fwZzz` давало `font-weight:zzz`, `fwA` —
+          // `font-weight:a`, `fwF00` — `font-weight:f`. Список закрытый,
+          // выводится из того же словаря кратких записей.
+          ? assertKnownWord(
+            toKebabCase(camel), camel, FONT_WEIGHT_SYNONYMS, FONT_WEIGHT_KEYWORDS,
+          )
           : (num >= 100
             ? 100 * intval(
               num / 100, 1, 1, 9,
@@ -2095,9 +2182,15 @@ export default (mn: MnInstance) => {
     }),
     z: (p) => {
       let num;
-      return p.camel ? 0 : ((num = p.num) ? styleWrap({
-        zIndex: num,
-      }) : normalizeDefault(p, 1));
+      // `z-index` — целое число или `auto`. Дробь давала `z-index:1.5`,
+      // правило, которое браузер отбрасывает целиком.
+      return p.camel ? 0 : ((num = p.num) ? (
+        REGEXP_INTEGER.test(num) || throwInvalid('Значение "' + p.suffix
+          + '" не распознано: z-index задаётся целым числом'),
+        styleWrap({
+          zIndex: num,
+        })
+      ) : normalizeDefault(p, 1));
     },
     /**
      * `opacity`. Число — проценты (`o50` → `.5`), как в 1.x. Дробь меньше единицы
@@ -2132,9 +2225,12 @@ export default (mn: MnInstance) => {
       let num, unit, v;
       return p.camel ? 0 : (
         (v = cssVarValue(p.suffix || '')) ? styleWrap({
-          lineHeight: v, 
+          lineHeight: v,
         }) : (
-          unit = p.unit,
+          // Единица не проверялась: `lh10zz` давало `line-height:10zz`,
+          // `lh10s` — `line-height:10s`. Безразмерная форма при этом
+          // сохраняется — она и есть основная.
+          unit = validateUnit(p.unit),
           (num = p.num) ? styleWrap({
             lineHeight: num == '0' ? num : (unit ? num + unit : num),
           }) : normalizeDefault(p, '1')
@@ -2142,35 +2238,46 @@ export default (mn: MnInstance) => {
       );
     },
     tsa: (p) => {
-      let num, camel, v;
+      let v;
       return p.negative ? 0 : (
         (v = cssVarValue(p.suffix || '')) ? styleWrap({
-          textSizeAdjust: v, 
+          textSizeAdjust: v,
         }) : (p.value ? styleWrap({
-          textSizeAdjust: (camel = p.camel)
-            ? toKebabCase(camel)
-            : ((num = p.num) == '0' ? num : (num + (p.unit || 'px'))),
+          textSizeAdjust: lengthOrWord(
+            p, TEXT_SIZE_ADJUST_KEYWORDS, LENGTH_PERCENT,
+            'px', TEXT_SIZE_ADJUST_SYNONYMS,
+          ),
         }) : normalizeDefault(p, '100%'))
       );
     },
     fsa: (p) => {
-      let num, camel, v;
+      let v;
       return p.negative ? 0 : (
         (v = cssVarValue(p.suffix || '')) ? styleWrap({
-          fontSizeAdjust: v, 
+          fontSizeAdjust: v,
         }) : (p.value ? styleWrap({
-          fontSizeAdjust: (camel = p.camel)
-            ? (camel == 'N' ? 'none' : toKebabCase(camel))
-            : ((num = p.num) == '0' ? num : (num + (p.unit || 'px'))),
+          // `N` здесь — краткая запись `none`, а не начало слова: она разобрана
+          // до общего пути, поэтому остаётся отдельной веткой.
+          fontSizeAdjust: p.camel == 'N'
+            ? 'none'
+            // Значение безразмерное (`font-size-adjust:0.5`), поэтому
+            // единицы по умолчанию у него нет.
+            : lengthOrWord(
+              p, FONT_SIZE_ADJUST_KEYWORDS, 0, '',
+            ),
         }) : 0)
       );
     },
+    // `outline-offset` — длина со знаком, без процентов и без ключевых слов
+    // помимо CSS-wide.
     olo: (p) => {
-      let num, camel;
-      return (p.value ? styleWrap({
-        outlineOffset: (camel = p.camel)
-          ? toKebabCase(camel)
-          : ((num = p.num) == '0' ? num : (num + (p.unit || 'px'))),
+      let v;
+      return (v = cssVarValue(p.suffix || '')) ? styleWrap({
+        outlineOffset: v,
+      }) : (p.value ? styleWrap({
+        outlineOffset: lengthOrWord(
+          p, EMPTY_KEYWORDS, 0, 'px',
+        ),
       }) : normalizeDefault(p));
     },
 
@@ -2581,19 +2688,17 @@ export default (mn: MnInstance) => {
      * который браузер отбрасывал.
      */
     lts: (p) => {
-      let num, v;
+      let v;
       return p.suffix === 'N'
         ? normalizeDefault(p, 'Normal')
         : ((v = cssVarValue(p.suffix || '')) ? styleWrap({
-          letterSpacing: v, 
+          letterSpacing: v,
         }) : (
-          p.camel ? styleWrap({
-            letterSpacing: toKebabCase(p.camel), 
-          }) : (
-            (num = p.num) != null ? styleWrap({
-              letterSpacing: num == '0' ? num : ((p.sign || '') + num + (p.unit || 'px')),
-            }) : 0
-          )
+          (p.camel || p.num != null) ? styleWrap({
+            letterSpacing: lengthOrWord(
+              p, LETTER_SPACING_KEYWORDS, LENGTH_PERCENT, 'px',
+            ),
+          }) : 0
         ));
     },
     ws: synonymProvider('whiteSpace', {
@@ -2994,7 +3099,7 @@ export default (mn: MnInstance) => {
     wos: [
       'wordSpacing',
       0,
-      LENGTH_NO_PERCENT,
+      LENGTH_SIGN,
       0,
       {
         normal: 1,
@@ -3005,7 +3110,7 @@ export default (mn: MnInstance) => {
     ti: [
       'textIndent',
       0,
-      LENGTH_ANY,
+      LENGTH_PERCENT | LENGTH_SIGN,
     ],
 
     tn: ['transition'],
@@ -3039,7 +3144,7 @@ export default (mn: MnInstance) => {
     fxb: [
       'flexBasis',
       1,
-      LENGTH_ANY,
+      LENGTH_PERCENT,
       0,
       {
         auto: 1,
@@ -3059,7 +3164,7 @@ export default (mn: MnInstance) => {
     tdt: [
       'textDecorationThickness',
       1,
-      LENGTH_ANY,
+      LENGTH_PERCENT | LENGTH_SIGN,
       0,
       {
         auto: 1,
@@ -3070,7 +3175,7 @@ export default (mn: MnInstance) => {
     tuo: [
       'textUnderlineOffset',
       2,
-      LENGTH_ANY,
+      LENGTH_PERCENT | LENGTH_SIGN,
       0,
       {
         auto: 1,

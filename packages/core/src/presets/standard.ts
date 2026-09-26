@@ -155,6 +155,16 @@ const COLOR_SYNONYMS = {
   SI: 'SelectedItem',
   SIT: 'SelectedItemText',
 };
+/**
+ * Значения `border-style`, выведенные из словаря кратких записей ниже.
+ *
+ * Три из них (`dot-dash`, `dot-dot-dash`, `wave`) в CSS не существуют — это
+ * проприетарный набор старой Mozilla, работавший только под
+ * `-moz-border-*-style`. Краткие записи `bsDTDS`, `bsDTDTDS`, `bsW` перешли из
+ * v1 и здесь сохранены, чтобы не ломать их молча; убирать ли их — отдельный
+ * вопрос к владельцу, поэтому список собирается из словаря, а не выписан по
+ * спецификации.
+ */
 const BORDER_STYLE_SYNONYMS = {
   N: 'None',
   H: 'Hidden',
@@ -170,6 +180,8 @@ const BORDER_STYLE_SYNONYMS = {
   I: 'Inset',
   O: 'Outset',
 };
+const BORDER_STYLE_KEYWORDS = wordsSet('none hidden dotted dashed solid double'
+  + ' groove ridge inset outset dot-dash dot-dot-dash wave');
 /** Ключевые слова позиции — общие для `background-position`/`object-position`. */
 const POSITION_KEYWORDS = {
   L: 'Left',
@@ -693,6 +705,10 @@ const ENUM_KEYWORDS: Record<string, Record<string, 1 | string>> = {
   // `[over | under] && [right | left]?`. Порядок здесь не проверяется, слова
   // берутся списком.
   textEmphasisPosition: wordsSet('auto over under right left'),
+  position: {
+    ...wordsSet('static relative absolute sticky fixed -webkit-sticky'),
+    'webkit-sticky': '-webkit-sticky',
+  },
   imageRendering: {
     ...wordsSet('auto crisp-edges pixelated smooth optimize-contrast'),
     'moz-crisp-edges': '-moz-crisp-edges',
@@ -732,10 +748,16 @@ const ENUM_MULTI: Record<string, 1> = {
 function assertEnumValue(
   v: string,
   words: Record<string, 1 | string>,
-  multi: 1 | undefined,
+  multi: 1 | 0 | undefined,
   essenceName: string,
   raw: string,
 ): string {
+  // Подстановка и любая функция проходят: их содержимое здесь разбирать нечем,
+  // а по спецификации `var()` валиден у любого свойства. CSS-wide keywords
+  // валидны везде и в списке свойства не перечисляются.
+  if (v.indexOf('(') > -1 || GLOBAL_KEYWORDS[v]) {
+    return v;
+  }
   const prefix = 'Значение "' + raw + '" не распознано: у "' + essenceName + '" ';
   const parts = v.split(' ');
   let i = parts.length;
@@ -748,6 +770,17 @@ function assertEnumValue(
   }
   return parts.join(' ');
 }
+/**
+ * Ключевые слова, допустимые у любого свойства (CSS-wide keywords).
+ * В словарях отдельных хендлеров не перечисляются — они валидны везде.
+ */
+const GLOBAL_KEYWORDS: Record<string, 1> = {
+  inherit: 1,
+  initial: 1,
+  unset: 1,
+  revert: 1,
+  'revert-layer': 1,
+};
 /** Проценты допустимы: `text-indent:10%`, но не `word-spacing:10%`. */
 const LENGTH_PERCENT = 1;
 /** Несколько значений через `_`: `border-spacing:10px 20px`. */
@@ -944,18 +977,6 @@ export default (mn: MnInstance) => {
       + '" is invalid: поворот измеряется углом (' + ANGLE_UNITS.join(', ') + ')');
     return value + (unit || 'deg');
   }
-  /**
-   * Ключевые слова, допустимые у любого свойства (CSS-wide keywords).
-   * В словарях отдельных хендлеров не перечисляются — они валидны везде.
-   */
-  const GLOBAL_KEYWORDS: Record<string, 1> = {
-    inherit: 1,
-    initial: 1,
-    unset: 1,
-    revert: 1,
-    'revert-layer': 1,
-  };
-
   /**
    * Бракует слово, которого хендлер не знает.
    *
@@ -1207,7 +1228,12 @@ export default (mn: MnInstance) => {
    * есть краткая.
    */
   function synonymProvider(
-    propName: string | string[], synonyms: Record<string, any>, priority?: number, _style?: Record<string, any>,
+    propName: string | string[],
+    synonyms: Record<string, any>,
+    priority?: number,
+    _style?: Record<string, any>,
+    // Свойство принимает не только слова из словаря, но и число/длину.
+    numeric?: 1,
   ): MnHandler {
     let props: Record<string, number>;
     // Обратный индекс: длинное слово → краткая запись, строится из самого
@@ -1230,8 +1256,18 @@ export default (mn: MnInstance) => {
      * проходило насквозь и давало мёртвое правило — `ovN` → `overflow:n`,
      * `posN` → `position:n`, `fwA` → `font-weight:a`.
      *
+     * **Число бракуется так же, как слово.** Раньше проверялось только слово,
+     * потому что «числа словарём не перечислить», — но у свойства с закрытым
+     * перечнем число невалидно само по себе, и `pos10` давало `position:10`,
+     * `ov1.5` — `overflow:1.5`, `d10px` — `display:10px`. Сверка с грамматикой
+     * показала, что из 38 свойств этого пути числа законны ровно у двух
+     * (`text-decoration` — толщина линии, `vertical-align` — сдвиг), плюс у
+     * позиции фона; они и помечены флагом `numeric`.
+     *
      * Проходят мимо проверки: CSS-wide keywords, переменные и любые функции
      * (`cursor:url(…)`, `display:var(--v)`) — их словарём не перечислить.
+     * Ведущий `_` — режим «значение уже готово» (`ol_3px_solid_red`):
+     * составное значение тоже не перечислить.
      */
     function assertSynonymAbbr(p: any, value: string): void {
       // Сюда доходит только запись, которой НЕТ в словаре кратких форм
@@ -1242,16 +1278,15 @@ export default (mn: MnInstance) => {
         throwInvalid('Записывается короче: "' + p.name + abbr
           + '" вместо "' + p.name + p.suffix + '" — то же значение');
       }
-      // Проверяется только СЛОВО: числа, проценты, длины и функции словарём
-      // не перечислить, и у многих свойств они законны (`bgpx50%`,
-      // `cursor:url(…)`, `display:var(--v)`).
-      //
-      // Ведущий `_` — режим «значение уже готово» (`ol_3px_solid_red`):
-      // составное значение тоже не перечислить.
-      REGEXP_BARE_WORD.test(value) || (value = '');
-      value === '' || p.suffix[0] === '_' || GLOBAL_KEYWORDS[value] || keywords[value]
-        || throwInvalid('Значение "' + p.suffix + '" не распознано: у "' + p.name
-          + '" нет такой краткой записи, а ключевым словом оно не является');
+      if (value.indexOf('(') > -1 || p.suffix[0] === '_'
+        || GLOBAL_KEYWORDS[value] || keywords[value]) {
+        return;
+      }
+      REGEXP_BARE_WORD.test(value)
+        ? throwInvalid('Значение "' + p.suffix + '" не распознано: у "' + p.name
+          + '" нет такой краткой записи, а ключевым словом оно не является')
+        : (numeric || throwInvalid('Значение "' + p.suffix + '" не распознано: у "'
+          + p.name + '" перечень значений закрыт, число недопустимо'));
     }
     return isArray(propName)
       ? (props = flags(propName), ((p: any) => {
@@ -1657,7 +1692,15 @@ export default (mn: MnInstance) => {
         ? normalizeDefault(p, synonym)
         : (
           s
-            ? styleWrap(bsSidesSet(valueNormalize(s)), priority + 1)
+            // Стиль границы — закрытый перечень (`<line-style>`), но
+            // проверки не было вовсе: `bs10` давало `border-style:10`,
+            // `bsF00` — `border-style:f00`, `bsZzz` — `border-style:zzz`.
+            // Без стороны свойство берёт до четырёх значений
+            // (`border-style: solid dotted`), со стороной — одно.
+            ? styleWrap(bsSidesSet(assertEnumValue(
+              valueNormalize(s), BORDER_STYLE_KEYWORDS,
+              suffix ? 0 : 1, 'bs' + suffix, s,
+            )), priority + 1)
             : normalizeDefault(p, 'Solid')
         );
     });
@@ -2239,7 +2282,12 @@ export default (mn: MnInstance) => {
            разбирает `POSITION_SYNONYMS['']` выше (голый `pos` → `relative`).
            Оставлена как страховка на случай правки карты синонимов. */
         s ? (
-          v = valueNormalize(s),
+          // Перечень у `position` закрыт, поэтому сюда доходит либо слово из
+          // него, либо ошибка: `pos10` давало `position:10`, `posZzz` —
+          // `position:zzz`.
+          v = assertEnumValue(
+            valueNormalize(s), ENUM_KEYWORDS.position, 0, 'pos', s,
+          ),
           styleWrap({
             position: v,
           }, POSITION_PRIORITIES[v] || 0)
@@ -2745,16 +2793,20 @@ export default (mn: MnInstance) => {
      * ТОЛЬКО сюда: `text-decoration-line` их не принимает, а карту `TD_SYNONYMS`
      * они делят.
      */
-    td: synonymProvider('textDecoration', {
-      ...TD_SYNONYMS,
-      S: 'Solid',
-      DB: 'Double',
-      DT: 'Dotted',
-      DS: 'Dashed',
-      W: 'Wavy',
-      A: 'Auto',
-      FF: 'FromFont',
-    }),
+    td: synonymProvider(
+      'textDecoration', {
+        ...TD_SYNONYMS,
+        S: 'Solid',
+        DB: 'Double',
+        DT: 'Dotted',
+        DS: 'Dashed',
+        W: 'Wavy',
+        A: 'Auto',
+        FF: 'FromFont',
+      // `numeric`: сокращение включает толщину линии, а она — длина
+      // (`text-decoration: underline 2px`).
+      }, 0, 0 as any, 1,
+    ),
     tdl: synonymProvider(
       'textDecorationLine', TD_SYNONYMS, 1,
     ),
@@ -3031,6 +3083,9 @@ export default (mn: MnInstance) => {
      * принимает `left`/`right`/`x-start`/`x-end`, вертикальная —
      * `top`/`bottom`/`y-start`/`y-end`. До 2026-09-24 карт не было вовсе, и
      * `bgpxL` давало мусор `background-position-x:l`.
+     *
+     * Помечены `numeric`: позиция задаётся не только словом, но и длиной или
+     * процентом — `bgpx50%`, `bgpy10px`.
      */
     bgpx: synonymProvider(
       'backgroundPositionX', {
@@ -3039,7 +3094,7 @@ export default (mn: MnInstance) => {
         R: 'Right',
         XS: 'XStart',
         XE: 'XEnd',
-      }, 2,
+      }, 2, 0 as any, 1,
     ),
     bgpy: synonymProvider(
       'backgroundPositionY', {
@@ -3048,7 +3103,7 @@ export default (mn: MnInstance) => {
         B: 'Bottom',
         YS: 'YStart',
         YE: 'YEnd',
-      }, 2,
+      }, 2, 0 as any, 1,
     ),
     as: synonymProvider('alignSelf', {
       A: 'Auto',
@@ -3118,18 +3173,22 @@ export default (mn: MnInstance) => {
       N: 'Normal',
       B: 'Baseline',
     }),
-    va: synonymProvider('verticalAlign', {
-      SUP: 'Super',
-      // `S` свободна: `super` исторически занял `SUP`, а не `S`.
-      S: 'Sub',
-      SUB: 'Sub',
-      T: 'Top',
-      TT: 'TextTop',
-      M: 'Middle',
-      BL: 'Baseline',
-      B: 'Bottom',
-      TB: 'TextBottom',
-    }),
+    va: synonymProvider(
+      'verticalAlign', {
+        SUP: 'Super',
+        // `S` свободна: `super` исторически занял `SUP`, а не `S`.
+        S: 'Sub',
+        SUB: 'Sub',
+        T: 'Top',
+        TT: 'TextTop',
+        M: 'Middle',
+        BL: 'Baseline',
+        B: 'Bottom',
+        TB: 'TextBottom',
+      // `numeric`: сдвиг базовой линии задаётся длиной или процентом
+      // (`vertical-align: -0.125em`).
+      }, 0, 0 as any, 1,
+    ),
     wm: synonymProvider('writingMode', {
       '': 'LrTb',
       BTL: 'BtLr',
@@ -3358,11 +3417,9 @@ export default (mn: MnInstance) => {
       // только его словесная форма: `irF00` — не слово (`f00`), но и не
       // значение `image-rendering`. Подстановка и функция проходят: их
       // содержимое здесь разбирать нечем.
-      if (enumWords && s.indexOf('(') < 0 && !GLOBAL_KEYWORDS[s]) {
-        s = assertEnumValue(
-          s, enumWords, ENUM_MULTI[propName], essenceName, p.suffix,
-        );
-      }
+      enumWords && (s = assertEnumValue(
+        s, enumWords, ENUM_MULTI[propName], essenceName, p.suffix,
+      ));
       style[propName] = lengthy
         ? assertLengthValue(
           defaultUnitNormalize(s), essenceName, p.suffix, lengthy,

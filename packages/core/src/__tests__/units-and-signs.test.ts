@@ -607,3 +607,88 @@ describe('свойства с закрытым перечнем значений
     expect(compile(['apcUnset']).css).toContain('appearance:unset');
   });
 });
+
+describe('у свойства с перечнем число недопустимо так же, как чужое слово', () => {
+  // Раньше проверялось только слово — «числа словарём не перечислить». Но у
+  // свойства с закрытым перечнем число невалидно само по себе. Сверка с
+  // грамматикой показала, что из 38 свойств этого пути числа законны ровно у
+  // двух, плюс у позиции фона.
+  test.each([
+    ['pos10', 'position'],
+    ['ov10', 'overflow'],
+    ['ovx1.5', 'overflow-x'],
+    ['d10px', 'display'],
+    ['of10', 'object-fit'],
+    ['wb10', 'word-break'],
+    ['us10', 'user-select'],
+    ['vis10', 'visibility'],
+  ])('%s бракуется — %s чисел не принимает', (token, prop) => {
+    expect(lexer.matchProperty(prop, '10').matched).toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  test.each([
+    ['bgpx50%', 'background-position-x:50%'],
+    ['bgpy10px', 'background-position-y:10px'],
+    ['va-0.125em', 'vertical-align:-0.125em'],
+    ['va10%', 'vertical-align:10%'],
+    ['td2px', 'text-decoration:2px'],
+  ])('%s → %s — там, где число законно, оно проходит', (token, expected) => {
+    const [prop, value] = expected.split(':');
+    expect(lexer.matchProperty(prop, value).matched).toBeTruthy();
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    ['posA', 'position:absolute'],
+    ['posSticky', 'position:sticky'],
+    ['posWebkitSticky', 'position:-webkit-sticky'],
+    ['pos', 'position:relative'],
+    ['posInherit', 'position:inherit'],
+    ['pos--v', 'position:var(--v)'],
+  ])('%s → %s', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each(['posZzz', 'posF00'])('%s бракуется', (token) => {
+    expect(compile([token]).css).toBe('');
+  });
+});
+
+describe('стиль границы — закрытый перечень', () => {
+  test.each([
+    ['bs', 'border-style:solid'],
+    ['bsS', 'border-style:solid'],
+    ['bsN', 'border-style:none'],
+    ['bsDT', 'border-style:dotted'],
+    ['bsSolid', 'border-style:solid'],
+    ['bstS', 'border-top-style:solid'],
+    ['bslS', 'border-left-style:solid'],
+    ['bsInherit', 'border-style:inherit'],
+    ['bs--v', 'border-style:var(--v)'],
+  ])('%s → %s', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    'bs10',
+    'bs10px',
+    'bsF00',
+    'bsZzz',
+    'bs1.5',
+    'bst10',
+  ])('%s бракуется', (token) => {
+    const {
+      css, warnings,
+    } = compile([token]);
+    expect(css).toBe('');
+    expect(warnings.length).toBe(1);
+  });
+
+  test('без стороны берёт несколько значений, со стороной — одно', () => {
+    expect(lexer.matchProperty('border-style', 'solid dotted').matched).toBeTruthy();
+    expect(compile(['bsSolid_Dotted']).css).toContain('border-style:solid dotted');
+    expect(lexer.matchProperty('border-top-style', 'solid dotted').matched).toBeFalsy();
+    expect(compile(['bst10_20']).css).toBe('');
+  });
+});

@@ -128,6 +128,22 @@ fallback и сам градиент.
 `url("url(a.png)")`, `bgi_none` — `url("none")`, а градиент превращался в имя
 файла. Краткой записи `bgiN` не было вовсе.
 
+### Список переменных через запятую
+
+`;` завершает имя переменной — и теперь работает в том числе перед запятой:
+
+| Токен | CSS |
+|-------|-----|
+| `g_--a;,--b` | `grid:var(--a),var(--b)` |
+| `g_--my_a;,--my_b;` | `grid:var(--my_a),var(--my_b)` |
+| `g_--rows;_--cols` | `grid:var(--rows) var(--cols)` — пробел, как и везде, через `_` |
+
+Без `;` запятая после имени остаётся **фолбэком**, как в CSS:
+`ff--mono,serif` → `font-family:var(--mono,serif)`.
+
+До 2026-09-26 `g_--a;,--b` давало `grid:--a;,--b` — переменные не
+разворачивались, а `;` уезжал в CSS литералом.
+
 ## Формат токена
 
 ```
@@ -783,7 +799,7 @@ tn_color;background;border-color_0.2s
 **Несколько переходов через запятую** — то, ради чего shorthand остался:
 
 ```
-tn_color_0\.2s_ease,transform_0\.4s_linear
+tn_color_0.2s_ease,transform_0.4s_linear
 → transition:color 0.2s ease,transform 0.4s linear
 ```
 

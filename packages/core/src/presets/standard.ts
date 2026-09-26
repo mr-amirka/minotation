@@ -1465,11 +1465,44 @@ export default (mn: MnInstance) => {
     let part: string;
     while (i--) {
       part = parts[i];
-      parts[i] = cssVarValue(part) || (raw ? part : toKebabCase(part));
+      parts[i] = cssVarValue(part)
+        || varListValue(part)
+        || (raw ? part : toKebabCase(part));
     }
     // `\0` возвращается в `_` ТОЛЬКО после spaceNormalize — иначе та превратила
     // бы его в пробел уже внутри имени переменной (см. splitValueParts).
     return spaceNormalize(parts.join('_')).replace(REGEXP_VAR_UNDERSCORE, '_');
+  }
+  /**
+   * Разворачивает список значений через запятую, когда имя переменной в нём
+   * явно завершено точкой с запятой: `--a;,--b` → `var(--a),var(--b)`.
+   *
+   * Без `;` запятая после имени — это ФОЛБЭК, а не разделитель:
+   * `--mono,serif` → `var(--mono,serif)`, и так и должно остаться. Поэтому
+   * список распознаётся только по наличию `;` — там, где автор сам сказал, где
+   * имя кончается.
+   *
+   * До 2026-09-26 такая запись не разбиралась вовсе: `g_--a;,--b` давало
+   * `grid:--a;,--b` — переменные не разворачивались, а `;` уезжал в CSS
+   * литералом.
+   *
+   * @returns `undefined`, если это не список — тогда часть обрабатывается как
+   *   раньше.
+   */
+  function varListValue(part: string): string | undefined {
+    if (part.indexOf(';') < 0 || part.indexOf(',') < 0) {
+      return;
+    }
+    const items = splitTopLevel(part);
+    const l = items.length;
+    const out: string[] = new Array(l);
+    let i = 0;
+    let item: string;
+    for (; i < l; i++) {
+      item = items[i];
+      out[i] = cssVarValue(item) || item;
+    }
+    return out.join(',');
   }
   function fontNameNormalize(s: string): string {
     const c = s[0];

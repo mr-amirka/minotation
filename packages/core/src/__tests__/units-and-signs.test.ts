@@ -1030,7 +1030,7 @@ describe('transition: слоты в фиксированном порядке', 
   test('несколько переходов через запятую — то, ради чего shorthand остался', () => {
     // Атомарные `tp`/`dn`/`ttf`/`delay` пишут по одному значению на все
     // свойства сразу, поэтому разные параметры разным свойствам ими не задать.
-    const css = compile(['tn_color_0\\.2s_ease,transform_0\\.4s_linear']).css;
+    const css = compile(['tn_color_0.2s_ease,transform_0.4s_linear']).css;
     expect(css).toContain('transition:color 0.2s ease,transform 0.4s linear');
     expect(lexer.matchProperty('transition', 'color 0.2s ease,transform 0.4s linear').matched).toBeTruthy();
   });
@@ -1105,7 +1105,7 @@ describe('transition: список свойств с общими парамет
   });
 
   test('список сочетается с обычными блоками через запятую', () => {
-    expect(compile(['tn_color;background_0\\.2s,transform_0\\.4s']).css)
+    expect(compile(['tn_color;background_0.2s,transform_0.4s']).css)
       .toContain('transition:color 0.2s,background 0.2s,transform 0.4s');
   });
 
@@ -1118,5 +1118,35 @@ describe('transition: список свойств с общими парамет
     // и до этой проверки уже развёрнуто в `var(…)`.
     expect(compile(['tn_--prop_0.2s']).css).toContain('transition:var(--prop) 0.2s');
     expect(compile(['tn_--prop;_0.2s']).css).toContain('transition:var(--prop) 0.2s');
+  });
+});
+
+describe('список переменных через `;` и запятую', () => {
+  // `;` завершает имя переменной. Раньше он срабатывал перед `_` и в конце
+  // значения, но не перед запятой: `g_--a;,--b` давало `grid:--a;,--b` —
+  // переменные не разворачивались, а `;` уезжал в CSS литералом.
+  test.each([
+    ['g_--a;,--b', 'grid:var(--a),var(--b)'],
+    ['g_--a;,--b;,--c', 'grid:var(--a),var(--b),var(--c)'],
+    ['g_--my_a;,--my_b;', 'grid:var(--my_a),var(--my_b)'],
+    ['tn_--a;,--b', 'transition:var(--a),var(--b)'],
+  ])('%s → %s', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test('в списке могут быть не только переменные', () => {
+    expect(compile(['g_--a;,10px']).css).toContain('grid:var(--a),10px');
+  });
+
+  test('без `;` запятая после имени остаётся фолбэком', () => {
+    // `var(--mono, serif)` — штатная конструкция CSS, и ломать её нельзя.
+    expect(compile(['ff--mono,serif']).css).toContain('font-family:var(--mono,serif)');
+    expect(compile(['g_--a,--b']).css).toContain('grid:var(--a,--b)');
+  });
+
+  test('пробел между переменными — через `_`, как и везде', () => {
+    expect(compile(['g_--rows;_--cols']).css).toContain('grid:var(--rows) var(--cols)');
+    expect(compile(['gtc_--a;_--b']).css)
+      .toContain('grid-template-columns:var(--a) var(--b)');
   });
 });

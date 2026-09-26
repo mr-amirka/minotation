@@ -832,3 +832,30 @@ describe('border-style: только то, что есть в специфика
     expect(compile([token]).css).toContain('border-style:' + value);
   });
 });
+
+describe('свойства-картинки оборачивают в url() только голый путь', () => {
+  // Обёртка была безусловной, поэтому готовое значение заворачивалось второй
+  // раз, а ключевое слово превращалось в имя файла.
+  test.each([
+    ['bgi', 'background-image:none'],
+    ['bgiN', 'background-image:none'],
+    ['bgi_none', 'background-image:none'],
+    ['bgiInherit', 'background-image:inherit'],
+    ['lisiN', 'list-style-image:none'],
+    ['maskiN', 'mask-image:none'],
+  ])('%s → %s — ключевое слово не заворачивается', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([['bgi_a\\.png', 'background-image:url("a.png")'], ['bgi_images/a\\.png', 'background-image:url("images/a.png")']])('%s → %s — голый путь заворачивается', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([['bgi_url\\(a\\.png\\)', 'background-image:url(a.png)'], ['bgi_linear-gradient\\(red,blue\\)', 'background-image:linear-gradient(red,blue)']])('%s → %s — готовая функция проходит как есть', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test('переменная подставляется целиком, а не как путь', () => {
+    expect(compile(['bgi--v']).css).toContain('background-image:var(--v)');
+  });
+});

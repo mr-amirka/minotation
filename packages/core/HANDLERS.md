@@ -112,6 +112,23 @@ fallback и сам градиент.
 | `lisi--v` | `list-style-image:var(--v)` |
 | `maski--v` | `mask-image:var(--v)` |
 
+### Свойства-картинки: что заворачивается в `url()`
+
+`bgi`, `lisi`, `maski` оборачивают в `url("…")` только **голый путь**:
+
+| Токен | CSS |
+|-------|-----|
+| `bgi_a\.png` | `background-image:url("a.png")` |
+| `bgi_images/a\.png` | `background-image:url("images/a.png")` |
+| `bgiN`, `bgi_none`, `bgi` | `background-image:none` |
+| `bgiInherit` | `background-image:inherit` |
+| `bgi_url\(a\.png\)` | `background-image:url(a.png)` — уже функция, проходит как есть |
+| `bgi_linear-gradient\(red,blue\)` | `background-image:linear-gradient(red,blue)` |
+
+До 2026-09-26 обёртка была безусловной, поэтому `bgi_url\(a\.png\)` давало
+`url("url(a.png)")`, `bgi_none` — `url("none")`, а градиент превращался в имя
+файла. Краткой записи `bgiN` не было вовсе.
+
 ## Формат токена
 
 ```

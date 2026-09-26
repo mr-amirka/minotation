@@ -809,6 +809,23 @@ const VALUE_PATTERNS: Record<string, RegExp> = {
   zoom: REGEXP_VALUE_ZOOM,
   aspectRatio: REGEXP_VALUE_RATIO,
 };
+/**
+ * Ключевые слова свойств-картинок (`background-image`, `list-style-image`,
+ * `mask-image`) и их краткие записи.
+ *
+ * Значение таких свойств — либо `none`, либо `<image>`; голый путь хендлер сам
+ * заворачивает в `url("…")`. Краткой записи `N` не было вовсе, а `none`
+ * заворачивался как имя файла.
+ */
+const IMAGE_KEYWORDS: Record<string, string> = {
+  n: 'none',
+  none: 'none',
+  inherit: 'inherit',
+  initial: 'initial',
+  unset: 'unset',
+  revert: 'revert',
+  'revert-layer': 'revert-layer',
+};
 /** Проценты допустимы: `text-indent:10%`, но не `word-spacing:10%`. */
 const LENGTH_PERCENT = 1;
 /** Несколько значений через `_`: `border-spacing:10px 20px`. */
@@ -2013,8 +2030,18 @@ export default (mn: MnInstance) => {
       // url: `bgi--hero` — это `background-image:var(--hero)` (сама
       // переменная и содержит `url(…)`), а не `url("--hero")`, которое
       // ссылалось бы на файл с таким именем (2026-09-23).
+      //
+      // Готовое значение тоже не заворачивается: обёртка была безусловной, и
+      // `bgi_url\(a\.png\)` давало `url("url(a.png)")`, `bgi_none` —
+      // `url("none")`, `bgiN` — `url("N")`, а градиент превращался в имя файла
+      // (`url("linear-gradient(red,blue)")`). Оборачивается только голый путь
+      // (2026-09-26).
       style[propName] = (url = snakeLeftTrim(p.suffix))
-        ? (cssVarValue(url) || ('url("' + url + '")'))
+        ? (cssVarValue(url)
+          // Ключ ищется в нижнем регистре: и краткая запись (`bgiN`), и
+          // полная (`bgiNone`, `bgiInherit`) — одно и то же слово.
+          || (IMAGE_KEYWORDS[url.toLowerCase()]
+            || (url.indexOf('(') > -1 ? url : 'url("' + url + '")')))
         : 'none';
       return styleWrap(style, 1);
     });

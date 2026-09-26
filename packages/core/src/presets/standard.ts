@@ -584,6 +584,20 @@ function defaultUnitNormalize(v: string): string {
 const REGEXP_LENGTH_PART = new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:'
   + UNITS.join('|') + '))$');
 /**
+ * Что принимает свойство-длина — третья позиция в таблице ниже.
+ *
+ * Свойства делятся по двум признакам, и делятся по-разному, поэтому одного
+ * флага «это длина» мало: `text-indent:10%` валиден, `word-spacing:10%` — нет;
+ * `border-spacing:10px 20px` валиден, `text-indent:10px 20px` — нет. Проверено
+ * арбитром (`css-tree` + `mdn-data`), а не на глаз.
+ */
+/** Одно значение, проценты допустимы (`ti`, `fxb`, `tdt`, `tuo`). */
+const LENGTH_ANY = 1;
+/** Одно значение, только длина — без процентов (`wos`). */
+const LENGTH_NO_PERCENT = 2;
+/** Несколько значений, только длина (`bsp` — `border-spacing` берёт два). */
+const LENGTH_MULTI = 3;
+/**
  * Бракует значение свойства-длины, которое длиной не является.
  *
  * Числовой путь ядра единицу проверяет (`validateUnit`), а общий блок свободных
@@ -595,23 +609,31 @@ const REGEXP_LENGTH_PART = new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:'
  * `w10zz` бракуется.
  *
  * Значение с функцией (`calc(…)`, `var(…)`, `clamp(…)`) пропускается целиком:
- * разбирать её содержимое здесь нечем, а по спецификации подстановка валидна у
+ * разбирать его содержимое здесь нечем, а по спецификации подстановка валидна у
  * любого свойства.
+ *
+ * @param kind — что именно свойство принимает, см. {@link LENGTH_ANY}
  */
 function assertLengthValue(
-  v: string, essenceName: string, raw: string,
+  v: string, essenceName: string, raw: string, kind: number,
 ): string {
   if (v.indexOf('(') > -1) {
     return v;
   }
   const parts = v.split(' ');
   let i = parts.length;
+  (i < 2 || kind === LENGTH_MULTI)
+    || throwInvalid('Значение "' + raw + '" не распознано: у "'
+      + essenceName + '" ожидается одно значение');
   while (i--) {
     // Слово сюда доходит только разрешённое: список ключевых слов свойства
     // проверен выше по `assertKnownWord`-правилу вызывающего блока.
     REGEXP_LENGTH_PART.test(parts[i]) || REGEXP_BARE_WORD.test(parts[i])
       || throwInvalid('Значение "' + raw + '" не распознано: у "'
         + essenceName + '" ожидается длина');
+    (kind === LENGTH_ANY || parts[i].indexOf('%') < 0)
+      || throwInvalid('Значение "' + raw + '" не распознано: у "'
+        + essenceName + '" ожидается длина, процент недопустим');
   }
   return v;
 }
@@ -831,6 +853,19 @@ export default (mn: MnInstance) => {
       && throwInvalid('Значение "' + suffix
         + '" не распознано: отрицательное значение у этого свойства недопустимо');
   }
+  /**
+   * Бракует процент у свойства, которое принимает только длину.
+   *
+   * Процент — отдельный тип значения, и свойства делятся по нему не так, как
+   * по знаку: `width:10%` валиден, `border-width:10%` — нет, `padding:10%`
+   * валиден, `outline-width:10%` — нет. Проверки не было вовсе, поэтому
+   * `b10%` давало `border-width:10%`, а `b1/2` — `border-width:50%` (дробь
+   * всегда разворачивается в процент). Браузер такие правила отбрасывает.
+   */
+  function assertPercent(noPercent: number | undefined, suffix: any): void {
+    noPercent && throwInvalid('Значение "' + suffix
+      + '" не распознано: у этого свойства ожидается длина, процент недопустим');
+  }
   function getVal(
     suffix: any,
     positive?: number,
@@ -839,6 +874,7 @@ export default (mn: MnInstance) => {
     noOtherName?: number,
     symonyms?: Record<string, any>,
     keywords?: Record<string, 1>,
+    noPercent?: number,
   ): [string, number] {
     // Все 6 вызовов getVal в этом файле передают defaultUnit='px' явно —
     // фолбэк недостижим (подтверждено и в v1, 2026-09-23). Параметр остаётся
@@ -890,8 +926,10 @@ export default (mn: MnInstance) => {
             p.sign, positive, suffix,
           ), p.sign || '') + (
             total
-              ? toFixed(100 * floatNormalize(num, positive) / floatNormalize(total, positive)) + '%'
-              : toFixed(num) + validateUnit(p.unit || defaultUnit)
+              ? (assertPercent(noPercent, suffix),
+              toFixed(100 * floatNormalize(num, positive) / floatNormalize(total, positive)) + '%')
+              : (p.unit === '%' && assertPercent(noPercent, suffix),
+              toFixed(num) + validateUnit(p.unit || defaultUnit))
           )
         );
       output[i] = add ? calc(
@@ -1317,6 +1355,7 @@ export default (mn: MnInstance) => {
       nosign?: any,
       one?: any,
       symonyms?: Record<string, string>,
+      noPercent?: any,
     ): MnHandler {
       // Словарь задан на семейство, а не общий на все размеры: `mA` →
       // `margin:auto` валиден, а `pA` → `padding:auto` — нет. Допустимые слова
@@ -1335,7 +1374,7 @@ export default (mn: MnInstance) => {
           return normalizeDefault(p, synonym);
         }
         const v = getVal(
-          suffix, nosign, one, 'px', 0, symonyms, keywords,
+          suffix, nosign, one, 'px', 0, symonyms, keywords, noPercent,
         );
         return styleWrap(sidesSet(v[0]), priority + v[1]);
       };
@@ -1366,6 +1405,9 @@ export default (mn: MnInstance) => {
           M: 'Medium',
           TC: 'Thick',
         },
+        // `border-width` — это `<line-width>`, то есть длина или одно из трёх
+        // слов. Процентов не принимает, в отличие от `padding`/`margin`.
+        1,
       ],
     }, (args: any[], pfx: string) => {
       const propName = args[0];
@@ -1376,6 +1418,7 @@ export default (mn: MnInstance) => {
           args[2],
           suffix,
           args[3],
+          args[4],
         ), '', 1,
       );
     });
@@ -1867,18 +1910,28 @@ export default (mn: MnInstance) => {
         I: 'Inherit',
       },
     ],
-    sw: ['strokeWidth', 0],
+    sw: [
+      'strokeWidth',
+      0,
+      0,
+      1,
+    ],
     olw: [
       'outlineWidth',
       0,
       1,
-      0,
+      1,
       {
         TN: 'Thin',
         M: 'Medium',
         TC: 'Thick',
       },
+      // Та же `<line-width>`, что у `border-width`: длина или слово, без
+      // процентов.
+      1,
     ],
+    // `grid-gap` — сокращение для двух дорожек (`row column`), поэтому здесь
+    // два значения допустимы, а у покомпонентных `ggc`/`ggr` — нет.
     gg: [
       'gridGap',
       0,
@@ -1893,7 +1946,7 @@ export default (mn: MnInstance) => {
       'gridColumnGap',
       0,
       2,
-      0,
+      1,
       {
         U: 'Unset',
         R: 'Revert',
@@ -1904,7 +1957,7 @@ export default (mn: MnInstance) => {
       'gridRowGap',
       0,
       2,
-      0,
+      1,
       {
         U: 'Unset',
         R: 'Revert',
@@ -1916,6 +1969,7 @@ export default (mn: MnInstance) => {
     const priority = options[2] || 0;
     const one = options[3];
     const synonyms = options[4] || {};
+    const noPercent = options[5];
     // Допустимые слова выводятся из значений самого словаря: если хендлер
     // объявил `N: 'Normal'`, то `normal` валиден и полной записью. Отдельная
     // таблица здесь не нужна — словарь уже задан на свойство, а не на семейство.
@@ -1930,7 +1984,7 @@ export default (mn: MnInstance) => {
         : (
           v = getVal(
             suffix || defaultValue,
-            1, one, 'px', 0, synonyms, keywords,
+            1, one, 'px', 0, synonyms, keywords, noPercent,
           ),
           style = {},
           style[propName] = v[0],
@@ -2940,7 +2994,7 @@ export default (mn: MnInstance) => {
     wos: [
       'wordSpacing',
       0,
-      1,
+      LENGTH_NO_PERCENT,
       0,
       {
         normal: 1,
@@ -2951,7 +3005,7 @@ export default (mn: MnInstance) => {
     ti: [
       'textIndent',
       0,
-      1,
+      LENGTH_ANY,
     ],
 
     tn: ['transition'],
@@ -2985,7 +3039,7 @@ export default (mn: MnInstance) => {
     fxb: [
       'flexBasis',
       1,
-      1,
+      LENGTH_ANY,
       0,
       {
         auto: 1,
@@ -3005,7 +3059,7 @@ export default (mn: MnInstance) => {
     tdt: [
       'textDecorationThickness',
       1,
-      1,
+      LENGTH_ANY,
       0,
       {
         auto: 1,
@@ -3016,7 +3070,7 @@ export default (mn: MnInstance) => {
     tuo: [
       'textUnderlineOffset',
       2,
-      1,
+      LENGTH_ANY,
       0,
       {
         auto: 1,
@@ -3029,7 +3083,7 @@ export default (mn: MnInstance) => {
     bsp: [
       'borderSpacing',
       0,
-      1,
+      LENGTH_MULTI,
     ],
     // bdrs: ['borderRadius'],
     zm: ['zoom'],
@@ -3071,7 +3125,7 @@ export default (mn: MnInstance) => {
           + essenceName + '" ожидается длина или ключевое слово этого свойства');
       style[propName] = lengthy
         ? assertLengthValue(
-          defaultUnitNormalize(s), essenceName, p.suffix,
+          defaultUnitNormalize(s), essenceName, p.suffix, lengthy,
         )
         : s;
       return styleWrap(style, stylePriority);

@@ -230,6 +230,75 @@ describe('поворот измеряется углом', () => {
   });
 });
 
+describe('процент и количество значений — по свойству, а не по семейству', () => {
+  // Свойства делятся по этим двум признакам по-разному, поэтому одного флага
+  // «это длина» мало. Каждая строка сверяется с арбитром.
+  const PERCENT_OK: Array<[string, string]> = [
+    ['p10%', 'padding'],
+    ['m10%', 'margin'],
+    ['r10%', 'border-radius'],
+    ['f10%', 'font-size'],
+    ['w10%', 'width'],
+    ['ti10%', 'text-indent'],
+    ['tdt10%', 'text-decoration-thickness'],
+    ['fxb10%', 'flex-basis'],
+    ['sw10%', 'stroke-width'],
+  ];
+
+  test.each(PERCENT_OK)('%s — у %s процент валиден', (token, prop) => {
+    expect(lexer.matchProperty(prop, '10%').matched).toBeTruthy();
+    expect(compile([token]).css).toContain(prop + ':10%');
+  });
+
+  const PERCENT_BAD: Array<[string, string]> = [
+    ['b10%', 'border-width'],
+    ['bt10%', 'border-top-width'],
+    ['olw10%', 'outline-width'],
+    ['wos10%', 'word-spacing'],
+    ['bsp10%', 'border-spacing'],
+  ];
+
+  test.each(PERCENT_BAD)('%s бракуется — у %s процента нет', (token, prop) => {
+    expect(lexer.matchProperty(prop, '10%').matched).toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  test('дробь бракуется там же: она всегда разворачивается в процент', () => {
+    expect(compile(['b1/2']).css).toBe('');
+    expect(compile(['olw1/2']).css).toBe('');
+    expect(compile(['p1/2']).css).toContain('padding:50%');
+  });
+
+  const MULTI_OK: Array<[string, string]> = [
+    ['p10_20', 'padding:10px 20px'],
+    ['m10_20', 'margin:10px 20px'],
+    ['b10_20', 'border-width:10px 20px'],
+    ['b1_2_3_4', 'border-width:1px 2px 3px 4px'],
+    ['bsp10_20', 'border-spacing:10px 20px'],
+    ['gg10_20', 'grid-gap:10px 20px'],
+  ];
+
+  test.each(MULTI_OK)('%s → %s — свойство берёт несколько значений', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  const MULTI_BAD: Array<[string, string]> = [
+    ['bt10_20', 'border-top-width'],
+    ['olw10_20', 'outline-width'],
+    ['ti10_20', 'text-indent'],
+    ['tdt10_20', 'text-decoration-thickness'],
+    ['tuo10_20', 'text-underline-offset'],
+    ['fxb10_20', 'flex-basis'],
+    ['ggc10_20', 'grid-column-gap'],
+    ['sw10_20', 'stroke-width'],
+  ];
+
+  test.each(MULTI_BAD)('%s бракуется — %s берёт одно значение', (token, prop) => {
+    expect(lexer.matchProperty(prop, '10px 20px').matched).toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+});
+
 describe('знак значения', () => {
   const NEGATIVE_OK: Array<[string, string, string]> = [
     [

@@ -921,16 +921,19 @@ describe('content: кавычки ставит хендлер', () => {
     expect(compile([token]).css).toContain(expected);
   });
 
-  test('одиночное подчёркивание — пробел, за ним кратчайшая запись', () => {
-    // Самый ходовой случай у псевдоэлементов.
-    expect(compile(['cnt_']).css).toContain("content:' '");
-    expect(compile(['cnt__']).css).toContain("content:' '");
+  test('подчёркивания после первого — пробелы', () => {
+    // Первое `_` переключает режим, остальные становятся текстом из пробелов.
+    expect(compile(['cnt_']).css).toContain('content:""');
+    expect(compile(['cnt__']).css).toContain('content:" "');
+    // Мнемоника к `cnt__`, тот же CSS.
+    expect(compile(['cntS']).css).toContain('content:" "');
   });
 
-  test('cntE — пустая строка, и это не то же, что none', () => {
+  test('пустая строка, пробел и none — три разных случая', () => {
     // `content:""` создаёт псевдоэлемент, `content:none` не создаёт вовсе.
     expect(lexer.matchProperty('content', '""').matched).toBeTruthy();
-    expect(compile(['cntE']).css).toContain('content:""');
+    expect(compile(['cnt_']).css).toContain('content:""');
+    expect(compile(['cntS']).css).toContain('content:" "');
     expect(compile(['cntN']).css).toContain('content:none');
   });
 

@@ -183,12 +183,14 @@ ff_Times_New_Roman  →  font-family:"Times New Roman"
 |-------|-----|
 | `cnt_Hello_World` | `content:"Hello World"` |
 | `cnt_→` | `content:"→"` |
-| `cnt_` | `content:' '` — пробел, самый ходовой случай у псевдоэлементов |
-| `cntE` | `content:""` — пустая строка |
+| `cnt_` | `content:""` — текста после `_` нет, значит пустая строка |
+| `cnt__` | `content:" "` — подчёркивания после первого становятся пробелами |
+| `cntS` | `content:" "` — мнемоника к `cnt__`, тот же CSS |
 | `cntN` | `content:none` |
 
-**`cntE` и `cntN` — разное.** `content:""` создаёт псевдоэлемент (обычный приём
-для `::before`/`::after` с оформлением), `content:none` не создаёт его вовсе.
+**Пустая строка, пробел и `none` — три разных случая.** `content:""` создаёт
+псевдоэлемент (обычный приём для `::before`/`::after` с оформлением),
+`content:none` не создаёт его вовсе.
 
 Без `_` ожидается ключевое слово свойства: `cnt` и `cntNone` → `none`,
 `cntNormal`, `cntOpenQuote`, `cntCloseQuote`, `cntNoOpenQuote`,

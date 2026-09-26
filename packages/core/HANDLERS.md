@@ -889,6 +889,44 @@ mn.assign({ 'button:not\(.plain\)': 'p10' })  → button:not(.plain){padding:10p
 
 ---
 
+## Свойства с закрытым перечнем значений
+
+У части свойств набор значений закрыт спецификацией. Такие хендлеры принимают
+только слова из своего списка; всё остальное бракуется с предупреждением —
+`irZzz`, `apcF00`, `ttfJumpNone` в CSS не попадают. До 2026-09-26 проходило
+любое слово: `irF00` давал `image-rendering:f00`.
+
+| Тег | Свойство | Значения |
+|-----|----------|----------|
+| `ir` | `image-rendering` | `auto` `crisp-edges` `pixelated` `smooth` `optimize-contrast` `optimizeSpeed` `optimizeQuality` + вендорные |
+| `apc` | `appearance` | `none` `auto` `button` `textfield` `menulist-button` `checkbox` `radio` `listbox` `menulist` `meter` `progress-bar` `searchfield` `textarea` |
+| `ttf` | `transition-timing-function` | `linear` `ease` `ease-in` `ease-out` `ease-in-out` `step-start` `step-end` |
+| `gaf` | `grid-auto-flow` | `row` `column` `dense` |
+| `tds` | `text-decoration-skip` | `none` `objects` `spaces` `leading-spaces` `trailing-spaces` `edges` `box-decoration` |
+| `tdsi` | `text-decoration-skip-ink` | `auto` `all` `none` |
+| `tdst` | `text-decoration-style` | `solid` `double` `dotted` `dashed` `wavy` |
+| `tup` | `text-underline-position` | `auto` `from-font` `under` `left` `right` |
+| `ts` | `transform-style` | `flat` `preserve-3d` |
+| `mbm` | `mix-blend-mode` | 18 режимов наложения |
+| `tems` | `text-emphasis-style` | `none` `filled` `open` `dot` `circle` `double-circle` `triangle` `sesame` |
+| `temp` | `text-emphasis-position` | `auto` `over` `under` `right` `left` |
+
+`jump-start`/`jump-end`/`jump-none`/`jump-both` у `ttf` — это аргументы
+`steps()`, а не значения свойства; пишутся функцией: `ttfSteps\(4,jump-end\)`.
+
+**Несколько слов** берут `tems`, `temp`, `tds`, `tup`, `gaf` — через `_`:
+`temsFilled_Dot`, `gafRow_Dense`, `tempOver_Right`. Остальные принимают ровно
+одно, `irAuto_Pixelated` бракуется.
+
+**Записи, которые camelCase иначе ломает**, распознаются отдельно: `tsPreserve3d`
+и `tsPreserve3D` (цифра не даёт дефиса), `irMozCrispEdges` (ведущий дефис
+теряется), `irOptimizeSpeed` (в спецификации оно camelCase — legacy из SVG).
+
+Регистр значения не важен: `tems_Filled_Dot` и `tems_filled_dot` дают одно и то
+же, как и положено ключевым словам CSS.
+
+---
+
 ## Custom properties (`var()` / `env()`)
 
 Объявление — токен `--имя=значение`; подстановка — `--имя` на месте аргумента любого

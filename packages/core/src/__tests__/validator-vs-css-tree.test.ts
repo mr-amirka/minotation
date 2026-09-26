@@ -389,3 +389,133 @@ describe('ключевые слова семейств совпадают с г�
     expect(cssOf(token)).toContain(expected);
   });
 });
+
+/**
+ * Каждое слово из списков закрытых перечислений сверяется с грамматикой.
+ *
+ * Списки выписаны в `presets/standard.ts` руками — из `mdn-data`, но руками,
+ * и один раз это уже дало ошибку: в `transition-timing-function` попали
+ * `jump-start`/`jump-end`/`jump-none`/`jump-both`/`start`/`end`, которые на
+ * самом деле аргументы `steps()`, а не значения свойства. Поймал именно такой
+ * тест; здесь он развёрнут на все списки сразу, чтобы ловить это впредь.
+ *
+ * Слово считается валидным, если грамматика принимает либо его одно, либо его
+ * в паре с каким-нибудь другим словом того же списка: у
+ * `text-emphasis-position` синтаксис `[over | under] && [right | left]?`, то
+ * есть `right` осмыслен только вторым, после `over` или `under`.
+ */
+describe('списки закрытых перечислений совпадают с грамматикой', () => {
+  function compileToken(token: string): string {
+    const mn: any = minotationProvider({
+      onWarning: 'silent',
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')(token);
+    mn.compile();
+    return mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+  }
+
+  const LISTS: Array<[string, string, string]> = [
+    [
+      'ir',
+      'image-rendering',
+      'auto crisp-edges pixelated smooth optimize-contrast optimizeSpeed'
+        + ' optimizeQuality -moz-crisp-edges -o-crisp-edges -webkit-optimize-contrast',
+    ],
+    [
+      'apc',
+      'appearance',
+      'none auto searchfield textarea checkbox radio menulist listbox meter'
+        + ' progress-bar button textfield menulist-button',
+    ],
+    [
+      'ttf',
+      'transition-timing-function',
+      'linear ease ease-in ease-out ease-in-out step-start step-end',
+    ],
+    [
+      'gaf',
+      'grid-auto-flow',
+      'row column dense',
+    ],
+    [
+      'tds',
+      'text-decoration-skip',
+      'none objects spaces leading-spaces trailing-spaces edges box-decoration',
+    ],
+    [
+      'tdsi',
+      'text-decoration-skip-ink',
+      'auto all none',
+    ],
+    [
+      'tdst',
+      'text-decoration-style',
+      'solid double dotted dashed wavy',
+    ],
+    [
+      'tup',
+      'text-underline-position',
+      'auto from-font under left right',
+    ],
+    [
+      'ts',
+      'transform-style',
+      'flat preserve-3d',
+    ],
+    [
+      'mbm',
+      'mix-blend-mode',
+      'normal multiply screen overlay darken lighten color-dodge color-burn'
+        + ' hard-light soft-light difference exclusion hue saturation color'
+        + ' luminosity plus-darker plus-lighter',
+    ],
+    [
+      'tems',
+      'text-emphasis-style',
+      'none filled open dot circle double-circle triangle sesame',
+    ],
+    [
+      'temp',
+      'text-emphasis-position',
+      'auto over under right left',
+    ],
+  ];
+
+  test.each(LISTS)('%s (%s) — все слова валидны по грамматике', (
+    _tag, prop, words,
+  ) => {
+    const list = words.split(' ');
+    const wrong: string[] = [];
+    for (let i = 0; i < list.length; i++) {
+      if (lexer.matchProperty(prop, list[i]).matched) {
+        continue;
+      }
+      let paired = false;
+      for (let j = 0; j < list.length && !paired; j++) {
+        paired = j !== i
+          && !!lexer.matchProperty(prop, list[j] + ' ' + list[i]).matched;
+      }
+      paired || wrong.push(list[i]);
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  test.each(LISTS)('%s — каждое слово реально компилируется', (
+    tag, prop, words,
+  ) => {
+    // Список в тесте и список в пресете обязаны совпадать: слово из одного
+    // должно доезжать до CSS через другой. Camel-форма строится обратной
+    // операцией к той, что делает хендлер.
+    const list = words.split(' ');
+    const missing: string[] = [];
+    for (let i = 0; i < list.length; i++) {
+      const camel = list[i].replace(/^-/, '').replace(/-([a-z0-9])/g, (_m, c) => c.toUpperCase());
+      const token = tag + camel[0].toUpperCase() + camel.slice(1);
+      if (compileToken(token).indexOf(prop + ':' + list[i]) < 0) {
+        missing.push(token + ' → ' + prop + ':' + list[i]);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+});

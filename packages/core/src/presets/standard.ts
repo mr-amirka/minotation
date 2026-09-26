@@ -626,6 +626,128 @@ const FONT_SIZE_ADJUST_KEYWORDS: Record<string, 1> = {
   none: 1,
   'from-font': 1,
 };
+/**
+ * Строка слов через пробел → множество для проверки значения.
+ *
+ * Компактнее объектного литерала и в исходнике, и в бандле, а разворачивается
+ * один раз на холодном пути регистрации.
+ */
+function wordsSet(words: string): Record<string, 1> {
+  const parts = words.split(' ');
+  const set: Record<string, 1> = {};
+  let i = parts.length;
+  while (i--) {
+    set[parts[i]] = 1;
+  }
+  return set;
+}
+/**
+ * Списки значений свойств с закрытым перечислением.
+ *
+ * Такие свойства принимали ЛЮБОЕ слово: `irF00` давало `image-rendering:f00`,
+ * `apcZzz` — `appearance:zzz`, `tsQwe` — `transform-style:qwe`. Валидатор ядра
+ * ни одно из них не знал (permissive pass-through), поэтому мусор уходил в CSS
+ * молча.
+ *
+ * Списки выписаны из `mdn-data`, и тест сверяет каждое слово с грамматикой —
+ * разойтись со спецификацией молча они не могут. Вендорные формы
+ * (`-moz-crisp-edges`) оставлены: они валидны и реально используются.
+ *
+ * Это не таблица «свойство → валидатор», от которой уходит Q-01: здесь список
+ * принадлежит хендлеру, лежит рядом с ним и проверяет его собственный аргумент,
+ * а не разбирает CSS-грамматику.
+ *
+ * Значение записи — `1` либо строка-замена. Замена нужна там, где каноническое
+ * значение в camelCase не записывается: цифра не даёт дефиса (`tsPreserve3D`
+ * кебабится в `preserve3d`, а не в `preserve-3d`), а ведущий дефис вендорной
+ * формы теряется тем более. Без замены единственное содержательное значение
+ * `transform-style` пришлось бы писать сырым режимом — `ts_preserve-3d`.
+ */
+const ENUM_KEYWORDS: Record<string, Record<string, 1 | string>> = {
+  appearance: wordsSet('none auto searchfield textarea checkbox radio menulist'
+    + ' listbox meter progress-bar button textfield menulist-button'),
+  // `jump-start`/`jump-end`/`jump-none`/`jump-both`/`start`/`end` в список НЕ
+  // входят: это аргументы `steps()`, а не самостоятельные значения свойства.
+  // Ошибку поймал тест-арбитр — в `mdn-data` они лежат внутри `<step-position>`,
+  // и наивный обход определения вытащил их наравне с остальными.
+  transitionTimingFunction: wordsSet('linear ease ease-in ease-out ease-in-out'
+    + ' step-start step-end'),
+  gridAutoFlow: wordsSet('row column dense'),
+  textDecorationSkip: wordsSet('none objects spaces leading-spaces'
+    + ' trailing-spaces edges box-decoration'),
+  textDecorationSkipInk: wordsSet('auto all none'),
+  textDecorationStyle: wordsSet('solid double dotted dashed wavy'),
+  textUnderlinePosition: wordsSet('auto from-font under left right'),
+  transformStyle: {
+    ...wordsSet('flat preserve-3d'),
+    // Обе естественные записи цифры: `tsPreserve3d` и `tsPreserve3D`.
+    preserve3d: 'preserve-3d',
+    'preserve3-d': 'preserve-3d',
+  },
+  mixBlendMode: wordsSet('normal multiply screen overlay darken lighten'
+    + ' color-dodge color-burn hard-light soft-light difference exclusion hue'
+    + ' saturation color luminosity plus-darker plus-lighter'),
+  textEmphasisStyle: wordsSet('none filled open dot circle double-circle'
+    + ' triangle sesame'),
+  // `right`/`left` валидны только вторым словом (`over right`): грамматика —
+  // `[over | under] && [right | left]?`. Порядок здесь не проверяется, слова
+  // берутся списком.
+  textEmphasisPosition: wordsSet('auto over under right left'),
+  imageRendering: {
+    ...wordsSet('auto crisp-edges pixelated smooth optimize-contrast'),
+    'moz-crisp-edges': '-moz-crisp-edges',
+    '-moz-crisp-edges': '-moz-crisp-edges',
+    'o-crisp-edges': '-o-crisp-edges',
+    '-o-crisp-edges': '-o-crisp-edges',
+    'webkit-optimize-contrast': '-webkit-optimize-contrast',
+    '-webkit-optimize-contrast': '-webkit-optimize-contrast',
+    // `optimizeSpeed`/`optimizeQuality` записаны в спецификации camelCase —
+    // это legacy из SVG. Кебабизация суффикса их ломает, поэтому возвращаем.
+    'optimize-speed': 'optimizeSpeed',
+    optimizespeed: 'optimizeSpeed',
+    'optimize-quality': 'optimizeQuality',
+    optimizequality: 'optimizeQuality',
+  },
+};
+/**
+ * Свойства из {@link ENUM_KEYWORDS}, у которых значение состоит из нескольких
+ * слов: `text-emphasis-style: filled dot`, `grid-auto-flow: row dense`.
+ * Остальные берут ровно одно, и `irAuto_Pixelated` для них — ошибка.
+ */
+const ENUM_MULTI: Record<string, 1> = {
+  textEmphasisStyle: 1,
+  textEmphasisPosition: 1,
+  textDecorationSkip: 1,
+  textUnderlinePosition: 1,
+  gridAutoFlow: 1,
+};
+/**
+ * Бракует значение свойства с закрытым перечислением.
+ *
+ * Регистр не важен: ключевые слова в CSS регистронезависимы, и сырой режим
+ * (`tems_Filled_Dot`) оставляет их как написано. Ключи списка — в нижнем
+ * регистре, значение — `1` либо каноническая запись, которой заменяется
+ * найденное слово.
+ */
+function assertEnumValue(
+  v: string,
+  words: Record<string, 1 | string>,
+  multi: 1 | undefined,
+  essenceName: string,
+  raw: string,
+): string {
+  const prefix = 'Значение "' + raw + '" не распознано: у "' + essenceName + '" ';
+  const parts = v.split(' ');
+  let i = parts.length;
+  let canon: 1 | string | undefined;
+  (i < 2 || multi) || throwInvalid(prefix + 'ожидается одно значение');
+  while (i--) {
+    canon = words[parts[i].toLowerCase()];
+    canon || throwInvalid(prefix + 'перечень значений закрыт');
+    canon === 1 || (parts[i] = canon as string);
+  }
+  return parts.join(' ');
+}
 /** Проценты допустимы: `text-indent:10%`, но не `word-spacing:10%`. */
 const LENGTH_PERCENT = 1;
 /** Несколько значений через `_`: `border-spacing:10px 20px`. */
@@ -3206,6 +3328,10 @@ export default (mn: MnInstance) => {
     // §6.3: `priority || 0` вычислялся на каждый вызов хендлера, причём дважды —
     // выносим на холодный путь регистрации.
     const stylePriority = priority || 0;
+    // Свойство с закрытым перечислением: значение обязано быть из списка.
+    // Список ищется по имени свойства, а не выписывается в строку реестра —
+    // сам факт наличия и означает «здесь перечисление».
+    const enumWords = ENUM_KEYWORDS[propName];
     mn(essenceName, (p) => {
       let s, style, repeated;
       style = {};
@@ -3228,6 +3354,15 @@ export default (mn: MnInstance) => {
         && !(keywords && keywords[s])
         && throwInvalid('Значение "' + p.suffix + '" не распознано: у "'
           + essenceName + '" ожидается длина или ключевое слово этого свойства');
+      // У свойства с закрытым перечислением проверяется значение ЦЕЛИКОМ, а не
+      // только его словесная форма: `irF00` — не слово (`f00`), но и не
+      // значение `image-rendering`. Подстановка и функция проходят: их
+      // содержимое здесь разбирать нечем.
+      if (enumWords && s.indexOf('(') < 0 && !GLOBAL_KEYWORDS[s]) {
+        s = assertEnumValue(
+          s, enumWords, ENUM_MULTI[propName], essenceName, p.suffix,
+        );
+      }
       style[propName] = lengthy
         ? assertLengthValue(
           defaultUnitNormalize(s), essenceName, p.suffix, lengthy,

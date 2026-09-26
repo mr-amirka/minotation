@@ -499,3 +499,111 @@ describe('знак значения', () => {
     expect(compile(['p10-5']).css).toContain('padding:calc(10px - 5px)');
   });
 });
+
+describe('свойства с закрытым перечнем значений', () => {
+  // Такие свойства принимали ЛЮБОЕ слово, и валидатор ядра ни одно из них не
+  // знал (permissive pass-through), поэтому мусор уходил в CSS молча.
+  const OK: Array<[string, string]> = [
+    ['irPixelated', 'image-rendering:pixelated'],
+    ['irCrispEdges', 'image-rendering:crisp-edges'],
+    ['apcNone', 'appearance:none'],
+    ['apcMenulistButton', 'appearance:menulist-button'],
+    ['ttfEaseInOut', 'transition-timing-function:ease-in-out'],
+    ['ttfStepEnd', 'transition-timing-function:step-end'],
+    ['gafRow', 'grid-auto-flow:row'],
+    ['tdsEdges', 'text-decoration-skip:edges'],
+    ['tdsiAll', 'text-decoration-skip-ink:all'],
+    ['tdstWavy', 'text-decoration-style:wavy'],
+    ['tupFromFont', 'text-underline-position:from-font'],
+    ['tsFlat', 'transform-style:flat'],
+    ['mbmPlusLighter', 'mix-blend-mode:plus-lighter'],
+    ['temsSesame', 'text-emphasis-style:sesame'],
+    ['tempOver', 'text-emphasis-position:over'],
+  ];
+
+  test.each(OK)('%s → %s', (token, expected) => {
+    const [prop, value] = expected.split(':');
+    expect(lexer.matchProperty(prop, value).matched).toBeTruthy();
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    'irF00',
+    'irZzz',
+    'ir10',
+    'ir10px',
+    'apcZzz',
+    'apcF00',
+    'ttfZzz',
+    'gafZzz',
+    'tdsZzz',
+    'tdsiZzz',
+    'tdstZzz',
+    'tupZzz',
+    'tsZzz',
+    'mbmZzz',
+    'temsZzz',
+    'tempZzz',
+    'ttfJumpNone',
+    'ttfStart',
+  ])('%s бракуется', (token) => {
+    const {
+      css, warnings,
+    } = compile([token]);
+    expect(css).toBe('');
+    expect(warnings.length).toBe(1);
+  });
+
+  test.each([
+    ['tems_Filled_Dot', 'text-emphasis-style:Filled Dot'],
+    ['tems_filled_dot', 'text-emphasis-style:filled dot'],
+    ['tempOver_Right', 'text-emphasis-position:over right'],
+    ['tdsObjects_Spaces', 'text-decoration-skip:objects spaces'],
+    ['gafRow_Dense', 'grid-auto-flow:row dense'],
+    ['tupUnder_Left', 'text-underline-position:under left'],
+  ])('%s → %s — свойство берёт несколько слов', (token, expected) => {
+    // Регистр не важен: ключевые слова в CSS регистронезависимы, а сырой режим
+    // (`tems_Filled_Dot`) оставляет их как написано.
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    ['irAuto_Pixelated', 'image-rendering'],
+    ['apcNone_Auto', 'appearance'],
+    ['mbmNormal_Multiply', 'mix-blend-mode'],
+    ['tdstSolid_Wavy', 'text-decoration-style'],
+  ])('%s бракуется — %s берёт одно слово', (token, prop) => {
+    expect(lexer.matchProperty(prop, 'auto pixelated').matched).toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  test('второе слово проверяется наравне с первым', () => {
+    expect(compile(['tems_Filled_Zzz']).css).toBe('');
+    expect(compile(['gafRow_Zzz']).css).toBe('');
+  });
+
+  test.each([
+    ['tsPreserve3d', 'transform-style:preserve-3d'],
+    ['tsPreserve3D', 'transform-style:preserve-3d'],
+    ['irOptimizeSpeed', 'image-rendering:optimizeSpeed'],
+    ['irOptimizeQuality', 'image-rendering:optimizeQuality'],
+    ['irMozCrispEdges', 'image-rendering:-moz-crisp-edges'],
+    ['irWebkitOptimizeContrast', 'image-rendering:-webkit-optimize-contrast'],
+  ])('%s → %s — запись, которую camelCase иначе ломает', (token, expected) => {
+    // Цифра не даёт дефиса (`preserve3d` вместо `preserve-3d`), ведущий дефис
+    // вендорной формы теряется, а `optimizeSpeed` записан camelCase в самой
+    // спецификации — это legacy из SVG.
+    const [prop, value] = expected.split(':');
+    expect(lexer.matchProperty(prop, value).matched).toBeTruthy();
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test('подстановка проходит: её содержимое здесь разбирать нечем', () => {
+    expect(compile(['ir--v']).css).toContain('image-rendering:var(--v)');
+  });
+
+  test('CSS-wide keywords проходят везде', () => {
+    expect(compile(['irInherit']).css).toContain('image-rendering:inherit');
+    expect(compile(['apcUnset']).css).toContain('appearance:unset');
+  });
+});

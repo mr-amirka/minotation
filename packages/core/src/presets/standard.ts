@@ -797,15 +797,19 @@ const GLOBAL_KEYWORDS: Record<string, 1> = {
  */
 const REGEXP_VALUE_INTEGER = /^[-+]?\d+$/;
 const REGEXP_VALUE_NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)$/;
-/** Число, процент или дробь — `zoom:150%`, `aspect-ratio:16/9`. */
-const REGEXP_VALUE_RATIO = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:%|\s*\/\s*\d+\.?\d*)?$/;
+/** Неотрицательное число или процент — `zoom:1.5`, `zoom:150%`. */
+const REGEXP_VALUE_ZOOM = /^(?:\d+\.?\d*|\.\d+)%?$/;
+/** Неотрицательное число или дробь — `aspect-ratio:1.5`, `aspect-ratio:16/9`. */
+const REGEXP_VALUE_RATIO = /^(?:\d+\.?\d*|\.\d+)(?:\/(?:\d+\.?\d*|\.\d+))?$/;
 const VALUE_PATTERNS: Record<string, RegExp> = {
   widows: REGEXP_VALUE_INTEGER,
   orphans: REGEXP_VALUE_INTEGER,
   order: REGEXP_VALUE_INTEGER,
   flexGrow: REGEXP_VALUE_NUMBER,
   flexShrink: REGEXP_VALUE_NUMBER,
-  zoom: REGEXP_VALUE_RATIO,
+  // Ни то, ни другое отрицательных не принимает; дробь есть только у
+  // соотношения сторон, процент — только у масштаба.
+  zoom: REGEXP_VALUE_ZOOM,
   aspectRatio: REGEXP_VALUE_RATIO,
 };
 /** Проценты допустимы: `text-indent:10%`, но не `word-spacing:10%`. */
@@ -1312,8 +1316,15 @@ export default (mn: MnInstance) => {
       REGEXP_BARE_WORD.test(value)
         ? throwInvalid('Значение "' + p.suffix + '" не распознано: у "' + p.name
           + '" нет такой краткой записи, а ключевым словом оно не является')
-        : (numeric || throwInvalid('Значение "' + p.suffix + '" не распознано: у "'
-          + p.name + '" перечень значений закрыт, число недопустимо'));
+        : (numeric
+          // Число у такого свойства — длина или процент, а не что угодно:
+          // `bgpx10zz` давало `background-position-x:10zz`, `va10s` —
+          // `vertical-align:10s`.
+          ? (REGEXP_LENGTH_PART.test(value)
+            || throwInvalid('Значение "' + p.suffix + '" не распознано: у "'
+              + p.name + '" ожидается длина'))
+          : throwInvalid('Значение "' + p.suffix + '" не распознано: у "'
+            + p.name + '" перечень значений закрыт, число недопустимо'));
     }
     return isArray(propName)
       ? (props = flags(propName), ((p: any) => {
@@ -2457,11 +2468,14 @@ export default (mn: MnInstance) => {
           // до общего пути, поэтому остаётся отдельной веткой.
           fontSizeAdjust: p.camel == 'N'
             ? 'none'
-            // Значение безразмерное (`font-size-adjust:0.5`), поэтому
-            // единицы по умолчанию у него нет.
-            : lengthOrWord(
+            // Значение безразмерное (`font-size-adjust:0.5`): единицы по
+            // умолчанию нет, и явная тоже недопустима — `fsa10px` давало
+            // `font-size-adjust:10px`.
+            : (p.unit && throwInvalid('Значение "' + p.suffix
+              + '" не распознано: font-size-adjust задаётся числом без единицы'),
+            lengthOrWord(
               p, FONT_SIZE_ADJUST_KEYWORDS, 0, '',
-            ),
+            )),
         }) : 0)
       );
     },

@@ -744,3 +744,59 @@ describe('свойства, которые берут безразмерное �
     expect(compile(['wid--v']).css).toContain('widows:var(--v)');
   });
 });
+
+describe('уточнения там, где первая проверка оказалась слишком широкой', () => {
+  // Первый заход по этим свойствам закрыл грубый случай (единица там, где её
+  // быть не должно), но пропускал форму: знак, дробь, процент.
+  test.each([
+    [
+      'zm-5',
+      'zoom',
+      '-5',
+    ],
+    [
+      'zm1/2',
+      'zoom',
+      '1/2',
+    ],
+    [
+      'ar10%',
+      'aspect-ratio',
+      '10%',
+    ],
+    [
+      'ar-5',
+      'aspect-ratio',
+      '-5',
+    ],
+  ])('%s бракуется — %s не принимает "%s"', (
+    token, prop, value,
+  ) => {
+    expect(lexer.matchProperty(prop, value).matched).toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  test('fsa10px бракуется: font-size-adjust безразмерный', () => {
+    expect(lexer.matchProperty('font-size-adjust', '10px').matched).toBeFalsy();
+    expect(compile(['fsa10px']).css).toBe('');
+    expect(compile(['fsa0.5']).css).toContain('font-size-adjust:0.5');
+  });
+
+  test.each([
+    ['bgpx10zz', 'background-position-x'],
+    ['bgpx10s', 'background-position-x'],
+    ['va10zz', 'vertical-align'],
+    ['td10zz', 'text-decoration'],
+  ])('%s бракуется — у %s число это длина, а не что угодно', (token, prop) => {
+    expect(lexer.matchProperty(prop, '10zz').matched).toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  test('годные формы у тех же свойств продолжают работать', () => {
+    expect(compile(['bgpx10px']).css).toContain('background-position-x:10px');
+    expect(compile(['bgpxL']).css).toContain('background-position-x:left');
+    expect(compile(['va-0.125em']).css).toContain('vertical-align:-0.125em');
+    expect(compile(['zm0.5']).css).toContain('zoom:0.5');
+    expect(compile(['ar16/9']).css).toContain('aspect-ratio:16/9');
+  });
+});

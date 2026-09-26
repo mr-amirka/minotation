@@ -692,3 +692,55 @@ describe('стиль границы — закрытый перечень', () =
     expect(compile(['bst10_20']).css).toBe('');
   });
 });
+
+describe('свойства, которые берут безразмерное число', () => {
+  // Единица к такому значению приписывалась по общему правилу нотации
+  // «число = px» или уходила как написана, а проверки не было вовсе.
+  test.each([
+    ['wid2', 'widows:2'],
+    ['wid-2', 'widows:-2'],
+    ['orp2', 'orphans:2'],
+    ['or2', 'order:2'],
+    ['or-2', 'order:-2'],
+    ['fxg1', 'flex-grow:1'],
+    ['fxg1.5', 'flex-grow:1.5'],
+    ['fxs1', 'flex-shrink:1'],
+    ['zm1.5', 'zoom:1.5'],
+    ['zm150%', 'zoom:150%'],
+    ['zmNormal', 'zoom:normal'],
+    ['zmReset', 'zoom:reset'],
+    ['ar1.5', 'aspect-ratio:1.5'],
+    ['arAuto', 'aspect-ratio:auto'],
+    ['ar16/9', 'aspect-ratio:16/9'],
+  ])('%s → %s', (token, expected) => {
+    const [prop, value] = expected.split(':');
+    expect(lexer.matchProperty(prop, value).matched).toBeTruthy();
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    ['wid10px', 'widows'],
+    ['or2px', 'order'],
+    ['fxg10px', 'flex-grow'],
+    ['fxs10px', 'flex-shrink'],
+    ['zm10px', 'zoom'],
+    ['ar10px', 'aspect-ratio'],
+  ])('%s бракуется — у %s единицы нет', (token, prop) => {
+    expect(lexer.matchProperty(prop, '10px').matched).toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  test.each([
+    ['wid2.5', 'widows'],
+    ['orp2.5', 'orphans'],
+    ['or2.5', 'order'],
+  ])('%s бракуется — %s берёт только целое', (token, prop) => {
+    expect(lexer.matchProperty(prop, '2.5').matched).toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  test('слово и подстановка проходят по своим правилам', () => {
+    expect(compile(['arZzz']).css).toBe('');
+    expect(compile(['wid--v']).css).toContain('widows:var(--v)');
+  });
+});

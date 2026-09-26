@@ -705,6 +705,8 @@ const ENUM_KEYWORDS: Record<string, Record<string, 1 | string>> = {
   // `[over | under] && [right | left]?`. Порядок здесь не проверяется, слова
   // берутся списком.
   textEmphasisPosition: wordsSet('auto over under right left'),
+  zoom: wordsSet('normal reset'),
+  aspectRatio: wordsSet('auto'),
   position: {
     ...wordsSet('static relative absolute sticky fixed -webkit-sticky'),
     'webkit-sticky': '-webkit-sticky',
@@ -780,6 +782,31 @@ const GLOBAL_KEYWORDS: Record<string, 1> = {
   unset: 1,
   revert: 1,
   'revert-layer': 1,
+};
+/**
+ * Форма значения у свойств, которые берут безразмерное число.
+ *
+ * Проверки не было вовсе, а единица к такому значению приписывается по общему
+ * правилу нотации «число = px» или просто уходит как написана: `wid10px` давало
+ * `widows:10px`, `or2.5` — `order:2.5` (свойство берёт только целое),
+ * `fxg10px` — `flex-grow:10px`, `zm10px` — `zoom:10px`. Браузер такие правила
+ * отбрасывает.
+ *
+ * Слово проверяется отдельно — списком в {@link ENUM_KEYWORDS}, если он у
+ * свойства есть (`zoom: normal | reset`, `aspect-ratio: auto`).
+ */
+const REGEXP_VALUE_INTEGER = /^[-+]?\d+$/;
+const REGEXP_VALUE_NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)$/;
+/** Число, процент или дробь — `zoom:150%`, `aspect-ratio:16/9`. */
+const REGEXP_VALUE_RATIO = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:%|\s*\/\s*\d+\.?\d*)?$/;
+const VALUE_PATTERNS: Record<string, RegExp> = {
+  widows: REGEXP_VALUE_INTEGER,
+  orphans: REGEXP_VALUE_INTEGER,
+  order: REGEXP_VALUE_INTEGER,
+  flexGrow: REGEXP_VALUE_NUMBER,
+  flexShrink: REGEXP_VALUE_NUMBER,
+  zoom: REGEXP_VALUE_RATIO,
+  aspectRatio: REGEXP_VALUE_RATIO,
 };
 /** Проценты допустимы: `text-indent:10%`, но не `word-spacing:10%`. */
 const LENGTH_PERCENT = 1;
@@ -3391,6 +3418,7 @@ export default (mn: MnInstance) => {
     // Список ищется по имени свойства, а не выписывается в строку реестра —
     // сам факт наличия и означает «здесь перечисление».
     const enumWords = ENUM_KEYWORDS[propName];
+    const valuePattern = VALUE_PATTERNS[propName];
     mn(essenceName, (p) => {
       let s, style, repeated;
       style = {};
@@ -3417,9 +3445,18 @@ export default (mn: MnInstance) => {
       // только его словесная форма: `irF00` — не слово (`f00`), но и не
       // значение `image-rendering`. Подстановка и функция проходят: их
       // содержимое здесь разбирать нечем.
-      enumWords && (s = assertEnumValue(
-        s, enumWords, ENUM_MULTI[propName], essenceName, p.suffix,
-      ));
+      if (valuePattern) {
+        // Свойство берёт безразмерное число; слово у него — только из списка,
+        // если список есть.
+        valuePattern.test(s) || (enumWords && (enumWords[s] || GLOBAL_KEYWORDS[s]))
+          || s.indexOf('(') > -1
+          || throwInvalid('Значение "' + p.suffix + '" не распознано: у "'
+            + essenceName + '" ожидается число без единицы');
+      } else if (enumWords) {
+        s = assertEnumValue(
+          s, enumWords, ENUM_MULTI[propName], essenceName, p.suffix,
+        );
+      }
       style[propName] = lengthy
         ? assertLengthValue(
           defaultUnitNormalize(s), essenceName, p.suffix, lengthy,

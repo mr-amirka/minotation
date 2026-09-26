@@ -439,7 +439,15 @@ const ANGLE_UNITS = [
  * строки.
  */
 const REGEXP_ANGLE_TAIL = /[rR][xyz][-+]?[0-9.]+([a-z]*)$/;
-const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:[0-9.]+(' + SHADOW_UNITS.join('|') + ')?)?(?:'
+/**
+ * Ведущее значение записи — blur. Число с единицей либо имя переменной:
+ * `bxsh--blur` → `box-shadow:0px 0px var(--blur) 0px #000`. Переменную в этой
+ * позиции раньше принимал только сырой режим.
+ */
+const REGEXP_SHADOW_VALUE = new RegExp('^(--[A-Za-z0-9_-]+?;|--[A-Za-z0-9-]+|[0-9.]+)(?:'
+  + SHADOW_UNITS.join('|') + ')?');
+const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:(?:--[A-Za-z0-9_-]+?;|--[A-Za-z0-9-]+|[0-9.]+)('
+  + SHADOW_UNITS.join('|') + ')?)?(?:'
     + SHADOW_PATTERNS.map((pattern) => '(?:' + pattern.replace(REGEXP_ROUTE_KEY, '') + ')').join('|')
     + ')*$');
 
@@ -938,6 +946,29 @@ function transitionValue(parts: string[], raw: string): string {
   }
   return out.join(' ');
 }
+/**
+ * Склеивает части тени, дописывая единицу каждой длине.
+ *
+ * Последняя часть — цвет, единицы не получает. Подстановка тоже: `var(--blur)`
+ * уже несёт единицу внутри себя, а `var(--blur)px` — мусор.
+ */
+function shadowJoin(parts: string[], unit: string): string {
+  const last = parts.length - 1;
+  const out: string[] = new Array(parts.length);
+  let i = 0;
+  let part: string;
+  for (; i <= last; i++) {
+    part = '' + parts[i];
+    out[i] = (i === last || part.indexOf('(') > -1) ? part : part + unit;
+  }
+  return out.join(' ');
+}
+/** Краткие записи «тени нет»: `bxshN` наравне с голым `bxsh`. */
+const SHADOW_KEYWORDS: Record<string, 1> = {
+  N: 1,
+  None: 1,
+  none: 1,
+};
 /** Кавычка или обратный слэш внутри строки — экранируются в CSS. */
 const REGEXP_QUOTE_ESCAPE = /(["\\])/g;
 /**
@@ -1141,6 +1172,23 @@ export default (mn: MnInstance) => {
   } = utils;
 
   const parseVals = routeParseProvider(PATTERN_VAL);
+  /**
+   * Разбор ОДНОЙ тени — тот же механизм, которым ядро разбирает суффикс по
+   * `SHADOW_PATTERNS` (`handlerWrap` в `core/utils.ts`): независимые regex'ы,
+   * каждый ищет свой фрагмент где угодно, поэтому `anchored = false`.
+   *
+   * Нужен отдельно, потому что ядро разбирает суффикс ЦЕЛИКОМ, а список теней
+   * через запятую надо разбирать по частям.
+   */
+  const shadowParsers = map(SHADOW_PATTERNS, (pattern: string) => routeParseProvider(pattern, false));
+  const shadowParsersLength = shadowParsers.length;
+  function parseShadow(v: string, out: Record<string, any>): Record<string, any> {
+    let i = shadowParsersLength;
+    while (i--) {
+      shadowParsers[i](v, out);
+    }
+    return out;
+  }
 
 
   function validateUnit(unit?: string): string | undefined {
@@ -2281,56 +2329,90 @@ export default (mn: MnInstance) => {
   });
 
   forIn(SHADOW_HANDLERS, ([propName, handler], pfx) => {
-    mn(
-      pfx, (p) => {
-        let output;
-        const suffix = p.suffix;
-        const style = {};
-        if (suffix[0] === '_') {
-          output = valueNormalize(suffix);
-        } else {
-          const parsed = REGEXP_SHADOW_SUFFIX.exec(suffix);
-          parsed || throwInvalid('Запись "' + p.name + suffix + '" разобрана не полностью: после значения '
-              + 'допустимы только модификаторы x/y/r/m/c/in. Свободная форма пишется '
-              + 'с ведущим "_" — например "' + p.name + '_0_2px_8px_--shadow"');
-          const repeatCount = intval(
-            p.m, 1, 0,
-          );
-          const value = p.value;
-          if (!value || repeatCount < 1) {
-            style[propName] = 'none';
-            return styleWrap(style);
-          }
-
-          const colors = getColor(p.c || '0');
-          const prefixIn = p.in ? 'inset ' : '';
-          const colorsLength = colors.length;
-          // Единица склейки была жёстко `px`: `bxsh10em` давало
-          // `0px 0px 10px 0px #000` — единица молча терялась, и это ещё
-          // проходило мимо валидатора (`box-shadow` не в его таблице).
-          // Модификаторы x/y/r по грамматике суффикса — целые без единицы,
-          // поэтому единица у записи одна на все её длины.
-          const separator = ((parsed as RegExpExecArray)[1] || 'px') + ' ';
-        let sample, v, color, i, ci = 0; // eslint-disable-line
-          output = new Array(colorsLength);
-
-          for (;ci < colorsLength; ci++) {
-            color = colors[ci];
-            sample = prefixIn
-            + handler(
-              p.x || 0, p.y || 0, value, p.r || 0, color,
-            ).join(separator);
-            v = new Array(repeatCount);
-            for (i = repeatCount; i--;) {
-              v[i] = sample;
-            }
-            output[ci] = v.join(',');
-          }
+    /**
+     * Собирает ОДНУ тень из её разобранного суффикса.
+     *
+     * Возвращает пустую строку, когда тени нет (`bxsh` без значения или
+     * `m0` — ноль повторов): вызывающий превращает это в `none`.
+     */
+    function shadowValue(part: string, name: string): string {
+      const parsed = REGEXP_SHADOW_SUFFIX.exec(part);
+      parsed || throwInvalid('Запись "' + name + part + '" разобрана не полностью: '
+        + 'после значения допустимы только модификаторы x/y/r/m/c/in');
+      const p: Record<string, any> = parseShadow(part, {});
+      const repeatCount = intval(
+        p.m, 1, 0,
+      );
+      // Значение (blur) — ведущее число или переменная; модификаторы его не
+      // содержат.
+      const matched = REGEXP_SHADOW_VALUE.exec(part) as RegExpExecArray | null;
+      let value = matched && matched[1];
+      if (!value) {
+        // Модификаторы без ведущего значения — описка: `bxshR3` раньше давало
+        // мусор `Rpx` в позиции blur, а потом молча превращалось в `none`.
+        part && throwInvalid('Запись "' + name + part + '" без ведущего значения: '
+          + 'blur пишется первым — "' + name + '19r3"');
+        return '';
+      }
+      if (repeatCount < 1) {
+        return '';
+      }
+      // `;` — терминатор имени переменной, как везде в нотации: без него имя
+      // жадно забрало бы следующие модификаторы (`bxsh--blur;c--shadow`).
+      value[0] === '-' && (value = 'var('
+        + (value[value.length - 1] === ';' ? value.slice(0, -1) : value) + ')');
+      const colors = getColor(p.c || '0');
+      const prefixIn = p.in ? 'inset ' : '';
+      const colorsLength = colors.length;
+      // Единица склейки была жёстко `px`: `bxsh10em` давало
+      // `0px 0px 10px 0px #000` — единица молча терялась. Модификаторы x/y/r
+      // по грамматике суффикса — целые без единицы, поэтому единица у записи
+      // одна на все её длины.
+      const unit = (parsed as RegExpExecArray)[1] || 'px';
+      const output = new Array(colorsLength);
+      let sample, v, color, i, ci = 0; // eslint-disable-line
+      for (;ci < colorsLength; ci++) {
+        color = colors[ci];
+        sample = prefixIn
+          + shadowJoin(handler(
+            p.x || 0, p.y || 0, value, p.r || 0, color,
+          ),
+          unit);
+        v = new Array(repeatCount);
+        for (i = repeatCount; i--;) {
+          v[i] = sample;
         }
-        style[propName] = output;
+        output[ci] = v.join(',');
+      }
+      return output.join(',');
+    }
+
+    mn(pfx, (p) => {
+      const suffix = p.suffix;
+      const style: Record<string, any> = {};
+      if (SHADOW_KEYWORDS[suffix]) {
+        style[propName] = 'none';
         return styleWrap(style);
-      }, SHADOW_PATTERNS,
-    );
+      }
+      // Несколько РАЗНЫХ теней — через запятую. Модификатор `m` повторяет одну
+      // и ту же, а сырой режим на списке ломался: запятая уходила внутрь
+      // `var(…)` и давала `var(--shadow,0) 1px 2px var(--shadow2)`.
+      const parts = splitTopLevel(suffix);
+      const l = parts.length;
+      const out: string[] = new Array(l);
+      let i = 0;
+      let one: string;
+      for (; i < l; i++) {
+        one = shadowValue(parts[i], p.name);
+        if (!one) {
+          style[propName] = 'none';
+          return styleWrap(style);
+        }
+        out[i] = one;
+      }
+      style[propName] = out.join(',');
+      return styleWrap(style);
+    });
   });
 
 

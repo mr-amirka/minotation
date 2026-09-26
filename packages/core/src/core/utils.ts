@@ -577,11 +577,17 @@ export function parseMediaPart(mediaPart?: string): [number, number] | undefined
 }
 export function handlerWrap(essenceHandler: (p: MnEssenceParams) => MnEssenceRaw | void | 0,
   paramsMatchPath: string | string[]): (p: MnEssenceParams) => MnEssenceRaw | void | 0 {
-  // Паттерны-массивы (напр. SHADOW_PATTERNS) — независимые regex'ы, каждый ищет
-  // СВОЙ фрагмент где угодно в общем суффиксе (`19r3c43F` → r-паттерн находит "r3",
-  // c-паттерн — "c43F", независимо друг от друга) — anchored=false, как было в
-  // v1 (mn-utils.routeParseProvider не анкорил вообще). Одиночная строка-паттерн
-  // (PATTERN_VAL и т.п.) уже embed'ит собственные `^`/`$` и матчит суффикс целиком.
+  // Паттерны-массивы — независимые regex'ы, каждый ищет СВОЙ фрагмент где
+  // угодно в общем суффиксе (`19r3c43F` → r-паттерн находит "r3", c-паттерн —
+  // "c43F", независимо друг от друга) — anchored=false, как было в v1
+  // (mn-utils.routeParseProvider не анкорил вообще). Одиночная строка-паттерн
+  // (PATTERN_VAL и т.п.) уже embed'ит собственные `^`/`$` и матчит суффикс
+  // целиком.
+  //
+  // В стандартном пресете массивом пользовались тени, но с 2026-09-26 они
+  // разбирают части сами — список через запятую ядру не отдать, оно видит
+  // суффикс целиком. Возможность остаётся публичной: `mn(name, handler,
+  // [pattern, …])` — точка расширения для сторонних пресетов.
   const parse = isArray(paramsMatchPath)
     ? aggregate(map(paramsMatchPath, (pattern: string) => routeParseProvider(pattern, false)), eachApply)
     : routeParseProvider(paramsMatchPath);

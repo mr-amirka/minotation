@@ -177,8 +177,13 @@ describe('единица в тенях идёт во все длины запи�
     expect(compile(['bxsh10%']).css).toBe('');
   });
 
-  test('обе недоступные единицы выразимы свободной формой', () => {
-    expect(compile(['bxsh_0_0_10in_#000']).css).toContain('box-shadow:0 0 10in #000');
+  test('переменная в позиции blur — то, ради чего был сырой режим', () => {
+    // Сырой режим у теней убран 2026-09-26: мини-язык покрывает всё, что он
+    // давал, а на списке теней он ломался — запятая уходила внутрь `var(…)`.
+    expect(compile(['bxsh--blur']).css)
+      .toContain('box-shadow:0px 0px var(--blur) 0px #000');
+    expect(compile(['bxsh--blur;c--shadow']).css)
+      .toContain('box-shadow:0px 0px var(--blur) 0px var(--shadow)');
   });
 });
 
@@ -1038,5 +1043,50 @@ describe('transition: слоты в фиксированном порядке', 
   test('подстановка годится в любой слот', () => {
     expect(compile(['tn--v']).css).toContain('transition:var(--v)');
     expect(compile(['tn_all_--ease']).css).toContain('transition:all var(--ease)');
+  });
+});
+
+describe('тени: список и переменная вместо сырого режима', () => {
+  test('несколько РАЗНЫХ теней через запятую', () => {
+    // Модификатор `m` повторяет одну и ту же тень; разные задаются списком.
+    const css = compile(['bxsh10x0y2c0.1,5x0y1c0.05']).css;
+    expect(css).toContain('box-shadow:0px 2px 10px 0px rgba(0,0,0,.1),0px 1px 5px 0px rgba(0,0,0,.05)');
+  });
+
+  test.each([
+    ['bxsh--blur', 'box-shadow:0px 0px var(--blur) 0px #000'],
+    ['bxsh--blur;c--shadow', 'box-shadow:0px 0px var(--blur) 0px var(--shadow)'],
+    ['bxsh--my_blur;', 'box-shadow:0px 0px var(--my_blur) 0px #000'],
+  ])('%s → %s — переменная в позиции blur', (token, expected) => {
+    // `;` — терминатор имени: без него имя заберёт следующие модификаторы.
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    ['bxshN', 'box-shadow:none'],
+    ['bxshNone', 'box-shadow:none'],
+    ['bxsh', 'box-shadow:none'],
+    ['bxsh10m0', 'box-shadow:none'],
+  ])('%s → %s', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    'bxsh_solid',
+    'bxsh_0_2px_8px_--shadow',
+    'tsh_solid',
+  ])('%s бракуется — сырой режим у теней убран', (token) => {
+    expect(compile([token]).css).toBe('');
+  });
+
+  test('bxshR3 бракуется — blur пишется первым', () => {
+    // Раньше давало мусор `Rpx` в позиции blur, потом молча `none`.
+    expect(compile(['bxshR3']).css).toBe('');
+  });
+
+  test('модификаторы и единица не задеты', () => {
+    expect(compile(['bxsh19x5y5r3c43F']).css).toContain('box-shadow:5px 5px 19px 3px #43f');
+    expect(compile(['bxsh1.5em']).css).toContain('box-shadow:0em 0em 1.5em 0em #000');
+    expect(compile(['bxsh10in']).css).toContain('box-shadow:inset 0px 0px 10px 0px #000');
   });
 });

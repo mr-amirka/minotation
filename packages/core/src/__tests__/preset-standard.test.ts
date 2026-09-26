@@ -408,7 +408,7 @@ describe('Standard preset — box-shadow / text-shadow', () => {
     ['bxsh10in', 'box-shadow:inset 0px 0px 10px 0px #000'],
     ['bxsh19x5y5r3c43F', 'box-shadow:5px 5px 19px 3px #43f'],
     ['bxsh10c--shadow', 'box-shadow:0px 0px 10px 0px var(--shadow)'],
-    ['bxsh_0_0_10px_--shadow', 'box-shadow:0 0 10px var(--shadow)'],
+    ['bxsh10c--shadow', 'box-shadow:0px 0px 10px 0px var(--shadow)'],
     ['tsh10x2', 'text-shadow:2px 0px 10px #000'],
   ])('%s продолжает работать (сторож на отбраковку хвоста)', (token, expected) => {
     expect(css(token)).toContain(expected);

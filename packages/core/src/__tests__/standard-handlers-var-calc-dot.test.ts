@@ -298,7 +298,7 @@ describe('представители классов разбора — точн�
       ['lisi--v', 'list-style-image:var(--v)'],
       ['maski--v', 'mask-image:var(--v)'],
     ]],
-    ['тени (свой позиционный парсер + сырая ветка)', [['bxsh_0_0_10px_--shadow', 'box-shadow:0 0 10px var(--shadow)'], ['bxsh_0_0_--a;_--b;', 'box-shadow:0 0 var(--a) var(--b)']]],
+    ['тени (свой позиционный парсер)', [['bxsh10c--shadow', 'box-shadow:0px 0px 10px 0px var(--shadow)'], ['bxsh--a;c--b;', 'box-shadow:0px 0px var(--a) 0px var(--b)']]],
     ['multi-value свойства', [['tn_all_0.2s_--ease', 'transition:all 0.2s var(--ease)'], ['tn_--a;_--b;', 'transition:var(--a) var(--b)']]],
     ['шрифт и content', [
       ['ff--v', 'font-family:var(--v)'],

@@ -38,7 +38,7 @@ describe('CSS-переменные в составном значении', () =
     // Одиночная переменная у хендлера свободного значения тоже не работала.
     ['tn--ease', 'transition:var(--ease)'],
     ['tn_all_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
-    ['bxsh_0_0_10px_--shadow', 'box-shadow:0 0 10px var(--shadow)'],
+    ['bxsh10c--shadow', 'box-shadow:0px 0px 10px 0px var(--shadow)'],
     // Несколько переменных в одном значении.
     ['tn_all_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
     ['tn_--prop_--dur_--ease', 'transition:var(--prop) var(--dur) var(--ease)'],
@@ -157,7 +157,7 @@ describe('составные значения без переменных не �
     ['tn_all_0.2s_ease', 'transition:all 0.2s ease'],
     ['tnAll', 'transition:all'],
     ['tn_all_0.2s_ease', 'transition:all 0.2s ease'],
-    ['bxsh_0_0_10px_red', 'box-shadow:0 0 10px red'],
+    ['bxsh10cF00', 'box-shadow:0px 0px 10px 0px #f00'],
     ['posSticky', 'position:sticky'],
     // Посегментный kebab: склеенная строка дала бы `0_1_-auto`.
     ['fx0_1_Auto', 'flex:0 1 auto'],

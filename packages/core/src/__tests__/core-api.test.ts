@@ -233,3 +233,33 @@ describe('публичные экспорты точки входа', () => {
     })).toBeInstanceOf(Error);
   });
 });
+
+describe('регистрация хендлера с массивом паттернов', () => {
+  // Публичная точка расширения: `mn(name, handler, [pattern, …])`. Паттерны
+  // независимы — каждый ищет свой фрагмент где угодно в суффиксе. В
+  // стандартном пресете так разбирались тени, пока не перешли на собственный
+  // разбор ради списка через запятую (2026-09-26).
+  test('каждый паттерн находит свой фрагмент независимо от остальных', () => {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const mn: any = minotationProvider({
+      onWarning: 'silent',
+    });
+    let seen: Record<string, any> = {};
+    mn(
+      'probe', (p: any) => {
+        seen = p;
+        return {
+          style: {
+            color: '#000',
+          },
+        };
+      }, ['(x|X)([0-9]+):x', '(y|Y)([0-9]+):y'],
+    );
+    // Имя хендлера жадно забирает строчные буквы, поэтому модификаторы
+    // в токене — заглавные: `probex5` искал бы хендлер `probex`.
+    mn.getCompiler('class')('probeX5Y7');
+    mn.compile();
+    expect(seen.x).toBe('5');
+    expect(seen.y).toBe('7');
+  });
+});

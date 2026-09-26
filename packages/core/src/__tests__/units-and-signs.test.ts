@@ -906,3 +906,58 @@ describe('сырой режим только там, где значение с�
     expect(compile([token]).css).toContain(expected);
   });
 });
+
+describe('content: кавычки ставит хендлер', () => {
+  // Ведущий `_` означает «дальше текст» и сам оборачивает его в кавычки.
+  // Раньше кавычки писал автор, а их отсутствие не проверялось: `cntHello`
+  // давало `content:hello`, которое браузер отбрасывает.
+  test.each([
+    ['cnt_Hello_World', 'content:"Hello World"'],
+    ['cnt_a_b', 'content:"a b"'],
+    ['cnt_a\\.b', 'content:"a.b"'],
+    ['cnt_', 'content:""'],
+    ['cnt__', 'content:" "'],
+  ])('%s → %s', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    ['cnt', 'content:none'],
+    ['cntNone', 'content:none'],
+    ['cntNormal', 'content:normal'],
+    ['cntOpenQuote', 'content:open-quote'],
+    ['cntNoCloseQuote', 'content:no-close-quote'],
+    ['cntInherit', 'content:inherit'],
+  ])('%s → %s — без `_` ожидается ключевое слово', (token, expected) => {
+    const at = expected.indexOf(':');
+    expect(lexer.matchProperty('content', expected.slice(at + 1)).matched).toBeTruthy();
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    'cntHello',
+    'cnt10',
+    'cntF00',
+    'cntTrue',
+  ])('%s бракуется — текст пишется как cnt_Hello', (token) => {
+    const {
+      css, warnings,
+    } = compile([token]);
+    expect(css).toBe('');
+    expect(warnings.length).toBe(1);
+  });
+
+  test.each([
+    ['cnt_attr\\(href\\)', 'content:attr(href)'],
+    ['cnt_counter\\(n\\)', 'content:counter(n)'],
+    ['cnt_url\\(a\\.png\\)', 'content:url(a.png)'],
+    ['cnt--v', 'content:var(--v)'],
+  ])('%s → %s — функция и подстановка не кавычатся', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([['cnt_"Hello"', 'content:"Hello"'], ['cnt_a_"b"_c', 'content:a "b" c']])('%s → %s — свои кавычки не дублируются', (token, expected) => {
+    // Кавычка в значении означает, что автор управляет ими сам.
+    expect(compile([token]).css).toContain(expected);
+  });
+});

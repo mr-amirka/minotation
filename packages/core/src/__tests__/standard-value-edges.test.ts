@@ -37,10 +37,13 @@ describe('составные значения', () => {
     expect(compile(['ff_Times_New_Roman']).css).toContain('font-family:"Times New Roman"');
   });
 
-  test('одиночное подчёркивание даёт пробел в content, двойное — кавычки с пробелом', () => {
+  test('в content подчёркивание даёт пробел, кавычки ставит хендлер', () => {
     const css = compile(['cnt_a_b', 'cnt__']).css;
-    expect(css).toContain('content:a b');
+    expect(css).toContain('content:"a b"');
+    // Суффикс из одних подчёркиваний: первое — переключатель режима,
+    // остальные пробелы. `cnt_` → `""`, `cnt__` → `" "`.
     expect(css).toContain('content:" "');
+    expect(compile(['cnt_']).css).toContain('content:""');
   });
 
   test('несколько фильтров через подчёркивание складываются в одно значение', () => {

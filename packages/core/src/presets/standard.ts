@@ -826,6 +826,17 @@ const IMAGE_KEYWORDS: Record<string, string> = {
   revert: 'revert',
   'revert-layer': 'revert-layer',
 };
+/** В значении уже есть кавычка — автор ставит их сам. */
+const REGEXP_HAS_QUOTE = /["']/;
+/** Ключевые слова `content` — всё, что пишется без кавычек и не функция. */
+const CONTENT_KEYWORDS: Record<string, 1> = {
+  none: 1,
+  normal: 1,
+  'open-quote': 1,
+  'close-quote': 1,
+  'no-open-quote': 1,
+  'no-close-quote': 1,
+};
 /** Проценты допустимы: `text-indent:10%`, но не `word-spacing:10%`. */
 const LENGTH_PERCENT = 1;
 /** Несколько значений через `_`: `border-spacing:10px 20px`. */
@@ -3327,16 +3338,44 @@ export default (mn: MnInstance) => {
           .join(','),
       }, 1);
     },
+    /**
+     * `content`. Ведущий `_` означает «дальше текст» и **сам ставит кавычки**:
+     * `cnt_Hello_World` → `content:"Hello World"`. Без него значение обязано
+     * быть ключевым словом свойства.
+     *
+     * До 2026-09-26 кавычки писал автор (`cnt_"Hello_World"`), а их отсутствие
+     * никто не проверял: `cntHello` давало `content:hello`, `cnt_two_words` —
+     * `content:two words`. По грамматике текст в `content` без кавычек
+     * невалиден, и браузер такое правило отбрасывает.
+     *
+     * Три случая распознаются сами и кавычками не оборачиваются:
+     * значение уже содержит кавычку (автор управляет сам — `cnt_"a"_"b"`),
+     * значение целиком вызов функции (`cnt_attr\(href\)`), значение —
+     * подстановка (`cnt--v`).
+     */
     cnt: (p) => {
-      let s;
-      return (s = p.suffix) == '_'
-        ? normalizeDefault(p, '\'_\'')
-        : styleWrap({
-          // Особый случай против общего valueNormalize: суффикс из одних `_`
-          // схлопывается в пустую строку, которая для `content` невалидна —
-          // подставляем пробел в кавычках.
-          content: s ? (valueNormalize(s) || '" "') : 'none',
+      let s, v;
+      if (!(s = p.suffix)) {
+        return styleWrap({
+          content: 'none',
         });
+      }
+      v = valueNormalize(s);
+      return styleWrap({
+        content: s[0] === '_'
+          // Суффикс из одних подчёркиваний: первое — переключатель, остальные
+          // пробелы. `cnt_` → `""`, `cnt__` → `" "`, `cnt___` → `"  "`.
+          ? (v
+            ? (REGEXP_HAS_QUOTE.test(v) || v.indexOf('(') > -1
+              ? v
+              : '"' + v + '"')
+            : '"' + ' '.repeat(s.length - 1) + '"')
+          : (v.indexOf('(') > -1
+            ? v
+            : assertKnownWord(
+              v, s, 0 as any, CONTENT_KEYWORDS,
+            )),
+      });
     },
     ft: ftProvider('filter'),
     ftb: ftProvider('backdropFilter'),

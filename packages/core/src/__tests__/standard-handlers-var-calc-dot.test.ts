@@ -305,7 +305,7 @@ describe('представители классов разбора — точн�
       ['ff--my_font;', 'font-family:var(--my_font)'],
       ['ff--mono,serif', 'font-family:var(--mono,serif)'],
       ['font16px/1.55_--font', 'font:16px/1.55 var(--font)'],
-      ['cnt_a\\.b', 'content:a.b'],
+      ['cnt_a\\.b', 'content:"a.b"'],
     ]],
   ])('%s', (_cls, cases) => {
     test.each(cases)('%s → %s', (token, expected) => {

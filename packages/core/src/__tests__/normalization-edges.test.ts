@@ -45,7 +45,9 @@ describe('нормализация значений в токенах', () => {
     const mn: any = minotationProvider();
     mn.setPresets([presetStandard]);
 
-    expect(compile(mn, 'cnt_two_words')).toContain('content:two words');
+    // Кавычки ставит сам хендлер: до 2026-09-26 их писал автор, а их
+    // отсутствие не проверялось — `content:two words` браузер отбрасывает.
+    expect(compile(mn, 'cnt_two_words')).toContain('content:"two words"');
   });
 });
 

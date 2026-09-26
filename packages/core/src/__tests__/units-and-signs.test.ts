@@ -800,3 +800,35 @@ describe('уточнения там, где первая проверка ока
     expect(compile(['ar16/9']).css).toContain('aspect-ratio:16/9');
   });
 });
+
+describe('border-style: только то, что есть в спецификации', () => {
+  test.each([
+    'bsW',
+    'bsDTDS',
+    'bsDTDTDS',
+    'bsWave',
+    'bsDotDash',
+  ])('%s бракуется — такого значения в CSS нет', (token) => {
+    // `wave`, `dot-dash`, `dot-dot-dash` — проприетарный набор старой Mozilla
+    // под `-moz-border-*-style`; в стандарт не вошёл ни один. Краткие записи
+    // перешли из v1 и убраны 2026-09-26.
+    expect(lexer.matchProperty('border-style', 'wave').matched).toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  test.each([
+    ['bsN', 'none'],
+    ['bsH', 'hidden'],
+    ['bsDT', 'dotted'],
+    ['bsDS', 'dashed'],
+    ['bsS', 'solid'],
+    ['bsDB', 'double'],
+    ['bsG', 'groove'],
+    ['bsR', 'ridge'],
+    ['bsI', 'inset'],
+    ['bsO', 'outset'],
+  ])('%s → border-style:%s — весь <line-style> на месте', (token, value) => {
+    expect(lexer.matchProperty('border-style', value).matched).toBeTruthy();
+    expect(compile([token]).css).toContain('border-style:' + value);
+  });
+});

@@ -156,14 +156,13 @@ const COLOR_SYNONYMS = {
   SIT: 'SelectedItemText',
 };
 /**
- * Значения `border-style`, выведенные из словаря кратких записей ниже.
+ * Краткие записи `border-style`.
  *
- * Три из них (`dot-dash`, `dot-dot-dash`, `wave`) в CSS не существуют — это
- * проприетарный набор старой Mozilla, работавший только под
- * `-moz-border-*-style`. Краткие записи `bsDTDS`, `bsDTDTDS`, `bsW` перешли из
- * v1 и здесь сохранены, чтобы не ломать их молча; убирать ли их — отдельный
- * вопрос к владельцу, поэтому список собирается из словаря, а не выписан по
- * спецификации.
+ * `DTDS` → `dot-dash`, `DTDTDS` → `dot-dot-dash` и `W` → `wave` убраны
+ * 2026-09-26: таких значений в CSS нет вовсе. Это проприетарный набор старой
+ * Mozilla, работавший только под `-moz-border-*-style`; в v1 он попал оттуда, а
+ * в стандарт не вошёл ни один из трёх. Любой из них давал правило, которое
+ * браузер отбрасывает целиком.
  */
 const BORDER_STYLE_SYNONYMS = {
   N: 'None',
@@ -172,16 +171,14 @@ const BORDER_STYLE_SYNONYMS = {
   DS: 'Dashed',
   S: 'Solid',
   DB: 'Double',
-  DTDS: 'DotDash',
-  DTDTDS: 'DotDotDash',
-  W: 'Wave',
   G: 'Groove',
   R: 'Ridge',
   I: 'Inset',
   O: 'Outset',
 };
+/** `<line-style>` целиком — ровно то, что принимает спецификация. */
 const BORDER_STYLE_KEYWORDS = wordsSet('none hidden dotted dashed solid double'
-  + ' groove ridge inset outset dot-dash dot-dot-dash wave');
+  + ' groove ridge inset outset');
 /** Ключевые слова позиции — общие для `background-position`/`object-position`. */
 const POSITION_KEYWORDS = {
   L: 'Left',

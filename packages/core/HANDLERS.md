@@ -184,9 +184,11 @@ ff_Times_New_Roman  →  font-family:"Times New Roman"
 | `cnt_Hello_World` | `content:"Hello World"` |
 | `cnt_→` | `content:"→"` |
 | `cnt_` | `content:""` — текста после `_` нет, значит пустая строка |
-| `cnt__` | `content:" "` — подчёркивания после первого становятся пробелами |
-| `cntS` | `content:" "` — мнемоника к `cnt__`, тот же CSS |
+| `cntS` | `content:" "` — пробел |
 | `cntN` | `content:none` |
+
+`cnt__` бракуется: у пробела одна запись, `cntS`. Внутри текста подчёркивания
+работают как обычно — `cnt_a__b` → `content:"a  b"`.
 
 **Пустая строка, пробел и `none` — три разных случая.** `content:""` создаёт
 псевдоэлемент (обычный приём для `::before`/`::after` с оформлением),

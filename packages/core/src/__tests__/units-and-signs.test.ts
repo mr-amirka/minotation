@@ -921,12 +921,16 @@ describe('content: кавычки ставит хендлер', () => {
     expect(compile([token]).css).toContain(expected);
   });
 
-  test('подчёркивания после первого — пробелы', () => {
-    // Первое `_` переключает режим, остальные становятся текстом из пробелов.
-    expect(compile(['cnt_']).css).toContain('content:""');
-    expect(compile(['cnt__']).css).toContain('content:" "');
-    // Мнемоника к `cnt__`, тот же CSS.
+  test('cnt__ бракуется — у пробела одна запись', () => {
+    // Иначе одно значение имело бы две формы записи.
+    expect(compile(['cnt__']).css).toBe('');
+    expect(compile(['cnt___']).css).toBe('');
     expect(compile(['cntS']).css).toContain('content:" "');
+  });
+
+  test('пробелы внутри текста не задеты', () => {
+    expect(compile(['cnt_a_b']).css).toContain('content:"a b"');
+    expect(compile(['cnt_a__b']).css).toContain('content:"a  b"');
   });
 
   test('пустая строка, пробел и none — три разных случая', () => {

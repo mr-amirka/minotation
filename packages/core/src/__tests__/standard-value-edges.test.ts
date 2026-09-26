@@ -38,10 +38,8 @@ describe('составные значения', () => {
   });
 
   test('в content подчёркивание даёт пробел, кавычки ставит хендлер', () => {
-    const css = compile(['cnt_a_b', 'cnt__']).css;
-    expect(css).toContain('content:"a b"');
-    // Первое подчёркивание переключает режим, остальные становятся пробелами.
-    expect(css).toContain('content:" "');
+    expect(compile(['cnt_a_b']).css).toContain('content:"a b"');
+    // Текста после `_` нет — пустая строка; пробел пишется мнемоникой.
     expect(compile(['cnt_']).css).toContain('content:""');
     expect(compile(['cntS']).css).toContain('content:" "');
   });

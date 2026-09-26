@@ -406,6 +406,23 @@ const REGEXP_ROUTE_KEY = /:[_A-Za-z0-9.]+/g;
  * форму: `bxsh_0_0_10in_#000`.
  */
 const SHADOW_UNITS = UNITS.filter((unit) => unit !== '%' && unit !== 'in');
+/** Единицы угла — всё, чем измеряется поворот в CSS. */
+const ANGLE_UNITS = [
+  'deg',
+  'grad',
+  'rad',
+  'turn',
+];
+/**
+ * Хвост `r{x|y|z}{число}{единица?}` в суффиксе `x`-хендлера.
+ *
+ * Единицу угла здесь нельзя брать из `p.unit`: у составного суффикса это поле
+ * заполняет ещё и generic-разбор ядра, и у `x10y20rz45` (единица не написана)
+ * туда попадал `y` от `y20`, давая `rotateZ(45y)`. Поворот — последняя часть
+ * собственного паттерна хендлера, поэтому его хвост однозначно ловится с конца
+ * строки.
+ */
+const REGEXP_ANGLE_TAIL = /[rR][xyz][-+]?[0-9.]+([a-z]*)$/;
 const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:[0-9.]+(' + SHADOW_UNITS.join('|') + ')?)?(?:'
     + SHADOW_PATTERNS.map((pattern) => '(?:' + pattern.replace(REGEXP_ROUTE_KEY, '') + ')').join('|')
     + ')*$');
@@ -724,6 +741,27 @@ export default (mn: MnInstance) => {
       return unit;
     }
     throwInvalid('Unit "' + unit + '" is invalid');
+  }
+  /**
+   * Собирает угол для `rotate*()`: число плюс единица угла.
+   *
+   * Единица не проверялась вовсе — в CSS уходило то, что написано:
+   * `rx10px` давало `rotateX(10px)`, `rx10s` — `rotateX(10s)`. Не проверялось
+   * и само значение: `rxInherit` давало `rotateX(Inheritdeg)`, буквальную
+   * склейку слова с единицей. Всё это браузер отбрасывает, а предупреждения не
+   * было: `transform` — permissive pass-through для валидатора ядра.
+   *
+   * Поворот измеряется только углом, поэтому список короткий и закрытый;
+   * умолчание `deg` сохраняется (`rx45` → `rotateX(45deg)`).
+   */
+  function assertAngle(
+    value: string, unit: string | undefined, raw: string,
+  ): string {
+    REGEXP_BARE_NUMBER.test(value) || throwInvalid('Значение "' + raw
+      + '" не распознано: поворот задаётся числом');
+    (!unit || indexOf(ANGLE_UNITS, unit) > -1) || throwInvalid('Unit "' + unit
+      + '" is invalid: поворот измеряется углом (' + ANGLE_UNITS.join(', ') + ')');
+    return value + (unit || 'deg');
   }
   /**
    * Ключевые слова, допустимые у любого свойства (CSS-wide keywords).
@@ -1686,7 +1724,11 @@ export default (mn: MnInstance) => {
           + floatNormalize(z) + (p.zu || 'px') + ')') : '')
         + (scale ? (' scale(' + (0.01 * floatNormalize(scale)) + ')') : '')
         + (angle ? (' rotate' + toUpper(p.dir)
-        + '(' + floatNormalize(angle) + (p.unit || 'deg') + ')') : ''),
+        + '(' + assertAngle(
+          '' + floatNormalize(angle),
+          (REGEXP_ANGLE_TAIL.exec(p.suffix) as RegExpExecArray)[1],
+          p.name + p.suffix,
+        ) + ')') : ''),
       }); // eslint-disable-next-line
   }, '^' + PATTERN_DIGITS + ':x?(%):xu?([yY]' + PATTERN_DIGITS
     + ':y(%):yu?)?([zZ]' + PATTERN_DIGITS
@@ -1722,7 +1764,9 @@ export default (mn: MnInstance) => {
     mn('r' + suffix, (p) => {
       let v;
       return (v = p.value) ? styleWrap({
-        transform: prefix + v + (p.unit || 'deg') + ')',
+        transform: prefix + assertAngle(
+          v, p.unit, p.name + p.suffix,
+        ) + ')',
       }) : normalizeDefault(p, 180);
     });
   });

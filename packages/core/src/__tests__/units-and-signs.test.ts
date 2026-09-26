@@ -182,6 +182,54 @@ describe('единица в тенях идёт во все длины запи�
   });
 });
 
+describe('поворот измеряется углом', () => {
+  test.each([
+    ['rx', 'rotateX(180deg)'],
+    ['rx45', 'rotateX(45deg)'],
+    ['rx-45', 'rotateX(-45deg)'],
+    ['rx45deg', 'rotateX(45deg)'],
+    ['rx0.5turn', 'rotateX(0.5turn)'],
+    ['rx1rad', 'rotateX(1rad)'],
+    ['rx100grad', 'rotateX(100grad)'],
+    ['ry90', 'rotateY(90deg)'],
+    ['rz180', 'rotateZ(180deg)'],
+  ])('%s → %s', (token, expected) => {
+    expect(compile([token]).css).toContain('transform:' + expected);
+  });
+
+  test.each([
+    'rx10px',
+    'rx10s',
+    'rx10%',
+    'rx10fr',
+  ])('%s — единица не угловая, бракуется', (token) => {
+    const {
+      css, warnings,
+    } = compile([token]);
+    expect(css).toBe('');
+    expect(warnings.length).toBe(1);
+  });
+
+  test('rxInherit больше не даёт rotateX(Inheritdeg)', () => {
+    // Значение не проверялось вовсе: слово склеивалось с единицей буквально.
+    expect(compile(['rxInherit']).css).toBe('');
+  });
+
+  test.each([
+    ['x10y20rz45', 'translate(10px,20px) rotateZ(45deg)'],
+    ['x10y20rz45deg', 'translate(10px,20px) rotateZ(45deg)'],
+    ['x10y20rz0.5turn', 'translate(10px,20px) rotateZ(0.5turn)'],
+  ])('%s → %s — в составной форме единица берётся из своего хвоста', (token, expected) => {
+    // У составного суффикса `p.unit` заполняет ещё и generic-разбор ядра:
+    // у `x10y20rz45` туда попадал `y` от `y20`, давая `rotateZ(45y)`.
+    expect(compile([token]).css).toContain('transform:' + expected);
+  });
+
+  test('x10y20rz45px бракуется так же, как rx10px', () => {
+    expect(compile(['x10y20rz45px']).css).toBe('');
+  });
+});
+
 describe('знак значения', () => {
   const NEGATIVE_OK: Array<[string, string, string]> = [
     [

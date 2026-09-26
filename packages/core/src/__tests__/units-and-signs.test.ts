@@ -1090,3 +1090,33 @@ describe('тени: список и переменная вместо сырог
     expect(compile(['bxsh10in']).css).toContain('box-shadow:inset 0px 0px 10px 0px #000');
   });
 });
+
+describe('transition: список свойств с общими параметрами', () => {
+  // Сокращение, которого в CSS нет: там каждое свойство пишется целым блоком.
+  test.each([['tn_color;background_0.2s', 'transition:color 0.2s,background 0.2s'], ['tn_color;background;border-color_0.2s', 'transition:color 0.2s,background 0.2s,border-color 0.2s']])('%s → %s', (token, expected) => {
+    const at = expected.indexOf(':');
+    expect(lexer.matchProperty('transition', expected.slice(at + 1)).matched).toBeTruthy();
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test('список без остальных слотов — просто перечисление свойств', () => {
+    // Длительность у них тогда по умолчанию (`0s`), как и в CSS.
+    expect(compile(['tn_color;background']).css).toContain('transition:color,background');
+  });
+
+  test('список сочетается с обычными блоками через запятую', () => {
+    expect(compile(['tn_color;background_0\\.2s,transform_0\\.4s']).css)
+      .toContain('transition:color 0.2s,background 0.2s,transform 0.4s');
+  });
+
+  test.each(['tn_color;_0.2s', 'tn_;color_0.2s'])('%s бракуется — пустое имя в списке', (token) => {
+    expect(compile([token]).css).toBe('');
+  });
+
+  test('`;` после имени переменной остаётся терминатором', () => {
+    // Разбор различает их по началу токена: имя переменной начинается с `--`
+    // и до этой проверки уже развёрнуто в `var(…)`.
+    expect(compile(['tn_--prop_0.2s']).css).toContain('transition:var(--prop) 0.2s');
+    expect(compile(['tn_--prop;_0.2s']).css).toContain('transition:var(--prop) 0.2s');
+  });
+});

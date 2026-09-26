@@ -864,8 +864,14 @@ const FONT_KEYWORDS: Record<string, 1> = {
  */
 /** Время: число с `s`/`ms`, либо голое число — оно получает `ms`, как у `dn`. */
 const REGEXP_TIME = /^[0-9]*\.?[0-9]+(m?s)?$/;
-/** Имя CSS-свойства или `all`/`none` — список свойств открыт, проверяем форму. */
-const REGEXP_PROPERTY_NAME = /^-?[a-z][a-z0-9-]*$/;
+/**
+ * Имя CSS-свойства или `all`/`none`, либо несколько имён через `;`.
+ *
+ * Список свойств CSS открыт, поэтому проверяется форма, а не словарь. `;` здесь
+ * разделитель списка, а не терминатор имени переменной: имя переменной
+ * начинается с `--`, и до этой проверки оно уже развёрнуто в `var(…)`.
+ */
+const REGEXP_PROPERTY_LIST = /^-?[a-z][a-z0-9-]*(?:;-?[a-z][a-z0-9-]*)*;?$/;
 /** Функции плавности: `cubic-bezier(…)`, `steps(…)`, `linear(…)`. */
 const REGEXP_EASING_FUNCTION = /^(?:cubic-bezier|steps|linear)\(/;
 /** Подстановка — годится в любой слот, что внутри неё, здесь не видно. */
@@ -904,7 +910,7 @@ function splitTopLevel(v: string): string[] {
  * длительность, дальше нельзя вернуться к имени свойства. Голое число в слоте
  * времени получает `ms` — как у `dn`/`delay`.
  */
-function transitionValue(parts: string[], raw: string): string {
+function transitionValue(parts: string[], raw: string): string[] {
   const l = parts.length;
   const out: string[] = new Array(l);
   let i = 0;
@@ -913,6 +919,7 @@ function transitionValue(parts: string[], raw: string): string {
   let part: string;
   let at: number;
   let time: RegExpExecArray | null;
+  let names: string[] | 0 = 0;
   const prefix = 'Значение "' + raw + '" не распознано: у "tn" порядок частей — ';
   for (; i < l; i++) {
     part = parts[i];
@@ -933,8 +940,12 @@ function transitionValue(parts: string[], raw: string): string {
       || REGEXP_EASING_FUNCTION.test(part)) {
       at = 3;
       out[i] = part;
-    } else if (REGEXP_PROPERTY_NAME.test(part)) {
+    } else if (REGEXP_PROPERTY_LIST.test(part)) {
       at = 1;
+      // Несколько свойств с одними параметрами — через `;`. В CSS такого
+      // сокращения нет: там пришлось бы перечислять каждое свойство целым
+      // блоком (`color .2s, background .2s, border-color .2s`).
+      part.indexOf(';') > -1 && (names = part.split(';'));
       out[i] = part;
     } else {
       return throwInvalid(prefix + 'свойство, длительность, плавность, задержка; '
@@ -944,7 +955,19 @@ function transitionValue(parts: string[], raw: string): string {
       + 'задержка — "' + part + '" стоит не на своём месте');
     slot = at;
   }
-  return out.join(' ');
+  if (!names) {
+    return [out.join(' ')];
+  }
+  // Список свойств разворачивается в отдельный переход на каждое: остальные
+  // слоты у них общие.
+  const tail = out.slice(1).join(' ');
+  const namesLength = names.length;
+  const expanded: string[] = new Array(namesLength);
+  for (i = 0; i < namesLength; i++) {
+    names[i] || throwInvalid(prefix + 'пустое имя свойства в списке "' + out[0] + '"');
+    expanded[i] = tail ? (names[i] + ' ' + tail) : names[i];
+  }
+  return expanded;
 }
 /**
  * Склеивает части тени, дописывая единицу каждой длине.
@@ -3597,11 +3620,13 @@ export default (mn: MnInstance) => {
       // `,` разделяет переходы, пробел — части одного перехода. Запятые
       // внутри скобок (`cubic-bezier(0,0,1,1)`) разделителем не считаются.
       const list = splitTopLevel(value);
-      for (i = list.length; i--;) {
-        list[i] = transitionValue(list[i].trim().split(' '), s);
+      const l = list.length;
+      let out: string[] = [];
+      for (i = 0; i < l; i++) {
+        out = out.concat(transitionValue(list[i].trim().split(' '), s));
       }
       return styleWrap({
-        transition: list.join(','),
+        transition: out.join(','),
       });
     },
     ff: (p) => {

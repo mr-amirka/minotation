@@ -571,8 +571,21 @@ describe('Standard preset — предсказуемость значений', 
   test.each(['font12', 'font1.5'])('%s — не компилируется (неполный shorthand)', (token) => {
     expect(css(token)).toBe('');
   });
-  test('font12px_Arial → font с размером и семейством', () => {
-    expect(css('font12px_Arial')).toContain('font:');
+  // Составная форма убрана 2026-09-26: `f12 ffArial` — тот же CSS атомарно,
+  // а два способа задать одно и то же плодят зоопарк. У `font` остались
+  // только значения, которых атомарные теги не покрывают.
+  test.each(['font12px_Arial', 'font16px/1.55_--font'])(
+    '%s — составная форма больше не принимается', (token) => {
+      expect(css(token)).toBe('');
+    },
+  );
+
+  test.each([
+    ['fontInherit', 'font:inherit'],
+    ['fontMenu', 'font:menu'],
+    ['fontStatusBar', 'font:status-bar'],
+  ])('%s → %s — набор свойств одним словом', (token, expected) => {
+    expect(css(token)).toContain(expected);
   });
 
   // Буква, которой нет ни в одной карте, по-прежнему не даёт молчаливый мусор.

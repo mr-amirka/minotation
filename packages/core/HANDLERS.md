@@ -52,7 +52,6 @@
 | `tn0.2s_all_--ease` | `transition:0.2s all var(--ease)` |
 | `tn_all_0.2s_--ease` | `transition:all 0.2s var(--ease)` |
 | `bxsh_0_0_10px_--shadow` | `box-shadow:0 0 10px var(--shadow)` |
-| `font16px/1.55_--font` | `font:16px/1.55 var(--font)` |
 | `tn_0.2s_all_---safe` | `transition:0.2s all env(--safe)` |
 | `ff--mono,serif` | `font-family:var(--mono,serif)` (с 2026-09-23; раньше `"-mono",serif`) |
 
@@ -482,6 +481,34 @@ F.38      → hex=F → #fff → rgba(255,255,255,.38)
 ---
 
 ## Типографика
+
+### `font` — только то, что не выражается атомарно
+
+| Токен | CSS |
+|-------|-----|
+| `fontInherit` | `font:inherit` |
+| `fontCaption` | `font:caption` |
+| `fontIcon` | `font:icon` |
+| `fontMenu` | `font:menu` |
+| `fontMessageBox` | `font:message-box` |
+| `fontSmallCaption` | `font:small-caption` |
+| `fontStatusBar` | `font:status-bar` |
+
+Эти значения задают **весь набор шрифтовых свойств разом** — family, size,
+line-height, weight, style, variant, stretch. Атомарными тегами их не собрать:
+`font-variant` и `font-stretch` отдельных тегов не имеют.
+
+**Составная форма убрана 2026-09-26.** `font16px/1.55_--font` и
+`font12px_Arial` больше не принимаются — это был второй способ записать то же
+самое:
+
+```
+font16px/1.55_--font   →   f16 lh1.55 ff--font
+font12px_Arial         →   f12 ffArial
+```
+
+Решение то же, что сняло общий `ol`: два способа задать один стиль плодят
+зоопарк, а с ростом числа стилей атомарная форма выигрывает и по числу правил.
 
 | Токен | CSS |
 |-------|-----|

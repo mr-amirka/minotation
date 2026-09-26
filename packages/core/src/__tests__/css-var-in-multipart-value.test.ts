@@ -39,7 +39,6 @@ describe('CSS-переменные в составном значении', () =
     ['tn--ease', 'transition:var(--ease)'],
     ['tn_all_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
     ['bxsh_0_0_10px_--shadow', 'box-shadow:0 0 10px var(--shadow)'],
-    ['font16px/1.55_--font', 'font:16px/1.55 var(--font)'],
     // Несколько переменных в одном значении.
     ['tn_0.2s_all_--ease', 'transition:0.2s all var(--ease)'],
     ['tn_--prop_--dur_--ease', 'transition:var(--prop) var(--dur) var(--ease)'],

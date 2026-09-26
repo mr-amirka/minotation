@@ -915,10 +915,23 @@ describe('content: кавычки ставит хендлер', () => {
     ['cnt_Hello_World', 'content:"Hello World"'],
     ['cnt_a_b', 'content:"a b"'],
     ['cnt_a\\.b', 'content:"a.b"'],
-    ['cnt_', 'content:""'],
-    ['cnt__', 'content:" "'],
   ])('%s → %s', (token, expected) => {
+    const at = expected.indexOf(':');
+    expect(lexer.matchProperty('content', expected.slice(at + 1)).matched).toBeTruthy();
     expect(compile([token]).css).toContain(expected);
+  });
+
+  test('одиночное подчёркивание — пробел, за ним кратчайшая запись', () => {
+    // Самый ходовой случай у псевдоэлементов.
+    expect(compile(['cnt_']).css).toContain("content:' '");
+    expect(compile(['cnt__']).css).toContain("content:' '");
+  });
+
+  test('cntE — пустая строка, и это не то же, что none', () => {
+    // `content:""` создаёт псевдоэлемент, `content:none` не создаёт вовсе.
+    expect(lexer.matchProperty('content', '""').matched).toBeTruthy();
+    expect(compile(['cntE']).css).toContain('content:""');
+    expect(compile(['cntN']).css).toContain('content:none');
   });
 
   test.each([
@@ -929,8 +942,6 @@ describe('content: кавычки ставит хендлер', () => {
     ['cntNoCloseQuote', 'content:no-close-quote'],
     ['cntInherit', 'content:inherit'],
   ])('%s → %s — без `_` ожидается ключевое слово', (token, expected) => {
-    const at = expected.indexOf(':');
-    expect(lexer.matchProperty('content', expected.slice(at + 1)).matched).toBeTruthy();
     expect(compile([token]).css).toContain(expected);
   });
 
@@ -956,8 +967,11 @@ describe('content: кавычки ставит хендлер', () => {
     expect(compile([token]).css).toContain(expected);
   });
 
-  test.each([['cnt_"Hello"', 'content:"Hello"'], ['cnt_a_"b"_c', 'content:a "b" c']])('%s → %s — свои кавычки не дублируются', (token, expected) => {
-    // Кавычка в значении означает, что автор управляет ими сам.
+  test.each([['cnt_he_said_"hi"', 'content:"he said \\"hi\\""'], ['cnt_a_"b"_c', 'content:"a \\"b\\" c"']])('%s → %s — кавычка внутри текста экранируется', (token, expected) => {
+    // `content: a "b" c` по грамматике невалиден, поэтому трактовать кавычку
+    // как «автор управляет сам» нельзя — она экранируется.
+    const at = expected.indexOf(':');
+    expect(lexer.matchProperty('content', expected.slice(at + 1)).matched).toBeTruthy();
     expect(compile([token]).css).toContain(expected);
   });
 });

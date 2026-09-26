@@ -40,10 +40,12 @@ describe('составные значения', () => {
   test('в content подчёркивание даёт пробел, кавычки ставит хендлер', () => {
     const css = compile(['cnt_a_b', 'cnt__']).css;
     expect(css).toContain('content:"a b"');
-    // Суффикс из одних подчёркиваний: первое — переключатель режима,
-    // остальные пробелы. `cnt_` → `""`, `cnt__` → `" "`.
-    expect(css).toContain('content:" "');
-    expect(compile(['cnt_']).css).toContain('content:""');
+    // Суффикс из одних подчёркиваний схлопывается в пустое значение, которое
+    // для `content` невалидно — подставляется пробел.
+    expect(css).toContain("content:' '");
+    expect(compile(['cnt_']).css).toContain("content:' '");
+    // Пустая строка пишется отдельной краткой записью.
+    expect(compile(['cntE']).css).toContain('content:""');
   });
 
   test('несколько фильтров через подчёркивание складываются в одно значение', () => {

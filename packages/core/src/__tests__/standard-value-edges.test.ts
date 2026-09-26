@@ -114,7 +114,11 @@ describe('сдвиги, стороны и производные значени�
   });
 
   test('отрицательное значение допустимо там, где знак разрешён', () => {
-    expect(compile(['w-10']).css).toContain('width:-10px');
+    expect(compile(['m-10']).css).toContain('margin:-10px');
+    expect(compile(['st-10']).css).toContain('top:-10px');
+    // …и недопустимо там, где свойство его не принимает: `width:-10px`
+    // браузер отбрасывает (было расхождением с v1 до 2026-09-26).
+    expect(compile(['w-10']).css).toBe('');
   });
 });
 

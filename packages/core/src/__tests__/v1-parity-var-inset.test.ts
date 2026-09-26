@@ -104,7 +104,6 @@ describe('паритет с v1: shorthand с несколькими значен
     ['r4_8', 'border-radius:4px 8px'],
     ['r4_8_12_16', 'border-radius:4px 8px 12px 16px'],
     ['r10-5', 'border-radius:calc(10px - 5px)'],
-    ['r-5', 'border-radius:-5px'],
   ])('%s → %s', (token, expected) => {
     const {
       css, warnings, 
@@ -115,6 +114,44 @@ describe('паритет с v1: shorthand с несколькими значен
 
   test('пять значений — отбраковка, как и в v1', () => {
     expect(compile(['p1_2_3_4_5']).css).toBe('');
+  });
+
+  test.each([
+    'r-5',
+    'p-5',
+    'w-5',
+    'b-5',
+    'f-5',
+  ])('%s — расхождение с v1: минус у свойства, которое его не принимает', (token) => {
+    // v1 выдавал `border-radius:-5px`, `padding:-5px`, `width:-5px`. По
+    // спецификации отрицательных значений эти свойства не принимают, и
+    // браузер отбрасывает такое правило целиком — то есть v1 молча писал в
+    // CSS нерабочие строки. Флаг `positive` у `getVal` для этого и был, но
+    // доходил только до разбора дроби, а обычное число получало знак без
+    // проверки (2026-09-26).
+    const {
+      css, warnings,
+    } = compile([token]);
+    expect(css).toBe('');
+    expect(warnings.length).toBe(1);
+  });
+
+  test.each([
+    ['m-5', 'margin:-5px'],
+    ['mt-5', 'margin-top:-5px'],
+    ['s-5', 'top:-5px'],
+    ['ti-5', 'text-indent:-5px'],
+    ['lts-5', 'letter-spacing:-5px'],
+    ['z-5', 'z-index:-5'],
+  ])('%s → %s — там, где минус осмыслен, он работает', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test('минус у вычитания не трогаем: знак результата заранее не известен', () => {
+    // `r10-5` — это `calc(10px - 5px)`, положительная величина. Проверять
+    // такое пришлось бы вычислением, а с `var` в слагаемом — невозможно.
+    expect(compile(['r10-5']).css).toContain('border-radius:calc(10px - 5px)');
+    expect(compile(['w100%-20px']).css).toContain('width:calc(100% - 20px)');
   });
 });
 
@@ -268,8 +305,15 @@ describe('паритет с v1: отрицательный знаменател�
     expect(css).toBe('');
   });
 
-  test('w1/2 и w-1/2 (отрицателен только числитель) продолжают работать как раньше', () => {
+  test('w1/2 продолжает работать как раньше', () => {
     expect(compile(['w1/2']).css).toContain('width:50%');
-    expect(compile(['w-1/2']).css).toContain('width:-50%');
+  });
+
+  test('w-1/2 — расхождение с v1: у width минус недопустим', () => {
+    // v1 давал `width:-50%`, браузер такое правило отбрасывает. Знак у дроби
+    // проверяется тем же флагом, что у обычного числа; там, где минус
+    // осмыслен, дробь с ним работает.
+    expect(compile(['w-1/2']).css).toBe('');
+    expect(compile(['m-1/2']).css).toContain('margin:-50%');
   });
 });

@@ -27,7 +27,19 @@
  */
 
 const NUM = '[-+]?(?:\\d+\\.?\\d*|\\.\\d+)';
-const LENGTH_UNIT = '(?:px|em|rem|%|vh|vw|vmin|vmax|pt|pc|cm|mm|ch|ex|in|fr)';
+/**
+ * Единицы длины — тот же набор, что принимает нотация (`UNITS` в
+ * `presets/standard.ts`), плюс `fr` для grid-дорожек.
+ *
+ * Оба списка расширены 2026-09-26 с 14 единиц до полного набора CSS: до этого
+ * всё, что появилось после CSS2.1 и ранних viewport-единиц, нотацией не
+ * выражалось (`hmin100dvh`, `w50cqw`, `p1lh`). Списки обязаны совпадать: если
+ * хендлер единицу принял, а валидатор её не знает — правило молча не доедет
+ * до CSS, а это ровно тот класс багов, ради которого валидатор и писался.
+ */
+const LENGTH_UNIT = '(?:svmin|svmax|lvmin|lvmax|dvmin|dvmax|cqmin|cqmax|vmin|vmax'
+  + '|svw|svh|lvw|lvh|dvw|dvh|cqw|cqh|cqi|cqb|rlh|rem|rex|rch|ric|cap'
+  + '|em|ex|px|cm|mm|in|pt|pc|ch|ic|lh|vw|vh|vi|vb|fr|q|%)';
 
 const REGEXP_NUMBER = new RegExp('^' + NUM + '$');
 const REGEXP_INTEGER = /^[-+]?\d+$/;

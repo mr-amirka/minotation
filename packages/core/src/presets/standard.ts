@@ -349,7 +349,25 @@ const FILTER_MAP = {
     '%',
   ],
 };
-const UNITS = 'em,ex,%,px,cm,mm,in,pt,pc,ch,rem,vh,vw,vmin,vmax'.split(',');
+/**
+ * Единицы длины, которые принимает нотация, плюс `%`.
+ *
+ * Список был из 14 единиц — ровно тот набор, что существовал в CSS2.1 плюс
+ * ранние viewport-единицы. Всё, что пришло позже, нотацией не выражалось
+ * вообще: `hmin100dvh` (самый ходовой приём мобильной вёрстки — высота
+ * viewport'а без адресной строки), `w50cqw` (container queries), `p1lh`,
+ * `w10q` — каждый давал предупреждение «Unit is invalid», хотя по грамматике
+ * CSS все они валидны у любого свойства-длины. Проверено арбитром
+ * (`css-tree` + `mdn-data`): для `width` валидны все 42 единицы ниже.
+ *
+ * Порядок — по убыванию длины: список идёт в альтернацию regex'а
+ * ({@link REGEXP_SHADOW_SUFFIX}), где первая подошедшая ветка выигрывает, и
+ * короткая единица, стоящая раньше длинной с тем же началом, откусила бы от
+ * неё префикс.
+ */
+const UNITS = ('svmin,svmax,lvmin,lvmax,dvmin,dvmax,cqmin,cqmax,vmin,vmax,'
+  + 'svw,svh,lvw,lvh,dvw,dvh,cqw,cqh,cqi,cqb,rlh,rem,rex,rch,ric,cap,'
+  + 'em,ex,px,cm,mm,in,pt,pc,ch,ic,lh,vw,vh,vi,vb,q,%').split(',');
 
 /** `:name`-аннотации маршрута — та же форма, что вырезает `routeParseProvider`. */
 const REGEXP_ROUTE_KEY = /:[_A-Za-z0-9.]+/g;
@@ -521,6 +539,46 @@ function defaultUnitNormalize(v: string): string {
     }
   }
   return parts.join(' ');
+}
+/**
+ * Готовая длина: `0`, либо число с единицей из {@link UNITS}.
+ *
+ * Собирается из того же списка, чтобы не разъехаться с ним при правке:
+ * добавили единицу — проверка узнала сама.
+ */
+const REGEXP_LENGTH_PART = new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:'
+  + UNITS.join('|') + '))$');
+/**
+ * Бракует значение свойства-длины, которое длиной не является.
+ *
+ * Числовой путь ядра единицу проверяет (`validateUnit`), а общий блок свободных
+ * значений — нет: суффикс кебабится и уходит в CSS как есть. В результате
+ * `ti10zz` давало `text-indent:10zz`, `tiF00` — `text-indent:f00`, `ti1/2` —
+ * `text-indent:1/2`, `ti10-5` — `text-indent:10-5` (вычитание, не свёрнутое в
+ * `calc`). Всё это браузер отбрасывает, а предупреждения не было: свойства нет
+ * в таблице валидатора ядра. Поведение должно совпадать с числовым путём, где
+ * `w10zz` бракуется.
+ *
+ * Значение с функцией (`calc(…)`, `var(…)`, `clamp(…)`) пропускается целиком:
+ * разбирать её содержимое здесь нечем, а по спецификации подстановка валидна у
+ * любого свойства.
+ */
+function assertLengthValue(
+  v: string, essenceName: string, raw: string,
+): string {
+  if (v.indexOf('(') > -1) {
+    return v;
+  }
+  const parts = v.split(' ');
+  let i = parts.length;
+  while (i--) {
+    // Слово сюда доходит только разрешённое: список ключевых слов свойства
+    // проверен выше по `assertKnownWord`-правилу вызывающего блока.
+    REGEXP_LENGTH_PART.test(parts[i]) || REGEXP_BARE_WORD.test(parts[i])
+      || throwInvalid('Значение "' + raw + '" не распознано: у "'
+        + essenceName + '" ожидается длина');
+  }
+  return v;
 }
 /**
  * Сокращение для `repeat(auto-fit|auto-fill, minmax(<size>, <size>))`.
@@ -695,6 +753,28 @@ export default (mn: MnInstance) => {
       + 'с единицей, переменная, calc или ключевое слово этого свойства');
   }
 
+  /**
+   * Бракует минус у свойства, которое отрицательных значений не принимает.
+   *
+   * Флаг `positive` у {@link getVal} был, но доходил только до
+   * {@link floatNormalize} — а тот зовётся в единственной ветке разбора, для
+   * дроби (`w1/-2`). Обычное число знак получало из `p.sign` и приклеивало его
+   * без всякой проверки, так что `p-5` давало `padding:-5px`, `w-5` —
+   * `width:-5px`, `f-5` — `font-size:-5px`. Браузер такое правило отбрасывает
+   * целиком; предупреждения не было.
+   *
+   * Осмысленность минуса — свойство свойства, а не разбора: `margin`, `top`,
+   * `text-indent`, `letter-spacing` отрицательные принимают, `padding`,
+   * `width`, `border-width`, `font-size`, `border-radius` — нет. Поэтому
+   * решает вызывающая сторона тем же флагом, каким и раньше.
+   */
+  function assertSign(
+    sign: string | undefined, positive: number | undefined, suffix: any,
+  ): void {
+    sign === '-' && positive
+      && throwInvalid('Значение "' + suffix
+        + '" не распознано: отрицательное значение у этого свойства недопустимо');
+  }
   function getVal(
     suffix: any,
     positive?: number,
@@ -750,7 +830,9 @@ export default (mn: MnInstance) => {
           vv ? (
             (p.env ? 'env(' : 'var(') + vv
               + (p.va ? (validateUnit(p.vu) ? '' : defaultUnit) : '') + ')'
-          ) : (p.sign || '') + (
+          ) : (assertSign(
+            p.sign, positive, suffix,
+          ), p.sign || '') + (
             total
               ? toFixed(100 * floatNormalize(num, positive) / floatNormalize(total, positive)) + '%'
               : toFixed(num) + validateUnit(p.unit || defaultUnit)
@@ -2918,7 +3000,11 @@ export default (mn: MnInstance) => {
         && !(keywords && keywords[s])
         && throwInvalid('Значение "' + p.suffix + '" не распознано: у "'
           + essenceName + '" ожидается длина или ключевое слово этого свойства');
-      style[propName] = lengthy ? defaultUnitNormalize(s) : s;
+      style[propName] = lengthy
+        ? assertLengthValue(
+          defaultUnitNormalize(s), essenceName, p.suffix,
+        )
+        : s;
       return styleWrap(style, stylePriority);
     });
   });

@@ -1,5 +1,5 @@
 /**
- * Развёртка CSS-переменных в СОСТАВНОМ значении (`tn_0.2s_all_--ease`).
+ * Развёртка CSS-переменных в СОСТАВНОМ значении (`tn_all_0.2s_--ease`).
  *
  * До 2026-09-23 подстановка `--name` → `var(--name)` работала только там, где
  * значение разбиралось общим `getVal`. Хендлеры со «свободным» значением
@@ -32,28 +32,28 @@ describe('CSS-переменные в составном значении', () =
   test.each([
     // Регрессия, с которой всё началось: суффикс начинается с `_`, поэтому
     // целиком уходил в «сырой» режим и давал `outline:3px solid --marker`.
-    ['tn_0.2s_all_--ease', 'transition:0.2s all var(--ease)'],
+    ['tn_all_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
     // Та же форма без ведущего `_` — другой путь внутри хендлера, тот же итог.
-    ['tn0.2s_all_--ease', 'transition:0.2s all var(--ease)'],
+    ['tnAll_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
     // Одиночная переменная у хендлера свободного значения тоже не работала.
     ['tn--ease', 'transition:var(--ease)'],
     ['tn_all_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
     ['bxsh_0_0_10px_--shadow', 'box-shadow:0 0 10px var(--shadow)'],
     // Несколько переменных в одном значении.
-    ['tn_0.2s_all_--ease', 'transition:0.2s all var(--ease)'],
+    ['tn_all_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
     ['tn_--prop_--dur_--ease', 'transition:var(--prop) var(--dur) var(--ease)'],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
 
   test('тройной дефис в составном значении даёт env(), как и в одиночном', () => {
-    expect(cssOf('tn_0.2s_all_---safe')).toBe('transition:0.2s all env(--safe)');
+    expect(cssOf('tn_all_0.2s_---safe')).toBe('transition:all 0.2s env(--safe)');
   });
 
   test('имя переменной не кебабится — camelCase сохраняется', () => {
     // Иначе `--myInk` превратилось бы в `var(--my-ink)` и ссылалось бы
     // на несуществующую переменную. `getVal`-путь так себя и вёл всегда.
-    expect(cssOf('tn_0.2s_all_--myInk')).toBe('transition:0.2s all var(--myInk)');
+    expect(cssOf('tn_all_0.2s_--myInk')).toBe('transition:all 0.2s var(--myInk)');
     expect(cssOf('c--myInk')).toBe('color:var(--myInk)');
   });
 
@@ -68,8 +68,9 @@ describe('CSS-переменные в составном значении', () =
     // Экранирование (`\_`) здесь не работает и работать не может: обратный слэш
     // снимается раньше, на разборе токена, и в суффикс приходит уже
     // `--line_soft`. Именно поэтому для имён с `_` нужен `;` (тесты ниже).
-    expect(cssOf('tn_0.2s_all_--line\\_soft'))
-      .toBe('transition:0.2s all var(--line) soft');
+    // Проверяется разбор переменной, поэтому хендлер взят свободный: `tn`
+    // с 2026-09-26 проверяет слоты и `soft` в них не укладывается.
+    expect(cssOf('g_--line\\_soft')).toBe('grid:var(--line) soft');
   });
 });
 
@@ -89,7 +90,7 @@ describe('`;` — явный конец имени переменной', () => 
     ['w--my_w;+5', 'width:calc(var(--my_w) + 5px)'],
     // Путь «свободного» значения.
     ['ff--my_font;', 'font-family:var(--my_font)'],
-    ['tn--ease;_all', 'transition:var(--ease) all'],
+    ['tn_all_--ease;', 'transition:all var(--ease)'],
     // Цветовой путь: `_` там и так был доступен, но `;` не должен ломать.
     ['c--my_ink;', 'color:var(--my_ink)'],
     ['bc--my_line;', 'border-color:var(--my_line)'],
@@ -153,7 +154,7 @@ describe('хендлеры со своим путём разбора — спл�
 
 describe('составные значения без переменных не затронуты', () => {
   test.each([
-    ['tn_0.2s_all_ease', 'transition:0.2s all ease'],
+    ['tn_all_0.2s_ease', 'transition:all 0.2s ease'],
     ['tnAll', 'transition:all'],
     ['tn_all_0.2s_ease', 'transition:all 0.2s ease'],
     ['bxsh_0_0_10px_red', 'box-shadow:0 0 10px red'],

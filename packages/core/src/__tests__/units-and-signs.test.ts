@@ -982,3 +982,61 @@ describe('content: кавычки ставит хендлер', () => {
     expect(compile([token]).css).toContain(expected);
   });
 });
+
+describe('transition: слоты в фиксированном порядке', () => {
+  // Грамматика CSS порядок не фиксирует — `<single-transition>` это набор
+  // `||`, и `all 0.2s` с `0.2s all` равноправны. Нотация фиксирует один:
+  // проверка становится однозначной, а записей одного и того же не плодится.
+  const OK: Array<[string, string]> = [
+    ['tn0.2s', 'transition:0.2s'],
+    ['tn200', 'transition:200ms'],
+    ['tnAll', 'transition:all'],
+    ['tn_all_0.2s', 'transition:all 0.2s'],
+    ['tn_color_0.2s_ease', 'transition:color 0.2s ease'],
+    ['tn_color_0.2s_ease_0.1s', 'transition:color 0.2s ease 0.1s'],
+    ['tn_0.2s_0.1s', 'transition:0.2s 0.1s'],
+    ['tn_cubic-bezier\\(0,0,1,1\\)', 'transition:cubic-bezier(0,0,1,1)'],
+  ];
+
+  test.each(OK)('%s → %s', (token, expected) => {
+    const at = expected.indexOf(':');
+    expect(lexer.matchProperty('transition', expected.slice(at + 1)).matched).toBeTruthy();
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test('голое число получает ms, как у dn и delay', () => {
+    expect(compile(['tn200']).css).toContain('transition:200ms');
+    expect(compile(['dn200']).css).toContain('transition-duration:200ms');
+  });
+
+  test.each([['tn_0.2s_all', 'свойство идёт перед длительностью'], ['tn_ease_0.2s', 'длительность идёт перед плавностью']])('%s бракуется — %s', (token) => {
+    // Обе записи по грамматике CSS валидны; нотация принимает одну.
+    const {
+      css, warnings,
+    } = compile([token]);
+    expect(css).toBe('');
+    expect(warnings.length).toBe(1);
+  });
+
+  test('tn10zz бракуется — часть не подходит ни под один слот', () => {
+    expect(compile(['tn10zz']).css).toBe('');
+  });
+
+  test('несколько переходов через запятую — то, ради чего shorthand остался', () => {
+    // Атомарные `tp`/`dn`/`ttf`/`delay` пишут по одному значению на все
+    // свойства сразу, поэтому разные параметры разным свойствам ими не задать.
+    const css = compile(['tn_color_0\\.2s_ease,transform_0\\.4s_linear']).css;
+    expect(css).toContain('transition:color 0.2s ease,transform 0.4s linear');
+    expect(lexer.matchProperty('transition', 'color 0.2s ease,transform 0.4s linear').matched).toBeTruthy();
+  });
+
+  test('запятая внутри скобок не делит переходы', () => {
+    expect(compile(['tn_0.2s_cubic-bezier\\(0,0,1,1\\)']).css)
+      .toContain('transition:0.2s cubic-bezier(0,0,1,1)');
+  });
+
+  test('подстановка годится в любой слот', () => {
+    expect(compile(['tn--v']).css).toContain('transition:var(--v)');
+    expect(compile(['tn_all_--ease']).css).toContain('transition:all var(--ease)');
+  });
+});

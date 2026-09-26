@@ -841,6 +841,103 @@ const FONT_KEYWORDS: Record<string, 1> = {
   'small-caption': 1,
   'status-bar': 1,
 };
+/**
+ * Слоты `transition` в фиксированном порядке:
+ * `свойство длительность плавность задержка`.
+ *
+ * Грамматика CSS порядок не фиксирует — `<single-transition>` это набор `||`,
+ * и `all 0.2s` с `0.2s all` равноправны. Нотация фиксирует один: так проверка
+ * становится однозначной, ошибка называется словами («в позиции 2 ожидается
+ * длительность»), и не плодится зоопарк записей одного и того же. Тот же
+ * размен в пользу единообразия, что снял общий `ol`.
+ *
+ * Проверки не было вовсе: `tn200` давало `transition:200` (число без единицы),
+ * `tnAll` — `transition:all` без длительности, `tn10zz` — `transition:10zz`.
+ */
+/** Время: число с `s`/`ms`, либо голое число — оно получает `ms`, как у `dn`. */
+const REGEXP_TIME = /^[0-9]*\.?[0-9]+(m?s)?$/;
+/** Имя CSS-свойства или `all`/`none` — список свойств открыт, проверяем форму. */
+const REGEXP_PROPERTY_NAME = /^-?[a-z][a-z0-9-]*$/;
+/** Функции плавности: `cubic-bezier(…)`, `steps(…)`, `linear(…)`. */
+const REGEXP_EASING_FUNCTION = /^(?:cubic-bezier|steps|linear)\(/;
+/** Подстановка — годится в любой слот, что внутри неё, здесь не видно. */
+const REGEXP_SUBSTITUTION = /^(?:var|env)\(/;
+/**
+ * Делит по запятым ВЕРХНЕГО уровня — запятые внутри скобок остаются в части.
+ *
+ * `cubic-bezier(0,0,1,1)` иначе распадается на четыре куска, и переход
+ * бракуется на ровном месте.
+ */
+function splitTopLevel(v: string): string[] {
+  const out: string[] = [];
+  const l = v.length;
+  let depth = 0;
+  let from = 0;
+  let i = 0;
+  let c: string;
+  for (; i < l; i++) {
+    c = v[i];
+    if (c === '(') {
+      depth++;
+    } else if (c === ')') {
+      depth--;
+    } else if (c === ',' && !depth) {
+      out.push(v.slice(from, i));
+      from = i + 1;
+    }
+  }
+  out.push(v.slice(from));
+  return out;
+}
+/**
+ * Разбирает один переход по слотам и возвращает его в каноническом виде.
+ *
+ * Слот определяется по форме части, а порядок обязан не убывать: увидев
+ * длительность, дальше нельзя вернуться к имени свойства. Голое число в слоте
+ * времени получает `ms` — как у `dn`/`delay`.
+ */
+function transitionValue(parts: string[], raw: string): string {
+  const l = parts.length;
+  const out: string[] = new Array(l);
+  let i = 0;
+  let slot = 0;
+  let hasDuration = 0;
+  let part: string;
+  let at: number;
+  let time: RegExpExecArray | null;
+  const prefix = 'Значение "' + raw + '" не распознано: у "tn" порядок частей — ';
+  for (; i < l; i++) {
+    part = parts[i];
+    if (REGEXP_SUBSTITUTION.test(part)) {
+      // Подстановка годится в любой слот и порядок не сдвигает.
+      out[i] = part;
+      continue;
+    }
+    if (time = REGEXP_TIME.exec(part)) {
+      // Первое время — длительность, второе — задержка. После плавности может
+      // идти только задержка: место длительности — перед плавностью.
+      at = hasDuration ? 4 : 2;
+      at === 4 || slot < 3 || throwInvalid(prefix + 'свойство, длительность, '
+        + 'плавность, задержка — длительность идёт перед плавностью');
+      hasDuration = 1;
+      out[i] = time[1] ? part : part + 'ms';
+    } else if (ENUM_KEYWORDS.transitionTimingFunction[part]
+      || REGEXP_EASING_FUNCTION.test(part)) {
+      at = 3;
+      out[i] = part;
+    } else if (REGEXP_PROPERTY_NAME.test(part)) {
+      at = 1;
+      out[i] = part;
+    } else {
+      return throwInvalid(prefix + 'свойство, длительность, плавность, задержка; '
+        + '"' + part + '" не подходит ни под одну часть');
+    }
+    at > slot || throwInvalid(prefix + 'свойство, длительность, плавность, '
+      + 'задержка — "' + part + '" стоит не на своём месте');
+    slot = at;
+  }
+  return out.join(' ');
+}
 /** Кавычка или обратный слэш внутри строки — экранируются в CSS. */
 const REGEXP_QUOTE_ESCAPE = /(["\\])/g;
 /**
@@ -3400,6 +3497,31 @@ export default (mn: MnInstance) => {
           ),
       });
     },
+    /**
+     * `transition` — слоты в фиксированном порядке
+     * `свойство длительность плавность задержка`, несколько переходов через
+     * запятую.
+     *
+     * Атомарные `tp`/`dn`/`ttf`/`delay` покрывают одиночный переход целиком,
+     * но задать РАЗНЫЕ параметры разным свойствам ими нельзя — они пишут по
+     * одному значению на все сразу. Ради этого случая shorthand и остаётся.
+     */
+    tn: (p) => {
+      let s, i;
+      if (!(s = p.suffix)) {
+        return 0;
+      }
+      const value = valueNormalize(s);
+      // `,` разделяет переходы, пробел — части одного перехода. Запятые
+      // внутри скобок (`cubic-bezier(0,0,1,1)`) разделителем не считаются.
+      const list = splitTopLevel(value);
+      for (i = list.length; i--;) {
+        list[i] = transitionValue(list[i].trim().split(' '), s);
+      }
+      return styleWrap({
+        transition: list.join(','),
+      });
+    },
     ff: (p) => {
       let s;
       return (s = p.suffix) && styleWrap({
@@ -3506,7 +3628,6 @@ export default (mn: MnInstance) => {
       LENGTH_PERCENT | LENGTH_SIGN,
     ],
 
-    tn: ['transition'],
     tp: ['transitionProperty', 1],
     ttf: ['transitionTimingFunction', 1],
 

@@ -280,9 +280,9 @@ describe('представители классов разбора — точн�
     ['свободное значение (synonymProvider)', [
       ['tn--v', 'transition:var(--v)'],
       ['tn_--a_--b', 'transition:var(--a) var(--b)'],
-      ['tn0.2s_all_--ease', 'transition:0.2s all var(--ease)'],
-      ['tn_0.2s_all_---safe', 'transition:0.2s all env(--safe)'],
-      ['tn_a\\.b', 'transition:a.b'],
+      ['tnAll_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
+      ['tn_all_0.2s_---safe', 'transition:all 0.2s env(--safe)'],
+      ['g_a\\.b', 'grid:a.b'],
       ['pos--v', 'position:var(--v)'],
     ]],
     ['border-style (свой sidesSetter)', [

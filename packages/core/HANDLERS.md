@@ -49,10 +49,10 @@
 
 | Токен | CSS |
 |-------|-----|
-| `tn0.2s_all_--ease` | `transition:0.2s all var(--ease)` |
+| `tnAll_0.2s_--ease` | `transition:all 0.2s var(--ease)` |
 | `tn_all_0.2s_--ease` | `transition:all 0.2s var(--ease)` |
 | `bxsh_0_0_10px_--shadow` | `box-shadow:0 0 10px var(--shadow)` |
-| `tn_0.2s_all_---safe` | `transition:0.2s all env(--safe)` |
+| `tn_all_0.2s_---safe` | `transition:all 0.2s env(--safe)` |
 | `ff--mono,serif` | `font-family:var(--mono,serif)` (с 2026-09-23; раньше `"-mono",serif`) |
 
 Имя переменной сохраняется как есть и не переводится в kebab-case: `c--myInk` →
@@ -150,7 +150,7 @@ fallback и сам градиент.
 написано.
 
 ```
-tn_0.2s_all_--ease  →  transition:0.2s all var(--ease)
+tn_all_0.2s_--ease  →  transition:all 0.2s var(--ease)
 ff_Times_New_Roman  →  font-family:"Times New Roman"
 ```
 
@@ -723,6 +723,43 @@ blur первым числом.
 | `dn300` | `transition-duration:300ms` |
 
 `transition-property` по умолчанию — `all` (CSS-умолчание). Для большинства кейсов достаточно просто `dn200` без уточнения отдельных свойств.
+
+### `tn` — слоты в фиксированном порядке
+
+```
+tn{свойство}_{длительность}_{плавность}_{задержка}
+```
+
+| Токен | CSS |
+|-------|-----|
+| `tn200` | `transition:200ms` — голое число получает `ms`, как у `dn` |
+| `tn0.2s` | `transition:0.2s` |
+| `tnAll` | `transition:all` |
+| `tn_all_0.2s` | `transition:all 0.2s` |
+| `tn_color_0.2s_ease` | `transition:color 0.2s ease` |
+| `tn_color_0.2s_ease_0.1s` | `transition:color 0.2s ease 0.1s` |
+| `tn_0.2s_0.1s` | `transition:0.2s 0.1s` — первое время длительность, второе задержка |
+| `tn_cubic-bezier\(0,0,1,1\)` | `transition:cubic-bezier(0,0,1,1)` |
+
+Каждый слот необязателен, но **порядок обязателен**: `tn_0.2s_all` и
+`tn_ease_0.2s` бракуются, хотя CSS их принимает. Грамматика
+`<single-transition>` — набор `||`, порядок в ней свободный; нотация
+фиксирует один, чтобы одно и то же не записывалось по-разному, а ошибка
+называлась словами.
+
+**Несколько переходов через запятую** — то, ради чего shorthand остался:
+
+```
+tn_color_0\.2s_ease,transform_0\.4s_linear
+→ transition:color 0.2s ease,transform 0.4s linear
+```
+
+Атомарные `tp`/`dn`/`ttf`/`delay` пишут по одному значению на все свойства
+сразу, поэтому разные параметры разным свойствам ими не задать. Одиночный
+переход лучше писать атомарно: `dn200 tpAll ttfEase`.
+
+До 2026-09-26 проверки не было вовсе: `tn200` давало `transition:200` (число
+без единицы), `tn10zz` — `transition:10zz`.
 
 ---
 

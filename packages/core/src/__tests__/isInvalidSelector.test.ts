@@ -264,7 +264,10 @@ describe('вырожденная группа вариантов в значен
 
   test.each([
     ['bgi_a\\.', 'background-image:url("a.")'],
-    ['ff_a\\:', 'font-family:a:'],
+    // Было `ff_a\:` → `font-family:a:`, но двоеточие в имени шрифта по
+    // грамматике невалидно, и с 2026-09-27 такое имя бракуется. Механизм
+    // экранирования проверяется там, где двоеточие в значении осмысленно.
+    ['cnt_a\\:', 'content:"a:"'],
   ])('%s — экранированный сепаратор в конце остаётся значением', (token, expected) => {
     expect(compileToken(token).css).toContain(expected);
     expect(compileToken(token).warnings).toHaveLength(0);

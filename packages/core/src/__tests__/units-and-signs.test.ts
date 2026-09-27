@@ -1327,3 +1327,43 @@ describe('дорожки и позиции сетки', () => {
     expect(compile(['gr10px']).css).toBe('');
   });
 });
+
+describe('flex-flow, transition-property, font-family', () => {
+  test.each([
+    ['fxfRow', 'flex-flow:row'],
+    ['fxf_row_wrap', 'flex-flow:row wrap'],
+    ['fxfColumnReverse', 'flex-flow:column-reverse'],
+    ['tpAll', 'transition-property:all'],
+    ['tpNone', 'transition-property:none'],
+    ['tp_color', 'transition-property:color'],
+    ['ffArial', 'font-family:arial'],
+    ['ffSerif', 'font-family:serif'],
+    ['ff_Times_New_Roman', 'font-family:"Times New Roman"'],
+    ['ff_Arial,sans-serif', 'font-family:Arial,sans-serif'],
+    ['ff--v', 'font-family:var(--v)'],
+  ])('%s → %s', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    ['fxf10px', 'flex-flow:10px'],
+    ['fxfZzz', 'flex-flow:zzz'],
+    ['tp10px', 'transition-property:10px'],
+    ['ff10px', 'font-family:10px'],
+  ])('%s больше не даёт "%s"', (token, wasGiving) => {
+    const at = wasGiving.indexOf(':');
+    expect(lexer.matchProperty(wasGiving.slice(0, at), wasGiving.slice(at + 1)).matched)
+      .toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  test('fxf_row_wrap_nowrap бракуется — у flex-flow две части', () => {
+    expect(compile(['fxf_row_wrap_nowrap']).css).toBe('');
+  });
+
+  test('уже закавыченное имя шрифта не оборачивается второй раз', () => {
+    // `ff_"My_Font"` давало `font-family:""My Font""` — вложенные кавычки,
+    // правило браузер отбрасывает.
+    expect(compile(['ff_"My_Font"']).css).toContain('font-family:"My Font"');
+  });
+});

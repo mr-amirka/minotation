@@ -1192,6 +1192,56 @@ function gridLineValue(
   return parts.join(' ');
 }
 
+/** `flex-flow` — направление и перенос, оба из закрытых списков. */
+const FLEX_FLOW_KEYWORDS = wordsSet('row row-reverse column column-reverse'
+  + ' nowrap wrap wrap-reverse');
+
+/** `flex-flow`: `<direction> || <wrap>`, перечень закрыт. */
+function flexFlowValue(parts: string[], raw: string): string {
+  const l = parts.length;
+  const prefix = 'Значение "' + raw + '" не распознано: у "fxf" ';
+  l < 3 || throwInvalid(prefix + 'не больше двух частей: направление и перенос');
+  let i = 0;
+  for (; i < l; i++) {
+    (parts[i].indexOf('(') > -1 || FLEX_FLOW_KEYWORDS[parts[i]])
+      || throwInvalid(prefix + 'ожидается направление (row/column, с -reverse) '
+        + 'или перенос (nowrap/wrap/wrap-reverse)');
+  }
+  return parts.join(' ');
+}
+
+/**
+ * `transition-property`: `none` либо имена свойств через запятую. Список
+ * свойств CSS открыт, поэтому проверяется форма имени — число или длина
+ * свойством быть не может.
+ */
+function transitionPropertyValue(parts: string[], raw: string): string {
+  const l = parts.length;
+  let i = 0;
+  for (; i < l; i++) {
+    (parts[i].indexOf('(') > -1 || REGEXP_PROPERTY_LIST.test(parts[i]))
+      || throwInvalid('Значение "' + raw + '" не распознано: у "tp" ожидается '
+        + 'имя CSS-свойства, `all` или `none`');
+  }
+  return parts.join(' ');
+}
+
+/**
+ * `font-family`: имя шрифта — идентификатор, строка в кавычках или родовое
+ * семейство. Число и длина именем шрифта быть не могут: `ff10px` давало
+ * `font-family:10px`.
+ */
+const REGEXP_FONT_NAME = /^(?:"[^"]*"|'[^']*'|-?[A-Za-z_][\w-]*(?: [\w-]+)*)$/;
+function assertFontNames(parts: string[], raw: string): void {
+  const l = parts.length;
+  let i = 0;
+  for (; i < l; i++) {
+    (parts[i].indexOf('(') > -1 || REGEXP_FONT_NAME.test(parts[i]))
+      || throwInvalid('Значение "' + raw + '" не распознано: у "ff" ожидается '
+        + 'имя шрифта — идентификатор или строка в кавычках');
+  }
+}
+
 /**
  * Свойство → разбор его значения по слотам. Ключ — имя свойства, как и у
  * {@link ENUM_KEYWORDS}: сам факт наличия означает «здесь слоты».
@@ -1199,6 +1249,8 @@ function gridLineValue(
 const SLOT_VALIDATORS: Record<string, (
   parts: string[], raw: string, essenceName: string,
 ) => string> = {
+  flexFlow: flexFlowValue,
+  transitionProperty: transitionPropertyValue,
   gridTemplateColumns: trackValue,
   gridTemplateRows: trackValue,
   gridAutoColumns: trackValue,
@@ -1342,7 +1394,17 @@ function autoRepeatValue(suffix: string, essenceName: string): string | undefine
     + (m[3] ? defaultUnitNormalize(m[3]) : '1fr') + '))';
 }
 
+/**
+ * Берёт имя шрифта в кавычки, если оно из нескольких слов.
+ *
+ * Уже закавыченное имя второй раз не оборачивается: `ff_"My_Font"` давало
+ * `font-family:""My Font""` — вложенные кавычки, и правило браузер отбрасывает
+ * (2026-09-27).
+ */
 function __wr(v: string): string {
+  if (v[0] === '"' || v[0] === '\'') {
+    return v;
+  }
   return v[0] == '-'
     ? '"' + v.slice(1) + '"'
     : (
@@ -3867,10 +3929,21 @@ export default (mn: MnInstance) => {
       });
     },
     ff: (p) => {
-      let s;
-      return (s = p.suffix) && styleWrap({
-        fontFamily: cssVarValue(s) || map(fontNameNormalize(s).split(REGEXP_COMMA), __wr)
-          .join(','),
+      let s, v;
+      if (!(s = p.suffix)) {
+        return 0;
+      }
+      if (v = cssVarValue(s)) {
+        return styleWrap({
+          fontFamily: v,
+        }, 1);
+      }
+      // Имя шрифта — идентификатор или строка; число и длина им быть не могут
+      // (`ff10px` давало `font-family:10px`).
+      const list = map(fontNameNormalize(s).split(REGEXP_COMMA), __wr);
+      assertFontNames(list, s);
+      return styleWrap({
+        fontFamily: list.join(','),
       }, 1);
     },
     /**

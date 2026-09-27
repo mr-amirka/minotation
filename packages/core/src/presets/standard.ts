@@ -1013,6 +1013,140 @@ const SHADOW_KEYWORDS: Record<string, 1> = {
   None: 1,
   none: 1,
 };
+/**
+ * Разбор составных значений по слотам — по одному описанию на свойство.
+ *
+ * Все пять свойств были permissive pass-through: значение кебабилось и уходило
+ * в CSS как есть, поэтому `fxN` давало `flex:n`, `colA` — `columns:a`,
+ * `temF00` — `text-emphasis:f00`, `coi10` — `counter-increment:10`. Ни одно из
+ * этих правил браузер не применяет.
+ *
+ * Порядок слотов, как и у `tn`, фиксирован: грамматика CSS его не задаёт
+ * (везде `||`), но одно значение не должно записываться по-разному.
+ */
+/** Целое: число повторов, число колонок, значение счётчика. */
+const REGEXP_SLOT_INTEGER = /^[-+]?\d+$/;
+/** Число с дробной частью — `flex-grow`, `flex-shrink`. */
+const REGEXP_SLOT_NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)$/;
+/** Имя счётчика или области — произвольный идентификатор CSS. */
+const REGEXP_SLOT_IDENT = /^-?[A-Za-z_][\w-]*$/;
+/** Ключевые слова `flex-basis`, кроме длины. */
+const FLEX_BASIS_KEYWORDS = wordsSet('auto content min-content max-content fit-content');
+/** Стиль `text-emphasis` — тот же список, что у атомарного `tems`. */
+const TEXT_EMPHASIS_STYLE = wordsSet('none filled open dot circle double-circle'
+  + ' triangle sesame');
+
+/**
+ * `flex`: `<grow> [<shrink>] [<basis>]` либо одно слово (`none`, `auto`,
+ * `content`). Порядок слотов фиксирован — в CSS он такой же, там `<grow>` и
+ * `<shrink>` идут подряд.
+ */
+function flexValue(parts: string[], raw: string): string {
+  const l = parts.length;
+  const prefix = 'Значение "' + raw + '" не распознано: у "fx" ';
+  if (l === 1 && (FLEX_BASIS_KEYWORDS[parts[0]] || parts[0] === 'none')) {
+    return parts[0];
+  }
+  l < 4 || throwInvalid(prefix + 'не больше трёх частей: рост, сжатие, база');
+  let i = 0;
+  let part: string;
+  for (; i < l; i++) {
+    part = parts[i];
+    if (part.indexOf('(') > -1) {
+      continue;
+    }
+    if (i < 2) {
+      REGEXP_SLOT_NUMBER.test(part)
+        || throwInvalid(prefix + (i ? 'сжатие' : 'рост') + ' задаётся числом без единицы');
+      continue;
+    }
+    (FLEX_BASIS_KEYWORDS[part] || REGEXP_LENGTH_PART.test(part))
+      || throwInvalid(prefix + 'база — длина или ключевое слово');
+  }
+  return parts.join(' ');
+}
+
+/**
+ * `columns`: `<count> [<width>]` либо `auto`. В CSS порядок свободный
+ * (`30em 3` тоже валидно) — нотация принимает один.
+ */
+function columnsValue(parts: string[], raw: string): string {
+  const l = parts.length;
+  const prefix = 'Значение "' + raw + '" не распознано: у "col" ';
+  l < 3 || throwInvalid(prefix + 'не больше двух частей: число колонок и ширина');
+  let i = 0;
+  let part: string;
+  for (; i < l; i++) {
+    part = parts[i];
+    if (part === 'auto' || part.indexOf('(') > -1) {
+      continue;
+    }
+    (i ? REGEXP_LENGTH_PART.test(part) : REGEXP_SLOT_INTEGER.test(part))
+      || throwInvalid(prefix + (i
+        ? 'ширина колонки — длина'
+        : 'число колонок — целое; ширина пишется второй'));
+  }
+  return parts.join(' ');
+}
+
+/** `text-emphasis`: `<style> [<color>]`, стиль из закрытого списка. */
+function textEmphasisValue(parts: string[], raw: string): string {
+  const l = parts.length;
+  const prefix = 'Значение "' + raw + '" не распознано: у "tem" ';
+  l < 3 || throwInvalid(prefix + 'не больше двух частей: стиль и цвет');
+  let i = 0;
+  let part: string;
+  for (; i < l; i++) {
+    part = parts[i];
+    (part.indexOf('(') > -1 || TEXT_EMPHASIS_STYLE[part] || part[0] === '#')
+      || throwInvalid(prefix + 'стиль из списка `tems`, затем цвет');
+  }
+  return parts.join(' ');
+}
+
+/** Счётчики: пары `<имя> [<число>]`, либо `none`. */
+function counterValue(
+  parts: string[], raw: string, essenceName: string,
+): string {
+  const l = parts.length;
+  const prefix = 'Значение "' + raw + '" не распознано: у "' + essenceName + '" ';
+  if (l === 1 && parts[0] === 'none') {
+    return parts[0];
+  }
+  let i = 0;
+  let part: string;
+  let expectName = 1;
+  for (; i < l; i++) {
+    part = parts[i];
+    if (part.indexOf('(') > -1) {
+      // Подстановка на месте имени: что в ней, здесь не видно, поэтому
+      // считаем имя заданным.
+      expectName = 0;
+      continue;
+    }
+    if (REGEXP_SLOT_INTEGER.test(part)) {
+      expectName && throwInvalid(prefix + 'сначала имя счётчика, потом его значение');
+      expectName = 1;
+      continue;
+    }
+    REGEXP_SLOT_IDENT.test(part) || throwInvalid(prefix + 'ожидается имя счётчика');
+    expectName = 0;
+  }
+  return parts.join(' ');
+}
+/**
+ * Свойство → разбор его значения по слотам. Ключ — имя свойства, как и у
+ * {@link ENUM_KEYWORDS}: сам факт наличия означает «здесь слоты».
+ */
+const SLOT_VALIDATORS: Record<string, (
+  parts: string[], raw: string, essenceName: string,
+) => string> = {
+  flex: flexValue,
+  columns: columnsValue,
+  textEmphasis: textEmphasisValue,
+  counterIncrement: counterValue,
+  counterReset: counterValue,
+};
 /** Кавычка или обратный слэш внутри строки — экранируются в CSS. */
 const REGEXP_QUOTE_ESCAPE = /(["\\])/g;
 /**
@@ -3871,6 +4005,7 @@ export default (mn: MnInstance) => {
     // сам факт наличия и означает «здесь перечисление».
     const enumWords = ENUM_KEYWORDS[propName];
     const valuePattern = VALUE_PATTERNS[propName];
+    const slots = SLOT_VALIDATORS[propName];
     mn(essenceName, (p) => {
       let s, style, repeated;
       style = {};
@@ -3897,7 +4032,19 @@ export default (mn: MnInstance) => {
       // только его словесная форма: `irF00` — не слово (`f00`), но и не
       // значение `image-rendering`. Подстановка и функция проходят: их
       // содержимое здесь разбирать нечем.
-      if (valuePattern) {
+      if (slots) {
+        // Составное значение разбирается по слотам своего свойства.
+        // CSS-wide keywords и подстановка ЦЕЛИКОМ проходят мимо: перечислить
+        // их в слотах нечем, а валидны они везде. Проверка на пробел
+        // обязательна — иначе `var(--g) 1 auto` сходило бы за одну подстановку
+        // и слоты не работали бы вовсе.
+        s = (GLOBAL_KEYWORDS[s]
+          || (REGEXP_SUBSTITUTION.test(s) && s.indexOf(' ') < 0))
+          ? s
+          : slots(
+            s.split(' '), p.suffix, essenceName,
+          );
+      } else if (valuePattern) {
         // Свойство берёт безразмерное число; слово у него — только из списка,
         // если список есть.
         valuePattern.test(s) || (enumWords && (enumWords[s] || GLOBAL_KEYWORDS[s]))

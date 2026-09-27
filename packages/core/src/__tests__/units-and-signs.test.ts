@@ -1199,3 +1199,72 @@ describe('тени: порядок модификаторов жёсткий', (
       .toContain('box-shadow:5px 5px 19px 3px #43f');
   });
 });
+
+describe('составные значения по слотам: fx, col, tem, coi, cor', () => {
+  // Все пять были permissive pass-through: значение кебабилось и уходило в
+  // CSS как есть, поэтому `fxN` давало `flex:n`, `colA` — `columns:a`.
+  const OK: Array<[string, string]> = [
+    ['fx1', 'flex:1'],
+    ['fx_1_1', 'flex:1 1'],
+    ['fx_1_1_auto', 'flex:1 1 auto'],
+    ['fx_1_1_0%', 'flex:1 1 0%'],
+    ['fxNone', 'flex:none'],
+    ['fxAuto', 'flex:auto'],
+    ['fxContent', 'flex:content'],
+    ['col3', 'columns:3'],
+    ['col_3_30em', 'columns:3 30em'],
+    ['colAuto', 'columns:auto'],
+    ['temFilled', 'text-emphasis:filled'],
+    ['tem_filled_dot', 'text-emphasis:filled dot'],
+    ['temNone', 'text-emphasis:none'],
+    ['coi_n_2', 'counter-increment:n 2'],
+    ['coiNone', 'counter-increment:none'],
+    ['cor_n_0', 'counter-reset:n 0'],
+    ['corNone', 'counter-reset:none'],
+  ];
+
+  test.each(OK)('%s → %s', (token, expected) => {
+    const at = expected.indexOf(':');
+    expect(lexer.matchProperty(expected.slice(0, at), expected.slice(at + 1)).matched)
+      .toBeTruthy();
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    ['fxN', 'flex:n'],
+    ['fxZzz', 'flex:zzz'],
+    ['fx10zz', 'flex:10zz'],
+    ['colA', 'columns:a'],
+    ['col10zz', 'columns:10zz'],
+    ['temZzz', 'text-emphasis:zzz'],
+    ['tem10', 'text-emphasis:10'],
+    ['coi10', 'counter-increment:10'],
+  ])('%s больше не даёт "%s"', (token, wasGiving) => {
+    const at = wasGiving.indexOf(':');
+    expect(lexer.matchProperty(wasGiving.slice(0, at), wasGiving.slice(at + 1)).matched)
+      .toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  test.each([
+    ['fx_1_10px', 'сжатие — число без единицы'],
+    ['fx_1_1_zzz', 'база — длина или ключевое слово'],
+    ['fx_1_1_1_1', 'у flex не больше трёх частей'],
+    ['col_30em_3', 'у columns сначала число колонок'],
+    ['coi_2_n', 'у счётчика сначала имя'],
+  ])('%s бракуется — %s', (token) => {
+    expect(compile([token]).css).toBe('');
+  });
+
+  test('подстановка проходит: перечислить её в слотах нечем', () => {
+    expect(compile(['coi--v']).css).toContain('counter-increment:var(--v)');
+    expect(compile(['fx--v']).css).toContain('flex:var(--v)');
+  });
+
+  test('функция внутри составного значения тоже проходит', () => {
+    // Содержимое функции слотами не описать, а валидна она в любом из них.
+    expect(compile(['fx_--g_1_auto']).css).toContain('flex:var(--g) 1 auto');
+    expect(compile(['coi_--name_2']).css).toContain('counter-increment:var(--name) 2');
+    expect(compile(['col_--n_30em']).css).toContain('columns:var(--n) 30em');
+  });
+});

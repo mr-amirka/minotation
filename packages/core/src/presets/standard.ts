@@ -547,6 +547,14 @@ function cssVarValue(s: string): string | undefined {
  *   вызывающий обязан сам вернуть `\0` → `_` в самом конце.
  */
 const REGEXP_VAR_TERMINATED = /(---?[^;\s]+);/g;
+/**
+ * `;` вплотную перед следующей переменной — там он ещё и граница частей.
+ *
+ * Ровно два дефиса: три означают минус перед переменной, то есть вычитание в
+ * `calc` (`w--a;---b` → `calc(var(--a) - var(--b))`), и разделителем `;` там
+ * не является. Пробел перед `env()` пишется явно: `w--a;_---b`.
+ */
+const REGEXP_VAR_NEXT = /;(?=--(?!-))/g;
 const REGEXP_UNDERSCORE_ALL = /_/g;
 const REGEXP_VAR_UNDERSCORE = /\0/g;
 function varUnderscoreHide(_all: string, name: string): string {
@@ -557,7 +565,11 @@ function splitValueParts(
 ): string[] {
   const parts = (v.indexOf(';') < 0
     ? v
-    : v.replace(REGEXP_VAR_TERMINATED, varUnderscoreHide)
+    // `;` сразу перед следующей переменной — и терминатор имени, и граница
+    // частей: `g--a;--b` → `grid:var(--a) var(--b)`. Писать там ещё и `_`
+    // (`g--a;_--b`) было лишним церемониалом — между двумя переменными
+    // подряд другого смысла у `;` и нет. Запятая пишется явно: `g--a;,--b`.
+    : v.replace(REGEXP_VAR_NEXT, ';_').replace(REGEXP_VAR_TERMINATED, varUnderscoreHide)
   ).split(byEscaped ? REGEXP_UNESCAPED_UNDERSCORE : '_');
   if (keepHidden) {
     return parts;

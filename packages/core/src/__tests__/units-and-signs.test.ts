@@ -1150,3 +1150,38 @@ describe('список переменных через `;` и запятую', (
       .toContain('grid-template-columns:var(--a) var(--b)');
   });
 });
+
+describe('`;` между переменными — разделитель частей', () => {
+  // Писать `g--a;_--b` было лишним церемониалом: между двумя переменными
+  // подряд другого смысла у `;` нет. Запятая по-прежнему пишется явно.
+  test.each([
+    ['g--a;--b', 'grid:var(--a) var(--b)'],
+    ['g--a;--b;--c', 'grid:var(--a) var(--b) var(--c)'],
+    ['gtc--a;--b', 'grid-template-columns:var(--a) var(--b)'],
+    ['col--a;--b', 'columns:var(--a) var(--b)'],
+    ['tn--a;--b', 'transition:var(--a) var(--b)'],
+  ])('%s → %s', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test('ведущий `_` для этого не нужен, но и не мешает', () => {
+    expect(compile(['g_--a;--b']).css).toContain('grid:var(--a) var(--b)');
+    expect(compile(['g--a;_--b']).css).toContain('grid:var(--a) var(--b)');
+  });
+
+  test('запятая остаётся явной', () => {
+    expect(compile(['g--a;,--b']).css).toContain('grid:var(--a),var(--b)');
+  });
+
+  test('три дефиса — это вычитание, а не разделитель', () => {
+    // `w--a;---b` — минус перед переменной внутри calc. Пробел перед `env()`
+    // пишется явно: `w--a;_---b`.
+    expect(compile(['w--a;---b']).css).toContain('width:calc(var(--a) - var(--b))');
+  });
+
+  test('терминатор имени работает как раньше', () => {
+    expect(compile(['w--my_var;']).css).toContain('width:var(--my_var)');
+    expect(compile(['bxsh--blur;c--shadow']).css)
+      .toContain('box-shadow:0px 0px var(--blur) 0px var(--shadow)');
+  });
+});

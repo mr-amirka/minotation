@@ -1134,11 +1134,25 @@ function counterValue(
   }
   return parts.join(' ');
 }
+/**
+ * Функции фильтра — список закрыт спецификацией (`<filter-function>`).
+ *
+ * Неизвестное имя раньше прокидывалось как есть, и `ftbF00` давало
+ * `backdrop-filter:f(00)` (`F00` разбиралось как имя `f` с аргументом `00`),
+ * `ftb_solid` — `solid()`. Ни одна из этих записей не работает.
+ */
+const FILTER_FUNCTIONS = wordsSet('blur brightness contrast drop-shadow grayscale'
+  + ' hue-rotate invert opacity saturate sepia');
 /** Ключевые слова дорожек сетки. */
 const TRACK_KEYWORDS = wordsSet('none auto min-content max-content subgrid');
 /** Размер дорожки: длина, процент или доля свободного места (`1fr`). */
 const REGEXP_TRACK_SIZE = new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:'
   + UNITS.join('|') + '|fr))$');
+/**
+ * Номер линии сетки: целое со знаком, возможно с `/` для второй границы —
+ * `1`, `-1`, `1/3`.
+ */
+const REGEXP_GRID_LINE = /^[-+]?\d+(?:\/[-+]?\d+)?$/;
 /** Имя линии сетки — в квадратных скобках: `[a] 1fr`. */
 const REGEXP_LINE_NAME = /^\[[^\]]*\]$/;
 
@@ -1181,13 +1195,19 @@ function gridLineValue(
   parts: string[], raw: string, essenceName: string,
 ): string {
   const l = parts.length;
+  const prefix = 'Значение "' + raw + '" не распознано: у "' + essenceName + '" ';
   let i = 0;
   let part: string;
   for (; i < l; i++) {
     part = parts[i];
-    (part.indexOf('(') > -1 || !REGEXP_LENGTH_PART.test(part) || part === '0')
-      || throwInvalid('Значение "' + raw + '" не распознано: у "' + essenceName
-        + '" позиция — номер линии, её имя или `span N`, но не длина');
+    if (part.indexOf('(') > -1 || part === '/' || REGEXP_SLOT_IDENT.test(part)) {
+      continue;
+    }
+    // Номер линии — целое со знаком. Дробь, длина и результат вычитания
+    // номером быть не могут: `gr1.5` давало `grid-row:1.5`, `gr10-5` —
+    // `grid-row:10-5`, `gr10zz` — `grid-row:10zz`.
+    REGEXP_GRID_LINE.test(part)
+      || throwInvalid(prefix + 'позиция — номер линии (целое), её имя или `span N`');
   }
   return parts.join(' ');
 }
@@ -3052,10 +3072,16 @@ export default (mn: MnInstance) => {
         (v = cssVarValue(p.suffix || '')) ? styleWrap({
           textSizeAdjust: v,
         }) : (p.value ? styleWrap({
-          textSizeAdjust: lengthOrWord(
+          // По грамматике это `none | auto | <percentage>`: единица по
+          // умолчанию `%`, любая другая недопустима. Было `px`, поэтому
+          // `tsa10` давало `text-size-adjust:10px`, а `tsa10px` проходило.
+          textSizeAdjust: ((p.unit && p.unit !== '%')
+            && throwInvalid('Значение "' + p.suffix + '" не распознано: '
+              + 'text-size-adjust задаётся процентом'),
+          lengthOrWord(
             p, TEXT_SIZE_ADJUST_KEYWORDS, LENGTH_PERCENT,
-            'px', TEXT_SIZE_ADJUST_SYNONYMS,
-          ),
+            '%', TEXT_SIZE_ADJUST_SYNONYMS,
+          )),
         }) : normalizeDefault(p, '100%'))
       );
     },
@@ -4022,12 +4048,15 @@ export default (mn: MnInstance) => {
       return (v = filter(map(p.suffix.split(REGEXP_FILTER_SEP),
         (v: string) => {
           let matchs: RegExpExecArray | null; let name: string; let options: any;
-          return v && (matchs = REGEXP_FILTER_NAME.exec(v)) ? (
-            options = FILTER_MAP[name = lowerFirst(matchs[1])],
-            camelToKebabCase(options && options[0] || name)
-                + '(' + (matchs[2] || options && options[1] || '')
-                + (matchs[3] || options && options[2] || '') + ')'
-          ) : 0;
+          if (!v || !(matchs = REGEXP_FILTER_NAME.exec(v))) {
+            return 0;
+          }
+          options = FILTER_MAP[name = lowerFirst(matchs[1])];
+          const fn = camelToKebabCase(options && options[0] || name);
+          FILTER_FUNCTIONS[fn] || throwInvalid('Значение "' + p.suffix
+            + '" не распознано: "' + fn + '" не функция фильтра');
+          return fn + '(' + (matchs[2] || options && options[1] || '')
+            + (matchs[3] || options && options[2] || '') + ')';
         }), Boolean).join(' ')) ? (
           s = {},
           s[propName] = v,

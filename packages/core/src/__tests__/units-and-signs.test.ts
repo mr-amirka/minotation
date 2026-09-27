@@ -1397,3 +1397,65 @@ describe('составное значение проверяется по час
     expect(compile([token]).css).toContain(expected);
   });
 });
+
+describe('фильтры, text-size-adjust, позиции сетки', () => {
+  test.each([
+    ['ftBlur4', 'filter:blur(4px)'],
+    ['ftbBlur8', 'backdrop-filter:blur(8px)'],
+    ['ftGray50', 'filter:grayscale(50%)'],
+    ['ftHue180', 'filter:hue-rotate(180deg)'],
+    ['ftBlur3_Invert20', 'filter:blur(3px) invert(20%)'],
+    ['ft_blur5', 'filter:blur(5px)'],
+  ])('%s → %s', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    ['ftbF00', 'backdrop-filter:f(00)'],
+    ['ftb_solid', 'backdrop-filter:solid()'],
+    ['ftbA', 'backdrop-filter:a()'],
+    ['ftZzz10', 'filter:zzz(10)'],
+  ])('%s больше не даёт "%s"', (token) => {
+    // Арбитр здесь мягче спецификации: грамматика `filter` допускает `<url>`
+    // и вендорные функции, поэтому `zzz(10)` он принимает. Список
+    // `<filter-function>` при этом закрыт — десять функций, и выдуманное имя
+    // в CSS просто ничего не делает.
+    expect(compile([token]).css).toBe('');
+  });
+
+  test.each([
+    ['tsa', 'text-size-adjust:100%'],
+    ['tsa10', 'text-size-adjust:10%'],
+    ['tsa100%', 'text-size-adjust:100%'],
+    ['tsaA', 'text-size-adjust:auto'],
+    ['tsaN', 'text-size-adjust:none'],
+  ])('%s → %s', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test('tsa10px бракуется — свойство задаётся процентом', () => {
+    // Единица по умолчанию была `px`, поэтому `tsa10` давало `10px`.
+    expect(lexer.matchProperty('text-size-adjust', '10px').matched).toBeFalsy();
+    expect(compile(['tsa10px']).css).toBe('');
+  });
+
+  test.each([
+    'gr1.5',
+    'gr10-5',
+    'gr100%-20px',
+    'gr10zz',
+    'gc1.5',
+  ])('%s бракуется — номер линии это целое', (token) => {
+    expect(compile([token]).css).toBe('');
+  });
+
+  test.each([
+    ['gr1', 'grid-row:1'],
+    ['gr1/3', 'grid-row:1/3'],
+    ['gc1/-1', 'grid-column:1/-1'],
+    ['gr_span_2', 'grid-row:span 2'],
+    ['grAuto', 'grid-row:auto'],
+  ])('%s → %s — законные позиции не задеты', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+});

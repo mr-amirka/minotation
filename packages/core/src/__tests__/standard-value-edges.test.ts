@@ -98,8 +98,14 @@ describe('сдвиги, стороны и производные значени�
     expect(css).toContain('bottom:0');
   });
 
-  test('неизвестная функция фильтра прокидывается как есть', () => {
-    expect(compile(['ftZzz10']).css).toContain('filter:zzz(10)');
+  test('неизвестная функция фильтра бракуется', () => {
+    // Список `<filter-function>` закрыт спецификацией, поэтому прокидывать
+    // незнакомое имя незачем: `ftZzz10` давало `filter:zzz(10)`, а `ftbF00` —
+    // `backdrop-filter:f(00)` (`F00` разбиралось как имя `f` с аргументом
+    // `00`). Изменено 2026-09-27.
+    expect(compile(['ftZzz10']).css).toBe('');
+    expect(compile(['ftbF00']).css).toBe('');
+    expect(compile(['ftBlur4']).css).toContain('filter:blur(4px)');
   });
 
   test('известный фильтр без аргумента берёт значение по умолчанию из реестра', () => {

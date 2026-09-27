@@ -109,9 +109,6 @@ import {
   __compileProvider,
   spaceNormalize,
 } from './utils';
-import {
-  isValidCssPropertyValue, 
-} from '../cssGrammar';
 import type {
   MnData,
   MnStatics,
@@ -223,24 +220,34 @@ function minotationProvider(options?: MnOptions) {
     emitWarnings($$warnings);
   }
   /**
-   * Проверяет `essence.style` (CSS-значения, УЖЕ вернувшиеся из хендлера) —
-   * "где-то в ядре после возврата CSS из обработчиков" (решение пользователя
-   * 2026-09-04), а не точечные `throw` по каждому хендлеру отдельно. Первое
-   * найденное битое значение — весь essence отбраковывается (не частично).
+   * Проверяет `essence.style` (CSS-значения, УЖЕ вернувшиеся из хендлера).
+   * Первое найденное битое значение — весь essence отбраковывается (не
+   * частично).
    *
-   * Два уровня проверки на значение (см. {@link isBadCssValue}):
-   * 1. {@link REGEXP_INVALID_CSS_VALUE} — узнаваемый мусор (`undefined`/`NaN`/`Rpx`),
-   *    универсально для ЛЮБОГО свойства.
-   * 2. {@link isValidCssPropertyValue} (`cssGrammar.ts`, решение пользователя
-   *    2026-09-05 — "полная валидация") — строгая грамматика ПО КОНКРЕТНОМУ
-   *    свойству, для той части CSS-поверхности, где ядро само формирует
-   *    значение из числа/цвета (не для permissive pass-through хендлеров —
-   *    см. `cssGrammar.ts`'s module doc про границы охвата).
+   * Осталась одна проверка — {@link REGEXP_INVALID_CSS_VALUE}: узнаваемый
+   * мусор (`undefined`/`NaN`/`Rpx`), универсально для любого свойства.
+   *
+   * **Грамматическая проверка по свойству убрана из рантайма 2026-09-27**
+   * (Q-01). Она была таблицей `PROPERTY_VALIDATORS`, которая жила отдельно от
+   * хендлеров и ничего о них не знала: хендлер учился отдавать новую форму
+   * значения — таблица не в курсе, и КОРРЕКТНЫЙ CSS молча отбраковывался. Так
+   * было четыре раза (`var()`, многозначные shorthand'ы, градиенты в
+   * `background`, `gap:normal`), и каждый раз это находил человек, наткнувшись
+   * на неработающий стиль.
+   *
+   * Теперь значение проверяет сам хендлер — там, где оно и формируется, и где
+   * список допустимого известен точно. Замер перед снятием: на прогоне всего
+   * реестра (307 хендлеров × 30 форм аргумента) валидатор не забраковал НИ
+   * ОДНОГО значения — всё отсекается раньше.
+   *
+   * Сторожем остаётся тест `validator-vs-css-tree.test.ts`: он прогоняет те же
+   * пары через `css-tree` с `mdn-data` и ловит расхождение со спецификацией.
+   * Вес там не важен, в рантайм эта библиотека не попадает.
    *
    * @returns `true`, если `style` не содержит подозрительных значений (или его нет вовсе)
    */
-  function isBadCssValue(prop: string, v: string): boolean {
-    return REGEXP_INVALID_CSS_VALUE.test(v) || !isValidCssPropertyValue(prop, v);
+  function isBadCssValue(v: string): boolean {
+    return REGEXP_INVALID_CSS_VALUE.test(v);
   }
   function validateEssenceStyle(
     essence: MnEssenceRaw, token: string, handlerName: string,
@@ -255,8 +262,8 @@ function minotationProvider(options?: MnOptions) {
     for (prop in style) { // eslint-disable-line
       v = style[prop];
       bad = isArray(v)
-        ? (v as string[]).find((s) => isBadCssValue(prop, s))
-        : (isBadCssValue(prop, v as string) ? v as string : undefined);
+        ? (v as string[]).find(isBadCssValue)
+        : (isBadCssValue(v as string) ? v as string : undefined);
       if (bad !== undefined) {
         collectWarning({
           type: 'invalid-css-value',

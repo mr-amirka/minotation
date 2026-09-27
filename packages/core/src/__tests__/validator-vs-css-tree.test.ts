@@ -35,9 +35,6 @@ import {
 } from '../core/index';
 import presetStandard from '../presets/standard';
 import {
-  isValidCssPropertyValue,
-} from '../cssGrammar';
-import {
   lexer,
 } from 'css-tree';
 
@@ -172,59 +169,72 @@ function referenceVerdict(pair: Pair): boolean | null {
 
 const PAIRS = collectPairs();
 
-describe('валидатор против официальной грамматики CSS (css-tree + mdn-data)', () => {
+/**
+ * Свойства, которых нет в `mdn-data`, хотя браузеры их принимают: это старые
+ * алиасы, оставленные для совместимости. Арбитр бракует их целиком, поэтому
+ * сверять по нему нечего.
+ */
+const LEGACY_ALIASES: Record<string, 1> = {
+  'grid-gap': 1,
+  'grid-column-gap': 1,
+  'grid-row-gap': 1,
+  'word-wrap': 1,
+};
+
+/** CSS одного токена — для точечных сторожей ниже. */
+function cssOfToken(token: string): string {
+  const mn: any = minotationProvider({
+    onWarning: 'silent',
+  });
+  mn.setPresets([presetStandard]);
+  mn.getCompiler('class')(token);
+  mn.compile();
+  return mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+}
+
+describe('вывод ядра против официальной грамматики CSS (css-tree + mdn-data)', () => {
   test('пары собраны (страховка: пустой набор молча «проходил» бы всё)', () => {
     expect(PAIRS.length).toBeGreaterThan(500);
   });
 
-  test('НЕ бракуем то, что по спецификации валидно', () => {
-    // Единственное направление, которое ломает стили пользователя: правило
-    // просто не попадает в вывод. Здесь ожидается строгий ноль.
+  test('всё, что доехало до CSS, валидно по спецификации', () => {
+    // Главная проверка после снятия валидатора из рантайма (Q-01,
+    // 2026-09-27): раз грамматику больше никто не сторожит на выходе,
+    // хендлеры обязаны не порождать невалидных значений сами.
+    //
+    // Исключения — legacy-алиасы, которых нет в `mdn-data`, хотя браузеры их
+    // принимают: `grid-gap` и родственные, `word-wrap`.
     const wrong: string[] = [];
     for (let i = 0; i < PAIRS.length; i++) {
       const pair = PAIRS[i];
-      if (referenceVerdict(pair) !== true) {
+      if (LEGACY_ALIASES[pair.prop] || referenceVerdict(pair) !== false) {
         continue;
       }
-      if (!isValidCssPropertyValue(pair.prop, pair.value)) {
-        wrong.push(pair.prop + ': ' + pair.value);
-      }
+      wrong.push(pair.prop + ': ' + pair.value);
     }
     expect(wrong).toEqual([]);
   });
 
   test('известные формы, на которых валидатор ломался раньше', () => {
-    // Точечные сторожа: каждая строка — реальный баг, найденный пользователем.
-    const cases: Pair[] = [
-      {
-        prop: 'background',
-        value: 'linear-gradient(180deg,#f00 0%,#00f 100%)',
-      },
-      {
-        prop: 'column-gap',
-        value: 'normal',
-      },
-      {
-        prop: 'padding',
-        value: '10px 20px',
-      },
-      {
-        prop: 'width',
-        value: 'calc(100% - 20px)',
-      },
+    // Точечные сторожа: каждая строка — реальный баг, найденный пользователем,
+    // когда КОРРЕКТНЫЙ CSS молча отбраковывался.
+    const cases: Array<[string, string]> = [
+      ['bgF00-00F', 'background:linear-gradient(180deg,#f00 0%,#00f 100%)'],
+      ['ggcN', 'grid-column-gap:normal'],
+      ['p10_20', 'padding:10px 20px'],
+      ['w100%-20px', 'width:calc(100% - 20px)'],
     ];
     for (let i = 0; i < cases.length; i++) {
-      expect(referenceVerdict(cases[i])).toBe(true);
-      expect(isValidCssPropertyValue(cases[i].prop, cases[i].value)).toBe(true);
+      expect(cssOfToken(cases[i][0])).toContain(cases[i][1]);
     }
   });
 
-  test('значение с подстановкой валидно у любого свойства', () => {
-    // Арбитр тут неприменим (см. referenceVerdict), поэтому проверяем только
-    // наш валидатор — на нём этот класс уже ломался 2026-09-17.
-    expect(isValidCssPropertyValue('width', 'var(--v)')).toBe(true);
-    expect(isValidCssPropertyValue('background', 'var(--bg)')).toBe(true);
-    expect(isValidCssPropertyValue('padding-top', 'env(--safe-top)')).toBe(true);
+  test('значение с подстановкой доезжает до CSS у любого свойства', () => {
+    // Арбитр тут неприменим (см. referenceVerdict): `var()` он не разбирает.
+    // На этом классе ядро ломалось 2026-09-17.
+    expect(cssOfToken('w--v')).toContain('width:var(--v)');
+    expect(cssOfToken('bg--bg')).toContain('background:var(--bg)');
+    expect(cssOfToken('pt---safe-top')).toContain('padding-top:env(--safe-top)');
   });
 });
 

@@ -1298,8 +1298,15 @@ function borderImageValue(
   }
   return parts.join(' ');
 }
-/** Ключевые слова дорожек сетки. */
-const TRACK_KEYWORDS = wordsSet('none auto min-content max-content subgrid');
+/**
+ * Ключевые слова дорожек.
+ *
+ * `none` и `subgrid` есть только у ЯВНЫХ шаблонов (`gtc`/`gtr`): у неявных
+ * (`gac`/`gar`) грамматика — просто список размеров, и `gacNone` давало
+ * невалидное `grid-auto-columns:none`.
+ */
+const TRACK_KEYWORDS = wordsSet('auto min-content max-content');
+const TEMPLATE_TRACK_KEYWORDS = wordsSet('none auto min-content max-content subgrid');
 /** Размер дорожки: длина, процент или доля свободного места (`1fr`). */
 const REGEXP_TRACK_SIZE = new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:'
   + UNITS.join('|') + '|fr))$');
@@ -1327,12 +1334,15 @@ function trackValue(
   parts: string[], raw: string, essenceName: string,
 ): string {
   const l = parts.length;
+  // У явных шаблонов (`gtc`/`gtr`) список слов шире, чем у неявных
+  // (`gac`/`gar`) — см. TRACK_KEYWORDS. Различает вторая буква тега.
+  const words = essenceName[1] === 't' ? TEMPLATE_TRACK_KEYWORDS : TRACK_KEYWORDS;
   let i = 0;
   let part: string;
   for (; i < l; i++) {
     part = parts[i];
     (part.indexOf('(') > -1
-      || TRACK_KEYWORDS[part]
+      || words[part]
       || REGEXP_TRACK_SIZE.test(part)
       || REGEXP_LINE_NAME.test(part))
       || throwInvalid('Значение "' + raw + '" не распознано: у "' + essenceName
@@ -1515,6 +1525,10 @@ function assertLengthValue(
   let part: string;
   (i < 2 || (allow & LENGTH_MULTI))
     || throwInvalid(prefix + 'ожидается одно значение');
+  // `border-spacing` берёт максимум два (горизонтальный и вертикальный
+  // интервал): `bsp10_20_30_40` давало четыре.
+  (i < 3 || !(allow & LENGTH_MULTI))
+    || throwInvalid(prefix + 'ожидается не больше двух значений');
   while (i--) {
     part = parts[i];
     // Слово сюда доходит только разрешённое: список ключевых слов свойства

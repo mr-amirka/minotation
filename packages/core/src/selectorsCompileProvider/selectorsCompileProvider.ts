@@ -14,6 +14,7 @@ import {
 import {
   assertVariantGroups,
   assertTrailingSeparator,
+  REGEXP_MATCH_NAME,
 } from '../core/utils';
 import {
   selectorNormalize,
@@ -64,15 +65,44 @@ import {
  * не защищало точку от трактовки как self-class-границы. Найдено и исправлено 2026-08-10
  * вместе со связанным багом regex в `constants.ts` (`splitSelector`/`extractSuffix`).
  */
-function variantsBase(comboName: string): string[] {
+/**
+ * Похоже ли имя на MN-токен, то есть стоит ли вообще придираться к его
+ * структуре.
+ *
+ * Критерий: имя начинается со строчной буквы, и этот префикс зарегистрирован
+ * как тег. Чужие классы в разметке сплошь и рядом начинаются с букв
+ * (`sr-only`, `my-widget`) или вовсе не являются классами (`...` из образца
+ * в комментарии), и придираться к ним не за что — автор их писал не в нотации.
+ *
+ * До 2026-09-26 порядок был обратный: структура проверялась раньше, чем
+ * выяснялось, есть ли у имени тег. `sr-only` давало `Parameter is invalid`
+ * (тег `s` существует, а `-only` не разбирается), `...` — «висячий
+ * сепаратор», и со `strict: true` любой из них ронял сборку. Решение
+ * владельца: падать не должно (трек `scanner-robustness`, задача 1; уточняет
+ * D-014, где такую границу оставляли как есть).
+ *
+ * Настоящие ошибки в токенах это не затрагивает: у `w50@`, `p10:`, `cF00.`
+ * тег зарегистрирован, предупреждение остаётся.
+ */
+function looksLikeToken(comboName: string, handlerMap: Record<string, unknown>): boolean {
+  const matched = REGEXP_MATCH_NAME.exec(comboName);
+  return !!matched && !!handlerMap[matched[1]];
+}
+
+function variantsBase(comboName: string, handlerMap: Record<string, unknown>): string[] {
   // Вырожденная группа (скобки без `|`) молча съедала бы сами скобки — см.
   // JSDoc `assertVariantGroups`. Бросается MnParseError: `parseComboName`
   // обёрнут перехватчиком, который превращает её в warning `parse-error`,
   // и токен не даёт CSS вовсе — как и у вырожденных контекстных сегментов.
-  assertTrailingSeparator(comboName, 'variants');
-  assertVariantGroups(
-    comboName, 'variants', 1,
-  );
+  //
+  // Проверки структуры — только для того, что похоже на MN-токен: иначе
+  // чужой класс из разметки роняет сборку под `strict`.
+  if (looksLikeToken(comboName, handlerMap)) {
+    assertTrailingSeparator(comboName, 'variants');
+    assertVariantGroups(
+      comboName, 'variants', 1,
+    );
+  }
   return variants(comboName, false)[0];
 }
 
@@ -276,7 +306,8 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     }
 
     const suffixes = reduceIn(
-      variantsBase(name), suffixesReduce, {} as StrMap<StrMap<number>>,
+      variantsBase(name, (instance as any).handlerMap || {}),
+      suffixesReduce, {} as StrMap<StrMap<number>>,
     );
     $$tgt = tgt;
     return (reduceIn as any)(

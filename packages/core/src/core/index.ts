@@ -89,6 +89,7 @@ import {
   REGEXP_MEDIA_PRIORITY,
   REGEXP_MATCH_VAR,
   REGEXP_MATCH_NAME,
+  REGEXP_FOREIGN_KEBAB,
   REGEXP_MATCH_IMPORTANT,
   REGEXP_IMPORTANT,
   REGEXP_MATCH_VALUE,
@@ -1008,7 +1009,13 @@ function minotationProvider(options?: MnOptions) {
           suffix = matchs[1],
           ni = matchs[2]
         ),
-        (handle = $$handlerMap[name])
+        // Чужой класс, случайно начавшийся с зарегистрированного тега
+        // (`sr-only` → `s`, `mt-auto` → `mt`), пропускается молча — как и
+        // любой другой класс без тега. Иначе хендлер бракует остаток, и под
+        // `strict: true` падает вся сборка.
+        (handle = REGEXP_FOREIGN_KEBAB.test(suffix)
+          ? undefined as any
+          : $$handlerMap[name])
           ? (
             params = {
               name: name,

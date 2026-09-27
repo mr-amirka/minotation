@@ -277,6 +277,22 @@ export const SPLIT_SELECTOR = splitProvider(/\s*,+\s*/);
 export const SPLIT_AMP = splitProvider(/\s*&+\s*/);
 export const REGEXP_MATCH_VAR = /^(--[^=]+)=(.*)$/;
 export const REGEXP_MATCH_NAME = /^([a-z]+)(.*)$/;
+/**
+ * Суффикс чужого класса: одиночный дефис и дальше только строчные буквы с
+ * цифрами — `sr-only`, `mt-auto`, `text-center`, то есть kebab-case, которым
+ * пишут классы почти все CSS-фреймворки.
+ *
+ * Нужен, потому что имя такого класса может случайно начинаться с
+ * зарегистрированного тега (`sr` → `s`, `mt` → margin-top), и хендлер бракует
+ * остаток: `sr-only` давало `Parameter is invalid`, а со `strict: true` роняло
+ * сборку. Решение владельца — падать не должно (трек `scanner-robustness`,
+ * задача 1; уточняет D-014, где границу оставляли как есть).
+ *
+ * Формы нотации под это не попадают: `--v` и `---safe` начинаются с двух и
+ * более дефисов, `w-5` и `w10-5` — цифра после дефиса, `_a-b` — сырой режим,
+ * `From-font` — заглавная буква.
+ */
+export const REGEXP_FOREIGN_KEBAB = /^-[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 export const REGEXP_MATCH_IMPORTANT = /^(.*)(-i)$/;
 export const REGEXP_MATCH_VALUE = /^((([A-Z][A-Za-z]*)|((-)?[0-9.]+))([a-z%]+)?)?(.*)?$/;
 export const REGEXP_BROWSER_PREFIX = /((::-?|:-)([a-z]+-)?)/;

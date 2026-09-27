@@ -182,7 +182,9 @@ describe('вырожденная группа вариантов в значен
   });
 
   test.each([
-    ['a)b', 'Непарная закрывающая'],
+    // Тег обязан быть зарегистрирован: с 2026-09-26 у имени без тега
+    // структура не проверяется вовсе — это чужой класс, а не токен.
+    ['w50)b', 'Непарная закрывающая'],
     ['p10)', 'Непарная закрывающая'],
     ['gtcRepeat(2', 'Незакрытая'],
     ['crUrl(a', 'Незакрытая'],
@@ -377,5 +379,76 @@ describe('вырожденная группа вариантов в селект
     expect(assign({
       '(h1|h2)': 'c00F',
     })).toContain('h1,h2{color:#00f}');
+  });
+});
+
+/**
+ * Граница «чужой класс / ошибка в токене».
+ *
+ * До 2026-09-26 структура имени проверялась раньше, чем выяснялось, есть ли у
+ * него зарегистрированный тег. Чужой класс, случайно начавшийся с тега,
+ * получал `parse-error`, и со `strict: true` ронял сборку: `sr-only` → `s` +
+ * неразбираемый `-only`, `mt-auto` → `mt`. Образец `class="..."` из
+ * комментария в JSX ронял сборку сайта `affiliate` (трек `scanner-robustness`,
+ * задача 1).
+ *
+ * Сторож нужен на обе стороны: чужие классы молчат, настоящие ошибки в
+ * токенах предупреждают.
+ */
+describe('чужие классы не считаются ошибками', () => {
+  function compile(token: string): { css: string; warnings: MnWarning[] } {
+    const warnings: MnWarning[] = [];
+    const mn: any = minotationProvider({
+      onWarning: (w: MnWarning) => warnings.push(w),
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')(token);
+    mn.compile();
+    return {
+      css: mn.styles$.getValue().map((s: { content: string }) => s.content).join(''),
+      warnings,
+    };
+  }
+
+  test.each([
+    ['...', 'образец из комментария в разметке'],
+    ['…', 'многоточие одним символом'],
+    ['sr-only', 'тег `s` есть, остаток чужой'],
+    ['mt-auto', 'тег `mt` есть, остаток чужой'],
+    ['w-full', 'тег `w` есть, остаток чужой'],
+    ['flex-col', 'тег `flex` есть, остаток чужой'],
+    ['bg-red-500', 'тег `bg` есть, остаток чужой'],
+    ['text-center', 'тега нет вовсе'],
+    ['btn-primary', 'тега нет вовсе'],
+    ['my-widget', 'тега нет вовсе'],
+  ])('%s — молчит (%s)', (token) => {
+    const r = compile(token);
+    expect(r.css).toBe('');
+    expect(r.warnings).toEqual([]);
+  });
+
+  test.each([
+    'w50@',
+    'p10:',
+    'cF00.',
+    'p10@()',
+    'w10zz',
+    'pZzz',
+  ])('%s — предупреждает: это MN-токен с ошибкой', (token) => {
+    const r = compile(token);
+    expect(r.css).toBe('');
+    expect(r.warnings.length).toBeGreaterThan(0);
+  });
+
+  test.each([
+    ['w--v', 'width:var(--v)'],
+    ['w---safe', 'width:env(--safe)'],
+    ['w10-5', 'width:calc(10px - 5px)'],
+    ['w-5', ''],
+    ['bgF00-00F', 'background:linear-gradient'],
+    ['tupFrom-font', 'text-underline-position:from-font'],
+  ])('%s — формы нотации с дефисом не задеты', (token, expected) => {
+    const r = compile(token);
+    expected ? expect(r.css).toContain(expected) : expect(r.css).toBe('');
   });
 });

@@ -887,7 +887,9 @@ describe('сырой режим только там, где значение с�
     ['d_inline_flow-root', 'display:inline flow-root'],
     ['lis_disc_inside', 'list-style:disc inside'],
     ['ovb_contain_auto', 'overscroll-behavior:contain auto'],
-    ['td_underline_wavy_red', 'text-decoration:underline wavy red'],
+    // Цвет в shorthand не выражается — он задаётся атомарным `tdc`
+    // (`tdU tdcF00`), как и решено по `ol`: один способ на одно значение.
+    ['td_underline_wavy', 'text-decoration:underline wavy'],
     ['tcha_pan-x_pan-y', 'touch-action:pan-x pan-y'],
     ['op_left_top', 'object-position:left top'],
   ];
@@ -1365,5 +1367,33 @@ describe('flex-flow, transition-property, font-family', () => {
     // `ff_"My_Font"` давало `font-family:""My Font""` — вложенные кавычки,
     // правило браузер отбрасывает.
     expect(compile(['ff_"My_Font"']).css).toContain('font-family:"My Font"');
+  });
+});
+
+describe('составное значение проверяется по частям', () => {
+  // Сырой режим у составных свойств пропускал значение целиком, и мусор
+  // проходил: `d_solid` давало `display:solid`. Перечень у них тоже закрыт,
+  // просто значение из нескольких слов.
+  test.each([
+    'd_solid',
+    'ovb_solid',
+    'tcha_solid',
+    'op_solid',
+    'lis_solid',
+    'd_inline_solid',
+    'td_underline_zzz',
+  ])('%s бракуется', (token) => {
+    expect(compile([token]).css).toBe('');
+  });
+
+  test.each([
+    ['d_inline_flow-root', 'display:inline flow-root'],
+    ['lis_disc_inside', 'list-style:disc inside'],
+    ['ovb_contain_auto', 'overscroll-behavior:contain auto'],
+    ['tcha_pan-x_pan-y', 'touch-action:pan-x pan-y'],
+    ['op_left_top', 'object-position:left top'],
+    ['td_underline_2px', 'text-decoration:underline 2px'],
+  ])('%s → %s — законные части не задеты', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
   });
 });

@@ -1849,7 +1849,23 @@ export default (mn: MnInstance) => {
         throwInvalid('Записывается короче: "' + p.name + abbr
           + '" вместо "' + p.name + p.suffix + '" — то же значение');
       }
-      if (value.indexOf('(') > -1 || (composite && p.suffix[0] === '_')
+      // Составное значение проверяется ПО ЧАСТЯМ, а не пропускается целиком:
+      // перечень у таких свойств тоже закрыт, просто значение из нескольких
+      // слов. Пропуск оставлял дыру — `d_solid` давало `display:solid`,
+      // `ovb_solid` — `overscroll-behavior:solid` (2026-09-27).
+      if (composite && value.indexOf(' ') > -1) {
+        const parts = value.split(' ');
+        let i = parts.length;
+        while (i--) {
+          assertSynonymPart(p, parts[i]);
+        }
+        return;
+      }
+      assertSynonymPart(p, value);
+    }
+    /** Одна часть значения: слово из словаря, число (если оно тут законно) или функция. */
+    function assertSynonymPart(p: any, value: string): void {
+      if (value.indexOf('(') > -1
         || GLOBAL_KEYWORDS[value] || keywords[value]) {
         return;
       }

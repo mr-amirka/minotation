@@ -70,14 +70,6 @@ const PATTERN_VAL = '^(((([A-Za-z]+):otherName|([-]):sign?'
   + PATTERN_VAR_ADD + ')):add?$';
 
 
-const SHADOW_PATTERNS = [
-  '(r|R)(\\-?[0-9]+):r',
-  '(x|X)(\\-?[0-9]+):x',
-  '(y|Y)(\\-?[0-9]+):y',
-  '(m|M)([0-9]+):m',
-  'c(' + PATTERN_BASE_COLOR + '):c',
-  '(in):in',
-];
 const TOP = '-top';
 const BOTTOM = '-bottom';
 const LEFT = '-left';
@@ -440,16 +432,33 @@ const ANGLE_UNITS = [
  */
 const REGEXP_ANGLE_TAIL = /[rR][xyz][-+]?[0-9.]+([a-z]*)$/;
 /**
- * Ведущее значение записи — blur. Число с единицей либо имя переменной:
- * `bxsh--blur` → `box-shadow:0px 0px var(--blur) 0px #000`. Переменную в этой
- * позиции раньше принимал только сырой режим.
+ * Порядок модификаторов тени — **жёсткий**: `blur x y r m c in`.
+ *
+ * Свободный порядок был следствием реализации: `SHADOW_PATTERNS` — независимые
+ * regex'ы, каждый искал свой фрагмент где угодно, поэтому `bxsh19c43Fx5y5r3`
+ * давало то же, что `bxsh19x5y5r3c43F`. Решение владельца 2026-09-27 — сделать
+ * порядок жёстким, по тому же доводу, что и у `tn`: одно значение не должно
+ * записываться по-разному.
+ *
+ * Регулярка анкорена и собрана в этом порядке, так что она и проверяет запись,
+ * и разбирает её — отдельный обход паттернами больше не нужен.
  */
-const REGEXP_SHADOW_VALUE = new RegExp('^(--[A-Za-z0-9_-]+?;|--[A-Za-z0-9-]+|[0-9.]+)(?:'
-  + SHADOW_UNITS.join('|') + ')?');
-const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:(?:--[A-Za-z0-9_-]+?;|--[A-Za-z0-9-]+|[0-9.]+)('
-  + SHADOW_UNITS.join('|') + ')?)?(?:'
-    + SHADOW_PATTERNS.map((pattern) => '(?:' + pattern.replace(REGEXP_ROUTE_KEY, '') + ')').join('|')
-    + ')*$');
+const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:(--[A-Za-z0-9_-]+?;|--[A-Za-z0-9-]+|[0-9.]+)('
+  + SHADOW_UNITS.join('|') + ')?)?'
+  + '(?:[xX](-?[0-9]+))?'
+  + '(?:[yY](-?[0-9]+))?'
+  + '(?:[rR](-?[0-9]+))?'
+  + '(?:[mM]([0-9]+))?'
+  + '(?:c(' + PATTERN_BASE_COLOR.replace(REGEXP_ROUTE_KEY, '') + '))?'
+  + '(in)?$');
+/** Позиции групп в {@link REGEXP_SHADOW_SUFFIX}. */
+const MN_SHADOW_VALUE = 1;
+const MN_SHADOW_UNIT = 2;
+const MN_SHADOW_X = 3;
+const MN_SHADOW_Y = 4;
+const MN_SHADOW_R = 5;
+const MN_SHADOW_M = 6;
+const MN_SHADOW_COLOR = 7;
 
 /**
  * Бракует токен: аргумент хендлера не разобрался.
@@ -1207,23 +1216,7 @@ export default (mn: MnInstance) => {
   } = utils;
 
   const parseVals = routeParseProvider(PATTERN_VAL);
-  /**
-   * Разбор ОДНОЙ тени — тот же механизм, которым ядро разбирает суффикс по
-   * `SHADOW_PATTERNS` (`handlerWrap` в `core/utils.ts`): независимые regex'ы,
-   * каждый ищет свой фрагмент где угодно, поэтому `anchored = false`.
-   *
-   * Нужен отдельно, потому что ядро разбирает суффикс ЦЕЛИКОМ, а список теней
-   * через запятую надо разбирать по частям.
-   */
-  const shadowParsers = map(SHADOW_PATTERNS, (pattern: string) => routeParseProvider(pattern, false));
-  const shadowParsersLength = shadowParsers.length;
-  function parseShadow(v: string, out: Record<string, any>): Record<string, any> {
-    let i = shadowParsersLength;
-    while (i--) {
-      shadowParsers[i](v, out);
-    }
-    return out;
-  }
+
 
 
   function validateUnit(unit?: string): string | undefined {
@@ -2406,15 +2399,14 @@ export default (mn: MnInstance) => {
     function shadowValue(part: string, name: string): string {
       const parsed = REGEXP_SHADOW_SUFFIX.exec(part);
       parsed || throwInvalid('Запись "' + name + part + '" разобрана не полностью: '
-        + 'после значения допустимы только модификаторы x/y/r/m/c/in');
-      const p: Record<string, any> = parseShadow(part, {});
+        + 'порядок частей — blur, затем x, y, r, m, c, in');
+      const p = parsed as RegExpExecArray;
       const repeatCount = intval(
-        p.m, 1, 0,
+        p[MN_SHADOW_M], 1, 0,
       );
       // Значение (blur) — ведущее число или переменная; модификаторы его не
       // содержат.
-      const matched = REGEXP_SHADOW_VALUE.exec(part) as RegExpExecArray | null;
-      let value = matched && matched[1];
+      let value = p[MN_SHADOW_VALUE];
       if (!value) {
         // Модификаторы без ведущего значения — описка: `bxshR3` раньше давало
         // мусор `Rpx` в позиции blur, а потом молча превращалось в `none`.
@@ -2429,21 +2421,23 @@ export default (mn: MnInstance) => {
       // жадно забрало бы следующие модификаторы (`bxsh--blur;c--shadow`).
       value[0] === '-' && (value = 'var('
         + (value[value.length - 1] === ';' ? value.slice(0, -1) : value) + ')');
-      const colors = getColor(p.c || '0');
-      const prefixIn = p.in ? 'inset ' : '';
+      const colors = getColor(p[MN_SHADOW_COLOR] || '0');
+      // Последняя группа регулярки — `in` (inset).
+      const prefixIn = p[p.length - 1] ? 'inset ' : '';
       const colorsLength = colors.length;
       // Единица склейки была жёстко `px`: `bxsh10em` давало
       // `0px 0px 10px 0px #000` — единица молча терялась. Модификаторы x/y/r
       // по грамматике суффикса — целые без единицы, поэтому единица у записи
       // одна на все её длины.
-      const unit = (parsed as RegExpExecArray)[1] || 'px';
+      const unit = p[MN_SHADOW_UNIT] || 'px';
       const output = new Array(colorsLength);
       let sample, v, color, i, ci = 0; // eslint-disable-line
       for (;ci < colorsLength; ci++) {
         color = colors[ci];
         sample = prefixIn
           + shadowJoin(handler(
-            p.x || 0, p.y || 0, value, p.r || 0, color,
+            p[MN_SHADOW_X] || 0, p[MN_SHADOW_Y] || 0,
+            value, p[MN_SHADOW_R] || 0, color,
           ),
           unit);
         v = new Array(repeatCount);

@@ -1938,7 +1938,12 @@ export default (mn: MnInstance) => {
       part = parts[i];
       parts[i] = cssVarValue(part)
         || varListValue(part)
-        || (raw ? part : toKebabCase(part));
+        // Строка в кавычках — готовое значение, кебабить её нельзя:
+        // `qRU` давало `'\00-a-b'` вместо `'\00AB'` (заглавные буквы
+        // escape-последовательности уходили в дефисы).
+        || ((raw || part[0] === '"' || part[0] === '\'')
+          ? part
+          : toKebabCase(part));
     }
     // `\0` возвращается в `_` ТОЛЬКО после spaceNormalize — иначе та превратила
     // бы его в пробел уже внутри имени переменной (см. splitValueParts).
@@ -2072,6 +2077,9 @@ export default (mn: MnInstance) => {
     /** Одна часть значения: слово из словаря, число (если оно тут законно) или функция. */
     function assertSynonymPart(p: any, value: string): void {
       if (value.indexOf('(') > -1
+        // Строка в кавычках — готовое значение (`q_"a"_"b"`), словарём его
+        // не перечислить.
+        || value[0] === '"' || value[0] === '\''
         || GLOBAL_KEYWORDS[value] || keywords[value]) {
         return;
       }
@@ -3137,7 +3145,8 @@ export default (mn: MnInstance) => {
         A: 'Auto',
         // `clip` — как `hidden`, но без создания scroll-контейнера.
         C: 'Clip',
-      }, priority,
+        // `composite`: две оси в одном значении — `overflow: hidden auto`.
+      }, priority, 0 as any, 0 as any, 1,
     );
 
     mn('ov' + suffix, function() {
@@ -3726,11 +3735,14 @@ export default (mn: MnInstance) => {
         textAlign: 'justify',
       },
     ),
-    tov: synonymProvider('textOverflow', {
-      '': 'Ellipsis',
-      C: 'Clip',
-      E: 'Ellipsis',
-    }),
+    // `composite`: значение задаётся для начала и конца строки отдельно.
+    tov: synonymProvider(
+      'textOverflow', {
+        '': 'Ellipsis',
+        C: 'Clip',
+        E: 'Ellipsis',
+      }, 0, 0 as any, 0 as any, 1,
+    ),
     tt: synonymProvider('textTransform', {
       '': 'Uppercase',
       N: 'None',
@@ -3868,20 +3880,24 @@ export default (mn: MnInstance) => {
         CB: 'ContentBox',
       }, 1,
     ),
+    // `numeric` + `composite`: размер задаётся длинами или процентами, и их
+    // может быть два — ширина и высота (`background-size: 100% .16em`).
     bgs: synonymProvider(
       'backgroundSize', {
         A: 'Auto',
         CT: 'Contain',
         CV: 'Cover',
-      }, 1,
+      }, 1, 0 as any, 1, 1,
     ),
+    // `composite`: кавычки задаются парами — открывающая и закрывающая, и
+    // пар может быть несколько (для вложенных уровней).
     q: synonymProvider(
       'quotes', {
         A: 'Auto',
         N: 'None',
         RU: `'\\00AB'_'\\00BB'_'\\201E'_'\\201C'`,
         EN: `'\\201C'_'\\201D'_'\\2018'_'\\2019'`,
-      }, 1,
+      }, 1, 0 as any, 0 as any, 1,
     ),
     ols: synonymProvider(
       'outlineStyle', OUTLINE_STYLE_SYNONYMS, 1,
@@ -3983,8 +3999,9 @@ export default (mn: MnInstance) => {
     // `composite`: две координаты в одном значении
     // (`object-position: left top`). Атомарных `object-position-x/y` в CSS нет,
     // поэтому разложить его, как `bgpx`/`bgpy`, нельзя.
+    // `numeric`: координаты задаются и числами — `op50%_50%`.
     op: synonymProvider(
-      'objectPosition', POSITION_KEYWORDS, 1, 0 as any, 0 as any, 1,
+      'objectPosition', POSITION_KEYWORDS, 1, 0 as any, 1, 1,
     ),
     /**
      * Оси `background-position`. Ключевые слова у них РАЗНЫЕ: горизонтальная

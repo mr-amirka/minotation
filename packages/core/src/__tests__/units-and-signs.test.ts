@@ -1603,3 +1603,43 @@ describe('последние пограничные случаи', () => {
     expect(compile([token]).css).toBe('');
   });
 });
+
+describe('свойства, принимающие числа и несколько значений', () => {
+  // Найдены сплошной сверкой с грамматикой после того, как сборка сайта
+  // упёрлась в `bgs100%_.16em`: помечать такие свойства по одному ненадёжно.
+  test.each([
+    ['bgs100%_.16em', 'background-size:100% .16em'],
+    ['bgs10px_20px', 'background-size:10px 20px'],
+    ['bgs100%', 'background-size:100%'],
+    ['bgsCV', 'background-size:cover'],
+    ['ov_hidden_auto', 'overflow:hidden auto'],
+    ['tov_ellipsis_clip', 'text-overflow:ellipsis clip'],
+    ['op50%_50%', 'object-position:50% 50%'],
+    ['op_left_top', 'object-position:left top'],
+  ])('%s → %s', (token, expected) => {
+    const at = expected.indexOf(':');
+    expect(lexer.matchProperty(expected.slice(0, at), expected.slice(at + 1)).matched)
+      .toBeTruthy();
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    'bgsZzz',
+    'bgs10zz',
+    'ov_solid',
+    'tov_solid',
+    'op_solid',
+    'op10zz',
+  ])('%s бракуется', (token) => {
+    expect(compile([token]).css).toBe('');
+  });
+
+  test('строка в кавычках — готовое значение, кебабить её нельзя', () => {
+    // `qRU` давало `'\\00-a-b'` вместо `'\\00AB'`: заглавные буквы
+    // escape-последовательности уходили в дефисы.
+    expect(compile(['qRU']).css)
+      .toContain("quotes:'\\00AB' '\\00BB' '\\201E' '\\201C'");
+    expect(compile(['q_"a"_"b"']).css).toContain('quotes:"a" "b"');
+    expect(compile(['qA']).css).toContain('quotes:auto');
+  });
+});

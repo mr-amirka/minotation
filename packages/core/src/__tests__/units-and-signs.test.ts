@@ -1268,3 +1268,62 @@ describe('составные значения по слотам: fx, col, tem, c
     expect(compile(['col_--n_30em']).css).toContain('columns:var(--n) 30em');
   });
 });
+
+describe('дорожки и позиции сетки', () => {
+  const TRACKS: Array<[string, string]> = [
+    ['gtc1fr_1fr', 'grid-template-columns:1fr 1fr'],
+    ['gtc50%', 'grid-template-columns:50%'],
+    ['gtcNone', 'grid-template-columns:none'],
+    ['gtcAuto', 'grid-template-columns:auto'],
+    ['gtcMinContent', 'grid-template-columns:min-content'],
+    ['gtcSubgrid', 'grid-template-columns:subgrid'],
+    ['gtc_repeat\\(3,1fr\\)', 'grid-template-columns:repeat(3,1fr)'],
+    ['gtr_minmax\\(100px,1fr\\)', 'grid-template-rows:minmax(100px,1fr)'],
+    ['gtc_\\[a\\]_1fr', 'grid-template-columns:[a] 1fr'],
+    ['gac1fr', 'grid-auto-columns:1fr'],
+    ['garAuto', 'grid-auto-rows:auto'],
+  ];
+
+  test.each(TRACKS)('%s → %s', (token, expected) => {
+    const at = expected.indexOf(':');
+    expect(lexer.matchProperty(expected.slice(0, at), expected.slice(at + 1)).matched)
+      .toBeTruthy();
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    ['gtcZzz', 'grid-template-columns:zzz'],
+    ['gtc10zz', 'grid-template-columns:10zz'],
+    ['gtc10', 'grid-template-columns:10'],
+    ['gacZzz', 'grid-auto-columns:zzz'],
+  ])('%s больше не даёт "%s"', (token, wasGiving) => {
+    // Размер дорожки без единицы невалиден, в отличие от голого числа в
+    // других местах нотации.
+    const at = wasGiving.indexOf(':');
+    expect(lexer.matchProperty(wasGiving.slice(0, at), wasGiving.slice(at + 1)).matched)
+      .toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  test('сокращение auto-repeat не задето', () => {
+    expect(compile(['gtcAF240']).css)
+      .toContain('grid-template-columns:repeat(auto-fit, minmax(240px, 1fr))');
+  });
+
+  test.each([
+    ['gr1', 'grid-row:1'],
+    ['gr1/3', 'grid-row:1/3'],
+    ['gc1/-1', 'grid-column:1/-1'],
+    ['grAuto', 'grid-row:auto'],
+    ['grSpan2', 'grid-row:span2'],
+  ])('%s → %s — позиция это номер или имя линии', (token, expected) => {
+    // `<grid-line>` допускает почти любой идентификатор, поэтому `span2` и
+    // `zzz` — законные имена линий, и проверять там почти нечего.
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test('gr10px бракуется — длина в позиции бессмысленна', () => {
+    expect(lexer.matchProperty('grid-row', '10px').matched).toBeFalsy();
+    expect(compile(['gr10px']).css).toBe('');
+  });
+});

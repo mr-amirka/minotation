@@ -1134,6 +1134,64 @@ function counterValue(
   }
   return parts.join(' ');
 }
+/** Ключевые слова дорожек сетки. */
+const TRACK_KEYWORDS = wordsSet('none auto min-content max-content subgrid');
+/** Размер дорожки: длина, процент или доля свободного места (`1fr`). */
+const REGEXP_TRACK_SIZE = new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:'
+  + UNITS.join('|') + '|fr))$');
+/** Имя линии сетки — в квадратных скобках: `[a] 1fr`. */
+const REGEXP_LINE_NAME = /^\[[^\]]*\]$/;
+
+/**
+ * Дорожки сетки: `gtc`, `gtr`, `gac`, `gar`.
+ *
+ * Были permissive pass-through: `gtcZzz` давало
+ * `grid-template-columns:zzz`, `gtc10zz` — `10zz`, `gtc10` — `10` (размер
+ * дорожки без единицы невалиден, в отличие от голого числа в других местах
+ * нотации).
+ *
+ * Функции (`repeat()`, `minmax()`, `fit-content()`) и имена линий (`[a]`)
+ * проходят как есть: их содержимое здесь не разобрать, а валидны они по
+ * грамматике.
+ */
+function trackValue(
+  parts: string[], raw: string, essenceName: string,
+): string {
+  const l = parts.length;
+  let i = 0;
+  let part: string;
+  for (; i < l; i++) {
+    part = parts[i];
+    (part.indexOf('(') > -1
+      || TRACK_KEYWORDS[part]
+      || REGEXP_TRACK_SIZE.test(part)
+      || REGEXP_LINE_NAME.test(part))
+      || throwInvalid('Значение "' + raw + '" не распознано: у "' + essenceName
+        + '" дорожка — размер (длина, процент, fr), ключевое слово или функция');
+  }
+  return parts.join(' ');
+}
+
+/**
+ * Позиция в сетке: `gr`, `gc`. По грамматике это `<grid-line>`, то есть почти
+ * любой идентификатор (`span2` и `zzz` — законные имена линий), поэтому
+ * проверять остаётся немногое: длина в этой позиции бессмысленна.
+ */
+function gridLineValue(
+  parts: string[], raw: string, essenceName: string,
+): string {
+  const l = parts.length;
+  let i = 0;
+  let part: string;
+  for (; i < l; i++) {
+    part = parts[i];
+    (part.indexOf('(') > -1 || !REGEXP_LENGTH_PART.test(part) || part === '0')
+      || throwInvalid('Значение "' + raw + '" не распознано: у "' + essenceName
+        + '" позиция — номер линии, её имя или `span N`, но не длина');
+  }
+  return parts.join(' ');
+}
+
 /**
  * Свойство → разбор его значения по слотам. Ключ — имя свойства, как и у
  * {@link ENUM_KEYWORDS}: сам факт наличия означает «здесь слоты».
@@ -1141,6 +1199,12 @@ function counterValue(
 const SLOT_VALIDATORS: Record<string, (
   parts: string[], raw: string, essenceName: string,
 ) => string> = {
+  gridTemplateColumns: trackValue,
+  gridTemplateRows: trackValue,
+  gridAutoColumns: trackValue,
+  gridAutoRows: trackValue,
+  gridRow: gridLineValue,
+  gridColumn: gridLineValue,
   flex: flexValue,
   columns: columnsValue,
   textEmphasis: textEmphasisValue,

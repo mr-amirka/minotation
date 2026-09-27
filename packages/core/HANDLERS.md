@@ -1097,6 +1097,38 @@ coi10   →  counter-increment:10
 
 ## Grid
 
+### Дорожки: `gtc`, `gtr`, `gac`, `gar`
+
+Часть дорожки — размер (длина, процент, `fr`), ключевое слово, функция или имя
+линии:
+
+| Токен | CSS |
+|-------|-----|
+| `gtc1fr_1fr` | `grid-template-columns:1fr 1fr` |
+| `gtc50%` | `grid-template-columns:50%` |
+| `gtcNone`, `gtcAuto`, `gtcMinContent`, `gtcSubgrid` | соответствующее слово |
+| `gtc_repeat\(3,1fr\)` | `repeat(3,1fr)` |
+| `gtr_minmax\(100px,1fr\)` | `minmax(100px,1fr)` |
+| `gtc_\[a\]_1fr` | `[a] 1fr` — имя линии, скобки экранируются |
+
+**Размер дорожки без единицы невалиден**, в отличие от голого числа в остальной
+нотации: `gtc10` бракуется, нужно `gtc10px` или `gtc10fr`. До 2026-09-27
+проходило как есть — вместе с `gtcZzz` → `zzz` и `gtc10zz` → `10zz`.
+
+### Позиции: `gr`, `gc`
+
+| Токен | CSS |
+|-------|-----|
+| `gr1` | `grid-row:1` |
+| `gr1/3` | `grid-row:1/3` |
+| `gc1/-1` | `grid-column:1/-1` |
+| `grAuto` | `grid-row:auto` |
+
+Здесь проверяется немногое: по грамматике `<grid-line>` допускает почти любой
+идентификатор, так что `grSpan2` и `grZzz` — законные имена линий. Бракуется
+только длина: `gr10px`.
+
+
 | Токен | CSS |
 |-------|-----|
 | `gtc1fr_auto` | `grid-template-columns:1fr auto` |

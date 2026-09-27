@@ -1180,6 +1180,84 @@ function assertGradientStops(
         + '" стопы градиента — цвета или переменные');
   }
 }
+/** Слова, допустимые в `grid` помимо дорожек. */
+const GRID_KEYWORDS = wordsSet('none auto-flow dense');
+/** Область сетки — строка в кавычках: `"a b"`. */
+const REGEXP_GRID_AREA = /^(?:"[^"]*"|'[^']*')$/;
+/** Начало строки в кавычках, которая ещё не закрыта. */
+const REGEXP_QUOTE_OPEN = /^["'][^"']*$/;
+/**
+ * Склеивает части, разорванные пробелом внутри кавычек.
+ *
+ * `gt_"a_b"_1fr` даёт значение `"a b" 1fr`, а разбиение по пробелам —
+ * `['"a', 'b"', '1fr']`. Проверке нужна целая область.
+ */
+function joinQuoted(parts: string[]): string[] {
+  const l = parts.length;
+  const out: string[] = [];
+  let i = 0;
+  let open = 0;
+  for (; i < l; i++) {
+    if (open) {
+      out[out.length - 1] += ' ' + parts[i];
+      REGEXP_GRID_AREA.test(out[out.length - 1]) && (open = 0);
+      continue;
+    }
+    out.push(parts[i]);
+    REGEXP_QUOTE_OPEN.test(parts[i]) && (open = 1);
+  }
+  return out;
+}
+
+/**
+ * `grid` и `grid-template`.
+ *
+ * Были permissive pass-through, поэтому `g10zz` давало `grid:10zz`, `gZzz` —
+ * `grid:zzz`, `g10px` — `grid:10px`.
+ *
+ * Отдельно стоит форма `g_1fr_1fr`: она работала, но по грамматике
+ * **невалидна** — `grid` это либо `none`, либо области в кавычках, либо
+ * `строки / столбцы`. Одним списком дорожек задаётся `gtc`/`gtr`, не `g`.
+ *
+ * Части значения: область (`"a b"`), разделитель `/`, ключевое слово
+ * (`auto-flow`, `dense`, `none`), размер дорожки, имя линии или функция.
+ */
+function gridValue(
+  source: string[], raw: string, essenceName: string,
+): string {
+  // Область из нескольких слов (`"a b"`) приходит разбитой по пробелам —
+  // склеиваем обратно, иначе `"a` не опознаётся как область.
+  const parts = joinQuoted(source);
+  const l = parts.length;
+  const prefix = 'Значение "' + raw + '" не распознано: у "' + essenceName + '" ';
+  let i = 0;
+  let part: string;
+  let hasShape = 0;
+  for (; i < l; i++) {
+    part = parts[i];
+    if (part === '/' || REGEXP_GRID_AREA.test(part)) {
+      // И то, и другое задаёт форму сетки: `строки / столбцы` либо области.
+      hasShape = 1;
+      continue;
+    }
+    if (GRID_KEYWORDS[part]) {
+      part === 'none' && (hasShape = 1);
+      continue;
+    }
+    (part.indexOf('(') > -1
+      || TRACK_KEYWORDS[part]
+      || REGEXP_TRACK_SIZE.test(part)
+      || REGEXP_LINE_NAME.test(part))
+      || throwInvalid(prefix + 'ожидается область в кавычках, размер дорожки, '
+        + '`auto-flow` или разделитель "/"');
+  }
+  // Список дорожек без «/» и без областей — это `gtc`/`gtr`, а не `g`:
+  // `grid: 1fr 1fr` по грамматике невалиден.
+  hasShape || throwInvalid(prefix + 'нужны области в кавычках либо '
+    + '"строки / столбцы"; один список дорожек задаётся через "gtc"/"gtr"');
+  return parts.join(' ');
+}
+
 /** Повтор рамочной картинки. */
 const BORDER_IMAGE_REPEAT = wordsSet('stretch repeat round space none fill');
 /** Слайс рамки: число без единицы или процент. */
@@ -1348,6 +1426,8 @@ const SLOT_VALIDATORS: Record<string, (
 ) => string> = {
   flexFlow: flexFlowValue,
   transitionProperty: transitionPropertyValue,
+  grid: gridValue,
+  gridTemplate: gridValue,
   gridTemplateColumns: trackValue,
   gridTemplateRows: trackValue,
   gridAutoColumns: trackValue,

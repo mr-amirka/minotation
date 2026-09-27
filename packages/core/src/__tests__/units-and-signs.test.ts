@@ -1143,11 +1143,13 @@ describe('список переменных через `;` и запятую', (
   test('без `;` запятая после имени остаётся фолбэком', () => {
     // `var(--mono, serif)` — штатная конструкция CSS, и ломать её нельзя.
     expect(compile(['ff--mono,serif']).css).toContain('font-family:var(--mono,serif)');
-    expect(compile(['g_--a,--b']).css).toContain('grid:var(--a,--b)');
+    expect(compile(['gtc_--a,--b']).css)
+      .toContain('grid-template-columns:var(--a,--b)');
   });
 
   test('пробел между переменными — через `_`, как и везде', () => {
-    expect(compile(['g_--rows;_--cols']).css).toContain('grid:var(--rows) var(--cols)');
+    expect(compile(['gtc_--rows;_--cols']).css)
+      .toContain('grid-template-columns:var(--rows) var(--cols)');
     expect(compile(['gtc_--a;_--b']).css)
       .toContain('grid-template-columns:var(--a) var(--b)');
   });
@@ -1157,9 +1159,8 @@ describe('`;` между переменными — разделитель ча�
   // Писать `g--a;_--b` было лишним церемониалом: между двумя переменными
   // подряд другого смысла у `;` нет. Запятая по-прежнему пишется явно.
   test.each([
-    ['g--a;--b', 'grid:var(--a) var(--b)'],
-    ['g--a;--b;--c', 'grid:var(--a) var(--b) var(--c)'],
     ['gtc--a;--b', 'grid-template-columns:var(--a) var(--b)'],
+    ['gtc--a;--b;--c', 'grid-template-columns:var(--a) var(--b) var(--c)'],
     ['col--a;--b', 'columns:var(--a) var(--b)'],
     ['tn--a;--b', 'transition:var(--a) var(--b)'],
   ])('%s → %s', (token, expected) => {
@@ -1167,12 +1168,15 @@ describe('`;` между переменными — разделитель ча�
   });
 
   test('ведущий `_` для этого не нужен, но и не мешает', () => {
-    expect(compile(['g_--a;--b']).css).toContain('grid:var(--a) var(--b)');
-    expect(compile(['g--a;_--b']).css).toContain('grid:var(--a) var(--b)');
+    expect(compile(['gtc_--a;--b']).css)
+      .toContain('grid-template-columns:var(--a) var(--b)');
+    expect(compile(['gtc--a;_--b']).css)
+      .toContain('grid-template-columns:var(--a) var(--b)');
   });
 
   test('запятая остаётся явной', () => {
-    expect(compile(['g--a;,--b']).css).toContain('grid:var(--a),var(--b)');
+    expect(compile(['gtc--a;,--b']).css)
+      .toContain('grid-template-columns:var(--a),var(--b)');
   });
 
   test('три дефиса — это вычитание, а не разделитель', () => {
@@ -1531,5 +1535,48 @@ describe('border-image: источник, слайсы, ширина после 
     expect(lexer.matchProperty(wasGiving.slice(0, at), wasGiving.slice(at + 1)).matched)
       .toBeFalsy();
     expect(compile([token]).css).toBe('');
+  });
+});
+
+describe('grid и grid-template', () => {
+  const OK: Array<[string, string]> = [
+    ['gNone', 'grid:none'],
+    ['g_1fr_/_1fr', 'grid:1fr / 1fr'],
+    ['g_"a"_1fr', 'grid:"a" 1fr'],
+    ['g_auto-flow_1fr_/_1fr', 'grid:auto-flow 1fr / 1fr'],
+    ['g_auto-flow_/_1fr', 'grid:auto-flow / 1fr'],
+    ['gt_"a_b"_1fr', 'grid-template:"a b" 1fr'],
+    ['gt_"a_b"_1fr_/_auto', 'grid-template:"a b" 1fr / auto'],
+  ];
+
+  test.each(OK)('%s → %s', (token, expected) => {
+    const at = expected.indexOf(':');
+    expect(lexer.matchProperty(expected.slice(0, at), expected.slice(at + 1)).matched)
+      .toBeTruthy();
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    ['g10zz', 'grid:10zz'],
+    ['gZzz', 'grid:zzz'],
+    ['g10px', 'grid:10px'],
+  ])('%s больше не даёт "%s"', (token, wasGiving) => {
+    const at = wasGiving.indexOf(':');
+    expect(lexer.matchProperty(wasGiving.slice(0, at), wasGiving.slice(at + 1)).matched)
+      .toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  test('подстановка проходит — арбитр её не разбирает, а по спецификации она валидна', () => {
+    expect(compile(['g--v']).css).toContain('grid:var(--v)');
+  });
+
+  test('g_1fr_1fr бракуется — это не форма `grid`', () => {
+    // Работало, но по грамматике невалидно: `grid` — либо `none`, либо
+    // области в кавычках, либо «строки / столбцы». Один список дорожек
+    // задаётся через `gtc`/`gtr`.
+    expect(lexer.matchProperty('grid', '1fr 1fr').matched).toBeFalsy();
+    expect(compile(['g_1fr_1fr']).css).toBe('');
+    expect(compile(['gtc1fr_1fr']).css).toContain('grid-template-columns:1fr 1fr');
   });
 });

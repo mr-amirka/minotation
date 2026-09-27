@@ -238,8 +238,6 @@ describe('все хендлеры стандартного пресета: пе�
     // хендлеры со свободным составным значением — те, ради которых проверки
     // ниже и написаны.
     expect(MULTIPART_HANDLERS).toEqual(expect.arrayContaining([
-      'g',
-      'gt',
       'gr',
       'gc',
       'tp',
@@ -296,7 +294,7 @@ describe('представители классов разбора — точн�
       ['tn_--a_--b', 'transition:var(--a) var(--b)'],
       ['tnAll_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
       ['tn_all_0.2s_---safe', 'transition:all 0.2s env(--safe)'],
-      ['g_a\\.b', 'grid:a.b'],
+      ['cnt_a\\.b', 'content:"a.b"'],
       ['pos--v', 'position:var(--v)'],
     ]],
     ['border-style (свой sidesSetter)', [

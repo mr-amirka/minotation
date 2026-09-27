@@ -70,7 +70,8 @@ describe('CSS-переменные в составном значении', () =
     // `--line_soft`. Именно поэтому для имён с `_` нужен `;` (тесты ниже).
     // Проверяется разбор переменной, поэтому хендлер взят свободный: `tn`
     // с 2026-09-26 проверяет слоты и `soft` в них не укладывается.
-    expect(cssOf('g_--line\\_soft')).toBe('grid:var(--line) soft');
+    expect(cssOf('tp_--line\\_soft'))
+      .toBe('transition-property:var(--line) soft');
   });
 });
 

@@ -238,8 +238,6 @@ describe('все хендлеры стандартного пресета: пе�
     // хендлеры со свободным составным значением — те, ради которых проверки
     // ниже и написаны.
     expect(MULTIPART_HANDLERS).toEqual(expect.arrayContaining([
-      'gr',
-      'gc',
       'tp',
       'coi',
       'cor',

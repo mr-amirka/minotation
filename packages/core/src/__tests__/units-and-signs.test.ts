@@ -1580,3 +1580,26 @@ describe('grid и grid-template', () => {
     expect(compile(['gtc1fr_1fr']).css).toContain('grid-template-columns:1fr 1fr');
   });
 });
+
+describe('последние пограничные случаи', () => {
+  test.each([['gr10_20', 'grid-row:10 20'], ['gc10_20', 'grid-column:10 20']])('%s больше не даёт "%s" — вторая позиция через «/»', (token, wasGiving) => {
+    const at = wasGiving.indexOf(':');
+    expect(lexer.matchProperty(wasGiving.slice(0, at), wasGiving.slice(at + 1)).matched)
+      .toBeFalsy();
+    expect(compile([token]).css).toBe('');
+    expect(compile(['gr1/3']).css).toContain('grid-row:1/3');
+  });
+
+  test('tsa0 бракуется — ноль без единицы тоже не процент', () => {
+    // `lengthOrWord` отдаёт ноль без единицы, как и положено длинам, но
+    // `text-size-adjust:0` невалиден.
+    expect(lexer.matchProperty('text-size-adjust', '0').matched).toBeFalsy();
+    expect(compile(['tsa0']).css).toBe('');
+    expect(compile(['tsa10']).css).toContain('text-size-adjust:10%');
+  });
+
+  test.each(['maskbg1.5', 'maskbg10.5'])('%s бракуется — дробь разбиралась как цвет с альфой', (token) => {
+    // Давало `mask-image:rgba(17,17,17,.5)`, а цвет `mask-image` не принимает.
+    expect(compile([token]).css).toBe('');
+  });
+});

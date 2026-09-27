@@ -1351,6 +1351,10 @@ function gridLineValue(
 ): string {
   const l = parts.length;
   const prefix = 'Значение "' + raw + '" не распознано: у "' + essenceName + '" ';
+  // Две позиции разделяются `/`, а не пробелом: `gr10_20` давало
+  // `grid-row:10 20` — по грамматике там `<grid-line> [ / <grid-line> ]?`.
+  (l < 2 || parts.indexOf('/') > -1 || parts[0] === 'span')
+    || throwInvalid(prefix + 'вторая позиция пишется через "/" — `gr1/3`');
   let i = 0;
   let part: string;
   for (; i < l; i++) {
@@ -1733,6 +1737,17 @@ export default (mn: MnInstance) => {
    * @param allow — флаги допустимого, см. {@link LENGTH_PERCENT}
    * @param defaultUnit — единица для голого числа
    */
+  /**
+   * У свойства только процент: ни другой единицы, ни голого нуля.
+   *
+   * Ноль — особый случай: {@link lengthOrWord} отдаёт его без единицы, как
+   * и положено длинам, но `text-size-adjust:0` невалиден.
+   */
+  function assertPercentOnly(p: any): void {
+    (p.num === '0' || (p.unit && p.unit !== '%'))
+      && throwInvalid('Значение "' + p.suffix + '" не распознано: '
+        + 'text-size-adjust задаётся процентом');
+  }
   function lengthOrWord(
     p: any,
     keywords: Record<string, 1>,
@@ -2350,7 +2365,7 @@ export default (mn: MnInstance) => {
       // `mask-image` цвета не принимает вовсе — маска задаётся градиентом или
       // картинкой. Одиночный цвет там давал заведомо нерабочее правило
       // (`maskbgF00` → `mask-image:#f00`).
-      propName === 'maskImage' && first[0] === '#'
+      propName === 'maskImage' && (first[0] === '#' || first.indexOf('rgba(') === 0)
         && throwInvalid('Значение "' + v + '" не распознано: у "' + p.name
           + '" маска задаётся градиентом (`maskbgF00-00F`) или переменной, '
           + 'одиночный цвет `mask-image` не принимает');
@@ -3267,10 +3282,9 @@ export default (mn: MnInstance) => {
         }) : (p.value ? styleWrap({
           // По грамматике это `none | auto | <percentage>`: единица по
           // умолчанию `%`, любая другая недопустима. Было `px`, поэтому
-          // `tsa10` давало `text-size-adjust:10px`, а `tsa10px` проходило.
-          textSizeAdjust: ((p.unit && p.unit !== '%')
-            && throwInvalid('Значение "' + p.suffix + '" не распознано: '
-              + 'text-size-adjust задаётся процентом'),
+          // `tsa10` давало `text-size-adjust:10px`, `tsa10px` проходило, а
+          // `tsa0` давало `text-size-adjust:0` — ноль там тоже невалиден.
+          textSizeAdjust: (assertPercentOnly(p),
           lengthOrWord(
             p, TEXT_SIZE_ADJUST_KEYWORDS, LENGTH_PERCENT,
             '%', TEXT_SIZE_ADJUST_SYNONYMS,

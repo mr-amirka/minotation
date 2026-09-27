@@ -1180,6 +1180,46 @@ function assertGradientStops(
         + '" стопы градиента — цвета или переменные');
   }
 }
+/** Повтор рамочной картинки. */
+const BORDER_IMAGE_REPEAT = wordsSet('stretch repeat round space none fill');
+/** Слайс рамки: число без единицы или процент. */
+const REGEXP_BORDER_SLICE = /^[0-9]*\.?[0-9]+%?$/;
+/**
+ * `border-image`: источник, слайсы, ширина, отступ, повтор.
+ *
+ * Был permissive pass-through, поэтому `bi10px` давало `border-image:10px`,
+ * `biZzz` — `border-image:zzz`, `biF00` — `border-image:f00`. Одна длина
+ * значением `border-image` быть не может: там либо картинка, либо `none`,
+ * либо слайсы (числа без единицы).
+ *
+ * Содержимое функций (`url()`, градиенты) здесь не разбирается: по грамматике
+ * они валидны как источник.
+ */
+function borderImageValue(
+  parts: string[], raw: string, essenceName: string,
+): string {
+  const l = parts.length;
+  let i = 0;
+  let part: string;
+  let afterSlash = 0;
+  for (; i < l; i++) {
+    part = parts[i];
+    if (part === '/') {
+      afterSlash = 1;
+      continue;
+    }
+    // Длина — это ширина рамки, она идёт ПОСЛЕ `/`. До него допустимы только
+    // картинка, слайсы (числа без единицы) и повтор: одна длина значением
+    // `border-image` быть не может (`bi10px` давало `border-image:10px`).
+    (part.indexOf('(') > -1
+      || BORDER_IMAGE_REPEAT[part]
+      || REGEXP_BORDER_SLICE.test(part)
+      || (afterSlash && REGEXP_LENGTH_PART.test(part)))
+      || throwInvalid('Значение "' + raw + '" не распознано: у "' + essenceName
+        + '" ожидается картинка, слайсы (числа), затем после "/" ширина');
+  }
+  return parts.join(' ');
+}
 /** Ключевые слова дорожек сетки. */
 const TRACK_KEYWORDS = wordsSet('none auto min-content max-content subgrid');
 /** Размер дорожки: длина, процент или доля свободного места (`1fr`). */
@@ -2416,9 +2456,13 @@ export default (mn: MnInstance) => {
     );
     mn('bi' + suffix, (p) => {
       let s;
-      return styleWrap(biSidesSet((s = p.suffix)
-        ? valueNormalize(s)
-        : 'none'), priority + 1);
+      if (!(s = p.suffix)) {
+        return styleWrap(biSidesSet('none'), priority + 1);
+      }
+      const value = valueNormalize(s);
+      return styleWrap(biSidesSet(borderImageValue(
+        value.split(' '), s, 'bi' + suffix,
+      )), priority + 1);
     });
   });
 

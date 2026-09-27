@@ -1143,6 +1143,43 @@ function counterValue(
  */
 const FILTER_FUNCTIONS = wordsSet('blur brightness contrast drop-shadow grayscale'
   + ' hue-rotate invert opacity saturate sepia');
+/**
+ * Что может получиться у `bg`/`maskbg`: цвет, вызов функции (градиент,
+ * `rgba`, `var`) или ключевое слово цвета.
+ *
+ * Мини-язык этого хендлера закрыт по решению владельца 2026-09-26: картинка,
+ * позиция, размер и повтор задаются атомарными `bgi`, `bgpx`/`bgpy`, `bgs`,
+ * `bgr`.
+ */
+const REGEXP_BACKGROUND_RESULT = /^(?:#[0-9a-f]{3,8}|[a-zA-Z-]+\(|currentColor|transparent)/;
+/** Начало градиента в готовом значении — до списка стопов. */
+const REGEXP_GRADIENT_HEAD = /^(?:repeating-)?(?:linear|radial|conic)-gradient\(/;
+/** Стоп градиента: цвет, подстановка или ключевое слово цвета. */
+const REGEXP_GRADIENT_STOP
+  = /^(?:#[0-9a-f]{3,8}|(?:var|env|rgba?|hsla?)\(|currentColor|transparent)/i;
+/**
+ * Бракует градиент, у которого стоп не является цветом.
+ *
+ * Мини-язык `bg` собирает градиент из частей суффикса, не проверяя их, поэтому
+ * `bg100%-20px` давало `linear-gradient(180deg,100% 0%,20px 100%)` — правило
+ * синтаксически целое, но нерабочее.
+ */
+function assertGradientStops(
+  value: string, raw: string, name: string,
+): void {
+  const head = REGEXP_GRADIENT_HEAD.exec(value);
+  if (!head) {
+    return;
+  }
+  // Первый аргумент — направление (`180deg`, `circle`), дальше идут стопы.
+  const stops = value.slice(head[0].length, -1).split(',');
+  let i = stops.length;
+  while (--i > 0) {
+    REGEXP_GRADIENT_STOP.test(stops[i].trim())
+      || throwInvalid('Значение "' + raw + '" не распознано: у "' + name
+        + '" стопы градиента — цвета или переменные');
+  }
+}
 /** Ключевые слова дорожек сетки. */
 const TRACK_KEYWORDS = wordsSet('none auto min-content max-content subgrid');
 /** Размер дорожки: длина, процент или доля свободного места (`1fr`). */
@@ -2165,9 +2202,41 @@ export default (mn: MnInstance) => {
       // проверять здесь нечем.
       assertColorAbbr(p);
       REGEXP_PLAIN_HEX.test(p.suffix) && assertShortestHex(p, p.suffix);
-      return (v = p.suffix)
-        ? (style = {}, style[propName] = colorGetBackground(v), styleWrap(style))
-        : normalizeDefault(p);
+      if (!(v = p.suffix)) {
+        return normalizeDefault(p);
+      }
+      // `colorGetBackground` возвращает СПИСОК значений (браузерные варианты
+      // одного фона), поэтому проверяется первое — форма у них одна.
+      const result = colorGetBackground(v);
+      const first: string = '' + result[0];
+      // Проверяется РЕЗУЛЬТАТ, а не суффикс: мини-язык фона богаче, чем можно
+      // описать одной регуляркой на вход (угол `_g90`, радиальный `_r`,
+      // повторяющийся `_rpt`, переменные через `;`). Зато результат всегда
+      // одной из трёх форм — цвет, функция или подстановка.
+      //
+      // Числовые формы доходили до вывода как есть: `bg10zz` давало
+      // `background:10zz`, `bg1/2` — `background:1/2`, `bg10_20` —
+      // `background:10_20`.
+      REGEXP_BACKGROUND_RESULT.test(first)
+        || throwInvalid('Значение "' + v + '" не распознано: у "' + p.name
+          + '" ожидается цвет (`F00`), градиент (`F00-00F`) или переменная');
+      // Проверки формы результата мало: мусор ВНУТРИ градиента в неё
+      // укладывается — `bg100%-20px` собиралось в
+      // `linear-gradient(180deg,100% 0%,20px 100%)`. Поэтому у градиента
+      // проверяется каждый стоп.
+      assertGradientStops(
+        first, v, p.name,
+      );
+      // `mask-image` цвета не принимает вовсе — маска задаётся градиентом или
+      // картинкой. Одиночный цвет там давал заведомо нерабочее правило
+      // (`maskbgF00` → `mask-image:#f00`).
+      propName === 'maskImage' && first[0] === '#'
+        && throwInvalid('Значение "' + v + '" не распознано: у "' + p.name
+          + '" маска задаётся градиентом (`maskbgF00-00F`) или переменной, '
+          + 'одиночный цвет `mask-image` не принимает');
+      style = {};
+      style[propName] = result;
+      return styleWrap(style);
     };
   }
 

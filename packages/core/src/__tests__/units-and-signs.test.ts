@@ -1459,3 +1459,47 @@ describe('фильтры, text-size-adjust, позиции сетки', () => {
     expect(compile([token]).css).toContain(expected);
   });
 });
+
+describe('фон и маска: только цвет, градиент или подстановка', () => {
+  test.each([
+    ['bgF00', 'background:#f00'],
+    ['bgF00.5', 'background:rgba(255,0,0,.5)'],
+    ['bgF00-00F', 'background:linear-gradient(180deg,#f00 0%,#00f 100%)'],
+    ['bg--v', 'background:var(--v)'],
+    ['bgCT', 'background:currentColor'],
+    ['bgT', 'background:transparent'],
+    ['bg0F0-00F_g90', 'background:linear-gradient(270deg,#0f0 0%,#00f 100%)'],
+    ['bgF00-00F_r', 'background:radial-gradient(circle,#f00 0%,#00f 100%)'],
+    ['maskbgF00-00F', 'mask-image:linear-gradient(180deg,#f00 0%,#00f 100%)'],
+    ['maskbg--v', 'mask-image:var(--v)'],
+  ])('%s → %s — мини-язык не задет', (token, expected) => {
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    ['bg10zz', 'background:10zz'],
+    ['bg1/2', 'background:1/2'],
+    ['bg10_20', 'background:10_20'],
+    ['bg+5', 'background:+5'],
+    ['bg10s', 'background:10s'],
+  ])('%s больше не даёт "%s"', (token, wasGiving) => {
+    const at = wasGiving.indexOf(':');
+    expect(lexer.matchProperty(wasGiving.slice(0, at), wasGiving.slice(at + 1)).matched)
+      .toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+
+  test('bg100%-20px больше не собирается в градиент из мусора', () => {
+    // Давало `linear-gradient(180deg,100% 0%,20px 100%)`.
+    expect(compile(['bg100%-20px']).css).toBe('');
+  });
+
+  test.each([
+    'maskbgF00',
+    'maskbg10px',
+    'maskbg',
+  ])('%s бракуется — mask-image цвета не принимает', (token) => {
+    expect(lexer.matchProperty('mask-image', '#f00').matched).toBeFalsy();
+    expect(compile([token]).css).toBe('');
+  });
+});

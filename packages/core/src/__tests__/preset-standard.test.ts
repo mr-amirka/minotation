@@ -252,8 +252,12 @@ describe('Standard preset — object-fit / mask', () => {
     expect(css('maski_a\\.png')).toContain('mask-image:url("a.png")');
   });
 
-  test('maskbgF00 → mask-image:#f00', () => {
-    expect(css('maskbgF00')).toContain('mask-image:#f00');
+  test('maskbgF00 бракуется — mask-image цвета не принимает', () => {
+    // Маска задаётся градиентом или картинкой; одиночный цвет давал
+    // заведомо нерабочее правило (2026-09-27).
+    expect(css('maskbgF00')).toBe('');
+    expect(css('maskbgF00-00F'))
+      .toContain('mask-image:linear-gradient(180deg,#f00 0%,#00f 100%)');
   });
 
   test('masktL → mask-type:luminance', () => {

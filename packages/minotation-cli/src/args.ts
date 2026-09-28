@@ -34,6 +34,8 @@ export interface CliArgs {
   altColor: boolean;
   /** Прерывать работу на первом битом токене. */
   strict: boolean;
+  /** Разбирать JS/TS парсером вместо текстового поиска. */
+  syntax: boolean;
   /** Какие файлы сканировать — регулярное выражение по имени. */
   include?: string;
   /** Какие пропускать — регулярное выражение по пути. */
@@ -56,6 +58,7 @@ const DEFAULTS: CliArgs = {
   watch: false,
   altColor: false,
   strict: false,
+  syntax: false,
   help: false,
   version: false,
 };
@@ -66,6 +69,7 @@ const FLAGS: Record<string, keyof CliArgs> = {
   '--watch': 'watch',
   '--alt-color': 'altColor',
   '--strict': 'strict',
+  '--syntax': 'syntax',
   '-h': 'help',
   '--help': 'help',
   '-v': 'version',
@@ -148,6 +152,7 @@ export const HELP = `
   -p, --prefix <строка>  префикс для всех селекторов
       --alt-color        запасное непрозрачное объявление рядом с rgba
       --strict           прервать работу на первом битом токене
+      --syntax           разбирать JS/TS парсером (точнее, но медленнее)
       --include <regexp> какие файлы сканировать
       --exclude <regexp> какие пропускать
   -v, --version          версия

@@ -36,6 +36,10 @@ import {
   stripComments as stripCommentsImpl,
 } from './extractTokens';
 import {
+  createScanner as createScannerImpl,
+  isSyntaxScannable as isSyntaxScannableImpl,
+} from './scanner';
+import {
   mne as mneImpl,
   mnClass as mnClassImpl,
   mnKey as mnKeyImpl,
@@ -67,6 +71,18 @@ export const extractTokens = extractTokensImpl;
  * до 2026-09-25: `classVarSuffixes` работал только в `minotation-vite`).
  */
 export const scanTokens = scanTokensImpl;
+
+/**
+ * Сканер по настройкам: текстовый или синтаксический (`syntax: true`).
+ *
+ * Плагины должны звать её и передавать имя файла, а не выбирать сканер сами —
+ * по той же причине, по которой они зовут `scanTokens`, а не три механизма
+ * по отдельности.
+ */
+export const createScanner = createScannerImpl;
+
+/** Годится ли файл для синтаксического разбора — проверка без загрузки парсера. */
+export const isSyntaxScannable = isSyntaxScannableImpl;
 export const extractClassVarTokens = extractClassVarTokensImpl;
 export const extractMergeCallTokens = extractMergeCallTokensImpl;
 
@@ -90,6 +106,9 @@ export const mnMap = mnMapImpl;
 export type {
   ScanTokensOptions,
 } from './extractTokens';
+export type {
+  ScannerOptions, Scanner,
+} from './scanner';
 export type {
   MnInstance,
 } from './types';

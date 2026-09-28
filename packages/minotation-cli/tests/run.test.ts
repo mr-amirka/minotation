@@ -146,6 +146,10 @@ describe('mergeSettings', () => {
     expect(mergeSettings(parseArgs([]), {
       strict: true,
     }).strict).toBe(true);
+    expect(mergeSettings(parseArgs(['--syntax']), {}).syntax).toBe(true);
+    expect(mergeSettings(parseArgs([]), {
+      syntax: true,
+    }).syntax).toBe(true);
   });
 
   test('файл конфигурации не сканируется как исходник', () => {
@@ -214,6 +218,24 @@ describe('build', () => {
   });
 });
 
+/**
+ * Ждёт выполнения условия, опрашивая его.
+ *
+ * Фиксированная пауза здесь не годится: наблюдение перестраивается за
+ * миллисекунды на обычном прогоне и заметно дольше под сбором покрытия — тест
+ * с паузой в 400 мс падал именно там.
+ */
+async function until(check: () => boolean, what: string): Promise<void> {
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    if (check()) {
+      return;
+    }
+    await new Promise((done) => setTimeout(done, 25));
+  }
+  throw new Error('не дождались: ' + what);
+}
+
 describe('startWatch', () => {
   test('пересобирает при изменении файла', async () => {
     write('a.html', '<div class="p10">');
@@ -225,8 +247,9 @@ describe('startWatch', () => {
     try {
       write('b.html', '<div class="m20">');
       // Пересборка отложена на 50 мс, чтобы одно сохранение не запускало её
-      // трижды — ждём с запасом.
-      await new Promise((done) => setTimeout(done, 400));
+      // трижды.
+      await until(() => existsSync(out) && readFileSync(out, 'utf8').includes('margin:20px'),
+        'пересборка после изменения файла');
       expect(readFileSync(out, 'utf8')).toContain('margin:20px');
     } finally {
       stop();
@@ -243,7 +266,7 @@ describe('startWatch', () => {
     }, report);
     try {
       write('b.html', '<div class="m20">');
-      await new Promise((done) => setTimeout(done, 400));
+      await until(() => errors.length > 0, 'сообщение об ошибке пересборки');
       expect(errors.length).toBeGreaterThan(0);
     } finally {
       stop();

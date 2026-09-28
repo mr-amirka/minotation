@@ -81,6 +81,7 @@ describe('parseArgs', () => {
   });
 
   test.each([
+    [['--syntax'], 'syntax'],
     [['-w'], 'watch'],
     [['--watch'], 'watch'],
     [['--alt-color'], 'altColor'],

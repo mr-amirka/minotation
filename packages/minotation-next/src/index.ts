@@ -27,6 +27,27 @@ export interface MnNextOptions extends MnWebpackPluginOptions {
    * @default true
    */
   enabled?: boolean;
+  /**
+   * Атрибуты, в значениях которых ищутся токены.
+   * @default ['class', 'className']
+   */
+  attrs?: string[];
+  /**
+   * Суффиксы имён переменных со списком токенов (`const thClass = 'py12'`).
+   * Пустой массив отключает механизм. @default ['Class']
+   */
+  classVarSuffixes?: string[];
+  /**
+   * Имена функций слияния, чьи строковые аргументы сканируются.
+   * Пустой массив отключает механизм. @default ['mne', 'mnClass']
+   */
+  mergeFnNames?: string[];
+  /**
+   * `true` — разбирать `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
+   * Цена — необязательная peer-зависимость `typescript` и примерно
+   * шестикратное время разбора файла. @default false
+   */
+  syntax?: boolean;
 }
 
 const DEFAULT_OPTIONS: MnNextOptions = {
@@ -64,7 +85,15 @@ export function withMn(
         test: /\.(tsx|jsx|html|php)$/,
         use: {
           loader: 'minotation-webpack/dist/loader',
-          options: { attrs: ['class', 'className'] },
+          // Опции сканера прокидываются из `mnOptions`, а не задаются здесь:
+          // пока они были прописаны в этом месте, ни `classVarSuffixes`, ни
+          // `mergeFnNames` до лоадера не доходили вовсе.
+          options: {
+            attrs: opts.attrs || ['class', 'className'],
+            classVarSuffixes: opts.classVarSuffixes,
+            mergeFnNames: opts.mergeFnNames,
+            syntax: opts.syntax,
+          },
         },
       });
 

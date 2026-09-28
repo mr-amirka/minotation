@@ -17,6 +17,10 @@
     "./mne": {
       "types": "./dist/mne.d.ts",
       "default": "./dist/mne.js"
+    },
+    "./syntax": {
+      "types": "./dist/syntaxScan.d.ts",
+      "default": "./dist/syntaxScan.js"
     }
   },
   "scripts": {
@@ -47,5 +51,13 @@
     "postcss": "^8.5.15",
     "ts-jest": "^29.0.0",
     "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
   }
 }

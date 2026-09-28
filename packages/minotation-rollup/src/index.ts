@@ -2,7 +2,7 @@ import type { Plugin, PluginContext } from 'rollup';
 import type { MnWarning } from 'minotation';
 import {
   minotationProvider,
-  scanTokens,
+  createScanner,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -38,6 +38,19 @@ export interface MnRollupOptions {
    * @default ['mne', 'mnClass']
    */
   mergeFnNames?: string[];
+  /**
+   * `true` — разбирать `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
+   *
+   * Снимает ложные токены из мест, которые текстовый сканер не отличает от
+   * кода: примеры разметки в JSDoc, закомментированный код, строки с кавычками
+   * внутри регулярных литералов. Цена — необязательная peer-зависимость
+   * `typescript` и примерно шестикратное время разбора файла (76 мкс против
+   * 12 мкс на образце из `__benchmarks__`). Файлы прочих форматов сканируются
+   * текстом в любом случае.
+   *
+   * @default false
+   */
+  syntax?: boolean;
 
   /** Расширения файлов приложения, в которых ищем токены. @default ['.html','.jsx','.tsx','.vue','.svelte'] */
   extensions?: string[];
@@ -160,11 +173,14 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
 export function mnRollup(options: MnRollupOptions = {}): Plugin {
   const attr = options.attr || 'class';
   // Опции скана собираем один раз на плагин, а не на каждый файл.
-  const scanOptions = {
+  // Сканер собираем один раз на плагин. Выбор способа разбора (текст или
+  // парсер) делает ядро — плагину остаётся дать имя файла.
+  const scan = createScanner({
     attr,
     classVarSuffixes: options.classVarSuffixes,
     mergeFnNames: options.mergeFnNames,
-  };
+    syntax: options.syntax,
+  });
   const exts = options.extensions || ['.html', '.jsx', '.tsx', '.vue', '.svelte'];
   const presetExts = options.presetExtensions || ['.mn.ts', '.mn.js', '.mn.tsx'];
   const fileName = options.fileName || 'mn.css';
@@ -251,7 +267,7 @@ export function mnRollup(options: MnRollupOptions = {}): Plugin {
       for (const file of walkFiles(root, exts)) {
         try {
           const source = readFileSync(file, 'utf-8');
-          const tokens = scanTokens(source, scanOptions);
+          const tokens = scan(source, file);
           if (tokens.length > 0) {
             fileTokens.set(file, new Set(tokens));
           }
@@ -268,7 +284,7 @@ export function mnRollup(options: MnRollupOptions = {}): Plugin {
 
     transform(source: string, id: string) {
       if (!exts.some(ext => id.endsWith(ext))) return null;
-      const tokens = scanTokens(source, scanOptions);
+      const tokens = scan(source, id);
       if (tokens.length > 0) {
         fileTokens.set(id, new Set(tokens));
       }

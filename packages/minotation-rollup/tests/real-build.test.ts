@@ -229,13 +229,16 @@ describe('проброс предупреждений в rollup (Q-07)', () => {
   });
 
   test('битый аргумент настоящего токена доходит', async () => {
+    // Был `p8-12` — он перестал быть битым 2026-09-27: `calc(8px - 12px)` это
+    // валидный CSS, браузер сам зажимает отрицательный результат. Нужен
+    // аргумент, который бракует сам хендлер, — выдуманная единица.
     const root = makeProject({
       'src/main.js': 'export default 1;\n',
-      'src/app.html': '<div class="p8-12"></div>',
+      'src/app.html': '<div class="w10zz"></div>',
     });
     const warnings = await runCollectingWarnings(root);
 
-    expect(warnings.join('\n')).toContain('p8-12');
+    expect(warnings.join('\n')).toContain('w10zz');
   });
 
   test('валидные токены не дают предупреждений', async () => {

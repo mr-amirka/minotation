@@ -1,7 +1,7 @@
 import type { Plugin, ViteDevServer } from 'vite';
 import {
   minotationProvider,
-  scanTokens,
+  createScanner,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -112,6 +112,19 @@ export interface MnViteOptions {
    * mnVite({ mergeFnNames: ['mne', 'mnClass', 'cx'] })
    */
   mergeFnNames?: string[];
+  /**
+   * `true` — разбирать `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
+   *
+   * Снимает ложные токены из мест, которые текстовый сканер не отличает от
+   * кода: примеры разметки в JSDoc, закомментированный код, строки с кавычками
+   * внутри регулярных литералов. Цена — необязательная peer-зависимость
+   * `typescript` и примерно шестикратное время разбора файла (76 мкс против
+   * 12 мкс на образце из `__benchmarks__`). Файлы прочих форматов сканируются
+   * текстом в любом случае.
+   *
+   * @default false
+   */
+  syntax?: boolean;
   /** Опции создания mn-инстанса (selectorPrefix, media, strict, …). */
   mn?: {
     selectorPrefix?: string;
@@ -253,14 +266,20 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
   const exts = options.extensions || ['.html', '.jsx', '.tsx', '.vue', '.svelte'];
   const presetExts = options.presetExtensions || ['.mn.ts', '.mn.js', '.mn.tsx'];
   // Плоский набор: элементы safelist могут содержать несколько токенов через пробел.
-  // Опции скана собираем один раз на плагин, а не на каждый файл.
-  const scanOptions = {
+  // Сканер собираем один раз на плагин, а не на каждый файл. Выбор способа
+  // разбора (текст или парсер) делает ядро — плагину остаётся дать имя файла.
+  const scan = createScanner({
     attr,
     classVarSuffixes: options.classVarSuffixes,
     mergeFnNames: options.mergeFnNames,
-  };
-  /** Все токены файла: атрибут + переменные с суффиксом + аргументы функций слияния. */
-  const collectTokens = (text: string): string[] => scanTokens(text, scanOptions);
+    syntax: options.syntax,
+  });
+  /**
+   * Все токены файла: атрибут + переменные с суффиксом + аргументы функций
+   * слияния. Имя файла нужно, чтобы ядро выбрало способ разбора; там, где его
+   * нет (сам `index.html`), остаётся текстовый.
+   */
+  const collectTokens = (text: string, file?: string): string[] => scan(text, file);
   const safelist: string[] = [];
   for (const line of options.safelist || []) {
     for (const token of line.split(/\s+/)) {
@@ -367,7 +386,7 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
     for (const file of walkFiles(srcDir, exts)) {
       try {
         const source = readFileSync(file, 'utf-8');
-        const tokens = collectTokens(source);
+        const tokens = collectTokens(source, file);
         if (tokens.length > 0) {
           fileTokens.set(file, new Set(tokens));
         }
@@ -429,7 +448,7 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
 
     transform(source: string, id: string) {
       if (!exts.some(ext => id.endsWith(ext))) return null;
-      const tokens = collectTokens(source);
+      const tokens = collectTokens(source, id);
       if (tokens.length > 0) {
         fileTokens.set(id, new Set(tokens));
       }
@@ -516,7 +535,7 @@ if (import.meta.hot) {
         return;
       }
 
-      const tokens = collectTokens(source);
+      const tokens = collectTokens(source, file);
       if (tokens.length > 0) {
         fileTokens.set(file, new Set(tokens));
       } else {

@@ -122,8 +122,12 @@ function isSpaceChar(ch: string): boolean {
  * столько же, сколько атрибутов, переменных и вызовов. Границы слов находятся проходом,
  * наружу уходят сразу готовые подстроки. `replace` тоже пропускается, когда подстановок
  * нет — а их нет в большинстве литералов.
+ *
+ * Экспортируется ради синтаксического сканера (`syntaxScan.ts`) и бенчмарков:
+ * оба обязаны делить разбиение с рабочей реализацией, иначе один сравнивал бы
+ * разные вещи, а второй расходился с текстовым сканером на пустом месте.
  */
-function pushLiteralTokens(out: string[], literal: string): void {
+export function pushLiteralTokens(out: string[], literal: string): void {
   const text = literal.indexOf('${') < 0
     ? literal
     : literal.replace(REGEXP_INTERPOLATION, ' ');
@@ -540,11 +544,3 @@ export function scanTokens(source: string, options: ScanTokensOptions): string[]
   return tokens;
 }
 
-/**
- * Тот же {@link pushLiteralTokens}, экспортированный для бенчмарков.
- *
- * Отклонённый однопроходный вариант сканера живёт в `__benchmarks__/onepass.bench.ts`
- * и должен делить с рабочей реализацией разбиение литерала на токены — иначе сравнение
- * мерило бы разные вещи.
- */
-export const pushLiteralTokensForBench = pushLiteralTokens;

@@ -2,7 +2,7 @@
  * Webpack loader: извлекает MN-токены из исходников.
  */
 import type { LoaderDefinitionFunction } from 'webpack';
-import { scanTokens } from 'minotation';
+import { createScanner } from 'minotation';
 import { getState } from './state';
 
 /** Опции webpack-лоадера MN. */
@@ -24,6 +24,18 @@ interface MnLoaderOptions {
    * @default ['mne', 'mnClass']
    */
   mergeFnNames?: string[];
+  /**
+   * `true` — разбирать `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
+   *
+   * Снимает ложные токены из мест, которые текстовый сканер не отличает от
+   * кода: примеры разметки в JSDoc, закомментированный код, строки с кавычками
+   * внутри регулярных литералов. Цена — необязательная peer-зависимость
+   * `typescript` и примерно шестикратное время разбора файла. Файлы прочих
+   * форматов сканируются текстом в любом случае.
+   *
+   * @default false
+   */
+  syntax?: boolean;
 }
 
 /**
@@ -33,7 +45,7 @@ interface MnLoaderOptions {
  * добавляет найденные токены в shared-стейт и возвращает исходник без изменений.
  * CSS не генерируется здесь — это делает {@link MnWebpackPlugin}.
  *
- * Использует {@link scanTokens} из ядра minotation — одну реализацию сканера на все
+ * Использует {@link createScanner} из ядра minotation — одну реализацию сканера на все
  * сборщики: литеральные строки, JSX-выражения, template literals (интерполяции
  * `${...}` отбрасываются), объектные литералы (MUI `slotProps`), переменные
  * с суффиксом `Class` и строковые аргументы `mne`/`mnClass`.
@@ -45,11 +57,15 @@ const loader: LoaderDefinitionFunction<MnLoaderOptions> = function (source) {
 
   const tokens = new Set<string>();
   for (const attr of attrNames) {
-    for (const t of scanTokens(source as string, {
+    // Сканер на каждый вызов: лоадер живёт один тик, а кеш парсера всё равно
+    // держится модулем ядра.
+    const scan = createScanner({
       attr,
       classVarSuffixes: options.classVarSuffixes,
       mergeFnNames: options.mergeFnNames,
-    })) {
+      syntax: options.syntax,
+    });
+    for (const t of scan(source as string, this.resourcePath)) {
       tokens.add(t);
     }
   }

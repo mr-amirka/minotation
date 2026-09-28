@@ -31,7 +31,7 @@ import {
   scanTokens, 
 } from '../extractTokens';
 import {
-  pushLiteralTokensForBench as pushLiteralTokens, 
+  pushLiteralTokens, 
 } from '../extractTokens';
 
 const FILES = 300;

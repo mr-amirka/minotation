@@ -164,6 +164,31 @@ describe('compile', () => {
     expect(result.warnings.length).toBe(1);
   });
 
+  test('`syntax` отсекает токены из мест, которые парсер не считает кодом', () => {
+    // Текстовый сканер комментарии вырезает сам, а вот кавычка внутри
+    // регулярного литерала его сбивает — парсеру это безразлично.
+    write('a.tsx', 'const re = /"/;\n// class="p99"\n<div class="p10" />;');
+    const plain = compile({
+      input: dir,
+    });
+    const parsed = compile({
+      input: dir,
+      syntax: true,
+    });
+    expect(parsed.css).toContain('padding:10px');
+    expect(parsed.css).not.toContain('padding:99px');
+    // Сторож: разница именно в этом, а не в том, что разбор потерял токены.
+    expect(parsed.tokens).toBeLessThanOrEqual(plain.tokens);
+  });
+
+  test('`syntax` не мешает файлам прочих форматов', () => {
+    write('a.html', '<div class="p10">');
+    expect(compile({
+      input: dir,
+      syntax: true,
+    }).css).toContain('padding:10px');
+  });
+
   test('пустая директория даёт пустой набор токенов', () => {
     const result = compile({
       input: dir,

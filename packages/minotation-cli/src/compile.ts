@@ -1,10 +1,11 @@
 /**
  * Сбор токенов из файлов и компиляция в CSS.
  *
- * Сканирование берётся из ядра (`scanTokens`), а не пишется здесь заново: свой
- * разбор в плагине уже приводил к тому, что возможность работала в одном
+ * Сканирование берётся из ядра (`createScanner`), а не пишется здесь заново:
+ * свой разбор в плагине уже приводил к тому, что возможность работала в одном
  * сборщике и молча отсутствовала в остальных (`classVarSuffixes` был только в
- * vite до 2026-09-25).
+ * vite до 2026-09-25). Выбор между текстовым и синтаксическим разбором тоже
+ * делает ядро — отсюда только имя файла.
  *
  * @module compile
  */
@@ -16,7 +17,7 @@ import {
 } from 'node:path';
 import {
   minotationProvider,
-  scanTokens,
+  createScanner,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -58,6 +59,16 @@ export interface CompileSettings {
   altColor?: boolean;
   /** Прерывать работу на первом битом токене. */
   strict?: boolean;
+  /**
+   * `true` — разбирать `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
+   *
+   * Снимает ложные токены из примеров разметки в комментариях и JSDoc, из
+   * закомментированного кода, из строк с кавычками внутри регулярных
+   * литералов. Цена — `typescript` (необязательная peer-зависимость) и
+   * примерно шестикратное время разбора файла. Остальные форматы (`.html`,
+   * `.vue`, …) сканируются текстом в любом случае.
+   */
+  syntax?: boolean;
   /** Регулярное выражение: какие файлы брать. */
   include?: RegExp;
   /** Регулярное выражение: какие пропускать. */
@@ -168,9 +179,10 @@ export function compile(settings: CompileSettings): CompileResult {
   const files = collectFiles(
     settings.input, settings.include, settings.exclude, settings.ignore,
   );
-  const scanOptions = {
+  const scan = createScanner({
     attr: settings.attr || 'class',
-  };
+    syntax: settings.syntax,
+  });
   const tokens = new Set<string>(settings.safelist || []);
   const l = files.length;
   let i = 0;
@@ -178,7 +190,7 @@ export function compile(settings: CompileSettings): CompileResult {
   let j: number;
   let n: number;
   for (; i < l; i++) {
-    found = scanTokens(readFileSync(files[i], 'utf8'), scanOptions);
+    found = scan(readFileSync(files[i], 'utf8'), files[i]);
     n = found.length;
     for (j = 0; j < n; j++) {
       tokens.add(found[j]);

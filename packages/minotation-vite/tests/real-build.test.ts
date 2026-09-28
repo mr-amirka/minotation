@@ -156,8 +156,12 @@ describe('minotation-vite — реальная сборка', () => {
     // Был `totally-unknown-xyz` — после Q-12 (D-014) имя без хендлера считается
     // чужим CSS-классом и молча игнорируется, поэтому strict на нём больше не
     // срабатывает. Берём настоящий MN-тег с битым аргументом.
+    //
+    // Был и `p8-12` — он перестал быть битым 2026-09-27: `calc(8px - 12px)` это
+    // валидный CSS, браузер сам зажимает отрицательный результат. Нужен аргумент,
+    // который не проходит уже у самого хендлера, — выдуманная единица.
     const root = makeProject({
-      'index.html': '<html><head></head><body><div class="p10 p8-12"></div><script type="module" src="/src/main.js"></script></body></html>',
+      'index.html': '<html><head></head><body><div class="p10 w10zz"></div><script type="module" src="/src/main.js"></script></body></html>',
       'src/main.js': 'export const x = 1;\n',
     });
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -178,5 +182,63 @@ describe('minotation-vite — реальная сборка', () => {
     await runBuild(root, { mn: { strict: true } });
 
     expect(readFileSync(join(root, 'dist/mn.css'), 'utf-8')).toContain('padding:10px');
+  });
+});
+
+/**
+ * Предупреждения ядра идут в лог сборщика, а не в console: иначе они либо
+ * теряются в потоке сборки, либо дублируются. Перехват стоит в плагине всегда,
+ * поэтому проверяется на реальной сборке.
+ */
+describe('minotation-vite — предупреждения ядра', () => {
+  /**
+   * Собирает проект с битым токеном; возвращает всё, что ушло в лог сборки.
+   *
+   * Логгер подменяется через `customLogger`, а не перехватом `console`: плагин
+   * пишет именно в логгер конфигурации — он один и тот же в dev и в build.
+   */
+  async function warningsOf(options: MnViteOptions = {}): Promise<string> {
+    const root = makeProject({
+      'index.html': '<html><head></head><body><div class="p10 w10zz"></div><script type="module" src="/src/main.js"></script></body></html>',
+      'src/main.js': 'export const x = 1;\n',
+    });
+    const said: string[] = [];
+    const { build, createLogger } = await import('vite');
+    const logger = createLogger('silent');
+    logger.warn = (message: string) => { said.push(message); };
+    const prevCwd = process.cwd();
+    process.chdir(root);
+    try {
+      await build({
+        root,
+        configFile: false,
+        customLogger: logger,
+        plugins: [mnVite(options)],
+        build: { outDir: 'dist', emptyOutDir: true },
+      });
+    } finally {
+      process.chdir(prevCwd);
+    }
+    // Сборка при этом не отменяется — остальное компилируется.
+    expect(readFileSync(join(root, 'dist/mn.css'), 'utf-8')).toContain('padding:10px');
+    return said.join('\n');
+  }
+
+  test('битый токен доходит до лога сборки', async () => {
+    expect(await warningsOf()).toContain('[minotation] w10zz');
+  });
+
+  test("onWarning: 'silent' — в лог сборки ничего не уходит", async () => {
+    expect(await warningsOf({ mn: { onWarning: 'silent' } })).not.toContain('[minotation]');
+  });
+
+  test('onWarning-функция вызывается и лог сборки не отменяет', async () => {
+    const seen: string[] = [];
+    const said = await warningsOf({ mn: { onWarning: (w) => { seen.push(w.token); } } });
+
+    // Компиляция за сборку происходит не один раз (модули и index.html —
+    // разные хуки), поэтому пользовательская функция видит токен столько же раз.
+    expect(seen).toContain('w10zz');
+    expect(said).toContain('[minotation] w10zz');
   });
 });

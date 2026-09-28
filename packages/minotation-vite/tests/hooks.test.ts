@@ -185,6 +185,24 @@ describe('minotation-vite — dev-хуки', () => {
     expect(server.ws.send).not.toHaveBeenCalled();
   });
 
+  test('конфигурация без логгера: предупреждение уходит в console, а не теряется', () => {
+    // Логгер плагин берёт из `configResolved`. Когда хуки зовут напрямую — из
+    // тестов или другого плагина — логгера может не быть; запасным каналом
+    // остаётся console, иначе битый токен исчезал бы бесследно.
+    const root = makeProject({ 'src/app.html': '<div class="p10 w10zz"></div>' });
+    const plugin = makePlugin(root, 'build');
+    const said: string[] = [];
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation((m) => { said.push(String(m)); });
+
+    try {
+      transformHtml(plugin, '<html><head></head><body></body></html>');
+    } finally {
+      warnSpy.mockRestore();
+    }
+
+    expect(said.join('\n')).toContain('[minotation] w10zz');
+  });
+
   test('load для несуществующего пресет-файла: пустой модуль, ошибки нет', () => {
     const plugin = makePlugin(tmpdir(), 'build');
 

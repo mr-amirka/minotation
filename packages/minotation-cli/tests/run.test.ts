@@ -146,10 +146,23 @@ describe('mergeSettings', () => {
     expect(mergeSettings(parseArgs([]), {
       strict: true,
     }).strict).toBe(true);
-    expect(mergeSettings(parseArgs(['--syntax']), {}).syntax).toBe(true);
+  });
+
+  test('синтаксический разбор: по умолчанию авто, `--no-syntax` выключает', () => {
+    // `undefined` означает «решай сам»: есть парсер — разбором, нет — текстом.
+    expect(mergeSettings(parseArgs([]), {}).syntax).toBeUndefined();
+    expect(mergeSettings(parseArgs(['--no-syntax']), {}).syntax).toBe(false);
+    // Конфиг тоже может выключить или потребовать явно.
+    expect(mergeSettings(parseArgs([]), {
+      syntax: false,
+    }).syntax).toBe(false);
     expect(mergeSettings(parseArgs([]), {
       syntax: true,
     }).syntax).toBe(true);
+    // Аргумент важнее конфига.
+    expect(mergeSettings(parseArgs(['--no-syntax']), {
+      syntax: true,
+    }).syntax).toBe(false);
   });
 
   test('файл конфигурации не сканируется как исходник', () => {

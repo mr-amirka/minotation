@@ -16,7 +16,7 @@ import {
   scanTokens,
 } from '../extractTokens';
 import {
-  scanTokensSyntax,
+  scanTokensSfc, scanTokensSyntax,
 } from '../syntaxScan';
 
 const FILES = 300;
@@ -78,6 +78,37 @@ const syntax = bench('scanTokensSyntax — разбор AST   ', () => {
   }
 });
 
+/** Тот же компонент в форме однофайлового: шаблон плюс скрипт. */
+const SFC_SAMPLE = '<template>\n'
+  + '  <div class="dF fxdC gap8 p16 b1 bsS bc--line r12 bg--panel">\n'
+  + '    <span class="taL py12 px14 f12 ttU fw6" />\n'
+  + '  </div>\n'
+  + '</template>\n'
+  + '<script setup lang="ts">\n'
+  + SAMPLE.replace(/<[^>]*>/g, '')
+  + '</script>\n';
+
+const sfcSources: string[] = [];
+for (let i = 0; i < FILES; i++) {
+  sfcSources.push(SFC_SAMPLE.replace('Row', 'Row' + i));
+}
+
+const sfcText = bench('SFC — текстовый                 ', () => {
+  for (let i = 0; i < FILES; i++) {
+    scanTokens(sfcSources[i], options);
+  }
+});
+
+const sfc = bench('SFC — скрипт разбором           ', () => {
+  for (let i = 0; i < FILES; i++) {
+    scanTokensSfc(sfcSources[i], {
+      attr: 'class',
+      fileName: 'file' + i + '.vue',
+    });
+  }
+});
+
+console.log(`SFC: во сколько раз дороже: ${(sfc / sfcText).toFixed(1)}×`);
 console.log(`во сколько раз дороже: ${(syntax / text).toFixed(1)}×`);
 console.log(`на файл: текстовый ${(text / ROUNDS / FILES * 1000).toFixed(1)} мкс, `
   + `синтаксический ${(syntax / ROUNDS / FILES * 1000).toFixed(1)} мкс\n`);

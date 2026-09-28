@@ -164,25 +164,32 @@ describe('compile', () => {
     expect(result.warnings.length).toBe(1);
   });
 
-  test('`syntax` отсекает токены из мест, которые парсер не считает кодом', () => {
+  test('по умолчанию .tsx разбирается парсером', () => {
     // Текстовый сканер комментарии вырезает сам, а вот кавычка внутри
     // регулярного литерала его сбивает — парсеру это безразлично.
     write('a.tsx', 'const re = /"/;\n// class="p99"\n<div class="p10" />;');
-    const plain = compile({
-      input: dir,
-    });
     const parsed = compile({
       input: dir,
-      syntax: true,
     });
     expect(parsed.css).toContain('padding:10px');
     expect(parsed.css).not.toContain('padding:99px');
-    // Сторож: разница именно в этом, а не в том, что разбор потерял токены.
-    expect(parsed.tokens).toBeLessThanOrEqual(plain.tokens);
   });
 
-  test('`syntax` не мешает файлам прочих форматов', () => {
+  test('`syntax: false` возвращает текстовый разбор со всеми его промахами', () => {
+    write('a.tsx', 'const re = /"/;\n// class="p99"\n<div class="p10" />;');
+    const plain = compile({
+      input: dir,
+      syntax: false,
+    });
+    expect(plain.css).toContain('padding:10px');
+    expect(plain.css).toContain('padding:99px');
+  });
+
+  test('прочие форматы сканируются текстом при любом значении', () => {
     write('a.html', '<div class="p10">');
+    expect(compile({
+      input: dir,
+    }).css).toContain('padding:10px');
     expect(compile({
       input: dir,
       syntax: true,

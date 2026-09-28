@@ -83,3 +83,62 @@ describe('minotation-astro — astro:build:done', () => {
     expect(captured.vite.plugins[0].name).toBe('minotation');
   });
 });
+
+/**
+ * Сканирование `.astro`. Интеграция — обёртка над `minotation-vite`, поэтому
+ * проверяется то, что доходит до самого vite-плагина: собранный им набор
+ * токенов из настоящего `.astro`-файла.
+ *
+ * Целиком парсером такой файл не разобрать (у Astro свой компилятор), но он
+ * делится на фронтматтер — обычный TS — и разметку. Скрипт идёт через парсер,
+ * разметка текстом.
+ */
+describe('minotation-astro — сканирование .astro', () => {
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  /** Вытаскивает vite-плагин из интеграции и прогоняет через него исходник. */
+  function tokensOf(source: string, options: MnAstroOptions = {}): string[] {
+    const integration = mnAstro(options);
+    let captured: any;
+    (integration.hooks?.['astro:config:setup'] as any)({
+      updateConfig: (cfg: any) => { captured = cfg; },
+    });
+    const plugin = captured.vite.plugins[0];
+    // Плагин ждёт `configResolved` — без него не знает ни корня, ни режима.
+    plugin.configResolved({ root: mkdtempSync(join(tmpdir(), 'mn-astro-scan-')), command: 'build' });
+    plugin.transform(source, join('src', 'pages', 'index.astro'));
+    // Токены попадают в CSS — по нему и судим.
+    const tags = plugin.transformIndexHtml.handler('<html><head></head><body></body></html>');
+    const style = tags.find((t: any) => t.tag === 'style');
+    return style ? [style.children] : [];
+  }
+
+  test('фронтматтер разбирается парсером, разметка — текстом', () => {
+    const css = tokensOf([
+      '---',
+      'const re = /"/;',
+      '// пример: class="p99"',
+      'const cardClass = "m20";',
+      '---',
+      '<div class="p10"></div>',
+    ].join('\n')).join('');
+
+    expect(css).toContain('padding:10px');
+    expect(css).toContain('margin:20px');
+    // Комментарий во фронтматтере токенов не даёт, хотя текстовый сканер
+    // спотыкается здесь о кавычку внутри регулярного литерала.
+    expect(css).not.toContain('padding:99px');
+  });
+
+  test('`syntax: false` возвращает текстовый разбор', () => {
+    const css = tokensOf([
+      '---',
+      'const re = /"/;',
+      '// пример: class="p99"',
+      '---',
+      '<div class="p10"></div>',
+    ].join('\n'), { syntax: false }).join('');
+
+    expect(css).toContain('padding:10px');
+    expect(css).toContain('padding:99px');
+  });
+});

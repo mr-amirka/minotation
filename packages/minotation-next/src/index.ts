@@ -43,9 +43,9 @@ export interface MnNextOptions extends MnWebpackPluginOptions {
    */
   mergeFnNames?: string[];
   /**
-   * `true` — разбирать `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
-   * Цена — необязательная peer-зависимость `typescript` и примерно
-   * шестикратное время разбора файла. @default false
+   * Разбирать ли `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
+   * По умолчанию автоматически: есть `typescript` — разбором, нет — текстом.
+   * `false` выключает разбор, `true` требует его явно.
    */
   syntax?: boolean;
 }

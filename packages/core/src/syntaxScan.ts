@@ -311,3 +311,126 @@ function markupInside(text: string, state: ScanState): void {
     state[MN_SCAN_TOKENS], text, state[MN_SCAN_ATTR],
   );
 }
+
+/**
+ * Однофайловые компоненты: `.vue`, `.svelte`, `.astro`.
+ *
+ * Целиком парсером их не разобрать — это не JS, а свой формат, и у каждого
+ * свой компилятор, то есть своя зависимость. Но делится такой файл на две
+ * части с разными свойствами:
+ *
+ * - **скрипт** (`<script>…</script>`, у Astro ещё фронтматтер `---…---`) —
+ *   обычный JS/TS, и именно там живут JSDoc с примерами разметки,
+ *   закомментированный код и прочее, на чём текстовый сканер ошибается;
+ * - **шаблон** — размеченный HTML, где `class="…"` это и есть настоящие
+ *   токены, и текстовый разбор для него не хуже любого другого.
+ *
+ * Поэтому скрипт идёт через парсер, остальное — текстом. Новых зависимостей
+ * это не требует, а основной источник ложных токенов закрывает.
+ *
+ * @param source — полный текст файла
+ * @param options — см. {@link SyntaxScanOptions}
+ * @returns массив токенов (с возможными повторами)
+ */
+export function scanTokensSfc(source: string, options: SyntaxScanOptions): string[] {
+  const tokens: string[] = [];
+  // Куски вне скриптов — их разберёт текстовый сканер одним проходом.
+  const rest: string[] = [];
+  let i = 0;
+  let open: number;
+  let body: number;
+  let close: number;
+  let front: number;
+  // Фронтматтер Astro: `---` в самом начале файла и до следующего `---`.
+  if (source.startsWith('---')) {
+    front = source.indexOf('\n---', 3);
+    if (front > -1) {
+      pushSyntax(
+        tokens, source.slice(3, front), options, '.ts',
+      );
+      rest.push(newlinesOf(
+        source, 0, front,
+      ));
+      i = front;
+    }
+  }
+  while ((open = source.indexOf('<script', i)) > -1) {
+    body = source.indexOf('>', open);
+    if (body < 0) {
+      break;
+    }
+    close = source.indexOf('</script', body);
+    if (close < 0) {
+      break;
+    }
+    rest.push(source.slice(i, open));
+    pushSyntax(
+      tokens,
+      source.slice(body + 1, close),
+      options,
+      extensionOf(source.slice(open, body)),
+    );
+    // Вместо вырезанного — только переводы строк: иначе склеились бы соседние
+    // строки, и `class=` из-под скрипта попал бы в чужой контекст.
+    rest.push(newlinesOf(
+      source, open, close,
+    ));
+    i = close;
+  }
+  rest.push(source.slice(i));
+  // Остаток идёт через полный текстовый сканер, а не через один разбор
+  // атрибутов: в шаблоне бывают и вызовы `mne`, и комментарии — `<!-- <div
+  // class="p99"> -->` иначе добавил бы в CSS правило, которое не к чему
+  // применить.
+  const outside = scanTokens(rest.join(''), options);
+  const n = outside.length;
+  let j = 0;
+  for (; j < n; j++) {
+    tokens.push(outside[j]);
+  }
+  return tokens;
+}
+
+/** Разбирает кусок кода парсером и складывает токены в общий массив. */
+function pushSyntax(
+  tokens: string[],
+  code: string,
+  options: SyntaxScanOptions,
+  extension: string,
+): void {
+  const found = scanTokensSyntax(code, {
+    ...options,
+    fileName: 'sfc' + extension,
+  });
+  const l = found.length;
+  let i = 0;
+  for (; i < l; i++) {
+    tokens.push(found[i]);
+  }
+}
+
+/**
+ * Расширение по атрибутам тега `<script>`.
+ *
+ * `lang="tsx"` и `lang="jsx"` — единственные, где нужен разбор с JSX: в
+ * обычном `<script lang="ts">` символ `<` это сравнение или generic, и
+ * TSX-режим спотыкался бы о него.
+ */
+function extensionOf(tag: string): string {
+  if (tag.indexOf('sx"') > -1 || tag.indexOf("sx'") > -1) {
+    return '.tsx';
+  }
+  return '.ts';
+}
+
+/** Только переводы строк из диапазона — остальное отбрасывается. */
+function newlinesOf(
+  source: string, from: number, to: number,
+): string {
+  let out = '';
+  let i = from;
+  for (; i < to; i++) {
+    source[i] === '\n' && (out += '\n');
+  }
+  return out;
+}

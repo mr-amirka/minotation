@@ -10,10 +10,10 @@ import {
   scanTokens,
 } from '../extractTokens';
 import {
-  scanTokensSyntax,
+  scanTokensSfc, scanTokensSyntax,
 } from '../syntaxScan';
 import {
-  createScanner, isSyntaxScannable,
+  createScanner, isSyntaxScannable, syntaxKindOf,
 } from '../scanner';
 
 /** Набор без повторов и в стабильном порядке — сравнивать удобно именно его. */
@@ -251,10 +251,11 @@ describe('scanTokensSyntax — диалекты', () => {
     ['a.cjs', true],
     ['a.mts', true],
     ['a.cts', true],
+    // SFC тоже разбираются — по блокам, см. `scanTokensSfc`.
+    ['a.vue', true],
+    ['a.svelte', true],
+    ['a.astro', true],
     ['a.html', false],
-    ['a.vue', false],
-    ['a.svelte', false],
-    ['a.astro', false],
     ['noext', false],
   ])('isSyntaxScannable(%p) === %p', (fileName, expected) => {
     expect(isSyntaxScannable(fileName)).toBe(expected);
@@ -322,11 +323,30 @@ describe('паритет с текстовым сканером', () => {
  * до 2026-09-25.
  */
 describe('createScanner', () => {
-  const SOURCE = '// class="p10"\nconst re = /"/;\n<div class="m5" />';
+  /**
+   * Файл, на котором текстовый сканер ошибается: кавычка внутри регулярного
+   * литерала открывает для него строку, и следующий комментарий перестаёт
+   * считаться комментарием. Порядок здесь важен — с обратным текстовый
+   * справляется.
+   */
+  const SOURCE = 'const re = /"/;\n// class="p10"\n<div class="m5" />';
 
-  test('без `syntax` — текстовый сканер, имя файла не важно', () => {
+  test('по умолчанию — разбор, когда парсер доступен', () => {
+    // Точный разбор это не дополнительная возможность, а отсутствие ложных
+    // токенов: просить о нём отдельно незачем.
     const scan = createScanner({
       attr: 'class',
+    });
+    expect(scan(SOURCE, '/src/App.tsx')).toEqual(['m5']);
+    // Текстовому сканеру тот же файл даёт лишний токен из комментария:
+    // кавычка внутри `/"/` сбивает вырезание комментариев.
+    expect(scan(SOURCE)).toEqual(['p10', 'm5']);
+  });
+
+  test('`syntax: false` — всегда текст, даже для .tsx', () => {
+    const scan = createScanner({
+      attr: 'class',
+      syntax: false,
     });
     expect(scan(SOURCE, '/src/App.tsx')).toEqual(scan(SOURCE));
   });
@@ -356,7 +376,34 @@ describe('createScanner', () => {
     expect(isSyntaxScannable('/src/style.css?used')).toBe(false);
   });
 
-  test('парсер недоступен: предупреждение один раз и откат к тексту', () => {
+  test('в автоматическом режиме недоступный парсер — молча текст', () => {
+    // Никто не просил синтаксического разбора, текстовый работает — сообщать
+    // не о чем.
+    jest.resetModules();
+    jest.doMock('../syntaxScan', () => {
+      throw new Error('Cannot find module \'typescript\'');
+    });
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fresh = require('../scanner') as typeof import('../scanner');
+    const said: string[] = [];
+    const warnSpy = jest.spyOn(console, 'warn')
+      .mockImplementation((m) => said.push(String(m)));
+
+    try {
+      const scan = fresh.createScanner({
+        attr: 'class',
+      });
+      expect(scan(SOURCE, '/src/App.tsx')).toEqual(['p10', 'm5']);
+    } finally {
+      warnSpy.mockRestore();
+      jest.dontMock('../syntaxScan');
+      jest.resetModules();
+    }
+
+    expect(said).toEqual([]);
+  });
+
+  test('`syntax: true` и парсера нет: предупреждение один раз и откат к тексту', () => {
     // Необязательная peer-зависимость: её отсутствие не повод ронять сборку,
     // но и молчать нельзя — режим включён, а не работает.
     jest.resetModules();
@@ -372,8 +419,10 @@ describe('createScanner', () => {
       onWarning: (m: string) => said.push(m),
     });
 
-    expect(scan(SOURCE, '/src/App.tsx')).toEqual(['m5']);
-    expect(scan(SOURCE, '/src/Other.tsx')).toEqual(['m5']);
+    // Без парсера остаётся текстовый разбор — с его ложным токеном.
+    const textual = ['p10', 'm5'];
+    expect(scan(SOURCE, '/src/App.tsx')).toEqual(textual);
+    expect(scan(SOURCE, '/src/Other.tsx')).toEqual(textual);
 
     expect(said.length).toBe(1);
     expect(said[0]).toContain('парсер недоступен');
@@ -404,5 +453,135 @@ describe('createScanner', () => {
     }
 
     expect(said.join('')).toContain('[minotation]');
+  });
+});
+
+/**
+ * Однофайловые компоненты. Целиком парсером JS их не разобрать — у Vue,
+ * Svelte и Astro свои компиляторы, то есть свои зависимости. Но ложные токены
+ * берутся из скриптовой части, а она — обычный TS.
+ */
+describe('scanTokensSfc — Vue, Svelte, Astro', () => {
+  const OPTIONS = {
+    attr: 'class',
+  };
+
+  test('Vue: скрипт парсером, шаблон текстом', () => {
+    const source = [
+      '<template>',
+      '  <div class="p10"><!-- <div class="p99"> --></div>',
+      '</template>',
+      '<script setup lang="ts">',
+      'const re = /"/;',
+      '/** Пример: <div class="p88 w888"> */',
+      'const rowClass = "m20";',
+      'mne(rowClass, "w50");',
+      '</script>',
+    ].join('\n');
+
+    expect(setOf(scanTokensSfc(source, OPTIONS))).toEqual([
+      'm20',
+      'p10',
+      'w50',
+    ]);
+  });
+
+  test('Svelte: то же деление', () => {
+    const source = [
+      '<script lang="ts">',
+      '  const re = /"/;',
+      '  // class="p77"',
+      '  const rowClass = "m30";',
+      '</script>',
+      '<div class="p20"></div>',
+    ].join('\n');
+
+    expect(setOf(scanTokensSfc(source, OPTIONS))).toEqual(['m30', 'p20']);
+  });
+
+  test('Astro: фронтматтер `---` разбирается как скрипт', () => {
+    const source = [
+      '---',
+      'const re = /"/;',
+      '// class="p66"',
+      'const rowClass = "m40";',
+      '---',
+      '<div class="p30"></div>',
+    ].join('\n');
+
+    expect(setOf(scanTokensSfc(source, OPTIONS))).toEqual(['m40', 'p30']);
+  });
+
+  test('Astro: несколько блоков — фронтматтер и <script>', () => {
+    const source = [
+      '---',
+      'const headClass = "m40";',
+      '---',
+      '<div class="p30"></div>',
+      '<script>',
+      '  const bodyClass = "m50";',
+      '</script>',
+    ].join('\n');
+
+    expect(setOf(scanTokensSfc(source, OPTIONS))).toEqual([
+      'm40',
+      'm50',
+      'p30',
+    ]);
+  });
+
+  test('`lang="tsx"` разбирается с JSX, `lang="ts"` — без', () => {
+    // В обычном `<script lang="ts">` символ `<` это generic или сравнение.
+    const ts = '<script lang="ts">const v = <string>x; const aClass = "m20";</script>';
+    expect(scanTokensSfc(ts, OPTIONS)).toEqual(['m20']);
+
+    const tsx = '<script lang="tsx">const el = <div class="p10" />;</script>';
+    expect(scanTokensSfc(tsx, OPTIONS)).toEqual(['p10']);
+  });
+
+  test('файл без скрипта — просто текстовый разбор', () => {
+    const source = '<template><div class="p10"></div></template>';
+    expect(scanTokensSfc(source, OPTIONS)).toEqual(['p10']);
+  });
+
+  test('незакрытый `<script` не ломает разбор остального', () => {
+    // Файл в процессе редактирования — обычное дело.
+    expect(scanTokensSfc('<div class="p10"></div><script', OPTIONS)).toEqual(['p10']);
+    expect(scanTokensSfc('<div class="p10"></div><script>', OPTIONS)).toEqual(['p10']);
+  });
+
+  test('фронтматтер без закрывающего `---`', () => {
+    expect(scanTokensSfc('---\nconst aClass = "m20";', OPTIONS)).toEqual(['m20']);
+  });
+
+  test('переводы строк вырезанного скрипта сохраняются', () => {
+    // Иначе склеились бы соседние строки, и `class=` из-под скрипта попал бы
+    // в чужой контекст.
+    const source = '<script>\nconst a = 1;\n</script>\n<div class="p10"></div>';
+    expect(scanTokensSfc(source, OPTIONS)).toEqual(['p10']);
+  });
+
+  test('через `createScanner` выбирается по расширению', () => {
+    const scan = createScanner(OPTIONS);
+    const source = '<script lang="ts">\n// class="p99"\nconst aClass = "m20";\n</script>\n'
+      + '<div class="p10"></div>';
+
+    expect(setOf(scan(source, 'App.vue'))).toEqual(['m20', 'p10']);
+    expect(setOf(scan(source, 'App.svelte'))).toEqual(['m20', 'p10']);
+    expect(setOf(scan(source, 'Page.astro'))).toEqual(['m20', 'p10']);
+  });
+
+  test.each([
+    ['App.vue', 2],
+    ['App.svelte', 2],
+    ['Page.astro', 2],
+    ['App.tsx', 1],
+    ['App.ts', 1],
+    ['index.html', 0],
+    ['style.css', 0],
+    // Скриптовый блок Vue приходит от сборщика отдельным id.
+    ['App.vue?vue&type=script&lang.ts', 1],
+  ])('syntaxKindOf(%p) === %p', (fileName, expected) => {
+    expect(syntaxKindOf(fileName)).toBe(expected);
   });
 });

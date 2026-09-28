@@ -104,7 +104,9 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
     prefix: args.prefix === undefined ? config.prefix : args.prefix,
     altColor: args.altColor || config.altColor,
     strict: args.strict || config.strict,
-    syntax: args.syntax || config.syntax,
+    // `--no-syntax` выключает разбор; без него решает конфиг, а его умолчание
+    // (`undefined`) означает «автоматически».
+    syntax: args.noSyntax ? false : config.syntax,
     include: args.include ? new RegExp(args.include) : config.include,
     exclude: args.exclude ? new RegExp(args.exclude) : config.exclude,
     // Конфиг лежит в корне проекта и подходит под расширение `.js` — без этого

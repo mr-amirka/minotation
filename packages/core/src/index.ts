@@ -33,6 +33,7 @@ import {
   extractClassVarTokens as extractClassVarTokensImpl,
   extractMergeCallTokens as extractMergeCallTokensImpl,
   scanTokens as scanTokensImpl,
+  stripComments as stripCommentsImpl,
 } from './extractTokens';
 import {
   mne as mneImpl,
@@ -68,6 +69,12 @@ export const extractTokens = extractTokensImpl;
 export const scanTokens = scanTokensImpl;
 export const extractClassVarTokens = extractClassVarTokensImpl;
 export const extractMergeCallTokens = extractMergeCallTokensImpl;
+
+/**
+ * Убирает содержимое комментариев из текста файла — `scanTokens` вызывает её
+ * сам. Отдельно нужна тем, кто собирает механизмы сканера вручную.
+ */
+export const stripComments = stripCommentsImpl;
 
 /**
  * Слияние наборов токенов без гонки специфичности — см. `mne.ts`.

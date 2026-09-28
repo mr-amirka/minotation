@@ -29,6 +29,7 @@
 import {
   extractTokens, scanTokens,
   extractClassVarTokens, extractMergeCallTokens,
+  stripComments,
 } from '../extractTokens';
 
 const FILES = 300;
@@ -37,6 +38,9 @@ const ROUNDS = 20;
 /** Фрагмент реального компонента: атрибуты, переменная с суффиксом, вызов mne. */
 const SAMPLE = `
 import { mne } from 'minotation/mne';
+// Комментарий с образцом разметки: class="p10 w50" — вырезается сканером,
+// см. stripComments. Здесь он нужен, чтобы замер шёл на реальном входе.
+/* блочный комментарий с примером <div class="p10 w50"> */
 const chipClass = 'py7 px12 r b1 bsS bc--line bg--panel c--ink f14 fw5 cr';
 const thClass = 'taL py12 px14 b bb1 bsS bc--line f12 lts0.06em ttU fw6 c--ink-3 bg--bg';
 export default function Row({ active }) {
@@ -114,6 +118,26 @@ bench('scanTokens — три прохода          ', () => {
     scanTokens(sources[i], {
       attr: 'class', 
     });
+  }
+});
+
+// Цена вырезания комментариев (2026-09-28). Первая реализация собирала
+// результат через `source.split('')` — массив на каждый символ — и стоила
+// +445%; на срезах вышло +75%, то есть около 4 мкс на файл. Для сборщика,
+// который тратит на файл миллисекунды, это незаметно, но мерить обязательно:
+// проход идёт по всему исходнику.
+bench('scanTokens — без вырезания          ', () => {
+  for (let i = 0; i < FILES; i++) {
+    scanTokens(sources[i], {
+      attr: 'class',
+      comments: false,
+    });
+  }
+});
+
+bench('stripComments — только вырезание    ', () => {
+  for (let i = 0; i < FILES; i++) {
+    stripComments(sources[i]);
   }
 });
 

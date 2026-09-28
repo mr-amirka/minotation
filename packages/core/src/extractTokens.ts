@@ -375,6 +375,108 @@ export function extractMergeCallTokensInto(
   }
 }
 
+/**
+ * Заменяет содержимое комментариев пробелами.
+ *
+ * Сканер текстовый: он ищет `class=` регуляркой и синтаксис языка не
+ * разбирает, поэтому содержимое комментария обрабатывал наравне с кодом. В
+ * проекте `affiliate` комментарий, ОБЪЯСНЯВШИЙ работу сканера, уронил сборку:
+ * из образца `class="..."` извлёкся токен `...`, ядро его забраковало, а
+ * `strict: true` превратил предупреждение в ошибку.
+ *
+ * Хуже тихий случай: любой пример разметки в комментарии или JSDoc добавляет
+ * свои токены в CSS — правила есть, применить их не к чему.
+ *
+ * Вырезаются `//` до конца строки, `/* * /`, `<!-- -->`. Форма `{/* * /}` из
+ * JSX покрывается вторым вариантом. Содержимое заменяется ПРОБЕЛАМИ, а не
+ * удаляется: длина исходника сохраняется, и позиции совпадают с оригиналом.
+ *
+ * Строковые литералы разбираются вместе с комментариями — иначе `'https://x'`
+ * съел бы остаток строки как комментарий. Внутри литерала комментариев нет.
+ */
+export function stripComments(source: string): string {
+  const l = source.length;
+  // Куски исходника между вырезанными диапазонами. Пока массив пуст, ни одного
+  // комментария не встретилось — тогда возвращается сам `source`, без склейки.
+  let parts: string[] | 0 = 0;
+  let kept = 0;
+  let i = 0;
+  let ch: string;
+  let quote: string;
+  let from: number;
+  while (i < l) {
+    ch = source[i];
+    // Строка: пропускаем целиком, внутри комментариев нет.
+    if (ch === '\'' || ch === '"' || ch === '`') {
+      quote = ch;
+      for (i++; i < l; i++) {
+        if (source[i] === '\\') {
+          i++;
+          continue;
+        }
+        if (source[i] === quote) {
+          break;
+        }
+      }
+      i++;
+      continue;
+    }
+    if (ch !== '/' && ch !== '<') {
+      i++;
+      continue;
+    }
+    from = i;
+    if (ch === '/' && source[i + 1] === '/') {
+      while (i < l && source[i] !== '\n') {
+        i++;
+      }
+    } else if (ch === '/' && source[i + 1] === '*') {
+      for (i += 2; i < l; i++) {
+        if (source[i] === '*' && source[i + 1] === '/') {
+          i += 2;
+          break;
+        }
+      }
+    } else if (ch === '<' && source[i + 1] === '!'
+      && source[i + 2] === '-' && source[i + 3] === '-') {
+      for (i += 4; i < l; i++) {
+        if (source[i] === '-' && source[i + 1] === '-' && source[i + 2] === '>') {
+          i += 3;
+          break;
+        }
+      }
+    } else {
+      i++;
+      continue;
+    }
+    parts || (parts = []);
+    parts.push(source.slice(kept, from));
+    // Переводы строк сохраняются: без них склеились бы соседние строки, и
+    // `class=` из следующей строки попал бы в конец комментария.
+    parts.push(newlinesOf(
+      source, from, i,
+    ));
+    kept = i;
+  }
+  if (!parts) {
+    return source;
+  }
+  parts.push(source.slice(kept));
+  return parts.join('');
+}
+
+/** Только переводы строк из вырезанного диапазона — остальное отбрасывается. */
+function newlinesOf(
+  source: string, from: number, to: number,
+): string {
+  let out = '';
+  let i = from;
+  for (; i < to; i++) {
+    source[i] === '\n' && (out += '\n');
+  }
+  return out;
+}
+
 /** Опции {@link scanTokens}. */
 export interface ScanTokensOptions {
   /** Имя атрибута (`'class'`, `'className'`). По умолчанию `'class'`. */
@@ -389,6 +491,14 @@ export interface ScanTokensOptions {
    * По умолчанию `['mne', 'mnClass']`, пустой массив отключает механизм.
    */
   mergeFnNames?: string[];
+  /**
+   * `false` — не вырезать комментарии перед сканированием.
+   *
+   * По умолчанию вырезаются: пример разметки в комментарии иначе добавляет
+   * свои токены в CSS. Отключать стоит только там, где формат файла заведомо
+   * не имеет комментариев, а входные данные велики.
+   */
+  comments?: boolean;
 }
 
 /**
@@ -410,6 +520,10 @@ export interface ScanTokensOptions {
  */
 export function scanTokens(source: string, options: ScanTokensOptions): string[] {
   const tokens: string[] = [];
+  // Комментарии вырезаются ДО всех трёх механизмов: токен из примера
+  // разметки в комментарии либо раздувает CSS правилами, которые не к чему
+  // применить, либо роняет сборку под `strict` — см. `stripComments`.
+  source = options.comments === false ? source : stripComments(source);
   extractTokensInto(
     tokens, source, options.attr || 'class',
   );

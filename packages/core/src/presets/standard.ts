@@ -1624,7 +1624,7 @@ function normalizeCalc(
     base, sign, val + unit,
   );
 }
-function normalizeDefault(p: any, def?: string | number): MnHandlerResult {
+function normalizeDefault(p: MnEssenceParams, def?: string | number): MnHandlerResult {
   return {
     exts: [p.name + (def || 0) + p.ni],
   };
@@ -1637,6 +1637,9 @@ import {
 } from '../types';
 import {
   MnParseError,
+} from '../core/types';
+import type {
+  MnEssenceParams,
 } from '../core/types';
 
 
@@ -1757,13 +1760,13 @@ export default (mn: MnInstance) => {
    * Ноль — особый случай: {@link lengthOrWord} отдаёт его без единицы, как
    * и положено длинам, но `text-size-adjust:0` невалиден.
    */
-  function assertPercentOnly(p: any): void {
+  function assertPercentOnly(p: MnEssenceParams): void {
     (p.num === '0' || (p.unit && p.unit !== '%'))
       && throwInvalid('Значение "' + p.suffix + '" не распознано: '
         + 'text-size-adjust задаётся процентом');
   }
   function lengthOrWord(
-    p: any,
+    p: MnEssenceParams,
     keywords: Record<string, 1>,
     allow: number,
     defaultUnit: string,
@@ -2051,7 +2054,7 @@ export default (mn: MnInstance) => {
      * свойств этого пути пять — `display`, `list-style`, `overscroll-behavior`,
      * `text-decoration`, `touch-action` (2026-09-26).
      */
-    function assertSynonymAbbr(p: any, value: string): void {
+    function assertSynonymAbbr(p: MnEssenceParams, value: string): void {
       // Сюда доходит только запись, которой НЕТ в словаре кратких форм
       // (её перехватывает `synonyms[p.suffix]` выше), поэтому если у значения
       // есть аббревиатура — записано точно длинной формой.
@@ -2075,7 +2078,7 @@ export default (mn: MnInstance) => {
       assertSynonymPart(p, value);
     }
     /** Одна часть значения: слово из словаря, число (если оно тут законно) или функция. */
-    function assertSynonymPart(p: any, value: string): void {
+    function assertSynonymPart(p: MnEssenceParams, value: string): void {
       if (value.indexOf('(') > -1
         // Строка в кавычках — готовое значение (`q_"a"_"b"`), словарём его
         // не перечислить.
@@ -2097,7 +2100,7 @@ export default (mn: MnInstance) => {
             + p.name + '" перечень значений закрыт, число недопустимо'));
     }
     return isArray(propName)
-      ? (props = flags(propName), ((p: any) => {
+      ? (props = flags(propName), ((p: MnEssenceParams) => {
         let s: string; let style: Record<string, any>; let synonym: any; let propName: string;
         if (synonym = synonyms[s = p.suffix]) {
           style = {};
@@ -2117,7 +2120,7 @@ export default (mn: MnInstance) => {
           return styleWrap(style, priority);
         }
       }))
-      : ((p: any) => {
+      : ((p: MnEssenceParams) => {
         let s: string; let style: Record<string, any>; let synonym: any;
         if (synonym = synonyms[s = p.suffix]) {
           style = {};
@@ -2266,11 +2269,19 @@ export default (mn: MnInstance) => {
         + toFixed(parseFloat('0.' + withAlpha[2]) * 100) + '%, transparent)';
     }
   }
-  /** Бракует цвет, у которого есть более короткая или более читаемая запись. */
-  function assertShortestHex(p: any, hex: string): void {
+  /**
+   * Бракует цвет, у которого есть более короткая или более читаемая запись.
+   *
+   * `hex` объявлен как `string | number | undefined`, а не `string`: поле
+   * приходит из индексной сигнатуры {@link MnEssenceParams} и у части токенов
+   * отсутствует. Приводить его к строке на месте вызова нельзя — `'' +
+   * undefined` даёт `"undefined"`, и проверка ниже перестала бы срабатывать.
+   */
+  function assertShortestHex(p: MnEssenceParams, hex?: string | number): void {
     if (!hex) {
       return;
     }
+    hex = '' + hex;
     const shorter = shorterHex(hex);
     const best = canonicalAlpha(shorter || hex) || shorter;
     if (best && best !== hex) {
@@ -2304,7 +2315,7 @@ export default (mn: MnInstance) => {
    *
    * У слова, для которого есть аббревиатура, форма одна — краткая.
    */
-  function assertColorAbbr(p: any): void {
+  function assertColorAbbr(p: MnEssenceParams): void {
     const camel = p.camel;
     if (!camel) {
       return;
@@ -2329,7 +2340,7 @@ export default (mn: MnInstance) => {
   const REGEXP_PLAIN_HEX = /^[0-9A-Fa-f]+$/;
 
   function backgroundProvider(propName: string): MnHandler {
-    return (p: any) => {
+    return (p: MnEssenceParams) => {
       let v: string; let style: Record<string, any>;
       p.negative && throwInvalid();
       if (REGEXP_LEADING_HASH_HEX.test(p.suffix)) {
@@ -2444,7 +2455,7 @@ export default (mn: MnInstance) => {
       forIn(symonyms, (word: string) => {
         keywords[toKebabCase(word)] = 1;
       });
-      return (p: any) => {
+      return (p: MnEssenceParams) => {
         let suffix: string; let synonym: any;
         if (!(suffix = p.suffix)) {
           return normalizeDefault(p, 0);
@@ -2640,7 +2651,7 @@ export default (mn: MnInstance) => {
    * намеренно нет (принцип атомарности) — `gapx16 gapy8` вместо неё.
    */
   function gapHandlerProvider(propName: string) {
-    return (p: any) => {
+    return (p: MnEssenceParams) => {
       const suffix = p.suffix;
       if (!suffix) {
         return normalizeDefault(p, '100%');
@@ -2862,12 +2873,12 @@ export default (mn: MnInstance) => {
       const z = p.z;
       return styleWrap({
         transform:
-        'translate(' + (floatNormalize(p.x || '0') + (p.xu || 'px')) + ','
-        + (floatNormalize(p.y || '0') + (p.yu || 'px')) + ')'
+        'translate(' + (floatNormalize(p.x || '0') + ('' + (p.xu || 'px'))) + ','
+        + (floatNormalize(p.y || '0') + ('' + (p.yu || 'px'))) + ')'
         + (z ? (' translateZ('
-          + floatNormalize(z) + (p.zu || 'px') + ')') : '')
+          + floatNormalize(z) + ('' + (p.zu || 'px')) + ')') : '')
         + (scale ? (' scale(' + (0.01 * floatNormalize(scale)) + ')') : '')
-        + (angle ? (' rotate' + toUpper(p.dir)
+        + (angle ? (' rotate' + toUpper('' + p.dir)
         + '(' + assertAngle(
           '' + floatNormalize(angle),
           (REGEXP_ANGLE_TAIL.exec(p.suffix) as RegExpExecArray)[1],
@@ -3219,9 +3230,11 @@ export default (mn: MnInstance) => {
           ? assertKnownWord(
             toKebabCase(camel), camel, FONT_WEIGHT_SYNONYMS, FONT_WEIGHT_KEYWORDS,
           )
-          : (num >= 100
+          // `num` приходит из разбора строкой; сравнение и деление ведём
+          // числом явно, а не полагаясь на приведение оператором.
+          : (+num >= 100
             ? 100 * intval(
-              num / 100, 1, 1, 9,
+              +num / 100, 1, 1, 9,
             )
             : 100 * intval(
               num, 1, 1, 9,
@@ -4281,7 +4294,7 @@ export default (mn: MnInstance) => {
   });
 
   function ftProvider(propName: string): MnHandler {
-    return (p: any) => {
+    return (p: MnEssenceParams) => {
       let v: string; let s: Record<string, any>;
       return (v = filter(map(p.suffix.split(REGEXP_FILTER_SEP),
         (v: string) => {
@@ -4500,8 +4513,8 @@ export default (mn: MnInstance) => {
           paddingTop: p.add
             ? normalizeCalc(
               v,
-              p.sa + floatNormalize(p.addv),
-              validateUnit(p.addu || 'px'),
+              '' + p.sa + floatNormalize(p.addv),
+              validateUnit('' + (p.addu || 'px')),
             )
             : v,
         },

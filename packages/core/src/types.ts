@@ -7,6 +7,7 @@
 import type {
   MnOptions,
   MnMediaEntry,
+  MnEssenceParams,
 } from './core/types';
 import type {
   forEach,
@@ -84,15 +85,18 @@ export interface MnHandlerResult {
 /**
  * Функция-хендлер токена.
  *
- * `params` — намеренно `any`: набор полей зависит от `pattern`, с которым
- * хендлер зарегистрирован (`mn(name, handler, pattern)`), и достраивается
- * парсером во время выполнения — у `p10` это `num`/`unit`, у `cF00` —
- * `color`/`camel`, у произвольного пресета — что угодно своё. Статически
- * это объединение не выражается: {@link MnEssenceParams} описывает лишь
- * общую часть, а хендлеры читают и поля сверх неё.
+ * Набор полей у `params` зависит от `pattern`, с которым хендлер
+ * зарегистрирован (`mn(name, handler, pattern)`), и достраивается парсером во
+ * время выполнения: у `p10` это `num`/`unit`, у `cF00` — `color`/`camel`, у
+ * произвольного пресета — что угодно своё.
+ *
+ * Раньше здесь стоял `any`, потому что перечислить эти поля в типе нельзя —
+ * имена задаёт автор пресета. Решение владельца (Р-2): индексная сигнатура в
+ * {@link MnEssenceParams}. Поля с известными именами остаются
+ * типизированными, а свои читаются без приведения типа — и `any` больше не
+ * отключает проверки заодно и у них.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- см. комментарий выше
-export type MnHandler = (params: any) => MnHandlerResult | void | 0;
+export type MnHandler = (params: MnEssenceParams) => MnHandlerResult | void | 0;
 
 /** Сущность MN (статическая) */
 export interface MnEntity {

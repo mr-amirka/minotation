@@ -36,6 +36,8 @@ export interface CliArgs {
   strict: boolean;
   /** Не разбирать JS/TS парсером — только текстовый поиск. */
   noSyntax: boolean;
+  /** Куда писать статистику употребления токенов. */
+  metrics?: string;
   /** Какие файлы сканировать — регулярное выражение по имени. */
   include?: string;
   /** Какие пропускать — регулярное выражение по пути. */
@@ -86,6 +88,8 @@ const OPTIONS: Record<string, keyof CliArgs> = {
   '--attr': 'attr',
   '-p': 'prefix',
   '--prefix': 'prefix',
+  '-m': 'metrics',
+  '--metrics': 'metrics',
   '--include': 'include',
   '--exclude': 'exclude',
 };
@@ -153,6 +157,7 @@ export const HELP = `
       --alt-color        запасное непрозрачное объявление рядом с rgba
       --strict           прервать работу на первом битом токене
       --no-syntax        не разбирать JS/TS парсером, только текстовый поиск
+  -m, --metrics <файл>   записать статистику употребления токенов (JSON)
       --include <regexp> какие файлы сканировать
       --exclude <regexp> какие пропускать
   -v, --version          версия

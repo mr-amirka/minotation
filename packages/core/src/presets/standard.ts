@@ -442,9 +442,18 @@ const REGEXP_ANGLE_TAIL = /[rR][xyz][-+]?[0-9.]+([a-z]*)$/;
  *
  * Регулярка анкорена и собрана в этом порядке, так что она и проверяет запись,
  * и разбирает её — отдельный обход паттернами больше не нужен.
+ *
+ * CSS-переменная в позиции blur пишется **явно**, через `B`: `bxshB--blur`.
+ * Буква заглавная по той же причине, что `X`/`Y`/`R`/`M`: строчная слилась бы
+ * с именем тега — `bxshb…` ядро прочитало бы как тег `bxshb`, не нашло бы
+ * хендлера и молча пропустило токен как чужой класс.
+ * Без буквы переменная означает всю тень целиком (`bxsh--shadow` →
+ * `box-shadow:var(--shadow)`), как `--x` у любого другого свойства. Раньше она
+ * молча попадала в позицию blur, а прочие слоты добирались умолчаниями —
+ * автор получал правило, которого не писал (решение владельца 2026-09-29).
  */
-const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:(--[A-Za-z0-9_-]+?;|--[A-Za-z0-9-]+|[0-9.]+)('
-  + SHADOW_UNITS.join('|') + ')?)?'
+const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:([0-9.]+)('
+  + SHADOW_UNITS.join('|') + ')?|B(---?[^;\\s]+;?))?'
   + '(?:[xX](-?[0-9]+))?'
   + '(?:[yY](-?[0-9]+))?'
   + '(?:[rR](-?[0-9]+))?'
@@ -454,11 +463,12 @@ const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:(--[A-Za-z0-9_-]+?;|--[A-Za-z0-9-]+
 /** Позиции групп в {@link REGEXP_SHADOW_SUFFIX}. */
 const MN_SHADOW_VALUE = 1;
 const MN_SHADOW_UNIT = 2;
-const MN_SHADOW_X = 3;
-const MN_SHADOW_Y = 4;
-const MN_SHADOW_R = 5;
-const MN_SHADOW_M = 6;
-const MN_SHADOW_COLOR = 7;
+const MN_SHADOW_BLUR_VAR = 3;
+const MN_SHADOW_X = 4;
+const MN_SHADOW_Y = 5;
+const MN_SHADOW_R = 6;
+const MN_SHADOW_M = 7;
+const MN_SHADOW_COLOR = 8;
 
 /**
  * Бракует токен: аргумент хендлера не разобрался.
@@ -2934,16 +2944,23 @@ export default (mn: MnInstance) => {
      * `m0` — ноль повторов): вызывающий превращает это в `none`.
      */
     function shadowValue(part: string, name: string): string {
+      // Вся тень одной переменной: `bxsh--shadow` → `box-shadow:var(--shadow)`.
+      // У любого другого свойства `--x` означает значение целиком, и тень не
+      // исключение. В позицию blur переменная ставится явно — `bxshB--blur`.
+      const whole = cssVarValue(part);
+      if (whole) {
+        return whole;
+      }
       const parsed = REGEXP_SHADOW_SUFFIX.exec(part);
       parsed || throwInvalid('Запись "' + name + part + '" разобрана не полностью: '
-        + 'порядок частей — blur, затем x, y, r, m, c, in');
+        + 'порядок частей — blur (число или B--переменная), затем x, y, r, m, c, in');
       const p = parsed as RegExpExecArray;
       const repeatCount = intval(
         p[MN_SHADOW_M], 1, 0,
       );
       // Значение (blur) — ведущее число или переменная; модификаторы его не
       // содержат.
-      let value = p[MN_SHADOW_VALUE];
+      let value = p[MN_SHADOW_VALUE] || p[MN_SHADOW_BLUR_VAR];
       if (!value) {
         // Модификаторы без ведущего значения — описка: `bxshR3` раньше давало
         // мусор `Rpx` в позиции blur, а потом молча превращалось в `none`.
@@ -2955,9 +2972,8 @@ export default (mn: MnInstance) => {
         return '';
       }
       // `;` — терминатор имени переменной, как везде в нотации: без него имя
-      // жадно забрало бы следующие модификаторы (`bxsh--blur;c--shadow`).
-      value[0] === '-' && (value = 'var('
-        + (value[value.length - 1] === ';' ? value.slice(0, -1) : value) + ')');
+      // жадно забрало бы следующие модификаторы (`bxshB--blur;c--shadow`).
+      value[0] === '-' && (value = cssVarValue(value) as string);
       const colors = getColor(p[MN_SHADOW_COLOR] || '0');
       // Последняя группа регулярки — `in` (inset).
       const prefixIn = p[p.length - 1] ? 'inset ' : '';

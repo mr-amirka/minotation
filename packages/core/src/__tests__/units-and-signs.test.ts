@@ -180,9 +180,9 @@ describe('единица в тенях идёт во все длины запи�
   test('переменная в позиции blur — то, ради чего был сырой режим', () => {
     // Сырой режим у теней убран 2026-09-26: мини-язык покрывает всё, что он
     // давал, а на списке теней он ломался — запятая уходила внутрь `var(…)`.
-    expect(compile(['bxsh--blur']).css)
+    expect(compile(['bxshB--blur']).css)
       .toContain('box-shadow:0px 0px var(--blur) 0px #000');
-    expect(compile(['bxsh--blur;c--shadow']).css)
+    expect(compile(['bxshB--blur;c--shadow']).css)
       .toContain('box-shadow:0px 0px var(--blur) 0px var(--shadow)');
   });
 });
@@ -1056,12 +1056,33 @@ describe('тени: список и переменная вместо сырог
   });
 
   test.each([
-    ['bxsh--blur', 'box-shadow:0px 0px var(--blur) 0px #000'],
-    ['bxsh--blur;c--shadow', 'box-shadow:0px 0px var(--blur) 0px var(--shadow)'],
-    ['bxsh--my_blur;', 'box-shadow:0px 0px var(--my_blur) 0px #000'],
+    ['bxshB--blur', 'box-shadow:0px 0px var(--blur) 0px #000'],
+    ['bxshB--blur;c--shadow', 'box-shadow:0px 0px var(--blur) 0px var(--shadow)'],
+    ['bxshB--my_blur;', 'box-shadow:0px 0px var(--my_blur) 0px #000'],
   ])('%s → %s — переменная в позиции blur', (token, expected) => {
     // `;` — терминатор имени: без него имя заберёт следующие модификаторы.
     expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    ['bxsh--shadow', 'box-shadow:var(--shadow)'],
+    ['bxsh--shadow;', 'box-shadow:var(--shadow)'],
+    ['bxsh--a,--b', 'box-shadow:var(--a),var(--b)'],
+    ['tsh--shadow', 'text-shadow:var(--shadow)'],
+  ])('%s → %s — переменная без буквы означает всю тень', (token, expected) => {
+    // У любого другого свойства `--x` это значение целиком (`bg--panel`,
+    // `tn--t`), и тень не исключение. До 2026-09-29 переменная молча попадала
+    // в позицию blur, а прочие слоты добирались умолчаниями — автор получал
+    // правило, которого не писал.
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test('строчная буква слиплась бы с именем тега — потому форма заглавная', () => {
+    // `bxshb…` ядро прочитает как тег `bxshb`, не найдёт хендлера и молча
+    // пропустит токен как чужой класс. Сторож на случай, если кто-то решит
+    // «для красоты» перевести модификатор в нижний регистр.
+    expect(compile(['bxshb--blur']).css).not.toContain('box-shadow');
+    expect(compile(['bxshB--blur']).css).toContain('var(--blur)');
   });
 
   test.each([
@@ -1187,7 +1208,7 @@ describe('`;` между переменными — разделитель ча�
 
   test('терминатор имени работает как раньше', () => {
     expect(compile(['w--my_var;']).css).toContain('width:var(--my_var)');
-    expect(compile(['bxsh--blur;c--shadow']).css)
+    expect(compile(['bxshB--blur;c--shadow']).css)
       .toContain('box-shadow:0px 0px var(--blur) 0px var(--shadow)');
   });
 });

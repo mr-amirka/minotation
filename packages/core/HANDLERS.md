@@ -738,11 +738,25 @@ border-bottom: '1px solid rgba(255,255,255,0.08)'  →  bb1  bsbS  bcbF.08
 
 | Токен | CSS |
 |-------|-----|
-| `bxsh--blur` | `box-shadow:0px 0px var(--blur) 0px #000` |
-| `bxsh--blur;c--shadow` | `box-shadow:0px 0px var(--blur) 0px var(--shadow)` |
+| `bxsh--shadow` | `box-shadow:var(--shadow)` |
+| `bxsh--a,--b` | `box-shadow:var(--a),var(--b)` |
+| `bxshB--blur` | `box-shadow:0px 0px var(--blur) 0px #000` |
+| `bxshB--blur;c--shadow` | `box-shadow:0px 0px var(--blur) 0px var(--shadow)` |
 | `bxsh10c--shadow` | `box-shadow:0px 0px 10px 0px var(--shadow)` |
 | `bxsh10x0y2c0.1,5x0y1c0.05` | две разные тени через запятую |
 | `bxshN` | `box-shadow:none` |
+
+**Переменная без буквы — это вся тень целиком** (`bxsh--shadow` →
+`box-shadow:var(--shadow)`), как `--x` у любого другого свойства. Переменная
+именно в позиции blur пишется через `B`: `bxshB--blur`.
+
+Буква заглавная по той же причине, что `X`/`Y`/`R`/`M`: строчная слилась бы с
+именем тега — `bxshb…` ядро прочитает как тег `bxshb`, не найдёт хендлера и
+молча пропустит токен как чужой класс.
+
+До 2026-09-29 `bxsh--shadow` клало переменную в blur, а остальные слоты
+добирались умолчаниями: получалось `0px 0px var(--shadow) 0px #000` —
+правило, которого автор не писал, и без предупреждения.
 
 `;` после имени переменной — терминатор, как везде в нотации: без него имя
 жадно заберёт следующие модификаторы.

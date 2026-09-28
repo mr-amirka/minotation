@@ -232,6 +232,16 @@ describe('build', () => {
 });
 
 /**
+ * Запас времени watch-тестам.
+ *
+ * Сама пересборка занимает 5–14 мс (замерено), ждём мы не её: `fs.watch` с
+ * `recursive` на macOS уведомляет об изменении во временной директории с
+ * задержкой, которая на загруженной машине доходит до секунд. Умолчания jest
+ * в 5 с не хватало — тест падал по таймауту, хотя всё работало.
+ */
+const WATCH_TIMEOUT = 20000;
+
+/**
  * Ждёт выполнения условия, опрашивая его.
  *
  * Фиксированная пауза здесь не годится: наблюдение перестраивается за
@@ -239,7 +249,7 @@ describe('build', () => {
  * с паузой в 400 мс падал именно там.
  */
 async function until(check: () => boolean, what: string): Promise<void> {
-  const deadline = Date.now() + 5000;
+  const deadline = Date.now() + WATCH_TIMEOUT - 2000;
   while (Date.now() < deadline) {
     if (check()) {
       return;
@@ -249,40 +259,92 @@ async function until(check: () => boolean, what: string): Promise<void> {
   throw new Error('не дождались: ' + what);
 }
 
-describe('startWatch', () => {
-  test('пересобирает при изменении файла', async () => {
-    write('a.html', '<div class="p10">');
-    const out = join(dir, 'out.css');
-    const stop = startWatch({
+describe('метрики', () => {
+  test('`--metrics` пишет отчёт рядом с CSS', () => {
+    write('a.html', '<div class="p10 p10 m20">');
+    const metricsPath = join(
+      dir, 'отчёт', 'metrics.json',
+    );
+
+    build({
       input: dir,
-      output: out,
+      output: join(dir, 'app.css'),
+      metricsPath,
+      metrics: true,
     }, report);
-    try {
-      write('b.html', '<div class="m20">');
-      // Пересборка отложена на 50 мс, чтобы одно сохранение не запускало её
-      // трижды.
-      await until(() => existsSync(out) && readFileSync(out, 'utf8').includes('margin:20px'),
-        'пересборка после изменения файла');
-      expect(readFileSync(out, 'utf8')).toContain('margin:20px');
-    } finally {
-      stop();
-    }
+
+    const metrics = JSON.parse(readFileSync(metricsPath, 'utf8'));
+    expect(metrics.tokens).toEqual([{
+      name: 'p10',
+      count: 2,
+    }, {
+      name: 'm20',
+      count: 1,
+    }]);
+    expect(logs.some((m) => m.includes('Статистика'))).toBe(true);
   });
 
-  test('ошибка пересборки не роняет наблюдение', async () => {
-    const file = write('a.html', '<div class="p10">');
-    // Запись внутрь файла — гарантированная ошибка (ENOTDIR): наблюдение
-    // должно её напечатать и продолжить, а не оборвать процесс.
-    const stop = startWatch({
+  test('без опции файл не создаётся и о нём не сообщается', () => {
+    write('a.html', '<div class="p10">');
+    build({
       input: dir,
-      output: join(file, 'out.css'),
+      output: join(dir, 'app.css'),
     }, report);
-    try {
-      write('b.html', '<div class="m20">');
-      await until(() => errors.length > 0, 'сообщение об ошибке пересборки');
-      expect(errors.length).toBeGreaterThan(0);
-    } finally {
-      stop();
-    }
+
+    expect(existsSync(join(dir, 'metrics.json'))).toBe(false);
+    expect(logs.some((m) => m.includes('Статистика'))).toBe(false);
   });
+
+  test('опция включает сбор, конфиг — тоже', () => {
+    expect(mergeSettings(parseArgs(['-m', './m.json']), {}).metrics).toBe(true);
+    expect(mergeSettings(parseArgs(['--metrics', './m.json']), {}).metricsPath)
+      .toBe('./m.json');
+    expect(mergeSettings(parseArgs([]), {
+      metricsPath: './c.json',
+    }).metrics).toBe(true);
+    // Без пути считать нечего и некуда писать.
+    expect(mergeSettings(parseArgs([]), {}).metrics).toBe(false);
+  });
+});
+
+describe('startWatch', () => {
+  test(
+    'пересобирает при изменении файла', async () => {
+      write('a.html', '<div class="p10">');
+      const out = join(dir, 'out.css');
+      const stop = startWatch({
+        input: dir,
+        output: out,
+      }, report);
+      try {
+        write('b.html', '<div class="m20">');
+        // Пересборка отложена на 50 мс, чтобы одно сохранение не запускало её
+        // трижды.
+        await until(() => existsSync(out) && readFileSync(out, 'utf8').includes('margin:20px'),
+          'пересборка после изменения файла');
+        expect(readFileSync(out, 'utf8')).toContain('margin:20px');
+      } finally {
+        stop();
+      }
+    }, WATCH_TIMEOUT,
+  );
+
+  test(
+    'ошибка пересборки не роняет наблюдение', async () => {
+      const file = write('a.html', '<div class="p10">');
+      // Запись внутрь файла — гарантированная ошибка (ENOTDIR): наблюдение
+      // должно её напечатать и продолжить, а не оборвать процесс.
+      const stop = startWatch({
+        input: dir,
+        output: join(file, 'out.css'),
+      }, report);
+      try {
+        write('b.html', '<div class="m20">');
+        await until(() => errors.length > 0, 'сообщение об ошибке пересборки');
+        expect(errors.length).toBeGreaterThan(0);
+      } finally {
+        stop();
+      }
+    }, WATCH_TIMEOUT,
+  );
 });

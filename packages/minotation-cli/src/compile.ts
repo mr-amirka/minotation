@@ -84,8 +84,49 @@ export interface CompileSettings {
   presets?: Array<(mn: MnInstance) => void>;
   /** Токены, которые нужны всегда, даже если их нет в файлах. */
   safelist?: string[];
+  /**
+   * Собирать статистику употребления токенов (см. {@link Metrics}).
+   *
+   * Отдельный флаг, а не всегда: счётчики по файлам держат в памяти запись на
+   * каждый файл, а нужны они в разовых разборах — «что в проекте вообще
+   * используется», «какие токены остались от удалённого компонента».
+   */
+  metrics?: boolean;
   /** Остальные опции ядра. */
   mn?: MnOptions;
+}
+
+/** Сколько раз встретился токен. */
+export interface TokenCount {
+  /** Сам токен. */
+  name: string;
+  /** Сколько раз встретился — во всех файлах или в одном, по месту. */
+  count: number;
+}
+
+/**
+ * Статистика употребления токенов — то, что пишет `--metrics`.
+ *
+ * Формат перенесён из v1 (`old/minimalist-notation/node/index.js`): список
+ * `{name, count}` по убыванию частоты. Разбивка по файлам лежит рядом, в
+ * `files`, а не в отдельном отчёте: в v1 это были две опции (`--metrics` и
+ * `--metricsFiles`), писавшие два файла с пересекающимся содержимым.
+ */
+export interface Metrics {
+  /** Всего просканировано файлов. */
+  filesScanned: number;
+  /**
+   * Уникальных токенов, попавших в CSS, — включая `safelist`, которого в
+   * файлах не было. Счётчики в {@link Metrics.tokens} считают только
+   * встреченное в файлах, поэтому числа могут расходиться.
+   */
+  tokensTotal: number;
+  /** Сколько раз токены встретились суммарно, с повторами. */
+  occurrences: number;
+  /** Токены по убыванию частоты. */
+  tokens: TokenCount[];
+  /** Токены по файлам: путь → список, тоже по убыванию частоты. */
+  files: Record<string, TokenCount[]>;
 }
 
 /** Результат сборки. */
@@ -98,6 +139,8 @@ export interface CompileResult {
   tokens: number;
   /** Предупреждения ядра. */
   warnings: MnWarning[];
+  /** Статистика употребления — собирается только при `metrics: true`. */
+  metrics?: Metrics;
 }
 
 /**
@@ -184,14 +227,30 @@ export function compile(settings: CompileSettings): CompileResult {
     syntax: settings.syntax,
   });
   const tokens = new Set<string>(settings.safelist || []);
+  // Счётчики заводятся только под `--metrics`: на каждый файл это лишняя
+  // запись в памяти, а обычной сборке они не нужны.
+  const counts: Record<string, number> | 0 = settings.metrics ? {} : 0;
+  const byFile: Record<string, Record<string, number>> | 0 = settings.metrics ? {} : 0;
   const l = files.length;
   let i = 0;
   let found: string[];
   let j: number;
   let n: number;
+  let fileCounts: Record<string, number>;
+  let token: string;
   for (; i < l; i++) {
     found = scan(readFileSync(files[i], 'utf8'), files[i]);
     n = found.length;
+    if (counts) {
+      fileCounts = (byFile as Record<string, Record<string, number>>)[files[i]] = {};
+      for (j = 0; j < n; j++) {
+        token = found[j];
+        tokens.add(token);
+        counts[token] = (counts[token] || 0) + 1;
+        fileCounts[token] = (fileCounts[token] || 0) + 1;
+      }
+      continue;
+    }
     for (j = 0; j < n; j++) {
       tokens.add(found[j]);
     }
@@ -228,5 +287,57 @@ export function compile(settings: CompileSettings): CompileResult {
     files: l,
     tokens: tokens.size,
     warnings,
+    metrics: counts
+      ? buildMetrics(
+        l, tokens.size, counts, byFile as Record<string, Record<string, number>>,
+      )
+      : undefined,
   };
+}
+
+/** Раскладывает счётчики в отчёт: списки по убыванию частоты. */
+function buildMetrics(
+  filesScanned: number,
+  tokensTotal: number,
+  counts: Record<string, number>,
+  byFile: Record<string, Record<string, number>>,
+): Metrics {
+  const tokens = sortedCounts(counts);
+  const files: Record<string, TokenCount[]> = {};
+  let occurrences = 0;
+  const l = tokens.length;
+  let i = 0;
+  for (; i < l; i++) {
+    occurrences += tokens[i].count;
+  }
+  // §6.2: переменная тела цикла объявляется один раз, до него.
+  let list: TokenCount[];
+  for (const path in byFile) {
+    // Файл без единого токена в отчёт не попадает: пустых записей в проекте
+    // больше, чем содержательных, и они только мешают читать.
+    list = sortedCounts(byFile[path]);
+    list.length && (files[path] = list);
+  }
+  return {
+    filesScanned,
+    tokensTotal,
+    occurrences,
+    tokens,
+    files,
+  };
+}
+
+/** `{ токен: счётчик }` → список по убыванию частоты, при равенстве — по имени. */
+function sortedCounts(counts: Record<string, number>): TokenCount[] {
+  const out: TokenCount[] = [];
+  for (const name in counts) {
+    out.push({
+      name,
+      count: counts[name],
+    });
+  }
+  // Имя вторым ключом — чтобы отчёт не менялся от прогона к прогону: иначе
+  // токены с одинаковой частотой шли бы в случайном порядке, и сравнивать две
+  // выгрузки было бы нечем.
+  return out.sort((a, b) => b.count - a.count || (a.name < b.name ? -1 : 1));
 }

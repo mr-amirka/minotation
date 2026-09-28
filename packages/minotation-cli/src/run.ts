@@ -38,6 +38,8 @@ export const DEFAULT_CONFIG = './mn.config.js';
 export interface RunSettings extends CompileSettings {
   /** Файл, в который пишется CSS. */
   output: string;
+  /** Файл для статистики употребления токенов; без него она не собирается. */
+  metricsPath?: string;
 }
 
 /**
@@ -107,6 +109,9 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
     // `--no-syntax` выключает разбор; без него решает конфиг, а его умолчание
     // (`undefined`) означает «автоматически».
     syntax: args.noSyntax ? false : config.syntax,
+    metricsPath: args.metrics || config.metricsPath,
+    // Считать статистику есть смысл только когда её куда писать.
+    metrics: !!(args.metrics || config.metricsPath),
     include: args.include ? new RegExp(args.include) : config.include,
     exclude: args.exclude ? new RegExp(args.exclude) : config.exclude,
     // Конфиг лежит в корне проекта и подходит под расширение `.js` — без этого
@@ -132,6 +137,18 @@ export function build(settings: RunSettings, report: Reporter): CompileResult {
     report.error('Предупреждение: ' + result.warnings[i].message);
   }
   report.log(result.files + ' файлов, ' + result.tokens + ' токенов → ' + full);
+  if (settings.metricsPath && result.metrics) {
+    const metricsFull = resolve(settings.metricsPath);
+    mkdirSync(dirname(metricsFull), {
+      recursive: true,
+    });
+    writeFileSync(
+      metricsFull, JSON.stringify(
+        result.metrics, null, '  ',
+      ), 'utf8',
+    );
+    report.log('Статистика → ' + metricsFull);
+  }
   return result;
 }
 

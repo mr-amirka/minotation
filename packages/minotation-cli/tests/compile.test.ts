@@ -204,3 +204,89 @@ describe('compile', () => {
     expect(result.tokens).toBe(0);
   });
 });
+
+/**
+ * Статистика употребления токенов — перенос опции `--metrics` из v1.
+ *
+ * Формат тот же: список `{name, count}` по убыванию частоты. Разбивка по
+ * файлам лежит рядом, а не в отдельном отчёте: в v1 это были две опции,
+ * писавшие два файла с пересекающимся содержимым.
+ */
+describe('метрики', () => {
+  test('считает употребления по всему проекту и по файлам', () => {
+    write('a.html', '<div class="p10 p10 m20"></div>');
+    write('b.html', '<div class="p10"></div>');
+
+    const metrics = compile({
+      input: dir,
+      metrics: true,
+    }).metrics!;
+
+    expect(metrics.filesScanned).toBe(2);
+    expect(metrics.tokensTotal).toBe(2);
+    expect(metrics.occurrences).toBe(4);
+    // По убыванию частоты: p10 встретился трижды, m20 — один раз.
+    expect(metrics.tokens).toEqual([{
+      name: 'p10',
+      count: 3,
+    }, {
+      name: 'm20',
+      count: 1,
+    }]);
+    expect(metrics.files[join(dir, 'b.html')]).toEqual([{
+      name: 'p10',
+      count: 1,
+    }]);
+  });
+
+  test('при равной частоте порядок по имени — отчёт воспроизводим', () => {
+    // Иначе две выгрузки одного проекта нечем сравнить.
+    write('a.html', '<div class="w50 m20 p10"></div>');
+
+    const names = compile({
+      input: dir,
+      metrics: true,
+    }).metrics!.tokens.map((t) => t.name);
+
+    expect(names).toEqual([
+      'm20',
+      'p10',
+      'w50',
+    ]);
+  });
+
+  test('файлы без токенов в отчёт не попадают', () => {
+    write('a.html', '<div class="p10"></div>');
+    write('empty.html', '<div></div>');
+
+    const files = compile({
+      input: dir,
+      metrics: true,
+    }).metrics!.files;
+
+    expect(Object.keys(files)).toEqual([join(dir, 'a.html')]);
+  });
+
+  test('без опции статистика не собирается', () => {
+    // Счётчики по файлам — запись на каждый файл в памяти; обычной сборке
+    // они не нужны.
+    write('a.html', '<div class="p10"></div>');
+    expect(compile({
+      input: dir,
+    }).metrics).toBeUndefined();
+  });
+
+  test('safelist в статистику не попадает — его в файлах не было', () => {
+    write('a.html', '<div class="p10"></div>');
+    const metrics = compile({
+      input: dir,
+      metrics: true,
+      safelist: ['m20'],
+    }).metrics!;
+
+    // В счётчики употребления safelist не попадает: в файлах его не было.
+    expect(metrics.tokens.map((t) => t.name)).toEqual(['p10']);
+    // А в общем числе токенов — да: оно про то, что уехало в CSS.
+    expect(metrics.tokensTotal).toBe(2);
+  });
+});

@@ -97,6 +97,26 @@ function makeStubProject(): string {
   return makeProject({ 'src/main.js': 'export const x = 1;\n' });
 }
 
+/** Тексты предупреждений, которые сборка добавила в `compilation.warnings`. */
+function buildWarnings(plugin: MnWebpackPlugin): Promise<string[]> {
+  const root = makeStubProject();
+  const compiler = webpack({
+    mode: 'development',
+    devtool: false,
+    entry: join(root, 'src/main.js'),
+    output: { path: join(root, 'dist'), filename: 'bundle.js' },
+    plugins: [plugin],
+  });
+
+  return new Promise((resolve, reject) => {
+    compiler.run((err, stats) => {
+      if (err) { reject(err); return; }
+      const warnings = stats!.compilation.warnings.map((w) => w.message);
+      compiler.close(() => resolve(warnings));
+    });
+  });
+}
+
 describe('minotation-webpack — лоадеры', () => {
   beforeEach(() => {
     // стейт — синглтон на процесс (см. state.ts), между тестами его надо чистить
@@ -203,6 +223,52 @@ describe('minotation-webpack — реальная сборка', () => {
     const assets = await runBuild(makeStubProject(), new MnWebpackPlugin({ output: 'mn.css', presets: [] }));
 
     expect(assets['mn.css']).toBeUndefined();
+  });
+});
+
+/**
+ * Предупреждения ядра идут в `compilation.warnings`, а не в console: только так
+ * они попадают в отчёт сборки и в CI. Перехват стоит в плагине всегда, поэтому
+ * и проверяется здесь — на реальной сборке, а не на моке `compilation`.
+ */
+describe('minotation-webpack — предупреждения ядра', () => {
+  beforeEach(() => {
+    const state = getState();
+    state.tokensByFile.clear();
+    state.dynamicPresets.clear();
+  });
+
+  test('битый токен превращается в warning сборки', async () => {
+    runLoader('<div class="w10zz p10"></div>');
+
+    const warnings = await buildWarnings(new MnWebpackPlugin({ output: 'mn.css' }));
+
+    expect(warnings.join('\n')).toContain('[minotation] w10zz');
+    // Остальное при этом компилируется: один битый токен не отменяет сборку.
+    expect(warnings.join('\n')).not.toContain('p10');
+  });
+
+  test("onWarning: 'silent' — в отчёт сборки ничего не уходит", async () => {
+    runLoader('<div class="w10zz"></div>');
+
+    const warnings = await buildWarnings(
+      new MnWebpackPlugin({ output: 'mn.css', onWarning: 'silent' }),
+    );
+
+    expect(warnings).toEqual([]);
+  });
+
+  test('onWarning-функция вызывается и не отменяет отчёт сборки', async () => {
+    runLoader('<div class="w10zz"></div>');
+    const seen: string[] = [];
+
+    const warnings = await buildWarnings(new MnWebpackPlugin({
+      output: 'mn.css',
+      onWarning: (warning) => { seen.push(warning.token); },
+    }));
+
+    expect(seen).toEqual(['w10zz']);
+    expect(warnings.join('\n')).toContain('[minotation] w10zz');
   });
 });
 

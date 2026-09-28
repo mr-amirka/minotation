@@ -304,8 +304,10 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
         // esbuild собирает предупреждения в result.warnings — пишем туда же,
         // чтобы они попали в общий отчёт сборки, а не только в stdout.
         flushWarnings({
+          // `result.warnings` у esbuild всегда массив (в типах он обязателен),
+          // поэтому запасного `|| []` здесь нет: он был бы недостижимой веткой.
           warn: (message: string) => {
-            (result.warnings || []).push({ text: message } as never);
+            result.warnings.push({ text: message } as never);
           },
         });
         if (!css) return;

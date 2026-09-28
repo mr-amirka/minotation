@@ -153,6 +153,60 @@ describe('minotation-esbuild — опции и граничные случаи',
     expect(existsSync(join(outDir, 'mn.css'))).toBe(false);
   });
 
+  test('битый токен уходит в result.warnings, а не в console', async () => {
+    // У сборщика свой канал вывода: только через него предупреждение попадает
+    // в общий отчёт сборки, а не теряется в stdout.
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/app.html': '<div class="w10zz p10"></div>',
+    });
+
+    const result = await build({
+      entryPoints: [join(root, 'src/main.js')],
+      bundle: true,
+      outdir: join(root, 'out'),
+      plugins: [mnEsbuild({ root })],
+    });
+
+    expect(result.warnings.map((w) => w.text).join('\n')).toContain('[minotation] w10zz');
+    // Остальное компилируется: один битый токен не отменяет сборку.
+    expect(readFileSync(join(root, 'out/mn.css'), 'utf-8')).toContain('padding:10px');
+  });
+
+  test("mn.onWarning: 'silent' — в отчёт сборки ничего не уходит", async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/app.html': '<div class="w10zz"></div>',
+    });
+
+    const result = await build({
+      entryPoints: [join(root, 'src/main.js')],
+      bundle: true,
+      outdir: join(root, 'out'),
+      plugins: [mnEsbuild({ root, mn: { onWarning: 'silent' } })],
+    });
+
+    expect(result.warnings).toEqual([]);
+  });
+
+  test('mn.onWarning-функция вызывается и не отменяет отчёт сборки', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/app.html': '<div class="w10zz"></div>',
+    });
+    const seen: string[] = [];
+
+    const result = await build({
+      entryPoints: [join(root, 'src/main.js')],
+      bundle: true,
+      outdir: join(root, 'out'),
+      plugins: [mnEsbuild({ root, mn: { onWarning: (w) => { seen.push(w.token); } } })],
+    });
+
+    expect(seen).toEqual(['w10zz']);
+    expect(result.warnings.map((w) => w.text).join('\n')).toContain('[minotation] w10zz');
+  });
+
   test('onLoad для несуществующего пресет-файла: заглушка возвращается, ошибки нет', () => {
     const plugin = mnEsbuild({ root: mkdtempSync(join(tmpdir(), 'mn-esbuild-empty-')) });
     const loadCallbacks: Array<(args: { path: string }) => unknown> = [];

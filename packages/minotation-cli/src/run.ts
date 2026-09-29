@@ -7,7 +7,7 @@
  * @module run
  */
 import {
-  existsSync, mkdirSync, watch, writeFileSync,
+  existsSync, mkdirSync, realpathSync, watch, writeFileSync,
 } from 'node:fs';
 import {
   createRequire,
@@ -164,8 +164,12 @@ export function build(settings: RunSettings, report: Reporter): CompileResult {
  */
 export function startWatch(settings: RunSettings, report: Reporter): () => void {
   let timer: NodeJS.Timeout | undefined;
+  // Наблюдаем за РЕАЛЬНЫМ путём: на macOS `/var` — симлинк на `/private/var`,
+  // и `fs.watch` с `recursive` по неразрешённому пути о новых файлах не
+  // сообщает вовсе. Молча: watch работает, событий просто нет.
+  const target = realpathSync(resolve(settings.input));
   const watcher = watch(
-    settings.input, {
+    target, {
       recursive: true,
     }, () => {
     // Сборщики пишут файл несколькими событиями подряд; ждём паузу, иначе
@@ -180,7 +184,7 @@ export function startWatch(settings: RunSettings, report: Reporter): () => void 
       }, 50);
     },
   );
-  report.log('Наблюдение за ' + resolve(settings.input));
+  report.log('Наблюдение за ' + target);
   return () => {
     timer && clearTimeout(timer);
     watcher.close();

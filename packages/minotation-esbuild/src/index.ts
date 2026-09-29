@@ -1,8 +1,6 @@
 import type { Plugin, PluginBuild } from 'esbuild';
 import type { MnWarning } from 'minotation';
 import {
-  minotationProvider,
-  createScanner,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -10,6 +8,7 @@ import {
   presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
+import { createTokenCollector, walkFiles } from 'minotation-build';
 import {
   readFileSync,
   writeFileSync,
@@ -86,32 +85,6 @@ export interface MnEsbuildOptions {
   };
 }
 
-/**
- * Рекурсивно обходит директорию и возвращает пути файлов с заданными расширениями.
- *
- * @param dir - корневая директория
- * @param exts - набор расширений (`.tsx`, `.html`, …)
- * @param maxDepth - максимальная глубина рекурсии
- * @returns массив абсолютных путей
- */
-function walkFiles(dir: string, exts: string[], maxDepth = 10): string[] {
-  const results: string[] = [];
-  try {
-    for (const name of readdirSync(dir)) {
-      if (name.startsWith('.') || name === 'node_modules') continue;
-      const full = join(dir, name);
-      try {
-        const st = statSync(full);
-        if (st.isDirectory() && maxDepth > 0) {
-          results.push(...walkFiles(full, exts, maxDepth - 1));
-        } else if (st.isFile() && exts.some(ext => name.endsWith(ext))) {
-          results.push(full);
-        }
-      } catch (_) { /* skip unreadable */ }
-    }
-  } catch (_) { /* skip unreadable dir */ }
-  return results;
-}
 
 /**
  * Транспилирует TypeScript/JS пресет-файл через esbuild и выполняет его
@@ -192,74 +165,33 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
  */
 export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
   const attr = options.attr || 'class';
-  // Сканер собираем один раз на плагин, а не на каждый файл. Выбор способа
-  // разбора (текст или парсер) делает ядро — плагину остаётся дать имя файла.
-  const scan = createScanner({
-    attr,
-    classVarSuffixes: options.classVarSuffixes,
-    mergeFnNames: options.mergeFnNames,
-    syntax: options.syntax,
-  });
   const exts = options.extensions || ['.html', '.jsx', '.tsx', '.vue', '.svelte'];
   const presetExts = options.presetExtensions || ['.mn.ts', '.mn.js', '.mn.tsx'];
   const fileName = options.fileName || 'mn.css';
   const root = options.root || process.cwd();
-  const staticPresets = options.presets || [
-    presetStandard,
-    presetSynonyms,
-    presetMedias,
-    presetNormalize,
-    presetMain,
-  ];
+  // Учёт токенов, пресеты, компиляция, кеш и предупреждения — общий каркас
+  // (`minotation-build`). До 2026-09-29 каждый плагин вёл это сам, и четыре
+  // копии расходились между собой.
+  const collector = createTokenCollector({
+    attr,
+    classVarSuffixes: options.classVarSuffixes,
+    mergeFnNames: options.mergeFnNames,
+    syntax: options.syntax,
+    presets: options.presets || [
+      presetStandard,
+      presetSynonyms,
+      presetMedias,
+      presetNormalize,
+      presetMain,
+    ],
+    mn: options.mn,
+  });
 
-  /** Per-file накопитель токенов. */
-  const fileTokens = new Map<string, Set<string>>();
-
-  /** Динамически загруженные пресеты из *.mn.ts файлов. */
-  const dynamicPresets = new Map<string, (mn: MnInstance) => void>();
-
-  /** Компилирует все накопленные токены + пресеты в CSS. Свежий mn-инстанс на каждый вызов. */
-
-  /** Предупреждения последней компиляции — пересылаются в лог сборщика. */
-  let lastWarnings: MnWarning[] = [];
-
+  /** Пересылает предупреждения последней компиляции в лог esbuild. */
   function flushWarnings(ctx: { warn: (message: string) => void }): void {
-    for (let i = 0; i < lastWarnings.length; i++) {
-      const warning = lastWarnings[i];
+    for (const warning of collector.takeWarnings()) {
       ctx.warn('[minotation] ' + warning.token + ': ' + warning.message);
     }
-    lastWarnings = [];
-  }
-
-  function recompile(): string {
-    const allTokens = new Set<string>();
-    for (const tokens of fileTokens.values()) {
-      for (const t of tokens) allTokens.add(t);
-    }
-    const collected: MnWarning[] = [];
-    const userOnWarning = options.mn && options.mn.onWarning;
-    const fresh = minotationProvider({
-      ...options.mn,
-      // Перехватываем всегда: ядро по умолчанию пишет в console, а у сборщика
-      // свой канал вывода. Явный 'silent' уважаем; пользовательскую функцию
-      // вызываем дополнительно.
-      onWarning: (warning: MnWarning) => {
-        if (userOnWarning !== 'silent') {
-          collected.push(warning);
-        }
-        if (typeof userOnWarning === 'function') {
-          userOnWarning(warning);
-        }
-      },
-    });
-    fresh.setPresets([...staticPresets, ...dynamicPresets.values()]);
-    const compile = fresh.getCompiler('class');
-    for (const token of allTokens) compile(token);
-    fresh.compile();
-    lastWarnings = collected;
-    return fresh.styles$.getValue()
-      .map((s: { content: string }) => s.content)
-      .join('\n');
   }
 
   /** Определяет директорию для выходного CSS-файла из опций сборки esbuild. */
@@ -280,20 +212,15 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
         // перезапуска: обход ниже добавляет записи, но никогда не убирает.
         // Чистим здесь, а не в `onEnd`, потому что `onLoad` дозаполняет наборы
         // уже после этого хука.
-        fileTokens.clear();
-        dynamicPresets.clear();
+        collector.clear();
 
         for (const file of walkFiles(root, presetExts)) {
           const preset = evalPresetFile(file);
-          if (preset) dynamicPresets.set(file, preset);
+          if (preset) collector.setPreset(file, preset);
         }
         for (const file of walkFiles(root, exts)) {
           try {
-            const source = readFileSync(file, 'utf-8');
-            const tokens = scan(source, file);
-            if (tokens.length > 0) {
-              fileTokens.set(file, new Set(tokens));
-            }
+            collector.add(file, readFileSync(file, 'utf-8'));
           } catch (_) { /* skip unreadable */ }
         }
       });
@@ -301,24 +228,20 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
       build.onLoad({ filter: /./ }, args => {
         if (!presetExts.some(ext => args.path.endsWith(ext))) return undefined;
         const preset = evalPresetFile(args.path);
-        if (preset) dynamicPresets.set(args.path, preset);
+        if (preset) collector.setPreset(args.path, preset);
         return { contents: 'export default {};', loader: 'js' };
       });
 
       build.onLoad({ filter: /./ }, args => {
         if (!exts.some(ext => args.path.endsWith(ext))) return undefined;
         try {
-          const source = readFileSync(args.path, 'utf-8');
-          const tokens = scan(source, args.path);
-          if (tokens.length > 0) {
-            fileTokens.set(args.path, new Set(tokens));
-          }
+          collector.add(args.path, readFileSync(args.path, 'utf-8'));
         } catch (_) { /* skip unreadable */ }
         return undefined; // не подменяем контент — пусть грузит штатный loader
       });
 
       build.onEnd((result) => {
-        const css = recompile();
+        const css = collector.css();
         // esbuild собирает предупреждения в result.warnings — пишем туда же,
         // чтобы они попали в общий отчёт сборки, а не только в stdout.
         flushWarnings({

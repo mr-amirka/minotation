@@ -1,8 +1,6 @@
 import type { Plugin, PluginContext } from 'rollup';
 import type { MnWarning } from 'minotation';
 import {
-  minotationProvider,
-  createScanner,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -10,6 +8,7 @@ import {
   presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
+import { createTokenCollector, walkFiles } from 'minotation-build';
 import {
   readFileSync,
   readdirSync,
@@ -84,32 +83,6 @@ export interface MnRollupOptions {
   };
 }
 
-/**
- * Рекурсивно обходит директорию и возвращает пути файлов с заданными расширениями.
- *
- * @param dir - корневая директория
- * @param exts - набор расширений (`.tsx`, `.html`, …)
- * @param maxDepth - максимальная глубина рекурсии
- * @returns массив абсолютных путей
- */
-function walkFiles(dir: string, exts: string[], maxDepth = 10): string[] {
-  const results: string[] = [];
-  try {
-    for (const name of readdirSync(dir)) {
-      if (name.startsWith('.') || name === 'node_modules') continue;
-      const full = join(dir, name);
-      try {
-        const st = statSync(full);
-        if (st.isDirectory() && maxDepth > 0) {
-          results.push(...walkFiles(full, exts, maxDepth - 1));
-        } else if (st.isFile() && exts.some(ext => name.endsWith(ext))) {
-          results.push(full);
-        }
-      } catch (_) { /* skip unreadable */ }
-    }
-  } catch (_) { /* skip unreadable dir */ }
-  return results;
-}
 
 /**
  * Транспилирует TypeScript/JS пресет-файл через esbuild и выполняет его
@@ -175,105 +148,57 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
  */
 export function mnRollup(options: MnRollupOptions = {}): Plugin {
   const attr = options.attr || 'class';
-  // Опции скана собираем один раз на плагин, а не на каждый файл.
-  // Сканер собираем один раз на плагин. Выбор способа разбора (текст или
-  // парсер) делает ядро — плагину остаётся дать имя файла.
-  const scan = createScanner({
-    attr,
-    classVarSuffixes: options.classVarSuffixes,
-    mergeFnNames: options.mergeFnNames,
-    syntax: options.syntax,
-  });
   const exts = options.extensions || ['.html', '.jsx', '.tsx', '.vue', '.svelte'];
   const presetExts = options.presetExtensions || ['.mn.ts', '.mn.js', '.mn.tsx'];
   const fileName = options.fileName || 'mn.css';
   const root = options.root || process.cwd();
-  const staticPresets = options.presets || [
-    presetStandard,
-    presetSynonyms,
-    presetMedias,
-    presetNormalize,
-    presetMain,
-  ];
-
-  /** Per-file накопитель токенов. */
-  const fileTokens = new Map<string, Set<string>>();
-
-  /** Динамически загруженные пресеты из *.mn.ts файлов. */
-  const dynamicPresets = new Map<string, (mn: MnInstance) => void>();
+  // Учёт токенов, пресеты, компиляция, кеш и предупреждения — общий каркас
+  // ядра. До 2026-09-29 каждый плагин вёл это сам, и четыре копии расходились.
+  const collector = createTokenCollector({
+    attr,
+    classVarSuffixes: options.classVarSuffixes,
+    mergeFnNames: options.mergeFnNames,
+    syntax: options.syntax,
+    presets: options.presets || [
+      presetStandard,
+      presetSynonyms,
+      presetMedias,
+      presetNormalize,
+      presetMain,
+    ],
+    mn: options.mn,
+  });
 
   function isPresetFile(id: string): boolean {
     return presetExts.some(ext => id.endsWith(ext));
   }
 
-  /** Компилирует все накопленные токены + пресеты в CSS. Свежий mn-инстанс на каждый вызов. */
-
-  /** Предупреждения последней компиляции — пересылаются в лог сборщика. */
-  let lastWarnings: MnWarning[] = [];
-
+  /** Пересылает предупреждения последней компиляции в лог Rollup. */
   function flushWarnings(ctx: { warn: (message: string) => void }): void {
-    for (let i = 0; i < lastWarnings.length; i++) {
-      const warning = lastWarnings[i];
+    for (const warning of collector.takeWarnings()) {
       ctx.warn('[minotation] ' + warning.token + ': ' + warning.message);
     }
-    lastWarnings = [];
-  }
-
-  function recompile(): string {
-    const allTokens = new Set<string>();
-    for (const tokens of fileTokens.values()) {
-      for (const t of tokens) allTokens.add(t);
-    }
-    const collected: MnWarning[] = [];
-    const userOnWarning = options.mn && options.mn.onWarning;
-    const fresh = minotationProvider({
-      ...options.mn,
-      // Перехватываем всегда: ядро по умолчанию пишет в console, а у сборщика
-      // свой канал вывода. Явный 'silent' уважаем; пользовательскую функцию
-      // вызываем дополнительно.
-      onWarning: (warning: MnWarning) => {
-        if (userOnWarning !== 'silent') {
-          collected.push(warning);
-        }
-        if (typeof userOnWarning === 'function') {
-          userOnWarning(warning);
-        }
-      },
-    });
-    fresh.setPresets([...staticPresets, ...dynamicPresets.values()]);
-    const compile = fresh.getCompiler('class');
-    for (const token of allTokens) compile(token);
-    fresh.compile();
-    lastWarnings = collected;
-    return fresh.styles$.getValue()
-      .map((s: { content: string }) => s.content)
-      .join('\n');
   }
 
   return {
     name: 'minotation',
 
     buildStart() {
-      // Оба накопителя живут между сборками (плагин создаётся один раз), а в
+      // Накопитель живёт между сборками (плагин создаётся один раз), а в
       // watch-режиме `buildStart` зовётся на каждую пересборку. Без очистки
       // токены и пресеты УДАЛЁННОГО файла оставались бы в выводе до перезапуска:
       // обход ниже добавляет записи, но никогда не убирает. Чистим здесь, а не
       // в `generateBundle`, потому что `transform`/`load` дозаполняют наборы
       // уже после этого хука.
-      fileTokens.clear();
-      dynamicPresets.clear();
+      collector.clear();
 
       for (const file of walkFiles(root, presetExts)) {
         const preset = evalPresetFile(file);
-        if (preset) dynamicPresets.set(file, preset);
+        if (preset) collector.setPreset(file, preset);
       }
       for (const file of walkFiles(root, exts)) {
         try {
-          const source = readFileSync(file, 'utf-8');
-          const tokens = scan(source, file);
-          if (tokens.length > 0) {
-            fileTokens.set(file, new Set(tokens));
-          }
+          collector.add(file, readFileSync(file, 'utf-8'));
         } catch (_) { /* skip unreadable */ }
       }
     },
@@ -281,21 +206,18 @@ export function mnRollup(options: MnRollupOptions = {}): Plugin {
     load(this: PluginContext, id: string) {
       if (!isPresetFile(id)) return null;
       const preset = evalPresetFile(id);
-      if (preset) dynamicPresets.set(id, preset);
+      if (preset) collector.setPreset(id, preset);
       return { code: 'export default {};', map: null };
     },
 
     transform(source: string, id: string) {
       if (!exts.some(ext => id.endsWith(ext))) return null;
-      const tokens = scan(source, id);
-      if (tokens.length > 0) {
-        fileTokens.set(id, new Set(tokens));
-      }
+      collector.add(id, source);
       return null;
     },
 
     generateBundle() {
-      const css = recompile();
+      const css = collector.css();
       flushWarnings(this);
       if (css) {
         this.emitFile({ type: 'asset', fileName, source: css });

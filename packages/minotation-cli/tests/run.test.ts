@@ -242,19 +242,24 @@ describe('build', () => {
 const WATCH_TIMEOUT = 20000;
 
 /**
- * Ждёт выполнения условия, опрашивая его.
+ * Ждёт условия, повторяя действие на каждой попытке.
  *
- * Фиксированная пауза здесь не годится: наблюдение перестраивается за
- * миллисекунды на обычном прогоне и заметно дольше под сбором покрытия — тест
- * с паузой в 400 мс падал именно там.
+ * Повтор нужен не для надёжности «на всякий случай», а из-за устройства
+ * `fs.watch` на macOS: вызов возвращает объект сразу, но подписка FSEvents
+ * устанавливается асинхронно, и запись, случившаяся в этот зазор, событием не
+ * становится — наблюдение работает, а уведомления нет. Одна запись в начале
+ * теста давала падение примерно раз в три прогона.
  */
-async function until(check: () => boolean, what: string): Promise<void> {
+async function untilRetrying(
+  act: () => void, check: () => boolean, what: string,
+): Promise<void> {
   const deadline = Date.now() + WATCH_TIMEOUT - 2000;
   while (Date.now() < deadline) {
+    act();
     if (check()) {
       return;
     }
-    await new Promise((done) => setTimeout(done, 25));
+    await new Promise((done) => setTimeout(done, 50));
   }
   throw new Error('не дождались: ' + what);
 }
@@ -317,11 +322,13 @@ describe('startWatch', () => {
         output: out,
       }, report);
       try {
-        write('b.html', '<div class="m20">');
         // Пересборка отложена на 50 мс, чтобы одно сохранение не запускало её
         // трижды.
-        await until(() => existsSync(out) && readFileSync(out, 'utf8').includes('margin:20px'),
-          'пересборка после изменения файла');
+        await untilRetrying(
+          () => write('b.html', '<div class="m20">'),
+          () => existsSync(out) && readFileSync(out, 'utf8').includes('margin:20px'),
+          'пересборка после изменения файла',
+        );
         expect(readFileSync(out, 'utf8')).toContain('margin:20px');
       } finally {
         stop();
@@ -339,8 +346,11 @@ describe('startWatch', () => {
         output: join(file, 'out.css'),
       }, report);
       try {
-        write('b.html', '<div class="m20">');
-        await until(() => errors.length > 0, 'сообщение об ошибке пересборки');
+        await untilRetrying(
+          () => write('b.html', '<div class="m20">'),
+          () => errors.length > 0,
+          'сообщение об ошибке пересборки',
+        );
         expect(errors.length).toBeGreaterThan(0);
       } finally {
         stop();

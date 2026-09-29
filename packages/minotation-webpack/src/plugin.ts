@@ -5,7 +5,6 @@ import type { Compiler } from 'webpack';
 import { Compilation } from 'webpack';
 import type { MnWarning } from 'minotation';
 import {
-  minotationProvider,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -14,6 +13,8 @@ import {
 } from 'minotation';
 import type { MnInstance } from 'minotation';
 import { getState, collectTokens, MnState } from './state';
+import { createTokenCollector } from 'minotation-build';
+import type { TokenCollector } from 'minotation-build';
 
 /** Опции {@link MnWebpackPlugin}. */
 export interface MnWebpackPluginOptions {
@@ -62,11 +63,11 @@ const DEFAULT_PRESETS: Array<(mn: MnInstance) => void> = [
 export class MnWebpackPlugin {
   private options: MnWebpackPluginOptions;
 
-  /** Слепок токенов последней компиляции — для кеширования. */
-  private _lastTokenKey = '';
+  /** Файлы, стоявшие на учёте в прошлую компиляцию, — чтобы снять исчезнувшие. */
+  private _files = new Set<string>();
 
-  /** Закешированный CSS-результат последней компиляции. */
-  private _cachedCss = '';
+  /** Накопитель каркаса; создаётся лениво, см. {@link _collector}. */
+  private _tokenCollector?: TokenCollector;
 
   constructor(options: MnWebpackPluginOptions = {}) {
     this.options = options;
@@ -101,56 +102,35 @@ export class MnWebpackPlugin {
    * @param state - shared-стейт с набором токенов от лоадера
    */
   private _emitCss(compilation: Compilation, state: MnState): void {
-    const {
-      output = 'app.css',
-      selectorPrefix,
-      media,
-    } = this.options;
-
-    // Сортируем токены для стабильного слепка — порядок добавления не важен
-    const tokens = collectTokens(state);
-    const sorted = Array.from(tokens).sort();
-    const tokenKey = sorted.join('\0');
-
-    // Кеш: если токены не изменились — повторно используем CSS
-    if (tokenKey === this._lastTokenKey && this._cachedCss) {
-      compilation.emitAsset(
-        output,
-        new compilation.compiler.webpack.sources.RawSource(this._cachedCss),
-      );
-      return;
+    const output = this.options.output || 'app.css';
+    const collector = this._collector();
+    // Вызов ради побочного действия: `collectTokens` вычищает из стейта записи
+    // файлов, которых больше нет на диске. В watch-режиме webpack просто не
+    // зовёт лоадер для удалённого файла, и сам стейт о пропаже не узнаёт.
+    collectTokens(state);
+    // Токены приходят от лоадера через общий стейт: сканирует он, а собирает
+    // CSS плагин — между ними только `MnState`. Поэтому `set`, а не `add`.
+    const seen = new Set<string>();
+    for (const [file, tokens] of state.tokensByFile) {
+      seen.add(file);
+      collector.set(file, tokens);
+    }
+    // Файл исчез из стейта (удалён с диска — см. `collectTokens`): снимаем и
+    // с учёта, иначе его правила остались бы в CSS до перезапуска сборки.
+    for (const file of this._files) {
+      seen.has(file) || collector.remove(file);
+    }
+    this._files = seen;
+    for (const [file, preset] of state.dynamicPresets) {
+      collector.setPreset(file, preset);
     }
 
-    const collected: MnWarning[] = [];
-    const userOnWarning = this.options.onWarning;
-    const mn = minotationProvider({
-      selectorPrefix,
-      media,
-      // Перехватываем всегда: ядро по умолчанию пишет в console, а у webpack
-      // свой канал — `compilation.warnings`, который попадает в отчёт сборки
-      // и в CI. Явный 'silent' уважаем; пользовательскую функцию вызываем тоже.
-      onWarning: (warning: MnWarning) => {
-        if (userOnWarning !== 'silent') {
-          collected.push(warning);
-        }
-        if (typeof userOnWarning === 'function') {
-          userOnWarning(warning);
-        }
-      },
-    });
-    const presets = this.options.presets || DEFAULT_PRESETS;
-    mn.setPresets([...presets, ...state.dynamicPresets.values()]);
+    // Компиляция, кеш по набору токенов и накопление предупреждений — в
+    // каркасе (`minotation-build`); повторный вызов без изменений ничего не
+    // пересчитывает.
+    const css = collector.css();
 
-    // §6.3: кешируем compile — без property lookup на каждой итерации.
-    // 'class' — все токены компилируются как class-селекторы независимо от того,
-    // из какого атрибута (class/className) их извлёк лоадер: это одно и то же
-    // DOM-свойство, разница только в JSX-синтаксисе.
-    const compile = mn.getCompiler('class');
-    for (const token of tokens) compile(token);
-    mn.compile();
-
-    for (let i = 0; i < collected.length; i++) {
-      const warning = collected[i];
+    for (const warning of collector.takeWarnings()) {
       compilation.warnings.push(
         new compilation.compiler.webpack.WebpackError(
           '[minotation] ' + warning.token + ': ' + warning.message,
@@ -158,18 +138,23 @@ export class MnWebpackPlugin {
       );
     }
 
-    const css = mn.styles$.getValue()
-      .map((s: { content: string }) => s.content)
-      .join('\n');
-
-    this._lastTokenKey = tokenKey;
-    this._cachedCss = css;
-
     if (css) {
       compilation.emitAsset(
         output,
         new compilation.compiler.webpack.sources.RawSource(css),
       );
     }
+  }
+
+  /** Накопитель заводится при первой компиляции: опции к тому моменту известны. */
+  private _collector(): TokenCollector {
+    return this._tokenCollector || (this._tokenCollector = createTokenCollector({
+      presets: this.options.presets || DEFAULT_PRESETS,
+      mn: {
+        selectorPrefix: this.options.selectorPrefix,
+        media: this.options.media,
+        onWarning: this.options.onWarning,
+      },
+    }));
   }
 }

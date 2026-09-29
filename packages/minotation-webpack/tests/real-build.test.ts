@@ -302,6 +302,27 @@ describe('minotation-webpack — снятие токенов с учёта', () 
     expect(assets['mn.css']).not.toContain('padding:10px');
   });
 
+  test('тот же плагин между сборками: удалённый файл снимается с учёта', async () => {
+    // Плагин живёт между сборками (watch), и накопитель у него один. Файл,
+    // исчезнувший из стейта, надо снять и с учёта — иначе его правила
+    // держались бы в CSS до перезапуска сборки.
+    const dir = mkdtempSync(join(tmpdir(), 'mn-unlink-same-'));
+    const gone = join(dir, 'gone.html');
+    const stays = join(dir, 'stays.html');
+    const plugin = new MnWebpackPlugin({ output: 'mn.css' });
+
+    runLoader('<div class="p10"></div>', {}, gone);
+    runLoader('<div class="mt4"></div>', {}, stays);
+    const first = await runBuild(makeStubProject(), plugin);
+    expect(first['mn.css']).toContain('padding:10px');
+
+    rmSync(gone);
+
+    const second = await runBuild(makeStubProject(), plugin);
+    expect(second['mn.css']).toContain('margin-top:4px');
+    expect(second['mn.css']).not.toContain('padding:10px');
+  });
+
   test('токен, убранный при редактировании файла, уходит из вывода', async () => {
     // Лоадер ЗАМЕНЯЕТ набор своего файла, а не дополняет: иначе `p10` остался
     // бы навсегда, хотя из разметки его убрали.

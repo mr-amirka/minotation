@@ -1,7 +1,5 @@
 import type { Plugin, ViteDevServer } from 'vite';
 import {
-  minotationProvider,
-  createScanner,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -9,6 +7,7 @@ import {
   presetMain,
 } from 'minotation';
 import type { MnInstance, MnWarning } from 'minotation';
+import { createTokenCollector, walkFiles } from 'minotation-build';
 import {
   readFileSync,
   readdirSync,
@@ -42,7 +41,7 @@ export interface MnViteOptions {
    *
    * @example
    * // src/mn/preset.mn.ts
-   * import type { MnInstance } from 'minotation';
+   * import type { MnInstance, MnWarning } from 'minotation';
    * export function presetApp(mn: MnInstance): void {
    *   mn('card', () => ({ style: { borderRadius: '8px' } }));
    * }
@@ -148,32 +147,6 @@ export interface MnViteOptions {
   };
 }
 
-/**
- * Рекурсивно обходит директорию и возвращает пути файлов с заданными расширениями.
- *
- * @param dir - корневая директория
- * @param exts - набор расширений (`.tsx`, `.html`, …)
- * @param maxDepth - максимальная глубина рекурсии
- * @returns массив абсолютных путей
- */
-function walkFiles(dir: string, exts: string[], maxDepth = 10): string[] {
-  const results: string[] = [];
-  try {
-    for (const name of readdirSync(dir)) {
-      if (name.startsWith('.') || name === 'node_modules') continue;
-      const full = join(dir, name);
-      try {
-        const st = statSync(full);
-        if (st.isDirectory() && maxDepth > 0) {
-          results.push(...walkFiles(full, exts, maxDepth - 1));
-        } else if (st.isFile() && exts.some(ext => name.endsWith(ext))) {
-          results.push(full);
-        }
-      } catch (_) { /* skip unreadable */ }
-    }
-  } catch (_) { /* skip unreadable dir */ }
-  return results;
-}
 
 /**
  * Транспилирует TypeScript/JS пресет-файл через esbuild и выполняет его
@@ -256,7 +229,7 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
  * });
  *
  * // src/mn/app.mn.ts  (динамический пресет — подключается в main.tsx)
- * import type { MnInstance } from 'minotation';
+ * import type { MnInstance, MnWarning } from 'minotation';
  * export function presetApp(mn: MnInstance): void {
  *   mn('card', () => ({ style: { borderRadius: '8px' } }));
  * }
@@ -269,20 +242,6 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
   const exts = options.extensions || ['.html', '.jsx', '.tsx', '.vue', '.svelte'];
   const presetExts = options.presetExtensions || ['.mn.ts', '.mn.js', '.mn.tsx'];
   // Плоский набор: элементы safelist могут содержать несколько токенов через пробел.
-  // Сканер собираем один раз на плагин, а не на каждый файл. Выбор способа
-  // разбора (текст или парсер) делает ядро — плагину остаётся дать имя файла.
-  const scan = createScanner({
-    attr,
-    classVarSuffixes: options.classVarSuffixes,
-    mergeFnNames: options.mergeFnNames,
-    syntax: options.syntax,
-  });
-  /**
-   * Все токены файла: атрибут + переменные с суффиксом + аргументы функций
-   * слияния. Имя файла нужно, чтобы ядро выбрало способ разбора; там, где его
-   * нет (сам `index.html`), остаётся текстовый.
-   */
-  const collectTokens = (text: string, file?: string): string[] => scan(text, file);
   const safelist: string[] = [];
   for (const line of options.safelist || []) {
     for (const token of line.split(/\s+/)) {
@@ -301,11 +260,21 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
   let root = process.cwd();
   let command: 'serve' | 'build' = 'serve';
 
-  /** Per-file накопитель токенов. Сохраняется между hot-update-циклами. */
-  const fileTokens = new Map<string, Set<string>>();
-
-  /** Динамически загруженные пресеты из *.mn.ts файлов. */
-  const dynamicPresets = new Map<string, (mn: MnInstance) => void>();
+  /**
+   * Учёт токенов, пресеты, компиляция, кеш и предупреждения — общий каркас
+   * (`minotation-build`). До 2026-09-29 каждый плагин вёл это сам: четыре
+   * копии одного и того же расходились, а `walkFiles` в трёх из них совпадал
+   * побайтово. Накопитель сохраняется между hot-update-циклами.
+   */
+  const collector = createTokenCollector({
+    attr,
+    classVarSuffixes: options.classVarSuffixes,
+    mergeFnNames: options.mergeFnNames,
+    syntax: options.syntax,
+    safelist,
+    presets: staticPresets,
+    mn: options.mn,
+  });
 
   /**
    * Проверяет, является ли файл динамическим пресет-файлом по расширению.
@@ -318,81 +287,25 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
 
   // extractTokens импортируется из ядра minotation — кеш регексов там
 
-  /**
-   * Пересобирает CSS из всех накопленных токенов и пресетов.
-   * Каждый вызов создаёт свежий mn-инстанс — старые пресеты не аффектят.
-   *
-   * @returns строка CSS
-   */
-  /**
-   * Предупреждения последней компиляции — ядро отдаёт их через `onWarning`,
-   * а плагин пересылает в лог сборщика (см. {@link flushWarnings}).
-   * Перезаписывается на каждый {@link recompile}, потому что инстанс каждый раз
-   * свежий и набор токенов пересчитывается целиком.
-   */
-  let lastWarnings: MnWarning[] = [];
-
   /** Логгер Vite из `configResolved` — канал вывода там, где нет PluginContext. */
   let logger: { warn: (message: string) => void } | undefined;
 
-  function recompile(): string {
-    const allTokens = new Set<string>(safelist);
-    for (const tokens of fileTokens.values()) {
-      for (const t of tokens) allTokens.add(t);
-    }
-    const collected: MnWarning[] = [];
-    const userOnWarning = options.mn && options.mn.onWarning;
-    const fresh = minotationProvider({
-      ...options.mn,
-      // Перехватываем всегда: по умолчанию ядро пишет в console, а у сборщика
-      // есть свой канал вывода — иначе предупреждение либо теряется в потоке
-      // сборки, либо дублируется. Пользовательскую функцию вызываем как есть;
-      // явный 'silent' уважаем и в лог сборщика тоже ничего не шлём.
-      onWarning: (warning: MnWarning) => {
-        if (userOnWarning !== 'silent') {
-          collected.push(warning);
-        }
-        if (typeof userOnWarning === 'function') {
-          userOnWarning(warning);
-        }
-      },
-    });
-    fresh.setPresets([...staticPresets, ...dynamicPresets.values()]);
-    // §6.3: кешируем compile — без property lookup на каждой итерации.
-    // 'class' — все токены компилируются как class-селекторы независимо от того,
-    // из какого атрибута (class/className) их извлёк extractTokens: это одно и то
-    // же DOM-свойство, разница только в JSX-синтаксисе.
-    const compile = fresh.getCompiler('class');
-    for (const token of allTokens) compile(token);
-    fresh.compile();
-    lastWarnings = collected;
-    return fresh.styles$.getValue()
-      .map((s: { content: string }) => s.content)
-      .join('\n');
-  }
-
   /** Пересылает предупреждения последней компиляции в лог Vite. */
   function flushWarnings(ctx: { warn: (message: string) => void }): void {
-    for (let i = 0; i < lastWarnings.length; i++) {
-      const warning = lastWarnings[i];
+    for (const warning of collector.takeWarnings()) {
       ctx.warn('[minotation] ' + warning.token + ': ' + warning.message);
     }
-    lastWarnings = [];
   }
 
   /**
-   * Сканирует `src/` и наполняет {@link fileTokens} до первой компиляции.
+   * Сканирует `src/` и наполняет накопитель до первой компиляции.
    * Вызывается в `transformIndexHtml` — до того, как Vite запустил transform-хуки.
    */
   function scanProject(): void {
     const srcDir = join(root, 'src');
     for (const file of walkFiles(srcDir, exts)) {
       try {
-        const source = readFileSync(file, 'utf-8');
-        const tokens = collectTokens(source, file);
-        if (tokens.length > 0) {
-          fileTokens.set(file, new Set(tokens));
-        }
+        collector.add(file, readFileSync(file, 'utf-8'));
       } catch (_) { /* skip unreadable */ }
     }
   }
@@ -405,7 +318,7 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
     const srcDir = join(root, 'src');
     for (const file of walkFiles(srcDir, presetExts)) {
       const preset = evalPresetFile(file);
-      if (preset) dynamicPresets.set(file, preset);
+      if (preset) collector.setPreset(file, preset);
     }
   }
 
@@ -444,17 +357,14 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
     load(id) {
       if (!isPresetFile(id)) return null;
       const preset = evalPresetFile(id);
-      if (preset) dynamicPresets.set(id, preset);
+      if (preset) collector.setPreset(id, preset);
       // Пустой ES-модуль — ноль байт в бандле, ноль runtime-кода
       return { code: 'export {};', map: null };
     },
 
     transform(source: string, id: string) {
       if (!exts.some(ext => id.endsWith(ext))) return null;
-      const tokens = collectTokens(source, id);
-      if (tokens.length > 0) {
-        fileTokens.set(id, new Set(tokens));
-      }
+      collector.add(id, source);
       return null;
     },
 
@@ -464,11 +374,8 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
         // Загружаем пресеты и токены ДО компиляции — transform-хуки ещё не отработали
         scanPresetFiles();
         scanProject();
-        const tokens = collectTokens(html);
-        if (tokens.length > 0) {
-          fileTokens.set('index.html', new Set(tokens));
-        }
-        cssOutput = recompile();
+        collector.add('index.html', html);
+        cssOutput = collector.css();
         // В transformIndexHtml PluginContext недоступен — пишем через логгер
         // конфигурации, он и в dev, и в build один и тот же.
         flushWarnings({
@@ -511,11 +418,11 @@ if (import.meta.hot) {
       if (isPresetFile(file)) {
         const preset = evalPresetFile(file);
         if (preset) {
-          dynamicPresets.set(file, preset);
+          collector.setPreset(file, preset);
         } else {
-          dynamicPresets.delete(file);
+          collector.removePreset(file);
         }
-        cssOutput = recompile();
+        cssOutput = collector.css();
         server.ws.send({ type: 'custom', event: 'mn:update', data: cssOutput });
         return []; // полный HMR-цикл не нужен — CSS уже обновлён
       }
@@ -531,25 +438,20 @@ if (import.meta.hot) {
         // стили удалённого файла до ручной перезагрузки страницы.
         // Пересобираем только если файл действительно был на учёте: чтение
         // может упасть и на файле, токенов в котором никогда не было.
-        if (fileTokens.delete(file)) {
-          cssOutput = recompile();
+        if (collector.remove(file)) {
+          cssOutput = collector.css();
           server.ws.send({ type: 'custom', event: 'mn:update', data: cssOutput });
         }
         return;
       }
 
-      const tokens = collectTokens(source, file);
-      if (tokens.length > 0) {
-        fileTokens.set(file, new Set(tokens));
-      } else {
-        fileTokens.delete(file);
-      }
-      cssOutput = recompile();
+      collector.add(file, source);
+      cssOutput = collector.css();
       server.ws.send({ type: 'custom', event: 'mn:update', data: cssOutput });
     },
 
     generateBundle() {
-      cssOutput = recompile();
+      cssOutput = collector.css();
       flushWarnings(this);
       if (cssOutput) {
         this.emitFile({ type: 'asset', fileName: 'mn.css', source: cssOutput });

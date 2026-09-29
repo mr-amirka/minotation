@@ -24,6 +24,7 @@
     "webpack": "^5"
   },
   "peerDependencies": {
-    "webpack": "^5"
+    "webpack": "^5",
+    "minotation-build": "workspace:*"
   }
 }

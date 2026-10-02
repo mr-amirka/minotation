@@ -108,6 +108,7 @@ import {
   getEessenceSelectors,
   __compileProvider,
   spaceNormalize,
+  asError,
 } from './utils';
 import type {
   MnData,
@@ -164,7 +165,9 @@ function minotationProvider(options?: MnOptions) {
       presets,
       [mn],
       mn,
-      emitError,
+      // `eachTry` отдаёт перехваченное как `unknown`: бросить можно что
+      // угодно, а в `error$` должен уходить именно `Error`.
+      (ex: unknown) => emitError(asError(ex)),
     );
     return mn;
   }
@@ -619,10 +622,13 @@ function minotationProvider(options?: MnOptions) {
   (mn as any)._collectWarning = collectWarning;
 
   function withCatchParseComboNameDecorate(parseComboNameFn: (...args: any[]) => any): (...args: any[]) => any {
-    return function() {
+    return function (this: unknown) {
       try {
+        // `arguments` вместо rest — §6.1: это горячий путь, и rest-массив
+        // аллоцировался бы на каждый разбор. Приведение нужно только для
+        // `apply`, которому при строгом режиме нужен массив.
         // eslint-disable-next-line
-        return parseComboNameFn.apply(this, arguments);
+        return parseComboNameFn.apply(this, arguments as unknown as any[]);
       } catch (ex) {
         if (ex instanceof MnParseError) {
           collectWarning({
@@ -635,7 +641,7 @@ function minotationProvider(options?: MnOptions) {
             error: ex,
           });
         } else {
-          emitError(ex);
+          emitError(asError(ex));
         }
       }
       return [];
@@ -1078,7 +1084,7 @@ function minotationProvider(options?: MnOptions) {
         return;
       }
       err = new Error('MN parsing error for essence "'
-        + value + '": ' + ex.message);
+        + value + '": ' + asError(ex).message);
       emitError(err);
     }
   }

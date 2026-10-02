@@ -14,7 +14,9 @@ export default (mn: MnInstance) => {
   const {
     flags, forEach,
   } = utils;
-  const style = document.createElement('div').style;
+  // `CSSStyleDeclaration` объявлен с фиксированным набором свойств, а
+  // проверяются вендорные (`webkitTransform`): читаем как словарь.
+  const style = document.createElement('div').style as unknown as Record<string, string>;
   const prefixes = propertiesStringify.prefixes;
   forEach([
     'webkit',

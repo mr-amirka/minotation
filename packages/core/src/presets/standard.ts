@@ -123,7 +123,7 @@ const SIDES_MAP = {
  * есть она нужна как цель ссылки. Отключение дублирующих записей требует
  * смены механизма алиасов.
  */
-const COLOR_SYNONYMS = {
+const COLOR_SYNONYMS: Record<string, string> = {
   CT: 'CurrentColor',
   T: 'Transparent',
   // Системные цвета.
@@ -156,7 +156,7 @@ const COLOR_SYNONYMS = {
  * в стандарт не вошёл ни один из трёх. Любой из них давал правило, которое
  * браузер отбрасывает целиком.
  */
-const BORDER_STYLE_SYNONYMS = {
+const BORDER_STYLE_SYNONYMS: Record<string, string> = {
   N: 'None',
   H: 'Hidden',
   DT: 'Dotted',
@@ -235,7 +235,7 @@ const BREAK_AFTER_SYNONYMS = {
   RE: 'Recto',
   VE: 'Verso',
 };
-const FONT_WEIGHT_SYNONYMS = {
+const FONT_WEIGHT_SYNONYMS: Record<string, string> = {
   N: 'Normal',
   B: 'Bold',
   BR: 'Bolder',
@@ -265,7 +265,7 @@ const OUTLINE_STYLE_SYNONYMS = {
   M: 'Medium',
   TK: 'Thick',
 };
-const POSITION_SYNONYMS = {
+const POSITION_SYNONYMS: Record<string, string> = {
   '': 'Relative',
   R: 'Relative',
   A: 'Absolute',
@@ -284,7 +284,7 @@ const OVERSCROLL_BEHAVIOR_PRIORITIES = {
   U: 'Unset',
 };
 
-const POSITION_PRIORITIES = {
+const POSITION_PRIORITIES: Record<string, number> = {
   relative: 0,
   absolute: 1,
   fixed: 2,
@@ -315,7 +315,7 @@ const SHADOW_HANDLERS: Record<string, [string, (x: any, y: any, value: any, r: a
     ];
   }],
 };
-const FILTER_MAP = {
+const FILTER_MAP: Record<string, Array<string | number>> = {
   blur: [
     'blur',
     4,
@@ -2625,7 +2625,7 @@ export default (mn: MnInstance) => {
       forIn(SIZE_SYNONYMS, (word: string, abbr: string) => {
         keywords[toKebabCase(word)] && (symonyms[abbr] = word);
       });
-      const propMap = {};
+      const propMap: Record<string, number> = {};
       let propName, i = 0; // eslint-disable-line
       for (; i < length; i++) {
         propName = props[i];
@@ -2645,7 +2645,7 @@ export default (mn: MnInstance) => {
             suffix, 1, 1, 'px', 0, symonyms, keywords,
           );
           const [value] = v;
-          const style = {};
+          const style: Record<string, any> = {};
           let propName;
         for (propName in propMap) style[propName] = value; // eslint-disable-line
           return styleWrap(style, priority + v[1]);
@@ -3053,7 +3053,7 @@ export default (mn: MnInstance) => {
     const propName = 'border-' + side + '-radius';
     mn(
       'r' + suffix, (p) => {
-        const style = {};
+        const style: Record<string, any> = {};
         style[propName] = getVal(
           p.suffix || 10000, 1, 1, 'px', 1,
         )[0];
@@ -3149,7 +3149,7 @@ export default (mn: MnInstance) => {
             suffix || defaultValue,
             1, one, 'px', 0, synonyms, keywords, noPercent,
           ),
-          style = {},
+          style = {} as Record<string, any>,
           style[propName] = v[0],
           styleWrap(style, priority + v[1])
         );
@@ -3176,9 +3176,11 @@ export default (mn: MnInstance) => {
       }, priority, 0 as any, 0 as any, 1,
     );
 
-    mn('ov' + suffix, function() {
+    mn('ov' + suffix, function (this: unknown) {
+      // `arguments` вместо rest — §6.1: хендлер зовётся на каждый токен.
+      // Приведение нужно только для `apply` в строгом режиме.
       // eslint-disable-next-line
-      const essence = handle.apply(this, arguments);
+      const essence = handle.apply(this, arguments as unknown as [MnEssenceParams]);
       if (essence) {
         const s = essence.style;
         const v = s && s[propName];
@@ -3292,8 +3294,11 @@ export default (mn: MnInstance) => {
       return p.camel || p.negative ? 0 : (
         (v = cssVarValue(p.suffix || '')) ? styleWrap({
           opacity: v, 
+        // `p.num` — группа регулярки, то есть строка. Раньше здесь шла
+        // арифметика прямо по ней (`num * 0.01`) и работала на неявном
+        // приведении; `+num` делает то же самое, но видимо.
         }) : ((num = p.num) ? styleWrap({
-          opacity: (num > 0 && num < 1) ? toFixed(num) : toFixed(num * 0.01),
+          opacity: (+num > 0 && +num < 1) ? toFixed(+num) : toFixed(+num * 0.01),
         }) : normalizeDefault(p))
       );
     },
@@ -4456,7 +4461,8 @@ export default (mn: MnInstance) => {
     const valuePattern = VALUE_PATTERNS[propName];
     const slots = SLOT_VALIDATORS[propName];
     mn(essenceName, (p) => {
-      let s, style, repeated;
+      let s, repeated;
+      let style: Record<string, any>;
       style = {};
       if (!(s = p.suffix)) {
         // Свойству-длине пустой суффикс даёт `0`, как у `p`/`m`/`b`; остальным

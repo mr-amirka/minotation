@@ -137,6 +137,39 @@ describe('mn — keyframes и произвольный CSS', () => {
   // mn.css из публичного API, использовать только mn.assign).
 });
 
+describe('mn — ошибки при загрузке пресета', () => {
+  test('пресет, бросивший Error, уводит его в error$, а не наружу', () => {
+    const errors: Error[] = [];
+    const mn: any = minotationProvider();
+    mn.error$.on((e: Error) => errors.push(e));
+
+    // Загрузка не должна прерываться: один сломанный пресет не повод терять
+    // остальные.
+    expect(() => mn.setPresets([() => {
+      throw new Error('пресет сломался');
+    }, presetStandard])).not.toThrow();
+
+    expect(errors.map((e) => e.message)).toContain('пресет сломался');
+  });
+
+  test('пресет, бросивший НЕ Error, тоже приходит как Error', () => {
+    // Бросить в JS можно что угодно; подписчик `error$` вправе рассчитывать на
+    // `message`, а не получать `undefined` от строки или числа.
+    const errors: Error[] = [];
+    const mn: any = minotationProvider();
+    mn.error$.on((e: Error) => errors.push(e));
+
+    mn.setPresets([() => {
+      // eslint-disable-next-line no-throw-literal
+      throw 'строка вместо ошибки';
+    }]);
+
+    expect(errors.length).toBe(1);
+    expect(errors[0]).toBeInstanceOf(Error);
+    expect(errors[0].message).toBe('строка вместо ошибки');
+  });
+});
+
 describe('mn — ошибки внутри хендлера', () => {
   test('MnParseError из хендлера превращается в warning, токен не даёт CSS', () => {
     const warnings: MnWarning[] = [];

@@ -693,6 +693,21 @@ export function normalizeInclude(names: string | string[]): string[] {
 export function priotitySort(a: MnStyleEntry, b: MnStyleEntry): number {
   return a.priority - b.priority;
 }
+/**
+ * Приводит перехваченное значение к `Error`.
+ *
+ * `catch` даёт `unknown`: бросить в JS можно что угодно, и в `error$` до
+ * включения строгого режима могла уехать строка или объект без `message` —
+ * подписчик получал бы `undefined` вместо текста ошибки. Нужна именно
+ * проверка, а не приведение типа: приведение убедило бы компилятор, но не
+ * изменило бы значение.
+ */
+export function asError(value: unknown): Error {
+  return value instanceof Error
+    ? value
+    : new Error(typeof value === 'string' ? value : String(value));
+}
+
 export function priotitySortContext(a: MnContextEssence, b: MnContextEssence): number {
   return a[MN_CONTEXT_ESSENCE_PRIORITY] - b[MN_CONTEXT_ESSENCE_PRIORITY];
 }

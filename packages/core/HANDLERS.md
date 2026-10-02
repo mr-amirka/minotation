@@ -1653,6 +1653,121 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 `background-position-x` → `bgpx`, `text-underline-offset` → `tuo`,
 `overscroll-behavior` → `ovb`.
 
+## Справочник: теги, не описанные выше
+
+Сверка 2026-10-02: из 278 зарегистрированных тегов 122 не упоминались в этом
+документе. Большинство — порождённые варианты сторон (`bclb` это `bc` плюс угол),
+они покрыты правилом сторон. Остальные 55 собраны здесь: каждая строка проверена
+компиляцией, и тест разбирает эти таблицы автоматически — расхождение документа
+с поведением станет падением, а не тихим дрейфом.
+
+### Размеры и пропорции
+
+| Токен | CSS |
+|-------|-----|
+| `wmax10` | `max-width:10px` |
+| `hmax10` | `max-height:10px` |
+| `sqmin40` | `min-width:40px;min-height:40px` |
+| `sqmax10` | `max-width:10px;max-height:10px` |
+| `ar16/9` | `aspect-ratio:16/9` |
+| `zm2` | `zoom:2` |
+
+`sqmin`/`sqmax` задают квадрат одним токеном — обе оси сразу. У `wmax`/`hmax`
+своя грамматика: `none` — их initial value, а `auto` наоборот невалиден (см.
+раздел про размерные свойства выше).
+
+### Типографика — остальные свойства
+
+| Токен | CSS |
+|-------|-----|
+| `fsI` | `font-style:italic` |
+| `fstC` | `font-stretch:condensed` |
+| `fsa10` | `font-size-adjust:10` |
+| `fsmN` | `font-smooth:never` |
+| `fefN` | `font-effect:none` |
+| `tjN` | `text-justify:none` |
+| `twB` | `text-wrap:balance` |
+| `tsa10` | `text-size-adjust:10%` |
+| `wsP` | `white-space:pre` |
+| `wscP` | `white-space-collapse:preserve` |
+| `wwN` | `word-wrap:normal` |
+| `tov` | `text-overflow:ellipsis` |
+
+`tov` без аргумента даёт `ellipsis` — самый частый случай обрезки текста.
+
+### Прокрутка и изменение размера
+
+| Токен | CSS |
+|-------|-----|
+| `ovsM` | `overflow-style:move` |
+| `ovscA` | `-webkit-overflow-scrolling:auto` |
+| `rszB` | `resize:both` |
+
+### Печать и разрывы страниц
+
+| Токен | CSS |
+|-------|-----|
+| `pgbbA` | `page-break-before:auto;break-before:auto` |
+| `pgbiA` | `page-break-inside:auto;break-inside:auto` |
+| `orp3` | `orphans:3` |
+
+Разрывы пишутся парой: устаревшее `page-break-*` для старых движков и
+современное `break-*` — браузер берёт то, что понимает.
+
+### Таблицы
+
+| Токен | CSS |
+|-------|-----|
+| `bdclC` | `border-collapse:collapse` |
+| `ecH` | `empty-cells:hide` |
+| `cpsT` | `caption-side:top` |
+
+### Фон и маска
+
+| Токен | CSS |
+|-------|-----|
+| `bgcpT` | `background-clip:text` |
+| `bgbkC` | `background-break:continuous` |
+| `bgoPB` | `background-origin:padding-box` |
+| `maskmL` | `mask-mode:luminance` |
+| `masktA` | `mask-type:alpha` |
+
+### `border-image` и его стороны
+
+| Токен | CSS |
+|-------|-----|
+| `bi10` | `border-image:10` |
+| `bil5` | `border-left-image:5` |
+
+Суффиксы сторон работают как у остальных рамочных свойств: `bil`, `bir`, `bit`,
+`bib`, плюс углы (`bilt`, `birb`, …).
+
+### Остальное
+
+| Токен | CSS |
+|-------|-----|
+| `cpA` | `clip:auto` |
+| `dirRTL` | `direction:rtl` |
+| `lispI` | `list-style-position:inside` |
+| `fxfRow` | `flex-flow:row` |
+| `fxf_row_wrap` | `flex-flow:row wrap` |
+| `olo3` | `outline-offset:3px` |
+| `stroke2` | `stroke:#222` |
+| `spnr1` | `animation:spinner-animate 1ms infinite linear` |
+
+### `float` — три тега без аргумента
+
+| Токен | CSS |
+|-------|-----|
+| `lt` | `float:left` |
+| `jt` | `float:none` |
+| `rt` | `float:right` |
+
+Имена короткие и аргумента не принимают: `jtN`, `jtLeft` и подобное правила не
+дают вовсе. Неочевидно здесь другое: `lt` и `rt` совпадают с суффиксами углов
+(`blt` — это `b` плюс угол `lt`). Конфликта нет, потому что тег выбирается по
+самому длинному совпадению, но помнить об этом стоит.
+
 ### Общий шорткат убран, потому что есть атомарные теги
 
 | Убрано | Писать так | Когда |

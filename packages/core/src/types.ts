@@ -155,12 +155,18 @@ export interface MnInstance {
    */
   setOptions(partialOptions: Partial<MnOptions>): void;
 
-  // Сервисы (опционально — не все пресеты используют)
-  utils?: MnUtils;
-  setKeyframes?: (
+  // Сервисы. Раньше были объявлены опциональными с пометкой «не все пресеты
+  // используют» — но опциональность в типе означает «у инстанса может не
+  // быть», а не «вызывающий может не вызывать». Провайдер заполняет все четыре
+  // всегда, и пресеты правомерно обращаются к ним без проверок: пресет
+  // вызывается только после создания инстанса. Пока поля были
+  // необязательными, строгий режим требовал проверки на каждом обращении —
+  // то есть защиты от состояния, которого не бывает.
+  utils: MnUtils;
+  setKeyframes: (
     name: string, body: string | Record<string, string | Record<string, string | number>>,
     ifEmpty?: number,
   ) => MnInstance;
-  propertiesStringify?: IStringifyCss;
-  media?: Record<string, MnMediaEntry>;
+  propertiesStringify: IStringifyCss;
+  media: Record<string, MnMediaEntry>;
 }

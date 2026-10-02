@@ -159,7 +159,11 @@ function defaultOnWarning(warning: MnWarning): void {
  * mn.styles$.getValue; // → скомпилированные CSS-стили
  */
 function minotationProvider(options?: MnOptions) {
-  options = options || {};
+  // Отдельная переменная, а не мутация параметра: `setOptions` его
+  // переприсваивает, и из-за этого компилятор не мог сузить тип внутри
+  // замыканий — каждое обращение к полю требовало проверки на `undefined`,
+  // хотя значение выставляется первой же строкой.
+  let settings: MnOptions = options || {};
   function setPresets(presets: Array<(mn: MnInstance) => void>): any {
     eachTry(
       presets,
@@ -192,20 +196,20 @@ function minotationProvider(options?: MnOptions) {
    * (снимок для чтения/отладки, обновляется этой же функцией).
    */
   function applyOptions(): void {
-    mn.options = extend({}, options) as MnOptions;
-    const nextSelectorPrefix = options.selectorPrefix || '';
-    $$onError = options.onError || noop;
-    $$onWarning = options.onWarning === 'silent'
+    mn.options = extend({}, settings) as MnOptions;
+    const nextSelectorPrefix = settings.selectorPrefix || '';
+    $$onError = settings.onError || noop;
+    $$onWarning = settings.onWarning === 'silent'
       ? noop
-      : typeof options.onWarning === 'function'
-        ? options.onWarning
+      : typeof settings.onWarning === 'function'
+        ? settings.onWarning
         : defaultOnWarning;
     nextSelectorPrefix === $$lastSelectorPrefix || (
       $$lastSelectorPrefix = nextSelectorPrefix,
       $$selectorPrefixes = keys(selectorsValidateFilter(normalizeSelectors(nextSelectorPrefix)))
     );
-    $$altColor = options.altColor === true;
-    $$strict = !!options.strict;
+    $$altColor = settings.altColor === true;
+    $$strict = !!settings.strict;
   }
   /**
    * Собирает {@link MnWarning} (парсинг-ошибка/неизвестный хендлер/превышение
@@ -605,7 +609,7 @@ function minotationProvider(options?: MnOptions) {
   let $$keyframes: [Record<string, string>, number];
   let $$stylesMap: Record<string, MnStyleEntry> = $$data.stylesMap = {};
   let $$assigned: Record<string, Record<string, Record<string, number>>> = $$data.assigned = {};
-  let $$media: Record<string, MnMediaEntry> = mn.media = options.media || {};
+  let $$media: Record<string, MnMediaEntry> = mn.media = settings.media || {};
   let $$handlerMap: Record<string, ((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number }> = mn.handlerMap = {};
   let $$force: number;
   let $$selectorPrefixes: string[];
@@ -1504,13 +1508,13 @@ function minotationProvider(options?: MnOptions) {
    * mn.recompile;
    */
   mn.setOptions = (partialOptions: Partial<MnOptions>): any => {
-    options = extend(extend({}, options), partialOptions) as MnOptions;
+    settings = extend(extend({}, settings), partialOptions) as MnOptions;
     applyOptions();
     return mn;
   };
 
   applyOptions();
-  options.presets?.length && setPresets(options.presets);
+  settings.presets?.length && setPresets(settings.presets);
 
   return mn;
 }

@@ -319,7 +319,10 @@ function minotationProvider(options?: MnOptions) {
   }
 
   function mnBaseSet(
-    extendedEssence: MnHandler | MnEntity | string,
+    // `undefined` входит в тип намеренно: `mn('tag')` без второго аргумента —
+    // допустимый вызов, и функция сама сообщает о нём предупреждением в
+    // последней ветке, а не падает.
+    extendedEssence: MnHandler | MnEntity | string | undefined,
     essencePath: string,
     paramsMatchPath?: string | string[],
     skip?: number,
@@ -617,8 +620,11 @@ function minotationProvider(options?: MnOptions) {
   let $$strict: boolean;
   let $$revision = 0;
 
-  error$.on((error: Error) => {
-    $$onError(error);
+  error$.on((error: Error | undefined) => {
+    // `undefined` в типе канала — начальное значение; `on` его не доставляет
+    // (подписка срабатывает только на `emit`), а `emit` зовётся лишь из
+    // `emitError`, который всегда даёт `Error`.
+    $$onError(error as Error);
   });
   // Позволяет selectorsCompileProvider (отдельный модуль, свой замкнутый scope)
   // сообщать о превышении maxDepth в режиме 'warn' — по тому же соглашению,
@@ -684,7 +690,7 @@ function minotationProvider(options?: MnOptions) {
     let mediaPriority: number | undefined;
     let priority: number | undefined;
     let selector: string | undefined;
-    let query: string;
+    let query: string | undefined;
     let partsAnd: string[];
     let iAnd: number;
     let lAnd: number;
@@ -847,7 +853,12 @@ function minotationProvider(options?: MnOptions) {
 
     for (; iMedia < lMedia; iMedia++) {
       isContinue = 1;
-      media = medias[iMedia];
+      // Пустой кортеж `parseMediaExpression` отдаёт только на пустое
+      // выражение, а сюда приходят ключи `$$root` — имена медиа-контекстов,
+      // и пустых среди них нет: `updateEssence` подставляет `'all'`
+      // (`mediaName = mediaName || 'all'`). Приведение фиксирует это, не
+      // заводя ветку, которую нельзя было бы покрыть тестом.
+      media = medias[iMedia] as [string, number | undefined, string, string];
       [
         mediaName,
         mediaPriority,
@@ -996,7 +1007,10 @@ function minotationProvider(options?: MnOptions) {
     }
     isPlainObject(selectors)
       ? forIn(selectors, iteratee)
-      : iteratee(comboNames, selectors);
+      // Вторая форма вызова: `mn.assign(selectors, comboNames)`. Сюда
+      // попадаем только когда `selectors` — строка (объект ушёл в ветку
+      // выше), а `comboNames` задан: без него вызов бессмыслен.
+      : iteratee(comboNames as string, selectors as string);
     return mn;
   };
 
@@ -1011,9 +1025,13 @@ function minotationProvider(options?: MnOptions) {
    */
   function __initEssence(value: string): MnEssenceResult | 0 | null | false | void {
     let matchs: RegExpExecArray | null;
-    let name: string;
+    // Пустая строка, а не `undefined`: обе читаются в `catch`, куда можно
+    // попасть и до их присваивания. Раньше в предупреждение в таком случае
+    // уходило `undefined` вместо имени хендлера — на опечатке в самом начале
+    // разбора сообщение получалось бессодержательным.
+    let name = '';
     let ni: string | undefined;
-    let suffix: string;
+    let suffix = '';
     let handle: (((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number }) | undefined;
     let params: MnEssenceParams;
     let essence: MnEssenceRaw | void | 0;
@@ -1125,6 +1143,9 @@ function minotationProvider(options?: MnOptions) {
     function __childsHandle(
       childs: Record<string, MnEssenceResult> | undefined, separator: string, withStatic?: number,
     ): void {
+      if (!childs) {
+        return;
+      }
       const __prefix = essenceName + separator;
       forIn(childs, withStatic ? (_childEssence: MnEssenceResult, _childName: string) => {
         const childEssenceName = __prefix + _childName;
@@ -1167,7 +1188,7 @@ function minotationProvider(options?: MnOptions) {
     let mergingMixins: MnEssenceResult[];
     let styleObj: Record<string, string | string[]> | undefined;
     let styleText: string | undefined;
-    if (i) {
+    if (include && i) {
       mergingMixins = new Array(i + 1);
       mergingMixins[i] = src;
       // eslint-disable-next-line
@@ -1191,9 +1212,9 @@ function minotationProvider(options?: MnOptions) {
     );
     return [
       {},
-      essence[MN_ESSENCE_SELECTORS],
+      essence[MN_ESSENCE_SELECTORS] || {},
       essence[MN_ESSENCE_PRIORITY] || 0,
-      essence[MN_ESSENCE_CSS_TEXT],
+      essence[MN_ESSENCE_CSS_TEXT] || '',
       0,
       {},
     ];
@@ -1463,7 +1484,9 @@ function minotationProvider(options?: MnOptions) {
   mn.synonyms = (synonym: string | Record<string, any>, selectors?: string | Record<string, any>): any => {
     isObject(synonym)
       ? forIn(synonym, baseSetSynonyms)
-      : baseSetSynonyms(selectors, synonym);
+      // Та же пара форм: объект-карта либо «имя + селекторы». Во второй
+      // `synonym` — строка, а `selectors` обязателен.
+      : baseSetSynonyms(selectors as string, synonym as string);
     return mn;
   };
 

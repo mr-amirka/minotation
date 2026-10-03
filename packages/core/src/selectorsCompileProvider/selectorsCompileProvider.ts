@@ -425,7 +425,9 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       let si: number;
       let statesL: number;
       let statesI: number;
-      let head: string;
+      // `shift()` у пустого массива даёт `undefined` — ниже это и
+      // проверяется (`if (head)`).
+      let head: string | undefined;
       let matches: RegExpExecArray | null;
       let suffix: string;
       let synonyms: AltMap;

@@ -1801,7 +1801,7 @@ export default (mn: MnInstance) => {
     // `font-size-adjust`) отрицательные значения принимают. Появится пятое,
     // которое не принимает, — проверка добавится вместе с ним, а мёртвой
     // ветки до тех пор нет.
-    return (p.sign || '') + num + (validateUnit(unit) || defaultUnit);
+    return (p.sign || '') + (num as string) + (validateUnit(unit) || defaultUnit);
   }
 
   /**
@@ -1902,12 +1902,12 @@ export default (mn: MnInstance) => {
               ? (assertPercent(noPercent, suffix),
               toFixed(100 * floatNormalize(num, positive) / floatNormalize(total, positive)) + '%')
               : (p.unit === '%' && assertPercent(noPercent, suffix),
-              toFixed(num) + validateUnit(p.unit || defaultUnit))
+              toFixed(num as string) + validateUnit(p.unit || defaultUnit))
           )
         );
       output[i] = add ? calc(
         val,
-        sa,
+        sa as string,
         vva
           ? ((p.nva ? 'env(' : 'var(') + vva
               + (p.vaa ? (validateUnit(p.vua) ? '' : defaultUnit) : '') + ')')
@@ -2462,7 +2462,7 @@ export default (mn: MnInstance) => {
       // выводятся из значений словаря, поэтому длинная форма (`bThin`) работает
       // наравне с краткой (`bTN`).
       const keywords: Record<string, 1> = {};
-      forIn(symonyms, (word: string) => {
+      forIn(symonyms as Record<string, string>, (word: string) => {
         keywords[toKebabCase(word)] = 1;
       });
       return (p: MnEssenceParams) => {
@@ -2567,7 +2567,7 @@ export default (mn: MnInstance) => {
     });
     mn(
       'bc' + suffix, (p) => {
-        let v: string; let synonym: any;
+        let v: string | undefined; let synonym: any;
         const raw = rawColorValue(p.suffix);
         if (raw) {
           return styleWrap(bcSidesSet(raw), priority + 1);
@@ -2800,7 +2800,7 @@ export default (mn: MnInstance) => {
     const priority = options[1] || 0;
     mn(
       pfx, (p) => {
-        let s: Record<string, any>; let v: string; let synonym: any;
+        let s: Record<string, any>; let v: string | undefined; let synonym: any;
         const raw = rawColorValue(p.suffix);
         if (raw) {
           s = {};
@@ -2822,7 +2822,7 @@ export default (mn: MnInstance) => {
             assertColorAbbr(p),
             assertShortestHex(p, p.color),
             s = {},
-            s[propName] = getColor(v),
+            s[propName] = getColor(v as string),
             styleWrap(s, priority)
           );
       }, PATTERN_COLOR,
@@ -3240,7 +3240,7 @@ export default (mn: MnInstance) => {
       // До 2026-09-22 второе молча давало 900: число всегда умножалось на 100
       // и зажималось в 1..9, то есть самая естественная запись была неверной.
       const num = p.num;
-      return synonym ? normalizeDefault(p, synonym) : !p.negative && styleWrap({
+      return synonym ? normalizeDefault(p, synonym) : p.negative ? 0 : styleWrap({
         fontWeight: camel
           // Слово не проверялось: `fwZzz` давало `font-weight:zzz`, `fwA` —
           // `font-weight:a`, `fwF00` — `font-weight:f`. Список закрытый,
@@ -3250,9 +3250,9 @@ export default (mn: MnInstance) => {
           )
           // `num` приходит из разбора строкой; сравнение и деление ведём
           // числом явно, а не полагаясь на приведение оператором.
-          : (+num >= 100
+          : (+(num as string) >= 100
             ? 100 * intval(
-              +num / 100, 1, 1, 9,
+              +(num as string) / 100, 1, 1, 9,
             )
             : 100 * intval(
               num, 1, 1, 9,
@@ -4536,7 +4536,7 @@ export default (mn: MnInstance) => {
             ? normalizeCalc(
               v,
               '' + p.sa + floatNormalize(p.addv),
-              validateUnit('' + (p.addu || 'px')),
+              validateUnit('' + (p.addu || 'px')) as string,
             )
             : v,
         },

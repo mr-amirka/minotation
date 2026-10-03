@@ -31,7 +31,10 @@ export interface MnStyleEntry {
  */
 /* eslint-disable @typescript-eslint/no-explicit-any -- см. комментарий выше про node */
 export interface MnCompiler {
-  cache?: Record<string, number>;
+  // Не опционально: `__compileProvider` зовёт `clear()` сразу при создании,
+  // а тот и заводит кеш. Пока поле было необязательным, строгий режим требовал
+  // проверки на каждом обращении — защиты от состояния, которого не бывает.
+  cache: Record<string, number>;
   clear: () => void;
   getNext(node?: any): string[];
   checkNode: (node: any) => void;

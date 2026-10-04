@@ -361,6 +361,9 @@ export function assertVariantGroups(
   // содержимое у текущей альтернативы.
   const hasAlternative: boolean[] = [];
   const hasContent: boolean[] = [];
+  // Была ли на уровне хоть одна непустая альтернатива — для группы из одних
+  // пустых, которая в имени токена даёт только дубликаты.
+  const anyContent: boolean[] = [];
   let depth = 0;
   let inContext = 0;
   let ch: string;
@@ -369,7 +372,7 @@ export function assertVariantGroups(
     if (ch === '\\') {
       // Экранированная скобка — часть значения, а не грамматики.
       if (depth) {
-        hasContent[depth - 1] = true;
+        hasContent[depth - 1] = anyContent[depth - 1] = true;
       }
       i += 2;
       continue;
@@ -383,10 +386,11 @@ export function assertVariantGroups(
     }
     if (ch === '(') {
       if (depth) {
-        hasContent[depth - 1] = true;
+        hasContent[depth - 1] = anyContent[depth - 1] = true;
       }
       hasAlternative[depth] = false;
       hasContent[depth] = false;
+      anyContent[depth] = false;
       depth++;
     } else if (ch === ')') {
       if (!depth) {
@@ -397,11 +401,14 @@ export function assertVariantGroups(
         );
       }
       depth--;
-      if (hasAlternative[depth] && !hasContent[depth]) {
+      if (hasAlternative[depth] && !hasContent[depth] && !valueOnly) {
+        throwEmptyAlternative(value, utility);
+      }
+      if (hasAlternative[depth] && !anyContent[depth]) {
+        // Группа из одних пустых (`w(|)150`) — это не вариант, а дубликаты.
         throwVariantGroup(
-          'Пустая альтернатива в группе "' + value + '": она даёт лишний вариант '
-            + 'без самой части (например "@(sm|)" компилируется и в "@sm", и в '
-            + 'безусловное правило, обесценивая медиа-запрос). Уберите лишний "|"',
+          'Все альтернативы в группе "' + value + '" пустые: группа ничего не '
+            + 'варьирует, а только повторяет одно и то же. Уберите её',
           value, utility,
         );
       }
@@ -427,18 +434,13 @@ export function assertVariantGroups(
         );
       }
     } else if (ch === '|' && depth) {
-      if (!hasContent[depth - 1]) {
-        throwVariantGroup(
-          'Пустая альтернатива в группе "' + value + '": она даёт лишний вариант '
-            + 'без самой части (например "@(|sm)" компилируется и в "@sm", и в '
-            + 'безусловное правило, обесценивая медиа-запрос). Уберите лишний "|"',
-          value, utility,
-        );
+      if (!hasContent[depth - 1] && !valueOnly) {
+        throwEmptyAlternative(value, utility);
       }
       hasAlternative[depth - 1] = true;
       hasContent[depth - 1] = false;
     } else if (depth && ch !== ' ') {
-      hasContent[depth - 1] = true;
+      hasContent[depth - 1] = anyContent[depth - 1] = true;
     }
     i++;
   }
@@ -492,6 +494,61 @@ export function assertTrailingSeparator(value: string, utility: string): void {
       + 'экранируйте символ, если он должен попасть в значение',
     value, utility,
   );
+}
+
+/** Пустая альтернатива в селекторе: даёт пустой селектор, то есть битый CSS. */
+function throwEmptyAlternative(value: string, utility: string): never {
+  return throwVariantGroup(
+    'Пустая альтернатива в группе "' + value + '": она даёт пустой селектор, '
+      + 'а с ним правило не применится ни к чему. Уберите лишний "|"',
+    value, utility,
+  );
+}
+
+/** Сепараторы контекста: после `@` любой из них означает, что имени медиа нет. */
+const CONTEXT_SEPARATORS: Record<string, 1> = {
+  ':': 1,
+  '@': 1,
+  '.': 1,
+  '#': 1,
+  '~': 1,
+  '&': 1,
+  '+': 1,
+  '<': 1,
+  '>': 1,
+};
+
+/**
+ * Бракует пустое имя медиа: `@`, за которым сразу идёт другой сепаратор.
+ *
+ * `p10@:h` молча компилировался в `.p10\@\:h:hover{padding:10px}`: медиа-запрос
+ * испарялся, и адаптивное правило становилось безусловным — тот же дефект, что
+ * у `p10@(sm|)`, только записанный без группы. Висячий `@` в конце имени ловит
+ * {@link assertTrailingSeparator}; здесь — `@` в середине.
+ *
+ * Проверка идёт по уже развёрнутому варианту, а не по исходной записи: так одна
+ * и та же проверка закрывает и `p10@:h`, и `p10@(|sm):h`, не разбирая, откуда
+ * взялся пустой сегмент.
+ */
+export function assertMediaNames(value: string, utility: string): void {
+  const l = value.length - 1;
+  let i = 0;
+  for (; i < l; i++) {
+    if (value[i] === '\\') {
+      // Экранированный символ — часть значения, не сепаратор.
+      i++;
+      continue;
+    }
+    if (value[i] === '@' && CONTEXT_SEPARATORS[value[i + 1]]) {
+      throwVariantGroup(
+        'Пустое имя медиа в "' + value + '": после "@" сразу идёт "'
+          + value[i + 1] + '", медиа-запрос не задан, и правило станет '
+          + 'безусловным — адаптивность потеряется. Укажите медиа после "@" '
+          + 'или уберите "@"',
+        value, utility,
+      );
+    }
+  }
 }
 
 /** Сепараторы, висящие в конце имени. `<`/`>` — у `getCombinator` свои сообщения. */

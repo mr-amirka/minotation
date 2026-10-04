@@ -12,6 +12,7 @@ import {
   variants,
 } from 'fundamentool';
 import {
+  assertMediaNames,
   assertVariantGroups,
   assertTrailingSeparator,
   REGEXP_MATCH_NAME,
@@ -97,13 +98,28 @@ function variantsBase(comboName: string, handlerMap: Record<string, unknown>): s
   //
   // Проверки структуры — только для того, что похоже на MN-токен: иначе
   // чужой класс из разметки роняет сборку под `strict`.
-  if (looksLikeToken(comboName, handlerMap)) {
-    assertTrailingSeparator(comboName, 'variants');
-    assertVariantGroups(
-      comboName, 'variants', 1,
-    );
+  if (!looksLikeToken(comboName, handlerMap)) {
+    return variants(comboName, false)[0];
   }
-  return variants(comboName, false)[0];
+  // Структуру скобок проверяем по записи: непарная или пустая скобка видна
+  // только в ней, после развёртки её уже нет.
+  assertVariantGroups(
+    comboName, 'variants', 1,
+  );
+  const alts = variants(comboName, false)[0];
+  // А вырожденный вариант — по РЕЗУЛЬТАТУ развёртки. Пустая альтернатива сама
+  // по себе не дефект: `w(|max)150` даёт законные `w150` и `wmax150`. Дефект —
+  // когда вариант остаётся без части контекста: `p10@(sm|)` даёт `p10@`
+  // (висячий `@`), `p10@(|sm):h` — `p10@:h` (пустое имя медиа). Проверка по
+  // результату ловит ровно это и заодно закрывает те же формы, записанные
+  // напрямую, без группы: `p10@:h` до 2026-10-04 компилировался молча.
+  const l = alts.length;
+  let i = 0;
+  for (; i < l; i++) {
+    assertTrailingSeparator(alts[i], 'variants');
+    assertMediaNames(alts[i], 'variants');
+  }
+  return alts;
 }
 
 /**

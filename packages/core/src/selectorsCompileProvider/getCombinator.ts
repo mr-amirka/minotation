@@ -66,6 +66,9 @@ export interface MnDepthCheck {
  *
  * @param name — имя с опциональным числовым префиксом (например `2Parent`)
  * @param depthCheck — опциональная проверка мягкого `maxDepth` (жёсткий потолок 30 — всегда, см. {@link getCombinatorByDepth})
+ * @param child — сегмент дочерний (`>`): глубина без селектора там законна —
+ *   `fx>1` значит «каждому прямому потомку» (`.fx\>1>*`). Запрет §14.3 спеки
+ *   касается только родителя: `<1` цеплялся бы к любому предку
  * @returns `[комбинатор, имя]` (например `['> *>', 'Parent']`)
  *
  * @example
@@ -79,7 +82,7 @@ export interface MnDepthCheck {
  *
  * Все они в v1 «работали», но давали не то, что имел в виду автор токена:
  * пустой `<` и `<N` без селектора разворачивались в универсальный `*`
- * (правило цеплялось ко всему подряд), `<0` склеивал классы на одном элементе,
+ * (правило цеплялось к любому предку), `<0` склеивал классы на одном элементе,
  * а отрицательная глубина молча ИНВЕРТИРОВАЛА направление (`<-1` вёл себя как
  * `>1`). Поэтому такие формы дают предупреждение и не компилируются вовсе:
  * бросается {@link MnParseError}, ядро превращает его в warning `parse-error`,
@@ -102,7 +105,9 @@ function throwDegenerate(
 /** Отрицательная глубина: `<-1`, `>-2`. В v1 инвертировала направление. */
 const REGEXP_NEGATIVE_DEPTH = /^-\d/;
 
-export function getCombinator(name: string, depthCheck?: MnDepthCheck): [combinator: string, selector: string] {
+export function getCombinator(
+  name: string, depthCheck?: MnDepthCheck, child?: boolean,
+): [combinator: string, selector: string] {
   // Единственная проверка существования на весь вызов: дальше идёт уже готовая
   // строка токена, а блок мягкого лимита ниже заходит внутрь `if (depthCheck)`.
   // Параметр опционален только ради публичного API — внутри провайдера он
@@ -134,7 +139,8 @@ export function getCombinator(name: string, depthCheck?: MnDepthCheck): [combina
       name, token,
     );
   }
-  const selector = depthMatchs[2];
+  // Дочернему сегменту без селектора нужна явная цель: `.fx\>1>` — битый CSS.
+  const selector = depthMatchs[2] || (child ? '*' : '');
   if (!selector) {
     throwDegenerate(
       'Глубина (' + depth + ') без селектора запрещена: правило цеплялось бы '

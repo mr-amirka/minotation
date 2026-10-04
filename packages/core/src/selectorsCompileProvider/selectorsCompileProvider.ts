@@ -264,7 +264,9 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * @param childName — один `>`-сегмент суффикса (может нести свой depth-префикс и `<`-цепочку)
    */
   function childsIteratee(alts: AltMap, childName: string): AltMap {
-    const part = getCombinator(childName, $$depthCheck);
+    const part = getCombinator(
+      childName, $$depthCheck, true,
+    );
     return joinMapsWithFirstValue(
       alts,
       getParents(part[1], 0 as any),

@@ -273,7 +273,7 @@ export function extractClassVarTokensInto(
 }
 
 /**
- * Кеш регулярок поиска вызовов, по списку имён.
+ * Кеш регулярок поиска вызовов, по списку имён и суффиксов.
  *
  * Список приходит из опций плагина и на всю сборку один, а функция зовётся на каждый файл.
  */
@@ -285,13 +285,21 @@ const $$mergeCallRegexps: Record<string, RegExp> = {};
  * Отсечение «хвоста другого идентификатора» (`myMne`, `obj.mne`, `mne2`) выражено прямо
  * в регекспе: `(?<![\\w$.])` слева и `(?![\\w$])` справа. Раньше это проверялось вручную
  * после каждого `indexOf`, и проход по файлу делался отдельно на каждое имя.
+ *
+ * Суффиксы дают вторую ветку — вызов переменной с суффиксом (`thClass('w150')`): так
+ * зовётся функция, которую вернул `mnClass(base)`, и её аргументы — те же токены.
  */
-function mergeCallRegExp(names: string[]): RegExp {
-  const key = names.join('|');
-  return $$mergeCallRegexps[key]
-    || ($$mergeCallRegexps[key] = new RegExp('(?<![\\w$.])(?:' + names.map((n) => n.replace(REGEXP_ESCAPE, '\\$&')).join('|')
-        + ')(?![\\w$])\\s*\\(',
-    'g'));
+function mergeCallRegExp(names: string[], suffixes: string[]): RegExp {
+  const key = names.join('|') + '/' + suffixes.join('|');
+  const cached = $$mergeCallRegexps[key];
+  if (cached) {
+    return cached;
+  }
+  const alternatives = names.map((n) => n.replace(REGEXP_ESCAPE, '\\$&'));
+  suffixes.length && alternatives.push('[\\w$]+(?:'
+    + suffixes.map((n) => n.replace(REGEXP_ESCAPE, '\\$&')).join('|') + ')');
+  return ($$mergeCallRegexps[key] = new RegExp('(?<![\\w$.])(?:' + alternatives.join('|')
+    + ')(?![\\w$])\\s*\\(', 'g'));
 }
 
 /**
@@ -307,13 +315,18 @@ function mergeCallRegExp(names: string[]): RegExp {
  * сбалансированность скобок регулярным выражением не выражается.
  *
  * @param source — исходный текст файла
- * @param names — имена функций (`['mne', 'mnClass']`); пустой массив отключает разбор
+ * @param names — имена функций (`['mne', 'mnClass']`)
+ * @param suffixes — суффиксы переменных (`['Class']`): вызов `thClass('w150')` тоже
+ *   разбирается — это функция, которую вернул `mnClass`. По умолчанию — без них.
+ *   Оба списка пустые — разбор отключён
  * @returns список токенов (с возможными повторами)
  */
-export function extractMergeCallTokens(source: string, names: string[]): string[] {
+export function extractMergeCallTokens(
+  source: string, names: string[], suffixes?: string[],
+): string[] {
   const out: string[] = [];
   extractMergeCallTokensInto(
-    out, source, names,
+    out, source, names, suffixes,
   );
   return out;
 }
@@ -323,15 +336,18 @@ export function extractMergeCallTokens(source: string, names: string[]): string[
  *
  * @param out — аккумулятор
  * @param source — полный текст файла
- * @param names — имена функций слияния; пустой массив отключает разбор
+ * @param names — имена функций слияния
+ * @param suffixes — суффиксы переменных, чей вызов тоже разбирается; оба списка
+ *   пустые — разбор отключён
  */
 export function extractMergeCallTokensInto(
-  out: string[], source: string, names: string[],
+  out: string[], source: string, names: string[], suffixes?: string[],
 ): void {
-  if (!names.length) {
+  const varSuffixes = suffixes || [];
+  if (!names.length && !varSuffixes.length) {
     return;
   }
-  const re = mergeCallRegExp(names);
+  const re = mergeCallRegExp(names, varSuffixes);
   re.lastIndex = 0;
   const l = source.length;
   let i: number;
@@ -531,15 +547,15 @@ export function scanTokens(source: string, options: ScanTokensOptions): string[]
   extractTokensInto(
     tokens, source, options.attr || 'class',
   );
+  const suffixes = options.classVarSuffixes === undefined ? ['Class'] : options.classVarSuffixes;
   extractClassVarTokensInto(
-    tokens,
-    source,
-    options.classVarSuffixes === undefined ? ['Class'] : options.classVarSuffixes,
+    tokens, source, suffixes,
   );
   extractMergeCallTokensInto(
     tokens,
     source,
     options.mergeFnNames === undefined ? ['mne', 'mnClass'] : options.mergeFnNames,
+    suffixes,
   );
   return tokens;
 }

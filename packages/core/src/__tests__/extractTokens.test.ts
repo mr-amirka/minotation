@@ -250,6 +250,64 @@ describe('scanTokens — единая точка сбора', () => {
   });
 });
 
+describe('вызов переменной с суффиксом — функции из mnClass (2026-10-04)', () => {
+  /**
+   * `const thClass = mnClass(base)` возвращает функцию, и дополнительные токены
+   * передаются её вызовом: `class={thClass(`w(|max)150`)}`. Ни атрибутом-строкой,
+   * ни переменной, ни вызовом `mne`/`mnClass` это не является — и токены молча
+   * не попадали в CSS (найдено на `affiliate`, RatingTableIsland).
+   */
+  test.each([
+    [
+      'шаблон',
+      'const x = <th class={thClass(`w(|max)150`)}>a</th>;',
+      ['w(|max)150'],
+    ],
+    [
+      'строка',
+      "thClass('w150 p10')",
+      ['w150', 'p10'],
+    ],
+    [
+      'несколько аргументов',
+      "rowClass(cond && 'bg--ink', 'p10')",
+      ['bg--ink', 'p10'],
+    ],
+  ])('%s', (
+    _name, source, expected,
+  ) => {
+    expect(scanTokens(source, {})).toEqual(expected);
+  });
+
+  test.each([
+    ['метод объекта', "el.toggleClass('active')"],
+    ['суффикс не в конце имени', "thClassy('p10')"],
+    ['ровно суффикс — не имя переменной', "Class('p10')"],
+  ])('%s — не разбирается', (_name, source) => {
+    expect(scanTokens(source, {})).toEqual([]);
+  });
+
+  test('classVarSuffixes: [] отключает и это', () => {
+    expect(scanTokens("thClass('w150')", {
+      classVarSuffixes: [],
+    })).toEqual([]);
+  });
+
+  test('работает и при отключённых функциях слияния', () => {
+    expect(scanTokens("thClass('w150')", {
+      mergeFnNames: [],
+    })).toEqual(['w150']);
+  });
+
+  test('extractMergeCallTokens без суффиксов их не разбирает', () => {
+    expect(extractMergeCallTokens("thClass('w150')", ['mne'])).toEqual([]);
+    expect(extractMergeCallTokens(
+      "thClass('w150')", [], ['Class'],
+    )).toEqual(['w150']);
+    expect(extractMergeCallTokens("thClass('w150')", [])).toEqual([]);
+  });
+});
+
 describe('кеш регулярок extractTokens (2026-09-25)', () => {
   /**
    * `extractTokens` зовётся на каждый файл сборки, а имён атрибутов в проекте одно-два.

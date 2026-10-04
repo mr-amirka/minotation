@@ -117,6 +117,15 @@ describe('scanTokensSyntax — что собирается', () => {
     })).toEqual([]);
   });
 
+  test('вызов переменной с суффиксом — функции из mnClass', () => {
+    expect(scanTokensSyntax('<th class={thClass(`w(|max)150`)} />', {
+      attr: 'class',
+    })).toEqual(['w(|max)150']);
+    expect(scanTokensSyntax('el.thClass(\'p10\'); thClassy(\'m5\');', {
+      attr: 'class',
+    })).toEqual([]);
+  });
+
   test('вычисляемое значение не даёт токенов', () => {
     // На этапе сборки оно неизвестно — как и у текстового сканера.
     expect(scanTokensSyntax('<div class={cond ? a : b} />', {
@@ -276,6 +285,7 @@ describe('паритет с текстовым сканером', () => {
     ['свойство объекта', 'f({ paper: { class: \'w320 dF\' } });'],
     ['вызовы слияния', 'mne(thClass, \'fvTN\');\nmnClass(\'p10\', x);'],
     ['вложенные вызовы', 'mne(a, cond ? b : mne(c, \'p10 m5\'))'],
+    ['вызов функции из mnClass', '<th class={thClass(`w(|max)150`)} />;\nrowClass(\'p10\');'],
     ['разметка в строке', 'const s = \'<div class="p10">\';'],
     ['всё вместе', `
       import { mne } from 'minotation/mne';

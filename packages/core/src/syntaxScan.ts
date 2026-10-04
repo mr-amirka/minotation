@@ -26,7 +26,8 @@
  * 2. Свойство объекта с тем же именем: `{ className: 'p10' }` — в том числе
  *    вложенное (`slotProps={{ paper: { className: 'p10' } }}`).
  * 3. Переменная с суффиксом: `const rowClass = 'p10'`, `{ rowClass: 'p10' }`.
- * 4. Строковые аргументы функций слияния: `mne(base, 'p10')`, включая вложенные.
+ * 4. Строковые аргументы функций слияния: `mne(base, 'p10')`, включая вложенные,
+ *    и вызова переменной с суффиксом: `thClass('w150')` — функции из `mnClass`.
  * 5. Разметка внутри строкового литерала (`` html`<div class="p10">` ``) —
  *    текстовым разбором уже самого литерала: для парсера это просто строка,
  *    а токены в ней настоящие.
@@ -211,7 +212,8 @@ function variableDeclaration(node: ts.VariableDeclaration, state: ScanState): vo
 }
 
 /**
- * `mne(base, 'p10')` — берутся все строковые литералы вызова, включая вложенные.
+ * `mne(base, 'p10')` и `thClass('w150')` — берутся все строковые литералы
+ * вызова, включая вложенные.
  *
  * Как и в текстовом сканере, имя должно быть самостоятельным идентификатором:
  * `obj.mne(...)` — чужой метод, а не наш.
@@ -221,7 +223,10 @@ function callExpression(node: ts.CallExpression, state: ScanState): void {
   if (callee.kind !== ts.SyntaxKind.Identifier) {
     return;
   }
-  if (state[MN_SCAN_MERGE_FNS].indexOf((callee as ts.Identifier).text) < 0) {
+  const name = (callee as ts.Identifier).text;
+  // `thClass('w150')` — вызов функции, которую вернул `mnClass(base)`: её
+  // аргументы — такие же токены, как у самой `mnClass`.
+  if (state[MN_SCAN_MERGE_FNS].indexOf(name) < 0 && !hasSuffix(name, state[MN_SCAN_SUFFIXES])) {
     return;
   }
   const args = node.arguments;

@@ -65,7 +65,7 @@ export function loadConfig(path: string | undefined, report: Reporter): Partial<
   const full = resolve(path || DEFAULT_CONFIG);
   if (!existsSync(full)) {
     if (path) {
-      throw new Error('Конфиг не найден: "' + full + '"');
+      throw new Error('Config not found: "' + full + '"');
     }
     return {};
   }
@@ -73,12 +73,12 @@ export function loadConfig(path: string | undefined, report: Reporter): Partial<
   try {
     loaded = requireConfig(full);
   } catch (ex) {
-    throw new Error('Не удалось прочитать конфиг "' + full + '": '
+    throw new Error('Failed to read config "' + full + '": '
       + (ex as Error).message, {
       cause: ex,
     });
   }
-  report.log('Конфиг: ' + full);
+  report.log('Config: ' + full);
   return loaded.default || loaded;
 }
 
@@ -134,9 +134,9 @@ export function build(settings: RunSettings, report: Reporter): CompileResult {
   let i = 0;
   for (; i < l; i++) {
     // `message` у предупреждения обязателен — запасного поля здесь не нужно.
-    report.error('Предупреждение: ' + result.warnings[i].message);
+    report.error('Warning: ' + result.warnings[i].message);
   }
-  report.log(result.files + ' файлов, ' + result.tokens + ' токенов → ' + full);
+  report.log(result.files + ' files, ' + result.tokens + ' tokens → ' + full);
   if (settings.metricsPath && result.metrics) {
     const metricsFull = resolve(settings.metricsPath);
     mkdirSync(dirname(metricsFull), {
@@ -147,7 +147,7 @@ export function build(settings: RunSettings, report: Reporter): CompileResult {
         result.metrics, null, '  ',
       ), 'utf8',
     );
-    report.log('Статистика → ' + metricsFull);
+    report.log('Metrics → ' + metricsFull);
   }
   return result;
 }
@@ -184,7 +184,7 @@ export function startWatch(settings: RunSettings, report: Reporter): () => void 
       }, 50);
     },
   );
-  report.log('Наблюдение за ' + target);
+  report.log('Watching ' + target);
   return () => {
     timer && clearTimeout(timer);
     watcher.close();

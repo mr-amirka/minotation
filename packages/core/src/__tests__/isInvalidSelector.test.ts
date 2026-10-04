@@ -178,16 +178,16 @@ describe('вырожденная группа вариантов в значен
     const r = compileToken(token);
     expect(r.css).toBe('');
     expect(r.warnings.map((w) => w.type)).toContain('parse-error');
-    expect(r.warnings[0].message).toContain('не образуют группу вариантов');
+    expect(r.warnings[0].message).toContain('do not form a variant group');
   });
 
   test.each([
     // Тег обязан быть зарегистрирован: с 2026-09-26 у имени без тега
     // структура не проверяется вовсе — это чужой класс, а не токен.
-    ['w50)b', 'Непарная закрывающая'],
-    ['p10)', 'Непарная закрывающая'],
-    ['gtcRepeat(2', 'Незакрытая'],
-    ['crUrl(a', 'Незакрытая'],
+    ['w50)b', 'Unmatched closing'],
+    ['p10)', 'Unmatched closing'],
+    ['gtcRepeat(2', 'Unclosed'],
+    ['crUrl(a', 'Unclosed'],
   ])('%s → брак: %s скобка', (token, expected) => {
     const r = compileToken(token);
     expect(r.css).toBe('');
@@ -205,13 +205,13 @@ describe('вырожденная группа вариантов в значен
   });
 
   test.each([
-    ['p10@(sm|)', 'хвостовая пустая альтернатива', 'заканчивается на "@"'],
-    ['p10@(|sm)', 'ведущая пустая альтернатива', 'заканчивается на "@"'],
-    ['p10@(sm||md)', 'пустая в середине', 'заканчивается на "@"'],
-    ['p10:(hover|)', 'в позиции состояния', 'заканчивается на ":"'],
-    ['p10@(|sm):h', 'пустое медиа перед состоянием', 'Пустое имя медиа'],
-    ['p10@(|)', 'обе пустые', 'Все альтернативы'],
-    ['p10@(|||)', 'несколько пустых', 'Все альтернативы'],
+    ['p10@(sm|)', 'хвостовая пустая альтернатива', 'ends with "@"'],
+    ['p10@(|sm)', 'ведущая пустая альтернатива', 'ends with "@"'],
+    ['p10@(sm||md)', 'пустая в середине', 'ends with "@"'],
+    ['p10:(hover|)', 'в позиции состояния', 'ends with ":"'],
+    ['p10@(|sm):h', 'пустое медиа перед состоянием', 'Empty media name'],
+    ['p10@(|)', 'обе пустые', 'All alternatives'],
+    ['p10@(|||)', 'несколько пустых', 'All alternatives'],
   ])('%s → брак: %s', (token, _what, reason) => {
     // Пустая альтернатива бракуется не по записи, а по РЕЗУЛЬТАТУ развёртки:
     // `p10@(sm|)` даёт вариант `p10@` с висячим `@` — медиа-запрос бы
@@ -260,14 +260,14 @@ describe('вырожденная группа вариантов в значен
     // групповой вид (`p10@(|sm):h`) — запретом пустой альтернативы.
     const r = compileToken('p10@:h');
     expect(r.css).toBe('');
-    expect(r.warnings[0].message).toContain('Пустое имя медиа');
+    expect(r.warnings[0].message).toContain('Empty media name');
   });
 
   test('экранированный `@` пустым медиа не считается', () => {
     // `\@` — часть значения, а не сепаратор контекста.
     const r = compileToken('bgi_a\\@\\:b');
     expect(r.warnings.map((w: { message: string }) => w.message).join(''))
-      .not.toContain('Пустое имя медиа');
+      .not.toContain('Empty media name');
   });
 
   test.each([
@@ -279,7 +279,7 @@ describe('вырожденная группа вариантов в значен
     // поэтому бракуются и в контекстной части, в отличие от «скобок без |».
     const r = compileToken(token);
     expect(r.css).toBe('');
-    expect(r.warnings[0].message).toContain('Пустые скобки');
+    expect(r.warnings[0].message).toContain('Empty parentheses');
   });
 
   test.each([
@@ -297,7 +297,7 @@ describe('вырожденная группа вариантов в значен
     // селектор, а не просто лишний символ.
     const r = compileToken(token);
     expect(r.css).toBe('');
-    expect(r.warnings[0].message).toContain('без самой части');
+    expect(r.warnings[0].message).toContain('with nothing after it');
   });
 
   test.each([
@@ -325,8 +325,8 @@ describe('вырожденная группа вариантов в значен
   test('`<`/`>` сохраняют собственные, более точные сообщения', () => {
     // Они намеренно не входят в проверку висячего сепаратора: у `getCombinator`
     // формулировки точнее («пустой контекстный сегмент», §13 спеки).
-    expect(compileToken('p10<').warnings[0].message).toContain('Пустой контекстный сегмент');
-    expect(compileToken('p10>').warnings[0].message).toContain('Пустой контекстный сегмент');
+    expect(compileToken('p10<').warnings[0].message).toContain('Empty context segment');
+    expect(compileToken('p10>').warnings[0].message).toContain('Empty context segment');
   });
 
   test('экранированный символ внутри группы считается содержимым', () => {
@@ -367,7 +367,7 @@ describe('вырожденная группа вариантов в селект
     // которое молча уехало бы в вывод.
     expect(() => assign({
       [selector]: 'p10',
-    })).toThrow(/не образуют группу вариантов/);
+    })).toThrow(/do not form a variant group/);
   });
 
   test('экранированные скобки дают корректный CSS', () => {
@@ -424,7 +424,7 @@ describe('вырожденная группа вариантов в селект
   ])('%s в assign → исключение при регистрации', (selector) => {
     expect(() => assign({
       [selector]: 'p10',
-    })).toThrow(/Пустой селектор|Все альтернативы|Пустые скобки/);
+    })).toThrow(/Empty selector|All alternatives|Empty parentheses/);
   });
 
   test.each([
@@ -441,7 +441,7 @@ describe('вырожденная группа вариантов в селект
   test('висячий сепаратор в варианте селектора ловится, хотя запись кончается на `)`', () => {
     expect(() => assign({
       '(h1|h2:)': 'p10',
-    })).toThrow(/заканчивается на ":"/);
+    })).toThrow(/ends with ":"/);
   });
 
   test('настоящая группа вариантов разворачивается', () => {

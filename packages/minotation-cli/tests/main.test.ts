@@ -66,7 +66,7 @@ describe('main', () => {
 
   test('`--help` печатает справку и ничего не собирает', () => {
     expect(main(['--help'], report)).toBe(0);
-    expect(logs.join('')).toContain('Использование: mn');
+    expect(logs.join('')).toContain('Usage: mn');
     expect(existsSync(join(dir, 'mn.css'))).toBe(false);
   });
 
@@ -78,8 +78,8 @@ describe('main', () => {
 
   test('неизвестная опция: код 1, сообщение и справка', () => {
     expect(main(['--нет-такой'], report)).toBe(1);
-    expect(errors[0]).toContain('Неизвестная опция');
-    expect(errors.join('')).toContain('Использование: mn');
+    expect(errors[0]).toContain('Unknown option');
+    expect(errors.join('')).toContain('Usage: mn');
   });
 
   test('битый токен без `--strict` — предупреждение, но код 0', () => {
@@ -90,7 +90,7 @@ describe('main', () => {
       '-o',
       join(dir, 'app.css'),
     ], report)).toBe(0);
-    expect(errors.some((m) => m.includes('Предупреждение'))).toBe(true);
+    expect(errors.some((m) => m.includes('Warning'))).toBe(true);
   });
 
   test('битый токен с `--strict` — исключение из ядра', () => {
@@ -117,7 +117,7 @@ describe('main', () => {
 
   test('нечитаемый конфиг обрывает работу', () => {
     expect(() => main(['-c', join(dir, 'нет.js')], report))
-      .toThrow('Конфиг не найден');
+      .toThrow('Config not found');
   });
 
   test('`--watch` собирает и включает наблюдение', () => {
@@ -170,7 +170,7 @@ describe('публичный API пакета', () => {
     expect(typeof api.mergeSettings).toBe('function');
     expect(typeof api.parseArgs).toBe('function');
     expect(typeof api.main).toBe('function');
-    expect(api.HELP).toContain('Использование: mn');
+    expect(api.HELP).toContain('Usage: mn');
     expect(api.DEFAULT_CONFIG).toBe('./mn.config.js');
   });
 });

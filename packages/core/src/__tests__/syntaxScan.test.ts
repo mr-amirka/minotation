@@ -435,7 +435,7 @@ describe('createScanner', () => {
     expect(scan(SOURCE, '/src/Other.tsx')).toEqual(textual);
 
     expect(said.length).toBe(1);
-    expect(said[0]).toContain('парсер недоступен');
+    expect(said[0]).toContain('parser is unavailable');
     jest.dontMock('../syntaxScan');
     jest.resetModules();
   });

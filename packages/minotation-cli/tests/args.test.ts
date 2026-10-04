@@ -109,10 +109,10 @@ describe('parseArgs', () => {
   });
 
   test.each([
-    [['-o'], 'У опции "-o" не указано значение'],
-    [['--attr'], 'У опции "--attr" не указано значение'],
-    [['--zzz'], 'Неизвестная опция: "--zzz"'],
-    [['a', 'b'], 'Путь указан дважды'],
+    [['-o'], 'Option "-o" requires a value'],
+    [['--attr'], 'Option "--attr" requires a value'],
+    [['--zzz'], 'Unknown option: "--zzz"'],
+    [['a', 'b'], 'Path given twice'],
   ])('%p — ошибка', (argv, message) => {
     // Молча проглотить опечатку в опции значит собрать не то, что просили.
     expect(() => parseArgs(argv as string[])).toThrow(message as string);

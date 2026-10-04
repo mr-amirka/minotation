@@ -64,21 +64,21 @@ describe('loadConfig', () => {
 
   test('явно указанный конфиг обязан существовать', () => {
     expect(() => loadConfig(join(dir, 'нет.js'), report))
-      .toThrow('Конфиг не найден');
+      .toThrow('Config not found');
   });
 
   test('битый конфиг — ошибка даже с именем по умолчанию', () => {
     // Молча продолжить с умолчаниями значит собрать не то, что просили.
     const path = write('mn.config.cjs', 'module.exports = { : };');
     expect(() => loadConfig(path, report))
-      .toThrow('Не удалось прочитать конфиг');
+      .toThrow('Failed to read config');
   });
 
   test('читает настройки из файла', () => {
     const path = write('mn.config.cjs', 'module.exports = { prefix: ".app" };');
     const config = loadConfig(path, report);
     expect(config.prefix).toBe('.app');
-    expect(logs.some((m) => m.includes('Конфиг'))).toBe(true);
+    expect(logs.some((m) => m.includes('Config'))).toBe(true);
   });
 
   test('понимает `export default`', () => {
@@ -205,7 +205,7 @@ describe('build', () => {
     }, report);
     expect(readFileSync(out, 'utf8')).toContain('padding:10px');
     expect(result.files).toBe(1);
-    expect(logs.some((m) => m.includes('1 файлов'))).toBe(true);
+    expect(logs.some((m) => m.includes('1 files'))).toBe(true);
   });
 
   test('создаёт директорию вывода, если её нет', () => {
@@ -226,7 +226,7 @@ describe('build', () => {
       input: dir,
       output: join(dir, 'out.css'),
     }, report);
-    expect(errors.some((m) => m.includes('Предупреждение'))).toBe(true);
+    expect(errors.some((m) => m.includes('Warning'))).toBe(true);
     expect(readFileSync(join(dir, 'out.css'), 'utf8')).toContain('padding:10px');
   });
 });
@@ -286,7 +286,7 @@ describe('метрики', () => {
       name: 'm20',
       count: 1,
     }]);
-    expect(logs.some((m) => m.includes('Статистика'))).toBe(true);
+    expect(logs.some((m) => m.includes('Metrics'))).toBe(true);
   });
 
   test('без опции файл не создаётся и о нём не сообщается', () => {
@@ -297,7 +297,7 @@ describe('метрики', () => {
     }, report);
 
     expect(existsSync(join(dir, 'metrics.json'))).toBe(false);
-    expect(logs.some((m) => m.includes('Статистика'))).toBe(false);
+    expect(logs.some((m) => m.includes('Metrics'))).toBe(false);
   });
 
   test('опция включает сбор, конфиг — тоже', () => {

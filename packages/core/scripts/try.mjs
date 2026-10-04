@@ -20,7 +20,7 @@ import { minotationProvider, presetStandard, presetSynonyms, presetMedias, prese
 const tokens = process.argv.slice(2);
 
 if (tokens.length === 0) {
-  console.error('Укажите хотя бы один токен. Пример: pnpm try \'gtc1fr_auto\'');
+  console.error('Pass at least one token. Example: pnpm try \'gtc1fr_auto\'');
   process.exit(1);
 }
 
@@ -44,7 +44,7 @@ for (const token of tokens) {
   if (css) {
     console.log('  → ' + css);
   } else {
-    console.log('  → ничего не скомпилировалось');
+    console.log('  → nothing compiled');
   }
   for (const w of warnings) {
     console.log(`  ⚠️  ${w.type}: ${w.message}`);
@@ -52,5 +52,5 @@ for (const token of tokens) {
 }
 
 if (!withPrefixes) {
-  console.log('\n(вендорные префиксы выключены; MN_PREFIXES=1 — включить presetPrefixes)');
+  console.log('\n(vendor prefixes are off; MN_PREFIXES=1 enables presetPrefixes)');
 }

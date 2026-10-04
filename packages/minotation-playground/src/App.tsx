@@ -18,8 +18,8 @@ import { encodeStateToHash, decodeStateFromHash } from './share';
 
 const DEFAULT_HTML = `<div class="p20 bgF.06 r8 dF fxdC gap2">
   <h1 class="f22 fw5 c0">Hello, minotation!</h1>
-  <p class="f14 c0.6">Отредактируйте HTML слева — превью обновится сразу.</p>
-  <button class="p10 bxzBB bgF.12 r4 crP">Кнопка</button>
+  <p class="f14 c0.6">Edit the HTML on the left — the preview updates instantly.</p>
+  <button class="p10 bxzBB bgF.12 r4 crP">Button</button>
 </div>
 `;
 
@@ -62,7 +62,7 @@ export function App() {
               />
             ))}
           </FormGroup>
-          <Button variant="outlined" size="small" onClick={copyShareLink}>Скопировать ссылку</Button>
+          <Button variant="outlined" size="small" onClick={copyShareLink}>Copy link</Button>
         </Toolbar>
       </AppBar>
       <Box className="dF" sx={{ flex: 1, minHeight: 0 }}>
@@ -88,7 +88,7 @@ export function App() {
         open={copied}
         autoHideDuration={2000}
         onClose={() => setCopied(false)}
-        message="Ссылка скопирована"
+        message="Link copied"
       />
     </Box>
   );

@@ -126,12 +126,12 @@ export function parseArgs(argv: string[]): CliArgs {
       option = OPTIONS[arg];
     }
     if (option) {
-      i + 1 < l || raise('У опции "' + arg + '" не указано значение');
+      i + 1 < l || raise('Option "' + arg + '" requires a value');
       args[option] = argv[++i];
       continue;
     }
-    arg[0] === '-' && raise('Неизвестная опция: "' + arg + '"');
-    positional++ && raise('Путь указан дважды: "' + args.input + '" и "' + arg + '"');
+    arg[0] === '-' && raise('Unknown option: "' + arg + '"');
+    positional++ && raise('Path given twice: "' + args.input + '" and "' + arg + '"');
     args.input = arg;
   }
   return args;
@@ -143,27 +143,27 @@ function raise(message: string): never {
 
 /** Текст справки — он же документация по опциям. */
 export const HELP = `
-Использование: mn [путь] [опции]
+Usage: mn [path] [options]
 
-  Собирает CSS из токенов Minimalist Notation, найденных в файлах.
-  Путь по умолчанию — текущая директория.
+  Builds CSS from Minimalist Notation tokens found in files.
+  The default path is the current directory.
 
-Опции:
-  -o, --output <файл>    куда писать CSS (по умолчанию ./mn.css)
-  -w, --watch            следить за изменениями и пересобирать
-  -c, --config <файл>    файл конфигурации (по умолчанию ./mn.config.js)
-  -a, --attr <имя>       атрибут с токенами (по умолчанию class)
-  -p, --prefix <строка>  префикс для всех селекторов
-      --alt-color        запасное непрозрачное объявление рядом с rgba
-      --strict           прервать работу на первом битом токене
-      --no-syntax        не разбирать JS/TS парсером, только текстовый поиск
-  -m, --metrics <файл>   записать статистику употребления токенов (JSON)
-      --include <regexp> какие файлы сканировать
-      --exclude <regexp> какие пропускать
-  -v, --version          версия
-  -h, --help             эта справка
+Options:
+  -o, --output <file>    where to write CSS (default ./mn.css)
+  -w, --watch            watch for changes and rebuild
+  -c, --config <file>    config file (default ./mn.config.js)
+  -a, --attr <name>      attribute holding tokens (default class)
+  -p, --prefix <string>  prefix for all selectors
+      --alt-color        opaque fallback declaration next to rgba
+      --strict           stop at the first broken token
+      --no-syntax        do not parse JS/TS, text search only
+  -m, --metrics <file>   write token usage statistics (JSON)
+      --include <regexp> which files to scan
+      --exclude <regexp> which files to skip
+  -v, --version          version
+  -h, --help             this help
 
-Примеры:
+Examples:
   mn ./src -o ./dist/app.css
   mn ./src --watch
   mn ./templates --attr className --prefix .app

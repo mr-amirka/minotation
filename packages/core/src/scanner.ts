@@ -167,9 +167,9 @@ function loadSyntaxScan(options: ScannerOptions, required: boolean): SyntaxModul
       const warn = options.onWarning || ((message: string) => {
         console.warn(message);
       });
-      warn('[minotation] syntax: true, но парсер недоступен ('
-        + (ex as Error).message + '). Файлы сканируются текстом. '
-        + 'Установите typescript — он объявлен необязательной peer-зависимостью.');
+      warn('[minotation] syntax: true, but the parser is unavailable ('
+        + (ex as Error).message + '). Files are scanned as text. '
+        + 'Install typescript — it is an optional peer dependency.');
     }
     return undefined;
   }

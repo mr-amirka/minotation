@@ -194,8 +194,8 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       (instance as any)._collectWarning?.({
         type: 'max-depth-exceeded',
         token: $$depthCheck.token,
-        message: 'Глубина контекстного селектора (' + depth
-          + ') превышает maxDepth (' + maxDepth + ')',
+        message: 'Context selector depth (' + depth
+          + ') exceeds maxDepth (' + maxDepth + ')',
       });
     },
   };
@@ -497,10 +497,10 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
               _state && !wasEmpty && (instance as any)._collectWarning?.({
                 type: 'unregistered-state',
                 token: $$depthCheck.token,
-                message: 'Состояние ":' + _state + '" не зарегистрировано — ни синонимом, '
-                  + 'ни в `mn.states`. Оно уйдёт в CSS как есть; если это опечатка, '
-                  + 'правило будет мёртвым. Заведите синоним '
-                  + '(`mn.synonyms({ … })`), чтобы в проекте была одна каноническая запись',
+                message: 'State ":' + _state + '" is not registered — neither as a synonym '
+                  + 'nor in `mn.states`. It goes to CSS as is; if it is a typo, '
+                  + 'the rule is dead. Add a synonym '
+                  + '(`mn.synonyms({ … })`) so the project has one canonical spelling',
               });
               _pushSuffix(':' + _state);
             }

@@ -203,9 +203,9 @@ describe('вырожденные контекстные селекторы: пр
   });
 
   test('сообщение объясняет, что было не так', () => {
-    expect(compile('p10<0').warnings[0].message).toContain('Глубина 0');
-    expect(compile('p10<-1').warnings[0].message).toContain('Отрицательная глубина');
-    expect(compile('p10<').warnings[0].message).toContain('Пустой контекстный сегмент');
+    expect(compile('p10<0').warnings[0].message).toContain('Depth 0');
+    expect(compile('p10<-1').warnings[0].message).toContain('Negative context selector depth');
+    expect(compile('p10<').warnings[0].message).toContain('Empty context segment');
   });
 });
 
@@ -296,7 +296,7 @@ describe('синонимы состояний', () => {
     expect(r.warnings).toHaveLength(1);
     expect(r.warnings[0].type).toBe('unregistered-state');
     expect(r.warnings[0].token).toBe('p10:fvv');
-    expect(r.warnings[0].message).toContain('не зарегистрировано');
+    expect(r.warnings[0].message).toContain('is not registered');
   });
 
   test('полное имя вместо синонима тоже предупреждает — нужна одна форма', () => {

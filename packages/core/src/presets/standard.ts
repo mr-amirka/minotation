@@ -796,14 +796,14 @@ function assertEnumValue(
   if (v.indexOf('(') > -1 || GLOBAL_KEYWORDS[v]) {
     return v;
   }
-  const prefix = 'Значение "' + raw + '" не распознано: у "' + essenceName + '" ';
+  const prefix = 'Value "' + raw + '" is invalid for "' + essenceName + '": ';
   const parts = v.split(' ');
   let i = parts.length;
   let canon: 1 | string | undefined;
-  (i < 2 || multi) || throwInvalid(prefix + 'ожидается одно значение');
+  (i < 2 || multi) || throwInvalid(prefix + 'expected a single value');
   while (i--) {
     canon = words[parts[i].toLowerCase()];
-    canon || throwInvalid(prefix + 'перечень значений закрыт');
+    canon || throwInvalid(prefix + 'the set of values is closed');
     canon === 1 || (parts[i] = canon as string);
   }
   return parts.join(' ');
@@ -951,7 +951,7 @@ function transitionValue(parts: string[], raw: string): string[] {
   let at: number;
   let time: RegExpExecArray | null;
   let names: string[] | 0 = 0;
-  const prefix = 'Значение "' + raw + '" не распознано: у "tn" порядок частей — ';
+  const prefix = 'Value "' + raw + '" is invalid for "tn": the order is ';
   for (; i < l; i++) {
     part = parts[i];
     if (REGEXP_SUBSTITUTION.test(part)) {
@@ -963,8 +963,8 @@ function transitionValue(parts: string[], raw: string): string[] {
       // Первое время — длительность, второе — задержка. После плавности может
       // идти только задержка: место длительности — перед плавностью.
       at = hasDuration ? 4 : 2;
-      at === 4 || slot < 3 || throwInvalid(prefix + 'свойство, длительность, '
-        + 'плавность, задержка — длительность идёт перед плавностью');
+      at === 4 || slot < 3 || throwInvalid(prefix + 'property, duration, '
+        + 'easing, delay — duration goes before easing');
       hasDuration = 1;
       out[i] = time[1] ? part : part + 'ms';
     } else if (ENUM_KEYWORDS.transitionTimingFunction[part]
@@ -979,11 +979,11 @@ function transitionValue(parts: string[], raw: string): string[] {
       part.indexOf(';') > -1 && (names = part.split(';'));
       out[i] = part;
     } else {
-      return throwInvalid(prefix + 'свойство, длительность, плавность, задержка; '
-        + '"' + part + '" не подходит ни под одну часть');
+      return throwInvalid(prefix + 'property, duration, easing, delay; '
+        + '"' + part + '" fits none of them');
     }
-    at > slot || throwInvalid(prefix + 'свойство, длительность, плавность, '
-      + 'задержка — "' + part + '" стоит не на своём месте');
+    at > slot || throwInvalid(prefix + 'property, duration, easing, '
+      + 'delay — "' + part + '" is out of place');
     slot = at;
   }
   if (!names) {
@@ -995,7 +995,7 @@ function transitionValue(parts: string[], raw: string): string[] {
   const namesLength = names.length;
   const expanded: string[] = new Array(namesLength);
   for (i = 0; i < namesLength; i++) {
-    names[i] || throwInvalid(prefix + 'пустое имя свойства в списке "' + out[0] + '"');
+    names[i] || throwInvalid(prefix + 'empty property name in the list "' + out[0] + '"');
     expanded[i] = tail ? (names[i] + ' ' + tail) : names[i];
   }
   return expanded;
@@ -1053,11 +1053,11 @@ const TEXT_EMPHASIS_STYLE = wordsSet('none filled open dot circle double-circle'
  */
 function flexValue(parts: string[], raw: string): string {
   const l = parts.length;
-  const prefix = 'Значение "' + raw + '" не распознано: у "fx" ';
+  const prefix = 'Value "' + raw + '" is invalid for "fx": ';
   if (l === 1 && (FLEX_BASIS_KEYWORDS[parts[0]] || parts[0] === 'none')) {
     return parts[0];
   }
-  l < 4 || throwInvalid(prefix + 'не больше трёх частей: рост, сжатие, база');
+  l < 4 || throwInvalid(prefix + 'at most three parts: grow, shrink, basis');
   let i = 0;
   let part: string;
   for (; i < l; i++) {
@@ -1067,11 +1067,11 @@ function flexValue(parts: string[], raw: string): string {
     }
     if (i < 2) {
       REGEXP_SLOT_NUMBER.test(part)
-        || throwInvalid(prefix + (i ? 'сжатие' : 'рост') + ' задаётся числом без единицы');
+        || throwInvalid(prefix + (i ? 'shrink' : 'grow') + ' is a unitless number');
       continue;
     }
     (FLEX_BASIS_KEYWORDS[part] || REGEXP_LENGTH_PART.test(part))
-      || throwInvalid(prefix + 'база — длина или ключевое слово');
+      || throwInvalid(prefix + 'basis is a length or a keyword');
   }
   return parts.join(' ');
 }
@@ -1082,8 +1082,8 @@ function flexValue(parts: string[], raw: string): string {
  */
 function columnsValue(parts: string[], raw: string): string {
   const l = parts.length;
-  const prefix = 'Значение "' + raw + '" не распознано: у "col" ';
-  l < 3 || throwInvalid(prefix + 'не больше двух частей: число колонок и ширина');
+  const prefix = 'Value "' + raw + '" is invalid for "col": ';
+  l < 3 || throwInvalid(prefix + 'at most two parts: column count and width');
   let i = 0;
   let part: string;
   for (; i < l; i++) {
@@ -1093,8 +1093,8 @@ function columnsValue(parts: string[], raw: string): string {
     }
     (i ? REGEXP_LENGTH_PART.test(part) : REGEXP_SLOT_INTEGER.test(part))
       || throwInvalid(prefix + (i
-        ? 'ширина колонки — длина'
-        : 'число колонок — целое; ширина пишется второй'));
+        ? 'column width is a length'
+        : 'column count is an integer; width goes second'));
   }
   return parts.join(' ');
 }
@@ -1102,14 +1102,14 @@ function columnsValue(parts: string[], raw: string): string {
 /** `text-emphasis`: `<style> [<color>]`, стиль из закрытого списка. */
 function textEmphasisValue(parts: string[], raw: string): string {
   const l = parts.length;
-  const prefix = 'Значение "' + raw + '" не распознано: у "tem" ';
-  l < 3 || throwInvalid(prefix + 'не больше двух частей: стиль и цвет');
+  const prefix = 'Value "' + raw + '" is invalid for "tem": ';
+  l < 3 || throwInvalid(prefix + 'at most two parts: style and color');
   let i = 0;
   let part: string;
   for (; i < l; i++) {
     part = parts[i];
     (part.indexOf('(') > -1 || TEXT_EMPHASIS_STYLE[part] || part[0] === '#')
-      || throwInvalid(prefix + 'стиль из списка `tems`, затем цвет');
+      || throwInvalid(prefix + 'a style from the `tems` list, then a color');
   }
   return parts.join(' ');
 }
@@ -1119,7 +1119,7 @@ function counterValue(
   parts: string[], raw: string, essenceName: string,
 ): string {
   const l = parts.length;
-  const prefix = 'Значение "' + raw + '" не распознано: у "' + essenceName + '" ';
+  const prefix = 'Value "' + raw + '" is invalid for "' + essenceName + '": ';
   if (l === 1 && parts[0] === 'none') {
     return parts[0];
   }
@@ -1135,11 +1135,11 @@ function counterValue(
       continue;
     }
     if (REGEXP_SLOT_INTEGER.test(part)) {
-      expectName && throwInvalid(prefix + 'сначала имя счётчика, потом его значение');
+      expectName && throwInvalid(prefix + 'counter name first, then its value');
       expectName = 1;
       continue;
     }
-    REGEXP_SLOT_IDENT.test(part) || throwInvalid(prefix + 'ожидается имя счётчика');
+    REGEXP_SLOT_IDENT.test(part) || throwInvalid(prefix + 'expected a counter name');
     expectName = 0;
   }
   return parts.join(' ');
@@ -1186,8 +1186,8 @@ function assertGradientStops(
   let i = stops.length;
   while (--i > 0) {
     REGEXP_GRADIENT_STOP.test(stops[i].trim())
-      || throwInvalid('Значение "' + raw + '" не распознано: у "' + name
-        + '" стопы градиента — цвета или переменные');
+      || throwInvalid('Value "' + raw + '" is invalid for "' + name
+        + '": gradient stops must be colors or variables');
   }
 }
 /** Слова, допустимые в `grid` помимо дорожек. */
@@ -1239,7 +1239,7 @@ function gridValue(
   // склеиваем обратно, иначе `"a` не опознаётся как область.
   const parts = joinQuoted(source);
   const l = parts.length;
-  const prefix = 'Значение "' + raw + '" не распознано: у "' + essenceName + '" ';
+  const prefix = 'Value "' + raw + '" is invalid for "' + essenceName + '": ';
   let i = 0;
   let part: string;
   let hasShape = 0;
@@ -1258,13 +1258,13 @@ function gridValue(
       || TRACK_KEYWORDS[part]
       || REGEXP_TRACK_SIZE.test(part)
       || REGEXP_LINE_NAME.test(part))
-      || throwInvalid(prefix + 'ожидается область в кавычках, размер дорожки, '
-        + '`auto-flow` или разделитель "/"');
+      || throwInvalid(prefix + 'expected a quoted area, a track size, '
+        + '`auto-flow` or the "/" separator');
   }
   // Список дорожек без «/» и без областей — это `gtc`/`gtr`, а не `g`:
   // `grid: 1fr 1fr` по грамматике невалиден.
-  hasShape || throwInvalid(prefix + 'нужны области в кавычках либо '
-    + '"строки / столбцы"; один список дорожек задаётся через "gtc"/"gtr"');
+  hasShape || throwInvalid(prefix + 'quoted areas or '
+    + '"rows / columns" are required; a single track list goes to "gtc"/"gtr"');
   return parts.join(' ');
 }
 
@@ -1303,8 +1303,8 @@ function borderImageValue(
       || BORDER_IMAGE_REPEAT[part]
       || REGEXP_BORDER_SLICE.test(part)
       || (afterSlash && REGEXP_LENGTH_PART.test(part)))
-      || throwInvalid('Значение "' + raw + '" не распознано: у "' + essenceName
-        + '" ожидается картинка, слайсы (числа), затем после "/" ширина');
+      || throwInvalid('Value "' + raw + '" is invalid for "' + essenceName
+        + '": expected an image, slices (numbers), then a width after "/"');
   }
   return parts.join(' ');
 }
@@ -1355,8 +1355,8 @@ function trackValue(
       || words[part]
       || REGEXP_TRACK_SIZE.test(part)
       || REGEXP_LINE_NAME.test(part))
-      || throwInvalid('Значение "' + raw + '" не распознано: у "' + essenceName
-        + '" дорожка — размер (длина, процент, fr), ключевое слово или функция');
+      || throwInvalid('Value "' + raw + '" is invalid for "' + essenceName
+        + '": a track is a size (length, percent, fr), a keyword or a function');
   }
   return parts.join(' ');
 }
@@ -1370,11 +1370,11 @@ function gridLineValue(
   parts: string[], raw: string, essenceName: string,
 ): string {
   const l = parts.length;
-  const prefix = 'Значение "' + raw + '" не распознано: у "' + essenceName + '" ';
+  const prefix = 'Value "' + raw + '" is invalid for "' + essenceName + '": ';
   // Две позиции разделяются `/`, а не пробелом: `gr10_20` давало
   // `grid-row:10 20` — по грамматике там `<grid-line> [ / <grid-line> ]?`.
   (l < 2 || parts.indexOf('/') > -1 || parts[0] === 'span')
-    || throwInvalid(prefix + 'вторая позиция пишется через "/" — `gr1/3`');
+    || throwInvalid(prefix + 'the second position goes after "/" — `gr1/3`');
   let i = 0;
   let part: string;
   for (; i < l; i++) {
@@ -1386,7 +1386,7 @@ function gridLineValue(
     // номером быть не могут: `gr1.5` давало `grid-row:1.5`, `gr10-5` —
     // `grid-row:10-5`, `gr10zz` — `grid-row:10zz`.
     REGEXP_GRID_LINE.test(part)
-      || throwInvalid(prefix + 'позиция — номер линии (целое), её имя или `span N`');
+      || throwInvalid(prefix + 'a position is a line number (integer), a line name or `span N`');
   }
   return parts.join(' ');
 }
@@ -1398,13 +1398,13 @@ const FLEX_FLOW_KEYWORDS = wordsSet('row row-reverse column column-reverse'
 /** `flex-flow`: `<direction> || <wrap>`, перечень закрыт. */
 function flexFlowValue(parts: string[], raw: string): string {
   const l = parts.length;
-  const prefix = 'Значение "' + raw + '" не распознано: у "fxf" ';
-  l < 3 || throwInvalid(prefix + 'не больше двух частей: направление и перенос');
+  const prefix = 'Value "' + raw + '" is invalid for "fxf": ';
+  l < 3 || throwInvalid(prefix + 'at most two parts: direction and wrap');
   let i = 0;
   for (; i < l; i++) {
     (parts[i].indexOf('(') > -1 || FLEX_FLOW_KEYWORDS[parts[i]])
-      || throwInvalid(prefix + 'ожидается направление (row/column, с -reverse) '
-        + 'или перенос (nowrap/wrap/wrap-reverse)');
+      || throwInvalid(prefix + 'expected a direction (row/column, optionally -reverse) '
+        + 'or a wrap (nowrap/wrap/wrap-reverse)');
   }
   return parts.join(' ');
 }
@@ -1419,8 +1419,8 @@ function transitionPropertyValue(parts: string[], raw: string): string {
   let i = 0;
   for (; i < l; i++) {
     (parts[i].indexOf('(') > -1 || REGEXP_PROPERTY_LIST.test(parts[i]))
-      || throwInvalid('Значение "' + raw + '" не распознано: у "tp" ожидается '
-        + 'имя CSS-свойства, `all` или `none`');
+      || throwInvalid('Value "' + raw + '" is invalid for "tp": expected '
+        + 'a CSS property name, `all` or `none`');
   }
   return parts.join(' ');
 }
@@ -1436,8 +1436,8 @@ function assertFontNames(parts: string[], raw: string): void {
   let i = 0;
   for (; i < l; i++) {
     (parts[i].indexOf('(') > -1 || REGEXP_FONT_NAME.test(parts[i]))
-      || throwInvalid('Значение "' + raw + '" не распознано: у "ff" ожидается '
-        + 'имя шрифта — идентификатор или строка в кавычках');
+      || throwInvalid('Value "' + raw + '" is invalid for "ff": expected '
+        + 'a font name — an identifier or a quoted string');
   }
 }
 
@@ -1529,26 +1529,26 @@ function assertLengthValue(
   if (v.indexOf('(') > -1) {
     return v;
   }
-  const prefix = 'Значение "' + raw + '" не распознано: у "' + essenceName + '" ';
+  const prefix = 'Value "' + raw + '" is invalid for "' + essenceName + '": ';
   const parts = v.split(' ');
   let i = parts.length;
   let part: string;
   (i < 2 || (allow & LENGTH_MULTI))
-    || throwInvalid(prefix + 'ожидается одно значение');
+    || throwInvalid(prefix + 'expected a single value');
   // `border-spacing` берёт максимум два (горизонтальный и вертикальный
   // интервал): `bsp10_20_30_40` давало четыре.
   (i < 3 || !(allow & LENGTH_MULTI))
-    || throwInvalid(prefix + 'ожидается не больше двух значений');
+    || throwInvalid(prefix + 'expected at most two values');
   while (i--) {
     part = parts[i];
     // Слово сюда доходит только разрешённое: список ключевых слов свойства
     // проверен выше по `assertKnownWord`-правилу вызывающего блока.
     REGEXP_LENGTH_PART.test(part) || REGEXP_BARE_WORD.test(part)
-      || throwInvalid(prefix + 'ожидается длина');
+      || throwInvalid(prefix + 'expected a length');
     (part.indexOf('%') < 0 || (allow & LENGTH_PERCENT))
-      || throwInvalid(prefix + 'ожидается длина, процент недопустим');
+      || throwInvalid(prefix + 'expected a length, percent is not allowed');
     (part[0] !== '-' || (allow & LENGTH_SIGN))
-      || throwInvalid(prefix + 'отрицательное значение недопустимо');
+      || throwInvalid(prefix + 'negative value is not allowed');
   }
   return v;
 }
@@ -1589,8 +1589,8 @@ const REGEXP_AUTO_REPEAT_LIKE = /^AFL?(?:[0-9.]|$)/;
 function autoRepeatValue(suffix: string, essenceName: string): string | undefined {
   const m = REGEXP_AUTO_REPEAT.exec(suffix);
   if (!m) {
-    REGEXP_AUTO_REPEAT_LIKE.test(suffix) && throwInvalid('Запись "' + essenceName + suffix + '" похожа на сокращение auto-repeat, но '
-        + 'не разобралась. Форма: "' + essenceName + 'AF240" или "' + essenceName
+    REGEXP_AUTO_REPEAT_LIKE.test(suffix) && throwInvalid('"' + essenceName + suffix + '" looks like the auto-repeat shorthand but '
+        + 'does not parse. Form: "' + essenceName + 'AF240" or "' + essenceName
         + 'AF240_1fr" (AF — auto-fit, AFL — auto-fill)');
     return;
   }
@@ -1708,10 +1708,10 @@ export default (mn: MnInstance) => {
   function assertAngle(
     value: string, unit: string | undefined, raw: string,
   ): string {
-    REGEXP_BARE_NUMBER.test(value) || throwInvalid('Значение "' + raw
-      + '" не распознано: поворот задаётся числом');
+    REGEXP_BARE_NUMBER.test(value) || throwInvalid('Value "' + raw
+      + '" is invalid: rotation is a number');
     (!unit || indexOf(ANGLE_UNITS, unit) > -1) || throwInvalid('Unit "' + unit
-      + '" is invalid: поворот измеряется углом (' + ANGLE_UNITS.join(', ') + ')');
+      + '" is invalid: rotation is measured in angle units (' + ANGLE_UNITS.join(', ') + ')');
     return value + (unit || 'deg');
   }
   /**
@@ -1744,8 +1744,8 @@ export default (mn: MnInstance) => {
       || (keywords && keywords[value])) {
       return value;
     }
-    return throwInvalid('Значение "' + raw + '" не распознано: ожидается число '
-      + 'с единицей, переменная, calc или ключевое слово этого свойства');
+    return throwInvalid('Value "' + raw + '" is invalid: expected a number '
+      + 'with a unit, a variable, calc or a keyword of this property');
   }
 
   /**
@@ -1772,8 +1772,8 @@ export default (mn: MnInstance) => {
    */
   function assertPercentOnly(p: MnEssenceParams): void {
     (p.num === '0' || (p.unit && p.unit !== '%'))
-      && throwInvalid('Значение "' + p.suffix + '" не распознано: '
-        + 'text-size-adjust задаётся процентом');
+      && throwInvalid('Value "' + p.suffix + '" is invalid: '
+        + 'text-size-adjust takes a percentage');
   }
   function lengthOrWord(
     p: MnEssenceParams,
@@ -1794,8 +1794,8 @@ export default (mn: MnInstance) => {
       return num;
     }
     const unit = p.unit;
-    unit === '%' && !(allow & LENGTH_PERCENT) && throwInvalid('Значение "'
-      + p.suffix + '" не распознано: у этого свойства процент недопустим');
+    unit === '%' && !(allow & LENGTH_PERCENT) && throwInvalid('Value "'
+      + p.suffix + '" is invalid: percent is not allowed for this property');
     // Знак здесь не проверяется: все четыре свойства этого пути
     // (`outline-offset`, `letter-spacing`, `text-size-adjust`,
     // `font-size-adjust`) отрицательные значения принимают. Появится пятое,
@@ -1823,8 +1823,8 @@ export default (mn: MnInstance) => {
     sign: string | undefined, positive: number | undefined, suffix: any,
   ): void {
     sign === '-' && positive
-      && throwInvalid('Значение "' + suffix
-        + '" не распознано: отрицательное значение у этого свойства недопустимо');
+      && throwInvalid('Value "' + suffix
+        + '" is invalid: negative value is not allowed for this property');
   }
   /**
    * Бракует процент у свойства, которое принимает только длину.
@@ -1836,8 +1836,8 @@ export default (mn: MnInstance) => {
    * всегда разворачивается в процент). Браузер такие правила отбрасывает.
    */
   function assertPercent(noPercent: number | undefined, suffix: any): void {
-    noPercent && throwInvalid('Значение "' + suffix
-      + '" не распознано: у этого свойства ожидается длина, процент недопустим');
+    noPercent && throwInvalid('Value "' + suffix
+      + '" is invalid: this property takes a length, percent is not allowed');
   }
   function getVal(
     suffix: any,
@@ -2070,8 +2070,8 @@ export default (mn: MnInstance) => {
       // есть аббревиатура — записано точно длинной формой.
       const abbr = byWord[value];
       if (abbr) {
-        throwInvalid('Записывается короче: "' + p.name + abbr
-          + '" вместо "' + p.name + p.suffix + '" — то же значение');
+        throwInvalid('Write it shorter: "' + p.name + abbr
+          + '" instead of "' + p.name + p.suffix + '" — same value');
       }
       // Составное значение проверяется ПО ЧАСТЯМ, а не пропускается целиком:
       // перечень у таких свойств тоже закрыт, просто значение из нескольких
@@ -2097,17 +2097,17 @@ export default (mn: MnInstance) => {
         return;
       }
       REGEXP_BARE_WORD.test(value)
-        ? throwInvalid('Значение "' + p.suffix + '" не распознано: у "' + p.name
-          + '" нет такой краткой записи, а ключевым словом оно не является')
+        ? throwInvalid('Value "' + p.suffix + '" is invalid for "' + p.name
+          + '": no such abbreviation, and it is not a keyword')
         : (numeric
           // Число у такого свойства — длина или процент, а не что угодно:
           // `bgpx10zz` давало `background-position-x:10zz`, `va10s` —
           // `vertical-align:10s`.
           ? (REGEXP_LENGTH_PART.test(value)
-            || throwInvalid('Значение "' + p.suffix + '" не распознано: у "'
-              + p.name + '" ожидается длина'))
-          : throwInvalid('Значение "' + p.suffix + '" не распознано: у "'
-            + p.name + '" перечень значений закрыт, число недопустимо'));
+            || throwInvalid('Value "' + p.suffix + '" is invalid for "'
+              + p.name + '": expected a length'))
+          : throwInvalid('Value "' + p.suffix + '" is invalid for "'
+            + p.name + '": the set of values is closed, a number is not allowed'));
     }
     return isArray(propName)
       ? (props = flags(propName), ((p: MnEssenceParams) => {
@@ -2295,8 +2295,8 @@ export default (mn: MnInstance) => {
     const shorter = shorterHex(hex);
     const best = canonicalAlpha(shorter || hex) || shorter;
     if (best && best !== hex) {
-      throwInvalid('Цвет записывается как "' + p.name + best
-        + '" вместо "' + p.name + hex + '" — то же самое значение');
+      throwInvalid('Write the color as "' + p.name + best
+        + '" instead of "' + p.name + hex + '" — same value');
     }
   }
   /** Ведущий `0` перед точкой — в нотации альфа пишется как `.67`, не `0.67`. */
@@ -2332,8 +2332,8 @@ export default (mn: MnInstance) => {
     }
     const abbr = COLOR_SYNONYM_BY_WORD[camel.toLowerCase()];
     if (abbr) {
-      throwInvalid('Цвет записывается короче: "' + p.name + abbr
-      + '" вместо "' + p.name + camel + '"');
+      throwInvalid('Write the color shorter: "' + p.name + abbr
+      + '" instead of "' + p.name + camel + '"');
     }
     // `p.camel` заполняет не только разбор цвета, но и generic-разбор ядра:
     // у `cF00` там окажется `F` (первая заглавная буква кода). Словом значение
@@ -2342,9 +2342,9 @@ export default (mn: MnInstance) => {
       || REGEXP_PLAIN_HEX.test(p.suffix)) {
       return;
     }
-    GLOBAL_KEYWORDS[toKebabCase(camel)] || throwInvalid('Значение "' + camel
-      + '" не распознано как цвет: ожидается код (`F00`), переменная или '
-      + 'ключевое слово');
+    GLOBAL_KEYWORDS[toKebabCase(camel)] || throwInvalid('Value "' + camel
+      + '" is not a color: expected a code (`F00`), a variable or '
+      + 'a keyword');
   }
   /** Одиночный hex без альфы/градиента — только цифры. */
   const REGEXP_PLAIN_HEX = /^[0-9A-Fa-f]+$/;
@@ -2354,8 +2354,8 @@ export default (mn: MnInstance) => {
       let v: string; let style: Record<string, any>;
       p.negative && throwInvalid();
       if (REGEXP_LEADING_HASH_HEX.test(p.suffix)) {
-        throwInvalid('Лишняя решётка: цвет пишется без неё — "'
-          + p.name + p.suffix.slice(1) + '" вместо "' + p.name + p.suffix + '"');
+        throwInvalid('Redundant "#": write the color without it — "'
+          + p.name + p.suffix.slice(1) + '" instead of "' + p.name + p.suffix + '"');
       }
       // Синонимы проверяем ДО разбора как цвета: буквы аббревиатур бывают
       // валидными hex-цифрами, и без этого `bgAC` (AccentColor) уходил в
@@ -2396,8 +2396,8 @@ export default (mn: MnInstance) => {
       // `background:10zz`, `bg1/2` — `background:1/2`, `bg10_20` —
       // `background:10_20`.
       REGEXP_BACKGROUND_RESULT.test(first)
-        || throwInvalid('Значение "' + v + '" не распознано: у "' + p.name
-          + '" ожидается цвет (`F00`), градиент (`F00-00F`) или переменная');
+        || throwInvalid('Value "' + v + '" is invalid for "' + p.name
+          + '": expected a color (`F00`), a gradient (`F00-00F`) or a variable');
       // Проверки формы результата мало: мусор ВНУТРИ градиента в неё
       // укладывается — `bg100%-20px` собиралось в
       // `linear-gradient(180deg,100% 0%,20px 100%)`. Поэтому у градиента
@@ -2409,9 +2409,9 @@ export default (mn: MnInstance) => {
       // картинкой. Одиночный цвет там давал заведомо нерабочее правило
       // (`maskbgF00` → `mask-image:#f00`).
       propName === 'maskImage' && (first[0] === '#' || first.indexOf('rgba(') === 0)
-        && throwInvalid('Значение "' + v + '" не распознано: у "' + p.name
-          + '" маска задаётся градиентом (`maskbgF00-00F`) или переменной, '
-          + 'одиночный цвет `mask-image` не принимает');
+        && throwInvalid('Value "' + v + '" is invalid for "' + p.name
+          + '": a mask is a gradient (`maskbgF00-00F`) or a variable, '
+          + '`mask-image` does not accept a single color');
       style = {};
       style[propName] = result;
       return styleWrap(style);
@@ -2816,9 +2816,9 @@ export default (mn: MnInstance) => {
             // generic-разбора ядра, и `c-5` уходило в CSS как `color:-5`.
             // Цвет считается разобранным, только если сработала одна из веток
             // самого PATTERN_COLOR: код, переменная или слово.
-            (p.color || p.vv || p.camel) || throwInvalid('Значение "' + p.suffix
-              + '" не распознано как цвет: ожидается код (`F00`), переменная '
-              + 'или ключевое слово'),
+            (p.color || p.vv || p.camel) || throwInvalid('Value "' + p.suffix
+              + '" is not a color: expected a code (`F00`), a variable '
+              + 'or a keyword'),
             assertColorAbbr(p),
             assertShortestHex(p, p.color),
             s = {},
@@ -2952,8 +2952,8 @@ export default (mn: MnInstance) => {
         return whole;
       }
       const parsed = REGEXP_SHADOW_SUFFIX.exec(part);
-      parsed || throwInvalid('Запись "' + name + part + '" разобрана не полностью: '
-        + 'порядок частей — blur (число или B--переменная), затем x, y, r, m, c, in');
+      parsed || throwInvalid('"' + name + part + '" is only partly parsed: '
+        + 'the order is blur (a number or a B-- variable), then x, y, r, m, c, in');
       const p = parsed as RegExpExecArray;
       const repeatCount = intval(
         p[MN_SHADOW_M], 1, 0,
@@ -2964,8 +2964,8 @@ export default (mn: MnInstance) => {
       if (!value) {
         // Модификаторы без ведущего значения — описка: `bxshR3` раньше давало
         // мусор `Rpx` в позиции blur, а потом молча превращалось в `none`.
-        part && throwInvalid('Запись "' + name + part + '" без ведущего значения: '
-          + 'blur пишется первым — "' + name + '19r3"');
+        part && throwInvalid('"' + name + part + '" has no leading value: '
+          + 'blur goes first — "' + name + '19r3"');
         return '';
       }
       if (repeatCount < 1) {
@@ -3276,8 +3276,8 @@ export default (mn: MnInstance) => {
       // `z-index` — целое число или `auto`. Дробь давала `z-index:1.5`,
       // правило, которое браузер отбрасывает целиком.
       return p.camel ? 0 : ((num = p.num) ? (
-        REGEXP_INTEGER.test(num) || throwInvalid('Значение "' + p.suffix
-          + '" не распознано: z-index задаётся целым числом'),
+        REGEXP_INTEGER.test(num) || throwInvalid('Value "' + p.suffix
+          + '" is invalid: z-index is an integer'),
         styleWrap({
           zIndex: num,
         })
@@ -3362,8 +3362,8 @@ export default (mn: MnInstance) => {
             // Значение безразмерное (`font-size-adjust:0.5`): единицы по
             // умолчанию нет, и явная тоже недопустима — `fsa10px` давало
             // `font-size-adjust:10px`.
-            : (p.unit && throwInvalid('Значение "' + p.suffix
-              + '" не распознано: font-size-adjust задаётся числом без единицы'),
+            : (p.unit && throwInvalid('Value "' + p.suffix
+              + '" is invalid: font-size-adjust is a unitless number'),
             lengthOrWord(
               p, FONT_SIZE_ADJUST_KEYWORDS, 0, '',
             )),
@@ -4204,9 +4204,9 @@ export default (mn: MnInstance) => {
       // Пробел в значении означает составную форму (`16px/1.55 var(--font)`) —
       // её и убираем, даже когда внутри есть подстановка. Целиком подстановка
       // (`font--v`) проходит: что в переменной, здесь не видно.
-      v.indexOf(' ') > -1 && throwInvalid('Значение "' + s + '" не распознано: '
-        + 'размер, высота строки и семейство задаются атомарно — '
-        + '"f16 lh1.55 ff--font"; у "font" остались только системные шрифты');
+      v.indexOf(' ') > -1 && throwInvalid('Value "' + s + '" is invalid: '
+        + 'size, line height and family are set by atomic tokens — '
+        + '"f16 lh1.55 ff--font"; "font" only takes system fonts');
       return styleWrap({
         font: v.indexOf('(') > -1
           ? v
@@ -4300,8 +4300,8 @@ export default (mn: MnInstance) => {
           // двух записей одного значения быть не должно.
           ? (v
             ? (v.indexOf('(') > -1 ? v : '"' + quoteEscape(v) + '"')
-            : (s.length > 1 && throwInvalid('Значение "' + s
-              + '" не распознано: пробел пишется как "cntS", пустая строка — "cnt_"'),
+            : (s.length > 1 && throwInvalid('Value "' + s
+              + '" is invalid: a space is written as "cntS", an empty string as "cnt_"'),
             '""'))
           : (v.indexOf('(') > -1
             ? v
@@ -4325,8 +4325,8 @@ export default (mn: MnInstance) => {
           }
           options = FILTER_MAP[name = lowerFirst(matchs[1])];
           const fn = camelToKebabCase(options && options[0] || name);
-          FILTER_FUNCTIONS[fn] || throwInvalid('Значение "' + p.suffix
-            + '" не распознано: "' + fn + '" не функция фильтра');
+          FILTER_FUNCTIONS[fn] || throwInvalid('Value "' + p.suffix
+            + '" is invalid: "' + fn + '" is not a filter function');
           return fn + '(' + (matchs[2] || options && options[1] || '')
             + (matchs[3] || options && options[2] || '') + ')';
         }), Boolean).join(' ')) ? (
@@ -4481,8 +4481,8 @@ export default (mn: MnInstance) => {
       // (`apcNone`, `irPixelated`), и проверять там нечего.
       lengthy && REGEXP_BARE_WORD.test(s) && !GLOBAL_KEYWORDS[s]
         && !(keywords && keywords[s])
-        && throwInvalid('Значение "' + p.suffix + '" не распознано: у "'
-          + essenceName + '" ожидается длина или ключевое слово этого свойства');
+        && throwInvalid('Value "' + p.suffix + '" is invalid for "'
+          + essenceName + '": expected a length or a keyword of this property');
       // У свойства с закрытым перечислением проверяется значение ЦЕЛИКОМ, а не
       // только его словесная форма: `irF00` — не слово (`f00`), но и не
       // значение `image-rendering`. Подстановка и функция проходят: их
@@ -4504,8 +4504,8 @@ export default (mn: MnInstance) => {
         // если список есть.
         valuePattern.test(s) || (enumWords && (enumWords[s] || GLOBAL_KEYWORDS[s]))
           || s.indexOf('(') > -1
-          || throwInvalid('Значение "' + p.suffix + '" не распознано: у "'
-            + essenceName + '" ожидается число без единицы');
+          || throwInvalid('Value "' + p.suffix + '" is invalid for "'
+            + essenceName + '": expected a unitless number');
       } else if (enumWords) {
         s = assertEnumValue(
           s, enumWords, ENUM_MULTI[propName], essenceName, p.suffix,

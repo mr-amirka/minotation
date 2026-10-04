@@ -117,14 +117,14 @@ export function getCombinator(
   if (!depthMatchs) {
     if (!name) {
       throwDegenerate(
-        'Пустой контекстный сегмент: укажите конкретный селектор вместо голого "<"/">"',
+        'Empty context segment: use a concrete selector instead of a bare "<"/">"',
         name, token,
       );
     }
     if (REGEXP_NEGATIVE_DEPTH.test(name)) {
       throwDegenerate(
-        'Отрицательная глубина контекстного селектора ("' + name
-          + '") запрещена: в v1 она незаметно инвертировала направление',
+        'Negative context selector depth ("' + name
+          + '") is not allowed: in v1 it silently inverted the direction',
         name, token,
       );
     }
@@ -134,8 +134,8 @@ export function getCombinator(
   const depth = parseInt(depthMatchs[1], 10);
   if (depth === 0) {
     throwDegenerate(
-      'Глубина 0 запрещена: она склеивает оба класса на одном элементе — '
-        + 'используйте прямой селектор без "<"/">"',
+      'Depth 0 is not allowed: it glues both classes onto one element — '
+        + 'use a direct selector without "<"/">"',
       name, token,
     );
   }
@@ -143,8 +143,8 @@ export function getCombinator(
   const selector = depthMatchs[2] || (child ? '*' : '');
   if (!selector) {
     throwDegenerate(
-      'Глубина (' + depth + ') без селектора запрещена: правило цеплялось бы '
-        + 'к любому предку ("*")',
+      'Depth (' + depth + ') without a selector is not allowed: the rule would match '
+        + 'any ancestor ("*")',
       name, token,
     );
   }
@@ -153,8 +153,8 @@ export function getCombinator(
     const maxDepth = depthCheck.maxDepth;
     if (maxDepth !== undefined && depth > maxDepth) {
       if (depthCheck.maxDepthMode === 'block') {
-        throw new MnParseError('Глубина контекстного селектора (' + depth
-            + ') превышает maxDepth (' + maxDepth + ')',
+        throw new MnParseError('Context selector depth (' + depth
+            + ') exceeds maxDepth (' + maxDepth + ')',
         {
           token: token,
           handler: '',

@@ -277,7 +277,7 @@ function minotationProvider(options?: MnOptions) {
           token,
           handler: handlerName,
           arg: prop + ':' + bad,
-          message: 'Хендлер "' + handlerName + '" вернул похожее на битое CSS-значение для "'
+          message: 'Handler "' + handlerName + '" returned what looks like a broken CSS value for "'
             + prop + '": "' + bad + '"',
         });
         return false;
@@ -772,10 +772,10 @@ function minotationProvider(options?: MnOptions) {
         handler: '',
         arg: mediaName,
         utility: 'parseMediaTemplate',
-        message: 'Медиа-шаблон "@' + mediaName + '" записан не по форме. Допустимо: '
-          + '"@760" (max-width), "@760-" (min-width), "@760-1200" (диапазон), '
-          + '"@760x400" (ширина x высота). Ведущий дефис не нужен — "@-760" даёт '
-          + 'ту же max-width, что "@760"',
+        message: 'Media template "@' + mediaName + '" is malformed. Allowed: '
+          + '"@760" (max-width), "@760-" (min-width), "@760-1200" (range), '
+          + '"@760x400" (width x height). No leading dash — "@-760" gives '
+          + 'the same max-width as "@760"',
       });
       return [''];
     }
@@ -1023,6 +1023,16 @@ function minotationProvider(options?: MnOptions) {
    * перестраивает его во внутреннее представление ровно в точке появления,
    * не давая "сырой" форме просочиться дальше по компиляционному пайплайну.
    */
+  /** Хендлер не дал стиля — см. D-021. Ловится `catch` ниже как `parse-error`. */
+  function throwNoStyle(value: string, name: string): never {
+    throw new MnParseError('"' + value + '" produced no CSS: handler "' + name
+      + '" needs a value here', {
+      token: value,
+      handler: name,
+      arg: '',
+    });
+  }
+
   function __initEssence(value: string): MnEssenceResult | 0 | null | false | void {
     let matchs: RegExpExecArray | null;
     // Пустая строка, а не `undefined`: обе читаются в `catch`, куда можно
@@ -1071,7 +1081,11 @@ function minotationProvider(options?: MnOptions) {
               params.unit = matchs[6],
               params.other = matchs[7]
             ),
-            (essence = handle(params)) && (essence.important = ni ? 1 : 0),
+            // Хендлер найден, но ничего не вернул — автор явно писал MN-токен,
+            // а стиля не будет (`fx` без значения). Молчать нельзя (D-021):
+            // сборка оставалась зелёной, и пропажу замечали только в браузере.
+            (essence = handle(params)) || throwNoStyle(value, name),
+            (essence as MnEssenceRaw).important = ni ? 1 : 0,
             essence && !validateEssenceStyle(
               essence, value, name,
             ) && (essence = undefined),

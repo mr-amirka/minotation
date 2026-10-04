@@ -395,8 +395,8 @@ export function assertVariantGroups(
     } else if (ch === ')') {
       if (!depth) {
         throwVariantGroup(
-          'Непарная закрывающая скобка в "' + value + '": она молча исчезнет из '
-            + 'результата. Экранируйте её — "\\)" — если это часть значения',
+          'Unmatched closing parenthesis in "' + value + '": it would silently vanish from '
+            + 'the result. Escape it — "\\)" — if it is part of the value',
           value, utility,
         );
       }
@@ -404,8 +404,8 @@ export function assertVariantGroups(
       if (hasAlternative[depth] && !anyContent[depth]) {
         // Группа из одних пустых (`w(|)150`) — это не вариант, а дубликаты.
         throwVariantGroup(
-          'Все альтернативы в группе "' + value + '" пустые: группа ничего не '
-            + 'варьирует, а только повторяет одно и то же. Уберите её',
+          'All alternatives in the group "' + value + '" are empty: the group varies '
+            + 'nothing and only repeats the same thing. Remove it',
           value, utility,
         );
       }
@@ -414,19 +414,19 @@ export function assertVariantGroups(
         // ни как scope (`p10:h` добавляет к селектору ровно ничего).
         // Поэтому бракуются и в контекстной части, в отличие от проверки ниже.
         throwVariantGroup(
-          'Пустые скобки в "' + value + '" ничего не задают и будут молча '
-            + 'удалены. Уберите их или экранируйте — "\\(" и "\\)" — если это '
-            + 'часть значения',
+          'Empty parentheses in "' + value + '" set nothing and would be silently '
+            + 'removed. Remove them or escape — "\\(" and "\\)" — if they are '
+            + 'part of the value',
           value, utility,
         );
       }
       if (!hasAlternative[depth] && !inContext) {
         throwVariantGroup(
-          'Скобки в "' + value + '" не образуют группу вариантов: внутри нет "|", '
-            + 'и они будут молча удалены. Группа вариантов пишется как "@(sm|md)". '
-            + 'Если это CSS-функция или часть значения — экранируйте скобки: '
-            + '"\\(" и "\\)". В токене после состояния работает и краткая форма '
-            + 'через scope: "cF00:not[.a]" даёт ":not(.a)"',
+          'Parentheses in "' + value + '" do not form a variant group: there is no "|" inside, '
+            + 'and they would be silently removed. A variant group is written as "@(sm|md)". '
+            + 'If this is a CSS function or part of the value, escape the parentheses: '
+            + '"\\(" and "\\)". After a state the scope shorthand also works: '
+            + '"cF00:not[.a]" gives ":not(.a)"',
           value, utility,
         );
       }
@@ -440,8 +440,8 @@ export function assertVariantGroups(
   }
   if (depth) {
     throwVariantGroup(
-      'Незакрытая скобка в "' + value + '": остаток строки будет разобран не так, '
-        + 'как написано. Экранируйте её — "\\(" — если это часть значения',
+      'Unclosed parenthesis in "' + value + '": the rest of the string would be parsed '
+        + 'not as written. Escape it — "\\(" — if it is part of the value',
       value, utility,
     );
   }
@@ -483,9 +483,9 @@ export function assertTrailingSeparator(value: string, utility: string): void {
     return;
   }
   throwVariantGroup(
-    'Имя "' + value + '" заканчивается на "' + value[l - 1] + '" без самой части: '
-      + 'контекст не задан, а в CSS уедет висячий символ. Допишите часть или '
-      + 'экранируйте символ, если он должен попасть в значение',
+    'Name "' + value + '" ends with "' + value[l - 1] + '" with nothing after it: '
+      + 'no context is set, and a dangling character would reach CSS. Complete it or '
+      + 'escape the character if it belongs to the value',
     value, utility,
   );
 }
@@ -533,10 +533,10 @@ export function assertMediaNames(value: string, utility: string): void {
     }
     if (value[i] === '@' && CONTEXT_SEPARATORS[value[i + 1]]) {
       throwVariantGroup(
-        'Пустое имя медиа в "' + value + '": после "@" сразу идёт "'
-          + value[i + 1] + '", медиа-запрос не задан, и правило станет '
-          + 'безусловным — адаптивность потеряется. Укажите медиа после "@" '
-          + 'или уберите "@"',
+        'Empty media name in "' + value + '": "@" is directly followed by "'
+          + value[i + 1] + '", no media query is set, and the rule would become '
+          + 'unconditional — responsiveness is lost. Name the media after "@" '
+          + 'or remove "@"',
         value, utility,
       );
     }
@@ -595,8 +595,8 @@ export function normalizeSelectorsIteratee(selectorsMap: Record<string, number>,
       // дефект — когда вариант остаётся пустым: `(h1|)` даёт `''`, и правило с
       // пустым селектором не применится ни к чему.
       trim(alts[i]) || throwVariantGroup(
-        'Пустой селектор среди вариантов "' + selector + '": правило с ним не '
-          + 'применится ни к чему. Уберите лишний "|"',
+        'Empty selector among the variants of "' + selector + '": a rule with it '
+          + 'would apply to nothing. Remove the extra "|"',
         selector, 'selectors',
       );
       // Висячий сепаратор — тоже по варианту: `(h1|h2:)` кончается на `)`, и

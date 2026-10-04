@@ -401,9 +401,6 @@ export function assertVariantGroups(
         );
       }
       depth--;
-      if (hasAlternative[depth] && !hasContent[depth] && !valueOnly) {
-        throwEmptyAlternative(value, utility);
-      }
       if (hasAlternative[depth] && !anyContent[depth]) {
         // Группа из одних пустых (`w(|)150`) — это не вариант, а дубликаты.
         throwVariantGroup(
@@ -434,9 +431,6 @@ export function assertVariantGroups(
         );
       }
     } else if (ch === '|' && depth) {
-      if (!hasContent[depth - 1] && !valueOnly) {
-        throwEmptyAlternative(value, utility);
-      }
       hasAlternative[depth - 1] = true;
       hasContent[depth - 1] = false;
     } else if (depth && ch !== ' ') {
@@ -496,16 +490,10 @@ export function assertTrailingSeparator(value: string, utility: string): void {
   );
 }
 
-/** Пустая альтернатива в селекторе: даёт пустой селектор, то есть битый CSS. */
-function throwEmptyAlternative(value: string, utility: string): never {
-  return throwVariantGroup(
-    'Пустая альтернатива в группе "' + value + '": она даёт пустой селектор, '
-      + 'а с ним правило не применится ни к чему. Уберите лишний "|"',
-    value, utility,
-  );
-}
-
-/** Сепараторы контекста: после `@` любой из них означает, что имени медиа нет. */
+/**
+ * Сепараторы контекста: `@`, за которым сразу идёт любой из них, означает, что
+ * имени медиа нет.
+ */
 const CONTEXT_SEPARATORS: Record<string, 1> = {
   ':': 1,
   '@': 1,
@@ -516,19 +504,23 @@ const CONTEXT_SEPARATORS: Record<string, 1> = {
   '+': 1,
   '<': 1,
   '>': 1,
+  '[': 1,
 };
 
 /**
  * Бракует пустое имя медиа: `@`, за которым сразу идёт другой сепаратор.
  *
  * `p10@:h` молча компилировался в `.p10\@\:h:hover{padding:10px}`: медиа-запрос
- * испарялся, и адаптивное правило становилось безусловным — тот же дефект, что
- * у `p10@(sm|)`, только записанный без группы. Висячий `@` в конце имени ловит
- * {@link assertTrailingSeparator}; здесь — `@` в середине.
+ * испарялся, и адаптивное правило становилось безусловным. Висячий `@` в конце
+ * имени ловит {@link assertTrailingSeparator}; здесь — `@` в середине.
  *
- * Проверка идёт по уже развёрнутому варианту, а не по исходной записи: так одна
- * и та же проверка закрывает и `p10@:h`, и `p10@(|sm):h`, не разбирая, откуда
- * взялся пустой сегмент.
+ * Селектор ПОСЛЕ непустого медиа — законная запись и не бракуется: она нужна,
+ * чтобы группа могла варьировать вид контекста при общем хвосте —
+ * `c00F(@sm|.active)<.parent` даёт `c00F@sm<.parent` и `c00F.active<.parent`
+ * (уточнение владельца 2026-10-04).
+ *
+ * Проверка идёт по уже развёрнутому варианту: одна и та же проверка закрывает
+ * и `p10@:h`, и `p10@(|sm):h`, не разбирая, откуда взялся пустой сегмент.
  */
 export function assertMediaNames(value: string, utility: string): void {
   const l = value.length - 1;
@@ -592,11 +584,28 @@ export function normalizeSelectorsIteratee(selectorsMap: Record<string, number>,
     if (!selector) {
       return;
     }
-    assertTrailingSeparator(selector, 'selectors');
+    // По записи — только структура скобок: непарная или пустая скобка видна
+    // лишь в ней. Всё остальное — по результату развёртки, как у имён токенов.
     assertVariantGroups(selector, 'selectors');
+    const alts: string[] = variants(selector)[0];
+    const l = alts.length;
+    let i = 0;
+    for (; i < l; i++) {
+      // Пустая альтернатива сама по себе законна (`div(|.x)` → `div`, `div.x`);
+      // дефект — когда вариант остаётся пустым: `(h1|)` даёт `''`, и правило с
+      // пустым селектором не применится ни к чему.
+      trim(alts[i]) || throwVariantGroup(
+        'Пустой селектор среди вариантов "' + selector + '": правило с ним не '
+          + 'применится ни к чему. Уберите лишний "|"',
+        selector, 'selectors',
+      );
+      // Висячий сепаратор — тоже по варианту: `(h1|h2:)` кончается на `)`, и
+      // по записи висячее двоеточие не видно.
+      assertTrailingSeparator(alts[i], 'selectors');
+    }
     // `pseudoBrackets` — только здесь: имена токенов разворачивают scope
     // собственным механизмом, и второе преобразование их бы испортило.
-    flatFlags(map(map(variants(selector)[0], pseudoBrackets), selectorNormalize), selectorsMap);
+    flatFlags(map(map(alts, pseudoBrackets), selectorNormalize), selectorsMap);
   });
   return selectorsMap;
 }

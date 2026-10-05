@@ -39,7 +39,7 @@
  */
 import ts from 'typescript';
 import {
-  extractTokensInto, pushLiteralTokens, scanTokens,
+  attrNames, extractTokensInto, pushLiteralTokens, scanTokens,
 } from './extractTokens';
 import type {
   ScanTokensOptions,
@@ -101,7 +101,7 @@ export function scanTokensSyntax(source: string, options: SyntaxScanOptions): st
     return scanTokens(source, options);
   }
   const tokens: string[] = [];
-  const attr = options.attr || 'class';
+  const attrs = attrNames(options.attr);
   const suffixes = options.classVarSuffixes === undefined
     ? ['Class']
     : options.classVarSuffixes;
@@ -110,13 +110,13 @@ export function scanTokensSyntax(source: string, options: SyntaxScanOptions): st
     : options.mergeFnNames;
   // Маркер разметки внутри строки: без него пришлось бы гонять текстовый
   // разбор по каждому литералу файла, а `class=` есть в единицах из них.
-  const markup = attr + '=';
+  const markups = attrs.map((name) => name + '=');
   const state: ScanState = [
     tokens,
-    attr,
+    attrs,
     suffixes,
     mergeFnNames,
-    markup,
+    markups,
   ];
   visit(file, state);
   return tokens;
@@ -128,10 +128,10 @@ export function scanTokensSyntax(source: string, options: SyntaxScanOptions): st
  */
 type ScanState = [
   tokens: string[],
-  attr: string,
+  attrs: string[],
   suffixes: string[],
   mergeFnNames: string[],
-  markup: string,
+  markups: string[],
 ];
 
 const MN_SCAN_TOKENS = 0;
@@ -182,7 +182,7 @@ function nameOf(node: ts.Node): string {
 
 /** `class="p10"`, `class={'p10'}`, `` class={`p10 ${x}`} ``. */
 function jsxAttribute(node: ts.JsxAttribute, state: ScanState): void {
-  if (nameOf(node.name) !== state[MN_SCAN_ATTR]) {
+  if (state[MN_SCAN_ATTR].indexOf(nameOf(node.name)) < 0) {
     return;
   }
   const value = node.initializer;
@@ -199,7 +199,7 @@ function jsxAttribute(node: ts.JsxAttribute, state: ScanState): void {
 /** `{ className: 'p10' }` и `{ rowClass: 'p10' }`. */
 function propertyAssignment(node: ts.PropertyAssignment, state: ScanState): void {
   const name = nameOf(node.name);
-  if (name === state[MN_SCAN_ATTR] || hasSuffix(name, state[MN_SCAN_SUFFIXES])) {
+  if (state[MN_SCAN_ATTR].indexOf(name) > -1 || hasSuffix(name, state[MN_SCAN_SUFFIXES])) {
     pushExpression(node.initializer, state);
   }
 }
@@ -309,12 +309,15 @@ function templateMarkup(node: ts.TemplateExpression, state: ScanState): void {
  * их находит, и без этого два сканера расходились бы на ровном месте.
  */
 function markupInside(text: string, state: ScanState): void {
-  if (text.indexOf(state[MN_SCAN_MARKUP]) < 0) {
-    return;
+  const attrs = state[MN_SCAN_ATTR];
+  const markups = state[MN_SCAN_MARKUP];
+  const l = markups.length;
+  let i = 0;
+  for (; i < l; i++) {
+    text.indexOf(markups[i]) > -1 && extractTokensInto(
+      state[MN_SCAN_TOKENS], text, attrs[i],
+    );
   }
-  extractTokensInto(
-    state[MN_SCAN_TOKENS], text, state[MN_SCAN_ATTR],
-  );
 }
 
 /**

@@ -135,6 +135,23 @@ describe('createTokenCollector — учёт токенов', () => {
     expect(collector.css()).toContain('margin:20px');
   });
 
+  test('attr массивом — class из .astro и className из .tsx в одной сборке', () => {
+    // `affiliate`: страницы `.astro` пишут `class`, React-компоненты — `className`.
+    const collector = createTokenCollector({
+      ...OPTIONS,
+      attr: ['class', 'className'],
+    });
+    collector.add('/Page.astro', '<div class="p10"></div>');
+    collector.add('/Card.tsx', 'export const Card = () => <Box className="m10" />;');
+    collector.add('/Mixed.html', '<div class="w20" className="h30"></div>');
+
+    const css = collector.css();
+    expect(css).toContain('padding:10px');
+    expect(css).toContain('margin:10px');
+    expect(css).toContain('width:20px');
+    expect(css).toContain('height:30px');
+  });
+
   test('имя файла доходит до сканера — .tsx разбирается парсером', () => {
     // Сканер выбирает способ разбора по расширению; каркас обязан передать
     // ему имя, иначе `.tsx` разбирался бы текстом, как раньше.

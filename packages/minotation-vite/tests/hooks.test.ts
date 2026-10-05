@@ -281,3 +281,19 @@ describe('minotation-vite — dev-middleware /mn.css (2026-10-05)', () => {
     expect(serve(plugin, '/', undefined).next).toHaveBeenCalled();
   });
 });
+
+describe('minotation-vite — attr массивом (2026-10-05)', () => {
+  test('class и className собираются в одной сборке', () => {
+    const root = makeProject({
+      'src/Page.html': '<div class="p10"></div>',
+      'src/Card.tsx': 'export const Card = () => <div className="m10" />;',
+    });
+    const plugin = makePlugin(root, 'build', { attr: ['class', 'className'] });
+
+    const css = transformHtml(plugin, '<html><head></head><body></body></html>')
+      .map((tag) => tag.children).join('');
+
+    expect(css).toContain('.p10{padding:10px}');
+    expect(css).toContain('.m10{margin:10px}');
+  });
+});

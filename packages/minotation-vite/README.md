@@ -108,7 +108,7 @@ export function presetApp(mn: MnInstance): void {
 
 | Опция | Тип | По умолчанию | Описание |
 |-------|-----|-------------|----------|
-| `attr` | `string` | `'class'` | Атрибут, в котором ищутся MN-токены |
+| `attr` | `string \| string[]` | `'class'` | Атрибут, в котором ищутся MN-токены; несколько — `['class', 'className']` |
 | `safelist` | `string[]` | `[]` | Токены, компилируемые всегда — даже если не встретились в литеральном `class="…"` |
 | `classVarSuffixes` | `string[]` | `['Class']` | Суффиксы имён переменных, значения которых считаются списком токенов (`const thClass = '…'`) |
 | `extensions` | `string[]` | `['.html','.jsx','.tsx','.vue','.svelte']` | Расширения файлов приложения |

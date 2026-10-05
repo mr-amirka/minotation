@@ -23,8 +23,11 @@ import { createRequire } from 'module';
 
 /** Опции плагина {@link mnRollup}. */
 export interface MnRollupOptions {
-  /** Имя атрибута для поиска токенов. @default 'class' */
-  attr?: string;
+  /**
+   * Имя атрибута для поиска токенов или несколько — `['class', 'className']`,
+   * когда в проекте есть и `.astro`/`.html`, и React-компоненты. @default 'class'
+   */
+  attr?: string | string[];
   /**
    * Суффиксы имён переменных, чьё строковое значение считается списком MN-токенов
    * (`const thClass = 'py12 px14'`). Пустой массив отключает механизм.

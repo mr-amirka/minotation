@@ -59,20 +59,15 @@ const loader: LoaderDefinitionFunction<MnLoaderOptions> = function (source) {
   const attrNames = options.attrs || ['class'];
   const state = getState();
 
-  const tokens = new Set<string>();
-  for (const attr of attrNames) {
-    // Сканер на каждый вызов: лоадер живёт один тик, а кеш парсера всё равно
-    // держится модулем ядра.
-    const scan = createScanner({
-      attr,
-      classVarSuffixes: options.classVarSuffixes,
-      mergeFnNames: options.mergeFnNames,
-      syntax: options.syntax,
-    });
-    for (const t of scan(source as string, this.resourcePath)) {
-      tokens.add(t);
-    }
-  }
+  // Все имена — одним проходом: сканер принимает список (до 2026-10-05 он
+  // гонялся целиком на каждое имя, повторяя разбор переменных и вызовов).
+  const scan = createScanner({
+    attr: attrNames,
+    classVarSuffixes: options.classVarSuffixes,
+    mergeFnNames: options.mergeFnNames,
+    syntax: options.syntax,
+  });
+  const tokens = new Set<string>(scan(source as string, this.resourcePath));
 
   // Набор ЗАМЕНЯЕТСЯ целиком, а не дополняется: иначе токен, убранный из
   // разметки при редактировании, оставался бы в CSS до перезапуска сборки.

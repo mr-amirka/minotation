@@ -6,6 +6,7 @@ import {
   extractTokens,
   extractClassVarTokens,
   extractMergeCallTokens,
+  attrNames,
   scanTokens,
 } from '../extractTokens';
 
@@ -305,6 +306,41 @@ describe('вызов переменной с суффиксом — функци
       "thClass('w150')", [], ['Class'],
     )).toEqual(['w150']);
     expect(extractMergeCallTokens("thClass('w150')", [])).toEqual([]);
+  });
+});
+
+describe('attr — несколько имён (2026-10-05)', () => {
+  /**
+   * `affiliate`: страницы `.astro` пишут `class`, React-компоненты `.tsx` — `className`.
+   * Одно имя на сборку теряло вторую половину токенов.
+   */
+  const source = '<div class="p10"></div>\n<Box className="m10" />';
+
+  test('массив имён — токены всех атрибутов', () => {
+    expect(scanTokens(source, {
+      attr: ['class', 'className'],
+    })).toEqual(['p10', 'm10']);
+  });
+
+  test('одно имя — как раньше', () => {
+    expect(scanTokens(source, {
+      attr: 'class',
+    })).toEqual(['p10']);
+    expect(scanTokens(source, {
+      attr: 'className',
+    })).toEqual(['m10']);
+  });
+
+  test('пустой массив — по умолчанию class', () => {
+    expect(attrNames([])).toEqual(['class']);
+    expect(attrNames(undefined)).toEqual(['class']);
+    expect(attrNames('className')).toEqual(['className']);
+  });
+
+  test('левая граница: имя не ловит хвост другого атрибута', () => {
+    expect(extractTokens('<Box className="m10" />', 'Name')).toEqual([]);
+    expect(extractTokens('<div data-class="m10">', 'class')).toEqual([]);
+    expect(extractTokens('<div :class="m10">', 'class')).toEqual(['m10']);
   });
 });
 

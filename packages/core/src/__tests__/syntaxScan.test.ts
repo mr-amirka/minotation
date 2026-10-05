@@ -117,6 +117,19 @@ describe('scanTokensSyntax — что собирается', () => {
     })).toEqual([]);
   });
 
+  test('attr массивом — JSX, свойства объекта и разметка в строке', () => {
+    const source = '<div class="p10" />;\n<Box className="m10" />;\n'
+      + 'f({ className: \'w20\' });\nconst s = \'<i class="h5">\';';
+    expect(setOf(scanTokensSyntax(source, {
+      attr: ['class', 'className'],
+    }))).toEqual([
+      'h5',
+      'm10',
+      'p10',
+      'w20',
+    ]);
+  });
+
   test('вызов переменной с суффиксом — функции из mnClass', () => {
     expect(scanTokensSyntax('<th class={thClass(`w(|max)150`)} />', {
       attr: 'class',
@@ -285,6 +298,7 @@ describe('паритет с текстовым сканером', () => {
     ['свойство объекта', 'f({ paper: { class: \'w320 dF\' } });'],
     ['вызовы слияния', 'mne(thClass, \'fvTN\');\nmnClass(\'p10\', x);'],
     ['вложенные вызовы', 'mne(a, cond ? b : mne(c, \'p10 m5\'))'],
+    ['class и className', '<div class="p10" />;\n<Box className="m10" />;'],
     ['вызов функции из mnClass', '<th class={thClass(`w(|max)150`)} />;\nrowClass(\'p10\');'],
     ['разметка в строке', 'const s = \'<div class="p10">\';'],
     ['всё вместе', `
@@ -305,6 +319,14 @@ describe('паритет с текстовым сканером', () => {
   test.each(SAMPLES)('%s', (_name, source) => {
     const options = {
       attr: 'class',
+    };
+    expect(setOf(scanTokensSyntax(source, options)))
+      .toEqual(setOf(scanTokens(source, options)));
+  });
+
+  test.each(SAMPLES)('%s — attr: [class, className]', (_name, source) => {
+    const options = {
+      attr: ['class', 'className'],
     };
     expect(setOf(scanTokensSyntax(source, options)))
       .toEqual(setOf(scanTokens(source, options)));

@@ -48,7 +48,9 @@ function buildAttrRegexp(attrName: string): RegExp {
   const name = attrName.replace(REGEXP_ESCAPE, '\\$&');
   // `[:=]` — принимает как JSX-атрибут (`attr=`), так и свойство объектного
   // литерала (`attr:`, включая вложенное — напр. MUI `slotProps={{ paper: { className:... } }}`).
-  return new RegExp(name + '\\s*[:=]\\s*(?:"([^"]*)"'
+  // Граница слева: без неё `Name` ловил бы `className=`, а `class` — `data-class=`.
+  // `class` не матчил `className=` только потому, что после него идёт `N`.
+  return new RegExp('(?<![\\w$-])' + name + '\\s*[:=]\\s*(?:"([^"]*)"'
       + '|\'([^\']*)\''
       + '|\\{\\s*\'([^\']*)\'\\s*\\}'
       + '|\\{\\s*"([^"]*)"\\s*\\}'
@@ -497,10 +499,27 @@ function newlinesOf(
   return out;
 }
 
+/**
+ * Опция `attr` списком имён: строка — одно имя, массив — как есть, пусто — `class`.
+ *
+ * @param attr — значение опции `attr`
+ * @returns непустой список имён атрибутов
+ */
+export function attrNames(attr: string | string[] | undefined): string[] {
+  if (!attr || !attr.length) {
+    return ['class'];
+  }
+  return typeof attr === 'string' ? [attr] : attr;
+}
+
 /** Опции {@link scanTokens}. */
 export interface ScanTokensOptions {
-  /** Имя атрибута (`'class'`, `'className'`). По умолчанию `'class'`. */
-  attr?: string;
+  /**
+   * Имя атрибута (`'class'`, `'className'`) или несколько — `['class', 'className']`
+   * для проекта, где `.astro`/`.html` пишут `class`, а React-компоненты — `className`.
+   * По умолчанию `'class'`.
+   */
+  attr?: string | string[];
   /**
    * Суффиксы имён переменных со списком токенов. По умолчанию `['Class']`,
    * пустой массив отключает механизм.
@@ -544,9 +563,14 @@ export function scanTokens(source: string, options: ScanTokensOptions): string[]
   // разметки в комментарии либо раздувает CSS правилами, которые не к чему
   // применить, либо роняет сборку под `strict` — см. `stripComments`.
   source = options.comments === false ? source : stripComments(source);
-  extractTokensInto(
-    tokens, source, options.attr || 'class',
-  );
+  const attrs = attrNames(options.attr);
+  const attrsLength = attrs.length;
+  let i = 0;
+  for (; i < attrsLength; i++) {
+    extractTokensInto(
+      tokens, source, attrs[i],
+    );
+  }
   const suffixes = options.classVarSuffixes === undefined ? ['Class'] : options.classVarSuffixes;
   extractClassVarTokensInto(
     tokens, source, suffixes,

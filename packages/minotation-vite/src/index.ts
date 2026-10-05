@@ -22,8 +22,11 @@ import { createRequire } from 'module';
 
 /** Опции плагина {@link mnVite}. */
 export interface MnViteOptions {
-  /** Имя атрибута для поиска токенов. @default 'class' */
-  attr?: string;
+  /**
+   * Имя атрибута для поиска токенов или несколько — `['class', 'className']`,
+   * когда в проекте есть и `.astro`/`.html`, и React-компоненты. @default 'class'
+   */
+  attr?: string | string[];
   /** Расширения файлов приложения, в которых ищем токены. @default ['.html','.jsx','.tsx','.vue','.svelte'] */
   extensions?: string[];
   /** Статические пресеты, подключаемые через конфиг сборщика. */

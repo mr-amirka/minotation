@@ -24,6 +24,16 @@ export default defineConfig({
 (в отличие от `minotation-vite`, где `.astro` не в списке по умолчанию — Astro-проекты
 не единственный потребитель `minotation-vite`).
 
+## Как CSS попадает на страницу
+
+- **`astro build`** — `mn.css` кладётся в корень сборки, а в каждую страницу
+  вставляется `<link rel="stylesheet" href="/mn.css">`.
+- **`astro dev`** — `mn.css` отдаёт dev-сервер (middleware `minotation-vite`), ссылка
+  на него и HMR-слушатель вставляются в каждую страницу. Правка разметки или
+  `*.mn.ts` обновляет стили без перезагрузки страницы.
+
+В dev ссылка учитывает `base` из конфига Astro; в сборке пока всегда `/mn.css`.
+
 ## Особенность Astro: классы в frontmatter
 
 В `.astro` классы часто собирают в переменных frontmatter и подставляют как `class={th}` —

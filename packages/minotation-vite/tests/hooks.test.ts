@@ -212,3 +212,72 @@ describe('minotation-vite — dev-хуки', () => {
     expect(plugin.load(join(tmpdir(), 'main.ts'))).toBeNull();
   });
 });
+
+describe('minotation-vite — dev-middleware /mn.css (2026-10-05)', () => {
+  /**
+   * Мета-фреймворки без `transformIndexHtml` (Astro) получают CSS только по
+   * ссылке — до этого в dev `/mn.css` отвечал 404, и страница была без стилей.
+   */
+  function serve(plugin: any, base: string | undefined, url: string | undefined) {
+    let handler: any;
+    plugin.configureServer({
+      config: { base },
+      middlewares: { use: (fn: any) => { handler = fn; } },
+    });
+    const headers: Record<string, string> = {};
+    const res = {
+      body: undefined as string | undefined,
+      setHeader: (name: string, value: string) => { headers[name] = value; },
+      end: (body: string) => { res.body = body; },
+    };
+    const next = jest.fn();
+    handler({ url }, res, next);
+    return { body: res.body, headers, next };
+  }
+
+  test('отдаёт актуальный CSS по /mn.css, query не мешает', () => {
+    const root = makeProject({ 'src/app.html': '<div class="p10"></div>' });
+    const plugin = makePlugin(root, 'serve');
+    plugin.buildStart();
+
+    const r = serve(plugin, '/', '/mn.css?t=123');
+
+    expect(r.next).not.toHaveBeenCalled();
+    expect(r.body).toContain('.p10{padding:10px}');
+    expect(r.headers['Content-Type']).toBe('text/css; charset=utf-8');
+    expect(r.headers['Cache-Control']).toBe('no-cache');
+  });
+
+  test('учитывает base, в том числе без завершающего слэша', () => {
+    const root = makeProject({ 'src/app.html': '<div class="p10"></div>' });
+    const plugin = makePlugin(root, 'serve');
+
+    expect(serve(plugin, '/docs', '/docs/mn.css').next).not.toHaveBeenCalled();
+    expect(serve(plugin, '/docs/', '/mn.css').next).toHaveBeenCalled();
+    expect(serve(plugin, undefined, '/mn.css').next).not.toHaveBeenCalled();
+  });
+
+  test('предупреждения компиляции уходят в логгер Vite, без него — в console', () => {
+    const root = makeProject({ 'src/app.html': '<div class="fx p10"></div>' });
+    const warn = jest.fn();
+    const withLogger = mnVite() as any;
+    withLogger.configResolved({ root, command: 'serve', logger: { warn } });
+    withLogger.buildStart();
+    serve(withLogger, '/', '/mn.css');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('[minotation] fx'));
+
+    const spy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const plain = makePlugin(root, 'serve');
+    plain.buildStart();
+    serve(plain, '/', '/mn.css');
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('[minotation] fx'));
+    spy.mockRestore();
+  });
+
+  test('чужие запросы проходят дальше', () => {
+    const plugin = makePlugin(makeProject({}), 'serve');
+
+    expect(serve(plugin, '/', '/index.html').next).toHaveBeenCalled();
+    expect(serve(plugin, '/', undefined).next).toHaveBeenCalled();
+  });
+});

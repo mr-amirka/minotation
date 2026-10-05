@@ -11,6 +11,35 @@ export type MnAstroOptions = MnViteOptions;
 /** Имя CSS-asset'а, которое `minotation-vite` эмитирует безусловно (см. её `generateBundle`). */
 const MN_CSS_FILE_NAME = 'mn.css';
 
+/**
+ * Dev: ссылка на `mn.css`, который отдаёт middleware `minotation-vite`.
+ *
+ * Пока документ разбирается, ссылка вписывается `document.write` — так она
+ * становится обычной блокирующей рендер таблицей стилей, и страница не мигает
+ * голым текстом. Если скрипт исполнился позже (переход без перезагрузки),
+ * `document.write` стёр бы страницу — тогда элемент добавляется в `<head>`.
+ *
+ * @param href — адрес CSS с учётом `base`
+ */
+export function devLinkScript(href: string): string {
+  const link = '<link rel="stylesheet" href="' + href + '" data-mn>';
+  return 'if(!document.querySelector("[data-mn]")){'
+    + 'if(document.readyState==="loading"){document.write(' + JSON.stringify(link) + ')}'
+    + 'else{var l=document.createElement("link");l.rel="stylesheet";l.href=' + JSON.stringify(href)
+    + ';l.setAttribute("data-mn","");document.head.appendChild(l)}}';
+}
+
+/**
+ * Dev: HMR-слушатель. `minotation-vite` на каждую правку шлёт событие
+ * `mn:update` с готовым CSS — его кладём в `<style data-mn>` и убираем
+ * `<link>`: новый запрос не нужен, и подмена не мигает.
+ */
+export const DEV_HMR_SCRIPT = 'if(import.meta.hot){import.meta.hot.on("mn:update",function(css){'
+  + 'var s=document.querySelector("style[data-mn]");'
+  + 'if(!s){s=document.createElement("style");s.setAttribute("data-mn","")}'
+  + 's.textContent=css;document.head.appendChild(s);'
+  + 'var l=document.querySelector("link[data-mn]");l&&l.remove()})}';
+
 /** Рекурсивно находит все `.html`-файлы под директорией. */
 function findHtmlFiles(dir: string): string[] {
   const results: string[] = [];
@@ -57,6 +86,10 @@ function injectStylesheetLink(html: string, href: string): string {
  * ниже постобрабатывает все сгенерированные `.html`-файлы и вставляет
  * `<link rel="stylesheet" href="/mn.css">`.
  *
+ * В dev сборки нет — `mn.css` отдаёт middleware `minotation-vite`, а
+ * интеграция вставляет на каждую страницу ссылку на него и HMR-слушатель
+ * (`injectScript`). Стили обновляются без перезагрузки страницы.
+ *
  * @param options - опции {@link MnAstroOptions} (те же, что у `minotation-vite`)
  * @returns Astro Integration
  *
@@ -75,12 +108,21 @@ export function mnAstro(options: MnAstroOptions = {}): AstroIntegration {
   return {
     name: 'minotation',
     hooks: {
-      'astro:config:setup': ({ updateConfig }) => {
+      'astro:config:setup': ({ updateConfig, command, injectScript, config }) => {
         updateConfig({
           vite: {
             plugins: [mnVite({ ...options, extensions })],
           },
         });
+        // В dev `astro:build:done` не наступает, а `transformIndexHtml` Astro не
+        // вызывает — без этого CSS на страницу не попадал вовсе (2026-10-05).
+        if (command === 'dev') {
+          const base = (config && config.base) || '/';
+          injectScript('head-inline', devLinkScript(
+            (base.endsWith('/') ? base : base + '/') + MN_CSS_FILE_NAME,
+          ));
+          injectScript('page', DEV_HMR_SCRIPT);
+        }
       },
 
       'astro:build:done': ({ dir }) => {

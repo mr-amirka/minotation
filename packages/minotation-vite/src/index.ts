@@ -148,6 +148,9 @@ export interface MnViteOptions {
 }
 
 
+/** Имя CSS-файла: asset сборки и адрес, по которому dev-сервер отдаёт тот же CSS. */
+export const MN_CSS_FILE_NAME = 'mn.css';
+
 /**
  * Транспилирует TypeScript/JS пресет-файл через esbuild и выполняет его
  * в Node.js-контексте через `new Function`.
@@ -350,6 +353,37 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
     },
 
     /**
+     * Dev: отдаёт `GET {base}mn.css` — тот же CSS, что сборка эмитит файлом.
+     *
+     * Нужен мета-фреймворкам без `transformIndexHtml` (Astro): им `<style
+     * data-mn>` не вставить, и в dev стили не попадали на страницу вовсе —
+     * `/mn.css` отвечал 404 (найдено на `affiliate`, 2026-10-05). Ссылку на
+     * файл и HMR-слушатель вставляет сама интеграция (`minotation-astro`).
+     *
+     * CSS собирается на каждый запрос: накопитель кеширует результат по
+     * набору токенов, так что повторный запрос без правок ничего не стоит,
+     * а отстать от последней правки отдаваемый файл не может.
+     */
+    configureServer(server: ViteDevServer) {
+      const base = server.config.base || '/';
+      const path = (base.endsWith('/') ? base : base + '/') + MN_CSS_FILE_NAME;
+      server.middlewares.use((req, res, next) => {
+        if ((req.url || '').split('?')[0] !== path) {
+          next();
+          return;
+        }
+        cssOutput = collector.css();
+        flushWarnings({
+          warn: (message: string) => (logger || console).warn(message),
+        });
+        res.setHeader('Content-Type', 'text/css; charset=utf-8');
+        // Без кеша: ссылка одна и та же, а содержимое меняется с каждой правкой.
+        res.setHeader('Cache-Control', 'no-cache');
+        res.end(cssOutput);
+      });
+    },
+
+    /**
      * Перехватывает `*.mn.ts` / `*.mn.js` файлы при импорте из приложения.
      * Выполняет пресет на внутреннем mn-инстансе.
      * Возвращает `export {}` — в рантайм ничего не попадает.
@@ -454,7 +488,7 @@ if (import.meta.hot) {
       cssOutput = collector.css();
       flushWarnings(this);
       if (cssOutput) {
-        this.emitFile({ type: 'asset', fileName: 'mn.css', source: cssOutput });
+        this.emitFile({ type: 'asset', fileName: MN_CSS_FILE_NAME, source: cssOutput });
       }
     },
   };

@@ -1,12 +1,15 @@
 /**
- * Smoke-тест dist/index.js — проверяет реальный скомпилированный вывод.
- * Запускается через: npm run test:dist
- * Ловит расхождение между исходниками (ts-jest) и dist (node).
+ * Smoke-тест собранного `dist` — CommonJS (`dist/*.js`) и ESM (`dist/esm/*.mjs`).
+ * Запускается через: pnpm test:dist
+ * Ловит расхождение между исходниками (ts-jest) и тем, что реально грузит Node.
+ *
+ * Переписан 2026-10-05: прежняя версия звала `createMn`, `register` и `check`
+ * давно удалённого API и падала на первой строке — то есть не проверяла ничего.
  */
 
 'use strict';
 
-const { createMn } = require('../dist/index.js');
+const cjs = require('../dist/index.js');
 
 let failed = false;
 
@@ -28,120 +31,57 @@ function checkAbsent(label, actual, absent) {
   }
 }
 
-function css(tokens, presetsFn) {
-  const mn = createMn();
-  if (presetsFn) presetsFn(mn);
-  mn.check(tokens);
+/** Компилирует токены инстансом `core` с пресетами `presets` (по умолчанию — те же). */
+function compile(core, tokens, presets) {
+  const warnings = [];
+  const mn = core.minotationProvider({ onWarning: (w) => warnings.push(w.type + ' ' + w.token) });
+  mn.setPresets(presets || [core.presetStandard, core.presetSynonyms]);
+  mn.getCompiler('class')(tokens);
   mn.compile();
-  return mn.styles$.getValue().map(s => s.content).join('');
+  return {
+    css: mn.styles$.getValue().map((b) => b.content).join(''),
+    warnings: warnings.join(','),
+  };
 }
 
-// ── self-class условия (.WORD) ────────────────────────────────────────────────
+/** Одни и те же проверки для обеих сборок. */
+function checkBuild(name, core) {
+  const { css } = compile(core, 'cF.active cF.38 bgF.12.active mt15.active cF+active cF-i.active p10:h cF');
+  // Правила с одинаковым телом группируются: `.cF\.active.active,.cF\+active+active,.cF{…}`.
+  check(name + ' self-class + sibling + plain', css, '.cF\\.active.active,.cF\\+active+active,.cF{color:#fff}');
+  checkAbsent(name + ' self-class no plain', css, '.cF\\.active{');
+  check(name + ' opacity', css, '.cF\\.38{color:rgba(255,255,255,.38)}');
+  check(name + ' opacity + self-class', css, '.bgF\\.12\\.active.active{');
+  check(name + ' mt + self-class', css, '.mt15\\.active.active{margin-top:15px}');
+  check(name + ' important', css, '.cF-i\\.active.active{color:#fff!important}');
+  check(name + ' state', css, '.p10\\:h:hover{padding:10px}');
+}
 
-{
-  const mn = createMn();
-  mn.register('c', ctx => ({ style: { color: ctx.arg } }));
-  mn.register('bgc', ctx => ({ style: { backgroundColor: ctx.arg } }));
-  mn.register('mt', ctx => ({ style: { marginTop: ctx.arg + 'px' } }));
-  mn.check('cF.active cF.38 cF.38.active bgcF.12.active mt15.active cF.active.paused cF');
-  mn.compile();
-  const out = mn.styles$.getValue().map(s => s.content).join('');
+checkBuild('cjs', cjs);
 
-  // Селектор содержит self-class суффикс
-  check('cF.active selector', out, '.cF\\.active.active');
-  // НЕ простой класс без суффикса
-  checkAbsent('cF.active no plain', out, '.cF\\.active{');
+// ── ESM-сборка (dist/esm, 2026-10-05) ────────────────────────────────────────
+// Node грузит её сам, без бандлера; набор экспортов совпадает с CJS; ошибка
+// разбора из пресета ESM-копии ловится инстансом CJS-копии (метка MnParseError).
 
-  // .38 — opacity в arg, нет self-class
-  check('cF.38 plain selector', out, '.cF\\.38{');
+async function checkEsm() {
+  const esm = await import('../dist/esm/index.mjs');
+  const mne = await import('../dist/esm/mne.mjs');
+  const syntax = await import('../dist/esm/syntaxScan.mjs');
+  const cjsKeys = Object.keys(cjs).filter((k) => k !== '__esModule').sort().join(',');
+  check('esm exports = cjs exports', Object.keys(esm).sort().join(','), cjsKeys);
+  check('esm mne', Object.keys(mne).sort().join(','), 'mnClass,mnKey,mnMap,mne');
+  check('esm syntax', Object.keys(syntax).sort().join(','), 'scanTokensSyntax');
+  checkBuild('esm', esm);
+  const mixed = compile(cjs, 'p10 fx', [esm.presetStandard]);
+  check('cjs instance + esm preset', mixed.css, '.p10{padding:10px}');
+  check('cross-copy parse-error', mixed.warnings, 'parse-error fx');
+}
 
-  // opacity + self-class
-  check('cF.38.active selector', out, '.cF\\.38\\.active.active');
-
-  // bgc + opacity + self-class
-  check('bgcF.12.active selector', out, '.bgcF\\.12\\.active.active');
-
-  // mt + self-class
-  check('mt15.active selector', out, '.mt15\\.active.active');
-
-  // два self-class условия
-  check('cF.active.paused selector', out, '.cF\\.active\\.paused.active.paused');
-
-  // без self-class
-  check('cF plain selector', out, '.cF{');
-
-  // handler получает чистый arg (без .active)
-  let receivedArg;
-  const mn2 = createMn();
-  mn2.register('c', ctx => { receivedArg = ctx.arg; return { style: { color: ctx.arg } }; });
-  mn2.check('cF.active');
-  mn2.compile();
-  if (receivedArg !== 'F') {
-    console.error(`FAIL [handler arg for cF.active]: expected "F", got "${receivedArg}"`);
-    failed = true;
+checkEsm().then(() => {
+  if (failed) {
+    console.error('\nDist smoke-test FAILED.');
+    process.exit(1);
   } else {
-    console.log('ok   [handler arg for cF.active]');
+    console.log('\nDist smoke-test passed.');
   }
-
-  // handler с opacity: arg должен быть F.38
-  mn2.check('cF.38.active');
-  mn2.compile();
-  if (receivedArg !== 'F.38') {
-    console.error(`FAIL [handler arg for cF.38.active]: expected "F.38", got "${receivedArg}"`);
-    failed = true;
-  } else {
-    console.log('ok   [handler arg for cF.38.active]');
-  }
-}
-
-// ── self-class условия (+WORD) ────────────────────────────────────────────────
-
-{
-  const mn = createMn();
-  mn.register('c', ctx => ({ style: { color: ctx.arg } }));
-  mn.register('bgc', ctx => ({ style: { backgroundColor: ctx.arg } }));
-  mn.check('cF+active bgcF+12+active cF+38 cF.38+active');
-  mn.compile();
-  const out = mn.styles$.getValue().map(s => s.content).join('');
-
-  check('cF+active selector', out, '.cF\\+active+active');
-  checkAbsent('cF+active no plain', out, '.cF\\+active{');
-
-  check('bgcF+12+active selector', out, '.bgcF\\+12\\+active+active');
-
-  // +38 → числовой, нет adjacent sibling
-  check('cF+38 plain selector', out, '.cF\\+38{');
-  checkAbsent('cF+38 no adjacent', out, '.cF\\+38+');
-
-  check('cF.38+active selector', out, '.cF\\.38\\+active+active');
-}
-
-// ── important ────────────────────────────────────────────────────────────────
-
-{
-  const mn = createMn();
-  mn.register('c', ctx => ({ style: { color: ctx.arg } }));
-  // Правильная форма: -i ДО self-class
-  mn.check('cF-i.active cF-i+active cF.active-i cF+active-i');
-  mn.compile();
-  const out = mn.styles$.getValue().map(s => s.content).join('');
-  // cF-i.active → important, selector .cF-i\.active.active
-  check('cF-i.active selector', out, '.cF-i\\.active.active');
-  check('cF-i.active !important', out, '!important');
-  // cF-i+active → important, adjacent sibling
-  check('cF-i+active selector', out, '.cF-i\\+active+active');
-  // cF.active-i → -i часть имени класса, НЕ important; selector .cF\.active-i.active-i
-  check('cF.active-i selector', out, '.cF\\.active-i.active-i');
-  checkAbsent('cF.active-i no important', out, '.cF\\.active-i.active-i{color:undefined!important');
-  // cF+active-i → аналогично; selector .cF\+active-i+active-i
-  check('cF+active-i selector', out, '.cF\\+active-i+active-i');
-}
-
-// ── сводка ───────────────────────────────────────────────────────────────────
-
-if (failed) {
-  console.error('\nDist smoke-test FAILED.');
-  process.exit(1);
-} else {
-  console.log('\nDist smoke-test passed.');
-}
+});

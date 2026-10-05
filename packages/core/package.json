@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "Minotation — CSS generation from compact notation",
   "main": "dist/index.js",
+  "module": "dist/esm/index.mjs",
   "types": "dist/index.d.ts",
   "files": [
     "dist",
@@ -12,26 +13,29 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "import": "./dist/esm/index.mjs",
       "default": "./dist/index.js"
     },
     "./mne": {
       "types": "./dist/mne.d.ts",
+      "import": "./dist/esm/mne.mjs",
       "default": "./dist/mne.js"
     },
     "./syntax": {
       "types": "./dist/syntaxScan.d.ts",
+      "import": "./dist/esm/syntaxScan.mjs",
       "default": "./dist/syntaxScan.js"
     }
   },
   "scripts": {
-    "build": "tsc",
-    "prepare": "tsc",
+    "build": "tsc && node scripts/build-esm.mjs",
+    "prepare": "tsc && node scripts/build-esm.mjs",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix --quiet",
     "test": "jest --no-coverage",
     "test:watch": "jest --watch --no-coverage",
     "test:coverage": "jest --coverage",
-    "test:dist": "npm run build && node scripts/smoke-dist.js",
+    "test:dist": "pnpm build && node scripts/smoke-dist.js",
     "validate": "npm run lint && npm run test",
     "try": "node scripts/try.mjs"
   },
@@ -46,6 +50,7 @@
     "@typescript-eslint/eslint-plugin": "^8.68.0",
     "@typescript-eslint/parser": "^8.68.0",
     "css-tree": "^3.2.1",
+    "esbuild": "^0.28.0",
     "eslint": "^10.9.1",
     "fast-check": "^4.8.0",
     "jest": "^29.0.0",

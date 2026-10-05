@@ -179,7 +179,25 @@ export interface MnData {
  * пользователю: токен, вызвавший `MnParseError`, просто не даёт CSS-правила в
  * этом цикле компиляции.md`.
  */
+/**
+ * Метка {@link MnParseError}, общая для всех копий ядра в процессе.
+ *
+ * Ядро публикуется в двух форматах (CJS и ESM), и в одном процессе бывают обе
+ * копии: `minotation-vite` (ESM) берёт пресеты из ESM-копии, а накопитель
+ * `minotation-build` (CJS) создаёт инстанс из CJS-копии. Без общей метки
+ * `instanceof` не узнал бы ошибку из чужой копии — и ошибка разбора стала бы
+ * обычным исключением вместо предупреждения.
+ */
+const MN_PARSE_ERROR_BRAND = Symbol.for('minotation.MnParseError');
+
 export class MnParseError extends Error {
+  /** `instanceof` по метке, а не по прототипу — см. {@link MN_PARSE_ERROR_BRAND}. */
+  static [Symbol.hasInstance](value: unknown): boolean {
+    return !!value && (value as Record<symbol, unknown>)[MN_PARSE_ERROR_BRAND] === true;
+  }
+
+  declare readonly [MN_PARSE_ERROR_BRAND]: true;
+
   constructor(message: string,
     public readonly context: {
       token: string;
@@ -195,6 +213,11 @@ export class MnParseError extends Error {
     }) {
     super(message);
     this.name = 'MnParseError';
+    Object.defineProperty(
+      this, MN_PARSE_ERROR_BRAND, {
+        value: true,
+      },
+    );
   }
 }
 

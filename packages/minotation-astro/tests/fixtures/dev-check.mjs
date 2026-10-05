@@ -26,6 +26,7 @@ try {
   const missing = await fetch(origin + '/no-such-page');
   process.stdout.write(JSON.stringify({
     html: await page.text(),
+    pageStatus: page.status,
     cssStatus: css.status,
     cssType: css.headers.get('content-type'),
     css: await css.text(),

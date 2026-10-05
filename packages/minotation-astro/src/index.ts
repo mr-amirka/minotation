@@ -84,7 +84,7 @@ function injectStylesheetLink(html: string, href: string): string {
  * молча производит бесполезный, никем не используемый CSS-файл (найдено
  * эмпирически на реальной сборке, 2026-09-02). Хук `astro:build:done`
  * ниже постобрабатывает все сгенерированные `.html`-файлы и вставляет
- * `<link rel="stylesheet" href="/mn.css">`.
+ * `<link rel="stylesheet" href="/mn.css">` (с учётом `base` из конфига Astro).
  *
  * В dev сборки нет — `mn.css` отдаёт middleware `minotation-vite`, а
  * интеграция вставляет на каждую страницу ссылку на него и HMR-слушатель
@@ -105,10 +105,15 @@ function injectStylesheetLink(html: string, href: string): string {
 export function mnAstro(options: MnAstroOptions = {}): AstroIntegration {
   const extensions = options.extensions || ['.html', '.jsx', '.tsx', '.vue', '.svelte', '.astro'];
 
+  /** Адрес CSS с учётом `base` — общий для dev и сборки; задаётся в `astro:config:setup`. */
+  let href = '/' + MN_CSS_FILE_NAME;
+
   return {
     name: 'minotation',
     hooks: {
       'astro:config:setup': ({ updateConfig, command, injectScript, config }) => {
+        const base = (config && config.base) || '/';
+        href = (base.endsWith('/') ? base : base + '/') + MN_CSS_FILE_NAME;
         updateConfig({
           vite: {
             plugins: [mnVite({ ...options, extensions })],
@@ -117,10 +122,7 @@ export function mnAstro(options: MnAstroOptions = {}): AstroIntegration {
         // В dev `astro:build:done` не наступает, а `transformIndexHtml` Astro не
         // вызывает — без этого CSS на страницу не попадал вовсе (2026-10-05).
         if (command === 'dev') {
-          const base = (config && config.base) || '/';
-          injectScript('head-inline', devLinkScript(
-            (base.endsWith('/') ? base : base + '/') + MN_CSS_FILE_NAME,
-          ));
+          injectScript('head-inline', devLinkScript(href));
           injectScript('page', DEV_HMR_SCRIPT);
         }
       },
@@ -135,8 +137,8 @@ export function mnAstro(options: MnAstroOptions = {}): AstroIntegration {
         }
         for (const file of findHtmlFiles(outDir)) {
           const html = readFileSync(file, 'utf-8');
-          if (html.includes(`href="/${MN_CSS_FILE_NAME}"`)) continue; // уже вставлен
-          writeFileSync(file, injectStylesheetLink(html, `/${MN_CSS_FILE_NAME}`));
+          if (html.includes(`href="${href}"`)) continue; // уже вставлен
+          writeFileSync(file, injectStylesheetLink(html, href));
         }
       },
     },

@@ -1,9 +1,14 @@
 ---
+// Ядро в SSR-коде страницы — сценарий `affiliate`: через workspace-симлинк Vite
+// исполняет его как исходник, и CommonJS-сборка падала на `exports is not defined`.
+import { mne } from 'minotation/mne';
 const cardClass = 'p10 cF00';
+const boxClass = mne('w50', 'h20');
 ---
 <html>
   <head><title>mn dev</title></head>
   <body>
     <div class={cardClass}>dev</div>
+    <div class={boxClass}>box</div>
   </body>
 </html>

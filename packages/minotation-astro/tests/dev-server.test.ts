@@ -16,7 +16,12 @@ describe('minotation-astro — astro dev', () => {
   // Сервер живёт в отдельном процессе — см. `fixtures/dev-check.mjs`.
   const result = JSON.parse(execFileSync(
     process.execPath, [SCRIPT, '4391'], { encoding: 'utf8', timeout: 90000 },
-  )) as { html: string; cssStatus: number; cssType: string; css: string; missingStatus: number };
+  )) as { html: string; pageStatus: number; cssStatus: number; cssType: string; css: string; missingStatus: number };
+
+  test('ядро в SSR-коде страницы исполняется — ESM-сборка, без обходов', () => {
+    expect(result.pageStatus).toBe(200);
+    expect(result.html).toContain('class="w50 h20"');
+  });
 
   test('страница ссылается на /mn.css', () => {
     expect(result.html).toContain('mn.css');

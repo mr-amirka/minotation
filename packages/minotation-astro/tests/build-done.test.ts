@@ -63,6 +63,26 @@ describe('minotation-astro — astro:build:done', () => {
     expect(afterFirst.match(/mn\.css/g)).toHaveLength(1);
   });
 
+  test('ссылка учитывает base из конфига Astro', () => {
+    const outDir = makeOutDir({
+      'mn.css': '.p10{padding:10px}',
+      'index.html': '<html><head></head><body></body></html>',
+    });
+    const integration = mnAstro();
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    (integration.hooks['astro:config:setup'] as any)({
+      command: 'build',
+      config: { base: '/docs' },
+      updateConfig: () => undefined,
+      injectScript: () => undefined,
+    });
+    const hook = integration.hooks['astro:build:done'] as any;
+    hook({ dir: pathToFileURL(outDir + '/') });
+    hook({ dir: pathToFileURL(outDir + '/') });
+    const html = readFileSync(join(outDir, 'index.html'), 'utf-8');
+    expect(html).toBe('<html><head><link rel="stylesheet" href="/docs/mn.css"></head><body></body></html>');
+  });
+
   test('без mn.css (нет токенов) HTML не трогается', () => {
     const html = '<html><head></head><body></body></html>';
     const outDir = makeOutDir({ 'index.html': html });

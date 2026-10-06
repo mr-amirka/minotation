@@ -783,6 +783,35 @@ const ENUM_MULTI: Record<string, 1> = {
  * регистре, значение — `1` либо каноническая запись, которой заменяется
  * найденное слово.
  */
+/**
+ * Слово CSS в записи нотации: `crisp-edges` → `CrispEdges`, как его пишут после
+ * имени хендлера (`irCrispEdges`).
+ */
+function notationWord(word: string): string {
+  return word.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join('');
+}
+
+/**
+ * Хвост сообщения со списком допустимых записей — чтобы не идти за ним в
+ * справочник. Строится только на пути ошибки: на обычную компиляцию не влияет.
+ */
+function availableHint(items: string[]): string {
+  return items.length ? '. Available: ' + items.join(', ') : '';
+}
+
+/**
+ * Допустимые значения перечисления в записи нотации. Только канонические слова
+ * (`1`): записи со строкой — это алиасы, которые заменяются на каноническое, и
+ * в подсказке они дали бы дубли (`optimizeSpeed` и `optimizespeed`).
+ */
+function enumHint(words: Record<string, 1 | string>, essenceName: string): string {
+  const items: string[] = [];
+  for (const word of Object.keys(words)) {
+    words[word] === 1 && items.push(essenceName + notationWord(word));
+  }
+  return availableHint(items);
+}
+
 function assertEnumValue(
   v: string,
   words: Record<string, 1 | string>,
@@ -803,7 +832,7 @@ function assertEnumValue(
   (i < 2 || multi) || throwInvalid(prefix + 'expected a single value');
   while (i--) {
     canon = words[parts[i].toLowerCase()];
-    canon || throwInvalid(prefix + 'the set of values is closed');
+    canon || throwInvalid(prefix + 'the set of values is closed' + enumHint(words, essenceName));
     canon === 1 || (parts[i] = canon as string);
   }
   return parts.join(' ');
@@ -2087,6 +2116,14 @@ export default (mn: MnInstance) => {
       }
       assertSynonymPart(p, value);
     }
+    /** Список сокращений хендлера: `aiC (center), aiFE (flex-end), …`. */
+    function abbrHint(name: string): string {
+      const items: string[] = [];
+      forIn(synonyms, (word: string, abbr: string) => {
+        abbr && items.push(name + abbr + ' (' + valueNormalize(word) + ')');
+      });
+      return availableHint(items);
+    }
     /** Одна часть значения: слово из словаря, число (если оно тут законно) или функция. */
     function assertSynonymPart(p: MnEssenceParams, value: string): void {
       if (value.indexOf('(') > -1
@@ -2098,7 +2135,7 @@ export default (mn: MnInstance) => {
       }
       REGEXP_BARE_WORD.test(value)
         ? throwInvalid('Value "' + p.suffix + '" is invalid for "' + p.name
-          + '": no such abbreviation, and it is not a keyword')
+          + '": no such abbreviation, and it is not a keyword' + abbrHint(p.name))
         : (numeric
           // Число у такого свойства — длина или процент, а не что угодно:
           // `bgpx10zz` давало `background-position-x:10zz`, `va10s` —
@@ -2107,7 +2144,8 @@ export default (mn: MnInstance) => {
             || throwInvalid('Value "' + p.suffix + '" is invalid for "'
               + p.name + '": expected a length'))
           : throwInvalid('Value "' + p.suffix + '" is invalid for "'
-            + p.name + '": the set of values is closed, a number is not allowed'));
+            + p.name + '": the set of values is closed, a number is not allowed'
+            + abbrHint(p.name)));
     }
     return isArray(propName)
       ? (props = flags(propName), ((p: MnEssenceParams) => {

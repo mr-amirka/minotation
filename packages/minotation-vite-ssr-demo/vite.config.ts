@@ -5,6 +5,6 @@ import { mnVite } from 'minotation-vite';
 export default defineConfig({
   plugins: [
     react(),
-    mnVite({ attr: 'className' }),
+    mnVite({ attrs: 'className:class' }),
   ],
 });

@@ -18,7 +18,7 @@ const server = await dev({
   root,
   logLevel: 'error',
   server: { port },
-  integrations: [mnAstro({ attr: 'class' })],
+  integrations: [mnAstro({ attrs: 'class' })],
 });
 try {
   const page = await fetch(origin + '/');

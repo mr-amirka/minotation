@@ -110,18 +110,18 @@ describe('mergeSettings', () => {
     const settings = mergeSettings(parseArgs([]), {
       input: './шаблоны',
       output: './dist/app.css',
-      attr: 'className',
+      attrs: 'className:class',
     });
     expect(settings.input).toBe('./шаблоны');
     expect(settings.output).toBe('./dist/app.css');
-    expect(settings.attr).toBe('className');
+    expect(settings.attrs).toBe('className:class');
   });
 
   test('умолчания применяются, когда нет ни аргумента, ни конфига', () => {
     const settings = mergeSettings(parseArgs([]), {});
     expect(settings.input).toBe('./');
     expect(settings.output).toBe('./mn.css');
-    expect(settings.attr).toBe('class');
+    expect(settings.attrs).toBe('class');
   });
 
   test('аргумент важнее конфига и у этих трёх', () => {
@@ -134,11 +134,11 @@ describe('mergeSettings', () => {
     ]), {
       input: './шаблоны',
       output: './dist/app.css',
-      attr: 'className',
+      attrs: 'className:class',
     });
     expect(settings.input).toBe('./src');
     expect(settings.output).toBe('./a.css');
-    expect(settings.attr).toBe('class');
+    expect(settings.attrs).toBe('class');
   });
 
   test('флаги складываются: включён хоть где-то — включён', () => {

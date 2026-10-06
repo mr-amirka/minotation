@@ -68,7 +68,7 @@ describe('minotation-rollup — реальная сборка', () => {
     });
 
     const { assets } = await runBuild(root, {
-      attr: 'data-cls',
+      attrs: 'data-cls:class',
       extensions: ['.vue'],
       presetExtensions: ['.mnjs'],
       fileName: 'styles.css',

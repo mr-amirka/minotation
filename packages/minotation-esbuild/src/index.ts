@@ -9,6 +9,7 @@ import {
 } from 'minotation';
 import type { MnInstance } from 'minotation';
 import { createTokenCollector, walkFiles } from 'minotation-build';
+import type { MnAttrs } from 'minotation-build';
 import {
   readFileSync,
   writeFileSync,
@@ -26,10 +27,12 @@ import { createRequire } from 'module';
 /** Опции плагина {@link mnEsbuild}. */
 export interface MnEsbuildOptions {
   /**
-   * Имя атрибута для поиска токенов или несколько — `['class', 'className']`,
-   * когда в проекте есть и `.astro`/`.html`, и React-компоненты. @default 'class'
+   * Какие атрибуты сканировать и во что разворачивать селекторы — как в v1 (D-025):
+   * `'class, className:class'`, `['class', 'className:class']` или
+   * `{ class: 'class', className: 'class' }`. Имя без `:` разворачивается в себя:
+   * `m="p10"` → `[m~="p10"]`. @default 'class'
    */
-  attr?: string | string[];
+  attrs?: MnAttrs;
   /**
    * Суффиксы имён переменных, чьё строковое значение считается списком MN-токенов
    * (`const thClass = 'py12 px14'`). Пустой массив отключает механизм.
@@ -163,11 +166,10 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
  *   entryPoints: ['src/main.tsx'],
  *   outdir: 'dist',
  *   bundle: true,
- *   plugins: [mnEsbuild({ attr: 'className' })],
+ *   plugins: [mnEsbuild({ attrs: 'class, className:class' })],
  * });
  */
 export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
-  const attr = options.attr || 'class';
   const exts = options.extensions || ['.html', '.jsx', '.tsx', '.vue', '.svelte'];
   const presetExts = options.presetExtensions || ['.mn.ts', '.mn.js', '.mn.tsx'];
   const fileName = options.fileName || 'mn.css';
@@ -176,7 +178,10 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
   // (`minotation-build`). До 2026-09-29 каждый плагин вёл это сам, и четыре
   // копии расходились между собой.
   const collector = createTokenCollector({
-    attr,
+    // Опции целиком — чтобы каркас увидел и устаревшие ключи (`attr`) и
+    // сказал о них, а не потерял молча; ниже — то, что плагин подставляет сам.
+    ...options,
+    attrs: options.attrs,
     classVarSuffixes: options.classVarSuffixes,
     mergeFnNames: options.mergeFnNames,
     syntax: options.syntax,

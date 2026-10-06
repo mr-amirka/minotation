@@ -99,7 +99,7 @@ function injectStylesheetLink(html: string, href: string): string {
  * import { mnAstro } from 'minotation-astro';
  *
  * export default defineConfig({
- *   integrations: [mnAstro({ attr: 'class' })],
+ *   integrations: [mnAstro({ attrs: 'class' })],
  * });
  */
 export function mnAstro(options: MnAstroOptions = {}): AstroIntegration {

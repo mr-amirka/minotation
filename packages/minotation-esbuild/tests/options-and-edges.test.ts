@@ -37,7 +37,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       bundle: true,
       outdir: outDir,
       plugins: [mnEsbuild({
-        attr: 'data-cls',
+        attrs: 'data-cls:class',
         extensions: ['.vue'],
         presetExtensions: ['.mnjs'],
         fileName: 'styles.css',

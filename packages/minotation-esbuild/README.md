@@ -18,7 +18,7 @@ esbuild.build({
   outdir: 'dist',
   bundle: true,
   plugins: [
-    mnEsbuild({ attr: 'className' }),
+    mnEsbuild({ attrs: 'class, className:class' }),
   ],
 });
 ```
@@ -47,7 +47,7 @@ esbuild.build({
 
 | Опция | Тип | По умолчанию | Описание |
 |-------|-----|-------------|----------|
-| `attr` | `string \| string[]` | `'class'` | Атрибут, в котором ищутся MN-токены; несколько — `['class', 'className']` |
+| `attrs` | `string \| string[] \| Record<string, string>` | `'class'` | Какие атрибуты сканировать и во что разворачивать: `'class, className:class'`, `'class, m, m-n'` → `[m~="p10"]`. Подробно — [`attrs`](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
 | `extensions` | `string[]` | `['.html','.jsx','.tsx','.vue','.svelte']` | Расширения файлов приложения |
 | `presets` | `Array<(mn) => void>` | стандартный набор | Статические пресеты |
 | `presetExtensions` | `string[]` | `['.mn.ts','.mn.js','.mn.tsx']` | Расширения динамических пресет-файлов |

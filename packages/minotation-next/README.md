@@ -70,7 +70,7 @@ export function presetApp(mn: MnFn): void {
 | `selectorPrefix` | `string` | — | Глобальный префикс для CSS-селекторов |
 | `media` | `object` | — | Карта именованных медиа-контекстов |
 | `enabled` | `boolean` | `true` | Включить/выключить MN (удобно через env-переменную) |
-| `attrs` | `string[]` | `['class', 'className']` | Атрибуты, в которых ищутся токены |
+| `attrs` | `string \| string[] \| Record<string, string>` | `'class, className:class'` | Какие атрибуты сканировать и во что разворачивать; `className` в React — класс. Подробно — [`attrs`](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
 | `classVarSuffixes` | `string[]` | `['Class']` | Суффиксы имён переменных со списком токенов |
 | `mergeFnNames` | `string[]` | `['mne', 'mnClass']` | Функции слияния, чьи строковые аргументы сканируются |
 | `syntax` | `boolean` | авто | Разбирать JS/TS парсером; по умолчанию — по расширению файла |

@@ -2,16 +2,18 @@
  * Webpack loader: извлекает MN-токены из исходников.
  */
 import type { LoaderDefinitionFunction } from 'webpack';
-import { createScanner } from 'minotation';
+import { createAttrsScanner } from 'minotation-build';
+import type { MnAttrs } from 'minotation-build';
 import { getState } from './state';
 
 /** Опции webpack-лоадера MN. */
 interface MnLoaderOptions {
   /**
-   * Список HTML/JSX атрибутов, в значениях которых ищутся MN-токены.
-   * @default ['class']
+   * Какие атрибуты сканировать и во что разворачивать селекторы — как в v1 (D-025):
+   * `'class, className:class'`, массив `['class', 'className:class']` или объект.
+   * @default 'class'
    */
-  attrs?: string[];
+  attrs?: MnAttrs;
   /**
    * Суффиксы имён переменных, чьё строковое значение считается списком MN-токенов
    * (`const thClass = 'py12 px14'`). Пустой массив отключает механизм.
@@ -56,13 +58,14 @@ interface MnLoaderOptions {
  */
 const loader: LoaderDefinitionFunction<MnLoaderOptions> = function (source) {
   const options = this.getOptions() as MnLoaderOptions;
-  const attrNames = options.attrs || ['class'];
   const state = getState();
 
-  // Все имена — одним проходом: сканер принимает список (до 2026-10-05 он
-  // гонялся целиком на каждое имя, повторяя разбор переменных и вызовов).
-  const scan = createScanner({
-    attr: attrNames,
+  // Тот же сканер с разворачиванием атрибутов, что у остальных плагинов
+  // (`minotation-build`): запись помечена целевым атрибутом, плагин
+  // компилирует её в `class` или `[attr~=…]`.
+  const scan = createAttrsScanner({
+    ...options,
+    attrs: options.attrs,
     classVarSuffixes: options.classVarSuffixes,
     mergeFnNames: options.mergeFnNames,
     syntax: options.syntax,

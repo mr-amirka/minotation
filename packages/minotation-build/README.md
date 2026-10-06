@@ -29,7 +29,7 @@ import { createTokenCollector, walkFiles } from 'minotation-build';
 import { presetStandard, presetSynonyms } from 'minotation';
 
 const collector = createTokenCollector({
-  attr: 'class',
+  attrs: 'class, className:class',
   presets: [presetStandard, presetSynonyms],
 });
 
@@ -48,21 +48,53 @@ for (const warning of collector.takeWarnings()) {
 }
 ```
 
+## `attrs` — какие атрибуты сканировать и во что разворачивать
+
+Опция общая для всех плагинов и CLI; возвращена из v1 (D-025). Ключ — атрибут
+в разметке, значение — атрибут, в который компилируется селектор. `class`
+даёт `.token`, любой другой — `[имя~="token"]`. Имя без `:` разворачивается в себя.
+
+Три равноценные формы:
+
+```ts
+attrs: 'class, className:class'                  // строка: разделители — пробел, |, ",", ;
+attrs: ['class', 'className:class']               // массив
+attrs: { class: 'class', className: 'class' }     // объект
+```
+
+По умолчанию — `'class'`. Типичные наборы:
+
+| Проект | `attrs` | Что получится |
+|---|---|---|
+| HTML, Astro, Vue, Svelte | `'class'` | `class="p10"` → `.p10` |
+| React (`className`) рядом с `.astro`/`.html` | `'class, className:class'` | оба → `.p10` |
+| свой атрибут для нотации | `'class, m, m-n'` | `m="p10"` → `[m~="p10"]`, `m-n="p10"` → `[m-n~="p10"]` |
+
+Частая ошибка — перечислить имена без цели: `['class', 'className']` даёт
+`.ws` **и** `[className~="ws"]`, то есть `className` компилируется в свой
+атрибут, а не в класс. Для React нужно `className:class`.
+
+Токены из переменных `*Class` (`classVarSuffixes`) и вызовов `mne`/`mnClass`
+(`mergeFnNames`) — это значения классов: они идут в цель `class`, а если её
+нет в `attrs` — в первую цель.
+
+Пустой `attrs` (`''`, `[]`) — ошибка: иначе сборка молча не нашла бы ни одного токена.
+
 ## `createTokenCollector(options)`
 
-Опции — всё, что принимает `createScanner` (`attr`, `classVarSuffixes`,
-`mergeFnNames`, `syntax`), плюс:
+Опции — `attrs` (выше), опции сканера (`classVarSuffixes`, `mergeFnNames`,
+`syntax`), плюс:
 
 | Опция | Что делает |
 |-------|------------|
-| `safelist` | токены, нужные всегда, даже если в файлах не встретились |
+| `safelist` | токены, нужные всегда, даже если в файлах не встретились; компилируются как классы |
 | `presets` | статические пресеты |
 | `mn` | опции mn-инстанса (`selectorPrefix`, `media`, `strict`, `onWarning`) |
 
 | Метод | Что делает |
 |-------|------------|
 | `add(id, source)` | сканирует исходник и учитывает токены файла; `true`, если набор изменился |
-| `set(id, tokens)` | то же, но токены уже готовы — для webpack, где сканирует лоадер |
+| `set(id, entries)` | то же, но записи уже готовы (`'<цель> <токен>'`, см. `createAttrsScanner`) — для webpack, где сканирует лоадер |
 | `remove(id)` | снимает файл с учёта |
 | `has(id)` | стоит ли файл на учёте |
 | `setPreset(id, preset)` / `removePreset(id)` | динамические пресеты из `*.mn.ts` |
@@ -86,6 +118,17 @@ for (const warning of collector.takeWarnings()) {
 `console`, а у сборщика свой канал вывода — иначе предупреждение либо теряется
 в потоке сборки, либо дублируется. `onWarning: 'silent'` уважается, своя
 функция вызывается дополнительно.
+
+## `parseAttrs`, `createAttrsScanner`, `compileEntries`
+
+Части, из которых собран накопитель; нужны тому, кто сканирует и компилирует
+сам (webpack-лоадер, CLI).
+
+- `parseAttrs(attrs)` — любая форма `attrs` в карту `{ сканируемый: целевой }`.
+- `createAttrsScanner({ attrs, ...опции сканера })` — сканер файла; возвращает записи
+  `'<цель> <токен>'` (`'class p10'`, `'m p10'`). Сканируемые атрибуты группируются
+  по цели — на группу один проход.
+- `compileEntries(mn, entries)` — компилирует записи, каждую своим `getCompiler(цель)`.
 
 ## `walkFiles(dir, extensions, maxDepth?)`
 

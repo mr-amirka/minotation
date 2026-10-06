@@ -288,7 +288,7 @@ describe('minotation-vite — attr массивом (2026-10-05)', () => {
       'src/Page.html': '<div class="p10"></div>',
       'src/Card.tsx': 'export const Card = () => <div className="m10" />;',
     });
-    const plugin = makePlugin(root, 'build', { attr: ['class', 'className'] });
+    const plugin = makePlugin(root, 'build', { attrs: ['class', 'className:class'] });
 
     const css = transformHtml(plugin, '<html><head></head><body></body></html>')
       .map((tag) => tag.children).join('');

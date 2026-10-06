@@ -17,7 +17,7 @@ import { presetStandard, presetSynonyms, presetMedias } from 'minotation';
 export default defineConfig({
   plugins: [
     mnVite({
-      attr: 'className',           // атрибут для поиска токенов
+      attrs: 'class, className:class', // className в React — тоже класс
       extensions: ['.tsx', '.jsx'],
       presets: [presetStandard, presetSynonyms, presetMedias],
     }),
@@ -108,7 +108,7 @@ export function presetApp(mn: MnInstance): void {
 
 | Опция | Тип | По умолчанию | Описание |
 |-------|-----|-------------|----------|
-| `attr` | `string \| string[]` | `'class'` | Атрибут, в котором ищутся MN-токены; несколько — `['class', 'className']` |
+| `attrs` | `string \| string[] \| Record<string, string>` | `'class'` | Какие атрибуты сканировать и во что разворачивать: `'class, className:class'`, `'class, m, m-n'` → `[m~="p10"]`. Подробно — [`attrs`](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
 | `safelist` | `string[]` | `[]` | Токены, компилируемые всегда — даже если не встретились в литеральном `class="…"` |
 | `classVarSuffixes` | `string[]` | `['Class']` | Суффиксы имён переменных, значения которых считаются списком токенов (`const thClass = '…'`) |
 | `extensions` | `string[]` | `['.html','.jsx','.tsx','.vue','.svelte']` | Расширения файлов приложения |

@@ -17,7 +17,7 @@
 import type { NextConfig } from 'next';
 import type { Configuration } from 'webpack';
 import { MnWebpackPlugin } from 'minotation-webpack';
-import type { MnWebpackPluginOptions } from 'minotation-webpack';
+import type { MnAttrs, MnWebpackPluginOptions } from 'minotation-webpack';
 
 /** Опции {@link withMn}. Расширяет {@link MnWebpackPluginOptions}. */
 export interface MnNextOptions extends MnWebpackPluginOptions {
@@ -28,10 +28,11 @@ export interface MnNextOptions extends MnWebpackPluginOptions {
    */
   enabled?: boolean;
   /**
-   * Атрибуты, в значениях которых ищутся токены.
-   * @default ['class', 'className']
+   * Какие атрибуты сканировать и во что разворачивать селекторы — как в v1 (D-025).
+   * В React `className` — это класс, поэтому по умолчанию он разворачивается в `class`.
+   * @default 'class, className:class'
    */
-  attrs?: string[];
+  attrs?: MnAttrs;
   /**
    * Суффиксы имён переменных со списком токенов (`const thClass = 'py12'`).
    * Пустой массив отключает механизм. @default ['Class']
@@ -89,7 +90,7 @@ export function withMn(
           // пока они были прописаны в этом месте, ни `classVarSuffixes`, ни
           // `mergeFnNames` до лоадера не доходили вовсе.
           options: {
-            attrs: opts.attrs || ['class', 'className'],
+            attrs: opts.attrs || 'class, className:class',
             classVarSuffixes: opts.classVarSuffixes,
             mergeFnNames: opts.mergeFnNames,
             syntax: opts.syntax,

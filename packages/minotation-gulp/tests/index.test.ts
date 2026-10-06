@@ -155,7 +155,7 @@ describe('mnGulp — реальный пайп', () => {
     write('b.tsx', 'const rowCls = "m20";');
 
     const files = await run('*.tsx', {
-      attr: 'className',
+      attrs: 'className:class',
       classVarSuffixes: ['Cls'],
     });
 

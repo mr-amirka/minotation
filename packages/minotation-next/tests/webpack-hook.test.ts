@@ -26,7 +26,7 @@ describe('minotation-next — webpack-хук', () => {
     expect(rules).toHaveLength(2);
     expect(rules[0].test.source).toBe('\\.(tsx|jsx|html|php)$');
     expect(rules[0].use.loader).toBe('minotation-webpack/dist/loader');
-    expect(rules[0].use.options).toEqual({ attrs: ['class', 'className'] });
+    expect(rules[0].use.options).toEqual({ attrs: 'class, className:class' });
     expect(rules[1].test.source).toBe('\\.mn\\.(ts|js|tsx)$');
     expect(rules[1].use).toBe('minotation-webpack/dist/preset-loader');
 

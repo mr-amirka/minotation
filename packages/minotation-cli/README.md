@@ -21,7 +21,7 @@ CSS-файл. Путь по умолчанию — текущая директо
 
 ```bash
 mn ./src --watch                        # пересобирать при изменениях
-mn ./templates --attr className         # токены в JSX-атрибуте
+mn ./templates --attrs "class, className:class"   # className тоже даёт классы
 mn ./src -p .app                        # префикс у всех селекторов
 mn ./index.html -o ./page.css           # одиночный файл
 ```
@@ -33,7 +33,7 @@ mn ./index.html -o ./page.css           # одиночный файл
 | `-o, --output <файл>` | куда писать CSS (по умолчанию `./mn.css`) |
 | `-w, --watch` | следить за изменениями и пересобирать |
 | `-c, --config <файл>` | файл конфигурации (по умолчанию `./mn.config.js`) |
-| `-a, --attr <имя>` | атрибут с токенами (по умолчанию `class`) |
+| `-a, --attrs <список>` | какие атрибуты сканировать и во что разворачивать, как в v1: `"class, className:class"`, `"class, m"` → `[m~="p10"]` (по умолчанию `class`); подробно — [`attrs`](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
 | `-p, --prefix <строка>` | префикс для всех селекторов |
 | `--alt-color` | запасное непрозрачное объявление рядом с `rgba` |
 | `--strict` | код возврата 1, если встретился битый токен |
@@ -134,7 +134,7 @@ module.exports = {
   input: './src',
   output: './dist/app.css',
   prefix: '.app',
-  attr: 'class',
+  attrs: 'class, className:class', // строка, массив или объект — как --attrs
   syntax: false,                  // только текстовый разбор (как --no-syntax)
   metricsPath: './metrics.json',  // то же, что -m
   safelist: ['m20', 'dF'],        // токены, которых нет в разметке

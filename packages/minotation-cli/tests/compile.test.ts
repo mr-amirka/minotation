@@ -131,12 +131,32 @@ describe('compile', () => {
     expect(css).not.toContain('padding:99px');
   });
 
-  test('атрибут задаётся опцией', () => {
+  test('атрибут разворачивается в class — className:class', () => {
     write('a.tsx', '<div className="p10">');
     expect(compile({
       input: dir,
+      attrs: 'className:class',
+    }).css).toContain('.p10{padding:10px}');
+  });
+
+  test('устаревший attr из конфига — ошибка с подсказкой', () => {
+    write('a.html', '<div class="p10">');
+    expect(() => compile({
+      input: dir,
       attr: 'className',
-    }).css).toContain('padding:10px');
+    } as never)).toThrow("use attrs: 'className:class'");
+  });
+
+  test('атрибут без цели разворачивается в себя — [m~="p10"], как в v1', () => {
+    write('a.html', '<div class="w20" m="p10">');
+    const result = compile({
+      input: dir,
+      attrs: 'class, m',
+      metrics: true,
+    });
+    expect(result.css).toContain('[m~="p10"]{padding:10px}');
+    expect(result.css).toContain('.w20{width:20px}');
+    expect(JSON.stringify(result.metrics)).toContain('m:p10');
   });
 
   test('префикс селекторов', () => {

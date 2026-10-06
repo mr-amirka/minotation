@@ -20,7 +20,7 @@ describe('minotation-esbuild — реальная сборка', () => {
       entryPoints: [join(FIXTURES_DIR, 'app.tsx')],
       bundle: true,
       outdir: outDir,
-      plugins: [mnEsbuild({ attr: 'class', root: FIXTURES_DIR })],
+      plugins: [mnEsbuild({ attrs: 'class', root: FIXTURES_DIR })],
     });
 
     const js = readFileSync(join(outDir, 'app.js'), 'utf-8');

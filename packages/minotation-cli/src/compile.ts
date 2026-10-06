@@ -17,7 +17,6 @@ import {
 } from 'node:path';
 import {
   minotationProvider,
-  createScanner,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -27,6 +26,12 @@ import {
 import type {
   MnInstance, MnOptions, MnWarning,
 } from 'minotation';
+import {
+  compileEntries, createAttrsScanner,
+} from 'minotation-build';
+import type {
+  MnAttrs,
+} from 'minotation-build';
 
 /** Расширения, которые сканируются, если не задано иное. */
 const DEFAULT_EXTENSIONS = [
@@ -51,8 +56,11 @@ const DEFAULT_EXCLUDE = /[\\/](?:node_modules|\.git|dist|build)[\\/]/;
 export interface CompileSettings {
   /** Файл или директория для сканирования. */
   input: string;
-  /** Атрибут с токенами. */
-  attr?: string;
+  /**
+   * Какие атрибуты сканировать и во что разворачивать — как в v1 (D-025):
+   * `'class, className:class'`, массив или объект. По умолчанию `'class'`.
+   */
+  attrs?: MnAttrs;
   /** Префикс селекторов. */
   prefix?: string;
   /** Запасное непрозрачное объявление рядом с `rgba`. */
@@ -222,11 +230,16 @@ export function compile(settings: CompileSettings): CompileResult {
   const files = collectFiles(
     settings.input, settings.include, settings.exclude, settings.ignore,
   );
-  const scan = createScanner({
-    attr: settings.attr || 'class',
+  // Тот же сканер с разворачиванием атрибутов, что у плагинов сборщиков:
+  // записи `'<целевой атрибут> <токен>'`.
+  // Настройки целиком: устаревший `attr` из конфига — ошибка с подсказкой,
+  // а не молчаливая потеря токенов (D-025).
+  const scan = createAttrsScanner({
+    ...('attr' in settings ? { attr: (settings as { attr?: unknown }).attr } : {}),
+    attrs: settings.attrs,
     syntax: settings.syntax,
   });
-  const tokens = new Set<string>(settings.safelist || []);
+  const tokens = new Set<string>((settings.safelist || []).map((token) => 'class ' + token));
   // Счётчики заводятся только под `--metrics`: на каждый файл это лишняя
   // запись в памяти, а обычной сборке они не нужны.
   const counts: Record<string, number> | 0 = settings.metrics ? {} : 0;
@@ -244,8 +257,8 @@ export function compile(settings: CompileSettings): CompileResult {
     if (counts) {
       fileCounts = (byFile as Record<string, Record<string, number>>)[files[i]] = {};
       for (j = 0; j < n; j++) {
-        token = found[j];
-        tokens.add(token);
+        tokens.add(found[j]);
+        token = metricKey(found[j]);
         counts[token] = (counts[token] || 0) + 1;
         fileCounts[token] = (fileCounts[token] || 0) + 1;
       }
@@ -272,13 +285,8 @@ export function compile(settings: CompileSettings): CompileResult {
     presetNormalize,
     presetMain,
   ]);
-  // Все токены компилируются как class-селекторы независимо от того, из какого
-  // атрибута извлечены: это одно и то же DOM-свойство, разница только в
-  // синтаксисе разметки.
-  const compileToken = mn.getCompiler('class');
-  for (const token of tokens) {
-    compileToken(token);
-  }
+  // Каждый токен — в свой целевой атрибут (D-025): `m="p10"` → `[m~="p10"]`.
+  compileEntries(mn, tokens);
   mn.compile();
   return {
     css: mn.styles$.getValue()
@@ -293,6 +301,16 @@ export function compile(settings: CompileSettings): CompileResult {
       )
       : undefined,
   };
+}
+
+/**
+ * Ключ статистики для записи сканера: у класса — сам токен, у другого
+ * целевого атрибута — `атрибут:токен` (`m:p10`), чтобы они не смешивались.
+ */
+function metricKey(entry: string): string {
+  const at = entry.indexOf(' ');
+  const target = entry.slice(0, at);
+  return target === 'class' ? entry.slice(at + 1) : target + ':' + entry.slice(at + 1);
 }
 
 /** Раскладывает счётчики в отчёт: списки по убыванию частоты. */

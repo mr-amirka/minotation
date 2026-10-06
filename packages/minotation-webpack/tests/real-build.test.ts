@@ -129,13 +129,21 @@ describe('minotation-webpack — лоадеры', () => {
     const source = '<div class="p10 mt4"></div><span className="mb4"></span>';
 
     expect(runLoader(source)).toBe(source);
-    expect(tokensNow()).toEqual(['mt4', 'p10']);
+    expect(tokensNow()).toEqual(['class mt4', 'class p10']);
   });
 
-  test('лоадер с несколькими атрибутами собирает токены из каждого', () => {
+  test('лоадер с несколькими атрибутами: className:class даёт классы', () => {
+    runLoader('<div class="p10"></div><span className="mb4"></span>', { attrs: ['class', 'className:class'] });
+
+    expect(tokensNow()).toEqual(['class mb4', 'class p10']);
+  });
+
+  test('атрибут без цели разворачивается в себя — как в v1 (D-025)', () => {
+    // Записи помечены целевым атрибутом: плагин скомпилирует `className mb4`
+    // в `[className~="mb4"]`, а не в класс.
     runLoader('<div class="p10"></div><span className="mb4"></span>', { attrs: ['class', 'className'] });
 
-    expect(tokensNow()).toEqual(['mb4', 'p10']);
+    expect(tokensNow()).toEqual(['class p10', 'className mb4']);
   });
 
   test('preset-loader выполняет пресет, отдаёт в бандл пустой модуль', () => {
@@ -292,11 +300,11 @@ describe('minotation-webpack — снятие токенов с учёта', () 
 
     runLoader('<div class="p10"></div>', {}, gone);
     runLoader('<div class="mt4"></div>', {}, stays);
-    expect(tokensNow()).toEqual(['mt4', 'p10']);
+    expect(tokensNow()).toEqual(['class mt4', 'class p10']);
 
     rmSync(gone);
 
-    expect(tokensNow()).toEqual(['mt4']);
+    expect(tokensNow()).toEqual(['class mt4']);
     const assets = await runBuild(makeStubProject(), new MnWebpackPlugin({ output: 'mn.css' }));
     expect(assets['mn.css']).toContain('margin-top:4px');
     expect(assets['mn.css']).not.toContain('padding:10px');
@@ -329,10 +337,10 @@ describe('minotation-webpack — снятие токенов с учёта', () 
     const file = join(mkdtempSync(join(tmpdir(), 'mn-edit-')), 'page.html');
 
     runLoader('<div class="p10 mt4"></div>', {}, file);
-    expect(tokensNow()).toEqual(['mt4', 'p10']);
+    expect(tokensNow()).toEqual(['class mt4', 'class p10']);
 
     runLoader('<div class="mt4"></div>', {}, file);
-    expect(tokensNow()).toEqual(['mt4']);
+    expect(tokensNow()).toEqual(['class mt4']);
 
     const assets = await runBuild(makeStubProject(), new MnWebpackPlugin({ output: 'mn.css' }));
     expect(assets['mn.css']).not.toContain('padding:10px');

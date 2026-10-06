@@ -17,14 +17,14 @@ import {
   tmpdir,
 } from 'node:os';
 import {
-  createTokenCollector, walkFiles,
+  createAttrsScanner, createTokenCollector, parseAttrs, walkFiles,
 } from '../src/index';
 import {
   presetStandard,
 } from 'minotation';
 
 const OPTIONS = {
-  attr: 'class',
+  attrs: 'class',
   presets: [presetStandard],
 };
 
@@ -139,7 +139,7 @@ describe('createTokenCollector — учёт токенов', () => {
     // `affiliate`: страницы `.astro` пишут `class`, React-компоненты — `className`.
     const collector = createTokenCollector({
       ...OPTIONS,
-      attr: ['class', 'className'],
+      attrs: ['class', 'className:class'],
     });
     collector.add('/Page.astro', '<div class="p10"></div>');
     collector.add('/Card.tsx', 'export const Card = () => <Box className="m10" />;');
@@ -201,7 +201,7 @@ describe('createTokenCollector — пресеты', () => {
 
   test('без `presets` работают одни динамические', () => {
     const collector = createTokenCollector({
-      attr: 'class',
+      attrs: 'class',
     });
     collector.setPreset('/theme.mn.ts', (mn) => {
       mn('brand', () => ({
@@ -380,5 +380,135 @@ describe('walkFiles', () => {
 
     expect(walkFiles(dir, ['.html'])).toEqual([join(dir, 'a.html')]);
     expect(walkFiles(join(dir, 'нет-такого'), ['.html'])).toEqual([]);
+  });
+});
+
+describe('attrs — карта «сканируемый → целевой атрибут», как в v1 (D-025)', () => {
+  test.each([
+    [
+      'строка',
+      'class, className:class',
+      {
+        class: 'class',
+        className: 'class', 
+      },
+    ],
+    [
+      'строка с | и ;',
+      'class|m;m-n',
+      {
+        class: 'class',
+        m: 'm',
+        'm-n': 'm-n', 
+      },
+    ],
+    [
+      'массив',
+      ['class', 'className:class'],
+      {
+        class: 'class',
+        className: 'class', 
+      },
+    ],
+    [
+      'объект',
+      {
+        className: 'class',
+        class: 'class', 
+      },
+      {
+        className: 'class',
+        class: 'class', 
+      },
+    ],
+    [
+      'по умолчанию',
+      undefined,
+      {
+        class: 'class', 
+      },
+    ],
+  ])('%s', (
+    _name, attrs, expected,
+  ) => {
+    expect(parseAttrs(attrs as never)).toEqual(expected);
+  });
+
+  test.each([
+    ['пустая строка', ''],
+    ['пустой массив', []],
+    ['объект без строковых значений', {
+      class: '', 
+    }],
+  ])('%s — ошибка, а не сборка без единого токена', (_name, attrs) => {
+    expect(() => parseAttrs(attrs as never)).toThrow('attrs is empty');
+  });
+
+  test('пример владельца: attrs [class, className] — className в свой атрибут', () => {
+    const collector = createTokenCollector({
+      ...OPTIONS,
+      attrs: ['class', 'className'],
+    });
+    collector.add('/a.html', '<div class="ws" className="ws">...</div>');
+
+    expect(collector.css()).toContain('.ws,[className~="ws"]{white-space:nowrap}');
+  });
+
+  test('className:class — оба атрибута дают один класс', () => {
+    const collector = createTokenCollector({
+      ...OPTIONS,
+      attrs: 'class, className:class',
+    });
+    collector.add('/a.html', '<div class="ws" className="ws">...</div>');
+
+    const css = collector.css();
+    expect(css).toContain('.ws{white-space:nowrap}');
+    expect(css).not.toContain('[className');
+  });
+
+  test('m и m-n — селекторы по атрибуту', () => {
+    const collector = createTokenCollector({
+      ...OPTIONS,
+      attrs: [
+        'class',
+        'm',
+        'm-n',
+      ],
+    });
+    collector.add('/a.html', '<div m="p10" m-n="w20" class="h30"></div>');
+
+    const css = collector.css();
+    expect(css).toContain('[m~="p10"]{padding:10px}');
+    expect(css).toContain('[m-n~="w20"]{width:20px}');
+    expect(css).toContain('.h30{height:30px}');
+  });
+
+  test('переменные *Class и вызовы mne идут в class, а не в каждую цель', () => {
+    const scan = createAttrsScanner({
+      attrs: ['m', 'class'],
+    });
+    expect(scan("const aClass = 'p10'; mne(x, 'w20'); <i m=\"h30\" />", '/a.tsx').sort())
+      .toEqual([
+        'class p10',
+        'class w20',
+        'm h30',
+      ]);
+  });
+
+  test('без группы class переменные идут в первую цель', () => {
+    const scan = createAttrsScanner({
+      attrs: 'm',
+    });
+    expect(scan("const aClass = 'p10'; <i m=\"h30\" />", '/a.tsx').sort())
+      .toEqual(['m h30', 'm p10']);
+  });
+
+  test('устаревший attr — ошибка с подсказкой, а не молчаливая потеря токенов', () => {
+    expect(() => createTokenCollector({
+      attr: ['class', 'className'],
+    } as never)).toThrow("use attrs: 'class, className:class'");
+    expect(() => createAttrsScanner({
+      attr: 'class',
+    } as never)).toThrow("use attrs: 'class'");
   });
 });

@@ -89,7 +89,7 @@ const DEFAULT_INPUT = './';
 const DEFAULT_OUTPUT = './mn.css';
 
 /** Атрибут с токенами по умолчанию. */
-const DEFAULT_ATTR = 'class';
+const DEFAULT_ATTRS = 'class';
 
 /**
  * Складывает настройки из конфига и аргументов; аргументы важнее.
@@ -102,7 +102,7 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
     ...config,
     input: args.input || config.input || DEFAULT_INPUT,
     output: args.output || config.output || DEFAULT_OUTPUT,
-    attr: args.attr || config.attr || DEFAULT_ATTR,
+    attrs: args.attrs || config.attrs || DEFAULT_ATTRS,
     prefix: args.prefix === undefined ? config.prefix : args.prefix,
     altColor: args.altColor || config.altColor,
     strict: args.strict || config.strict,

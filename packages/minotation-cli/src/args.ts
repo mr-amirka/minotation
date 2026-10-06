@@ -27,7 +27,7 @@ export interface CliArgs {
   /** Путь к файлу конфигурации. */
   config?: string;
   /** Атрибут с токенами (`class`, `className`). */
-  attr?: string;
+  attrs?: string;
   /** Префикс для всех селекторов. */
   prefix?: string;
   /** Запасное непрозрачное объявление рядом с `rgba`. */
@@ -84,8 +84,8 @@ const OPTIONS: Record<string, keyof CliArgs> = {
   '--output': 'output',
   '-c': 'config',
   '--config': 'config',
-  '-a': 'attr',
-  '--attr': 'attr',
+  '-a': 'attrs',
+  '--attrs': 'attrs',
   '-p': 'prefix',
   '--prefix': 'prefix',
   '-m': 'metrics',
@@ -152,7 +152,8 @@ Options:
   -o, --output <file>    where to write CSS (default ./mn.css)
   -w, --watch            watch for changes and rebuild
   -c, --config <file>    config file (default ./mn.config.js)
-  -a, --attr <name>      attribute holding tokens (default class)
+  -a, --attrs <list>     attributes to scan and their target, as in v1:
+                         "class, className:class" (default class)
   -p, --prefix <string>  prefix for all selectors
       --alt-color        opaque fallback declaration next to rgba
       --strict           stop at the first broken token
@@ -166,5 +167,5 @@ Options:
 Examples:
   mn ./src -o ./dist/app.css
   mn ./src --watch
-  mn ./templates --attr className --prefix .app
+  mn ./templates --attrs "class, className:class" --prefix .app
 `.trim();

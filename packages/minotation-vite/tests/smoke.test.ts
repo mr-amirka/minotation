@@ -29,8 +29,8 @@ describe('minotation-vite — smoke', () => {
     expect(typeof plugin.buildStart).toBe('function');
   });
 
-  test('mnVite({ attr: "className" }) — принимает опции', () => {
-    const plugin: any = mnVite({ attr: 'className' });
+  test('mnVite({ attrs: "className:class" }) — принимает опции', () => {
+    const plugin: any = mnVite({ attrs: 'className:class' });
     expect(plugin.name).toBe('minotation');
   });
 });
@@ -195,5 +195,12 @@ describe('minotation-vite — mergeFnNames (2026-09-25)', () => {
   test('своё имя функции через опцию', () => {
     const css = cssOf("class={cx('w555')}", { mergeFnNames: ['cx'] });
     expect(css).toContain('width:555px');
+  });
+});
+
+describe('minotation-vite — устаревший attr (D-025)', () => {
+  test('attr из старого конфига — ошибка с подсказкой, а не потеря токенов', () => {
+    expect(() => mnVite({ attr: ['class', 'className'] } as never))
+      .toThrow("use attrs: 'class, className:class'");
   });
 });

@@ -20,8 +20,8 @@ describe('minotation-rollup — smoke', () => {
     expect(typeof plugin.generateBundle).toBe('function');
   });
 
-  test('mnRollup({ attr: "className" }) — принимает опции', () => {
-    const plugin = mnRollup({ attr: 'className' });
+  test('mnRollup({ attrs: "className:class" }) — принимает опции', () => {
+    const plugin = mnRollup({ attrs: 'className:class' });
     expect(plugin.name).toBe('minotation');
   });
 });

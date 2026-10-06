@@ -5,5 +5,5 @@ esbuild.build({
   entryPoints: ['src/main.jsx'],
   outdir: 'dist',
   bundle: true,
-  plugins: [mnEsbuild({ attr: 'class' })],
+  plugins: [mnEsbuild({ attrs: 'class' })],
 }).catch(() => process.exit(1));

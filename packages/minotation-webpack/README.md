@@ -103,6 +103,6 @@ JS-семейства он разбирает настоящим парсеро�
 ```js
 {
   loader: 'minotation-webpack/loader',
-  options: { attrs: ['class'], syntax: false },
+  options: { attrs: 'class, className:class', syntax: false },
 }
 ```

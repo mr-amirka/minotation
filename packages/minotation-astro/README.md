@@ -16,9 +16,20 @@ import { defineConfig } from 'astro/config';
 import { mnAstro } from 'minotation-astro';
 
 export default defineConfig({
-  integrations: [mnAstro({ attr: 'class' })],
+  integrations: [mnAstro({ attrs: 'class' })],
 });
 ```
+
+Если острова написаны на React, там атрибут `className`, а в `.astro` — `class`.
+Чтобы `className` давал те же классы, его разворачивают в `class`:
+
+```js
+mnAstro({ attrs: 'class, className:class' })
+```
+
+Без `:class` (`attrs: ['class', 'className']`) токены из `className` компилируются
+в селектор по атрибуту `[className~="p10"]`, и стили к элементу не применятся —
+подробно в [`attrs`](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать).
 
 По умолчанию сканируются `.html`, `.jsx`, `.tsx`, `.vue`, `.svelte` **и `.astro`**
 (в отличие от `minotation-vite`, где `.astro` не в списке по умолчанию — Astro-проекты
@@ -50,13 +61,13 @@ const thClass = 'py12 px14 bb1 bsS';
 остаётся явный `safelist`:
 
 ```js
-mnAstro({ attr: 'class', classVarSuffixes: ['Class', 'Cls'], safelist: ['crP taL vaT'] })
+mnAstro({ attrs: 'class', classVarSuffixes: ['Class', 'Cls'], safelist: ['crP taL vaT'] })
 ```
 
 ## Опции
 
 Совпадают с [`minotation-vite`](../minotation-vite#опции) — `mnAstro(options)`
-принимает те же поля (`attr`, `extensions`, `presets`, `presetExtensions`, `safelist`, `classVarSuffixes`, `syntax`, `mn`)
+принимает те же поля (`attrs`, `extensions`, `presets`, `presetExtensions`, `safelist`, `classVarSuffixes`, `syntax`, `mn`)
 и передаёт их напрямую в `mnVite(...)`, только дополняя `extensions` по умолчанию `.astro`.
 
 ## Синтаксический разбор

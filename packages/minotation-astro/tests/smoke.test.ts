@@ -20,7 +20,7 @@ describe('minotation-astro — smoke', () => {
   });
 
   test('astro:config:setup — вызывает updateConfig с vite.plugins', () => {
-    const integration = mnAstro({ attr: 'class' });
+    const integration = mnAstro({ attrs: 'class' });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateConfig = jest.fn<(cfg: any) => void>();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

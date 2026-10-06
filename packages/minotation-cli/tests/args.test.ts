@@ -16,7 +16,7 @@ describe('parseArgs', () => {
     const args = parseArgs([]);
     expect(args.input).toBeUndefined();
     expect(args.output).toBeUndefined();
-    expect(args.attr).toBeUndefined();
+    expect(args.attrs).toBeUndefined();
     expect(args.watch).toBe(false);
   });
 
@@ -40,14 +40,14 @@ describe('parseArgs', () => {
       'a.css',
     ],
     [
-      ['-a', 'className'],
-      'attr',
-      'className',
+      ['-a', 'className:class'],
+      'attrs',
+      'className:class',
     ],
     [
-      ['--attr', 'className'],
-      'attr',
-      'className',
+      ['--attrs', 'class, className:class'],
+      'attrs',
+      'class, className:class',
     ],
     [
       ['-p', '.app'],
@@ -110,7 +110,7 @@ describe('parseArgs', () => {
 
   test.each([
     [['-o'], 'Option "-o" requires a value'],
-    [['--attr'], 'Option "--attr" requires a value'],
+    [['--attrs'], 'Option "--attrs" requires a value'],
     [['--zzz'], 'Unknown option: "--zzz"'],
     [['a', 'b'], 'Path given twice'],
   ])('%p — ошибка', (argv, message) => {
@@ -124,7 +124,7 @@ describe('parseArgs', () => {
       '--output',
       '--watch',
       '--config',
-      '--attr',
+      '--attrs',
       '--prefix',
       '--alt-color',
       '--strict',

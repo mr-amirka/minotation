@@ -796,7 +796,9 @@ function notationWord(word: string): string {
  * справочник. Строится только на пути ошибки: на обычную компиляцию не влияет.
  */
 function availableHint(items: string[]): string {
-  return items.length ? '. Available: ' + items.join(', ') : '';
+  // Пустым список не бывает: подсказку строят только хендлеры со словарём
+  // сокращений или перечислением, а пустых среди них нет.
+  return '. Available: ' + items.join(', ');
 }
 
 /**

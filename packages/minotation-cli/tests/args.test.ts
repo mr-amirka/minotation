@@ -131,6 +131,7 @@ describe('parseArgs', () => {
       '--include',
       '--exclude',
       '--skip-partials',
+      '--no-manifest',
       '--version',
       '--help',
     ]) {

@@ -16,7 +16,6 @@ import {
   join, resolve,
 } from 'node:path';
 import {
-  minotationProvider,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -27,10 +26,10 @@ import type {
   MnInstance, MnOptions, MnWarning,
 } from 'minotation';
 import {
-  compileEntries, createAttrsScanner, createFileFilter, createMatcher, flatSafelist,
+  createAttrsScanner, createBuildCollector, createFileFilter, createMatcher, flatSafelist,
 } from 'minotation-build';
 import type {
-  MnAttrs, MnFileMatcher,
+  BuildOutput, MnAttrs, MnEntryOptions, MnFileMatcher,
 } from 'minotation-build';
 
 /** Расширения, которые сканируются, если не задано иное. */
@@ -110,6 +109,8 @@ export interface CompileSettings {
   metrics?: boolean;
   /** Остальные опции ядра. */
   mn?: MnOptions;
+  /** Несколько CSS из одного прохода (D-030); `--output` тогда содержит `[name]`. */
+  entry?: Record<string, MnEntryOptions>;
 }
 
 /** Сколько раз встретился токен. */
@@ -147,8 +148,10 @@ export interface Metrics {
 
 /** Результат сборки. */
 export interface CompileResult {
-  /** Готовый CSS. */
+  /** Готовый CSS — всех записей подряд. */
   css: string;
+  /** CSS по записям `entry` (без `entry` — одна запись `mn`). */
+  outputs: BuildOutput[];
   /** Сколько файлов просканировано. */
   files: number;
   /** Сколько уникальных токенов найдено. */
@@ -282,33 +285,37 @@ export function compile(settings: CompileSettings): CompileResult {
       tokens.add(found[j]);
     }
   }
-  const warnings: MnWarning[] = [];
-  const mn = minotationProvider({
-    ...settings.mn,
-    selectorPrefix: settings.prefix,
-    altColor: settings.altColor,
-    strict: settings.strict,
-    onWarning: (warning: MnWarning) => {
-      warnings.push(warning);
+  // CSS — общим накопителем, как у плагинов: записи `entry`, их фильтры,
+  // пресеты и разворачивание атрибутов (D-025, D-030).
+  const build = createBuildCollector({
+    attrs: settings.attrs,
+    syntax: settings.syntax,
+    safelist: settings.safelist,
+    entry: settings.entry,
+    presets: settings.presets || [
+      presetStandard,
+      presetSynonyms,
+      presetMedias,
+      presetNormalize,
+      presetMain,
+    ],
+    mn: {
+      ...settings.mn,
+      selectorPrefix: settings.prefix,
+      altColor: settings.altColor,
+      strict: settings.strict,
     },
-  });
-  mn.setPresets(settings.presets || [
-    presetStandard,
-    presetSynonyms,
-    presetMedias,
-    presetNormalize,
-    presetMain,
-  ]);
-  // Каждый токен — в свой целевой атрибут (D-025): `m="p10"` → `[m~="p10"]`.
-  compileEntries(mn, tokens);
-  mn.compile();
+  }, resolve(settings.input));
+  for (i = 0; i < l; i++) {
+    build.add(files[i], readFileSync(files[i], 'utf8'));
+  }
+  const outputs = build.outputs();
   return {
-    css: mn.styles$.getValue()
-      .map((s: { content: string }) => s.content)
-      .join('\n'),
+    css: outputs.map((output) => output.css).filter(Boolean).join('\n'),
+    outputs,
     files: l,
     tokens: tokens.size,
-    warnings,
+    warnings: build.takeWarnings(),
     metrics: counts
       ? buildMetrics(
         l, tokens.size, counts, byFile as Record<string, Record<string, number>>,

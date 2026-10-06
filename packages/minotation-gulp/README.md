@@ -41,7 +41,9 @@ exports.css = () => gulp.src('src/**/*.html')
 | `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
 | `mn` | — | опции ядра целиком: `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` |
-| `fileName` | `'mn.css'` | имя CSS-файла, который уходит в поток |
+| `fileName` | `'[name].css'` | имя CSS-файла в потоке; `[name]` — запись `entry`, `[hash]` — хеш содержимого |
+| `manifest` | `true` | `mn-manifest.json` в потоке с фактическими именами; с `gulp-rev` — `false` |
+| `entry` | — | несколько CSS из одного пайпа — по файлу на запись |
 
 Сканирование и компиляция — общие с остальными интеграциями
 ([`minotation-build`](../minotation-build)), поэтому `.tsx` здесь разбирается

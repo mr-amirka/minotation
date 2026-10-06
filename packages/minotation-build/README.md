@@ -70,6 +70,9 @@ for (const warning of collector.takeWarnings()) {
 | `mergeFnNames` | `string[]` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | `boolean` | автоматически | разбирать JS/TS парсером (`false` — только текст) |
 | `mn` | `MnOptions` | — | опции ядра целиком: `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` |
+| `entry` | `Record<string, MnEntryOptions>` | — | несколько CSS из одной сборки (D-030): записи переопределяют `include`, `exclude`, `skipPartials`, `attrs`, `presets`, `safelist`, `mn`, `fileName` |
+| `fileName` | `string` | у плагина своё | имя файла с `[name]` (имя записи) и `[hash]` (хеш содержимого) — там, где файл пишет плагин |
+| `manifest` | `boolean \| string` | `true` | `mn-manifest.json` рядом с CSS: `{ "mn.css": "mn.3f9a1c2e.css" }` |
 
 `MnFileMatcher` — как в v1: `/\.tpl$/`, `'./src/page.html'` (путь от корня или
 абсолютный), `(path) => boolean` или массив из них; массив срабатывает, если
@@ -78,6 +81,25 @@ for (const warning of collector.takeWarnings()) {
 Где отбор файлов делает сам сборщик (`test` правила webpack, `gulp.src`),
 `extensions` по умолчанию ничего не ограничивает, а `include`/`exclude`/
 `skipPartials` отсекают файлы внутри уже выбранных.
+
+## Как CSS попадает на страницу и защита от кеша (D-031)
+
+Свой хеш плагины не изобретают: CSS отдаётся **в граф ассетов сборщика**, и тот
+даёт файлу имя с хешем, ставит ссылку, минифицирует и обновляет в dev — как любой
+CSS проекта. После правок имя меняется, и браузер не возьмёт старые стили из кеша.
+
+| Плагин | Как подключается | Имя с хешем |
+|---|---|---|
+| vite (SPA) | `inject: 'inline'` — в `index.html`; `'link'` — ссылкой; `false` — `import 'virtual:mn.css'` | у `'link'` и импорта — Vite |
+| astro | интеграция подключает `virtual:mn.css` в каждую страницу сама | Astro (`/_astro/*.css`) |
+| rollup | ассет через `emitFile` | rollup по `assetFileNames` |
+| esbuild | `import 'virtual:mn.css'`; без импорта — файл по `fileName` | esbuild по `entryNames` |
+| webpack | `import 'minotation-webpack/mn.css'`; без импорта — ассет | конвейер проекта; ассет — если хеш в `output.filename` |
+| next | `import 'minotation-next/mn.css'` в корневом layout | Next.js (`/_next/static/css/*.css`) |
+| gulp, CLI | файл по `fileName` / `--output` | `[hash]` в шаблоне |
+
+Запись `entry` подключается своим модулем: `virtual:mn/<имя>.css` (vite, astro,
+esbuild), `mn.css?entry=<имя>` (webpack, next).
 
 ## `attrs` — какие атрибуты сканировать и во что разворачивать
 

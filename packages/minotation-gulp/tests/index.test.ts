@@ -305,3 +305,40 @@ describe('mnGulp — предупреждения', () => {
     expect(said.join('\n')).not.toContain('[minotation]');
   });
 });
+
+describe('minotation-gulp — имя файла, entry и манифест (D-030, D-031)', () => {
+  test('по умолчанию — mn.css и манифест в потоке', async () => {
+    write('page.html', '<div class="p10">');
+
+    const files = await run('*.html');
+
+    expect(files['mn.css']).toContain('padding:10px');
+    expect(JSON.parse(files['mn-manifest.json'])).toEqual({
+      'mn.css': 'mn.css', 
+    });
+  });
+
+  test('[name].[hash].css, записи entry и свой fileName записи; manifest: false', async () => {
+    write('site/a.html', '<div class="p10">');
+    write('admin/b.html', '<div class="m20">');
+
+    const files = await run('**/*.html', {
+      fileName: '[name].[hash].css',
+      manifest: false,
+      entry: {
+        site: {
+          include: /site/, 
+        },
+        admin: {
+          include: /admin/,
+          fileName: 'adm.css', 
+        }, 
+      },
+    });
+
+    const site = Object.keys(files).find((name) => /^site\.[0-9a-f]{8}\.css$/.test(name))!;
+    expect(files[site]).toContain('padding:10px');
+    expect(files['adm.css']).toContain('margin:20px');
+    expect(files['mn-manifest.json']).toBeUndefined();
+  });
+});

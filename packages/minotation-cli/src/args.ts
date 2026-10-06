@@ -38,6 +38,8 @@ export interface CliArgs {
   noSyntax: boolean;
   /** Пропускать файлы-партиалы `_*` (D-027). */
   skipPartials: boolean;
+  /** Не писать `mn-manifest.json` рядом с CSS. */
+  noManifest: boolean;
   /** Куда писать статистику употребления токенов. */
   metrics?: string;
   /** Какие файлы сканировать — регулярное выражение по имени. */
@@ -64,6 +66,7 @@ const DEFAULTS: CliArgs = {
   strict: false,
   noSyntax: false,
   skipPartials: false,
+  noManifest: false,
   help: false,
   version: false,
 };
@@ -76,6 +79,7 @@ const FLAGS: Record<string, keyof CliArgs> = {
   '--strict': 'strict',
   '--no-syntax': 'noSyntax',
   '--skip-partials': 'skipPartials',
+  '--no-manifest': 'noManifest',
   '-h': 'help',
   '--help': 'help',
   '-v': 'version',
@@ -153,7 +157,8 @@ Usage: mn [path] [options]
   The default path is the current directory.
 
 Options:
-  -o, --output <file>    where to write CSS (default ./mn.css)
+  -o, --output <file>    where to write CSS (default ./mn.css);
+                         [name] = entry name, [hash] = content hash
   -w, --watch            watch for changes and rebuild
   -c, --config <file>    config file (default ./mn.config.js)
   -a, --attrs <list>     attributes to scan and their target, as in v1:
@@ -163,6 +168,7 @@ Options:
       --strict           stop at the first broken token
       --no-syntax        do not parse JS/TS, text search only
       --skip-partials    skip partial files whose name starts with _
+      --no-manifest      do not write mn-manifest.json next to the CSS
   -m, --metrics <file>   write token usage statistics (JSON)
       --include <regexp> which files to scan
       --exclude <regexp> which files to skip

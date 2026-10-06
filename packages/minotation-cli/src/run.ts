@@ -13,8 +13,11 @@ import {
   createRequire,
 } from 'node:module';
 import {
-  dirname, resolve,
+  dirname, join, relative, resolve,
 } from 'node:path';
+import {
+  formatFileName, manifestFileName, manifestOf,
+} from 'minotation-build';
 import type {
   CliArgs,
 } from './args';
@@ -36,8 +39,16 @@ export const DEFAULT_CONFIG = './mn.config.js';
 
 /** Что сканировать и куда писать — всё, что нужно {@link build}. */
 export interface RunSettings extends CompileSettings {
-  /** Файл, в который пишется CSS. */
+  /**
+   * Файл, в который пишется CSS; шаблон с `[name]` (имя записи `entry`) и
+   * `[hash]` (хеш содержимого) — `./dist/[name].[hash].css` (D-031).
+   */
   output: string;
+  /**
+   * Манифест «логическое имя → фактическое» рядом с CSS (`mn-manifest.json`);
+   * строка — свой путь, `false` — не писать. @default true
+   */
+  manifest?: boolean | string;
   /** Файл для статистики употребления токенов; без него она не собирается. */
   metricsPath?: string;
 }
@@ -107,6 +118,8 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
     altColor: args.altColor || config.altColor,
     strict: args.strict || config.strict,
     skipPartials: args.skipPartials || config.skipPartials,
+    // `--no-manifest` выключает; без него решает конфиг (по умолчанию — писать).
+    manifest: args.noManifest ? false : config.manifest,
     // `--no-syntax` выключает разбор; без него решает конфиг, а его умолчание
     // (`undefined`) означает «автоматически».
     syntax: args.noSyntax ? false : config.syntax,
@@ -124,20 +137,55 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
 /** Компилирует и пишет результат; возвращает итог для отчёта. */
 export function build(settings: RunSettings, report: Reporter): CompileResult {
   const result = compile(settings);
-  const full = resolve(settings.output);
-  mkdirSync(dirname(full), {
-    recursive: true,
-  });
-  writeFileSync(
-    full, result.css, 'utf8',
-  );
+  const written = result.outputs.filter((output) => output.css);
+  // Без `[name]` в шаблоне записи писали бы в один и тот же файл.
+  written.length > 1 && settings.output.indexOf('[name]') < 0
+    && written.some((output) => !(settings.entry && settings.entry[output.name].fileName))
+    && failOutput(settings.output);
+  const files: Record<string, string> = {};
+  let own: string | undefined;
+  let full: string;
+  for (const output of written) {
+    own = settings.entry && settings.entry[output.name].fileName;
+    full = resolve(formatFileName(
+      own || settings.output, output.name, output.css,
+    ));
+    mkdirSync(dirname(full), {
+      recursive: true,
+    });
+    writeFileSync(
+      full, output.css, 'utf8',
+    );
+    files[output.name] = full;
+  }
   const l = result.warnings.length;
   let i = 0;
   for (; i < l; i++) {
     // `message` у предупреждения обязателен — запасного поля здесь не нужно.
     report.error('Warning: ' + result.warnings[i].message);
   }
-  report.log(result.files + ' files, ' + result.tokens + ' tokens → ' + full);
+  report.log(result.files + ' files, ' + result.tokens + ' tokens → '
+    + (Object.values(files).join(', ') || 'no CSS'));
+  const manifest = manifestFileName(settings.manifest);
+  const names = Object.keys(files);
+  if (manifest && names.length) {
+    // По умолчанию — рядом с CSS первой записи; пути в манифесте — от него.
+    const manifestFull = typeof settings.manifest === 'string'
+      ? resolve(manifest)
+      : join(dirname(files[names[0]]), manifest);
+    const relativeFiles: Record<string, string> = {};
+    for (const name of names) {
+      relativeFiles[name] = relative(dirname(manifestFull), files[name]);
+    }
+    mkdirSync(dirname(manifestFull), {
+      recursive: true,
+    });
+    writeFileSync(
+      manifestFull, JSON.stringify(
+        manifestOf(relativeFiles), null, '  ',
+      ), 'utf8',
+    );
+  }
   if (settings.metricsPath && result.metrics) {
     const metricsFull = resolve(settings.metricsPath);
     mkdirSync(dirname(metricsFull), {
@@ -151,6 +199,12 @@ export function build(settings: RunSettings, report: Reporter): CompileResult {
     report.log('Metrics → ' + metricsFull);
   }
   return result;
+}
+
+/** Несколько записей пишут в один файл — шаблону нужен `[name]`. */
+function failOutput(output: string): never {
+  throw new Error('Several entries would be written to "' + output
+    + '": add [name] to --output, e.g. ./dist/[name].css');
 }
 
 /**

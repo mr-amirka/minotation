@@ -30,7 +30,7 @@ mn ./index.html -o ./page.css           # одиночный файл
 
 | Опция | Что делает |
 |-------|------------|
-| `-o, --output <файл>` | куда писать CSS (по умолчанию `./mn.css`) |
+| `-o, --output <файл>` | куда писать CSS (по умолчанию `./mn.css`); шаблон с `[name]` (запись `entry`) и `[hash]` (хеш содержимого): `./dist/[name].[hash].css` |
 | `-w, --watch` | следить за изменениями и пересобирать |
 | `-c, --config <файл>` | файл конфигурации (по умолчанию `./mn.config.js`) |
 | `-a, --attrs <список>` | какие атрибуты сканировать и во что разворачивать, как в v1: `"class, className:class"`, `"class, m"` → `[m~="p10"]` (по умолчанию `class`); подробно — [`attrs`](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
@@ -38,6 +38,8 @@ mn ./index.html -o ./page.css           # одиночный файл
 | `--alt-color` | запасное непрозрачное объявление рядом с `rgba` |
 | `--strict` | код возврата 1, если встретился битый токен |
 | `--no-syntax` | не разбирать JS/TS парсером, только текстовый поиск |
+| `--skip-partials` | пропускать файлы-партиалы `_*` |
+| `--no-manifest` | не писать `mn-manifest.json` рядом с CSS (по умолчанию пишется: `{ "mn.css": "mn.3f9a1c2e.css" }`) |
 | `-m, --metrics <файл>` | записать статистику употребления токенов (JSON) |
 | `--include <regexp>` | какие файлы сканировать |
 | `--exclude <regexp>` | какие пропускать |
@@ -142,6 +144,21 @@ module.exports = {
   exclude: /[\\/]vendor[\\/]/,
   presets: [/* свои пресеты вместо стандартного набора */],
   mn: {/* остальные опции ядра */},
+  skipPartials: true,             // как --skip-partials
+  manifest: './dist/css.json',    // свой путь манифеста; false — как --no-manifest
+};
+```
+
+Несколько CSS из одного прохода — записи `entry`; в `output` тогда нужен `[name]`:
+
+```js
+module.exports = {
+  input: './src',
+  output: './dist/[name].[hash].css',
+  entry: {
+    site: { include: /src\/site\// },
+    admin: { include: /src\/admin\//, mn: { selectorPrefix: '.admin ' } },
+  },
 };
 ```
 

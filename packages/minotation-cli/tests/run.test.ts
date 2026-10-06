@@ -268,6 +268,133 @@ async function untilRetrying(
   throw new Error('не дождались: ' + what);
 }
 
+describe('build — имя файла, entry и манифест (D-030, D-031)', () => {
+  test('по умолчанию — манифест рядом с CSS', () => {
+    write('src/a.html', '<div class="p10">');
+    build({
+      input: join(dir, 'src'),
+      output: join(
+        dir, 'out', 'mn.css',
+      ),
+    }, report);
+    expect(JSON.parse(readFileSync(join(
+      dir, 'out', 'mn-manifest.json',
+    ), 'utf8')))
+      .toEqual({
+        'mn.css': 'mn.css', 
+      });
+  });
+
+  test('[name] и [hash] в --output; манифест знает фактическое имя', () => {
+    write('src/a.html', '<div class="p10">');
+    build({
+      input: join(dir, 'src'),
+      output: join(
+        dir, 'out', '[name].[hash].css',
+      ),
+    }, report);
+    const manifest = JSON.parse(readFileSync(join(
+      dir, 'out', 'mn-manifest.json',
+    ), 'utf8'));
+    expect(manifest['mn.css']).toMatch(/^mn\.[0-9a-f]{8}\.css$/);
+    expect(readFileSync(join(
+      dir, 'out', manifest['mn.css'],
+    ), 'utf8')).toContain('padding:10px');
+  });
+
+  test('entry — файл на запись; свой fileName; манифест по указанному пути', () => {
+    write('src/site/a.html', '<div class="p10">');
+    write('src/admin/b.html', '<div class="m20">');
+    build({
+      input: join(dir, 'src'),
+      output: join(
+        dir, 'out', '[name].css',
+      ),
+      manifest: join(
+        dir, 'meta', 'css.json',
+      ),
+      entry: {
+        site: {
+          include: /site/, 
+        },
+        admin: {
+          include: /admin/,
+          fileName: join(
+            dir, 'out', 'adm.css',
+          ), 
+        },
+      },
+    }, report);
+    expect(readFileSync(join(
+      dir, 'out', 'site.css',
+    ), 'utf8')).toContain('padding:10px');
+    expect(readFileSync(join(
+      dir, 'out', 'adm.css',
+    ), 'utf8')).toContain('margin:20px');
+    expect(readFileSync(join(
+      dir, 'out', 'adm.css',
+    ), 'utf8')).not.toContain('padding:10px');
+    expect(JSON.parse(readFileSync(join(
+      dir, 'meta', 'css.json',
+    ), 'utf8'))).toEqual({
+      'site.css': join(
+        '..', 'out', 'site.css',
+      ),
+      'admin.css': join(
+        '..', 'out', 'adm.css',
+      ),
+    });
+  });
+
+  test('несколько записей без [name] — ошибка, а не перезапись одного файла', () => {
+    write('src/site/a.html', '<div class="p10">');
+    write('src/admin/b.html', '<div class="m20">');
+    expect(() => build({
+      input: join(dir, 'src'),
+      output: join(
+        dir, 'out', 'mn.css',
+      ),
+      entry: {
+        site: {
+          include: /site/, 
+        },
+        admin: {
+          include: /admin/, 
+        }, 
+      },
+    }, report)).toThrow('add [name] to --output');
+  });
+
+  test('manifest: false и --no-manifest — без манифеста; нет токенов — нет файлов', () => {
+    write('src/a.html', '<div class="p10">');
+    build({
+      input: join(dir, 'src'),
+      output: join(
+        dir, 'out', 'mn.css',
+      ),
+      manifest: false,
+    }, report);
+    expect(existsSync(join(
+      dir, 'out', 'mn-manifest.json',
+    ))).toBe(false);
+    expect(mergeSettings(parseArgs(['--no-manifest']), {}).manifest).toBe(false);
+    expect(mergeSettings(parseArgs([]), {
+      manifest: 'x.json', 
+    }).manifest).toBe('x.json');
+
+    write('empty/b.html', '<div>');
+    build({
+      input: join(dir, 'empty'),
+      output: join(
+        dir, 'none', 'mn.css',
+      ),
+      presets: [],
+    }, report);
+    expect(existsSync(join(dir, 'none'))).toBe(false);
+    expect(logs.some((m) => m.includes('no CSS'))).toBe(true);
+  });
+});
+
 describe('метрики', () => {
   test('`--metrics` пишет отчёт рядом с CSS', () => {
     write('a.html', '<div class="p10 p10 m20">');

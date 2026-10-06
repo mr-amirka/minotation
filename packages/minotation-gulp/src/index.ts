@@ -31,7 +31,7 @@ import type {
 } from 'node:stream';
 import Vinyl from 'vinyl';
 import {
-  createFileFilter, createTokenCollector,
+  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf,
 } from 'minotation-build';
 import type {
   MnBuildOptions,
@@ -52,11 +52,13 @@ import {
  * ограничивает ничего; `include`, `exclude` и `skipPartials` отсекают файлы
  * пайпа, которые нужны дальше (их пропускают в `gulp.dest`), но токенов из
  * которых брать не надо. `root` не используется.
+ *
+ * В поток уходит файл на каждую запись `entry` по `fileName` (по умолчанию
+ * `[name].css`, хеш — `[name].[hash].css`) и манифест `mn-manifest.json` с
+ * фактическими именами (D-031). Кто хеширует дальше по пайпу (`gulp-rev`),
+ * ставит `manifest: false`.
  */
-export interface MnGulpOptions extends MnBuildOptions {
-  /** Имя CSS-файла, который уходит в поток. @default 'mn.css' */
-  fileName?: string;
-}
+export type MnGulpOptions = MnBuildOptions;
 
 const DEFAULT_PRESETS = [
   presetStandard,
@@ -81,16 +83,16 @@ const DEFAULT_PRESETS = [
  *   .pipe(gulp.dest('dist'));
  */
 export function mnGulp(options: MnGulpOptions = {}): Transform {
-  const fileName = options.fileName || 'mn.css';
+  const manifest = manifestFileName(options.manifest);
   // Пустое расширение пропускает любой файл: что сканировать, выбрал `gulp.src`.
   const files = createFileFilter({
     ...options,
     extensions: options.extensions || [''],
   }, process.cwd());
-  const collector = createTokenCollector({
+  const collector = createBuildCollector({
     ...options,
     presets: options.presets || DEFAULT_PRESETS,
-  });
+  }, process.cwd());
   // Общая база для CSS-файла: gulp считает относительный путь от `base`, и без
   // него результат лёг бы в `dest` по абсолютному пути исходника.
   let base = process.cwd();
@@ -118,7 +120,7 @@ export function mnGulp(options: MnGulpOptions = {}): Transform {
     },
 
     flush(done: TransformCallback): void {
-      const css = collector.css();
+      const outputs = collector.outputs();
       const warnings = collector.takeWarnings();
       const l = warnings.length;
       let i = 0;
@@ -127,20 +129,43 @@ export function mnGulp(options: MnGulpOptions = {}): Transform {
         // штатный вывод задачи.
         console.warn('[minotation] ' + warnings[i].token + ': ' + warnings[i].message);
       }
-      // Пустой CSS в поток не отдаём: `gulp.dest` создал бы пустой файл, и
-      // в разметке появилась бы ссылка на него.
-      if (!css) {
-        done();
-        return;
+      const written: Record<string, string> = {};
+      let name: string;
+      for (const output of outputs) {
+        // Пустой CSS в поток не отдаём: `gulp.dest` создал бы пустой файл, и
+        // в разметке появилась бы ссылка на него.
+        if (!output.css) {
+          continue;
+        }
+        name = formatFileName(
+          (options.entry && options.entry[output.name].fileName) || options.fileName || '[name].css',
+          output.name, output.css,
+        );
+        this.push(vinylOf(
+          base, name, output.css,
+        ));
+        written[output.name] = name;
       }
-      this.push(new Vinyl({
-        cwd: process.cwd(),
-        base,
-        path: base + '/' + fileName,
-        contents: Buffer.from(css, 'utf8'),
-      }));
+      manifest && Object.keys(written).length
+        && this.push(vinylOf(
+          base, manifest, JSON.stringify(
+            manifestOf(written), null, 2,
+          ),
+        ));
       done();
     },
+  });
+}
+
+/** Файл для потока gulp с общей базой. */
+function vinylOf(
+  base: string, name: string, text: string,
+): Vinyl {
+  return new Vinyl({
+    cwd: process.cwd(),
+    base,
+    path: base + '/' + name,
+    contents: Buffer.from(text, 'utf8'),
   });
 }
 

@@ -6,7 +6,7 @@
  */
 import { build } from 'esbuild';
 import { join } from 'path';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { mnEsbuild } from '../src/index';
 
@@ -240,12 +240,14 @@ describe('minotation-esbuild — опции и граничные случаи',
     plugin.setup({
       onStart: () => undefined,
       onEnd: () => undefined,
+      onResolve: () => undefined,
       onLoad: (_filter: unknown, cb: (args: { path: string }) => unknown) => loadCallbacks.push(cb),
       initialOptions: {},
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
-    const result = loadCallbacks[0]({ path: join(tmpdir(), 'no-such-dir-9f3c', 'ghost.mn.ts') });
+    // [0] — модуль `virtual:mn.css`, [1] — пресеты, [2] — файлы приложения.
+    const result = loadCallbacks[1]({ path: join(tmpdir(), 'no-such-dir-9f3c', 'ghost.mn.ts') });
     expect(result).toEqual({ contents: 'export default {};', loader: 'js' });
   });
 
@@ -355,5 +357,103 @@ describe('minotation-esbuild — пересборка тем же инстанс
 
     expect(first).toContain('color:#f00');
     expect(second).not.toContain('color:#f00');
+  });
+});
+
+describe('minotation-esbuild — CSS через граф esbuild (D-031)', () => {
+  test("import 'virtual:mn.css' — CSS в бандле esbuild, имя по entryNames (с хешем), отдельного файла нет", async () => {
+    const root = makeProject({
+      'src/main.js': "import 'virtual:mn.css';\nexport const x = 1;\n",
+      'src/app.html': '<div class="p10"></div>',
+    });
+    const outDir = join(root, 'out');
+
+    await build({
+      entryPoints: [join(root, 'src/main.js')],
+      bundle: true,
+      outdir: outDir,
+      entryNames: '[name]-[hash]',
+      plugins: [mnEsbuild({ root })],
+    });
+
+    const names = readdirSync(outDir);
+    const css = names.filter((name) => name.endsWith('.css'));
+    expect(css).toHaveLength(1);
+    expect(css[0]).toMatch(/^main-[\w]{8}\.css$/);
+    // esbuild переформатирует CSS по-своему (`padding: 10px`).
+    expect(readFileSync(join(outDir, css[0]), 'utf-8')).toMatch(/padding:\s*10px/);
+    expect(names).not.toContain('mn-manifest.json');
+  });
+
+  test('virtual:mn/<запись>.css — одна запись; неизвестная запись — ошибка сборки', async () => {
+    const root = makeProject({
+      'src/main.js': "import 'virtual:mn/admin.css';\nexport const x = 1;\n",
+      'src/site/a.html': '<div class="p10"></div>',
+      'src/admin/b.html': '<div class="m20"></div>',
+    });
+    const outDir = join(root, 'out');
+    const entry = { site: { include: /site/ }, admin: { include: /admin/ } };
+
+    await build({
+      entryPoints: [join(root, 'src/main.js')],
+      bundle: true,
+      outdir: outDir,
+      plugins: [mnEsbuild({ root, entry })],
+    });
+    const css = readFileSync(join(outDir, 'main.css'), 'utf-8');
+    expect(css).toMatch(/margin:\s*20px/);
+    expect(css).not.toMatch(/padding:\s*10px/);
+
+    writeFileSync(join(root, 'src/main.js'), "import 'virtual:mn/nope.css';\n");
+    await expect(build({
+      entryPoints: [join(root, 'src/main.js')],
+      bundle: true,
+      outdir: outDir,
+      logLevel: 'silent',
+      plugins: [mnEsbuild({ root, entry })],
+    })).rejects.toThrow('no such entry; declared: site, admin');
+  });
+
+  test('без импорта: файлы по fileName на запись и манифест рядом', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/site/a.html': '<div class="p10"></div>',
+      'src/admin/b.html': '<div class="m20"></div>',
+    });
+    const outDir = join(root, 'out');
+
+    await build({
+      entryPoints: [join(root, 'src/main.js')],
+      bundle: true,
+      outdir: outDir,
+      plugins: [mnEsbuild({
+        root,
+        fileName: 'css/[name].[hash].css',
+        entry: { site: { include: /site/ }, admin: { include: /admin/, fileName: 'admin.css' } },
+      })],
+    });
+
+    const manifest = JSON.parse(readFileSync(join(outDir, 'mn-manifest.json'), 'utf-8'));
+    expect(manifest['site.css']).toMatch(/^css\/site\.[0-9a-f]{8}\.css$/);
+    expect(manifest['admin.css']).toBe('admin.css');
+    expect(readFileSync(join(outDir, manifest['site.css']), 'utf-8')).toContain('padding:10px');
+    expect(readFileSync(join(outDir, 'admin.css'), 'utf-8')).toContain('margin:20px');
+  });
+
+  test('manifest: false — без манифеста', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/app.html': '<div class="p10"></div>',
+    });
+    const outDir = join(root, 'out');
+
+    await build({
+      entryPoints: [join(root, 'src/main.js')],
+      bundle: true,
+      outdir: outDir,
+      plugins: [mnEsbuild({ root, manifest: false })],
+    });
+
+    expect(readdirSync(outDir).sort()).toEqual(['main.js', 'mn.css']);
   });
 });

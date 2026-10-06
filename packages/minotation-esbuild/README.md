@@ -64,7 +64,24 @@ esbuild.build({
 | `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
 | `mn` | — | опции ядра целиком: `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` |
-| `fileName` | `'mn.css'` | имя выходного CSS-файла |
+| `fileName` | `'[name].css'` | имя файла, который пишет плагин без импорта модуля; `[name]`, `[hash]` |
+| `manifest` | `true` → `mn-manifest.json` | фактические имена файлов; `false` — не писать |
+| `entry` | — | несколько CSS из одной сборки; модуль записи — `virtual:mn/<имя>.css` |
+
+## Имя CSS и кеш
+
+Лучший способ — подключить CSS импортом в коде:
+
+```js
+import 'virtual:mn.css';
+```
+
+Тогда он идёт в бандл esbuild рядом с JS (`main.css`) и получает имя по `entryNames`
+— с хешем, если он там задан (`entryNames: '[name]-[hash]'`). Отдельный файл плагин
+в этом случае не пишет.
+
+Без импорта плагин пишет файл сам — по `fileName` (по умолчанию `mn.css`) и кладёт
+рядом `mn-manifest.json`. Защита от кеша — `fileName: '[name].[hash].css'`.
 
 ## Синтаксический разбор
 

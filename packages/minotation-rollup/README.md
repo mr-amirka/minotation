@@ -62,7 +62,17 @@ mn-инстансе и возвращает в бандл пустой моду�
 | `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
 | `mn` | — | опции ядра целиком: `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` |
-| `fileName` | `'mn.css'` | имя выходного CSS-asset |
+| `fileName` | по `output.assetFileNames` rollup — `assets/mn-[hash].css` | имя CSS; шаблон с `[name]` и `[hash]` (`'mn.css'` — постоянное имя) |
+| `manifest` | `true` → `mn-manifest.json` | фактические имена: `{ "mn.css": "assets/mn-3f9a1c2e.css" }`; `false` — не писать |
+| `entry` | — | несколько CSS из одной сборки — по файлу на запись |
+
+## Имя CSS и кеш
+
+CSS отдаётся в граф ассетов rollup, и имя ему назначает rollup по `output.assetFileNames`
+— по умолчанию с хешем содержимого (`assets/mn-3f9a1c2e.css`), так что после правок
+браузер не возьмёт старые стили из кеша. `@rollup/plugin-html` сошлётся на файл сам.
+Если ссылку пишете руками, фактическое имя — в `mn-manifest.json`; постоянное имя —
+`fileName: 'mn.css'`.
 
 ## Синтаксический разбор
 

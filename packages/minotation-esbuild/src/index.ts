@@ -8,7 +8,9 @@ import {
   presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
-import { createFileFilter, createTokenCollector, walkFiles } from 'minotation-build';
+import {
+  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, walkFiles,
+} from 'minotation-build';
 import type { MnBuildOptions } from 'minotation-build';
 import {
   readFileSync,
@@ -28,14 +30,20 @@ import { createRequire } from 'module';
  * Опции плагина {@link mnEsbuild} — эталонный набор `minotation-build` (D-026):
  * `attrs`, `root`, `extensions`, `include`, `exclude`, `skipPartials`, `presets`,
  * `presetExtensions`, `safelist`, `classVarSuffixes`, `mergeFnNames`, `syntax`,
- * `mn`. Описание каждой — в README `minotation-build`.
+ * `mn`, `entry`, `fileName`, `manifest`. Описание каждой — в README `minotation-build`.
  *
  * `root` по умолчанию — рабочая директория (`process.cwd()`).
+ *
+ * CSS можно подключить импортом `virtual:mn.css` в коде: тогда он идёт в бандл
+ * esbuild и получает имя по `entryNames` (с хешем, если он там задан, D-031).
+ * Без импорта плагин пишет файл сам — по `fileName` (по умолчанию `[name].css`)
+ * и кладёт рядом манифест.
  */
-export interface MnEsbuildOptions extends MnBuildOptions {
-  /** Имя выходного CSS-файла. @default 'mn.css' */
-  fileName?: string;
-}
+export interface MnEsbuildOptions extends MnBuildOptions {}
+
+/** Модуль со всем CSS; `virtual:mn/<запись>.css` — одна запись `entry`. */
+export const MN_VIRTUAL = 'virtual:mn.css';
+const REGEXP_MN_VIRTUAL = /^virtual:mn(?:\/([^/]+))?\.css$/;
 
 
 /**
@@ -116,8 +124,8 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
  * });
  */
 export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
-  const fileName = options.fileName || 'mn.css';
   const root = options.root || process.cwd();
+  const manifest = manifestFileName(options.manifest);
   // Отбор файлов — общий для всех плагинов: `extensions` или `include`,
   // затем `exclude` и `skipPartials`.
   const files = createFileFilter(options, root);
@@ -126,7 +134,7 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
   // Учёт токенов, пресеты, компиляция, кеш и предупреждения — общий каркас
   // (`minotation-build`). До 2026-09-29 каждый плагин вёл это сам, и четыре
   // копии расходились между собой.
-  const collector = createTokenCollector({
+  const collector = createBuildCollector({
     // Опции целиком — чтобы каркас увидел и устаревшие ключи (`attr`) и
     // сказал о них, а не потерял молча; ниже — то, что плагин подставляет сам.
     ...options,
@@ -137,7 +145,20 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
       presetNormalize,
       presetMain,
     ],
-  });
+  }, root);
+  /** Подключён ли CSS импортом в этой сборке — тогда отдельный файл не нужен. */
+  let imported = false;
+
+  /** CSS всех записей или одной (`name`). */
+  function cssOf(name: string | undefined): string {
+    const outputs = collector.outputs();
+    const picked = name ? outputs.filter((output) => output.name === name) : outputs;
+    if (name && !picked.length) {
+      throw new Error('[minotation] virtual:mn/' + name + '.css: no such entry; declared: '
+        + collector.names.join(', '));
+    }
+    return picked.map((output) => output.css).filter(Boolean).join('\n');
+  }
 
   /** Пересылает предупреждения последней компиляции в лог esbuild. */
   function flushWarnings(ctx: { warn: (message: string) => void }): void {
@@ -165,6 +186,7 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
         // Чистим здесь, а не в `onEnd`, потому что `onLoad` дозаполняет наборы
         // уже после этого хука.
         collector.clear();
+        imported = false;
 
         for (const file of walkFiles(root, files.presetExtensions)) {
           const preset = evalPresetFile(file);
@@ -176,6 +198,15 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
             collector.add(file, readFileSync(file, 'utf-8'));
           } catch (_) { /* skip unreadable */ }
         }
+      });
+
+      // `import 'virtual:mn.css'` — CSS уходит в бандл esbuild как обычный CSS.
+      // Проект просканирован в `onStart`, поэтому к загрузке модуля CSS полный.
+      build.onResolve({ filter: REGEXP_MN_VIRTUAL }, args => ({ path: args.path, namespace: 'minotation' }));
+      build.onLoad({ filter: /./, namespace: 'minotation' }, args => {
+        imported = true;
+        const name = (REGEXP_MN_VIRTUAL.exec(args.path) as RegExpExecArray)[1];
+        return { contents: cssOf(name), loader: 'css', resolveDir: root };
       });
 
       build.onLoad({ filter: /./ }, args => {
@@ -194,7 +225,10 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
       });
 
       build.onEnd((result) => {
-        const css = collector.css();
+        // CSS вычисляется до сброса предупреждений — иначе предупреждения
+        // компиляции появились бы уже после него и потерялись. Накопитель
+        // кеширует результат, так что повторного счёта ниже нет.
+        const outputs = collector.outputs();
         // esbuild собирает предупреждения в result.warnings — пишем туда же,
         // чтобы они попали в общий отчёт сборки, а не только в stdout.
         flushWarnings({
@@ -204,10 +238,22 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
             result.warnings.push({ text: message } as never);
           },
         });
-        if (!css) return;
+        // Подключили импортом — CSS уже в бандле, отдельный файл был бы вторым.
+        if (imported) return;
         const outDir = resolveOutDir(build);
-        mkdirSync(outDir, { recursive: true });
-        writeFileSync(join(outDir, fileName), css);
+        const written: Record<string, string> = {};
+        for (const output of outputs) {
+          if (!output.css) continue;
+          const template = (options.entry && options.entry[output.name].fileName)
+            || options.fileName || '[name].css';
+          const name = formatFileName(template, output.name, output.css);
+          mkdirSync(dirname(join(outDir, name)), { recursive: true });
+          writeFileSync(join(outDir, name), output.css);
+          written[output.name] = name;
+        }
+        manifest && Object.keys(written).length && writeFileSync(
+          join(outDir, manifest), JSON.stringify(manifestOf(written), null, 2),
+        );
       });
     },
   };

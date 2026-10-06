@@ -18,15 +18,17 @@ describe('minotation-esbuild — smoke', () => {
     expect(typeof plugin.setup).toBe('function');
   });
 
-  test('setup(build) — регистрирует onStart/onLoad(x2: пресет-файлы + файлы приложения)/onEnd', () => {
+  test('setup(build) — регистрирует onStart, onResolve (virtual:mn.css), onLoad x3 (модуль CSS, пресеты, файлы приложения), onEnd', () => {
     const plugin = mnEsbuild({ attrs: 'className:class' });
     const onStart = jest.fn();
+    const onResolve = jest.fn();
     const onLoad = jest.fn();
     const onEnd = jest.fn();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    plugin.setup({ onStart, onLoad, onEnd, initialOptions: {} } as any);
+    plugin.setup({ onStart, onResolve, onLoad, onEnd, initialOptions: {} } as any);
     expect(onStart).toHaveBeenCalledTimes(1);
-    expect(onLoad).toHaveBeenCalledTimes(2);
+    expect(onResolve).toHaveBeenCalledTimes(1);
+    expect(onLoad).toHaveBeenCalledTimes(3);
     expect(onEnd).toHaveBeenCalledTimes(1);
   });
 });

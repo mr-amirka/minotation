@@ -8,7 +8,9 @@ import {
   presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
-import { createFileFilter, createTokenCollector, walkFiles } from 'minotation-build';
+import {
+  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, walkFiles,
+} from 'minotation-build';
 import type { MnBuildOptions } from 'minotation-build';
 import {
   readFileSync,
@@ -26,14 +28,12 @@ import { createRequire } from 'module';
  * Опции плагина {@link mnRollup} — эталонный набор `minotation-build` (D-026):
  * `attrs`, `root`, `extensions`, `include`, `exclude`, `skipPartials`, `presets`,
  * `presetExtensions`, `safelist`, `classVarSuffixes`, `mergeFnNames`, `syntax`,
- * `mn`. Описание каждой — в README `minotation-build`.
+ * `mn`, `entry`, `fileName`, `manifest`. Описание каждой — в README `minotation-build`.
  *
- * `root` по умолчанию — рабочая директория (`process.cwd()`).
+ * `root` по умолчанию — рабочая директория (`process.cwd()`). Без `fileName` имя
+ * CSS назначает rollup по `output.assetFileNames` — по умолчанию с хешем (D-031).
  */
-export interface MnRollupOptions extends MnBuildOptions {
-  /** Имя выходного CSS-файла. @default 'mn.css' */
-  fileName?: string;
-}
+export interface MnRollupOptions extends MnBuildOptions {}
 
 
 /**
@@ -99,8 +99,8 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
  * };
  */
 export function mnRollup(options: MnRollupOptions = {}): Plugin {
-  const fileName = options.fileName || 'mn.css';
   const root = options.root || process.cwd();
+  const manifest = manifestFileName(options.manifest);
   // Отбор файлов — общий для всех плагинов: `extensions` или `include`,
   // затем `exclude` и `skipPartials`.
   const files = createFileFilter(options, root);
@@ -108,7 +108,7 @@ export function mnRollup(options: MnRollupOptions = {}): Plugin {
   const walkExts = options.include ? [''] : files.extensions;
   // Учёт токенов, пресеты, компиляция, кеш и предупреждения — общий каркас
   // ядра. До 2026-09-29 каждый плагин вёл это сам, и четыре копии расходились.
-  const collector = createTokenCollector({
+  const collector = createBuildCollector({
     // Опции целиком — чтобы каркас увидел и устаревшие ключи (`attr`) и
     // сказал о них, а не потерял молча; ниже — то, что плагин подставляет сам.
     ...options,
@@ -119,7 +119,7 @@ export function mnRollup(options: MnRollupOptions = {}): Plugin {
       presetNormalize,
       presetMain,
     ],
-  });
+  }, root);
 
   function isPresetFile(id: string): boolean {
     return files.isPreset(id);
@@ -169,12 +169,28 @@ export function mnRollup(options: MnRollupOptions = {}): Plugin {
       return null;
     },
 
+    /**
+     * CSS уходит в граф ассетов rollup (D-031): без `fileName` имя назначает
+     * сам rollup по `assetFileNames` (по умолчанию `assets/[name]-[hash][extname]`),
+     * и `@rollup/plugin-html` ссылается на файл сам. Кто ставит ссылку руками,
+     * узнаёт фактическое имя из манифеста.
+     */
     generateBundle() {
-      const css = collector.css();
-      flushWarnings(this);
-      if (css) {
-        this.emitFile({ type: 'asset', fileName, source: css });
+      const emitted: Record<string, string> = {};
+      for (const output of collector.outputs()) {
+        if (!output.css) continue;
+        const own = (options.entry && options.entry[output.name].fileName) || options.fileName;
+        const ref = own
+          ? this.emitFile({ type: 'asset', fileName: formatFileName(own, output.name, output.css), source: output.css })
+          : this.emitFile({ type: 'asset', name: output.name + '.css', source: output.css });
+        emitted[output.name] = this.getFileName(ref);
       }
+      flushWarnings(this);
+      manifest && Object.keys(emitted).length && this.emitFile({
+        type: 'asset',
+        fileName: manifest,
+        source: JSON.stringify(manifestOf(emitted), null, 2),
+      });
     },
   };
 }

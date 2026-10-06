@@ -21,7 +21,12 @@ function makeProject(files: Record<string, string>): string {
   return root;
 }
 
-interface RunResult { assets: Record<string, string>; code: string }
+interface RunResult {
+  assets: Record<string, string>;
+  code: string;
+  /** CSS записи `mn` — по имени из манифеста. */
+  css: string;
+}
 
 /** Гоняет реальную rollup-сборку в памяти и возвращает эмитированные assets + код бандла. */
 async function runBuild(root: string, options: MnRollupOptions): Promise<RunResult> {
@@ -42,7 +47,9 @@ async function runBuild(root: string, options: MnRollupOptions): Promise<RunResu
       code += (item as OutputChunk).code;
     }
   }
-  return { assets, code };
+  // Имя CSS назначает rollup (с хешем) — берём его из манифеста, как пользователь.
+  const manifest = assets['mn-manifest.json'] ? JSON.parse(assets['mn-manifest.json']) : {};
+  return { assets, code, css: assets[manifest['mn.css']] || '' };
 }
 
 describe('minotation-rollup — реальная сборка', () => {
@@ -53,10 +60,10 @@ describe('minotation-rollup — реальная сборка', () => {
       'src/theme.mn.ts': "export default (mn) => { mn('rollupToken', 'cF00'); };\nexport const MARKER = 'mn-rollup-fixture-marker-4a8e';\n",
     });
 
-    const { assets, code } = await runBuild(root, {});
+    const { assets, code, css } = await runBuild(root, {});
 
-    expect(assets['mn.css']).toContain('.p10{padding:10px}');
-    expect(assets['mn.css']).toContain('.rollupToken{color:#f00}');
+    expect(css).toContain('.p10{padding:10px}');
+    expect(css).toContain('.rollupToken{color:#f00}');
     expect(code).not.toContain('mn-rollup-fixture-marker-4a8e');
   });
 
@@ -67,7 +74,7 @@ describe('minotation-rollup — реальная сборка', () => {
       'src/presets/theme.mnjs': "export const preset = (mn) => { mn('edgeToken', 'cF00'); };\n",
     });
 
-    const { assets } = await runBuild(root, {
+    const { assets, css } = await runBuild(root, {
       attrs: 'data-cls:class',
       extensions: ['.vue'],
       presetExtensions: ['.mnjs'],
@@ -87,15 +94,15 @@ describe('minotation-rollup — реальная сборка', () => {
       'src/skip.tpl': '<div class="h30"></div>',
     });
 
-    const { assets } = await runBuild(root, {
+    const { assets, css } = await runBuild(root, {
       include: /\.tpl$/,
       exclude: /skip/,
       skipPartials: true,
     });
 
-    expect(assets['mn.css']).toContain('width:20px');
-    expect(assets['mn.css']).not.toContain('margin:10px');
-    expect(assets['mn.css']).not.toContain('height:30px');
+    expect(css).toContain('width:20px');
+    expect(css).not.toContain('margin:10px');
+    expect(css).not.toContain('height:30px');
   });
 
   test('transform-хук добирает токены из реально обрабатываемых модулей', async () => {
@@ -106,9 +113,9 @@ describe('minotation-rollup — реальная сборка', () => {
       'src/widget.js': "export const ui = '<div class=\"transformToken p10\"></div>';\n",
     });
 
-    const { assets } = await runBuild(root, { extensions: ['.js'] });
+    const { assets, css } = await runBuild(root, { extensions: ['.js'] });
 
-    expect(assets['mn.css']).toContain('padding:10px');
+    expect(css).toContain('padding:10px');
   });
 
   test('битый пресет-файл: ошибка логируется, сборка продолжается', async () => {
@@ -121,8 +128,8 @@ describe('minotation-rollup — реальная сборка', () => {
     let calls: unknown[][];
 
     try {
-      const { assets } = await runBuild(root, {});
-      expect(assets['mn.css']).toContain('padding:10px');
+      const { assets, css } = await runBuild(root, {});
+      expect(css).toContain('padding:10px');
     } finally {
       // снимок до mockRestore(): он сбрасывает накопленные вызовы
       calls = errorSpy.mock.calls.slice();
@@ -143,8 +150,8 @@ describe('minotation-rollup — реальная сборка', () => {
       'src/empty.mn.js': 'export const config = { notAFunction: true };\n',
     });
 
-    const { assets } = await runBuild(root, {});
-    expect(assets['mn.css']).toContain('padding:10px');
+    const { assets, css } = await runBuild(root, {});
+    expect(css).toContain('padding:10px');
   });
 
   test('скрытые директории и node_modules пропускаются, .mn.tsx-пресет применяется', async () => {
@@ -156,11 +163,11 @@ describe('minotation-rollup — реальная сборка', () => {
       'node_modules/pkg/dist.html': '<div class="mb99"></div>',
     });
 
-    const { assets } = await runBuild(root, {});
+    const { assets, css } = await runBuild(root, {});
 
-    expect(assets['mn.css']).toContain('.tsxToken{color:#f00}');
-    expect(assets['mn.css']).not.toContain('margin-top:99px');
-    expect(assets['mn.css']).not.toContain('margin-bottom:99px');
+    expect(css).toContain('.tsxToken{color:#f00}');
+    expect(css).not.toContain('margin-top:99px');
+    expect(css).not.toContain('margin-bottom:99px');
   });
 
   test('нечитаемые пути не ломают обход: битый симлинк и несуществующий root', async () => {
@@ -170,8 +177,8 @@ describe('minotation-rollup — реальная сборка', () => {
     });
     symlinkSync(join(root, 'no-such-target.html'), join(root, 'src', 'dangling.html'));
 
-    const { assets } = await runBuild(root, {});
-    expect(assets['mn.css']).toContain('font-weight:700');
+    const { assets, css } = await runBuild(root, {});
+    expect(css).toContain('font-weight:700');
 
     // несуществующий root: readdirSync бросает, плагин не падает
     const bundle = await rollup({
@@ -316,7 +323,8 @@ describe('minotation-rollup — пересборка тем же инстанс�
   async function buildTwice(
     root: string, options: MnRollupOptions, between: () => void,
   ): Promise<[Record<string, string>, Record<string, string>]> {
-    const plugin = mnRollup({ root, ...options });
+    // Постоянное имя — так проверяется и явный `fileName` (D-031).
+    const plugin = mnRollup({ root, fileName: 'mn.css', ...options });
 
     const run = async (): Promise<Record<string, string>> => {
       const bundle = await rollup({
@@ -367,5 +375,61 @@ describe('minotation-rollup — пересборка тем же инстанс�
 
     expect(first['mn.css']).toContain('color:#f00');
     expect(second['mn.css'] || '').not.toContain('color:#f00');
+  });
+});
+
+describe('minotation-rollup — CSS через граф ассетов (D-031)', () => {
+  test('по умолчанию имя назначает rollup — с хешем; манифест знает фактическое имя', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/app.html': '<div class="p10"></div>',
+    });
+
+    const { assets } = await runBuild(root, {});
+
+    const manifest = JSON.parse(assets['mn-manifest.json']);
+    expect(manifest['mn.css']).toMatch(/^assets\/mn-[\w-]{8}\.css$/);
+    expect(assets[manifest['mn.css']]).toContain('padding:10px');
+    expect(assets['mn.css']).toBeUndefined();
+  });
+
+  test('fileName с [name] и [hash]; manifest: путь; entry — файл на запись', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/site/a.html': '<div class="p10"></div>',
+      'src/admin/b.html': '<div class="m20"></div>',
+    });
+
+    const { assets } = await runBuild(root, {
+      fileName: 'css/[name].[hash].css',
+      manifest: 'css/manifest.json',
+      entry: {
+        site: { include: /site/ },
+        admin: { include: /admin/, fileName: 'admin.css' },
+      },
+    });
+
+    const manifest = JSON.parse(assets['css/manifest.json']);
+    expect(manifest['site.css']).toMatch(/^css\/site\.[0-9a-f]{8}\.css$/);
+    expect(manifest['admin.css']).toBe('admin.css');
+    expect(assets[manifest['site.css']]).toContain('padding:10px');
+    expect(assets['admin.css']).toContain('margin:20px');
+    expect(assets['admin.css']).not.toContain('padding:10px');
+  });
+
+  test('manifest: false — без манифеста; пустая запись файла не даёт', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/app.html': '<div class="p10"></div>',
+    });
+
+    const { assets } = await runBuild(root, {
+      manifest: false,
+      presets: [],
+      entry: { empty: { include: /nothing/ }, full: {} },
+    });
+
+    expect(Object.keys(assets).filter((name) => name.endsWith('.json'))).toEqual([]);
+    expect(Object.keys(assets).filter((name) => name.includes('empty'))).toEqual([]);
   });
 });

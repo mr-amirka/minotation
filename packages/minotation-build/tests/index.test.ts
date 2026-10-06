@@ -17,7 +17,8 @@ import {
   tmpdir,
 } from 'node:os';
 import {
-  createAttrsScanner, createFileFilter, createTokenCollector, parseAttrs, walkFiles,
+  createAttrsScanner, createBuildCollector, createFileFilter, createTokenCollector,
+  formatFileName, manifestFileName, manifestOf, parseAttrs, walkFiles,
 } from '../src/index';
 import {
   presetStandard,
@@ -571,5 +572,138 @@ describe('createFileFilter — отбор файлов, как в v1 (D-026, D-0
     const css = collector.css();
     expect(css).toContain('padding:10px');
     expect(css).toContain('margin:20px');
+  });
+});
+
+describe('createBuildCollector — записи entry (D-030)', () => {
+  test('без entry — одна запись mn', () => {
+    const build = createBuildCollector(OPTIONS, '/proj');
+    build.add('/proj/a.html', '<div class="p10">');
+    expect(build.names).toEqual(['mn']);
+    expect(build.outputs()[0].css).toContain('padding:10px');
+  });
+
+  test('файл достаётся записям по их include/exclude', () => {
+    const build = createBuildCollector({
+      ...OPTIONS,
+      entry: {
+        site: {
+          include: /site/, 
+        },
+        admin: {
+          include: /admin/,
+          mn: {
+            selectorPrefix: '.adm ', 
+          }, 
+        },
+        all: {},
+      },
+    }, '/proj');
+    build.add('/proj/site/a.html', '<div class="p10">');
+    build.add('/proj/admin/b.html', '<div class="m20">');
+    const [
+      site,
+      admin,
+      all,
+    ] = build.outputs();
+    expect(site.css).toContain('padding:10px');
+    expect(site.css).not.toContain('margin:20px');
+    expect(admin.css).toContain('.adm .m20{margin:20px}');
+    expect(admin.css).not.toContain('padding:10px');
+    expect(all.css).toContain('padding:10px');
+    expect(all.css).toContain('margin:20px');
+  });
+
+  test('у записи могут быть свои attrs', () => {
+    const build = createBuildCollector({
+      ...OPTIONS,
+      entry: {
+        a: {},
+        b: {},
+        c: {
+          attrs: 'm', 
+        }, 
+      },
+    }, '/proj');
+    build.add('/proj/x.html', '<div class="p10" m="w20">');
+    const [
+      a,
+      b,
+      c,
+    ] = build.outputs();
+    expect(a.css).toBe(b.css);
+    expect(a.css).toContain('.p10{padding:10px}');
+    expect(c.css).toContain('[m~="w20"]{width:20px}');
+    expect(c.css).not.toContain('.p10');
+  });
+
+  test('remove, set, has, пресеты и clear — по всем записям', () => {
+    const build = createBuildCollector({
+      ...OPTIONS,
+      entry: {
+        a: {},
+        b: {
+          include: /never/, 
+        }, 
+      },
+    }, '/proj');
+    expect(build.set('/proj/a.html', ['class p10'])).toBe(true);
+    expect(build.has('/proj/a.html')).toBe(true);
+    build.setPreset('/proj/x.mn.ts', (mn) => mn('pToken', 'cF00'));
+    build.set('/proj/b.html', ['class pToken']);
+    expect(build.outputs()[0].css).toContain('color:#f00');
+    expect(build.removePreset('/proj/x.mn.ts')).toBe(true);
+    expect(build.removePreset('/proj/x.mn.ts')).toBe(false);
+    expect(build.remove('/proj/a.html')).toBe(true);
+    expect(build.remove('/proj/a.html')).toBe(false);
+    build.clear();
+    expect(build.has('/proj/b.html')).toBe(false);
+  });
+
+  test('предупреждения общих токенов не дублируются', () => {
+    const build = createBuildCollector({
+      ...OPTIONS,
+      entry: {
+        a: {},
+        b: {}, 
+      },
+    }, '/proj');
+    build.add('/proj/a.html', '<div class="w10qq">');
+    build.outputs();
+    expect(build.takeWarnings()).toHaveLength(1);
+  });
+
+  test('пустой entry — ошибка', () => {
+    expect(() => createBuildCollector({
+      entry: {}, 
+    }, '/proj')).toThrow('entry is empty');
+  });
+});
+
+describe('formatFileName и манифест (D-031)', () => {
+  test('[name] и [hash] — хеш меняется вместе с содержимым', () => {
+    const a = formatFileName(
+      '[name].[hash].css', 'mn', '.p10{padding:10px}',
+    );
+    const b = formatFileName(
+      '[name].[hash].css', 'mn', '.p10{padding:11px}',
+    );
+    expect(a).toMatch(/^mn\.[0-9a-f]{8}\.css$/);
+    expect(a).not.toBe(b);
+    expect(formatFileName(
+      'mn.css', 'site', 'x',
+    )).toBe('mn.css');
+  });
+
+  test('манифест: логическое имя → фактическое', () => {
+    expect(manifestOf({
+      mn: 'mn.3f9a1c2e.css', 
+    })).toEqual({
+      'mn.css': 'mn.3f9a1c2e.css', 
+    });
+    expect(manifestFileName(undefined)).toBe('mn-manifest.json');
+    expect(manifestFileName(true)).toBe('mn-manifest.json');
+    expect(manifestFileName('dist/css.json')).toBe('dist/css.json');
+    expect(manifestFileName(false)).toBeUndefined();
   });
 });

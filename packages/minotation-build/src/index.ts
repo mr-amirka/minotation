@@ -24,6 +24,9 @@ import {
   readdirSync, statSync,
 } from 'node:fs';
 import {
+  createHash,
+} from 'node:crypto';
+import {
   basename, join, relative,
 } from 'node:path';
 import {
@@ -336,6 +339,55 @@ export interface MnBuildOptions extends TokenCollectorOptions {
    * текстом при любом значении.
    */
   syntax?: boolean;
+  /**
+   * Несколько выходных CSS из одной сборки (D-030): имя записи → её опции.
+   * Файлы сканируются один раз, CSS компилируется на каждую запись. Без `entry` —
+   * одна запись `mn` с опциями верхнего уровня.
+   *
+   * @example
+   * entry: {
+   *   site: { include: /src\/site\// },
+   *   admin: { include: /src\/admin\//, presets: [presetStandard] },
+   * }
+   */
+  entry?: Record<string, MnEntryOptions>;
+  /**
+   * Имя выходного файла: `[name]` — имя записи, `[hash]` — хеш содержимого (D-031).
+   * Нужен там, где файл пишет сам плагин (CLI, gulp). Плагины сборщиков отдают CSS
+   * в граф ассетов, и имя с хешем назначает сборщик по своим правилам.
+   * @default '[name].css'
+   */
+  fileName?: string;
+  /**
+   * Манифест «логическое имя → фактическое» (`{ "mn.css": "mn.3f9a1c2e.css" }`) —
+   * для серверных шаблонов, которым нужно знать имя файла с хешем. `true` — рядом с
+   * CSS под именем `mn-manifest.json`, строка — свой путь, `false` — не писать (D-031).
+   * @default true
+   */
+  manifest?: boolean | string;
+}
+
+/**
+ * Опции одной записи `entry` — то, что у записей бывает разным; остальное
+ * наследуется от опций верхнего уровня. `mn` сливается по полям.
+ */
+export interface MnEntryOptions {
+  /** Какие из просканированных файлов дают токены этой записи. По умолчанию — все. */
+  include?: MnFileMatcher;
+  /** Какие файлы этой записи не касаются. */
+  exclude?: MnFileMatcher;
+  /** Пропускать партиалы `_*` для этой записи. */
+  skipPartials?: boolean;
+  /** Свои атрибуты. Записи с одинаковыми `attrs` сканируются одним проходом. */
+  attrs?: MnAttrs;
+  /** Свои пресеты вместо общих. */
+  presets?: MnPreset[];
+  /** Свой safelist вместо общего. */
+  safelist?: string[];
+  /** Поля ядра поверх общих (`selectorPrefix` и т.д.). */
+  mn?: MnOptions;
+  /** Своё имя файла — там, где имя назначает плагин (CLI, gulp). */
+  fileName?: string;
 }
 
 /** Умолчание `extensions` — общее для плагинов. */
@@ -612,6 +664,188 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
       return cachedCss;
     },
   };
+}
+
+/**
+ * Подставляет в шаблон имени `[name]` и `[hash]` (8 символов SHA-256 содержимого).
+ *
+ * @param template — `'[name].[hash].css'`, `'mn.css'`, …
+ * @param name — имя записи `entry`
+ * @param css — содержимое, по которому считается хеш
+ */
+export function formatFileName(
+  template: string, name: string, css: string,
+): string {
+  return template
+    .replace(/\[name\]/g, name)
+    .replace(/\[hash\]/g, () => createHash('sha256').update(css).digest('hex').slice(0, 8));
+}
+
+/** CSS одной записи `entry`. */
+export interface BuildOutput {
+  /** Имя записи (`mn` без `entry`). */
+  name: string;
+  /** Готовый CSS; пустая строка — токенов нет. */
+  css: string;
+}
+
+/**
+ * Накопитель сборки с записями `entry` (D-030): тот же интерфейс, что у
+ * {@link TokenCollector}, но CSS — по записям.
+ */
+export interface BuildCollector {
+  /** Сканирует файл один раз на каждый набор `attrs` и раздаёт токены записям. */
+  add(id: string, source: string): boolean;
+  /** Готовые записи сканера (webpack: сканирует лоадер) — раздать записям. */
+  set(id: string, entries: Iterable<string>): boolean;
+  remove(id: string): boolean;
+  has(id: string): boolean;
+  setPreset(id: string, preset: MnPreset): void;
+  removePreset(id: string): boolean;
+  clear(): void;
+  /** Имена записей в порядке объявления. */
+  names: string[];
+  /** CSS каждой записи; кешируется накопителем записи. */
+  outputs(): BuildOutput[];
+  /** Предупреждения последней компиляции всех записей, без повторов. */
+  takeWarnings(): MnWarning[];
+}
+
+/**
+ * Создаёт накопитель с записями `entry`.
+ *
+ * Записи с одинаковым `attrs` используют один сканер, так что файл читается
+ * парсером один раз, сколько бы записей его ни разделяли; `include`/`exclude`
+ * записи решают только, кому из них достанутся найденные токены.
+ *
+ * @param options — опции плагина
+ * @param root — корень для путей в `include`/`exclude` записей
+ */
+export function createBuildCollector(options: MnBuildOptions, root: string): BuildCollector {
+  const entries = options.entry || {
+    mn: {}, 
+  };
+  const names = Object.keys(entries);
+  if (!names.length) {
+    throw new Error('[minotation] entry is empty: declare at least one entry or omit the option');
+  }
+  const scanners: Record<string, AttrsScanner> = {};
+  const parts = names.map((name) => {
+    const own = entries[name];
+    const merged: MnBuildOptions = {
+      ...options,
+      ...own,
+      mn: {
+        ...options.mn,
+        ...own.mn,
+      },
+    };
+    const key = JSON.stringify(parseAttrs(merged.attrs));
+    scanners[key] || (scanners[key] = createAttrsScanner(merged));
+    return {
+      key,
+      collector: createTokenCollector(merged),
+      // Отбор файлов плагином уже сделан; запись лишь делит найденное.
+      filter: createFileFilter({
+        extensions: [''],
+        include: own.include,
+        exclude: own.exclude,
+        skipPartials: own.skipPartials,
+      }, root),
+    };
+  });
+  const l = parts.length;
+  function distribute(id: string, entriesOf: (key: string) => string[]): boolean {
+    let changed = false;
+    let i = 0;
+    for (; i < l; i++) {
+      changed = (parts[i].filter.accepts(id)
+        ? parts[i].collector.set(id, entriesOf(parts[i].key))
+        : parts[i].collector.remove(id)) || changed;
+    }
+    return changed;
+  }
+  return {
+    names,
+    add(id: string, source: string): boolean {
+      const scanned: Record<string, string[]> = {};
+      return distribute(id, (key) => scanned[key] || (scanned[key] = scanners[key](source, id)));
+    },
+    set(id: string, found: Iterable<string>): boolean {
+      const list = Array.from(found);
+      return distribute(id, () => list);
+    },
+    remove(id: string): boolean {
+      let changed = false;
+      for (const part of parts) {
+        changed = part.collector.remove(id) || changed;
+      }
+      return changed;
+    },
+    has(id: string): boolean {
+      return parts.some((part) => part.collector.has(id));
+    },
+    setPreset(id: string, preset: MnPreset): void {
+      for (const part of parts) {
+        part.collector.setPreset(id, preset);
+      }
+    },
+    removePreset(id: string): boolean {
+      let changed = false;
+      for (const part of parts) {
+        changed = part.collector.removePreset(id) || changed;
+      }
+      return changed;
+    },
+    clear(): void {
+      for (const part of parts) {
+        part.collector.clear();
+      }
+    },
+    outputs(): BuildOutput[] {
+      return parts.map((part, i) => ({
+        name: names[i],
+        css: part.collector.css(),
+      }));
+    },
+    takeWarnings(): MnWarning[] {
+      const seen: Record<string, 1> = {};
+      const out: MnWarning[] = [];
+      let key: string;
+      for (const part of parts) {
+        for (const warning of part.collector.takeWarnings()) {
+          key = warning.token + '\u0000' + warning.message;
+          seen[key] || (seen[key] = 1, out.push(warning));
+        }
+      }
+      return out;
+    },
+  };
+}
+
+/**
+ * Манифест «логическое имя → фактическое имя файла»: `{ "mn.css": "mn.3f9a1c2e.css" }`.
+ *
+ * @param files — имя записи → фактическое имя файла
+ */
+export function manifestOf(files: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const name of Object.keys(files)) {
+    out[name + '.css'] = files[name];
+  }
+  return out;
+}
+
+/**
+ * Путь манифеста по опции `manifest`; `undefined` — не писать.
+ *
+ * @param manifest — опция `manifest`
+ */
+export function manifestFileName(manifest: boolean | string | undefined): string | undefined {
+  if (manifest === false) {
+    return undefined;
+  }
+  return typeof manifest === 'string' ? manifest : 'mn-manifest.json';
 }
 
 /** Одинаковы ли наборы токенов — чтобы не считать пересборку нужной зря. */

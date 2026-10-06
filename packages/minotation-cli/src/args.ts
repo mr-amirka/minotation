@@ -26,7 +26,7 @@ export interface CliArgs {
   watch: boolean;
   /** Путь к файлу конфигурации. */
   config?: string;
-  /** Атрибут с токенами (`class`, `className`). */
+  /** Какие атрибуты сканировать и во что разворачивать (`class, className:class`). */
   attrs?: string;
   /** Префикс для всех селекторов. */
   prefix?: string;
@@ -36,6 +36,8 @@ export interface CliArgs {
   strict: boolean;
   /** Не разбирать JS/TS парсером — только текстовый поиск. */
   noSyntax: boolean;
+  /** Пропускать файлы-партиалы `_*` (D-027). */
+  skipPartials: boolean;
   /** Куда писать статистику употребления токенов. */
   metrics?: string;
   /** Какие файлы сканировать — регулярное выражение по имени. */
@@ -61,6 +63,7 @@ const DEFAULTS: CliArgs = {
   altColor: false,
   strict: false,
   noSyntax: false,
+  skipPartials: false,
   help: false,
   version: false,
 };
@@ -72,6 +75,7 @@ const FLAGS: Record<string, keyof CliArgs> = {
   '--alt-color': 'altColor',
   '--strict': 'strict',
   '--no-syntax': 'noSyntax',
+  '--skip-partials': 'skipPartials',
   '-h': 'help',
   '--help': 'help',
   '-v': 'version',
@@ -158,6 +162,7 @@ Options:
       --alt-color        opaque fallback declaration next to rgba
       --strict           stop at the first broken token
       --no-syntax        do not parse JS/TS, text search only
+      --skip-partials    skip partial files whose name starts with _
   -m, --metrics <file>   write token usage statistics (JSON)
       --include <regexp> which files to scan
       --exclude <regexp> which files to skip

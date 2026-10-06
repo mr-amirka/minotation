@@ -24,7 +24,7 @@ import {
   readdirSync, statSync,
 } from 'node:fs';
 import {
-  join,
+  basename, join, relative,
 } from 'node:path';
 import {
   createScanner, minotationProvider,
@@ -67,21 +67,27 @@ const REGEXP_ATTRS_SPLIT = /[\s|,;]+/;
  */
 export function parseAttrs(attrs?: MnAttrs): Record<string, string> {
   if (attrs === undefined || attrs === null) {
-    return { class: 'class' };
+    return {
+      class: 'class', 
+    };
   }
   const out: Record<string, string> = {};
   let found = 0;
   if (typeof attrs === 'string' || Array.isArray(attrs)) {
     const items = typeof attrs === 'string' ? attrs.split(REGEXP_ATTRS_SPLIT) : attrs;
+    let at: number;
+    let from: string;
+    let to: string;
     for (const item of items) {
-      const at = item.indexOf(':');
-      const from = (at > -1 ? item.slice(0, at) : item).trim();
-      const to = (at > -1 ? item.slice(at + 1) : item).trim();
+      at = item.indexOf(':');
+      from = (at > -1 ? item.slice(0, at) : item).trim();
+      to = (at > -1 ? item.slice(at + 1) : item).trim();
       from && to && (out[from] = to, found++);
     }
   } else {
+    let to: unknown;
     for (const from of Object.keys(attrs)) {
-      const to = attrs[from];
+      to = attrs[from];
       from && typeof to === 'string' && to && (out[from] = to, found++);
     }
   }
@@ -119,9 +125,7 @@ export type AttrsScanner = (source: string, fileName?: string) => string[];
  *
  * @param options — опции сканера и `attrs`
  */
-export function createAttrsScanner(
-  options: Omit<ScannerOptions, 'attr'> & { attrs?: MnAttrs },
-): AttrsScanner {
+export function createAttrsScanner(options: Omit<ScannerOptions, 'attr'> & { attrs?: MnAttrs }): AttrsScanner {
   // Конфиги часто на JS, где типов нет: забытый `attr` проигнорировался бы
   // молча, и токены из второго атрибута пропали бы без единого сообщения.
   'attr' in options && throwRenamedAttr((options as { attr?: unknown }).attr);
@@ -143,8 +147,9 @@ export function createAttrsScanner(
   return (source: string, fileName?: string): string[] => {
     const out: string[] = [];
     let i = 0;
+    let prefix: string;
     for (; i < l; i++) {
-      const prefix = targets[i] + ' ';
+      prefix = targets[i] + ' ';
       for (const token of scanners[i](source, fileName)) {
         out.push(prefix + token);
       }
@@ -160,13 +165,13 @@ export function createAttrsScanner(
  * @param mn — инстанс с применёнными пресетами
  * @param entries — записи `'<цель> <токен>'`
  */
-export function compileEntries(
-  mn: Pick<ReturnType<typeof minotationProvider>, 'getCompiler'>, entries: Iterable<string>,
-): void {
+export function compileEntries(mn: Pick<ReturnType<typeof minotationProvider>, 'getCompiler'>, entries: Iterable<string>): void {
   const compilers: Record<string, (value: string) => void> = {};
+  let at: number;
+  let target: string;
   for (const entry of entries) {
-    const at = entry.indexOf(' ');
-    const target = entry.slice(0, at);
+    at = entry.indexOf(' ');
+    target = entry.slice(0, at);
     (compilers[target] || (compilers[target] = mn.getCompiler(target)))(entry.slice(at + 1));
   }
 }
@@ -175,7 +180,11 @@ export function compileEntries(
 export interface TokenCollectorOptions extends Omit<ScannerOptions, 'attr'> {
   /** Какие атрибуты сканировать и во что разворачивать — {@link MnAttrs}. По умолчанию `'class'`. */
   attrs?: MnAttrs;
-  /** Токены, которые нужны всегда, даже если в файлах не встретились; компилируются как классы. */
+  /**
+   * Токены, которые нужны всегда, даже если в файлах не встретились;
+   * компилируются как классы. Элемент может содержать несколько токенов через
+   * пробел: `['crP taL vaT']`.
+   */
   safelist?: string[];
   /** Статические пресеты; их набор задаёт потребитель. */
   presets?: MnPreset[];
@@ -188,6 +197,252 @@ export interface TokenCollectorOptions extends Omit<ScannerOptions, 'attr'> {
    * вызывается как есть, дополнительно к накоплению.
    */
   mn?: MnOptions;
+}
+
+/**
+ * Отбор файлов, как в v1: регулярка, путь, функция или массив из них.
+ *
+ * Строка — путь к файлу: сравнивается и с абсолютным путём, и с путём от корня
+ * (`./` в начале не важен). Массив срабатывает, если сработал хотя бы один элемент.
+ */
+export type MnFileMatcher = RegExp | string | ((path: string) => boolean) | MnFileMatcher[];
+
+/**
+ * Эталонный набор опций всех плагинов сборщиков и CLI (D-026).
+ *
+ * Объявлен один раз здесь: пока каждый плагин объявлял свои опции, наборы
+ * разошлись, и часть опций v1 пропала (сверка — RESEARCH 09). Плагин принимает
+ * `MnBuildOptions` и добавляет только то, что есть лишь у его сборщика.
+ */
+export interface MnBuildOptions extends TokenCollectorOptions {
+  /**
+   * Корень, от которого обходятся файлы при первичном скане (в v1 — `path`).
+   * У каждого плагина своё умолчание (vite — `<root>/src`, rollup и esbuild —
+   * рабочая директория).
+   */
+  root?: string;
+  /**
+   * Расширения сканируемых файлов, если не задан `include`.
+   * @default ['.html', '.jsx', '.tsx', '.vue', '.svelte'] (у astro ещё `.astro`)
+   */
+  extensions?: string[];
+  /** Какие файлы сканировать — вместо `extensions` ({@link MnFileMatcher}). */
+  include?: MnFileMatcher;
+  /** Какие файлы пропускать, даже если подходят под `include`/`extensions`. */
+  exclude?: MnFileMatcher;
+  /**
+   * Пропускать файлы-партиалы — те, чьё имя начинается с `_` (`_header.html`),
+   * как у Sass, Jekyll и 11ty. Выключено: такие файлы обычно попадают на
+   * страницы целиком, и их классы нужны (D-027).
+   * @default false
+   */
+  skipPartials?: boolean;
+  /**
+   * Расширения файлов, считающихся динамическими MN-пресетами.
+   *
+   * Файлы с такими расширениями можно импортировать прямо в коде приложения
+   * как обычные side-effect импорты (аналог `import 'style.scss'`).
+   * Плагин перехватывает их, выполняет на внутреннем mn-инстансе
+   * и возвращает в бандл пустой ES-модуль (`export {};`).
+   * В dev-режиме при изменении пресет-файла CSS обновляется без перезагрузки.
+   *
+   * @default ['.mn.ts', '.mn.js', '.mn.tsx']
+   *
+   * @example
+   * // src/mn/preset.mn.ts
+   * import type { MnInstance, MnWarning } from 'minotation';
+   * export function presetApp(mn: MnInstance): void {
+   *   mn('card', () => ({ style: { borderRadius: '8px' } }));
+   * }
+   *
+   * // src/main.tsx
+   * import './mn/preset.mn';  // ← подключается как side-effect
+   */
+  presetExtensions?: string[];
+  /**
+   * Токены, которые нужно скомпилировать всегда, даже если они не встретились
+   * в литеральном атрибуте `class="…"`.
+   *
+   * Плагин извлекает токены **статически**: из значений `class`/`className`
+   * в исходниках. Классы, собранные в переменных или выражениях
+   * (`const th = 'py12 px14'`, `clsx(...)`, вычисляемые строки), при таком
+   * разборе не видны, и соответствующий CSS в сборку не попадает. Для таких
+   * случаев — перечислить токены здесь.
+   *
+   * @default []
+   *
+   * @example
+   * mnVite({ safelist: ['py12 px14 r8', 'crP', 'taL'] })
+   */
+  safelist?: string[];
+  /**
+   * Суффиксы имён переменных, значения которых считаются списком MN-токенов.
+   *
+   * Дополняет статическое извлечение из `class="…"`: классы, собранные в
+   * переменной, плагин иначе не видит (он разбирает исходник текстом, а не
+   * исполняет его). Достаточно назвать переменную с суффиксом — и токены
+   * из её строкового значения попадут в CSS:
+   *
+   * ```ts
+   * const thClass = 'py12 px14 bb1 bsS';   // ← извлекается
+   * const th = 'py12 px14';                // ← не извлекается
+   * ```
+   *
+   * Распознаются присваивание (`=`) и свойство объекта (`:`), строки в любых
+   * кавычках, включая шаблонные; подстановки `${…}` пропускаются, статические
+   * части вокруг них — берутся. Сравнение суффикса регистрозависимое.
+   *
+   * Пустой массив отключает механизм; всегда доступен запасной путь — {@link safelist}.
+   *
+   * @default ['Class']
+   *
+   * @example
+   * mnVite({ classVarSuffixes: ['Class', 'Cls', 'Styles'] })
+   */
+  classVarSuffixes?: string[];
+  /**
+   * Имена функций слияния токенов, у которых строковые аргументы сканируются.
+   *
+   * `mne('pt26 pb6', props.class)` — токены `pt26` и `pb6` записаны прямо в вызове,
+   * а не в `class="…"` и не в переменной с суффиксом из {@link classVarSuffixes}.
+   * Без этой опции они не попадали в CSS: сборка проходила зелёной, а стили молча
+   * отсутствовали.
+   *
+   * Берутся все строковые литералы внутри вызова, на любой глубине вложенности;
+   * подстановки `${…}` пропускаются, идентификаторы-аргументы игнорируются
+   * (их значения приходят из своих объявлений — их подхватит `classVarSuffixes`).
+   *
+   * Пустой массив отключает механизм.
+   *
+   * @default ['mne', 'mnClass']
+   *
+   * @example
+   * mnVite({ mergeFnNames: ['mne', 'mnClass', 'cx'] })
+   */
+  mergeFnNames?: string[];
+  /**
+   * Разбирать ли `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
+   *
+   * По умолчанию — автоматически: если `typescript` доступен, файлы
+   * JS-семейства идут через него, иначе текстом и молча. Точный разбор
+   * снимает ложные токены из мест, которые текстовый сканер не отличает от
+   * кода: примеры разметки в JSDoc, закомментированный код, строки с кавычкой
+   * внутри регулярного литерала.
+   *
+   * `true` — то же самое, но отсутствие парсера становится предупреждением.
+   * `false` — всегда текстовый разбор.
+   *
+   * Файлы прочих форматов (`.html`, `.vue`, `.svelte`, `.astro`) сканируются
+   * текстом при любом значении.
+   */
+  syntax?: boolean;
+}
+
+/** Умолчание `extensions` — общее для плагинов. */
+export const DEFAULT_EXTENSIONS = [
+  '.html',
+  '.jsx',
+  '.tsx',
+  '.vue',
+  '.svelte',
+];
+/** Умолчание `presetExtensions`. */
+export const DEFAULT_PRESET_EXTENSIONS = [
+  '.mn.ts',
+  '.mn.js',
+  '.mn.tsx',
+];
+
+/** Отбор файлов по опциям {@link MnBuildOptions}. */
+export interface FileFilter {
+  /** Сканировать ли файл на токены. */
+  accepts(path: string): boolean;
+  /** Пресет ли это (`*.mn.ts`). Пресет не сканируется на токены. */
+  isPreset(path: string): boolean;
+  /** Расширения, по которым обходить директорию при первичном скане. */
+  extensions: string[];
+  /** Расширения пресетов. */
+  presetExtensions: string[];
+}
+
+/**
+ * Матчер v1 ({@link MnFileMatcher}) в функцию; `undefined` — матчера нет.
+ *
+ * @param matcher — RegExp, путь, функция или массив из них
+ * @param root — корень для путей, заданных строкой
+ */
+export function createMatcher(matcher: MnFileMatcher | undefined, root: string): ((path: string) => boolean) | undefined {
+  if (matcher === undefined || matcher === null) {
+    return undefined;
+  }
+  if (typeof matcher === 'function') {
+    return matcher;
+  }
+  if (matcher instanceof RegExp) {
+    return (path: string) => {
+      // `g`/`y` двигают `lastIndex` — без сброса второй файл проверялся бы не с начала.
+      matcher.lastIndex = 0;
+      return matcher.test(path);
+    };
+  }
+  if (typeof matcher === 'string') {
+    const target = matcher.replace(/^\.\//, '');
+    return (path: string) => path === target || relative(root, path) === target;
+  }
+  const list = matcher.map((item) => createMatcher(item, root))
+    .filter((item): item is (path: string) => boolean => !!item);
+  return (path: string) => list.some((item) => item(path));
+}
+
+/**
+ * Отбор файлов: `extensions` или `include`, затем `exclude` и `skipPartials`.
+ *
+ * @param options — опции плагина
+ * @param root — корень для строковых матчеров (путь от корня)
+ */
+export function createFileFilter(options: MnBuildOptions, root: string): FileFilter {
+  const extensions = options.extensions || DEFAULT_EXTENSIONS;
+  const presetExtensions = options.presetExtensions || DEFAULT_PRESET_EXTENSIONS;
+  const include = createMatcher(options.include, root);
+  const exclude = createMatcher(options.exclude, root);
+  const skipPartials = !!options.skipPartials;
+  function isPreset(path: string): boolean {
+    return presetExtensions.some((ext) => path.endsWith(ext));
+  }
+  return {
+    extensions,
+    presetExtensions,
+    isPreset,
+    accepts(path: string): boolean {
+      if (isPreset(path)) {
+        return false;
+      }
+      if (skipPartials && basename(path)[0] === '_') {
+        return false;
+      }
+      if (exclude && exclude(path)) {
+        return false;
+      }
+      return include ? include(path) : extensions.some((ext) => path.endsWith(ext));
+    },
+  };
+}
+
+/**
+ * Плоский `safelist`: элемент может содержать несколько токенов через пробел
+ * (`'crP taL vaT'`) — так их удобнее держать группами.
+ *
+ * @param safelist — опция `safelist`
+ * @returns токены по одному
+ */
+export function flatSafelist(safelist: string[] | undefined): string[] {
+  const out: string[] = [];
+  for (const line of safelist || []) {
+    for (const token of line.split(/\s+/)) {
+      token && out.push(token);
+    }
+  }
+  return out;
 }
 
 /** Накопитель токенов одной сборки. */
@@ -245,7 +500,7 @@ export interface TokenCollector {
  */
 export function createTokenCollector(options: TokenCollectorOptions): TokenCollector {
   const scan = createAttrsScanner(options);
-  const safelist = (options.safelist || []).map((token) => 'class ' + token);
+  const safelist = flatSafelist(options.safelist).map((token) => 'class ' + token);
   const presets = options.presets;
   const userOnWarning = options.mn && options.mn.onWarning;
   const silent = userOnWarning === 'silent';

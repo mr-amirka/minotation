@@ -17,38 +17,23 @@
 import type { NextConfig } from 'next';
 import type { Configuration } from 'webpack';
 import { MnWebpackPlugin } from 'minotation-webpack';
-import type { MnAttrs, MnWebpackPluginOptions } from 'minotation-webpack';
+import type { MnLoaderOptions, MnWebpackPluginOptions } from 'minotation-webpack';
 
-/** Опции {@link withMn}. Расширяет {@link MnWebpackPluginOptions}. */
-export interface MnNextOptions extends MnWebpackPluginOptions {
+/**
+ * Опции {@link withMn}: компилирующая часть — {@link MnWebpackPluginOptions}
+ * (`presets`, `safelist`, `mn`, `output`), сканирующая — {@link MnLoaderOptions}
+ * (`attrs`, `include`, `exclude`, `skipPartials`, `classVarSuffixes`,
+ * `mergeFnNames`, `syntax`). Вместе — эталонный набор `minotation-build` (D-026).
+ *
+ * `attrs` по умолчанию `'class, className:class'`: в React `className` — класс.
+ */
+export interface MnNextOptions extends MnWebpackPluginOptions, MnLoaderOptions {
   /**
    * Включить или выключить MN-плагин.
    * Удобно для conditional disable через переменную окружения.
    * @default true
    */
   enabled?: boolean;
-  /**
-   * Какие атрибуты сканировать и во что разворачивать селекторы — как в v1 (D-025).
-   * В React `className` — это класс, поэтому по умолчанию он разворачивается в `class`.
-   * @default 'class, className:class'
-   */
-  attrs?: MnAttrs;
-  /**
-   * Суффиксы имён переменных со списком токенов (`const thClass = 'py12'`).
-   * Пустой массив отключает механизм. @default ['Class']
-   */
-  classVarSuffixes?: string[];
-  /**
-   * Имена функций слияния, чьи строковые аргументы сканируются.
-   * Пустой массив отключает механизм. @default ['mne', 'mnClass']
-   */
-  mergeFnNames?: string[];
-  /**
-   * Разбирать ли `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
-   * По умолчанию автоматически: есть `typescript` — разбором, нет — текстом.
-   * `false` выключает разбор, `true` требует его явно.
-   */
-  syntax?: boolean;
 }
 
 const DEFAULT_OPTIONS: MnNextOptions = {
@@ -91,10 +76,13 @@ export function withMn(
           // `mergeFnNames` до лоадера не доходили вовсе.
           options: {
             attrs: opts.attrs || 'class, className:class',
+            include: opts.include,
+            exclude: opts.exclude,
+            skipPartials: opts.skipPartials,
             classVarSuffixes: opts.classVarSuffixes,
             mergeFnNames: opts.mergeFnNames,
             syntax: opts.syntax,
-          },
+          } satisfies MnLoaderOptions,
         },
       });
 

@@ -79,6 +79,25 @@ describe('minotation-rollup — реальная сборка', () => {
     expect(assets['styles.css']).toContain('padding:10px');
   });
 
+  test('include, exclude и skipPartials — общий отбор файлов (D-026)', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/page.tpl': '<div class="w20"></div>',
+      'src/_part.tpl': '<div class="m10"></div>',
+      'src/skip.tpl': '<div class="h30"></div>',
+    });
+
+    const { assets } = await runBuild(root, {
+      include: /\.tpl$/,
+      exclude: /skip/,
+      skipPartials: true,
+    });
+
+    expect(assets['mn.css']).toContain('width:20px');
+    expect(assets['mn.css']).not.toContain('margin:10px');
+    expect(assets['mn.css']).not.toContain('height:30px');
+  });
+
   test('transform-хук добирает токены из реально обрабатываемых модулей', async () => {
     const root = makeProject({
       'src/main.js': "import './widget.js';\nexport const x = 1;\n",

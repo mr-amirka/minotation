@@ -8,8 +8,8 @@ import {
   presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
-import { createTokenCollector, walkFiles } from 'minotation-build';
-import type { MnAttrs } from 'minotation-build';
+import { createFileFilter, createTokenCollector, walkFiles } from 'minotation-build';
+import type { MnBuildOptions } from 'minotation-build';
 import {
   readFileSync,
   writeFileSync,
@@ -24,71 +24,17 @@ import {
 import { transformSync } from 'esbuild';
 import { createRequire } from 'module';
 
-/** Опции плагина {@link mnEsbuild}. */
-export interface MnEsbuildOptions {
-  /**
-   * Какие атрибуты сканировать и во что разворачивать селекторы — как в v1 (D-025):
-   * `'class, className:class'`, `['class', 'className:class']` или
-   * `{ class: 'class', className: 'class' }`. Имя без `:` разворачивается в себя:
-   * `m="p10"` → `[m~="p10"]`. @default 'class'
-   */
-  attrs?: MnAttrs;
-  /**
-   * Суффиксы имён переменных, чьё строковое значение считается списком MN-токенов
-   * (`const thClass = 'py12 px14'`). Пустой массив отключает механизм.
-   * @default ['Class']
-   */
-  classVarSuffixes?: string[];
-  /**
-   * Имена функций слияния токенов, чьи строковые аргументы сканируются
-   * (`mne('pt26 pb6', props.class)`). Пустой массив отключает механизм.
-   * @default ['mne', 'mnClass']
-   */
-  mergeFnNames?: string[];
-  /**
-   * Разбирать ли `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
-   *
-   * По умолчанию — автоматически: если `typescript` доступен, файлы
-   * JS-семейства идут через него, иначе текстом и молча. Точный разбор
-   * снимает ложные токены из мест, которые текстовый сканер не отличает от
-   * кода: примеры разметки в JSDoc, закомментированный код, строки с кавычкой
-   * внутри регулярного литерала.
-   *
-   * `true` — то же самое, но отсутствие парсера становится предупреждением.
-   * `false` — всегда текстовый разбор.
-   *
-   * Файлы прочих форматов (`.html`, `.vue`, `.svelte`, `.astro`) сканируются
-   * текстом при любом значении.
-   */
-  syntax?: boolean;
-
-  /** Расширения файлов приложения, в которых ищем токены. @default ['.html','.jsx','.tsx','.vue','.svelte'] */
-  extensions?: string[];
-  /** Статические пресеты, подключаемые через конфиг сборщика. */
-  presets?: Array<(mn: MnInstance) => void>;
-  /**
-   * Расширения файлов, считающихся динамическими MN-пресетами (`import './app.mn'`).
-   * @default ['.mn.ts', '.mn.js', '.mn.tsx']
-   */
-  presetExtensions?: string[];
+/**
+ * Опции плагина {@link mnEsbuild} — эталонный набор `minotation-build` (D-026):
+ * `attrs`, `root`, `extensions`, `include`, `exclude`, `skipPartials`, `presets`,
+ * `presetExtensions`, `safelist`, `classVarSuffixes`, `mergeFnNames`, `syntax`,
+ * `mn`. Описание каждой — в README `minotation-build`.
+ *
+ * `root` по умолчанию — рабочая директория (`process.cwd()`).
+ */
+export interface MnEsbuildOptions extends MnBuildOptions {
   /** Имя выходного CSS-файла. @default 'mn.css' */
   fileName?: string;
-  /**
-   * Корень для сканирования файлов приложения — у esbuild, как и у Rollup,
-   * нет встроенного понятия "root проекта". @default process.cwd()
-   */
-  root?: string;
-  /** Опции создания mn-инстанса (selectorPrefix, media, …). */
-  mn?: {
-    selectorPrefix?: string;
-    media?: Record<string, { query?: string; selector?: string; priority?: number }>;
-    /**
-     * Что делать с предупреждениями компиляции. По умолчанию плагин
-     * перехватывает их и пересылает в лог сборщика (вместо `console` ядра).
-     * `'silent'` — не выводить вовсе; своя функция вызывается как есть.
-     */
-    onWarning?: 'silent' | 'console' | ((warning: MnWarning) => void);
-  };
 }
 
 
@@ -170,10 +116,13 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
  * });
  */
 export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
-  const exts = options.extensions || ['.html', '.jsx', '.tsx', '.vue', '.svelte'];
-  const presetExts = options.presetExtensions || ['.mn.ts', '.mn.js', '.mn.tsx'];
   const fileName = options.fileName || 'mn.css';
   const root = options.root || process.cwd();
+  // Отбор файлов — общий для всех плагинов: `extensions` или `include`,
+  // затем `exclude` и `skipPartials`.
+  const files = createFileFilter(options, root);
+  // С `include` расширения не ограничивают обход — решает сам матчер.
+  const walkExts = options.include ? [''] : files.extensions;
   // Учёт токенов, пресеты, компиляция, кеш и предупреждения — общий каркас
   // (`minotation-build`). До 2026-09-29 каждый плагин вёл это сам, и четыре
   // копии расходились между собой.
@@ -181,10 +130,6 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
     // Опции целиком — чтобы каркас увидел и устаревшие ключи (`attr`) и
     // сказал о них, а не потерял молча; ниже — то, что плагин подставляет сам.
     ...options,
-    attrs: options.attrs,
-    classVarSuffixes: options.classVarSuffixes,
-    mergeFnNames: options.mergeFnNames,
-    syntax: options.syntax,
     presets: options.presets || [
       presetStandard,
       presetSynonyms,
@@ -192,7 +137,6 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
       presetNormalize,
       presetMain,
     ],
-    mn: options.mn,
   });
 
   /** Пересылает предупреждения последней компиляции в лог esbuild. */
@@ -222,11 +166,12 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
         // уже после этого хука.
         collector.clear();
 
-        for (const file of walkFiles(root, presetExts)) {
+        for (const file of walkFiles(root, files.presetExtensions)) {
           const preset = evalPresetFile(file);
           if (preset) collector.setPreset(file, preset);
         }
-        for (const file of walkFiles(root, exts)) {
+        for (const file of walkFiles(root, walkExts)) {
+          if (!files.accepts(file)) continue;
           try {
             collector.add(file, readFileSync(file, 'utf-8'));
           } catch (_) { /* skip unreadable */ }
@@ -234,14 +179,14 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
       });
 
       build.onLoad({ filter: /./ }, args => {
-        if (!presetExts.some(ext => args.path.endsWith(ext))) return undefined;
+        if (!files.isPreset(args.path)) return undefined;
         const preset = evalPresetFile(args.path);
         if (preset) collector.setPreset(args.path, preset);
         return { contents: 'export default {};', loader: 'js' };
       });
 
       build.onLoad({ filter: /./ }, args => {
-        if (!exts.some(ext => args.path.endsWith(ext))) return undefined;
+        if (!files.accepts(args.path)) return undefined;
         try {
           collector.add(args.path, readFileSync(args.path, 'utf-8'));
         } catch (_) { /* skip unreadable */ }

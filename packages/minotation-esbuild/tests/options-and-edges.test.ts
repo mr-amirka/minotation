@@ -53,6 +53,33 @@ describe('minotation-esbuild — опции и граничные случаи',
     expect(readFileSync(join(outDir, 'main.js'), 'utf-8')).not.toContain("mn('edgeToken'");
   });
 
+  test('include, exclude и skipPartials — общий отбор файлов (D-026)', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/page.tpl': '<div class="w20"></div>',
+      'src/_part.tpl': '<div class="m10"></div>',
+      'src/skip.tpl': '<div class="h30"></div>',
+    });
+    const outDir = join(root, 'out');
+
+    await build({
+      entryPoints: [join(root, 'src/main.js')],
+      bundle: true,
+      outdir: outDir,
+      plugins: [mnEsbuild({
+        root,
+        include: /\.tpl$/,
+        exclude: /skip/,
+        skipPartials: true,
+      })],
+    });
+
+    const css = readFileSync(join(outDir, 'mn.css'), 'utf-8');
+    expect(css).toContain('width:20px');
+    expect(css).not.toContain('margin:10px');
+    expect(css).not.toContain('height:30px');
+  });
+
   test('битый пресет-файл: ошибка логируется, сборка продолжается', async () => {
     const root = makeProject({
       'src/main.js': 'export const x = 1;\n',

@@ -48,6 +48,37 @@ for (const warning of collector.takeWarnings()) {
 }
 ```
 
+## Эталонный набор опций (D-026)
+
+Один набор на все плагины сборщиков и CLI — `MnBuildOptions`. Плагин принимает его
+целиком и добавляет только то, что есть лишь у его сборщика (`fileName`, `output`).
+Сверка с v1 и список того, что ещё восстанавливается, —
+`AGENT_DRAFT/RESEARCH/09_plugin-options-parity-2026-10-05.md` в контексте проекта.
+
+| Опция | Тип | По умолчанию | Что делает |
+|---|---|---|---|
+| `attrs` | `string \| string[] \| Record<string, string>` | `'class'` | какие атрибуты сканировать и во что разворачивать — раздел ниже |
+| `root` | `string` | у плагина своё: vite — `<root>/src`, rollup/esbuild — рабочая директория | корень первичного скана (в v1 — `path`) |
+| `extensions` | `string[]` | `.html .jsx .tsx .vue .svelte` (+ `.astro` у astro) | какие файлы сканировать, если не задан `include` |
+| `include` | `MnFileMatcher` | — | какие файлы сканировать вместо `extensions`: RegExp, путь, функция или массив |
+| `exclude` | `MnFileMatcher` | — | какие файлы пропускать; важнее `include` |
+| `skipPartials` | `boolean` | `false` | пропускать файлы-партиалы `_*` (D-027) |
+| `presets` | `MnPreset[]` | стандартный набор | статические пресеты |
+| `presetExtensions` | `string[]` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты (`import './app.mn'`) |
+| `safelist` | `string[]` | `[]` | токены, нужные всегда; группы через пробел: `['crP taL vaT']` |
+| `classVarSuffixes` | `string[]` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
+| `mergeFnNames` | `string[]` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
+| `syntax` | `boolean` | автоматически | разбирать JS/TS парсером (`false` — только текст) |
+| `mn` | `MnOptions` | — | опции ядра целиком: `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` |
+
+`MnFileMatcher` — как в v1: `/\.tpl$/`, `'./src/page.html'` (путь от корня или
+абсолютный), `(path) => boolean` или массив из них; массив срабатывает, если
+сработал хоть один элемент.
+
+Где отбор файлов делает сам сборщик (`test` правила webpack, `gulp.src`),
+`extensions` по умолчанию ничего не ограничивает, а `include`/`exclude`/
+`skipPartials` отсекают файлы внутри уже выбранных.
+
 ## `attrs` — какие атрибуты сканировать и во что разворачивать
 
 Опция общая для всех плагинов и CLI; возвращена из v1 (D-025). Ключ — атрибут
@@ -118,6 +149,13 @@ attrs: { class: 'class', className: 'class' }     // объект
 `console`, а у сборщика свой канал вывода — иначе предупреждение либо теряется
 в потоке сборки, либо дублируется. `onWarning: 'silent'` уважается, своя
 функция вызывается дополнительно.
+
+## `createFileFilter`, `createMatcher`, `flatSafelist`
+
+- `createFileFilter(options, root)` — `accepts(path)` (сканировать ли файл) и
+  `isPreset(path)`; учитывает `extensions`, `include`, `exclude`, `skipPartials`.
+- `createMatcher(matcher, root)` — `MnFileMatcher` в функцию.
+- `flatSafelist(safelist)` — группы токенов через пробел в плоский список.
 
 ## `parseAttrs`, `createAttrsScanner`, `compileEntries`
 

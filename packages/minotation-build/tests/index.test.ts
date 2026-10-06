@@ -17,7 +17,7 @@ import {
   tmpdir,
 } from 'node:os';
 import {
-  createAttrsScanner, createTokenCollector, parseAttrs, walkFiles,
+  createAttrsScanner, createFileFilter, createTokenCollector, parseAttrs, walkFiles,
 } from '../src/index';
 import {
   presetStandard,
@@ -510,5 +510,66 @@ describe('attrs — карта «сканируемый → целевой ат�
     expect(() => createAttrsScanner({
       attr: 'class',
     } as never)).toThrow("use attrs: 'class'");
+  });
+});
+
+describe('createFileFilter — отбор файлов, как в v1 (D-026, D-027)', () => {
+  const ROOT = '/proj';
+
+  test('по умолчанию — по расширениям; пресеты не сканируются', () => {
+    const filter = createFileFilter({}, ROOT);
+    expect(filter.accepts('/proj/src/a.tsx')).toBe(true);
+    expect(filter.accepts('/proj/src/a.css')).toBe(false);
+    expect(filter.accepts('/proj/src/app.mn.ts')).toBe(false);
+    expect(filter.isPreset('/proj/src/app.mn.ts')).toBe(true);
+  });
+
+  test.each([
+    ['RegExp', /\.tpl$/],
+    ['функция', (path: string) => path.endsWith('.tpl')],
+    ['путь от корня', './src/a.tpl'],
+    ['абсолютный путь', '/proj/src/a.tpl'],
+    ['массив', [/\.php$/, 'src/a.tpl']],
+  ])('include: %s', (_name, include) => {
+    const filter = createFileFilter({
+      include: include as never, 
+    }, ROOT);
+    expect(filter.accepts('/proj/src/a.tpl')).toBe(true);
+    expect(filter.accepts('/proj/src/a.html')).toBe(false);
+  });
+
+  test('RegExp с флагом g не теряет совпадения между файлами', () => {
+    const filter = createFileFilter({
+      include: /\.tpl$/g, 
+    }, ROOT);
+    expect(filter.accepts('/proj/a.tpl')).toBe(true);
+    expect(filter.accepts('/proj/b.tpl')).toBe(true);
+  });
+
+  test('exclude важнее include и extensions', () => {
+    const filter = createFileFilter({
+      exclude: /vendor/, 
+    }, ROOT);
+    expect(filter.accepts('/proj/vendor/a.html')).toBe(false);
+    expect(filter.accepts('/proj/src/a.html')).toBe(true);
+  });
+
+  test('skipPartials — только по имени файла, не по каталогу', () => {
+    const filter = createFileFilter({
+      skipPartials: true, 
+    }, ROOT);
+    expect(filter.accepts('/proj/src/_header.html')).toBe(false);
+    expect(filter.accepts('/proj/_layouts/page.html')).toBe(true);
+    expect(createFileFilter({}, ROOT).accepts('/proj/src/_header.html')).toBe(true);
+  });
+
+  test('safelist — группы токенов через пробел', () => {
+    const collector = createTokenCollector({
+      ...OPTIONS,
+      safelist: ['p10  m20', ''],
+    });
+    const css = collector.css();
+    expect(css).toContain('padding:10px');
+    expect(css).toContain('margin:20px');
   });
 });

@@ -142,6 +142,10 @@ describe('mergeSettings', () => {
   });
 
   test('флаги складываются: включён хоть где-то — включён', () => {
+    expect(mergeSettings(parseArgs(['--skip-partials']), {}).skipPartials).toBe(true);
+    expect(mergeSettings(parseArgs([]), {
+      skipPartials: true, 
+    }).skipPartials).toBe(true);
     expect(mergeSettings(parseArgs(['--strict']), {}).strict).toBe(true);
     expect(mergeSettings(parseArgs([]), {
       strict: true,
@@ -188,8 +192,8 @@ describe('mergeSettings', () => {
       'vendor',
     ]), {});
     expect(settings.include).toBeInstanceOf(RegExp);
-    expect(settings.include!.test('a.html')).toBe(true);
-    expect(settings.exclude!.test('/vendor/a.html')).toBe(true);
+    expect((settings.include as RegExp).test('a.html')).toBe(true);
+    expect((settings.exclude as RegExp).test('/vendor/a.html')).toBe(true);
   });
 });
 

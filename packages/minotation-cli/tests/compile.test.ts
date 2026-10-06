@@ -94,7 +94,7 @@ describe('collectFiles', () => {
     write('a.html', '');
     const skipped = write('b.html', '');
     expect(collectFiles(
-      dir, undefined, undefined, [skipped],
+      dir, {}, [skipped],
     )).toEqual([join(dir, 'a.html')]);
   });
 
@@ -102,10 +102,32 @@ describe('collectFiles', () => {
     write('a.html', '');
     write('b.tsx', '');
     write('vendor/c.html', '');
-    expect(collectFiles(dir, /\.html$/)).toEqual([join(dir, 'a.html'), join(dir, 'vendor/c.html')]);
-    expect(collectFiles(
-      dir, /\.html$/, /vendor/,
-    )).toEqual([join(dir, 'a.html')]);
+    expect(collectFiles(dir, {
+      include: /\.html$/,
+    })).toEqual([join(dir, 'a.html'), join(dir, 'vendor/c.html')]);
+    expect(collectFiles(dir, {
+      include: /\.html$/,
+      exclude: /vendor/,
+    })).toEqual([join(dir, 'a.html')]);
+  });
+
+  test('include и exclude в формах v1: путь, функция, массив', () => {
+    write('a.html', '');
+    write('b.tpl', '');
+    write('vendor/c.html', '');
+    expect(collectFiles(dir, {
+      include: ['b.tpl', (path: string) => path.endsWith('.html')],
+      exclude: (path: string) => path.endsWith('vendor'),
+    }).sort()).toEqual([join(dir, 'a.html'), join(dir, 'b.tpl')]);
+  });
+
+  test('skipPartials пропускает файлы `_*`', () => {
+    write('a.html', '');
+    write('_part.html', '');
+    expect(collectFiles(dir).sort()).toEqual([join(dir, '_part.html'), join(dir, 'a.html')]);
+    expect(collectFiles(dir, {
+      skipPartials: true,
+    })).toEqual([join(dir, 'a.html')]);
   });
 });
 

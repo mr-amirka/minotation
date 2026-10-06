@@ -7,8 +7,8 @@ import {
   presetMain,
 } from 'minotation';
 import type { MnInstance, MnWarning } from 'minotation';
-import { createTokenCollector, walkFiles } from 'minotation-build';
-import type { MnAttrs } from 'minotation-build';
+import { createFileFilter, createTokenCollector, walkFiles } from 'minotation-build';
+import type { FileFilter, MnBuildOptions } from 'minotation-build';
 import {
   readFileSync,
   readdirSync,
@@ -21,137 +21,15 @@ import {
 import { transformSync } from 'esbuild';
 import { createRequire } from 'module';
 
-/** Опции плагина {@link mnVite}. */
-export interface MnViteOptions {
-  /**
-   * Какие атрибуты сканировать и во что разворачивать селекторы — как в v1 (D-025):
-   * `'class, className:class'`, `['class', 'className:class']` или
-   * `{ class: 'class', className: 'class' }`. Имя без `:` разворачивается в себя:
-   * `m="p10"` → `[m~="p10"]`. @default 'class'
-   */
-  attrs?: MnAttrs;
-  /** Расширения файлов приложения, в которых ищем токены. @default ['.html','.jsx','.tsx','.vue','.svelte'] */
-  extensions?: string[];
-  /** Статические пресеты, подключаемые через конфиг сборщика. */
-  presets?: Array<(mn: MnInstance) => void>;
-  /**
-   * Расширения файлов, считающихся динамическими MN-пресетами.
-   *
-   * Файлы с такими расширениями можно импортировать прямо в коде приложения
-   * как обычные side-effect импорты (аналог `import 'style.scss'`).
-   * Плагин перехватывает их, выполняет на внутреннем mn-инстансе
-   * и возвращает в бандл пустой ES-модуль (`export {};`).
-   * В dev-режиме при изменении пресет-файла CSS обновляется без перезагрузки.
-   *
-   * @default ['.mn.ts', '.mn.js', '.mn.tsx']
-   *
-   * @example
-   * // src/mn/preset.mn.ts
-   * import type { MnInstance, MnWarning } from 'minotation';
-   * export function presetApp(mn: MnInstance): void {
-   *   mn('card', () => ({ style: { borderRadius: '8px' } }));
-   * }
-   *
-   * // src/main.tsx
-   * import './mn/preset.mn';  // ← подключается как side-effect
-   */
-  presetExtensions?: string[];
-  /**
-   * Токены, которые нужно скомпилировать всегда, даже если они не встретились
-   * в литеральном атрибуте `class="…"`.
-   *
-   * Плагин извлекает токены **статически**: из значений `class`/`className`
-   * в исходниках. Классы, собранные в переменных или выражениях
-   * (`const th = 'py12 px14'`, `clsx(...)`, вычисляемые строки), при таком
-   * разборе не видны, и соответствующий CSS в сборку не попадает. Для таких
-   * случаев — перечислить токены здесь.
-   *
-   * @default []
-   *
-   * @example
-   * mnVite({ safelist: ['py12 px14 r8', 'crP', 'taL'] })
-   */
-  safelist?: string[];
-  /**
-   * Суффиксы имён переменных, значения которых считаются списком MN-токенов.
-   *
-   * Дополняет статическое извлечение из `class="…"`: классы, собранные в
-   * переменной, плагин иначе не видит (он разбирает исходник текстом, а не
-   * исполняет его). Достаточно назвать переменную с суффиксом — и токены
-   * из её строкового значения попадут в CSS:
-   *
-   * ```ts
-   * const thClass = 'py12 px14 bb1 bsS';   // ← извлекается
-   * const th = 'py12 px14';                // ← не извлекается
-   * ```
-   *
-   * Распознаются присваивание (`=`) и свойство объекта (`:`), строки в любых
-   * кавычках, включая шаблонные; подстановки `${…}` пропускаются, статические
-   * части вокруг них — берутся. Сравнение суффикса регистрозависимое.
-   *
-   * Пустой массив отключает механизм; всегда доступен запасной путь — {@link safelist}.
-   *
-   * @default ['Class']
-   *
-   * @example
-   * mnVite({ classVarSuffixes: ['Class', 'Cls', 'Styles'] })
-   */
-  classVarSuffixes?: string[];
-  /**
-   * Имена функций слияния токенов, у которых строковые аргументы сканируются.
-   *
-   * `mne('pt26 pb6', props.class)` — токены `pt26` и `pb6` записаны прямо в вызове,
-   * а не в `class="…"` и не в переменной с суффиксом из {@link classVarSuffixes}.
-   * Без этой опции они не попадали в CSS: сборка проходила зелёной, а стили молча
-   * отсутствовали.
-   *
-   * Берутся все строковые литералы внутри вызова, на любой глубине вложенности;
-   * подстановки `${…}` пропускаются, идентификаторы-аргументы игнорируются
-   * (их значения приходят из своих объявлений — их подхватит `classVarSuffixes`).
-   *
-   * Пустой массив отключает механизм.
-   *
-   * @default ['mne', 'mnClass']
-   *
-   * @example
-   * mnVite({ mergeFnNames: ['mne', 'mnClass', 'cx'] })
-   */
-  mergeFnNames?: string[];
-  /**
-   * Разбирать ли `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
-   *
-   * По умолчанию — автоматически: если `typescript` доступен, файлы
-   * JS-семейства идут через него, иначе текстом и молча. Точный разбор
-   * снимает ложные токены из мест, которые текстовый сканер не отличает от
-   * кода: примеры разметки в JSDoc, закомментированный код, строки с кавычкой
-   * внутри регулярного литерала.
-   *
-   * `true` — то же самое, но отсутствие парсера становится предупреждением.
-   * `false` — всегда текстовый разбор.
-   *
-   * Файлы прочих форматов (`.html`, `.vue`, `.svelte`, `.astro`) сканируются
-   * текстом при любом значении.
-   */
-  syntax?: boolean;
-  /** Опции создания mn-инстанса (selectorPrefix, media, strict, …). */
-  mn?: {
-    selectorPrefix?: string;
-    media?: Record<string, { query?: string; selector?: string; priority?: number }>;
-    /**
-     * `true` — предупреждения (неизвестный хендлер, битое CSS-значение и т.п.),
-     * накопленные за цикл компиляции, роняют сборку (`MnStrictError`) вместо
-     * тихого `console.warn`. @default false — см. `MnOptions.strict` в `minotation`.
-     */
-    strict?: boolean;
-    /**
-     * Что делать с предупреждениями компиляции. По умолчанию плагин
-     * перехватывает их и пишет в лог Vite (вместо `console` ядра).
-     * `'silent'` — не выводить вовсе; своя функция вызывается как есть,
-     * дополнительно к логу сборщика.
-     */
-    onWarning?: 'silent' | 'console' | ((warning: MnWarning) => void);
-  };
-}
+/**
+ * Опции плагина {@link mnVite} — эталонный набор `minotation-build` целиком
+ * (D-026): `attrs`, `root`, `extensions`, `include`, `exclude`, `skipPartials`,
+ * `presets`, `presetExtensions`, `safelist`, `classVarSuffixes`, `mergeFnNames`,
+ * `syntax`, `mn`. Описание каждой — в README `minotation-build`.
+ *
+ * `root` у vite по умолчанию — `<root конфига Vite>/src`.
+ */
+export interface MnViteOptions extends MnBuildOptions {}
 
 
 /** Имя CSS-файла: asset сборки и адрес, по которому dev-сервер отдаёт тот же CSS. */
@@ -247,15 +125,6 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
  * import './mn/app.mn';
  */
 export function mnVite(options: MnViteOptions = {}): Plugin {
-  const exts = options.extensions || ['.html', '.jsx', '.tsx', '.vue', '.svelte'];
-  const presetExts = options.presetExtensions || ['.mn.ts', '.mn.js', '.mn.tsx'];
-  // Плоский набор: элементы safelist могут содержать несколько токенов через пробел.
-  const safelist: string[] = [];
-  for (const line of options.safelist || []) {
-    for (const token of line.split(/\s+/)) {
-      if (token) safelist.push(token);
-    }
-  }
   const staticPresets = options.presets || [
     presetStandard,
     presetSynonyms,
@@ -278,14 +147,16 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
     // Опции целиком — чтобы каркас увидел и устаревшие ключи (`attr`) и
     // сказал о них, а не потерял молча; ниже — то, что плагин подставляет сам.
     ...options,
-    attrs: options.attrs,
-    classVarSuffixes: options.classVarSuffixes,
-    mergeFnNames: options.mergeFnNames,
-    syntax: options.syntax,
-    safelist,
     presets: staticPresets,
-    mn: options.mn,
   });
+
+  /** Отбор файлов — общий для всех плагинов; корень известен после `configResolved`. */
+  let files: FileFilter = createFileFilter(options, root);
+
+  /** Корень первичного скана: `root` из опций или `src/` проекта Vite. */
+  function scanRoot(): string {
+    return options.root || join(root, 'src');
+  }
 
   /**
    * Проверяет, является ли файл динамическим пресет-файлом по расширению.
@@ -293,7 +164,7 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
    * @param id - абсолютный путь к файлу
    */
   function isPresetFile(id: string): boolean {
-    return presetExts.some(ext => id.endsWith(ext));
+    return files.isPreset(id);
   }
 
   // extractTokens импортируется из ядра minotation — кеш регексов там
@@ -313,8 +184,9 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
    * Вызывается в `transformIndexHtml` — до того, как Vite запустил transform-хуки.
    */
   function scanProject(): void {
-    const srcDir = join(root, 'src');
-    for (const file of walkFiles(srcDir, exts)) {
+    // С `include` расширения не ограничивают обход — решает сам матчер.
+    for (const file of walkFiles(scanRoot(), options.include ? [''] : files.extensions)) {
+      if (!files.accepts(file)) continue;
       try {
         collector.add(file, readFileSync(file, 'utf-8'));
       } catch (_) { /* skip unreadable */ }
@@ -326,8 +198,7 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
    * Вызывается в `transformIndexHtml` при старте dev-сервера и build.
    */
   function scanPresetFiles(): void {
-    const srcDir = join(root, 'src');
-    for (const file of walkFiles(srcDir, presetExts)) {
+    for (const file of walkFiles(scanRoot(), files.presetExtensions)) {
       const preset = evalPresetFile(file);
       if (preset) collector.setPreset(file, preset);
     }
@@ -341,6 +212,7 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
       root = config.root;
       command = config.command;
       logger = config.logger;
+      files = createFileFilter(options, root);
     },
 
     /**
@@ -405,7 +277,7 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
     },
 
     transform(source: string, id: string) {
-      if (!exts.some(ext => id.endsWith(ext))) return null;
+      if (!files.accepts(id)) return null;
       collector.add(id, source);
       return null;
     },
@@ -469,7 +341,7 @@ if (import.meta.hot) {
         return []; // полный HMR-цикл не нужен — CSS уже обновлён
       }
 
-      if (!exts.some(ext => file.endsWith(ext))) return;
+      if (!files.accepts(file)) return;
 
       let source: string;
       try {

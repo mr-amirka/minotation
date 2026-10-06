@@ -2,47 +2,23 @@
  * Webpack loader: извлекает MN-токены из исходников.
  */
 import type { LoaderDefinitionFunction } from 'webpack';
-import { createAttrsScanner } from 'minotation-build';
-import type { MnAttrs } from 'minotation-build';
+import { createAttrsScanner, createFileFilter } from 'minotation-build';
+import type { MnBuildOptions } from 'minotation-build';
 import { getState } from './state';
 
-/** Опции webpack-лоадера MN. */
-interface MnLoaderOptions {
-  /**
-   * Какие атрибуты сканировать и во что разворачивать селекторы — как в v1 (D-025):
-   * `'class, className:class'`, массив `['class', 'className:class']` или объект.
-   * @default 'class'
-   */
-  attrs?: MnAttrs;
-  /**
-   * Суффиксы имён переменных, чьё строковое значение считается списком MN-токенов
-   * (`const thClass = 'py12 px14'`). Пустой массив отключает механизм.
-   * @default ['Class']
-   */
-  classVarSuffixes?: string[];
-  /**
-   * Имена функций слияния токенов, чьи строковые аргументы сканируются
-   * (`mne('pt26 pb6', props.class)`). Пустой массив отключает механизм.
-   * @default ['mne', 'mnClass']
-   */
-  mergeFnNames?: string[];
-  /**
-   * Разбирать ли `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
-   *
-   * По умолчанию — автоматически: если `typescript` доступен, файлы
-   * JS-семейства идут через него, иначе текстом и молча. Точный разбор
-   * снимает ложные токены из мест, которые текстовый сканер не отличает от
-   * кода: примеры разметки в JSDoc, закомментированный код, строки с кавычкой
-   * внутри регулярного литерала.
-   *
-   * `true` — то же самое, но отсутствие парсера становится предупреждением.
-   * `false` — всегда текстовый разбор.
-   *
-   * Файлы прочих форматов (`.html`, `.vue`, `.svelte`, `.astro`) сканируются
-   * текстом при любом значении.
-   */
-  syntax?: boolean;
-}
+/**
+ * Опции webpack-лоадера MN — сканирующая часть эталонного набора
+ * `minotation-build` (D-026): `attrs`, `include`, `exclude`, `skipPartials`,
+ * `classVarSuffixes`, `mergeFnNames`, `syntax`. Описание каждой — в README
+ * `minotation-build`. Компилирующая часть (`presets`, `safelist`, `mn`) — у
+ * {@link MnWebpackPlugin}.
+ *
+ * Какие файлы попадают в лоадер, решает `test` правила webpack, поэтому
+ * `extensions` здесь ничего не ограничивает; `include`/`exclude`/`skipPartials`
+ * отсекают файлы внутри правила.
+ */
+export type MnLoaderOptions = Pick<MnBuildOptions,
+  'attrs' | 'include' | 'exclude' | 'skipPartials' | 'classVarSuffixes' | 'mergeFnNames' | 'syntax'>;
 
 /**
  * Webpack-лоадер Minimalist Notation.
@@ -63,14 +39,13 @@ const loader: LoaderDefinitionFunction<MnLoaderOptions> = function (source) {
   // Тот же сканер с разворачиванием атрибутов, что у остальных плагинов
   // (`minotation-build`): запись помечена целевым атрибутом, плагин
   // компилирует её в `class` или `[attr~=…]`.
-  const scan = createAttrsScanner({
+  const scan = createAttrsScanner(options);
+  // Пустое расширение пропускает любой файл: что сканировать, выбрал `test` правила.
+  const accepted = createFileFilter({
     ...options,
-    attrs: options.attrs,
-    classVarSuffixes: options.classVarSuffixes,
-    mergeFnNames: options.mergeFnNames,
-    syntax: options.syntax,
-  });
-  const tokens = new Set<string>(scan(source as string, this.resourcePath));
+    extensions: [''],
+  }, this.rootContext || process.cwd()).accepts(this.resourcePath);
+  const tokens = new Set<string>(accepted ? scan(source as string, this.resourcePath) : []);
 
   // Набор ЗАМЕНЯЕТСЯ целиком, а не дополняется: иначе токен, убранный из
   // разметки при редактировании, оставался бы в CSS до перезапуска сборки.

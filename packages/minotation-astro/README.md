@@ -66,9 +66,28 @@ mnAstro({ attrs: 'class', classVarSuffixes: ['Class', 'Cls'], safelist: ['crP ta
 
 ## Опции
 
-Совпадают с [`minotation-vite`](../minotation-vite#опции) — `mnAstro(options)`
-принимает те же поля (`attrs`, `extensions`, `presets`, `presetExtensions`, `safelist`, `classVarSuffixes`, `syntax`, `mn`)
-и передаёт их напрямую в `mnVite(...)`, только дополняя `extensions` по умолчанию `.astro`.
+Эталонный набор опций — общий для всех плагинов и CLI, описан в
+[`minotation-build`](../minotation-build#эталонный-набор-опций-d-026). Здесь — он целиком, с умолчаниями этого плагина,
+и опции, которые есть только у него.
+
+| Опция | По умолчанию | Что делает |
+|---|---|---|
+| `attrs` | `'class'` | какие атрибуты сканировать и во что разворачивать: `'class, className:class'`; `'class, m'` → `[m~="p10"]` — [подробно](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
+| `root` | `<root Astro>/src` | корень первичного скана |
+| `extensions` | `.html .jsx .tsx .vue .svelte .astro` | какие файлы сканировать, если не задан `include` |
+| `include` | — | какие файлы сканировать: RegExp, путь, функция или массив |
+| `exclude` | — | какие файлы пропускать; важнее `include` |
+| `skipPartials` | `false` | пропускать файлы-партиалы `_*` |
+| `presets` | стандартный набор | статические пресеты |
+| `presetExtensions` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты (`import './app.mn'`) |
+| `safelist` | `[]` | токены, нужные всегда; группы через пробел |
+| `classVarSuffixes` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
+| `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
+| `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
+| `mn` | — | опции ядра целиком: `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` |
+
+Под капотом — [`minotation-vite`](../minotation-vite): `mnAstro(options)` передаёт опции
+в `mnVite(...)`, дополняя `extensions` по умолчанию `.astro`.
 
 ## Синтаксический разбор
 

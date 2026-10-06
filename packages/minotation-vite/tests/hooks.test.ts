@@ -297,3 +297,39 @@ describe('minotation-vite — attr массивом (2026-10-05)', () => {
     expect(css).toContain('.m10{margin:10px}');
   });
 });
+
+describe('minotation-vite — отбор файлов из эталонного набора (D-026)', () => {
+  function cssOf(root: string, options: MnViteOptions): string {
+    const plugin = makePlugin(root, 'build', options);
+    return transformHtml(plugin, '<html><head></head><body></body></html>')
+      .map((tag) => tag.children).join('');
+  }
+
+  test('include заменяет extensions; exclude и skipPartials отсекают', () => {
+    const root = makeProject({
+      'src/a.html': '<div class="p10"></div>',
+      'src/_part.html': '<div class="m10"></div>',
+      'src/page.tpl': '<div class="w20"></div>',
+      'src/skip.tpl': '<div class="h30"></div>',
+    });
+    const css = cssOf(root, {
+      include: [/\.tpl$/, /\.html$/],
+      exclude: 'src/skip.tpl',
+      skipPartials: true,
+    });
+    expect(css).toContain('.p10{padding:10px}');
+    expect(css).toContain('.w20{width:20px}');
+    expect(css).not.toContain('margin:10px');
+    expect(css).not.toContain('height:30px');
+  });
+
+  test('root задаёт корень первичного скана вместо src/', () => {
+    const root = makeProject({
+      'src/a.html': '<div class="p10"></div>',
+      'templates/b.html': '<div class="m10"></div>',
+    });
+    const css = cssOf(root, { root: join(root, 'templates') });
+    expect(css).toContain('.m10{margin:10px}');
+    expect(css).not.toContain('padding:10px');
+  });
+});

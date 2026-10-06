@@ -3,7 +3,7 @@
  */
 import type { Compiler } from 'webpack';
 import { Compilation } from 'webpack';
-import type { MnWarning } from 'minotation';
+import type { MnOptions, MnWarning } from 'minotation';
 import {
   presetStandard,
   presetSynonyms,
@@ -36,6 +36,15 @@ export interface MnWebpackPluginOptions {
    * Вызываются поверх стандартного набора (или вместо него, если задан `presets`).
    */
   presets?: Array<(mn: MnInstance) => void>;
+  /** Токены, нужные всегда; группы через пробел — как в `minotation-build`. */
+  safelist?: string[];
+  /**
+   * Опции mn-инстанса целиком (`altColor`, `strict`, `maxDepth`, `onError`, …) —
+   * как у остальных плагинов. `selectorPrefix`, `media` и `onWarning` верхнего
+   * уровня (исторически у webpack) перекрывают одноимённые поля отсюда; перенос
+   * их внутрь `mn` ждёт решения владельца — PLAN, D-026, §6 RESEARCH 09.
+   */
+  mn?: MnOptions;
 }
 
 const DEFAULT_PRESETS: Array<(mn: MnInstance) => void> = [
@@ -148,13 +157,15 @@ export class MnWebpackPlugin {
 
   /** Накопитель заводится при первой компиляции: опции к тому моменту известны. */
   private _collector(): TokenCollector {
+    const options = this.options;
+    const mn: MnOptions = { ...options.mn };
+    options.selectorPrefix === undefined || (mn.selectorPrefix = options.selectorPrefix);
+    options.media === undefined || (mn.media = options.media);
+    options.onWarning === undefined || (mn.onWarning = options.onWarning);
     return this._tokenCollector || (this._tokenCollector = createTokenCollector({
-      presets: this.options.presets || DEFAULT_PRESETS,
-      mn: {
-        selectorPrefix: this.options.selectorPrefix,
-        media: this.options.media,
-        onWarning: this.options.onWarning,
-      },
+      presets: options.presets || DEFAULT_PRESETS,
+      safelist: options.safelist,
+      mn,
     }));
   }
 }

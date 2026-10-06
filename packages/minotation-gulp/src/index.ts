@@ -14,12 +14,12 @@
  *    чужеродно: там поток трансформируют, а записью занимается `gulp.dest()`.
  *    Своя запись вдобавок игнорировала `gulp.dest`, `gulp-rename` и всё
  *    остальное, что стоит дальше по пайпу.
- * 2. **Файлы, чьё имя начинается с `_`, не пропускаются.** В v1 такие файлы
+ * 2. **Файлы, чьё имя начинается с `_`, по умолчанию сканируются.** В v1 они
  *    молча выбрасывались — заимствование из Sass, где `_partial.scss` означает
- *    «не компилировать отдельным файлом». Для сканера токенов аналогия не
- *    работает: партиал включается в страницу, и его классы окажутся в DOM, а
- *    правил для них не будет — молча. Кому нужно прежнее поведение, тот задаёт
- *    `exclude: /(^|[\\/])_/` и получает его явно.
+ *    «не компилировать отдельным файлом». Для сканера токенов аналогия
+ *    работает не всегда: партиал включается в страницу, и его классы окажутся
+ *    в DOM. Прежнее поведение — флаг `skipPartials: true`, общий для всех
+ *    плагинов (D-027).
  *
  * @module minotation-gulp
  */
@@ -31,10 +31,10 @@ import type {
 } from 'node:stream';
 import Vinyl from 'vinyl';
 import {
-  createTokenCollector,
+  createFileFilter, createTokenCollector,
 } from 'minotation-build';
 import type {
-  TokenCollectorOptions,
+  MnBuildOptions,
 } from 'minotation-build';
 import {
   presetStandard,
@@ -44,18 +44,18 @@ import {
   presetMain,
 } from 'minotation';
 
-/** Опции {@link mnGulp}. */
-export interface MnGulpOptions extends TokenCollectorOptions {
+/**
+ * Опции {@link mnGulp} — эталонный набор `minotation-build` (D-026); описание
+ * каждой — в README `minotation-build`.
+ *
+ * Отбор файлов у gulp делает `gulp.src`, поэтому `extensions` по умолчанию не
+ * ограничивает ничего; `include`, `exclude` и `skipPartials` отсекают файлы
+ * пайпа, которые нужны дальше (их пропускают в `gulp.dest`), но токенов из
+ * которых брать не надо. `root` не используется.
+ */
+export interface MnGulpOptions extends MnBuildOptions {
   /** Имя CSS-файла, который уходит в поток. @default 'mn.css' */
   fileName?: string;
-  /**
-   * Какие файлы пайпа НЕ сканировать — по пути.
-   *
-   * Отбор файлов у gulp делает `gulp.src`, и дублировать его здесь незачем.
-   * Опция нужна для случая, когда в пайпе есть файлы, которые нужны дальше
-   * (их пропускают в `gulp.dest`), но токенов из них брать не надо.
-   */
-  exclude?: RegExp;
 }
 
 const DEFAULT_PRESETS = [
@@ -82,7 +82,11 @@ const DEFAULT_PRESETS = [
  */
 export function mnGulp(options: MnGulpOptions = {}): Transform {
   const fileName = options.fileName || 'mn.css';
-  const exclude = options.exclude;
+  // Пустое расширение пропускает любой файл: что сканировать, выбрал `gulp.src`.
+  const files = createFileFilter({
+    ...options,
+    extensions: options.extensions || [''],
+  }, process.cwd());
   const collector = createTokenCollector({
     ...options,
     presets: options.presets || DEFAULT_PRESETS,
@@ -101,7 +105,7 @@ export function mnGulp(options: MnGulpOptions = {}): Transform {
       // Пустой файл (`isNull`) — это директория или удалённый файл; поток
       // (`isStream`) gulp отдаёт при `buffer: false`, и прочитать его здесь
       // нечем. И то, и другое пропускаем дальше нетронутым.
-      if (file.isNull() || file.isStream() || (exclude && exclude.test(file.path))) {
+      if (file.isNull() || file.isStream() || !files.accepts(file.path)) {
         done(null, file);
         return;
       }

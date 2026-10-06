@@ -17,6 +17,7 @@
 
 export { MnWebpackPlugin } from './plugin';
 export type { MnWebpackPluginOptions } from './plugin';
+export type { MnLoaderOptions } from './loader';
 export type { MnAttrs } from 'minotation-build';
 export { default as loader } from './loader';
 export { default as presetLoader } from './preset-loader';

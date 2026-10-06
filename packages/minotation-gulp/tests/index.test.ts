@@ -189,6 +189,20 @@ describe('mnGulp — реальный пайп', () => {
     expect(files['_partial.html']).toBe('<div class="m20">');
   });
 
+  test('партиалы `_*` сканируются по умолчанию, skipPartials их пропускает (D-027)', async () => {
+    write('page.html', '<div class="p10">');
+    write('_partial.html', '<div class="m20">');
+
+    expect((await run('*.html'))['mn.css']).toContain('margin:20px');
+
+    const files = await run('*.html', {
+      skipPartials: true,
+    });
+    expect(files['mn.css']).toContain('padding:10px');
+    expect(files['mn.css']).not.toContain('margin:20px');
+    expect(files['_partial.html']).toBe('<div class="m20">');
+  });
+
   test('вложенные каталоги: CSS ложится в корень назначения', async () => {
     // Путь CSS считается от `base` первого файла — иначе он уехал бы в
     // `dest` по абсолютному пути исходника.

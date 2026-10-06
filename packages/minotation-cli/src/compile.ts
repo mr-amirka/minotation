@@ -13,7 +13,7 @@ import {
   readdirSync, readFileSync, statSync,
 } from 'node:fs';
 import {
-  join, extname, resolve,
+  join, resolve,
 } from 'node:path';
 import {
   minotationProvider,
@@ -27,10 +27,10 @@ import type {
   MnInstance, MnOptions, MnWarning,
 } from 'minotation';
 import {
-  compileEntries, createAttrsScanner,
+  compileEntries, createAttrsScanner, createFileFilter, createMatcher, flatSafelist,
 } from 'minotation-build';
 import type {
-  MnAttrs,
+  MnAttrs, MnFileMatcher,
 } from 'minotation-build';
 
 /** Расширения, которые сканируются, если не задано иное. */
@@ -77,10 +77,18 @@ export interface CompileSettings {
    * (`.html`, `.vue`, …) сканируются текстом при любом значении.
    */
   syntax?: boolean;
-  /** Регулярное выражение: какие файлы брать. */
-  include?: RegExp;
-  /** Регулярное выражение: какие пропускать. */
-  exclude?: RegExp;
+  /**
+   * Какие файлы брать — RegExp, путь, функция или массив, как в v1
+   * (`MnFileMatcher` из `minotation-build`). По умолчанию — по расширениям.
+   */
+  include?: MnFileMatcher;
+  /**
+   * Какие файлы и каталоги пропускать — в тех же формах. Заменяет умолчание
+   * (`node_modules`, `.git`, `dist`, `build`).
+   */
+  exclude?: MnFileMatcher;
+  /** Пропускать файлы-партиалы `_*` (D-027). По умолчанию сканируются. */
+  skipPartials?: boolean;
   /**
    * Пути, которые не сканируются, как бы ни были настроены фильтры.
    *
@@ -90,7 +98,7 @@ export interface CompileSettings {
   ignore?: string[];
   /** Пресеты; по умолчанию стандартный набор. */
   presets?: Array<(mn: MnInstance) => void>;
-  /** Токены, которые нужны всегда, даже если их нет в файлах. */
+  /** Токены, которые нужны всегда, даже если их нет в файлах; группы через пробел. */
   safelist?: string[];
   /**
    * Собирать статистику употребления токенов (см. {@link Metrics}).
@@ -158,10 +166,20 @@ export interface CompileResult {
  * заставлять указывать директорию ради одного файла незачем.
  */
 export function collectFiles(
-  input: string, include?: RegExp, exclude?: RegExp, ignore?: string[],
+  input: string,
+  options: Pick<CompileSettings, 'include' | 'exclude' | 'skipPartials'> = {},
+  ignore?: string[],
 ): string[] {
   const out: string[] = [];
-  const skip = exclude || DEFAULT_EXCLUDE;
+  const root = resolve(input);
+  // Каталоги отсекаются тем же `exclude`, что и файлы: зайти в `node_modules`
+  // и выбросить всё найденное там — лишняя работа на порядки.
+  const skip = createMatcher(options.exclude, root) || ((path: string) => DEFAULT_EXCLUDE.test(path));
+  const files = createFileFilter({
+    extensions: DEFAULT_EXTENSIONS,
+    include: options.include,
+    skipPartials: options.skipPartials,
+  }, root);
   const ignored = new Set<string>();
   const l = ignore ? ignore.length : 0;
   let i = 0;
@@ -169,7 +187,7 @@ export function collectFiles(
     ignored.add(resolve(ignore![i]));
   }
   walk(
-    input, out, include, skip, ignored, 1,
+    input, out, files.accepts, skip, ignored, 1,
   );
   return out;
 }
@@ -182,12 +200,12 @@ export function collectFiles(
 function walk(
   path: string,
   out: string[],
-  include: RegExp | undefined,
-  exclude: RegExp,
+  accepts: (path: string) => boolean,
+  skip: (path: string) => boolean,
   ignored: Set<string>,
   root?: 1,
 ): void {
-  if (exclude.test(path) || ignored.has(resolve(path))) {
+  if (skip(path) || ignored.has(resolve(path))) {
     return;
   }
   const stat = statSync(path, {
@@ -197,7 +215,7 @@ function walk(
     return;
   }
   if (stat.isFile()) {
-    (root || accepted(path, include)) && out.push(path);
+    (root || accepts(path)) && out.push(path);
     return;
   }
   if (!stat.isDirectory()) {
@@ -208,15 +226,9 @@ function walk(
   let i = 0;
   for (; i < l; i++) {
     walk(
-      join(path, names[i]), out, include, exclude, ignored,
+      join(path, names[i]), out, accepts, skip, ignored,
     );
   }
-}
-
-function accepted(path: string, include?: RegExp): boolean {
-  return include
-    ? include.test(path)
-    : DEFAULT_EXTENSIONS.indexOf(extname(path)) > -1;
 }
 
 /**
@@ -228,18 +240,20 @@ function accepted(path: string, include?: RegExp): boolean {
  */
 export function compile(settings: CompileSettings): CompileResult {
   const files = collectFiles(
-    settings.input, settings.include, settings.exclude, settings.ignore,
+    settings.input, settings, settings.ignore,
   );
   // Тот же сканер с разворачиванием атрибутов, что у плагинов сборщиков:
   // записи `'<целевой атрибут> <токен>'`.
   // Настройки целиком: устаревший `attr` из конфига — ошибка с подсказкой,
   // а не молчаливая потеря токенов (D-025).
   const scan = createAttrsScanner({
-    ...('attr' in settings ? { attr: (settings as { attr?: unknown }).attr } : {}),
+    ...('attr' in settings ? {
+      attr: (settings as { attr?: unknown }).attr, 
+    } : {}),
     attrs: settings.attrs,
     syntax: settings.syntax,
   });
-  const tokens = new Set<string>((settings.safelist || []).map((token) => 'class ' + token));
+  const tokens = new Set<string>(flatSafelist(settings.safelist).map((token) => 'class ' + token));
   // Счётчики заводятся только под `--metrics`: на каждый файл это лишняя
   // запись в памяти, а обычной сборке они не нужны.
   const counts: Record<string, number> | 0 = settings.metrics ? {} : 0;

@@ -106,6 +106,7 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
     prefix: args.prefix === undefined ? config.prefix : args.prefix,
     altColor: args.altColor || config.altColor,
     strict: args.strict || config.strict,
+    skipPartials: args.skipPartials || config.skipPartials,
     // `--no-syntax` выключает разбор; без него решает конфиг, а его умолчание
     // (`undefined`) означает «автоматически».
     syntax: args.noSyntax ? false : config.syntax,

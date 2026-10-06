@@ -138,6 +138,15 @@ describe('minotation-webpack — лоадеры', () => {
     expect(tokensNow()).toEqual(['class mb4', 'class p10']);
   });
 
+  test('лоадер: exclude и skipPartials снимают файл с учёта (D-026, D-027)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mn-loader-'));
+    runLoader('<div class="p10"></div>', { skipPartials: true }, join(dir, '_part.html'));
+    runLoader('<div class="m20"></div>', { exclude: /vendor/ }, join(dir, 'vendor.html'));
+    runLoader('<div class="w30"></div>', { include: /\.html$/ }, join(dir, 'page.html'));
+
+    expect(tokensNow()).toEqual(['class w30']);
+  });
+
   test('атрибут без цели разворачивается в себя — как в v1 (D-025)', () => {
     // Записи помечены целевым атрибутом: плагин скомпилирует `className mb4`
     // в `[className~="mb4"]`, а не в класс.
@@ -214,6 +223,20 @@ describe('minotation-webpack — реальная сборка', () => {
     expect(assets['mn.css']).toContain('@media (min-width: 1200px)');
     // normalize/main в кастомный набор не входят
     expect(assets['mn.css']).not.toContain('box-sizing:border-box');
+  });
+
+  test('safelist и mn целиком — как у остальных плагинов (D-026)', async () => {
+    runLoader('<div class="p10"></div>');
+
+    const assets = await runBuild(makeStubProject(), new MnWebpackPlugin({
+      output: 'mn.css',
+      safelist: ['m20 dF'],
+      mn: { selectorPrefix: '.mn ' },
+    }));
+
+    expect(assets['mn.css']).toContain('.mn .p10{padding:10px}');
+    expect(assets['mn.css']).toContain('.mn .m20{margin:20px}');
+    expect(assets['mn.css']).toContain('display:flex');
   });
 
   test('повторная сборка с тем же набором токенов берёт CSS из кеша', async () => {

@@ -37,13 +37,28 @@ mnAstro({ attrs: 'class, className:class' })
 
 ## Как CSS попадает на страницу
 
-- **`astro build`** — `mn.css` кладётся в корень сборки, а в каждую страницу
-  вставляется `<link rel="stylesheet" href="/mn.css">`.
-- **`astro dev`** — `mn.css` отдаёт dev-сервер (middleware `minotation-vite`), ссылка
-  на него и HMR-слушатель вставляются в каждую страницу. Правка разметки или
-  `*.mn.ts` обновляет стили без перезагрузки страницы.
+Интеграция вписывает в каждую страницу импорт модуля `virtual:mn.css`, а дальше
+CSS ведёт сам Astro — как любой CSS проекта:
 
-Оба пути учитывают `base` из конфига Astro: при `base: '/docs'` ссылка — `/docs/mn.css`.
+- **`astro build`** — файл с хешем содержимого в имени (`/_astro/index.3f9a1c2e.css`)
+  и `<link>` на него; маленький CSS Astro встраивает прямо в страницу
+  (`build.inlineStylesheets`). Имя меняется вместе с содержимым, поэтому после
+  правок браузер не возьмёт старые стили из кеша.
+- **`astro dev`** — CSS на странице с HMR: правка разметки или `*.mn.ts` обновляет
+  стили без перезагрузки.
+
+В проекте ничего писать не нужно. Если у разных страниц свой CSS (записи `entry`),
+отключите автоподключение и импортируйте нужную запись в layout:
+
+```js
+mnAstro({ inject: false, entry: { site: { include: /site/ }, admin: { include: /admin/ } } })
+```
+
+```astro
+---
+import 'virtual:mn/admin.css';
+---
+```
 
 ## Особенность Astro: классы в frontmatter
 
@@ -85,6 +100,8 @@ mnAstro({ attrs: 'class', classVarSuffixes: ['Class', 'Cls'], safelist: ['crP ta
 | `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
 | `mn` | — | опции ядра целиком: `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` |
+| `entry` | — | несколько CSS из одной сборки; подключение — раздел «Как CSS попадает на страницу» |
+| `inject` | `true` | только у astro: подключать ли CSS в каждую страницу автоматически |
 
 Под капотом — [`minotation-vite`](../minotation-vite): `mnAstro(options)` передаёт опции
 в `mnVite(...)`, дополняя `extensions` по умолчанию `.astro`.

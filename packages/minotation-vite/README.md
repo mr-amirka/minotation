@@ -69,8 +69,21 @@ mnVite({ classVarSuffixes: [] })                            // отключит�
 mnVite({ safelist: ['py12 px14 r8', 'crP', 'taL'] })
 ```
 
-- **Dev:** инжектирует `<style data-mn>` в HTML + HMR без перезагрузки страницы
-- **Build:** эмитирует `mn.css` как отдельный asset
+## Как CSS попадает на страницу
+
+CSS отдаётся модулем `virtual:mn.css`, и дальше его ведёт Vite: имя с хешем,
+ссылка в HTML, минификация, HMR. Опция `inject` выбирает, как он попадает в
+`index.html` SPA:
+
+| `inject` | Что происходит |
+|---|---|
+| `'inline'` (по умолчанию) | `<style data-mn>` прямо в HTML; в dev — обновление без перезагрузки |
+| `'link'` | `<link>` на модуль: Vite выдаёт файл с хешем (`assets/index-3f9a1c2e.css`) и сам ставит ссылку |
+| `false` | HTML не трогается — подключите CSS импортом в коде: `import 'virtual:mn.css'` |
+
+Без `index.html` (SSR, мета-фреймворки) CSS подключают импортом `virtual:mn.css`
+в точке входа. С записями `entry` — `virtual:mn/<имя>.css` для одной записи.
+Лишнего файла `mn.css` рядом со сборкой больше нет.
 
 ## Динамические пресеты
 
@@ -125,6 +138,8 @@ export function presetApp(mn: MnInstance): void {
 | `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
 | `mn` | — | опции ядра целиком: `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` |
+| `entry` | — | несколько CSS из одной сборки; запись подключается модулем `virtual:mn/<имя>.css` |
+| `inject` | `'inline'` | только у vite: как CSS попадает в `index.html` — раздел выше |
 
 ## Синтаксический разбор
 

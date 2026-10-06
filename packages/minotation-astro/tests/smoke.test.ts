@@ -24,7 +24,7 @@ describe('minotation-astro — smoke', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateConfig = jest.fn<(cfg: any) => void>();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (integration.hooks?.['astro:config:setup'] as any)?.({ updateConfig });
+    (integration.hooks?.['astro:config:setup'] as any)?.({ updateConfig, injectScript: jest.fn() });
     expect(updateConfig).toHaveBeenCalledTimes(1);
     const arg = updateConfig.mock.calls[0][0];
     expect(arg.vite.plugins).toHaveLength(1);

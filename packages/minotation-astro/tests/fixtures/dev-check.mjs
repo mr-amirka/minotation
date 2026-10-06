@@ -22,15 +22,9 @@ const server = await dev({
 });
 try {
   const page = await fetch(origin + '/');
-  const css = await fetch(origin + '/mn.css?t=1');
-  const missing = await fetch(origin + '/no-such-page');
   process.stdout.write(JSON.stringify({
     html: await page.text(),
     pageStatus: page.status,
-    cssStatus: css.status,
-    cssType: css.headers.get('content-type'),
-    css: await css.text(),
-    missingStatus: missing.status,
   }));
 } finally {
   await server.stop();

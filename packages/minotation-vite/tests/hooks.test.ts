@@ -33,9 +33,25 @@ function transformHtml(plugin: any, html: string): Array<{ tag: string; children
   return plugin.transformIndexHtml.handler(html);
 }
 
-/** Мок только для транспорта сообщений dev-сервера. */
+/**
+ * Мок транспорта сообщений dev-сервера и графа модулей: в графе — модуль
+ * `virtual:mn.css` и посторонний модуль, который трогать нельзя.
+ */
 function makeServer() {
-  return { ws: { send: jest.fn() } };
+  const mnModule = { id: '/__mn/mn.css' };
+  const other = { id: '/src/main.js' };
+  return {
+    ws: { send: jest.fn() },
+    mnModule,
+    moduleGraph: {
+      idToModuleMap: new Map<string, { id: string | null }>([
+        ['/__mn/mn.css', mnModule],
+        ['/src/main.js', other],
+        ['virtual', { id: null }],
+      ]),
+      invalidateModule: jest.fn(),
+    },
+  };
 }
 
 describe('minotation-vite — dev-хуки', () => {
@@ -85,7 +101,9 @@ describe('minotation-vite — dev-хуки', () => {
     writeFileSync(join(root, 'src/theme.mn.js'), "export default (mn) => { mn('hotToken', 'c0F0'); };\n");
     const result = plugin.handleHotUpdate({ file: join(root, 'src/theme.mn.js'), server });
 
-    expect(result).toEqual([]);
+    // Только модуль CSS: свой модуль пресета пуст, перезагружать нечего.
+    expect(result).toEqual([server.mnModule]);
+    expect(server.moduleGraph.invalidateModule).toHaveBeenCalledWith(server.mnModule);
     expect(server.ws.send).toHaveBeenCalledTimes(1);
     const sent = server.ws.send.mock.calls[0][0] as any;
     expect(sent.event).toBe('mn:update');
@@ -213,72 +231,90 @@ describe('minotation-vite — dev-хуки', () => {
   });
 });
 
-describe('minotation-vite — dev-middleware /mn.css (2026-10-05)', () => {
-  /**
-   * Мета-фреймворки без `transformIndexHtml` (Astro) получают CSS только по
-   * ссылке — до этого в dev `/mn.css` отвечал 404, и страница была без стилей.
-   */
-  function serve(plugin: any, base: string | undefined, url: string | undefined) {
-    let handler: any;
-    plugin.configureServer({
-      config: { base },
-      middlewares: { use: (fn: any) => { handler = fn; } },
-    });
-    const headers: Record<string, string> = {};
-    const res = {
-      body: undefined as string | undefined,
-      setHeader: (name: string, value: string) => { headers[name] = value; },
-      end: (body: string) => { res.body = body; },
-    };
-    const next = jest.fn();
-    handler({ url }, res, next);
-    return { body: res.body, headers, next };
+describe('minotation-vite — модуль virtual:mn.css (D-031)', () => {
+  /** Загрузка модуля так, как это делает Vite. */
+  function load(plugin: any, id: string, warn = jest.fn()): string {
+    return plugin.load.call({ warn }, plugin.resolveId(id)).code;
   }
 
-  test('отдаёт актуальный CSS по /mn.css, query не мешает', () => {
+  test('virtual:mn.css и virtual:mn/<запись>.css разрешаются в адреса графа', () => {
+    const plugin = makePlugin(makeProject({}), 'serve');
+    expect(plugin.resolveId('virtual:mn.css')).toBe('/__mn/mn.css');
+    expect(plugin.resolveId('virtual:mn/admin.css')).toBe('/__mn/entry/admin.css');
+    // Ссылка из index.html (`inject: 'link'`) приходит уже адресом, с query в dev.
+    expect(plugin.resolveId('/__mn/mn.css?direct')).toBe('/__mn/mn.css');
+    expect(plugin.resolveId('/src/main.js')).toBeNull();
+    expect(plugin.load.call({ warn: jest.fn() }, '/src/main.js')).toBeNull();
+  });
+
+  test('модуль отдаёт CSS всех записей или одной; предупреждения — в лог', () => {
+    const root = makeProject({
+      'src/site/a.html': '<div class="p10"></div>',
+      'src/admin/b.html': '<div class="m20 w10zz"></div>',
+    });
+    const plugin = makePlugin(root, 'build', {
+      entry: { site: { include: /site/ }, admin: { include: /admin/ } },
+    });
+    plugin.buildStart();
+    const warn = jest.fn();
+
+    expect(load(plugin, 'virtual:mn.css', warn)).toContain('padding:10px');
+    expect(load(plugin, 'virtual:mn.css')).toContain('margin:20px');
+    expect(load(plugin, 'virtual:mn/site.css')).not.toContain('margin:20px');
+    expect(load(plugin, 'virtual:mn/admin.css')).toContain('margin:20px');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('[minotation] w10zz'));
+    expect(() => load(plugin, 'virtual:mn/nope.css')).toThrow('no such entry; declared: site, admin');
+  });
+
+  test("inject: 'link' — в HTML ссылка на модуль, без инлайна", () => {
+    const plugin = makePlugin(makeProject({ 'src/a.html': '<div class="p10"></div>' }), 'build', { inject: 'link' });
+    expect(transformHtml(plugin, '<html><head></head><body></body></html>')).toEqual([{
+      tag: 'link',
+      attrs: { rel: 'stylesheet', href: '/__mn/mn.css' },
+    }]);
+  });
+
+  test('inject: false — HTML не трогается', () => {
+    const plugin = makePlugin(makeProject({ 'src/a.html': '<div class="p10"></div>' }), 'serve', { inject: false });
+    expect(transformHtml(plugin, '<html><head></head><body></body></html>')).toEqual([]);
+  });
+
+  test('правка файла: модуль CSS пересылается штатным HMR вместе с изменённым модулем', () => {
+    const root = makeProject({ 'src/app.html': '<div class="p10"></div>' });
+    const plugin = makePlugin(root, 'serve', { inject: false });
+    plugin.buildStart();
+    const server = makeServer();
+    const changed = { id: join(root, 'src/app.html') };
+
+    writeFileSync(join(root, 'src/app.html'), '<div class="p10 mt4"></div>');
+    const result = plugin.handleHotUpdate({ file: join(root, 'src/app.html'), server, modules: [changed] });
+
+    expect(result).toEqual([changed, server.mnModule]);
+    // Без инлайна событие `mn:update` слать некому.
+    expect(server.ws.send).not.toHaveBeenCalled();
+  });
+
+  test('битый пресет, которого и не было на учёте: CSS не меняется, модуль пресета не перезагружается', () => {
+    const root = makeProject({ 'src/new.mn.js': 'this is ( not ) valid javascript !!!\n' });
+    const plugin = makePlugin(root, 'serve');
+    const server = makeServer();
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      expect(plugin.handleHotUpdate({ file: join(root, 'src/new.mn.js'), server })).toEqual([]);
+    } finally {
+      errorSpy.mockRestore();
+    }
+    expect(server.ws.send).not.toHaveBeenCalled();
+  });
+
+  test('правка без изменения токенов: HMR не трогается', () => {
     const root = makeProject({ 'src/app.html': '<div class="p10"></div>' });
     const plugin = makePlugin(root, 'serve');
     plugin.buildStart();
+    const server = makeServer();
 
-    const r = serve(plugin, '/', '/mn.css?t=123');
-
-    expect(r.next).not.toHaveBeenCalled();
-    expect(r.body).toContain('.p10{padding:10px}');
-    expect(r.headers['Content-Type']).toBe('text/css; charset=utf-8');
-    expect(r.headers['Cache-Control']).toBe('no-cache');
-  });
-
-  test('учитывает base, в том числе без завершающего слэша', () => {
-    const root = makeProject({ 'src/app.html': '<div class="p10"></div>' });
-    const plugin = makePlugin(root, 'serve');
-
-    expect(serve(plugin, '/docs', '/docs/mn.css').next).not.toHaveBeenCalled();
-    expect(serve(plugin, '/docs/', '/mn.css').next).toHaveBeenCalled();
-    expect(serve(plugin, undefined, '/mn.css').next).not.toHaveBeenCalled();
-  });
-
-  test('предупреждения компиляции уходят в логгер Vite, без него — в console', () => {
-    const root = makeProject({ 'src/app.html': '<div class="fx p10"></div>' });
-    const warn = jest.fn();
-    const withLogger = mnVite() as any;
-    withLogger.configResolved({ root, command: 'serve', logger: { warn } });
-    withLogger.buildStart();
-    serve(withLogger, '/', '/mn.css');
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('[minotation] fx'));
-
-    const spy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const plain = makePlugin(root, 'serve');
-    plain.buildStart();
-    serve(plain, '/', '/mn.css');
-    expect(spy).toHaveBeenCalledWith(expect.stringContaining('[minotation] fx'));
-    spy.mockRestore();
-  });
-
-  test('чужие запросы проходят дальше', () => {
-    const plugin = makePlugin(makeProject({}), 'serve');
-
-    expect(serve(plugin, '/', '/index.html').next).toHaveBeenCalled();
-    expect(serve(plugin, '/', undefined).next).toHaveBeenCalled();
+    expect(plugin.handleHotUpdate({ file: join(root, 'src/app.html'), server })).toBeUndefined();
+    expect(server.ws.send).not.toHaveBeenCalled();
   });
 });
 

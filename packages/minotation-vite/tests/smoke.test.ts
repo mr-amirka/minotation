@@ -41,12 +41,9 @@ describe('minotation-vite — safelist (регрессия 2026-09-22)', () => {
    * в переменных (`const th = 'py12 px14'`, частый приём в .astro/JSX), терялись —
    * опция `safelist` добавляет их в компиляцию принудительно.
    */
+  /** CSS модуля `virtual:mn.css` — так его получает Vite. */
   function bundleCss(plugin: any): string {
-    let css = '';
-    plugin.generateBundle.call({
-      emitFile: (file: { source: string }) => { css = file.source; },
-    });
-    return css;
+    return plugin.load.call({ warn: () => undefined }, plugin.resolveId('virtual:mn.css')).code;
   }
 
   test('токены из safelist попадают в CSS без единого class="…" в проекте', () => {
@@ -82,9 +79,7 @@ describe('minotation-vite — classVarSuffixes (2026-09-22)', () => {
   function cssOf(source: string, options?: any): string {
     const plugin: any = mnVite(options);
     plugin.transform(source, '/proj/src/App.tsx');
-    let css = '';
-    plugin.generateBundle.call({ emitFile: (f: { source: string }) => { css = f.source; } });
-    return css;
+    return plugin.load.call({ warn: () => undefined }, plugin.resolveId('virtual:mn.css')).code;
   }
 
   test('const thClass = … — токены попадают в CSS', () => {
@@ -149,9 +144,7 @@ describe('minotation-vite — mergeFnNames (2026-09-25)', () => {
   function cssOf(source: string, options?: any): string {
     const plugin: any = mnVite(options);
     plugin.transform(source, '/proj/src/App.tsx');
-    let css = '';
-    plugin.generateBundle.call({ emitFile: (f: { source: string }) => { css = f.source; } });
-    return css;
+    return plugin.load.call({ warn: () => undefined }, plugin.resolveId('virtual:mn.css')).code;
   }
 
   test('mne(…) — литералы из аргументов попадают в CSS', () => {

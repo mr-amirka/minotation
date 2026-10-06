@@ -4,7 +4,7 @@
  * Проверяют, что MnWebpackPlugin и loader экспортируются корректно.
  */
 
-import { MnWebpackPlugin, loader } from '../src/index';
+import { MN_CSS_REQUEST, MnWebpackPlugin, loader } from '../src/index';
 
 describe('minotation-webpack — smoke', () => {
   test('MnWebpackPlugin — класс', () => {
@@ -12,7 +12,7 @@ describe('minotation-webpack — smoke', () => {
   });
 
   test('MnWebpackPlugin — инстанцируется', () => {
-    const plugin = new MnWebpackPlugin({ output: 'test.css' });
+    const plugin = new MnWebpackPlugin({ fileName: 'test.css' });
     expect(plugin).toHaveProperty('apply');
     expect(typeof plugin.apply).toBe('function');
   });
@@ -26,15 +26,9 @@ describe('minotation-webpack — smoke', () => {
     expect(typeof loader).toBe('function');
   });
 
-  test('MnWebpackPlugin.apply — не падает с минимальным compiler', () => {
-    const plugin = new MnWebpackPlugin({ output: 'test.css' });
-    const mockCompiler = {
-      hooks: {
-        thisCompilation: { tap: jest.fn() },
-        emit: { tapAsync: jest.fn() },
-        done: { tap: jest.fn() },
-      },
-    };
-    expect(() => plugin.apply(mockCompiler as any)).not.toThrow();
+
+
+  test('модуль CSS — minotation-webpack/mn.css', () => {
+    expect(MN_CSS_REQUEST).toBe('minotation-webpack/mn.css');
   });
 });

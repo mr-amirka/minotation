@@ -5,6 +5,4 @@ module.exports = withMn({
   // (opt-in через --turbopack) его не поддерживает — по умолчанию (без флага)
   // next build/next dev используют webpack, так что дополнительных флагов
   // не требуется, только не включайте --turbopack.
-}, {
-  output: 'static/mn.css',
 });

@@ -22,25 +22,38 @@ import { createRequire } from 'module';
 import { dirname } from 'path';
 import { getState } from './state';
 
+/**
+ * Выполняет пресет-файл: транспилирует esbuild-ом и исполняет в Node.
+ *
+ * @param id — путь к файлу
+ * @param source — его текст
+ * @returns пресет-функция или `undefined`, если файл ничего такого не экспортирует
+ * @throws если файл не транспилируется или падает при исполнении
+ */
+export function evalPreset(id: string, source: string): ((mn: MnInstance) => void) | undefined {
+  const loaderName = id.endsWith('.tsx') ? 'tsx' : id.endsWith('.ts') ? 'ts' : 'js';
+  const { code } = transformSync(source, {
+    loader: loaderName,
+    format: 'cjs',
+    target: 'node18',
+  });
+  const mod: { exports: Record<string, unknown> } = { exports: {} };
+  const req = createRequire(id);
+  // eslint-disable-next-line no-new-func
+  const fn = new Function('require', 'module', 'exports', '__dirname', '__filename', code);
+  fn(req, mod, mod.exports, dirname(id), id);
+  const preset = mod.exports['default'] ?? Object.values(mod.exports).find(v => typeof v === 'function');
+  return typeof preset === 'function' ? preset as (mn: MnInstance) => void : undefined;
+}
+
 const presetLoader: LoaderDefinitionFunction = function (source) {
   const id = this.resourcePath;
-  const state = getState();
-
   try {
-    const loaderName = id.endsWith('.tsx') ? 'tsx' : id.endsWith('.ts') ? 'ts' : 'js';
-    const { code } = transformSync(source as string, {
-      loader: loaderName,
-      format: 'cjs',
-      target: 'node18',
-    });
-    const mod: { exports: Record<string, unknown> } = { exports: {} };
-    const req = createRequire(id);
-    // eslint-disable-next-line no-new-func
-    const fn = new Function('require', 'module', 'exports', '__dirname', '__filename', code);
-    fn(req, mod, mod.exports, dirname(id), id);
-    const preset = mod.exports['default'] ?? Object.values(mod.exports).find(v => typeof v === 'function');
-    if (typeof preset === 'function') {
-      state.dynamicPresets.set(id, preset as (mn: MnInstance) => void);
+    const preset = evalPreset(id, source as string);
+    if (preset) {
+      for (const plugin of getState().plugins.values()) {
+        plugin.build.setPreset(id, preset);
+      }
     }
   } catch (e) {
     this.emitWarning(new Error(`[minotation] Failed to evaluate preset file: ${id}\n${e}`));

@@ -20,7 +20,7 @@ describe('minotation-next — smoke', () => {
   test('withMn — с кастомными опциями', () => {
     const config = withMn(
       { reactStrictMode: true },
-      { output: 'custom/mn.css', selectorPrefix: 'mn-' },
+      { fileName: 'custom/mn.css', selectorPrefix: 'mn-' },
     );
     expect(config).toHaveProperty('webpack');
     expect(config.reactStrictMode).toBe(true);

@@ -11,27 +11,31 @@ npm install minotation-webpack
 ```js
 // webpack.config.js
 const { MnWebpackPlugin } = require('minotation-webpack');
-const { presetStandard, presetSynonyms, presetMedias } = require('minotation');
 
 module.exports = {
-  module: {
-    rules: [
-      {
-        test: /\.(html|jsx|tsx)$/,
-        use: 'minotation-webpack/loader',
-      },
-    ],
-  },
-  plugins: [
-    new MnWebpackPlugin({
-      output: 'dist/app.css',
-      presets: [presetStandard, presetSynonyms, presetMedias],
-    }),
-  ],
+  plugins: [new MnWebpackPlugin({ attrs: 'class, className:class' })],
 };
 ```
 
-Loader извлекает MN-токены из исходников, plugin компилирует их в CSS и эмитирует как asset.
+```js
+// src/index.js — CSS через конвейер проекта
+import 'minotation-webpack/mn.css';
+```
+
+Перед каждой сборкой плагин сам сканирует проект (`root`, по умолчанию `src/`; в
+watch — заново при правках), поэтому правило-лоадер для разметки не обязательно.
+
+## Как CSS попадает на страницу
+
+- **Импорт `minotation-webpack/mn.css`** — CSS идёт тем же конвейером, что
+  остальной CSS проекта (`css-loader` + `mini-css-extract-plugin`, нативный CSS
+  webpack `experiments.css`): имя с хешем по вашим правилам (`[contenthash]`),
+  ссылка через `HtmlWebpackPlugin`, минификация. Отдельный файл плагин не выдаёт.
+  Одна запись `entry` — `minotation-webpack/mn.css?entry=admin`.
+- **Без импорта** — плагин выдаёт ассет по `fileName`. По умолчанию с хешем, если
+  он есть в `output.filename` проекта (`mn.3f9a1c2e.css`), иначе `mn.css`. Ассет
+  привязан к точке входа, так что `HtmlWebpackPlugin` сошлётся на него сам; рядом —
+  `mn-manifest.json` с фактическими именами.
 
 ## Динамические пресеты
 
@@ -59,51 +63,46 @@ export function presetApp(mn: MnInstance): void {
 }
 ```
 
-Чтобы webpack перехватывал пресет-файлы, добавьте правило с `preset-loader`:
+Пресеты из корня скана плагин выполняет сам. Чтобы webpack перехватывал
+импорт пресета (и в бандл не попал его код), добавьте правило с `preset-loader`:
 
 ```js
 // webpack.config.js
 module.exports = {
   module: {
     rules: [
-      { test: /\.(html|jsx|tsx)$/, use: 'minotation-webpack/loader' },
       { test: /\.mn\.(ts|js|tsx)$/, use: 'minotation-webpack/preset-loader' },
     ],
   },
-  plugins: [new MnWebpackPlugin({ output: 'dist/app.css' })],
+  plugins: [new MnWebpackPlugin()],
 };
 ```
 
 `preset-loader` выполняет пресет-функцию на внутреннем mn-инстансе и возвращает в бандл пустой модуль — **ноль байт в рантайме**.
 
-## Опции плагина
+## Опции
 
 Эталонный набор опций — общий для всех плагинов и CLI, описан в
-[`minotation-build`](../minotation-build#эталонный-набор-опций-d-026). Здесь — он целиком, с умолчаниями этого плагина,
-и опции, которые есть только у него.
-
-В webpack набор делится: сканирует лоадер, компилирует плагин.
-
-**Лоадер** (`options` правила):
+[`minotation-build`](../minotation-build#эталонный-набор-опций-d-026). Все опции задаются у плагина; лоадеры опций не принимают.
 
 | Опция | По умолчанию | Что делает |
 |---|---|---|
 | `attrs` | `'class'` | какие атрибуты сканировать и во что разворачивать: `'class, className:class'`; `'class, m'` → `[m~="p10"]` — [подробно](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
+| `root` | `src/`, если есть, иначе корень проекта | корень скана |
+| `extensions` | `.html .jsx .tsx .vue .svelte` | какие файлы сканировать, если не задан `include` |
 | `include` | — | какие файлы сканировать: RegExp, путь, функция или массив |
 | `exclude` | — | какие файлы пропускать; важнее `include` |
 | `skipPartials` | `false` | пропускать файлы-партиалы `_*` |
+| `presets` | стандартный набор | статические пресеты |
+| `presetExtensions` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты |
+| `safelist` | `[]` | токены, нужные всегда; группы через пробел |
 | `classVarSuffixes` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
 | `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
-
-**Плагин** (`new MnWebpackPlugin({...})`):
-
-| Опция | По умолчанию | Что делает |
-|---|---|---|
-| `presets` | стандартный набор | статические пресеты |
-| `safelist` | `[]` | токены, нужные всегда; группы через пробел |
 | `mn` | — | опции ядра целиком: `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` |
-| `output` | `'app.css'` | путь выходного CSS-файла |
+| `entry` | — | несколько CSS из одной сборки; импорт записи — `mn.css?entry=<имя>` |
+| `fileName` | `[name].[hash].css`, если хеш есть в `output.filename`, иначе `[name].css` | имя ассета без импорта `mn.css` |
+| `manifest` | `true` → `mn-manifest.json` | фактические имена ассетов; `false` — не писать |
 | `selectorPrefix`, `media`, `onWarning` | — | то же, что поля `mn`, на верхнем уровне (исторически у webpack); перекрывают `mn` |
 
 ## Синтаксический разбор

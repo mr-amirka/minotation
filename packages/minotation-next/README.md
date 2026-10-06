@@ -15,22 +15,20 @@ npm install minotation-next
 // next.config.ts
 import { withMn } from 'minotation-next';
 
-export default withMn(
-  {
-    experimental: { turbo: false },  // отключаем Turbopack
-  },
-  {
-    output: 'static/mn.css',
-  },
-);
+export default withMn({});
 ```
 
-Подключите сгенерированный CSS в корневом layout:
+Подключите CSS в корневом layout — дальше его ведёт Next.js, как любой глобальный
+CSS: файл с хешем в имени (`/_next/static/css/<hash>.css`) и ссылка в `<head>`, так
+что после правок браузер не возьмёт старые стили из кеша:
 
 ```ts
 // app/layout.tsx
-import '../public/static/mn.css';
+import 'minotation-next/mn.css';
 ```
+
+Плагин сам сканирует проект перед сборкой (в `next dev` — заново при правках),
+поэтому CSS полный, включая токены серверных компонентов.
 
 ## Динамические пресеты
 
@@ -64,22 +62,26 @@ export function presetApp(mn: MnFn): void {
 ## Опции
 
 Эталонный набор опций — общий для всех плагинов и CLI, описан в
-[`minotation-build`](../minotation-build#эталонный-набор-опций-d-026). Здесь — он целиком, с умолчаниями этого плагина,
-и опции, которые есть только у него.
+[`minotation-build`](../minotation-build#эталонный-набор-опций-d-026). Все опции задаются у плагина; лоадеры опций не принимают.
 
 | Опция | По умолчанию | Что делает |
 |---|---|---|
 | `attrs` | `'class, className:class'` | какие атрибуты сканировать и во что разворачивать: `'class, className:class'`; `'class, m'` → `[m~="p10"]` — [подробно](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
+| `root` | корень проекта (`app/`, `src/` внутри) | корень скана |
+| `extensions` | `.html .jsx .tsx .vue .svelte` | какие файлы сканировать, если не задан `include` |
 | `include` | — | какие файлы сканировать: RegExp, путь, функция или массив |
 | `exclude` | — | какие файлы пропускать; важнее `include` |
 | `skipPartials` | `false` | пропускать файлы-партиалы `_*` |
 | `presets` | стандартный набор | статические пресеты |
+| `presetExtensions` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты |
 | `safelist` | `[]` | токены, нужные всегда; группы через пробел |
 | `classVarSuffixes` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
 | `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
 | `mn` | — | опции ядра целиком: `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` |
-| `output` | `'static/mn.css'` | путь выходного CSS-файла |
+| `entry` | — | несколько CSS из одной сборки; импорт записи — `mn.css?entry=<имя>` |
+| `fileName` | `'static/[name].css'` | имя ассета без импорта `minotation-next/mn.css` |
+| `manifest` | `true` → `mn-manifest.json` | фактические имена ассетов; `false` — не писать |
 | `enabled` | `true` | включить/выключить MN (удобно через env-переменную) |
 | `selectorPrefix`, `media`, `onWarning` | — | то же, что поля `mn`, на верхнем уровне (как у webpack) |
 

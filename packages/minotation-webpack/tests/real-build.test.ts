@@ -1,20 +1,25 @@
 /**
  * Плагин проверяется реальной webpack-сборкой (не моком `compilation`) — см.
- * MEMORY `feedback_bundler_plugins_need_real_builds.md`. Лоадеры вызываются
- * напрямую, с настоящим loader-контекстом: подключить их к реальной сборке
- * как `.ts` нельзя (webpack грузит лоадеры через `require`, без TS-трансформа),
- * а транспилированная копия получила бы ОТДЕЛЬНЫЙ инстанс синглтона `state.ts`
- * и разошлась бы с плагином. Связка «лоадер наполнил стейт → плагин собрал CSS»
- * при этом сохраняется: обе стороны работают через один и тот же `getState()`.
+ * MEMORY `feedback_bundler_plugins_need_real_builds.md`.
+ *
+ * С 2026-10-06 (D-031) плагин сам сканирует проект перед сборкой, а CSS отдаёт
+ * либо модулем `minotation-webpack/mn.css` (конвейер проекта даёт имя с хешем),
+ * либо ассетом с привязкой к чанкам точек входа.
  */
 import webpack from 'webpack';
-import { join } from 'path';
+import type { Configuration, Stats } from 'webpack';
+import { join, resolve } from 'path';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { MnWebpackPlugin, loader, presetLoader } from '../src/index';
-import { getState, collectTokens } from '../src/state';
+import { getState } from '../src/state';
 
 jest.setTimeout(60_000);
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/** Заглушка `mn.css` этого пакета — её подменяет CSS-лоадер плагина. */
+const MN_CSS = resolve(__dirname, '../mn.css');
 
 /** Создаёт временный проект: ключ — относительный путь файла, значение — содержимое. */
 function makeProject(files: Record<string, string>): string {
@@ -27,355 +32,354 @@ function makeProject(files: Record<string, string>): string {
   return root;
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-/**
- * Прогоняет исходник через MN-лоадер с настоящим loader-контекстом.
- *
- * Файл создаётся НА ДИСКЕ: стейт хранит токены по файлам, а `collectTokens`
- * отсеивает записи несуществующих файлов (так снимаются с учёта удалённые).
- * Без реального файла токены не дошли бы до сборки.
- */
-function runLoader(
-  source: string, options: Record<string, unknown> = {}, resourcePath?: string,
-): string {
-  const file = resourcePath || join(mkdtempSync(join(tmpdir(), 'mn-loader-')), 'page.html');
-  writeFileSync(file, source);
-  return (loader as any).call({
-    getOptions: () => options,
-    resourcePath: file, 
-  }, source);
-}
-
-/** Плоский отсортированный набор токенов, что сейчас на учёте. */
-function tokensNow(): string[] {
-  return Array.from(collectTokens(getState())).sort();
-}
-
-/** Прогоняет пресет-файл через preset-loader; возвращает warnings, которые он эмитировал. */
-function runPresetLoader(source: string, resourcePath: string): { result: string; warnings: string[] } {
-  const warnings: string[] = [];
-  const result = (presetLoader as any).call({
-    resourcePath,
-    emitWarning: (w: Error) => warnings.push(w.message),
-  }, source);
-  return { result, warnings };
-}
-
-/**
- * Реальная webpack-сборка; возвращает содержимое эмитированных assets.
- * Читается с диска, а не из `compilation.assets`: после записи webpack держит
- * там `SizeOnlySource`, чей `source()` бросает.
- */
-function runBuild(root: string, plugin: MnWebpackPlugin): Promise<Record<string, string>> {
-  const outDir = join(root, 'dist');
-  const compiler = webpack({
+/** Конфиг сборки проекта; `extra` дополняет его. */
+function configOf(root: string, plugin: MnWebpackPlugin, extra: Configuration = {}): Configuration {
+  return {
     mode: 'development',
     devtool: false,
-    entry: join(root, 'src/main.js'),
-    output: { path: outDir, filename: 'bundle.js' },
-    plugins: [plugin],
-  });
-
-  return new Promise((resolve, reject) => {
-    compiler.run((err, stats) => {
-      if (err) { reject(err); return; }
-      const names = Object.keys(stats!.compilation.assets);
-      compiler.close(() => {
-        try {
-          const assets: Record<string, string> = {};
-          for (const name of names) assets[name] = readFileSync(join(outDir, name), 'utf-8');
-          resolve(assets);
-        } catch (e) { reject(e); }
-      });
-    });
-  });
-}
-
-/** Минимальный проект-заглушка: плагину важен только сам факт сборки. */
-function makeStubProject(): string {
-  return makeProject({ 'src/main.js': 'export const x = 1;\n' });
-}
-
-/** Тексты предупреждений, которые сборка добавила в `compilation.warnings`. */
-function buildWarnings(plugin: MnWebpackPlugin): Promise<string[]> {
-  const root = makeStubProject();
-  const compiler = webpack({
-    mode: 'development',
-    devtool: false,
+    context: root,
     entry: join(root, 'src/main.js'),
     output: { path: join(root, 'dist'), filename: 'bundle.js' },
+    // Проект во временном каталоге не видит пакет — заглушку отдаём алиасом.
+    resolve: { alias: { 'minotation-webpack/mn.css': MN_CSS } },
     plugins: [plugin],
-  });
+    ...extra,
+  };
+}
 
-  return new Promise((resolve, reject) => {
+/** Результат сборки: ассеты с диска, предупреждения, файлы точки входа. */
+interface BuildResult {
+  assets: Record<string, string>;
+  warnings: string[];
+  entryFiles: string[];
+}
+
+function readResult(root: string, stats: Stats): BuildResult {
+  const names = Object.keys(stats.compilation.assets);
+  const assets: Record<string, string> = {};
+  for (const name of names) assets[name] = readFileSync(join(root, 'dist', name), 'utf-8');
+  const entryFiles: string[] = [];
+  for (const entrypoint of stats.compilation.entrypoints.values()) {
+    entryFiles.push(...entrypoint.getFiles());
+  }
+  return {
+    assets,
+    warnings: stats.compilation.warnings.map((w) => w.message),
+    entryFiles,
+  };
+}
+
+/**
+ * Реальная webpack-сборка. Ассеты читаются с диска, а не из
+ * `compilation.assets`: после записи webpack держит там `SizeOnlySource`.
+ */
+function runBuild(root: string, plugin: MnWebpackPlugin, extra: Configuration = {}): Promise<BuildResult> {
+  const compiler = webpack(configOf(root, plugin, extra));
+  return new Promise((done, fail) => {
     compiler.run((err, stats) => {
-      if (err) { reject(err); return; }
-      const warnings = stats!.compilation.warnings.map((w) => w.message);
-      compiler.close(() => resolve(warnings));
+      if (err) { fail(err); return; }
+      if (stats!.hasErrors()) { fail(new Error(stats!.compilation.errors.map((e) => e.message).join('\n'))); return; }
+      const result = readResult(root, stats!);
+      compiler.close(() => done(result));
     });
   });
 }
 
-describe('minotation-webpack — лоадеры', () => {
-  beforeEach(() => {
-    // стейт — синглтон на процесс (см. state.ts), между тестами его надо чистить
-    const state = getState();
-    state.tokensByFile.clear();
-    state.dynamicPresets.clear();
+beforeEach(() => {
+  // Реестр — на процесс (см. state.ts): плагины прошлых тестов в нём не нужны.
+  getState().plugins.clear();
+});
+
+describe('minotation-webpack — скан проекта и ассет без импорта', () => {
+  test('токены из src/ находятся сами; ассет привязан к точке входа; манифест рядом', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/page.html': '<div class="p10 mt4"></div>',
+    });
+
+    const result = await runBuild(root, new MnWebpackPlugin());
+
+    expect(result.assets['mn.css']).toContain('.p10{padding:10px}');
+    expect(result.assets['mn.css']).toContain('margin-top:4px');
+    // В файлах точки входа — `HtmlWebpackPlugin` подключит CSS сам.
+    expect(result.entryFiles).toContain('mn.css');
+    expect(JSON.parse(result.assets['mn-manifest.json'])).toEqual({ 'mn.css': 'mn.css' });
   });
 
-  test('лоадер собирает токены из атрибута class по умолчанию и возвращает исходник как есть', () => {
-    const source = '<div class="p10 mt4"></div><span className="mb4"></span>';
+  test('хеш в output.filename проекта — хеш и в имени CSS', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/page.html': '<div class="p10"></div>',
+    });
 
-    expect(runLoader(source)).toBe(source);
-    expect(tokensNow()).toEqual(['class mt4', 'class p10']);
+    const result = await runBuild(root, new MnWebpackPlugin(), {
+      output: { path: join(root, 'dist'), filename: '[name].[contenthash].js' },
+    });
+
+    const manifest = JSON.parse(result.assets['mn-manifest.json']);
+    expect(manifest['mn.css']).toMatch(/^mn\.[0-9a-f]{8}\.css$/);
+    expect(result.assets[manifest['mn.css']]).toContain('padding:10px');
   });
 
-  test('лоадер с несколькими атрибутами: className:class даёт классы', () => {
-    runLoader('<div class="p10"></div><span className="mb4"></span>', { attrs: ['class', 'className:class'] });
+  test('fileName, entry и manifest: false', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/site/a.html': '<div class="p10"></div>',
+      'src/admin/b.html': '<div class="m20"></div>',
+    });
 
-    expect(tokensNow()).toEqual(['class mb4', 'class p10']);
+    const result = await runBuild(root, new MnWebpackPlugin({
+      fileName: 'css/[name].css',
+      manifest: false,
+      entry: { site: { include: /site/ }, admin: { include: /admin/, fileName: 'admin.css' } },
+    }));
+
+    expect(result.assets['css/site.css']).toContain('padding:10px');
+    expect(result.assets['admin.css']).toContain('margin:20px');
+    expect(result.assets['admin.css']).not.toContain('padding:10px');
+    expect(Object.keys(result.assets).filter((name) => name.endsWith('.json'))).toEqual([]);
   });
 
-  test('лоадер: exclude и skipPartials снимают файл с учёта (D-026, D-027)', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'mn-loader-'));
-    runLoader('<div class="p10"></div>', { skipPartials: true }, join(dir, '_part.html'));
-    runLoader('<div class="m20"></div>', { exclude: /vendor/ }, join(dir, 'vendor.html'));
-    runLoader('<div class="w30"></div>', { include: /\.html$/ }, join(dir, 'page.html'));
+  test('root задаёт корень скана; без src/ — корень проекта', async () => {
+    const root = makeProject({
+      'main.html': '<div class="w30"></div>',
+      'src/main.js': 'export const x = 1;\n',
+      'templates/a.html': '<div class="h40"></div>',
+    });
 
-    expect(tokensNow()).toEqual(['class w30']);
+    const custom = await runBuild(root, new MnWebpackPlugin({ root: join(root, 'templates') }));
+    expect(custom.assets['mn.css']).toContain('height:40px');
+    expect(custom.assets['mn.css']).not.toContain('width:30px');
+
+    rmSync(join(root, 'src'), { recursive: true });
+    writeFileSync(join(root, 'main.js'), 'export const x = 1;\n');
+    const whole = await runBuild(root, new MnWebpackPlugin(), { entry: join(root, 'main.js') });
+    expect(whole.assets['mn.css']).toContain('width:30px');
+    expect(whole.assets['mn.css']).toContain('height:40px');
   });
 
-  test('атрибут без цели разворачивается в себя — как в v1 (D-025)', () => {
-    // Записи помечены целевым атрибутом: плагин скомпилирует `className mb4`
-    // в `[className~="mb4"]`, а не в класс.
-    runLoader('<div class="p10"></div><span className="mb4"></span>', { attrs: ['class', 'className'] });
+  test('нет токенов — нет ни ассета, ни манифеста', async () => {
+    const root = makeProject({ 'src/main.js': 'export const x = 1;\n' });
 
-    expect(tokensNow()).toEqual(['class p10', 'className mb4']);
-  });
+    const result = await runBuild(root, new MnWebpackPlugin({ presets: [] }));
 
-  test('preset-loader выполняет пресет, отдаёт в бандл пустой модуль', () => {
-    const id = join(tmpdir(), 'theme.mn.ts');
-    const { result, warnings } = runPresetLoader("export default (mn) => { mn('wpToken', 'cF00'); };\n", id);
-
-    expect(result).toBe('module.exports = {};');
-    expect(warnings).toEqual([]);
-    expect(getState().dynamicPresets.has(id)).toBe(true);
-  });
-
-  test('preset-loader понимает .tsx и named-экспорт, игнорирует файл без функции', () => {
-    const tsxId = join(tmpdir(), 'widget.mn.tsx');
-    runPresetLoader("export const preset = (mn) => { mn('tsxToken', 'cF00'); };\n", tsxId);
-    const emptyId = join(tmpdir(), 'empty.mn.js');
-    runPresetLoader('export const config = { notAFunction: true };\n', emptyId);
-
-    expect(getState().dynamicPresets.has(tsxId)).toBe(true);
-    expect(getState().dynamicPresets.has(emptyId)).toBe(false);
-  });
-
-  test('битый пресет-файл: warning, пресет не регистрируется, сборка не ломается', () => {
-    const id = join(tmpdir(), 'broken.mn.js');
-    const { result, warnings } = runPresetLoader('this is ( not ) valid javascript !!!\n', id);
-
-    expect(result).toBe('module.exports = {};');
-    expect(warnings.join('\n')).toContain('[minotation] Failed to evaluate preset file');
-    expect(getState().dynamicPresets.has(id)).toBe(false);
+    expect(Object.keys(result.assets)).toEqual(['bundle.js']);
   });
 });
 
-describe('minotation-webpack — реальная сборка', () => {
-  beforeEach(() => {
-    const state = getState();
-    state.tokensByFile.clear();
-    state.dynamicPresets.clear();
+describe('minotation-webpack — импорт minotation-webpack/mn.css (D-031)', () => {
+  test('CSS идёт конвейером проекта: имя с хешем, отдельного ассета нет', async () => {
+    const root = makeProject({
+      'src/main.js': "import 'minotation-webpack/mn.css';\nexport const x = 1;\n",
+      'src/page.html': '<div class="p10"></div>',
+    });
+
+    const result = await runBuild(root, new MnWebpackPlugin(), {
+      experiments: { css: true },
+      output: { path: join(root, 'dist'), filename: '[name].js', cssFilename: '[name].[contenthash].css' },
+    });
+
+    const css = Object.keys(result.assets).filter((name) => name.endsWith('.css'));
+    expect(css).toHaveLength(1);
+    expect(css[0]).toMatch(/^main\.[0-9a-f]+\.css$/);
+    expect(result.assets[css[0]]).toContain('padding:10px');
+    expect(result.assets['mn-manifest.json']).toBeUndefined();
   });
 
-  test('токены лоадера и пресет из *.mn.ts дают CSS-asset', async () => {
-    runLoader('<div class="p10 wpToken"></div>');
-    runPresetLoader("export default (mn) => { mn('wpToken', 'cF00'); };\n", join(tmpdir(), 'theme.mn.ts'));
+  test('?entry=<имя> — CSS одной записи; неизвестная запись — ошибка сборки', async () => {
+    const root = makeProject({
+      'src/main.js': "import 'minotation-webpack/mn.css?entry=admin';\nexport const x = 1;\n",
+      'src/site/a.html': '<div class="p10"></div>',
+      'src/admin/b.html': '<div class="m20 w10zz"></div>',
+    });
+    const entry = { site: { include: /site/ }, admin: { include: /admin/ } };
+    const extra: Configuration = { experiments: { css: true } };
 
-    const assets = await runBuild(makeStubProject(), new MnWebpackPlugin({ output: 'mn.css' }));
+    const result = await runBuild(root, new MnWebpackPlugin({ entry }), extra);
+    const css = Object.entries(result.assets).filter(([name]) => name.endsWith('.css')).map(([, v]) => v).join('');
+    expect(css).toContain('margin:20px');
+    expect(css).not.toContain('padding:10px');
+    expect(result.warnings.join('\n')).toContain('[minotation] w10zz');
 
-    expect(assets['mn.css']).toContain('.p10{padding:10px}');
-    expect(assets['mn.css']).toContain('.wpToken{color:#f00}');
-  });
-
-  test('дефолтные опции: asset называется app.css', async () => {
-    runLoader('<div class="mt4"></div>');
-
-    const assets = await runBuild(makeStubProject(), new MnWebpackPlugin());
-
-    expect(assets['app.css']).toContain('margin-top:4px');
-  });
-
-  test('selectorPrefix, media и кастомный набор пресетов доходят до компиляции', async () => {
-    runLoader('<div class="p10 fw5@wide"></div>');
-
-    const assets = await runBuild(makeStubProject(), new MnWebpackPlugin({
-      output: 'mn.css',
-      selectorPrefix: '.app ',
-      media: { wide: { query: '(min-width: 1200px)' } },
-      presets: [require('minotation').presetStandard],
-    }));
-
-    expect(assets['mn.css']).toContain('.app .p10{padding:10px}');
-    expect(assets['mn.css']).toContain('@media (min-width: 1200px)');
-    // normalize/main в кастомный набор не входят
-    expect(assets['mn.css']).not.toContain('box-sizing:border-box');
-  });
-
-  test('safelist и mn целиком — как у остальных плагинов (D-026)', async () => {
-    runLoader('<div class="p10"></div>');
-
-    const assets = await runBuild(makeStubProject(), new MnWebpackPlugin({
-      output: 'mn.css',
-      safelist: ['m20 dF'],
-      mn: { selectorPrefix: '.mn ' },
-    }));
-
-    expect(assets['mn.css']).toContain('.mn .p10{padding:10px}');
-    expect(assets['mn.css']).toContain('.mn .m20{margin:20px}');
-    expect(assets['mn.css']).toContain('display:flex');
-  });
-
-  test('повторная сборка с тем же набором токенов берёт CSS из кеша', async () => {
-    runLoader('<div class="p10"></div>');
-    const plugin = new MnWebpackPlugin({ output: 'mn.css' });
-
-    const first = await runBuild(makeStubProject(), plugin);
-    const second = await runBuild(makeStubProject(), plugin);
-
-    expect(second['mn.css']).toBe(first['mn.css']);
-    expect(second['mn.css']).toContain('padding:10px');
-  });
-
-  test('нет ни токенов, ни пресетов: CSS-asset не эмитится', async () => {
-    const assets = await runBuild(makeStubProject(), new MnWebpackPlugin({ output: 'mn.css', presets: [] }));
-
-    expect(assets['mn.css']).toBeUndefined();
+    writeFileSync(join(root, 'src/main.js'), "import 'minotation-webpack/mn.css?entry=nope';\n");
+    await expect(runBuild(root, new MnWebpackPlugin({ entry }), extra)).rejects.toThrow('no such entry; declared: site, admin');
   });
 });
 
-/**
- * Предупреждения ядра идут в `compilation.warnings`, а не в console: только так
- * они попадают в отчёт сборки и в CI. Перехват стоит в плагине всегда, поэтому
- * и проверяется здесь — на реальной сборке, а не на моке `compilation`.
- */
-describe('minotation-webpack — предупреждения ядра', () => {
-  beforeEach(() => {
-    const state = getState();
-    state.tokensByFile.clear();
-    state.dynamicPresets.clear();
+describe('minotation-webpack — пресеты, лоадеры и предупреждения', () => {
+  test('*.mn.ts в корне скана выполняется сам; битый — печатается, сборка идёт', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/page.html': '<div class="wpToken brokenToken"></div>',
+      'src/theme.mn.ts': "export default (mn) => { mn('wpToken', 'cF00'); };\n",
+      'src/broken.mn.ts': 'this is ( not ) valid javascript !!!\n',
+    });
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    try {
+      const result = await runBuild(root, new MnWebpackPlugin());
+      expect(result.assets['mn.css']).toContain('.wpToken{color:#f00}');
+      // До `mockRestore`: он заодно стирает записанные вызовы.
+      expect(errorSpy).toHaveBeenCalledWith('[minotation] Failed to evaluate preset file:', expect.stringContaining('broken.mn.ts'), expect.anything());
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 
-  test('битый токен превращается в warning сборки', async () => {
-    runLoader('<div class="w10zz p10"></div>');
+  test('токен-лоадер и preset-лоадер отдают файл всем плагинам процесса', () => {
+    const root = makeProject({ 'src/main.js': 'export const x = 1;\n' });
+    // Стандартный набор нужен: пресет ниже раскрывается через хендлер `c`.
+    const plugin = new MnWebpackPlugin();
+    plugin.apply(webpack(configOf(root, plugin)) as any);
+    const handle = getState().plugins.values().next().value!;
 
-    const warnings = await buildWarnings(new MnWebpackPlugin({ output: 'mn.css' }));
+    const source = '<div class="qqLoaderToken qqTsxToken"></div>';
+    expect((loader as any).call({ resourcePath: join(root, 'shared/a.html') }, source)).toBe(source);
+    expect((loader as any).call({ resourcePath: join(root, 'shared/a.css') }, '')).toBe('');
+    expect(handle.build.has(join(root, 'shared/a.html'))).toBe(true);
+    expect(handle.build.has(join(root, 'shared/a.css'))).toBe(false);
 
-    expect(warnings.join('\n')).toContain('[minotation] w10zz');
-    // Остальное при этом компилируется: один битый токен не отменяет сборку.
-    expect(warnings.join('\n')).not.toContain('p10');
+    const warnings: string[] = [];
+    const call = (code: string, file: string) => (presetLoader as any).call({
+      resourcePath: join(root, file),
+      emitWarning: (w: Error) => warnings.push(w.message),
+    }, code);
+    expect(call("export default (mn) => { mn('qqLoaderToken', 'cF00'); };\n", 'p.mn.ts')).toBe('module.exports = {};');
+    expect(handle.build.outputs()[0].css).toContain('.qqLoaderToken{color:#f00}');
+    call('export const notAPreset = 1;\n', 'q.mn.js');
+    call("export function named(mn) { mn('qqTsxToken', 'c0F0'); }\n", 'n.mn.tsx');
+    expect(handle.build.outputs()[0].css).toContain('.qqTsxToken{color:#0f0}');
+    call('this is ( not ) valid javascript !!!\n', 'bad.mn.tsx');
+    expect(warnings).toEqual([expect.stringContaining('Failed to evaluate preset file')]);
   });
 
-  test("onWarning: 'silent' — в отчёт сборки ничего не уходит", async () => {
-    runLoader('<div class="w10zz"></div>');
-
-    const warnings = await buildWarnings(
-      new MnWebpackPlugin({ output: 'mn.css', onWarning: 'silent' }),
-    );
-
-    expect(warnings).toEqual([]);
-  });
-
-  test('onWarning-функция вызывается и не отменяет отчёт сборки', async () => {
-    runLoader('<div class="w10zz"></div>');
+  test('битый токен — в отчёт сборки; onWarning и поля верхнего уровня доходят до ядра', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/page.html': '<div class="p10 w10zz"></div>',
+    });
     const seen: string[] = [];
 
-    const warnings = await buildWarnings(new MnWebpackPlugin({
-      output: 'mn.css',
-      onWarning: (warning) => { seen.push(warning.token); },
+    const loud = await runBuild(root, new MnWebpackPlugin({
+      selectorPrefix: '.app ',
+      media: { wide: { query: '(min-width: 1200px)' } },
+      onWarning: (w) => seen.push(w.token),
     }));
-
+    expect(loud.warnings.join('\n')).toContain('[minotation] w10zz');
+    expect(loud.assets['mn.css']).toContain('.app .p10{padding:10px}');
     expect(seen).toEqual(['w10zz']);
-    expect(warnings.join('\n')).toContain('[minotation] w10zz');
+
+    const quiet = await runBuild(root, new MnWebpackPlugin({ mn: { onWarning: 'silent' } }));
+    expect(quiet.warnings.join('\n')).not.toContain('[minotation]');
+  });
+
+  test('устаревший output — ошибка с подсказкой', () => {
+    expect(() => new MnWebpackPlugin({ output: 'app.css' } as never))
+      .toThrow('option "output" was replaced by "fileName"');
   });
 });
 
-/**
- * Q-09: удаление файла должно убирать его стили из вывода.
- *
- * Раньше стейт был плоским `Set<string>`, который не очищался никогда —
- * токен, однажды попавший в набор, оставался в CSS до перезапуска сборки.
- */
-describe('minotation-webpack — снятие токенов с учёта', () => {
-  beforeEach(() => {
-    const state = getState();
-    state.tokensByFile.clear();
-    state.dynamicPresets.clear();
+describe('minotation-webpack — watch: изменения учитываются до компиляции', () => {
+  test('правка, удаление файла и пресета — в следующей сборке', async () => {
+    jest.setTimeout(30_000);
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/a.html': '<div class="p10"></div>',
+      'src/gone.html': '<div class="m20"></div>',
+      'src/theme.mn.ts': "export default (mn) => { mn('wToken', 'cF00'); };\n",
+      'src/keep.html': '<div class="wToken"></div>',
+    });
+    const compiler = webpack(configOf(root, new MnWebpackPlugin()));
+    let first = '';
+    let edited = false;
+
+    const after = await new Promise<string>((done, fail) => {
+      const watching = compiler.watch({ aggregateTimeout: 50 }, (err, stats) => {
+        if (err) { fail(err); return; }
+        const css = readResult(root, stats!).assets['mn.css'] || '';
+        if (!first) {
+          first = css;
+          // Даём watcher-у запомнить время первой сборки, иначе правка не заметна.
+          setTimeout(() => {
+            writeFileSync(join(root, 'src/a.html'), '<div class="p10 h40"></div>');
+            rmSync(join(root, 'src/gone.html'));
+            rmSync(join(root, 'src/theme.mn.ts'));
+            edited = true;
+          }, 300);
+          return;
+        }
+        // Вотчер может пересобрать и до правки (файлы проекта только что созданы) —
+        // ждём сборку, в которой правка уже есть.
+        edited && css.indexOf('height:40px') > -1 && watching!.close(() => done(css));
+      });
+    });
+
+    expect(first).toContain('margin:20px');
+    expect(first).toContain('.wToken{color:#f00}');
+    expect(after).toContain('height:40px');
+    expect(after).not.toContain('margin:20px');
+    expect(after).not.toContain('.wToken{');
+  });
+});
+
+describe('minotation-webpack — watchRun: точечное пересканирование', () => {
+  /** Вызывает `watchRun` так, как это делает webpack в watch-режиме. */
+  function watchRun(compiler: webpack.Compiler, modified: string[], removed: string[]): Promise<void> {
+    (compiler as any).modifiedFiles = new Set(modified);
+    (compiler as any).removedFiles = new Set(removed);
+    return new Promise((done) => compiler.hooks.watchRun.callAsync(compiler, () => done()));
+  }
+
+  test('файлы графа — поимённо: правка, пресет, нечитаемый и удалённый', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/a.html': '<div class="p10"></div>',
+      'src/b.html': '<div class="m20"></div>',
+      'src/theme.mn.ts': "export default (mn) => { mn('wrToken', 'cF00'); };\n",
+      'src/c.html': '<div class="wrToken"></div>',
+    });
+    const plugin = new MnWebpackPlugin();
+    const compiler = webpack(configOf(root, plugin));
+    const handle = getState().plugins.values().next().value!;
+    const css = (): string => handle.build.outputs()[0].css;
+
+    // Первый вызов — полный скан.
+    await watchRun(compiler, [], []);
+    expect(css()).toContain('margin:20px');
+
+    writeFileSync(join(root, 'src/a.html'), '<div class="h40"></div>');
+    writeFileSync(join(root, 'src/theme.mn.ts'), "export default (mn) => { mn('wrToken', 'c0F0'); };\n");
+    rmSync(join(root, 'src/b.html'));
+    await watchRun(compiler, [
+      join(root, 'src/a.html'),
+      join(root, 'src/theme.mn.ts'),
+      join(root, 'src/b.html'),
+      join(root, 'src/style.css'),
+    ], [join(root, 'src/old.html')]);
+
+    expect(css()).toContain('height:40px');
+    expect(css()).not.toContain('padding:10px');
+    // Нечитаемый (удалённый, но пришедший как изменённый) файл снят с учёта.
+    expect(css()).not.toContain('margin:20px');
+    expect(css()).toContain('.wrToken{color:#0f0}');
+
+    // Webpack может не сообщить списков вовсе — это не ошибка.
+    (compiler as any).modifiedFiles = undefined;
+    (compiler as any).removedFiles = undefined;
+    await new Promise<void>((done) => compiler.hooks.watchRun.callAsync(compiler, () => done()));
+    expect(css()).toContain('height:40px');
   });
 
-  test('удалённый файл больше не даёт своих правил', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'mn-unlink-'));
-    const gone = join(dir, 'gone.html');
-    const stays = join(dir, 'stays.html');
+  test('include — скан по матчеру, а не по расширениям', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/page.tpl': '<div class="w30"></div>',
+      'src/page.html': '<div class="h40"></div>',
+    });
 
-    runLoader('<div class="p10"></div>', {}, gone);
-    runLoader('<div class="mt4"></div>', {}, stays);
-    expect(tokensNow()).toEqual(['class mt4', 'class p10']);
+    const result = await runBuild(root, new MnWebpackPlugin({ include: /\.tpl$/ }));
 
-    rmSync(gone);
-
-    expect(tokensNow()).toEqual(['class mt4']);
-    const assets = await runBuild(makeStubProject(), new MnWebpackPlugin({ output: 'mn.css' }));
-    expect(assets['mn.css']).toContain('margin-top:4px');
-    expect(assets['mn.css']).not.toContain('padding:10px');
-  });
-
-  test('тот же плагин между сборками: удалённый файл снимается с учёта', async () => {
-    // Плагин живёт между сборками (watch), и накопитель у него один. Файл,
-    // исчезнувший из стейта, надо снять и с учёта — иначе его правила
-    // держались бы в CSS до перезапуска сборки.
-    const dir = mkdtempSync(join(tmpdir(), 'mn-unlink-same-'));
-    const gone = join(dir, 'gone.html');
-    const stays = join(dir, 'stays.html');
-    const plugin = new MnWebpackPlugin({ output: 'mn.css' });
-
-    runLoader('<div class="p10"></div>', {}, gone);
-    runLoader('<div class="mt4"></div>', {}, stays);
-    const first = await runBuild(makeStubProject(), plugin);
-    expect(first['mn.css']).toContain('padding:10px');
-
-    rmSync(gone);
-
-    const second = await runBuild(makeStubProject(), plugin);
-    expect(second['mn.css']).toContain('margin-top:4px');
-    expect(second['mn.css']).not.toContain('padding:10px');
-  });
-
-  test('токен, убранный при редактировании файла, уходит из вывода', async () => {
-    // Лоадер ЗАМЕНЯЕТ набор своего файла, а не дополняет: иначе `p10` остался
-    // бы навсегда, хотя из разметки его убрали.
-    const file = join(mkdtempSync(join(tmpdir(), 'mn-edit-')), 'page.html');
-
-    runLoader('<div class="p10 mt4"></div>', {}, file);
-    expect(tokensNow()).toEqual(['class mt4', 'class p10']);
-
-    runLoader('<div class="mt4"></div>', {}, file);
-    expect(tokensNow()).toEqual(['class mt4']);
-
-    const assets = await runBuild(makeStubProject(), new MnWebpackPlugin({ output: 'mn.css' }));
-    expect(assets['mn.css']).not.toContain('padding:10px');
-  });
-
-  test('файл, где токенов не осталось вовсе, снимается с учёта', () => {
-    const file = join(mkdtempSync(join(tmpdir(), 'mn-empty-')), 'page.html');
-
-    runLoader('<div class="p10"></div>', {}, file);
-    expect(getState().tokensByFile.has(file)).toBe(true);
-
-    runLoader('<div></div>', {}, file);
-    expect(getState().tokensByFile.has(file)).toBe(false);
+    expect(result.assets['mn.css']).toContain('width:30px');
+    expect(result.assets['mn.css']).not.toContain('height:40px');
   });
 });

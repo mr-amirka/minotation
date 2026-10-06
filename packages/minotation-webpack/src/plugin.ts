@@ -1,6 +1,9 @@
 /**
- * Webpack plugin: компилирует MN-токены в CSS на этапе emit.
+ * Webpack plugin: сканирует проект, компилирует MN-токены в CSS и отдаёт его
+ * сборке — модулем `minotation-webpack/mn.css` или ассетом.
  */
+import { existsSync, readFileSync, statSync } from 'fs';
+import { join } from 'path';
 import type { Compiler } from 'webpack';
 import { Compilation } from 'webpack';
 import type { MnOptions, MnWarning } from 'minotation';
@@ -12,40 +15,41 @@ import {
   presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
-import { getState, collectTokens, MnState } from './state';
-import { createTokenCollector } from 'minotation-build';
-import type { TokenCollector } from 'minotation-build';
+import {
+  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, walkFiles,
+} from 'minotation-build';
+import type { MnBuildOptions } from 'minotation-build';
+import { evalPreset } from './preset-loader';
+import { getState } from './state';
+import type { MnPluginHandle } from './state';
 
-/** Опции {@link MnWebpackPlugin}. */
-export interface MnWebpackPluginOptions {
-  /** Путь для выходного CSS-файла. @default 'app.css' */
-  output?: string;
-  /** Глобальный CSS-префикс для всех генерируемых селекторов. */
+/**
+ * Опции {@link MnWebpackPlugin} — эталонный набор `minotation-build` (D-026):
+ * `attrs`, `root`, `extensions`, `include`, `exclude`, `skipPartials`, `presets`,
+ * `presetExtensions`, `safelist`, `classVarSuffixes`, `mergeFnNames`, `syntax`,
+ * `mn`, `entry`, `fileName`, `manifest`. Описание каждой — в README `minotation-build`.
+ *
+ * `root` по умолчанию — `src/` проекта, если он есть, иначе корень проекта
+ * (`context` webpack).
+ */
+export interface MnWebpackPluginOptions extends Omit<MnBuildOptions, 'onWarning'> {
+  /** То же, что `mn.selectorPrefix`; перекрывает его (исторически у webpack на верхнем уровне). */
   selectorPrefix?: string;
   /**
-   * Что делать с предупреждениями компиляции. По умолчанию плагин
-   * перехватывает их и кладёт в `compilation.warnings` (вместо `console`
-   * ядра) — так они попадают в отчёт сборки и в CI. `'silent'` — не выводить
-   * вовсе; своя функция вызывается как есть.
+   * То же, что `mn.onWarning`; перекрывает его. Внимание: в общем наборе
+   * `onWarning` верхнего уровня — колбэк сканера (нет парсера при `syntax: true`),
+   * а здесь — предупреждения компиляции; поэтому в каркас он не передаётся.
+   * Перенос этих полей в `mn` ждёт решения владельца (RESEARCH 10, вопрос 5).
    */
   onWarning?: 'silent' | 'console' | ((warning: MnWarning) => void);
-  /** Карта именованных медиа-контекстов. */
+  /** То же, что `mn.media`; перекрывает его. */
   media?: Record<string, { query?: string; selector?: string; priority?: number }>;
-  /**
-   * Дополнительные пресеты.
-   * Вызываются поверх стандартного набора (или вместо него, если задан `presets`).
-   */
-  presets?: Array<(mn: MnInstance) => void>;
-  /** Токены, нужные всегда; группы через пробел — как в `minotation-build`. */
-  safelist?: string[];
-  /**
-   * Опции mn-инстанса целиком (`altColor`, `strict`, `maxDepth`, `onError`, …) —
-   * как у остальных плагинов. `selectorPrefix`, `media` и `onWarning` верхнего
-   * уровня (исторически у webpack) перекрывают одноимённые поля отсюда; перенос
-   * их внутрь `mn` ждёт решения владельца — PLAN, D-026, §6 RESEARCH 09.
-   */
-  mn?: MnOptions;
 }
+
+/** Модуль с CSS — импортируется в точке входа или корневом layout. */
+export const MN_CSS_REQUEST = 'minotation-webpack/mn.css';
+/** Заглушки `mn.css` этого пакета и `minotation-next`: содержимое даёт CSS-лоадер. */
+const REGEXP_MN_CSS = /[\\/]minotation-(?:webpack|next)[\\/]mn\.css$/;
 
 const DEFAULT_PRESETS: Array<(mn: MnInstance) => void> = [
   presetStandard,
@@ -55,117 +59,214 @@ const DEFAULT_PRESETS: Array<(mn: MnInstance) => void> = [
   presetMain,
 ];
 
+/** Номер следующего плагина в общем реестре. */
+let nextId = 0;
+
 /**
  * Webpack-плагин Minimalist Notation.
  *
- * Собирает все MN-токены, собранные лоадером из исходников,
- * компилирует их в CSS и эмитирует как отдельный asset.
- * Использует кеш по слепку токенов — CSS не пересчитывается, если токены не изменились.
+ * Перед каждой сборкой сканирует проект (в watch — только изменённые файлы),
+ * поэтому CSS полный к моменту, когда сборке понадобится модуль `mn.css`.
+ * Дальше два пути (D-031):
+ *
+ * - **Импорт `minotation-webpack/mn.css`** (Next.js — `minotation-next/mn.css`)
+ *   в точке входа или layout: CSS ведёт штатный конвейер проекта — имя с хешем,
+ *   ссылка в HTML, минификация. Отдельного ассета плагин не выдаёт.
+ * - **Без импорта** — ассет по `fileName`. По умолчанию с хешем, если хеш есть
+ *   в `output.filename` проекта, иначе `[name].css`. Ассет привязывается к чанкам
+ *   точек входа — `HtmlWebpackPlugin` сошлётся на него сам. Рядом манифест.
  *
  * @example
  * // webpack.config.js
  * const { MnWebpackPlugin } = require('minotation-webpack');
  * module.exports = {
- *   plugins: [new MnWebpackPlugin({ output: 'dist/app.css' })],
+ *   plugins: [new MnWebpackPlugin({ attrs: 'class, className:class' })],
  * };
+ * // src/index.js
+ * import 'minotation-webpack/mn.css';
  */
 export class MnWebpackPlugin {
   private options: MnWebpackPluginOptions;
 
-  /** Файлы, стоявшие на учёте в прошлую компиляцию, — чтобы снять исчезнувшие. */
-  private _files = new Set<string>();
+  /** Номер в общем реестре — по нему токен- и preset-лоадер находят плагины процесса. */
+  private readonly id = nextId++;
 
-  /** Накопитель каркаса; создаётся лениво, см. {@link _collector}. */
-  private _tokenCollector?: TokenCollector;
+  /** Связь с лоадерами; заводится в `apply`, когда известен корень. */
+  private handle?: MnPluginHandle;
 
   constructor(options: MnWebpackPluginOptions = {}) {
+    // Конфиги на JS типов не видят: старое имя опции иначе потерялось бы молча.
+    'output' in options && throwRenamed('output', 'fileName');
     this.options = options;
   }
 
   /**
-   * Подключает плагин к webpack-компилятору.
-   * Регистрируется на хук `processAssets` (стадия `ADDITIONAL`).
+   * Подключает плагин к webpack-компилятору: регистрирует правило для `mn.css`,
+   * скан проекта перед сборкой и выдачу ассета на `processAssets`.
    *
    * @param compiler - экземпляр webpack Compiler
    */
   apply(compiler: Compiler): void {
+    const options = this.options;
+    const context = compiler.context;
+    const root = options.root || (existsSync(join(context, 'src')) ? join(context, 'src') : context);
+    const mn: MnOptions = { ...options.mn };
+    options.selectorPrefix === undefined || (mn.selectorPrefix = options.selectorPrefix);
+    options.media === undefined || (mn.media = options.media);
+    options.onWarning === undefined || (mn.onWarning = options.onWarning);
+    const { onWarning: _compileWarnings, ...buildOptions } = options;
+    void _compileWarnings;
+    const handle: MnPluginHandle = this.handle = {
+      build: createBuildCollector({
+        ...buildOptions,
+        presets: options.presets || DEFAULT_PRESETS,
+        mn,
+      }, root),
+      files: createFileFilter(buildOptions, root),
+      root,
+      imported: false,
+    };
+    getState().plugins.set(this.id, handle);
+
+    compiler.options.module.rules.push({
+      test: REGEXP_MN_CSS,
+      enforce: 'pre',
+      use: [{
+        loader: require.resolve('./css-loader'),
+        options: { handle },
+      }],
+    });
+
+    let scanned = false;
+    const scanAll = (): void => {
+      handle.build.clear();
+      const walkExts = options.include ? [''] : handle.files.extensions;
+      for (const file of walkFiles(root, handle.files.presetExtensions)) {
+        this.loadPreset(file);
+      }
+      for (const file of walkFiles(root, walkExts)) {
+        handle.files.accepts(file) && this.loadFile(file);
+      }
+      scanned = true;
+    };
+    compiler.hooks.beforeRun.tap('MnWebpackPlugin', scanAll);
+    compiler.hooks.watchRun.tap('MnWebpackPlugin', (watching: Compiler) => {
+      if (!scanned) {
+        scanAll();
+        return;
+      }
+      // Токены должны быть свежими ДО компиляции — модуль `mn.css` может
+      // собраться раньше изменённого файла. Корень скана — зависимость-каталог,
+      // и о правке внутри него webpack сообщает самим каталогом, без имени
+      // файла: тогда сканируем корень заново. Файлы графа импортов приходят
+      // поимённо — их пересканируем точечно.
+      for (const file of watching.modifiedFiles || []) {
+        if (isDirectory(file)) {
+          scanAll();
+          return;
+        }
+        if (handle.files.isPreset(file)) {
+          this.loadPreset(file);
+        } else if (handle.files.accepts(file)) {
+          this.loadFile(file);
+        }
+      }
+      for (const file of watching.removedFiles || []) {
+        handle.build.remove(file);
+        handle.build.removePreset(file);
+      }
+    });
+
     compiler.hooks.thisCompilation.tap('MnWebpackPlugin', (compilation: Compilation) => {
+      handle.imported = false;
+      // Webpack следит только за файлами графа импортов, а разметку (`.html`,
+      // шаблоны) никто не импортирует — без этого правка в ней не пересобирала бы
+      // CSS. Корень скана — зависимость сборки целиком.
+      compilation.contextDependencies.add(root);
       compilation.hooks.processAssets.tap(
         {
           name: 'MnWebpackPlugin',
           stage: Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL,
         },
-        () => {
-          const state = getState();
-          this._emitCss(compilation, state);
-        },
+        () => this.emitCss(compilation, handle),
       );
     });
   }
 
+  /** Учитывает файл приложения; нечитаемый — снимает с учёта. */
+  private loadFile(file: string): void {
+    const handle = this.handle as MnPluginHandle;
+    let source: string;
+    try {
+      source = readFileSync(file, 'utf-8');
+    } catch {
+      handle.build.remove(file);
+      return;
+    }
+    handle.build.add(file, source);
+  }
+
+  /** Выполняет пресет-файл; битый — снимает с учёта, ошибку печатает. */
+  private loadPreset(file: string): void {
+    const handle = this.handle as MnPluginHandle;
+    let preset: ((mn: MnInstance) => void) | undefined;
+    try {
+      preset = evalPreset(file, readFileSync(file, 'utf-8'));
+    } catch (e) {
+      console.error('[minotation] Failed to evaluate preset file:', file, e);
+    }
+    preset ? handle.build.setPreset(file, preset) : handle.build.removePreset(file);
+  }
+
   /**
-   * Компилирует накопленные токены в CSS и эмитирует asset.
-   * Пропускает перекомпиляцию, если набор токенов не изменился.
-   *
-   * @param compilation - текущий webpack Compilation
-   * @param state - shared-стейт с набором токенов от лоадера
+   * Без импорта `mn.css` — выдаёт CSS ассетом: по записи на файл, привязка к
+   * чанкам точек входа, манифест. Предупреждения — в отчёт сборки.
    */
-  private _emitCss(compilation: Compilation, state: MnState): void {
-    const output = this.options.output || 'app.css';
-    const collector = this._collector();
-    // Вызов ради побочного действия: `collectTokens` вычищает из стейта записи
-    // файлов, которых больше нет на диске. В watch-режиме webpack просто не
-    // зовёт лоадер для удалённого файла, и сам стейт о пропаже не узнаёт.
-    collectTokens(state);
-    // Токены приходят от лоадера через общий стейт: сканирует он, а собирает
-    // CSS плагин — между ними только `MnState`. Поэтому `set`, а не `add`.
-    const seen = new Set<string>();
-    for (const [file, tokens] of state.tokensByFile) {
-      seen.add(file);
-      collector.set(file, tokens);
+  private emitCss(compilation: Compilation, handle: MnPluginHandle): void {
+    const outputs = handle.build.outputs();
+    for (const warning of handle.build.takeWarnings()) {
+      compilation.warnings.push(new compilation.compiler.webpack.WebpackError(
+        '[minotation] ' + warning.token + ': ' + warning.message,
+      ));
     }
-    // Файл исчез из стейта (удалён с диска — см. `collectTokens`): снимаем и
-    // с учёта, иначе его правила остались бы в CSS до перезапуска сборки.
-    for (const file of this._files) {
-      seen.has(file) || collector.remove(file);
+    if (handle.imported) {
+      return;
     }
-    this._files = seen;
-    for (const [file, preset] of state.dynamicPresets) {
-      collector.setPreset(file, preset);
+    // Webpack всегда задаёт `output.filename` (по умолчанию `[name].js`).
+    const outputName = String(compilation.outputOptions.filename);
+    // Хеш — по правилам проекта: если он есть в именах JS, будет и в имени CSS.
+    const fallback = outputName.indexOf('hash') > -1 ? '[name].[hash].css' : '[name].css';
+    const emitted: Record<string, string> = {};
+    const { RawSource } = compilation.compiler.webpack.sources;
+    for (const output of outputs) {
+      if (!output.css) continue;
+      const template = (this.options.entry && this.options.entry[output.name].fileName)
+        || this.options.fileName || fallback;
+      const name = formatFileName(template, output.name, output.css);
+      compilation.emitAsset(name, new RawSource(output.css));
+      emitted[output.name] = name;
+      // Файл в чанке точки входа — `HtmlWebpackPlugin` подключит его сам.
+      for (const entrypoint of compilation.entrypoints.values()) {
+        entrypoint.getEntrypointChunk().files.add(name);
+      }
     }
-
-    // Компиляция, кеш по набору токенов и накопление предупреждений — в
-    // каркасе (`minotation-build`); повторный вызов без изменений ничего не
-    // пересчитывает.
-    const css = collector.css();
-
-    for (const warning of collector.takeWarnings()) {
-      compilation.warnings.push(
-        new compilation.compiler.webpack.WebpackError(
-          '[minotation] ' + warning.token + ': ' + warning.message,
-        ),
-      );
-    }
-
-    if (css) {
-      compilation.emitAsset(
-        output,
-        new compilation.compiler.webpack.sources.RawSource(css),
-      );
-    }
+    const manifest = manifestFileName(this.options.manifest);
+    manifest && Object.keys(emitted).length && compilation.emitAsset(
+      manifest, new RawSource(JSON.stringify(manifestOf(emitted), null, 2)),
+    );
   }
+}
 
-  /** Накопитель заводится при первой компиляции: опции к тому моменту известны. */
-  private _collector(): TokenCollector {
-    const options = this.options;
-    const mn: MnOptions = { ...options.mn };
-    options.selectorPrefix === undefined || (mn.selectorPrefix = options.selectorPrefix);
-    options.media === undefined || (mn.media = options.media);
-    options.onWarning === undefined || (mn.onWarning = options.onWarning);
-    return this._tokenCollector || (this._tokenCollector = createTokenCollector({
-      presets: options.presets || DEFAULT_PRESETS,
-      safelist: options.safelist,
-      mn,
-    }));
+/** Каталог ли это; несуществующий путь — нет. */
+function isDirectory(path: string): boolean {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
   }
+}
+
+/** Опция переименована — ошибка с подсказкой вместо молчаливого игнора. */
+function throwRenamed(from: string, to: string): never {
+  throw new Error('[minotation] option "' + from + '" was replaced by "' + to + '" ([name], [hash] supported)');
 }

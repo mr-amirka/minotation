@@ -25,13 +25,18 @@ describe('minotation-next — webpack-хук', () => {
     const rules = out.module.rules as any[];
     expect(rules).toHaveLength(2);
     expect(rules[0].test.source).toBe('\\.(tsx|jsx|html|php)$');
-    expect(rules[0].use.loader).toBe('minotation-webpack/dist/loader');
-    expect(rules[0].use.options).toEqual({ attrs: 'class, className:class' });
+    // Абсолютными путями: при строгих зависимостях приложение видит только minotation-next.
+    expect(rules[0].use).toBe(require.resolve('minotation-webpack/dist/loader'));
     expect(rules[1].test.source).toBe('\\.mn\\.(ts|js|tsx)$');
-    expect(rules[1].use).toBe('minotation-webpack/dist/preset-loader');
+    expect(rules[1].use).toBe(require.resolve('minotation-webpack/dist/preset-loader'));
 
     expect(out.plugins).toHaveLength(1);
     expect(out.plugins[0]).toBeInstanceOf(MnWebpackPlugin);
+    // Опции — плагину: умолчания next и без служебного `enabled`.
+    expect(out.plugins[0].options).toEqual({
+      attrs: 'class, className:class',
+      fileName: 'static/[name].css',
+    });
   });
 
   test('без своего webpack-хука возвращает тот же config', () => {
@@ -71,12 +76,12 @@ describe('minotation-next — webpack-хук', () => {
 
   test('кастомные опции доходят до MnWebpackPlugin', () => {
     const config = makeConfig();
-    callWebpackHook(config, {}, { output: 'custom/mn.css', selectorPrefix: 'mn-' });
+    callWebpackHook(config, {}, { fileName: 'custom/[name].[hash].css', selectorPrefix: 'mn-' });
 
     const plugin = (config.plugins as any[])[0] as { options: Record<string, unknown> };
-    expect(plugin.options).toMatchObject({
-      enabled: true,
-      output: 'custom/mn.css',
+    expect(plugin.options).toEqual({
+      attrs: 'class, className:class',
+      fileName: 'custom/[name].[hash].css',
       selectorPrefix: 'mn-',
     });
   });

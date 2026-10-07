@@ -17,7 +17,7 @@ import {
   tmpdir,
 } from 'node:os';
 import {
-  createAttrsScanner, createBuildCollector, createFileFilter, createTokenCollector,
+  checkBuildOptions, createAttrsScanner, createBuildCollector, createFileFilter, createTokenCollector,
   formatFileName, manifestFileName, manifestOf, metricsFileName, parseAttrs, walkFiles,
 } from '../src/index';
 import {
@@ -819,5 +819,115 @@ describe('warningMode в накопителе (D-035)', () => {
     collector.add('/a.html', '<div class="w10zz">');
     expect(() => collector.css()).toThrow("warningMode: 'error'");
     expect(seen).toEqual(['w10zz']);
+  });
+});
+
+describe('checkBuildOptions — проверка опций плагина (D-038)', () => {
+  test('полный набор допустимых опций проходит', () => {
+    expect(() => checkBuildOptions({
+      attrs: {
+        class: 'class',
+        className: 'class',
+      },
+      safelist: ['p10'],
+      presets: [presetStandard],
+      include: [
+        /\.html$/,
+        'src',
+        (path: string) => path.length > 0,
+      ],
+      exclude: /vendor/,
+      skipPartials: true,
+      root: './src',
+      extensions: ['.html'],
+      presetExtensions: ['.mn.ts'],
+      classVarSuffixes: ['Class'],
+      mergeFnNames: ['cn'],
+      comments: false,
+      syntax: true,
+      onScannerWarning: () => undefined,
+      fileName: '[name].css',
+      manifest: 'css.json',
+      metrics: false,
+      entry: {
+        admin: {
+          include: 'admin',
+          attrs: ['class', 'm'],
+          fileName: 'admin.css',
+          selectorPrefix: '.admin ',
+        },
+      },
+      selectorPrefix: '.app ',
+      altColor: true,
+      warningMode: 'error',
+      media: {},
+      maxDepth: 3,
+      maxDepthMode: 'block',
+      onWarning: () => undefined,
+      onError: () => undefined,
+    }, 'mnRollup')).not.toThrow();
+  });
+
+  test('опечатка — подсказка ближайшего ключа', () => {
+    expect(() => checkBuildOptions({
+      safeList: ['p10'], 
+    }, 'mnRollup'))
+      .toThrow('[minotation] mnRollup: unknown option "safeList". Did you mean "safelist"?');
+  });
+
+  test('старый вложенный mn — неизвестная опция', () => {
+    expect(() => checkBuildOptions({
+      mn: {
+        strict: true, 
+      }, 
+    }, 'mnAstro'))
+      .toThrow('[minotation] mnAstro: unknown option "mn". Known options:');
+  });
+
+  test('свои опции плагина дополняют общий набор', () => {
+    expect(() => checkBuildOptions({
+      inject: 'link', 
+    }, 'mnRollup'))
+      .toThrow('unknown option "inject"');
+    expect(() => checkBuildOptions(
+      {
+        inject: 'link', 
+      }, 'mnVite', {
+        inject: (value) => (value === 'link' ? undefined : '"link"'),
+      },
+    )).not.toThrow();
+  });
+
+  test('некорректные значения: attrs, include, entry', () => {
+    expect(() => checkBuildOptions({
+      attrs: 1, 
+    }, 'mnGulp'))
+      .toThrow('option "attrs" expects a string, an array of strings or an object of strings, got number 1');
+    expect(() => checkBuildOptions({
+      attrs: {
+        className: 1, 
+      }, 
+    }, 'mnGulp'))
+      .toThrow('option "attrs" expects a string, an array of strings or an object of strings, got object');
+    expect(() => checkBuildOptions({
+      include: [/a/, 1], 
+    }, 'mnGulp'))
+      .toThrow('option "include" expects a RegExp, a string, a function or an array of them, got array');
+    expect(() => checkBuildOptions({
+      include: null, 
+    }, 'mnGulp'))
+      .toThrow('got null');
+    expect(() => checkBuildOptions({
+      entry: {
+        admin: {
+          output: 'a.css', 
+        }, 
+      }, 
+    }, 'mnGulp'))
+      .toThrow('unknown option "entry.admin.output". Known options:');
+    expect(() => checkBuildOptions({
+      manifest: 1, 
+    }, 'mnGulp'))
+      .toThrow('option "manifest" expects a boolean or a string, got number 1');
   });
 });

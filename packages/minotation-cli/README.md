@@ -168,7 +168,15 @@ module.exports = {
 
 Отсутствие конфига — не ошибка: всё задаётся опциями. А вот существующий, но
 битый конфиг обрывает работу с кодом 1 — собрать не то, что просили, хуже, чем
-не собрать ничего.
+не собрать ничего. То же с опечаткой и значением не того типа:
+
+```
+Error: [minotation] mn.config.js: unknown option "selectorPrefx". Did you mean "selectorPrefix"?
+Error: [minotation] mn.config.js: option "metrics" expects a boolean or a string, got number 1
+```
+
+Опции плагинов, которых у CLI нет (`fileName`, `root`, `extensions`,
+`classVarSuffixes`, …), — тоже ошибка: в конфиге CLI они ничего бы не сделали.
 
 Конфиг читается обычным `require`, поэтому годятся `.js` (CommonJS), `.cjs` и
 `.json`, а начиная с Node 22.12 — и ESM. На более старых Node в проекте с

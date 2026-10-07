@@ -9,7 +9,7 @@ import {
 } from 'minotation';
 import type { MnInstance } from 'minotation';
 import {
-  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, walkFiles,
+  checkBuildOptions, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, walkFiles,
 } from 'minotation-build';
 import type { MnBuildOptions } from 'minotation-build';
 import {
@@ -124,6 +124,7 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
  * });
  */
 export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
+  checkBuildOptions(options, 'mnEsbuild');
   const root = options.root || process.cwd();
   const manifest = manifestFileName(options.manifest);
   // Отбор файлов — общий для всех плагинов: `extensions` или `include`,
@@ -135,8 +136,7 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
   // (`minotation-build`). До 2026-09-29 каждый плагин вёл это сам, и четыре
   // копии расходились между собой.
   const collector = createBuildCollector({
-    // Опции целиком — чтобы каркас увидел и устаревшие ключи (`attr`) и
-    // сказал о них, а не потерял молча; ниже — то, что плагин подставляет сам.
+    // Опции целиком; ниже — то, что плагин подставляет сам.
     ...options,
     presets: options.presets || [
       presetStandard,

@@ -17,7 +17,8 @@
  */
 import type { NextConfig } from 'next';
 import type { Configuration } from 'webpack';
-import { MnWebpackPlugin } from 'minotation-webpack';
+import { isBoolean } from 'minotation';
+import { MnWebpackPlugin, checkBuildOptions } from 'minotation-webpack';
 import type { MnWebpackPluginOptions } from 'minotation-webpack';
 
 /**
@@ -67,6 +68,9 @@ export function withMn(
   nextConfig: NextConfig = {},
   mnOptions: MnNextOptions = {},
 ): NextConfig {
+  checkBuildOptions(mnOptions, 'withMn', {
+    enabled: isBoolean,
+  });
   const opts = { ...DEFAULT_OPTIONS, ...mnOptions };
 
   if (!opts.enabled) return nextConfig;

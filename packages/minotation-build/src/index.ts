@@ -30,10 +30,11 @@ import {
   basename, join, relative,
 } from 'node:path';
 import {
-  createScanner, minotationProvider,
+  CORE_OPTIONS_SCHEMA, checkOptions, createScanner, isBoolean, isBooleanOrString,
+  isFunction, isFunctionArray, isString, isStringArray, minotationProvider, optionsOf,
 } from 'minotation';
 import type {
-  MnInstance, MnOptions, MnWarning, ScannerOptions,
+  MnInstance, MnOptions, MnWarning, OptionCheck, OptionSchema, ScannerOptions,
 } from 'minotation';
 
 /** Пресет — функция, донастраивающая mn-инстанс. */
@@ -154,7 +155,8 @@ export function createAttrsScanner(options: Omit<ScannerOptions, 'attr' | 'onWar
   const targets = Object.keys(byTarget);
   const classTarget = byTarget.class ? 'class' : targets[0];
   const scanners = targets.map((target) => createScanner({
-    ...options,
+    syntax: options.syntax,
+    comments: options.comments,
     // У сканера свой `onWarning` — о недоступном парсере. В опциях плагина это
     // имя занято предупреждениями компиляции (D-034), поэтому колбэк сканера
     // приходит как `onScannerWarning`.
@@ -409,6 +411,80 @@ export interface MnEntryOptions extends MnCoreOptions {
   safelist?: string[];
   /** Своё имя файла — там, где имя назначает плагин (CLI, gulp). */
   fileName?: string;
+}
+
+/** Отбор файлов: RegExp, строка, функция или массив из них. */
+const isFileMatcher: OptionCheck = (
+  value, where, path,
+) => {
+  const ok = value instanceof RegExp || typeof value === 'string' || typeof value === 'function'
+    || Array.isArray(value) && value.every((item) => !isFileMatcher(
+      item, where, path,
+    ));
+  return ok ? undefined : 'a RegExp, a string, a function or an array of them';
+};
+
+/** `attrs`: строка, массив строк или объект «атрибут → целевой атрибут». */
+const isAttrs: OptionCheck = (
+  value, where, path,
+) => {
+  const ok = typeof value === 'string' || !isStringArray(
+    value, where, path,
+  )
+    || Object.prototype.toString.call(value) === '[object Object]'
+      && Object.keys(value as object).every((key) => typeof (value as Record<string, unknown>)[key] === 'string');
+  return ok ? undefined : 'a string, an array of strings or an object of strings';
+};
+
+/** Допустимые опции записи `entry` (D-038). */
+export const ENTRY_OPTIONS_SCHEMA: OptionSchema = {
+  ...CORE_OPTIONS_SCHEMA,
+  include: isFileMatcher,
+  exclude: isFileMatcher,
+  skipPartials: isBoolean,
+  attrs: isAttrs,
+  safelist: isStringArray,
+  fileName: isString,
+};
+
+/** Допустимые опции плагина — общий набор {@link MnBuildOptions} (D-038). */
+export const BUILD_OPTIONS_SCHEMA: OptionSchema = {
+  ...ENTRY_OPTIONS_SCHEMA,
+  presets: isFunctionArray,
+  onScannerWarning: isFunction,
+  classVarSuffixes: isStringArray,
+  mergeFnNames: isStringArray,
+  comments: isBoolean,
+  syntax: isBoolean,
+  root: isString,
+  extensions: isStringArray,
+  presetExtensions: isStringArray,
+  entry: optionsOf(ENTRY_OPTIONS_SCHEMA),
+  manifest: isBooleanOrString,
+  metrics: isBooleanOrString,
+};
+
+/**
+ * Проверяет опции плагина: неизвестный ключ и некорректное значение — ошибка с
+ * подсказкой (D-038). Вызывается при создании плагина.
+ *
+ * @param options — опции, как их передал пользователь
+ * @param where — имя плагина для сообщения (`mnVite`)
+ * @param own — опции, которые есть только у этого плагина (`inject` у vite)
+ *
+ * @example
+ * checkBuildOptions({ atrs: 'class' }, 'mnVite');
+ * // Error: [minotation] mnVite: unknown option "atrs". Did you mean "attrs"?
+ */
+export function checkBuildOptions(
+  options: unknown, where: string, own?: OptionSchema,
+): void {
+  checkOptions(
+    options, own ? {
+      ...BUILD_OPTIONS_SCHEMA,
+      ...own,
+    } : BUILD_OPTIONS_SCHEMA, where,
+  );
 }
 
 /** Умолчание `extensions` — общее для плагинов. */

@@ -32,3 +32,12 @@ describe('minotation-esbuild — smoke', () => {
     expect(onEnd).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('mnEsbuild — проверка опций (D-038)', () => {
+  test('опечатка и неверное значение — ошибка с подсказкой', () => {
+    expect(() => mnEsbuild({ exlude: /a/ } as never))
+      .toThrow('[minotation] mnEsbuild: unknown option "exlude". Did you mean "exclude"?');
+    expect(() => mnEsbuild({ warningMode: 'strict' } as never))
+      .toThrow('[minotation] mnEsbuild: option "warningMode" expects "log", "silent" or "error", got string "strict"');
+  });
+});

@@ -32,3 +32,12 @@ describe('minotation-next — smoke', () => {
     expect(config).not.toHaveProperty('webpack');
   });
 });
+
+describe('withMn — проверка опций (D-038)', () => {
+  test('enabled — boolean; опечатка — подсказка', () => {
+    expect(() => withMn({}, { enabled: 'yes' } as never))
+      .toThrow('[minotation] withMn: option "enabled" expects a boolean, got string "yes"');
+    expect(() => withMn({}, { enabeld: false } as never))
+      .toThrow('[minotation] withMn: unknown option "enabeld". Did you mean "enabled"?');
+  });
+});

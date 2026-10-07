@@ -16,13 +16,16 @@ import {
   dirname, join, relative, resolve,
 } from 'node:path';
 import {
+  checkOptions,
+} from 'minotation';
+import {
   formatFileName, manifestFileName, manifestOf, metricsFileName,
 } from 'minotation-build';
 import type {
   CliArgs,
 } from './args';
 import {
-  compile,
+  CONFIG_SCHEMA, compile,
 } from './compile';
 import type {
   CompileSettings, CompileResult,
@@ -93,7 +96,12 @@ export function loadConfig(path: string | undefined, report: Reporter): Partial<
     });
   }
   report.log('Config: ' + full);
-  return loaded.default || loaded;
+  const config = loaded.default || loaded;
+  // Опечатка в конфиге — ошибка с подсказкой, а не молча пропущенная настройка (D-038).
+  checkOptions(
+    config, CONFIG_SCHEMA, relative(process.cwd(), full),
+  );
+  return config;
 }
 
 /** Путь сканирования по умолчанию. */

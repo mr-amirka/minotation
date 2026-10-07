@@ -15,6 +15,12 @@ import {
 import type {
   ScanTokensOptions,
 } from './extractTokens';
+import {
+  checkOptions, isBoolean, isFunction, isStringArray,
+} from './checkOptions';
+import type {
+  OptionSchema,
+} from './checkOptions';
 
 /**
  * Однофайловые компоненты: скрипт в них разбирается парсером, шаблон — текстом.
@@ -96,6 +102,22 @@ export interface ScannerOptions extends ScanTokensOptions {
   onWarning?: (message: string) => void;
 }
 
+/** Допустимые опции {@link createScanner} (D-038). */
+export const SCANNER_OPTIONS_SCHEMA: OptionSchema = {
+  attr: (
+    value, where, path,
+  ) => (
+    typeof value === 'string' ? undefined : isStringArray(
+      value, where, path,
+    ) && 'a string or an array of strings'
+  ),
+  classVarSuffixes: isStringArray,
+  mergeFnNames: isStringArray,
+  comments: isBoolean,
+  syntax: isBoolean,
+  onWarning: isFunction,
+};
+
 /** Сканер файла: текст плюс имя, по которому выбирается способ разбора. */
 export type Scanner = (source: string, fileName?: string) => string[];
 
@@ -123,6 +145,9 @@ interface SyntaxModule {
  * scan(source, '/index.html');    // текстом
  */
 export function createScanner(options: ScannerOptions): Scanner {
+  checkOptions(
+    options, SCANNER_OPTIONS_SCHEMA, 'createScanner',
+  );
   if (options.syntax === false) {
     return (source: string) => scanTokens(source, options);
   }

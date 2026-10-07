@@ -1,5 +1,6 @@
 import type { AstroIntegration } from 'astro';
-import { MN_VIRTUAL, mnVite } from 'minotation-vite';
+import { isBoolean } from 'minotation';
+import { MN_VIRTUAL, checkBuildOptions, mnVite } from 'minotation-vite';
 import type { MnViteOptions } from 'minotation-vite';
 
 /**
@@ -49,6 +50,9 @@ export const PAGE_IMPORT = `import '${MN_VIRTUAL}';`;
  * });
  */
 export function mnAstro(options: MnAstroOptions = {}): AstroIntegration {
+  checkBuildOptions(options, 'mnAstro', {
+    inject: isBoolean,
+  });
   const extensions = options.extensions || ['.html', '.jsx', '.tsx', '.vue', '.svelte', '.astro'];
 
   return {

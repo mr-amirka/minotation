@@ -353,3 +353,16 @@ describe('minotation-gulp — статистика употребления то
     }))['mn-metrics.json']).toBeUndefined();
   });
 });
+
+describe('mnGulp — проверка опций (D-038)', () => {
+  test('опечатка в записи entry — полный путь и подсказка', () => {
+    expect(() => mnGulp({
+      entry: {
+        admin: {
+          incude: /admin/, 
+        }, 
+      }, 
+    } as never))
+      .toThrow('[minotation] mnGulp: unknown option "entry.admin.incude". Did you mean "entry.admin.include"?');
+  });
+});

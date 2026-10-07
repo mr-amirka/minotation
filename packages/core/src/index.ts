@@ -40,6 +40,21 @@ import {
   isSyntaxScannable as isSyntaxScannableImpl,
 } from './scanner';
 import {
+  checkOptions as checkOptionsImpl,
+  describeValue as describeValueImpl,
+  oneOf as oneOfImpl,
+  optionsOf as optionsOfImpl,
+  isBoolean as isBooleanImpl,
+  isString as isStringImpl,
+  isFunction as isFunctionImpl,
+  isCount as isCountImpl,
+  isObject as isObjectImpl,
+  isBooleanOrString as isBooleanOrStringImpl,
+  isStringArray as isStringArrayImpl,
+  isFunctionArray as isFunctionArrayImpl,
+  CORE_OPTIONS_SCHEMA as CORE_OPTIONS_SCHEMA_IMPL,
+} from './checkOptions';
+import {
   mne as mneImpl,
   mnClass as mnClassImpl,
   mnKey as mnKeyImpl,
@@ -99,6 +114,23 @@ export const stripComments = stripCommentsImpl;
  * повышенной специфичностью (`f24*2`): конфликта в CSS не возникает вовсе.
  * Модуль ничего не импортирует — рассчитан на вызов на каждый рендер.
  */
+/**
+ * Проверка опций публичного API (D-038): неизвестный ключ и некорректное
+ * значение — ошибка с подсказкой. Общая для ядра, плагинов и CLI.
+ */
+export const checkOptions = checkOptionsImpl;
+export const describeValue = describeValueImpl;
+export const oneOf = oneOfImpl;
+export const optionsOf = optionsOfImpl;
+export const isBoolean = isBooleanImpl;
+export const isString = isStringImpl;
+export const isFunction = isFunctionImpl;
+export const isCount = isCountImpl;
+export const isObject = isObjectImpl;
+export const isBooleanOrString = isBooleanOrStringImpl;
+export const isStringArray = isStringArrayImpl;
+export const isFunctionArray = isFunctionArrayImpl;
+export const CORE_OPTIONS_SCHEMA = CORE_OPTIONS_SCHEMA_IMPL;
 export const mne = mneImpl;
 export const mnClass = mnClassImpl;
 export const mnKey = mnKeyImpl;
@@ -109,6 +141,9 @@ export type {
 export type {
   ScannerOptions, Scanner,
 } from './scanner';
+export type {
+  OptionCheck, OptionSchema,
+} from './checkOptions';
 export type {
   MnInstance,
 } from './types';

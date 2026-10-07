@@ -90,6 +90,29 @@ for (const warning of collector.takeWarnings()) {
 `extensions` по умолчанию ничего не ограничивает, а `include`/`exclude`/
 `skipPartials` отсекают файлы внутри уже выбранных.
 
+### Проверка опций (D-038)
+
+Плагин проверяет опции при создании. Неизвестный ключ и значение не того типа —
+ошибка сразу, а не молча проигнорированная настройка:
+
+```ts
+mnVite({ atrs: 'class' });
+// Error: [minotation] mnVite: unknown option "atrs". Did you mean "attrs"?
+
+mnVite({ mn: { strict: true } });
+// Error: [minotation] mnVite: unknown option "mn". Known options: selectorPrefix, altColor, …
+
+mnVite({ warningMode: 'strict' });
+// Error: [minotation] mnVite: option "warningMode" expects "log", "silent" or "error", got string "strict"
+
+mnGulp({ entry: { admin: { incude: /admin/ } } });
+// Error: [minotation] mnGulp: unknown option "entry.admin.incude". Did you mean "entry.admin.include"?
+```
+
+`undefined` в значении — то же, что отсутствие ключа: опции можно собирать
+условно. Свой плагин поверх общего набора проверяет опции так же —
+`checkBuildOptions(options, 'myPlugin', { ownOption: isBoolean })`.
+
 ## Как CSS попадает на страницу и защита от кеша (D-031)
 
 Свой хеш плагины не изобретают: CSS отдаётся **в граф ассетов сборщика**, и тот

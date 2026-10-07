@@ -5,9 +5,10 @@ import {
   presetMedias,
   presetNormalize,
   presetMain,
+  oneOf,
 } from 'minotation';
 import type { MnInstance, MnWarning } from 'minotation';
-import { createBuildCollector, createFileFilter, metricsFileName, walkFiles } from 'minotation-build';
+import { checkBuildOptions as checkBuildOptionsImpl, createBuildCollector, createFileFilter, metricsFileName, walkFiles } from 'minotation-build';
 import type { BuildCollector, FileFilter, MnBuildOptions } from 'minotation-build';
 import {
   readFileSync,
@@ -48,6 +49,12 @@ export interface MnViteOptions extends MnBuildOptions {
 export const MN_VIRTUAL = 'virtual:mn.css';
 /** Префикс модуля одной записи: `virtual:mn/<имя>.css`. */
 export const MN_VIRTUAL_ENTRY = 'virtual:mn/';
+
+/**
+ * Проверка опций плагина (D-038) — для обёрток над ним (astro): неизвестный
+ * ключ и некорректное значение — ошибка с подсказкой.
+ */
+export const checkBuildOptions = checkBuildOptionsImpl;
 /**
  * Адрес, под которым модули живут в графе Vite. Путь, а не `\0…`: ссылка из
  * `index.html` и запрос браузера в dev приходят именно путём, и Vite должен
@@ -149,6 +156,9 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
  * });
  */
 export function mnVite(options: MnViteOptions = {}): Plugin {
+  checkBuildOptions(options, 'mnVite', {
+    inject: oneOf('inline', 'link', false),
+  });
   const staticPresets = options.presets || [
     presetStandard,
     presetSynonyms,
@@ -163,8 +173,7 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
 
   /**
    * Учёт токенов, пресеты, записи `entry`, компиляция, кеш и предупреждения —
-   * общий каркас (`minotation-build`). Опции целиком — чтобы каркас увидел и
-   * устаревшие ключи (`attr`) и сказал о них сразу, при создании плагина.
+   * общий каркас (`minotation-build`).
    * Пересоздаётся в `configResolved`: пути в `include` записей считаются от корня.
    */
   function createCollector(): BuildCollector {

@@ -15,7 +15,7 @@ import {
 } from 'minotation';
 import type { MnInstance } from 'minotation';
 import {
-  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, walkFiles,
+  checkBuildOptions, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, walkFiles,
 } from 'minotation-build';
 import type { MnBuildOptions } from 'minotation-build';
 import { evalPreset } from './preset-loader';
@@ -84,6 +84,7 @@ export class MnWebpackPlugin {
   private handle?: MnPluginHandle;
 
   constructor(options: MnWebpackPluginOptions = {}) {
+    checkBuildOptions(options, 'MnWebpackPlugin');
     this.options = options;
   }
 

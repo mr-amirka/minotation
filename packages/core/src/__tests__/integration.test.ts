@@ -858,7 +858,7 @@ describe('hex-цвет с opacity — полный CSS пайплайн', () => 
     return inst.styles$.getValue().map(s => s.content).join('\n');
   }
   function cssNoAltColor(tokens) {
-    const inst = createMn({ altColor: 'off' });
+    const inst = createMn({ altColor: false });
     inst.setPresets([presetStandard, presetSynonyms]);
     inst.getCompiler('class')(tokens);
     inst.compile();
@@ -928,11 +928,10 @@ describe('hex-цвет с opacity — полный CSS пайплайн', () => 
     expect(result).toContain('background-color:rgba(255,255,255,.12)');
   });
 
-  // ── hex fallback (по умолчанию altColor включён — hex + rgba) ───────────
-  // Без явного altColor:'off' MN выводит background:#hex + background:rgba(...).
-  // С altColor:'off' — только rgba.
+  // ── hex fallback (по умолчанию altColor выключен — только rgba) ─────────
+  // С altColor: true MN выводит background:#hex + background:rgba(...).
 
-  test('bg0A0A12.88 c altColor:"off" — только rgba, без hex-фолбэка', () => {
+  test('bg0A0A12.88 c altColor: false — только rgba, без hex-фолбэка', () => {
     const result = cssNoAltColor('bg0A0A12.88');
     expect(result).toContain('rgba(10,10,18,.88)');
     expect(result).not.toContain('background:#');

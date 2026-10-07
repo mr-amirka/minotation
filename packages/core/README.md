@@ -114,6 +114,21 @@ const mn = minotationProvider({
 
 Вендорные префиксы подключаются пресетом `presetPrefixes`.
 
+Опции проверяются при создании и в `mn.setOptions` (D-038): неизвестный ключ и
+значение не того типа — ошибка с подсказкой.
+
+```ts
+minotationProvider({ altColor: 'off' });
+// Error: [minotation] minotationProvider: option "altColor" expects a boolean, got string "off"
+
+minotationProvider({ selectorPrefx: '#app ' });
+// Error: [minotation] minotationProvider: unknown option "selectorPrefx". Did you mean "selectorPrefix"?
+```
+
+Тот же проверяльщик экспортируется для своих точек входа: `checkOptions(options,
+schema, 'myPlugin')` и проверки `isBoolean`, `isString`, `isStringArray`,
+`oneOf(...)`, `optionsOf(schema)` и др.
+
 ### `mn.setPresets(presets)`
 
 Загружает пресеты (наборы обработчиков).

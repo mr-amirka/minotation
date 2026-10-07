@@ -74,6 +74,21 @@ describe('loadConfig', () => {
       .toThrow('Failed to read config');
   });
 
+  test('опечатка и неверное значение в конфиге — ошибка с подсказкой (D-038)', () => {
+    const typo = write('mn.typo.cjs', 'module.exports = { selectorPrefx: ".app" };');
+    expect(() => loadConfig(typo, report))
+      .toThrow('unknown option "selectorPrefx". Did you mean "selectorPrefix"?');
+    const bad = write('mn.bad.cjs', 'module.exports = { metrics: 1 };');
+    expect(() => loadConfig(bad, report))
+      .toThrow('option "metrics" expects a boolean or a string, got number 1');
+  });
+
+  test('опции плагинов, которых у CLI нет, — не опции конфига', () => {
+    const path = write('mn.plugin.cjs', 'module.exports = { fileName: "a.css" };');
+    expect(() => loadConfig(path, report))
+      .toThrow('unknown option "fileName". Known options:');
+  });
+
   test('читает настройки из файла', () => {
     const path = write('mn.config.cjs', 'module.exports = { selectorPrefix: ".app" };');
     const config = loadConfig(path, report);

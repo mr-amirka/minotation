@@ -21,16 +21,52 @@ import {
   presetMedias,
   presetNormalize,
   presetMain,
+  checkOptions,
+  isString,
+  isStringArray,
 } from 'minotation';
 import type {
-  MnInstance, MnWarning,
+  MnInstance, MnWarning, OptionSchema,
 } from 'minotation';
 import {
-  CORE_OPTION_KEYS, createBuildCollector, createFileFilter, createMatcher,
+  BUILD_OPTIONS_SCHEMA, CORE_OPTION_KEYS, createBuildCollector, createFileFilter, createMatcher,
 } from 'minotation-build';
 import type {
   BuildOutput, Metrics, MnAttrs, MnCoreOptions, MnEntryOptions, MnFileMatcher,
 } from 'minotation-build';
+
+/**
+ * Допустимые поля конфига `mn.config.js` и настроек {@link compile} (D-038):
+ * общий набор плагинов, кроме того, что у CLI задаётся иначе (`output` вместо
+ * `fileName`, корень — `input`), плюс свои поля CLI.
+ */
+export const CONFIG_SCHEMA: OptionSchema = {
+  ...pick(BUILD_OPTIONS_SCHEMA, [
+    ...CORE_OPTION_KEYS,
+    'presets',
+    'attrs',
+    'syntax',
+    'include',
+    'exclude',
+    'skipPartials',
+    'safelist',
+    'entry',
+    'manifest',
+    'metrics',
+  ]),
+  input: isString,
+  output: isString,
+  ignore: isStringArray,
+};
+
+/** Подмножество схемы по списку ключей. */
+function pick(schema: OptionSchema, keys: readonly string[]): OptionSchema {
+  const out: OptionSchema = {};
+  for (const key of keys) {
+    out[key] = schema[key];
+  }
+  return out;
+}
 
 /** Расширения, которые сканируются, если не задано иное. */
 const DEFAULT_EXTENSIONS = [
@@ -206,6 +242,9 @@ function coreOf(settings: CompileSettings): MnCoreOptions {
 }
 
 export function compile(settings: CompileSettings): CompileResult {
+  checkOptions(
+    settings, CONFIG_SCHEMA, 'compile',
+  );
   const files = collectFiles(
     settings.input, settings, settings.ignore,
   );

@@ -21,6 +21,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, no-cond-assign -- см. комментарий выше */
 
 import {
+  checkOptions, CORE_OPTIONS_SCHEMA,
+} from '../checkOptions';
+import {
   eachApply,
   eachTry,
   forEach,
@@ -159,6 +162,9 @@ function logWarning(warning: MnWarning): void {
  * mn.styles$.getValue; // → скомпилированные CSS-стили
  */
 function minotationProvider(options?: MnOptions) {
+  checkOptions(
+    options, CORE_OPTIONS_SCHEMA, 'minotationProvider',
+  );
   // Отдельная переменная, а не мутация параметра: `setOptions` его
   // переприсваивает, и из-за этого компилятор не мог сузить тип внутри
   // замыканий — каждое обращение к полю требовало проверки на `undefined`,
@@ -1546,6 +1552,9 @@ function minotationProvider(options?: MnOptions) {
    * mn.recompile;
    */
   mn.setOptions = (partialOptions: Partial<MnOptions>): any => {
+    checkOptions(
+      partialOptions, CORE_OPTIONS_SCHEMA, 'mn.setOptions',
+    );
     settings = extend(extend({}, settings), partialOptions) as MnOptions;
     applyOptions();
     return mn;

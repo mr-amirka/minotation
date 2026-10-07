@@ -173,12 +173,11 @@ describe('Цвета — новый MN (компактный формат rgba)'
   test('cF.88 → rgba(255,255,255,.88)', () => {
     expect(css('cF.88')).toContain('rgba(255,255,255,.88)');
   });
-  // По умолчанию altColor включён ($$altColor = options.altColor !== 'off' в core/index.ts) —
-  // hex-fallback есть всегда, если явно не передать altColor:'off'
-  test('bgF.12 c altColor:"off" → только rgba (без дублирующего hex)', () => {
+  // altColor: false (по умолчанию) — hex-фолбэка нет.
+  test('bgF.12 c altColor: false → только rgba (без дублирующего hex)', () => {
     const inst = mnProvider({
       presets: [presetStandard, presetSynonyms, presetMedias, presetMain],
-      altColor: 'off',
+      altColor: false,
       onError: (e) => { /* подавляем ошибки парсинга */ },
     });
     inst.getCompiler('class')('bgF.12');

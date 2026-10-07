@@ -153,6 +153,13 @@ describe('compile', () => {
     expect(css).not.toContain('padding:99px');
   });
 
+  test('настройки compile проверяются, как конфиг (D-038)', () => {
+    expect(() => compile({
+      input: dir,
+      atrs: 'class',
+    } as never)).toThrow('[minotation] compile: unknown option "atrs". Did you mean "attrs"?');
+  });
+
   test('атрибут разворачивается в class — className:class', () => {
     write('a.tsx', '<div className="p10">');
     expect(compile({

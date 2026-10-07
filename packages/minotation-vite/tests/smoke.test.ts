@@ -191,3 +191,13 @@ describe('minotation-vite — mergeFnNames (2026-09-25)', () => {
   });
 });
 
+describe('mnVite — проверка опций (D-038)', () => {
+  test('опечатка, неверное inject, старый mn — ошибка с подсказкой', () => {
+    expect(() => mnVite({ atrs: 'class' } as never))
+      .toThrow('[minotation] mnVite: unknown option "atrs". Did you mean "attrs"?');
+    expect(() => mnVite({ inject: 'style' } as never))
+      .toThrow('[minotation] mnVite: option "inject" expects "inline", "link" or false, got string "style"');
+    expect(() => mnVite({ mn: { strict: true } } as never))
+      .toThrow('[minotation] mnVite: unknown option "mn". Known options:');
+  });
+});

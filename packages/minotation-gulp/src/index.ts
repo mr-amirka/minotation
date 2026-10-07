@@ -31,7 +31,7 @@ import type {
 } from 'node:stream';
 import Vinyl from 'vinyl';
 import {
-  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName,
+  checkBuildOptions, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName,
 } from 'minotation-build';
 import type {
   MnBuildOptions,
@@ -83,6 +83,7 @@ const DEFAULT_PRESETS = [
  *   .pipe(gulp.dest('dist'));
  */
 export function mnGulp(options: MnGulpOptions = {}): Transform {
+  checkBuildOptions(options, 'mnGulp');
   const manifest = manifestFileName(options.manifest);
   // Пустое расширение пропускает любой файл: что сканировать, выбрал `gulp.src`.
   const files = createFileFilter({

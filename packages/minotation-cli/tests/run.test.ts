@@ -147,10 +147,13 @@ describe('mergeSettings', () => {
     expect(mergeSettings(parseArgs([]), {
       skipPartials: true, 
     }).skipPartials).toBe(true);
-    expect(mergeSettings(parseArgs(['--strict']), {}).strict).toBe(true);
+    // Флаг важнее конфига.
+    expect(mergeSettings(parseArgs(['--warning-mode', 'error']), {
+      warningMode: 'silent',
+    }).warningMode).toBe('error');
     expect(mergeSettings(parseArgs([]), {
-      strict: true,
-    }).strict).toBe(true);
+      warningMode: 'error',
+    }).warningMode).toBe('error');
   });
 
   test('синтаксический разбор: по умолчанию авто, `--no-syntax` выключает', () => {
@@ -391,26 +394,30 @@ describe('build — имя файла, entry и манифест (D-030, D-031)'
       ),
       presets: [],
     }, report);
-    expect(existsSync(join(dir, 'none'))).toBe(false);
+    // CSS нет, а отчёт статистики есть — «токенов ноль» тоже результат.
+    expect(existsSync(join(
+      dir, 'none', 'mn.css',
+    ))).toBe(false);
+    expect(existsSync(join(
+      dir, 'none', 'mn-manifest.json',
+    ))).toBe(false);
     expect(logs.some((m) => m.includes('no CSS'))).toBe(true);
   });
 });
 
-describe('метрики', () => {
-  test('`--metrics` пишет отчёт рядом с CSS', () => {
-    write('a.html', '<div class="p10 p10 m20">');
-    const metricsPath = join(
-      dir, 'отчёт', 'metrics.json',
-    );
-
+describe('метрики (D-032)', () => {
+  test('по умолчанию — mn-metrics.json рядом с CSS', () => {
+    write('src/a.html', '<div class="p10 p10 m20">');
     build({
-      input: dir,
-      output: join(dir, 'app.css'),
-      metricsPath,
-      metrics: true,
+      input: join(dir, 'src'),
+      output: join(
+        dir, 'out', 'app.css',
+      ),
     }, report);
 
-    const metrics = JSON.parse(readFileSync(metricsPath, 'utf8'));
+    const metrics = JSON.parse(readFileSync(join(
+      dir, 'out', 'mn-metrics.json',
+    ), 'utf8'));
     expect(metrics.tokens).toEqual([{
       name: 'p10',
       count: 2,
@@ -418,29 +425,48 @@ describe('метрики', () => {
       name: 'm20',
       count: 1,
     }]);
+    expect(metrics.files).toEqual({
+      'a.html': metrics.tokens, 
+    });
     expect(logs.some((m) => m.includes('Metrics'))).toBe(true);
   });
 
-  test('без опции файл не создаётся и о нём не сообщается', () => {
-    write('a.html', '<div class="p10">');
+  test('свой путь — от рабочей директории; false — не писать', () => {
+    write('src/a.html', '<div class="p10">');
+    const custom = join(
+      dir, 'отчёт', 'metrics.json',
+    );
     build({
-      input: dir,
-      output: join(dir, 'app.css'),
+      input: join(dir, 'src'),
+      output: join(
+        dir, 'out', 'app.css',
+      ),
+      metrics: custom,
     }, report);
+    expect(JSON.parse(readFileSync(custom, 'utf8')).occurrences).toBe(1);
 
-    expect(existsSync(join(dir, 'metrics.json'))).toBe(false);
-    expect(logs.some((m) => m.includes('Metrics'))).toBe(false);
+    build({
+      input: join(dir, 'src'),
+      output: join(
+        dir, 'none', 'app.css',
+      ),
+      metrics: false,
+    }, report);
+    expect(existsSync(join(
+      dir, 'none', 'mn-metrics.json',
+    ))).toBe(false);
   });
 
-  test('опция включает сбор, конфиг — тоже', () => {
-    expect(mergeSettings(parseArgs(['-m', './m.json']), {}).metrics).toBe(true);
-    expect(mergeSettings(parseArgs(['--metrics', './m.json']), {}).metricsPath)
-      .toBe('./m.json');
+  test('-m задаёт путь, --no-metrics выключает, иначе решает конфиг', () => {
+    expect(mergeSettings(parseArgs(['-m', './m.json']), {}).metrics).toBe('./m.json');
+    expect(mergeSettings(parseArgs(['--metrics', './m.json']), {}).metrics).toBe('./m.json');
+    expect(mergeSettings(parseArgs(['--no-metrics']), {
+      metrics: './c.json', 
+    }).metrics).toBe(false);
     expect(mergeSettings(parseArgs([]), {
-      metricsPath: './c.json',
-    }).metrics).toBe(true);
-    // Без пути считать нечего и некуда писать.
-    expect(mergeSettings(parseArgs([]), {}).metrics).toBe(false);
+      metrics: './c.json', 
+    }).metrics).toBe('./c.json');
+    expect(mergeSettings(parseArgs([]), {}).metrics).toBeUndefined();
   });
 });
 

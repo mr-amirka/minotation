@@ -9,7 +9,7 @@ import {
 } from 'minotation';
 import type { MnInstance } from 'minotation';
 import {
-  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, walkFiles,
+  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, walkFiles,
 } from 'minotation-build';
 import type { MnBuildOptions } from 'minotation-build';
 import {
@@ -190,6 +190,15 @@ export function mnRollup(options: MnRollupOptions = {}): Plugin {
         type: 'asset',
         fileName: manifest,
         source: JSON.stringify(manifestOf(emitted), null, 2),
+      });
+      // Статистика употребления токенов (D-032).
+      const metrics = metricsFileName(options.metrics);
+      const report = collector.metrics();
+      // Пустой проход (ни одного файла) — отчёт-пустышка не нужен.
+      metrics && report.filesScanned && this.emitFile({
+        type: 'asset',
+        fileName: metrics,
+        source: JSON.stringify(report, null, 2),
       });
     },
   };

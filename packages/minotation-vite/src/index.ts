@@ -7,7 +7,7 @@ import {
   presetMain,
 } from 'minotation';
 import type { MnInstance, MnWarning } from 'minotation';
-import { createBuildCollector, createFileFilter, walkFiles } from 'minotation-build';
+import { createBuildCollector, createFileFilter, metricsFileName, walkFiles } from 'minotation-build';
 import type { BuildCollector, FileFilter, MnBuildOptions } from 'minotation-build';
 import {
   readFileSync,
@@ -383,8 +383,17 @@ if (import.meta.hot) {
       return preset ? css : (modules || []).concat(css);
     },
 
+    /** Статистика употребления токенов — по итогам сборки, рядом с остальным (D-032). */
     generateBundle() {
       flushWarnings(this);
+      const metrics = metricsFileName(options.metrics);
+      const report = collector().metrics();
+      // Пустой проход (ни одного файла) — отчёт-пустышка не нужен.
+      metrics && report.filesScanned && this.emitFile({
+        type: 'asset',
+        fileName: metrics,
+        source: JSON.stringify(report, null, 2),
+      });
     },
   };
 }

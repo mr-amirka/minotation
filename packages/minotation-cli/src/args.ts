@@ -32,14 +32,16 @@ export interface CliArgs {
   prefix?: string;
   /** Запасное непрозрачное объявление рядом с `rgba`. */
   altColor: boolean;
-  /** Прерывать работу на первом битом токене. */
-  strict: boolean;
+  /** Что делать с предупреждением: `log`, `silent`, `error` (D-035). */
+  warningMode?: 'log' | 'silent' | 'error';
   /** Не разбирать JS/TS парсером — только текстовый поиск. */
   noSyntax: boolean;
   /** Пропускать файлы-партиалы `_*` (D-027). */
   skipPartials: boolean;
   /** Не писать `mn-manifest.json` рядом с CSS. */
   noManifest: boolean;
+  /** Не писать статистику употребления токенов. */
+  noMetrics: boolean;
   /** Куда писать статистику употребления токенов. */
   metrics?: string;
   /** Какие файлы сканировать — регулярное выражение по имени. */
@@ -63,10 +65,10 @@ export interface CliArgs {
 const DEFAULTS: CliArgs = {
   watch: false,
   altColor: false,
-  strict: false,
   noSyntax: false,
   skipPartials: false,
   noManifest: false,
+  noMetrics: false,
   help: false,
   version: false,
 };
@@ -76,10 +78,10 @@ const FLAGS: Record<string, keyof CliArgs> = {
   '-w': 'watch',
   '--watch': 'watch',
   '--alt-color': 'altColor',
-  '--strict': 'strict',
   '--no-syntax': 'noSyntax',
   '--skip-partials': 'skipPartials',
   '--no-manifest': 'noManifest',
+  '--no-metrics': 'noMetrics',
   '-h': 'help',
   '--help': 'help',
   '-v': 'version',
@@ -98,6 +100,7 @@ const OPTIONS: Record<string, keyof CliArgs> = {
   '--prefix': 'prefix',
   '-m': 'metrics',
   '--metrics': 'metrics',
+  '--warning-mode': 'warningMode',
   '--include': 'include',
   '--exclude': 'exclude',
 };
@@ -142,8 +145,17 @@ export function parseArgs(argv: string[]): CliArgs {
     positional++ && raise('Path given twice: "' + args.input + '" and "' + arg + '"');
     args.input = arg;
   }
+  args.warningMode === undefined || WARNING_MODES[args.warningMode]
+    || raise('Option "--warning-mode" expects log, silent or error, got "' + args.warningMode + '"');
   return args;
 }
+
+/** Допустимые значения `--warning-mode`. */
+const WARNING_MODES: Record<string, 1> = {
+  log: 1,
+  silent: 1,
+  error: 1,
+};
 
 function raise(message: string): never {
   throw new Error(message);
@@ -165,11 +177,13 @@ Options:
                          "class, className:class" (default class)
   -p, --prefix <string>  prefix for all selectors
       --alt-color        opaque fallback declaration next to rgba
-      --strict           stop at the first broken token
+      --warning-mode <m> warnings: log (default), silent, error (fail the build)
       --no-syntax        do not parse JS/TS, text search only
       --skip-partials    skip partial files whose name starts with _
       --no-manifest      do not write mn-manifest.json next to the CSS
-  -m, --metrics <file>   write token usage statistics (JSON)
+      --no-metrics       do not write token usage statistics
+  -m, --metrics <file>   where to write token usage statistics
+                         (default mn-metrics.json next to the CSS)
       --include <regexp> which files to scan
       --exclude <regexp> which files to skip
   -v, --version          version

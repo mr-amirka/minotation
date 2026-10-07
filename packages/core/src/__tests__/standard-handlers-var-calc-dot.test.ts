@@ -52,7 +52,7 @@ const HANDLER_NAMES = Array.from(new Set(collectHandlerNames())).sort();
 /** CSS всех правил инстанса, в который скормлены `tokens`. */
 function cssOfTokens(tokens: string[]): string {
   const mn: any = minotationProvider({
-    onWarning: 'silent',
+    warningMode: 'silent',
   });
   mn.setPresets([
     presetStandard,

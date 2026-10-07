@@ -9,7 +9,7 @@ import {
 } from 'minotation';
 import type { MnInstance } from 'minotation';
 import {
-  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, walkFiles,
+  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, walkFiles,
 } from 'minotation-build';
 import type { MnBuildOptions } from 'minotation-build';
 import {
@@ -238,9 +238,17 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
             result.warnings.push({ text: message } as never);
           },
         });
+        const outDir = resolveOutDir(build);
+        // Статистика употребления токенов (D-032) — при любом способе подключения CSS.
+        const metrics = metricsFileName(options.metrics);
+        const report = collector.metrics();
+        // Пустой проход (ни одного файла) — отчёт-пустышка не нужен.
+        if (metrics && report.filesScanned) {
+          mkdirSync(dirname(join(outDir, metrics)), { recursive: true });
+          writeFileSync(join(outDir, metrics), JSON.stringify(report, null, 2));
+        }
         // Подключили импортом — CSS уже в бандле, отдельный файл был бы вторым.
         if (imported) return;
-        const outDir = resolveOutDir(build);
         const written: Record<string, string> = {};
         for (const output of outputs) {
           if (!output.css) continue;

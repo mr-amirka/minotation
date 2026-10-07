@@ -16,7 +16,7 @@ import presetStandard from '../presets/standard';
 
 function cssOf(token: string): string {
   const mn: any = minotationProvider({
-    onWarning: 'silent',
+    warningMode: 'silent',
   });
   mn.setPresets([presetStandard]);
   mn.getCompiler('class')(token);

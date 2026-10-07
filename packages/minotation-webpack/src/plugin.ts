@@ -15,7 +15,7 @@ import {
 } from 'minotation';
 import type { MnInstance } from 'minotation';
 import {
-  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, walkFiles,
+  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, walkFiles,
 } from 'minotation-build';
 import type { MnBuildOptions } from 'minotation-build';
 import { evalPreset } from './preset-loader';
@@ -26,7 +26,7 @@ import type { MnPluginHandle } from './state';
  * Опции {@link MnWebpackPlugin} — эталонный набор `minotation-build` (D-026):
  * `attrs`, `root`, `extensions`, `include`, `exclude`, `skipPartials`, `presets`,
  * `presetExtensions`, `safelist`, `classVarSuffixes`, `mergeFnNames`, `syntax`,
- * поля ядра (`selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`,
+ * поля ядра (`selectorPrefix`, `altColor`, `warningMode`, `media`, `maxDepth`, `onWarning`,
  * `onError` — плоско, D-034), `entry`, `fileName`, `manifest`. Описание каждой — в
  * README `minotation-build`.
  *
@@ -84,8 +84,6 @@ export class MnWebpackPlugin {
   private handle?: MnPluginHandle;
 
   constructor(options: MnWebpackPluginOptions = {}) {
-    // Конфиги на JS типов не видят: старое имя опции иначе потерялось бы молча.
-    'output' in options && throwRenamed('output', 'fileName');
     this.options = options;
   }
 
@@ -211,6 +209,14 @@ export class MnWebpackPlugin {
         '[minotation] ' + warning.token + ': ' + warning.message,
       ));
     }
+    const { RawSource } = compilation.compiler.webpack.sources;
+    // Статистика употребления токенов (D-032) — при любом способе подключения CSS.
+    const metrics = metricsFileName(this.options.metrics);
+    const report = handle.build.metrics();
+    // Пустой проход (ни одного файла) — отчёт-пустышка не нужен.
+    metrics && report.filesScanned && compilation.emitAsset(
+      metrics, new RawSource(JSON.stringify(report, null, 2)),
+    );
     if (handle.imported) {
       return;
     }
@@ -219,7 +225,6 @@ export class MnWebpackPlugin {
     // Хеш — по правилам проекта: если он есть в именах JS, будет и в имени CSS.
     const fallback = outputName.indexOf('hash') > -1 ? '[name].[hash].css' : '[name].css';
     const emitted: Record<string, string> = {};
-    const { RawSource } = compilation.compiler.webpack.sources;
     for (const output of outputs) {
       if (!output.css) continue;
       const template = (this.options.entry && this.options.entry[output.name].fileName)
@@ -246,9 +251,4 @@ function isDirectory(path: string): boolean {
   } catch {
     return false;
   }
-}
-
-/** Опция переименована — ошибка с подсказкой вместо молчаливого игнора. */
-function throwRenamed(from: string, to: string): never {
-  throw new Error('[minotation] option "' + from + '" was replaced by "' + to + '" ([name], [hash] supported)');
 }

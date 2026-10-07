@@ -27,12 +27,12 @@ import type {
  *
  * Исключения не ловятся, кроме разбора аргументов: на битом аргументе уместно
  * показать справку, а на всём остальном — просто сообщение, и это одинаково для
- * нечитаемого конфига, недоступного файла вывода и `--strict`. Печатает их
+ * нечитаемого конфига, недоступного файла вывода и `--warning-mode error`. Печатает их
  * вызывающий.
  *
  * @param argv — аргументы без `node` и пути к скрипту
  * @param report — куда писать сообщения
- * @throws {Error} если конфиг не читается, вывод не пишется или `--strict`
+ * @throws {Error} если конфиг не читается, вывод не пишется или `--warning-mode error`
  *   встретил битый токен (ядро бросает `MnStrictError`)
  */
 export function main(argv: string[], report: Reporter): number {
@@ -57,7 +57,7 @@ export function main(argv: string[], report: Reporter): number {
   build(settings, report);
   args.watch && startWatch(settings, report);
   // Наблюдение держит процесс само; до сюда доходит только успешная сборка —
-  // с `--strict` битый токен прилетает исключением из ядра.
+  // с `--warning-mode error` битый токен прилетает исключением из ядра.
   return 0;
 }
 

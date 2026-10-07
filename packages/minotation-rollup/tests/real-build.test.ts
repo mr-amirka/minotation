@@ -283,7 +283,7 @@ describe('проброс предупреждений в rollup (Q-07)', () => {
       'src/app.html': '<div class="p10zz"></div>',
     });
     const warnings = await runCollectingWarnings(root, {
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
 
     expect(warnings.filter((w) => w.includes('[minotation]'))).toEqual([]);
@@ -421,11 +421,27 @@ describe('minotation-rollup — CSS через граф ассетов (D-031)',
 
     const { assets } = await runBuild(root, {
       manifest: false,
+      metrics: false,
       presets: [],
       entry: { empty: { include: /nothing/ }, full: {} },
     });
 
     expect(Object.keys(assets).filter((name) => name.endsWith('.json'))).toEqual([]);
     expect(Object.keys(assets).filter((name) => name.includes('empty'))).toEqual([]);
+  });
+});
+
+describe('minotation-rollup — статистика употребления токенов (D-032)', () => {
+  test('по умолчанию mn-metrics.json; свой путь; metrics: false — нет', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/app.html': '<div class="p10 p10"></div>',
+    });
+
+    const { assets } = await runBuild(root, {});
+    expect(JSON.parse(assets['mn-metrics.json']).tokens).toEqual([{ name: 'p10', count: 2 }]);
+
+    expect((await runBuild(root, { metrics: 'reports/mn.json' })).assets['reports/mn.json']).toBeDefined();
+    expect((await runBuild(root, { metrics: false })).assets['mn-metrics.json']).toBeUndefined();
   });
 });

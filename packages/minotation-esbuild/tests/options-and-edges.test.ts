@@ -200,7 +200,7 @@ describe('minotation-esbuild — опции и граничные случаи',
     expect(readFileSync(join(root, 'out/mn.css'), 'utf-8')).toContain('padding:10px');
   });
 
-  test("mn.onWarning: 'silent' — в отчёт сборки ничего не уходит", async () => {
+  test("warningMode: 'silent' — в отчёт сборки ничего не уходит", async () => {
     const root = makeProject({
       'src/main.js': 'export const x = 1;\n',
       'src/app.html': '<div class="w10zz"></div>',
@@ -210,7 +210,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outdir: join(root, 'out'),
-      plugins: [mnEsbuild({ root, onWarning: 'silent' })],
+      plugins: [mnEsbuild({ root, warningMode: 'silent' })],
     });
 
     expect(result.warnings).toEqual([]);
@@ -451,9 +451,30 @@ describe('minotation-esbuild — CSS через граф esbuild (D-031)', () =>
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outdir: outDir,
-      plugins: [mnEsbuild({ root, manifest: false })],
+      plugins: [mnEsbuild({ root, manifest: false, metrics: false })],
     });
 
     expect(readdirSync(outDir).sort()).toEqual(['main.js', 'mn.css']);
+  });
+});
+
+describe('minotation-esbuild — статистика употребления токенов (D-032)', () => {
+  test('по умолчанию mn-metrics.json в каталоге вывода', async () => {
+    const root = makeProject({
+      'src/main.js': "import 'virtual:mn.css';\nexport const x = 1;\n",
+      'src/app.html': '<div class="p10"></div>',
+    });
+    const outDir = join(root, 'out');
+
+    await build({
+      entryPoints: [join(root, 'src/main.js')],
+      bundle: true,
+      outdir: outDir,
+      plugins: [mnEsbuild({ root })],
+    });
+
+    const metrics = JSON.parse(readFileSync(join(outDir, 'mn-metrics.json'), 'utf-8'));
+    expect(metrics.filesScanned).toBe(1);
+    expect(metrics.tokens).toEqual([{ name: 'p10', count: 1 }]);
   });
 });

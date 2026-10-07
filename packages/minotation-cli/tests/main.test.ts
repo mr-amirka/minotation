@@ -82,7 +82,7 @@ describe('main', () => {
     expect(errors.join('')).toContain('Usage: mn');
   });
 
-  test('битый токен без `--strict` — предупреждение, но код 0', () => {
+  test('битый токен без `--warning-mode error` — предупреждение, но код 0', () => {
     // Чужие классы в разметке обычное дело, ронять из-за них сборку незачем.
     write('a.html', '<div class="w10zz p10">');
     expect(main([
@@ -93,25 +93,27 @@ describe('main', () => {
     expect(errors.some((m) => m.includes('Warning'))).toBe(true);
   });
 
-  test('битый токен с `--strict` — исключение из ядра', () => {
+  test('битый токен с `--warning-mode error` — исключение из ядра', () => {
     // Печатает его `cli.ts`, превращая в код возврата 1.
     write('a.html', '<div class="w10zz">');
     expect(() => main([
       dir,
       '-o',
       join(dir, 'app.css'),
-      '--strict',
-    ], report)).toThrow(/strict/i);
+      '--warning-mode',
+      'error',
+    ], report)).toThrow(/warningMode: 'error'/);
   });
 
-  test('чужой класс в kebab-case под `--strict` сборку не роняет', () => {
+  test('чужой класс в kebab-case под `--warning-mode error` сборку не роняет', () => {
     // `sr-only`, `mt-auto` и прочее из чужих фреймворков — не битые токены.
     write('a.html', '<div class="sr-only mt-auto p10">');
     expect(main([
       dir,
       '-o',
       join(dir, 'app.css'),
-      '--strict',
+      '--warning-mode',
+      'error',
     ], report)).toBe(0);
   });
 

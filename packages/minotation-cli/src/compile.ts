@@ -26,10 +26,10 @@ import type {
   MnInstance, MnWarning,
 } from 'minotation';
 import {
-  CORE_OPTION_KEYS, createAttrsScanner, createBuildCollector, createFileFilter, createMatcher, flatSafelist,
+  CORE_OPTION_KEYS, createBuildCollector, createFileFilter, createMatcher,
 } from 'minotation-build';
 import type {
-  BuildOutput, MnAttrs, MnCoreOptions, MnEntryOptions, MnFileMatcher,
+  BuildOutput, Metrics, MnAttrs, MnCoreOptions, MnEntryOptions, MnFileMatcher,
 } from 'minotation-build';
 
 /** Расширения, которые сканируются, если не задано иное. */
@@ -53,7 +53,7 @@ const DEFAULT_EXCLUDE = /[\\/](?:node_modules|\.git|dist|build)[\\/]/;
 
 /**
  * Настройки сборки — то, что CLI собирает из аргументов и конфига. Поля ядра
- * (`selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`,
+ * (`selectorPrefix`, `altColor`, `warningMode`, `media`, `maxDepth`, `onWarning`,
  * `onError`) — плоско, как в опциях плагинов и в v1 (D-034).
  */
 export interface CompileSettings extends MnCoreOptions {
@@ -97,49 +97,8 @@ export interface CompileSettings extends MnCoreOptions {
   presets?: Array<(mn: MnInstance) => void>;
   /** Токены, которые нужны всегда, даже если их нет в файлах; группы через пробел. */
   safelist?: string[];
-  /**
-   * Собирать статистику употребления токенов (см. {@link Metrics}).
-   *
-   * Отдельный флаг, а не всегда: счётчики по файлам держат в памяти запись на
-   * каждый файл, а нужны они в разовых разборах — «что в проекте вообще
-   * используется», «какие токены остались от удалённого компонента».
-   */
-  metrics?: boolean;
   /** Несколько CSS из одного прохода (D-030); `--output` тогда содержит `[name]`. */
   entry?: Record<string, MnEntryOptions>;
-}
-
-/** Сколько раз встретился токен. */
-export interface TokenCount {
-  /** Сам токен. */
-  name: string;
-  /** Сколько раз встретился — во всех файлах или в одном, по месту. */
-  count: number;
-}
-
-/**
- * Статистика употребления токенов — то, что пишет `--metrics`.
- *
- * Формат перенесён из v1 (`old/minimalist-notation/node/index.js`): список
- * `{name, count}` по убыванию частоты. Разбивка по файлам лежит рядом, в
- * `files`, а не в отдельном отчёте: в v1 это были две опции (`--metrics` и
- * `--metricsFiles`), писавшие два файла с пересекающимся содержимым.
- */
-export interface Metrics {
-  /** Всего просканировано файлов. */
-  filesScanned: number;
-  /**
-   * Уникальных токенов, попавших в CSS, — включая `safelist`, которого в
-   * файлах не было. Счётчики в {@link Metrics.tokens} считают только
-   * встреченное в файлах, поэтому числа могут расходиться.
-   */
-  tokensTotal: number;
-  /** Сколько раз токены встретились суммарно, с повторами. */
-  occurrences: number;
-  /** Токены по убыванию частоты. */
-  tokens: TokenCount[];
-  /** Токены по файлам: путь → список, тоже по убыванию частоты. */
-  files: Record<string, TokenCount[]>;
 }
 
 /** Результат сборки. */
@@ -154,8 +113,8 @@ export interface CompileResult {
   tokens: number;
   /** Предупреждения ядра. */
   warnings: MnWarning[];
-  /** Статистика употребления — собирается только при `metrics: true`. */
-  metrics?: Metrics;
+  /** Статистика употребления токенов (D-032) — общий отчёт `minotation-build`. */
+  metrics: Metrics;
 }
 
 /**
@@ -235,12 +194,10 @@ function walk(
  *
  * Предупреждения ядра собираются и возвращаются, а не печатаются: решение,
  * что с ними делать (вывести, посчитать, уронить сборку), принимает
- * вызывающий — у CLI это зависит от `--strict`.
+ * вызывающий — у CLI это зависит от `--warning-mode`.
  */
-/** Поля ядра из настроек; старые `mn`/`prefix` конфига — ошибка с подсказкой. */
+/** Поля ядра из настроек — только заданные. */
 function coreOf(settings: CompileSettings): MnCoreOptions {
-  'mn' in settings && fail('option "mn" was removed: put its fields at the top level of the config');
-  'prefix' in settings && fail('config option "prefix" was renamed to "selectorPrefix" (the --prefix flag stays)');
   const out: Record<string, unknown> = {};
   for (const key of CORE_OPTION_KEYS) {
     settings[key] === undefined || (out[key] = settings[key]);
@@ -248,54 +205,10 @@ function coreOf(settings: CompileSettings): MnCoreOptions {
   return out as MnCoreOptions;
 }
 
-function fail(message: string): never {
-  throw new Error('[minotation] ' + message);
-}
-
 export function compile(settings: CompileSettings): CompileResult {
   const files = collectFiles(
     settings.input, settings, settings.ignore,
   );
-  // Тот же сканер с разворачиванием атрибутов, что у плагинов сборщиков:
-  // записи `'<целевой атрибут> <токен>'`.
-  // Настройки целиком: устаревший `attr` из конфига — ошибка с подсказкой,
-  // а не молчаливая потеря токенов (D-025).
-  const scan = createAttrsScanner({
-    ...('attr' in settings ? {
-      attr: (settings as { attr?: unknown }).attr, 
-    } : {}),
-    attrs: settings.attrs,
-    syntax: settings.syntax,
-  });
-  const tokens = new Set<string>(flatSafelist(settings.safelist).map((token) => 'class ' + token));
-  // Счётчики заводятся только под `--metrics`: на каждый файл это лишняя
-  // запись в памяти, а обычной сборке они не нужны.
-  const counts: Record<string, number> | 0 = settings.metrics ? {} : 0;
-  const byFile: Record<string, Record<string, number>> | 0 = settings.metrics ? {} : 0;
-  const l = files.length;
-  let i = 0;
-  let found: string[];
-  let j: number;
-  let n: number;
-  let fileCounts: Record<string, number>;
-  let token: string;
-  for (; i < l; i++) {
-    found = scan(readFileSync(files[i], 'utf8'), files[i]);
-    n = found.length;
-    if (counts) {
-      fileCounts = (byFile as Record<string, Record<string, number>>)[files[i]] = {};
-      for (j = 0; j < n; j++) {
-        tokens.add(found[j]);
-        token = metricKey(found[j]);
-        counts[token] = (counts[token] || 0) + 1;
-        fileCounts[token] = (fileCounts[token] || 0) + 1;
-      }
-      continue;
-    }
-    for (j = 0; j < n; j++) {
-      tokens.add(found[j]);
-    }
-  }
   // CSS — общим накопителем, как у плагинов: записи `entry`, их фильтры,
   // пресеты и разворачивание атрибутов (D-025, D-030).
   const build = createBuildCollector({
@@ -312,77 +225,20 @@ export function compile(settings: CompileSettings): CompileResult {
     ],
     ...coreOf(settings),
   }, resolve(settings.input));
-  for (i = 0; i < l; i++) {
+  const l = files.length;
+  let i = 0;
+  for (; i < l; i++) {
     build.add(files[i], readFileSync(files[i], 'utf8'));
   }
   const outputs = build.outputs();
+  const metrics = build.metrics();
   return {
     css: outputs.map((output) => output.css).filter(Boolean).join('\n'),
     outputs,
     files: l,
-    tokens: tokens.size,
+    tokens: metrics.tokensTotal,
     warnings: build.takeWarnings(),
-    metrics: counts
-      ? buildMetrics(
-        l, tokens.size, counts, byFile as Record<string, Record<string, number>>,
-      )
-      : undefined,
+    metrics,
   };
 }
 
-/**
- * Ключ статистики для записи сканера: у класса — сам токен, у другого
- * целевого атрибута — `атрибут:токен` (`m:p10`), чтобы они не смешивались.
- */
-function metricKey(entry: string): string {
-  const at = entry.indexOf(' ');
-  const target = entry.slice(0, at);
-  return target === 'class' ? entry.slice(at + 1) : target + ':' + entry.slice(at + 1);
-}
-
-/** Раскладывает счётчики в отчёт: списки по убыванию частоты. */
-function buildMetrics(
-  filesScanned: number,
-  tokensTotal: number,
-  counts: Record<string, number>,
-  byFile: Record<string, Record<string, number>>,
-): Metrics {
-  const tokens = sortedCounts(counts);
-  const files: Record<string, TokenCount[]> = {};
-  let occurrences = 0;
-  const l = tokens.length;
-  let i = 0;
-  for (; i < l; i++) {
-    occurrences += tokens[i].count;
-  }
-  // §6.2: переменная тела цикла объявляется один раз, до него.
-  let list: TokenCount[];
-  for (const path in byFile) {
-    // Файл без единого токена в отчёт не попадает: пустых записей в проекте
-    // больше, чем содержательных, и они только мешают читать.
-    list = sortedCounts(byFile[path]);
-    list.length && (files[path] = list);
-  }
-  return {
-    filesScanned,
-    tokensTotal,
-    occurrences,
-    tokens,
-    files,
-  };
-}
-
-/** `{ токен: счётчик }` → список по убыванию частоты, при равенстве — по имени. */
-function sortedCounts(counts: Record<string, number>): TokenCount[] {
-  const out: TokenCount[] = [];
-  for (const name in counts) {
-    out.push({
-      name,
-      count: counts[name],
-    });
-  }
-  // Имя вторым ключом — чтобы отчёт не менялся от прогона к прогону: иначе
-  // токены с одинаковой частотой шли бы в случайном порядке, и сравнивать две
-  // выгрузки было бы нечем.
-  return out.sort((a, b) => b.count - a.count || (a.name < b.name ? -1 : 1));
-}

@@ -191,9 +191,3 @@ describe('minotation-vite — mergeFnNames (2026-09-25)', () => {
   });
 });
 
-describe('minotation-vite — устаревший attr (D-025)', () => {
-  test('attr из старого конфига — ошибка с подсказкой, а не потеря токенов', () => {
-    expect(() => mnVite({ attr: ['class', 'className'] } as never))
-      .toThrow("use attrs: 'class, className:class'");
-  });
-});

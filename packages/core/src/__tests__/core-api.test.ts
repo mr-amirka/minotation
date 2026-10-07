@@ -10,11 +10,11 @@ import {
 import presetStandard from '../presets/standard';
 import {
   MnParseError,
-  MnStrictError,
+  MnWarningError,
 } from '../index';
 import {
   MnParseError as MnParseErrorType,
-  MnStrictError as MnStrictErrorType,
+  MnWarningError as MnWarningErrorType,
 } from '../core/types';
 import presetSynonyms from '../presets/synonyms';
 import presetMedias from '../presets/medias';
@@ -139,7 +139,7 @@ describe('mn — предупреждения и maxDepth', () => {
     const mn: any = makeMn({
       maxDepth: 2,
       maxDepthMode: 'block',
-      onWarning: 'silent', 
+      warningMode: 'silent', 
     });
     mn.checkByAttrs('p10<5.parent', 'class');
     mn.compile();
@@ -155,7 +155,7 @@ describe('mn — предупреждения и maxDepth', () => {
     // любую чужую семантику. Нотация рассчитана на соседство с другими
     // классами, поэтому незнакомое имя ошибкой не считается.
     const mn: any = makeMn({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.checkByAttrs('noSuchHandlerXyz container btn active swiper-slide', 'class');
     mn.compile();
@@ -167,7 +167,7 @@ describe('mn — предупреждения и maxDepth', () => {
     // Граница: тут автор явно писал MN-токен (`p` — реальный хендлер) и
     // ошибся в аргументе, это уже его ошибка, а не чужой класс.
     const mn: any = makeMn({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.checkByAttrs('p10zz', 'class');
     mn.compile();
@@ -176,12 +176,12 @@ describe('mn — предупреждения и maxDepth', () => {
     expect(types).toContain('parse-error');
   });
 
-  test("onWarning: 'console' пишет предупреждение в консоль", () => {
+  test("warningMode: 'log' пишет предупреждение в консоль", () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     let calls: unknown[][];
     try {
       const mn: any = makeMn({
-        onWarning: 'console', 
+        warningMode: 'log', 
       });
       mn.checkByAttrs('p10zz', 'class');
       mn.compile();
@@ -220,12 +220,12 @@ describe('mn — медиа-выражения', () => {
  * Шапка `src/index.ts` предупреждает об этом с 2026-09-03: второй формой
  * `import { X } from 'minotation'` из чужого ESM-кода падал с «does not provide
  * an export named X», хотя `require` видел символ нормально. `MnParseError`
- * и `MnStrictError` оставались последними в старой форме.
+ * и `MnWarningError` оставались последними в старой форме.
  */
 describe('публичные экспорты точки входа', () => {
   test('классы ошибок доступны из index и это те же самые классы', () => {
     expect(MnParseError).toBe(MnParseErrorType);
-    expect(MnStrictError).toBe(MnStrictErrorType);
+    expect(MnWarningError).toBe(MnWarningErrorType);
     expect(new MnParseError('x', {
       token: 't',
       handler: '',
@@ -242,7 +242,7 @@ describe('регистрация хендлера с массивом патте
   test('каждый паттерн находит свой фрагмент независимо от остальных', () => {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     const mn: any = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     let seen: Record<string, any> = {};
     mn(

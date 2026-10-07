@@ -101,21 +101,11 @@ export function parseAttrs(attrs?: MnAttrs): Record<string, string> {
   return out;
 }
 
-/** Опция `attr` заменена на `attrs` (D-025) — подсказка, как переписать. */
-function throwRenamedAttr(attr: unknown): never {
-  const names = Array.isArray(attr) ? attr : [attr];
-  const hint = names.map((name) => (name === 'className' ? 'className:class' : String(name)))
-    .join(', ');
-  throw new Error('[minotation] option "attr" was replaced by "attrs": use attrs: \''
-    + hint + '\'. A name without ":" compiles into its own attribute selector '
-    + '([className~="p10"]); "className:class" makes React className produce classes.');
-}
-
 /** Поля ядра, которые в опциях плагина лежат плоско, как в v1 (D-034). */
 export const CORE_OPTION_KEYS = [
   'selectorPrefix',
   'altColor',
-  'strict',
+  'warningMode',
   'media',
   'maxDepth',
   'maxDepthMode',
@@ -133,13 +123,6 @@ function coreOptionsOf(options: MnCoreOptions): MnCoreOptions {
     options[key] === undefined || (out[key] = options[key]);
   }
   return out as MnCoreOptions;
-}
-
-/** Вложенный `mn` убран (D-034) — ошибка с подсказкой, какие поля куда перенести. */
-function throwRemovedMn(mn: unknown): never {
-  const fields = mn && typeof mn === 'object' ? Object.keys(mn).join(', ') : '';
-  throw new Error('[minotation] option "mn" was removed: put its fields at the top level'
-    + (fields ? ' (' + fields + ')' : '') + ', e.g. { selectorPrefix: \'.app \', strict: true }');
 }
 
 /** Сканер с разворачиванием атрибутов: записи `'<целевой атрибут> <токен>'`. */
@@ -163,10 +146,6 @@ export function createAttrsScanner(options: Omit<ScannerOptions, 'attr' | 'onWar
   attrs?: MnAttrs;
   onScannerWarning?: (message: string) => void;
 }): AttrsScanner {
-  // Конфиги часто на JS, где типов нет: забытый `attr` проигнорировался бы
-  // молча, и токены из второго атрибута пропали бы без единого сообщения.
-  'attr' in options && throwRenamedAttr((options as { attr?: unknown }).attr);
-  'mn' in options && throwRemovedMn((options as { mn?: unknown }).mn);
   const map = parseAttrs(options.attrs);
   const byTarget: Record<string, string[]> = {};
   for (const from of Object.keys(map)) {
@@ -400,11 +379,19 @@ export interface MnBuildOptions extends TokenCollectorOptions {
    * @default true
    */
   manifest?: boolean | string;
+  /**
+   * Статистика употребления токенов (D-032) — какие токены и сколько раз
+   * встречаются в проекте, общим списком и по файлам. `true` — файл
+   * `mn-metrics.json` рядом с CSS, строка — свой путь, `false` — не писать.
+   * В dev-режиме сборщиков не пишется: отчёт нужен по итогам сборки.
+   * @default true
+   */
+  metrics?: boolean | string;
 }
 
 /**
  * Опции одной записи `entry` — то, что у записей бывает разным; остальное
- * наследуется от опций верхнего уровня. Поля ядра (`selectorPrefix`, `strict`, …)
+ * наследуется от опций верхнего уровня. Поля ядра (`selectorPrefix`, `warningMode`, …)
  * — плоско, как у опций плагина (D-034).
  */
 export interface MnEntryOptions extends MnCoreOptions {
@@ -567,7 +554,7 @@ export interface TokenCollector {
   css(): string;
   /**
    * Предупреждения последней компиляции; вызов их забирает и очищает очередь.
-   * Пустой массив при `onWarning: 'silent'`.
+   * Пустой массив при `warningMode: 'silent'`.
    */
   takeWarnings(): MnWarning[];
   /** Забывает всё: и токены, и пресеты. Нужен на старте пересборки. */
@@ -589,14 +576,15 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   const safelist = flatSafelist(options.safelist).map((token) => 'class ' + token);
   const presets = options.presets;
   /**
-   * `onWarning` особый: предупреждения перехватываются всегда, потому что ядро
-   * по умолчанию пишет в `console`, а у сборщика свой канал вывода. Явный
-   * `'silent'` уважается — тогда не копим и не отдаём; своя функция вызывается
-   * как есть, дополнительно к накоплению.
+   * Предупреждения перехватываются всегда: ядро в режиме `'log'` пишет в
+   * `console`, а у сборщика свой канал вывода — поэтому ядру режим передаётся
+   * как `'silent'` (или `'error'`, чтобы сборка падала), а печатает плагин из
+   * накопленного. `'silent'` у пользователя — не копим и не отдаём. Колбэк
+   * `onWarning` вызывается всегда, дополнительно к режиму (D-035).
    */
   const userOnWarning = options.onWarning;
+  const warningMode = options.warningMode || 'log';
   const core = coreOptionsOf(options);
-  const silent = userOnWarning === 'silent';
   /** Токены по файлам — ключ по файлу и снимает файл с учёта, и заменяет набор. */
   const byFile = new Map<string, Set<string>>();
   /** Динамические пресеты из файлов, по пути. */
@@ -682,12 +670,10 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
       const collected: MnWarning[] = [];
       const mn = minotationProvider({
         ...core,
-        // Перехватываем всегда: ядро по умолчанию пишет в console, а у
-        // сборщика свой канал вывода — иначе предупреждение либо теряется в
-        // потоке сборки, либо дублируется.
+        warningMode: warningMode === 'error' ? 'error' : 'silent',
         onWarning: (warning: MnWarning) => {
-          silent || collected.push(warning);
-          typeof userOnWarning === 'function' && userOnWarning(warning);
+          warningMode === 'silent' || collected.push(warning);
+          userOnWarning && userOnWarning(warning);
         },
       });
       presets && mn.setPresets(presets.concat(Array.from(dynamic.values())));
@@ -722,6 +708,76 @@ export function formatFileName(
     .replace(/\[hash\]/g, () => createHash('sha256').update(css).digest('hex').slice(0, 8));
 }
 
+/** Сколько раз встретился токен. */
+export interface TokenCount {
+  /** Токен; у целевого атрибута не `class` — `атрибут:токен` (`m:p10`). */
+  name: string;
+  /** Сколько раз встретился — во всех файлах или в одном, по месту. */
+  count: number;
+}
+
+/**
+ * Статистика употребления токенов (D-032) — то, что пишется в `mn-metrics.json`.
+ *
+ * Формат перенесён из v1 (`old/minimalist-notation/node/index.js`): список
+ * `{name, count}` по убыванию частоты. Разбивка по файлам лежит рядом, в
+ * `files`, а не в отдельном отчёте: в v1 это были две опции (`metrics` и
+ * `metricsFiles`), писавшие два файла с пересекающимся содержимым.
+ */
+export interface Metrics {
+  /** Всего просканировано файлов. */
+  filesScanned: number;
+  /**
+   * Уникальных токенов — включая `safelist`, которого в файлах не было. Счётчики
+   * в {@link Metrics.tokens} считают только встреченное в файлах, поэтому числа
+   * могут расходиться.
+   */
+  tokensTotal: number;
+  /** Сколько раз токены встретились суммарно, с повторами. */
+  occurrences: number;
+  /** Токены по убыванию частоты. */
+  tokens: TokenCount[];
+  /** Токены по файлам: путь от корня → список, тоже по убыванию частоты. */
+  files: Record<string, TokenCount[]>;
+}
+
+/**
+ * Путь отчёта статистики по опции `metrics`; `undefined` — не писать.
+ *
+ * @param metrics — опция `metrics`
+ */
+export function metricsFileName(metrics: boolean | string | undefined): string | undefined {
+  if (metrics === false) {
+    return undefined;
+  }
+  return typeof metrics === 'string' ? metrics : 'mn-metrics.json';
+}
+
+/**
+ * Ключ статистики для записи сканера: у класса — сам токен, у другого целевого
+ * атрибута — `атрибут:токен` (`m:p10`), чтобы они не смешивались.
+ */
+function metricKey(entry: string): string {
+  const at = entry.indexOf(' ');
+  const target = entry.slice(0, at);
+  return target === 'class' ? entry.slice(at + 1) : target + ':' + entry.slice(at + 1);
+}
+
+/** `{ токен: счётчик }` → список по убыванию частоты, при равенстве — по имени. */
+function sortedCounts(counts: Record<string, number>): TokenCount[] {
+  const out: TokenCount[] = [];
+  for (const name in counts) {
+    out.push({
+      name,
+      count: counts[name],
+    });
+  }
+  // Имя вторым ключом — чтобы отчёт не менялся от прогона к прогону: иначе
+  // токены с одинаковой частотой шли бы в случайном порядке, и сравнивать две
+  // выгрузки было бы нечем.
+  return out.sort((a, b) => b.count - a.count || (a.name < b.name ? -1 : 1));
+}
+
 /** CSS одной записи `entry`. */
 export interface BuildOutput {
   /** Имя записи (`mn` без `entry`). */
@@ -750,6 +806,8 @@ export interface BuildCollector {
   outputs(): BuildOutput[];
   /** Предупреждения последней компиляции всех записей, без повторов. */
   takeWarnings(): MnWarning[];
+  /** Статистика употребления токенов по учтённым файлам (D-032). */
+  metrics(): Metrics;
 }
 
 /**
@@ -771,6 +829,22 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
     throw new Error('[minotation] entry is empty: declare at least one entry or omit the option');
   }
   const scanners: Record<string, AttrsScanner> = {};
+  // Статистика считается по атрибутам верхнего уровня — тем, что видит автор
+  // разметки; записи с другими `attrs` на неё не влияют.
+  const metricsKey = JSON.stringify(parseAttrs(options.attrs));
+  scanners[metricsKey] = createAttrsScanner(options);
+  /** Счётчики по файлам: файл → `{ токен: сколько раз }`. */
+  const counts = new Map<string, Record<string, number>>();
+  function count(id: string, found: string[]): void {
+    const own: Record<string, number> = {};
+    let key: string;
+    for (const entry of found) {
+      key = metricKey(entry);
+      own[key] = (own[key] || 0) + 1;
+    }
+    counts.set(id, own);
+  }
+  const safelist = flatSafelist(options.safelist);
   const parts = names.map((name) => {
     const own = entries[name];
     const merged: MnBuildOptions = {
@@ -806,13 +880,17 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
     names,
     add(id: string, source: string): boolean {
       const scanned: Record<string, string[]> = {};
-      return distribute(id, (key) => scanned[key] || (scanned[key] = scanners[key](source, id)));
+      const scan = (key: string): string[] => scanned[key] || (scanned[key] = scanners[key](source, id));
+      count(id, scan(metricsKey));
+      return distribute(id, scan);
     },
     set(id: string, found: Iterable<string>): boolean {
       const list = Array.from(found);
+      count(id, list);
       return distribute(id, () => list);
     },
     remove(id: string): boolean {
+      counts.delete(id);
       let changed = false;
       for (const part of parts) {
         changed = part.collector.remove(id) || changed;
@@ -835,9 +913,41 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
       return changed;
     },
     clear(): void {
+      counts.clear();
       for (const part of parts) {
         part.collector.clear();
       }
+    },
+    metrics(): Metrics {
+      const total: Record<string, number> = {};
+      const files: Record<string, TokenCount[]> = {};
+      let list: TokenCount[];
+      for (const [id, own] of counts) {
+        for (const name in own) {
+          total[name] = (total[name] || 0) + own[name];
+        }
+        list = sortedCounts(own);
+        // Файл без единого токена в отчёт не попадает: пустых записей в
+        // проекте больше, чем содержательных, и они только мешают читать.
+        list.length && (files[relative(root, id)] = list);
+      }
+      const tokens = sortedCounts(total);
+      const unique: Record<string, 1> = {};
+      let occurrences = 0;
+      for (const item of tokens) {
+        occurrences += item.count;
+        unique[item.name] = 1;
+      }
+      for (const token of safelist) {
+        unique[token] = 1;
+      }
+      return {
+        filesScanned: counts.size,
+        tokensTotal: Object.keys(unique).length,
+        occurrences,
+        tokens,
+        files,
+      };
     },
     outputs(): BuildOutput[] {
       return parts.map((part, i) => ({

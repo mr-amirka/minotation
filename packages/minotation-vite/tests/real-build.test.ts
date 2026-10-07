@@ -160,7 +160,7 @@ describe('minotation-vite — реальная сборка', () => {
     expect(builtCss(root)).toContain('padding:10px');
   });
 
-  test('mn.strict: true — битый аргумент токена роняет реальную vite-сборку', async () => {
+  test('warningMode: error — битый аргумент токена роняет реальную vite-сборку', async () => {
     // Был `totally-unknown-xyz` — после Q-12 (D-014) имя без хендлера считается
     // чужим CSS-классом и молча игнорируется, поэтому strict на нём больше не
     // срабатывает. Берём настоящий MN-тег с битым аргументом.
@@ -175,19 +175,19 @@ describe('minotation-vite — реальная сборка', () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     try {
-      await expect(runBuild(root, { strict: true })).rejects.toThrow(/MN strict/);
+      await expect(runBuild(root, { warningMode: 'error' })).rejects.toThrow(/warningMode: 'error'/);
     } finally {
       warnSpy.mockRestore();
     }
   });
 
-  test('mn.strict: true — сборка без предупреждений проходит как обычно', async () => {
+  test('warningMode: error — сборка без предупреждений проходит как обычно', async () => {
     const root = makeProject({
       'index.html': '<html><head></head><body><div class="p10"></div><script type="module" src="/src/main.js"></script></body></html>',
       'src/main.js': 'export const x = 1;\n',
     });
 
-    await runBuild(root, { strict: true });
+    await runBuild(root, { warningMode: 'error' });
 
     expect(builtCss(root)).toContain('padding:10px');
   });
@@ -236,8 +236,8 @@ describe('minotation-vite — предупреждения ядра', () => {
     expect(await warningsOf()).toContain('[minotation] w10zz');
   });
 
-  test("onWarning: 'silent' — в лог сборки ничего не уходит", async () => {
-    expect(await warningsOf({ onWarning: 'silent' })).not.toContain('[minotation]');
+  test("warningMode: 'silent' — в лог сборки ничего не уходит", async () => {
+    expect(await warningsOf({ warningMode: 'silent' })).not.toContain('[minotation]');
   });
 
   test('onWarning-функция вызывается и лог сборки не отменяет', async () => {
@@ -319,5 +319,24 @@ describe('minotation-vite — CSS через граф ассетов Vite (D-031
     const css = Object.values(assetsCss(root)).join('');
     expect(css).toContain('margin:20px');
     expect(css).not.toContain('padding:10px');
+  });
+});
+
+describe('minotation-vite — статистика употребления токенов (D-032)', () => {
+  test('по умолчанию mn-metrics.json в сборке; metrics: false — нет', async () => {
+    const root = makeProject({
+      'index.html': '<html><head></head><body><script type="module" src="/src/main.js"></script></body></html>',
+      'src/main.js': 'export const x = 1;\n',
+      'src/a.html': '<div class="p10 p10 m20"></div>',
+    });
+
+    await runBuild(root, {});
+    const metrics = JSON.parse(readFileSync(join(root, 'dist/mn-metrics.json'), 'utf-8'));
+    expect(metrics.tokens).toEqual([{ name: 'p10', count: 2 }, { name: 'm20', count: 1 }]);
+    // Пути — от корня проекта Vite.
+    expect(Object.keys(metrics.files)).toEqual(['src/a.html']);
+
+    await runBuild(root, { metrics: false });
+    expect(existsSync(join(root, 'dist/mn-metrics.json'))).toBe(false);
   });
 });

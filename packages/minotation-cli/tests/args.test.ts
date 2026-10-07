@@ -85,7 +85,6 @@ describe('parseArgs', () => {
     [['-w'], 'watch'],
     [['--watch'], 'watch'],
     [['--alt-color'], 'altColor'],
-    [['--strict'], 'strict'],
     [['-h'], 'help'],
     [['--help'], 'help'],
     [['-v'], 'version'],
@@ -100,12 +99,19 @@ describe('parseArgs', () => {
       '-o',
       'out.css',
       '-w',
-      '--strict',
+      '--warning-mode',
+      'error',
     ]);
     expect(args.input).toBe('./src');
     expect(args.output).toBe('out.css');
     expect(args.watch).toBe(true);
-    expect(args.strict).toBe(true);
+    expect(args.warningMode).toBe('error');
+  });
+
+  test('--warning-mode принимает только log, silent, error', () => {
+    expect(parseArgs(['--warning-mode', 'silent']).warningMode).toBe('silent');
+    expect(() => parseArgs(['--warning-mode', 'errror']))
+      .toThrow('Option "--warning-mode" expects log, silent or error, got "errror"');
   });
 
   test.each([
@@ -127,11 +133,12 @@ describe('parseArgs', () => {
       '--attrs',
       '--prefix',
       '--alt-color',
-      '--strict',
+      '--warning-mode',
       '--include',
       '--exclude',
       '--skip-partials',
       '--no-manifest',
+      '--no-metrics',
       '--version',
       '--help',
     ]) {

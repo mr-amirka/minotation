@@ -139,12 +139,13 @@ export function presetApp(mn: MnInstance): void {
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
 | `selectorPrefix` | — | префикс всех селекторов: `'.app '` → `.app .p10{…}` |
 | `altColor` | `false` | запасное непрозрачное объявление рядом с `rgba` |
-| `strict` | `false` | предупреждение компиляции роняет сборку |
 | `media` | стандартные | карта именованных медиа: `{ wide: { query: '(min-width: 1200px)' } }` → `p10@wide` |
 | `maxDepth`, `maxDepthMode` | `10`, `'warn'` | предел глубины контекстных селекторов (`<N`, `>N`) |
-| `onWarning` | в лог сборки | предупреждения компиляции: `'silent'` — молчать, функция — своя обработка |
+| `warningMode` | `'log'` | что делать с предупреждением компиляции: `'log'` — в лог сборки, `'silent'` — молчать, `'error'` — уронить сборку |
+| `onWarning` | — | колбэк `(warning) => void` на каждое предупреждение, дополнительно к `warningMode` |
 | `onError` | — | обработчик ошибок ядра |
 | `onScannerWarning` | `console.warn` | колбэк сканера: `syntax: true`, а пакета `typescript` нет |
+| `metrics` | `true` → `mn-metrics.json` | статистика употребления токенов — общая и по файлам; строка — свой путь, `false` — не писать |
 | `entry` | — | несколько CSS из одной сборки; запись подключается модулем `virtual:mn/<имя>.css` |
 | `inject` | `'inline'` | только у vite: как CSS попадает в `index.html` — раздел выше |
 

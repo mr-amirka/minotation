@@ -155,7 +155,7 @@ describe('toFixed — устойчивость к погрешности IEEE754
 describe('единица по умолчанию у свойств-длин', () => {
   function cssOf(token: string): string {
     const mn = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
@@ -205,7 +205,7 @@ describe('единица по умолчанию у свойств-длин', ()
 describe('gap: синоним N (normal) во всём семействе', () => {
   function cssOf(token: string): string {
     const mn = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
@@ -243,7 +243,7 @@ describe('gap: синоним N (normal) во всём семействе', () =
 describe('сокращённые записи значений', () => {
   function cssOf(token: string): string {
     const mn = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
@@ -343,7 +343,7 @@ describe('переменная как слагаемое в calc (PATTERN_VAR_AD
   /** Полное правило вместе с селектором — нужно, чтобы проверять комбинаторы. */
   function cssOfFull(token: string): string {
     const mn = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
@@ -453,7 +453,7 @@ describe('ratio: хвост, который не разобрался, брак�
 describe('auto-repeat: gtcAF240 вместо gtcRepeat\\(auto-fit,minmax\\(240px,1fr\\)\\)', () => {
   function cssOf(token: string): string {
     const mn = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
@@ -517,7 +517,7 @@ describe('auto-repeat: gtcAF240 вместо gtcRepeat\\(auto-fit,minmax\\(240px
 describe('незнакомое слово у хендлера со словарём', () => {
   function cssOf(token: string): string {
     const mn = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
@@ -576,7 +576,7 @@ describe('незнакомое слово у хендлера со словар�
 describe('голое слово у свойства-длины', () => {
   function cssOf(token: string): string {
     const mn = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);

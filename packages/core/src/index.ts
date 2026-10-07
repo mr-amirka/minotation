@@ -124,13 +124,13 @@ export type {
 } from './core/types';
 import {
   MnParseError as MnParseErrorImpl,
-  MnStrictError as MnStrictErrorImpl,
+  MnWarningError as MnWarningErrorImpl,
 } from './core/types';
 // Форма `export { X } from '...'` компилируется в геттер, которого не видит
 // cjs-module-lexer — ровно то, о чём предупреждает шапка этого файла. Эти два
 // символа оставались последними в старой форме (приведены 2026-09-25).
 export const MnParseError = MnParseErrorImpl;
-export const MnStrictError = MnStrictErrorImpl;
+export const MnWarningError = MnWarningErrorImpl;
 
 export const presetStandard = presetStandardDefault;
 export const presetSynonyms = presetSynonymsDefault;

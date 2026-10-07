@@ -161,27 +161,18 @@ describe('compile', () => {
     }).css).toContain('.p10{padding:10px}');
   });
 
-  test('устаревший attr из конфига — ошибка с подсказкой', () => {
-    write('a.html', '<div class="p10">');
-    expect(() => compile({
-      input: dir,
-      attr: 'className',
-    } as never)).toThrow("use attrs: 'className:class'");
-  });
-
   test('атрибут без цели разворачивается в себя — [m~="p10"], как в v1', () => {
     write('a.html', '<div class="w20" m="p10">');
     const result = compile({
       input: dir,
       attrs: 'class, m',
-      metrics: true,
     });
     expect(result.css).toContain('[m~="p10"]{padding:10px}');
     expect(result.css).toContain('.w20{width:20px}');
     expect(JSON.stringify(result.metrics)).toContain('m:p10');
   });
 
-  test('поля ядра — плоско: selectorPrefix, altColor, strict (D-034)', () => {
+  test('поля ядра — плоско: selectorPrefix, altColor, warningMode (D-034, D-035)', () => {
     write('a.html', '<div class="p10 cF00.5">');
     const css = compile({
       input: dir,
@@ -193,24 +184,8 @@ describe('compile', () => {
     write('b.html', '<div class="w10zz">');
     expect(() => compile({
       input: dir,
-      strict: true,
-    })).toThrow(/MN strict/);
-  });
-
-  test('старые mn и prefix в конфиге — ошибка с подсказкой', () => {
-    write('a.html', '<div class="p10">');
-    expect(() => compile({
-      input: dir,
-      mn: {
-        selectorPrefix: '.app', 
-      }, 
-    } as never))
-      .toThrow('option "mn" was removed');
-    expect(() => compile({
-      input: dir,
-      prefix: '.app', 
-    } as never))
-      .toThrow('renamed to "selectorPrefix"');
+      warningMode: 'error',
+    })).toThrow(/warningMode: 'error'/);
   });
 
   test('safelist добавляет токены, которых нет в файлах', () => {
@@ -285,8 +260,7 @@ describe('метрики', () => {
 
     const metrics = compile({
       input: dir,
-      metrics: true,
-    }).metrics!;
+    }).metrics;
 
     expect(metrics.filesScanned).toBe(2);
     expect(metrics.tokensTotal).toBe(2);
@@ -299,7 +273,8 @@ describe('метрики', () => {
       name: 'm20',
       count: 1,
     }]);
-    expect(metrics.files[join(dir, 'b.html')]).toEqual([{
+    // Пути — от корня скана.
+    expect(metrics.files['b.html']).toEqual([{
       name: 'p10',
       count: 1,
     }]);
@@ -311,8 +286,7 @@ describe('метрики', () => {
 
     const names = compile({
       input: dir,
-      metrics: true,
-    }).metrics!.tokens.map((t) => t.name);
+    }).metrics.tokens.map((t) => t.name);
 
     expect(names).toEqual([
       'm20',
@@ -327,28 +301,17 @@ describe('метрики', () => {
 
     const files = compile({
       input: dir,
-      metrics: true,
-    }).metrics!.files;
+    }).metrics.files;
 
-    expect(Object.keys(files)).toEqual([join(dir, 'a.html')]);
-  });
-
-  test('без опции статистика не собирается', () => {
-    // Счётчики по файлам — запись на каждый файл в памяти; обычной сборке
-    // они не нужны.
-    write('a.html', '<div class="p10"></div>');
-    expect(compile({
-      input: dir,
-    }).metrics).toBeUndefined();
+    expect(Object.keys(files)).toEqual(['a.html']);
   });
 
   test('safelist в статистику не попадает — его в файлах не было', () => {
     write('a.html', '<div class="p10"></div>');
     const metrics = compile({
       input: dir,
-      metrics: true,
       safelist: ['m20'],
-    }).metrics!;
+    }).metrics;
 
     // В счётчики употребления safelist не попадает: в файлах его не было.
     expect(metrics.tokens.map((t) => t.name)).toEqual(['p10']);

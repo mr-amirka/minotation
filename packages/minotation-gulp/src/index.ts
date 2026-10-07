@@ -31,7 +31,7 @@ import type {
 } from 'node:stream';
 import Vinyl from 'vinyl';
 import {
-  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf,
+  createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName,
 } from 'minotation-build';
 import type {
   MnBuildOptions,
@@ -152,6 +152,15 @@ export function mnGulp(options: MnGulpOptions = {}): Transform {
             manifestOf(written), null, 2,
           ),
         ));
+      // Статистика употребления токенов (D-032).
+      const metrics = metricsFileName(options.metrics);
+      const report = collector.metrics();
+      // Пустой проход (ни одного файла) — отчёт-пустышка не нужен.
+      metrics && report.filesScanned && this.push(vinylOf(
+        base, metrics, JSON.stringify(
+          report, null, 2,
+        ),
+      ));
       done();
     },
   });

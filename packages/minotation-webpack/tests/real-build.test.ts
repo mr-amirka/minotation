@@ -131,6 +131,7 @@ describe('minotation-webpack — скан проекта и ассет без и
     const result = await runBuild(root, new MnWebpackPlugin({
       fileName: 'css/[name].css',
       manifest: false,
+      metrics: false,
       entry: { site: { include: /site/ }, admin: { include: /admin/, fileName: 'admin.css' } },
     }));
 
@@ -269,14 +270,10 @@ describe('minotation-webpack — пресеты, лоадеры и предуп�
     expect(loud.assets['mn.css']).toContain('.app .p10{padding:10px}');
     expect(seen).toEqual(['w10zz']);
 
-    const quiet = await runBuild(root, new MnWebpackPlugin({ onWarning: 'silent' }));
+    const quiet = await runBuild(root, new MnWebpackPlugin({ warningMode: 'silent' }));
     expect(quiet.warnings.join('\n')).not.toContain('[minotation]');
   });
 
-  test('устаревший output — ошибка с подсказкой', () => {
-    expect(() => new MnWebpackPlugin({ output: 'app.css' } as never))
-      .toThrow('option "output" was replaced by "fileName"');
-  });
 });
 
 describe('minotation-webpack — watch: изменения учитываются до компиляции', () => {
@@ -381,5 +378,18 @@ describe('minotation-webpack — watchRun: точечное пересканир
 
     expect(result.assets['mn.css']).toContain('width:30px');
     expect(result.assets['mn.css']).not.toContain('height:40px');
+  });
+});
+
+describe('minotation-webpack — статистика употребления токенов (D-032)', () => {
+  test('mn-metrics.json — и при импорте mn.css, и без него', async () => {
+    const root = makeProject({
+      'src/main.js': "import 'minotation-webpack/mn.css';\nexport const x = 1;\n",
+      'src/page.html': '<div class="p10 p10"></div>',
+    });
+
+    const result = await runBuild(root, new MnWebpackPlugin(), { experiments: { css: true } });
+
+    expect(JSON.parse(result.assets['mn-metrics.json']).tokens).toEqual([{ name: 'p10', count: 2 }]);
   });
 });

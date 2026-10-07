@@ -68,7 +68,7 @@ describe('битые селекторы из токенов', () => {
   function compile(token: string) {
     const errors: unknown[] = [];
     const mn = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.error$.on((e: unknown) => errors.push(e));
     mn.setPresets([presetStandard]);
@@ -350,7 +350,7 @@ describe('вырожденная группа вариантов в значен
 describe('вырожденная группа вариантов в селекторе mn.assign', () => {
   function assign(selectors: Record<string, string>): string {
     const mn: any = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.assign(selectors);
@@ -407,7 +407,7 @@ describe('вырожденная группа вариантов в селект
     // разворачивают scope своим механизмом, и второй проход дал бы
     // `:not(.a(.b))` вместо `:not(.a[.b])`.
     const mn: any = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')('cF00:not[.a[.b]]');
@@ -456,7 +456,7 @@ describe('вырожденная группа вариантов в селект
  *
  * До 2026-09-26 структура имени проверялась раньше, чем выяснялось, есть ли у
  * него зарегистрированный тег. Чужой класс, случайно начавшийся с тега,
- * получал `parse-error`, и со `strict: true` ронял сборку: `sr-only` → `s` +
+ * получал `parse-error`, и со `warningMode: 'error'` ронял сборку: `sr-only` → `s` +
  * неразбираемый `-only`, `mt-auto` → `mt`. Образец `class="..."` из
  * комментария в JSX ронял сборку сайта `affiliate` (трек `scanner-robustness`,
  * задача 1).

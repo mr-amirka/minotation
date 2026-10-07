@@ -241,16 +241,16 @@ export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'invalid-css-
   | 'unregistered-state';
 
 /**
- * Бросается из {@link MnInstance.compile}, когда `MnOptions.strict: true` и за цикл
+ * Бросается из {@link MnInstance.compile}, когда `warningMode: 'error'` и за цикл
  * компиляции накоплен хотя бы один {@link MnWarning}. Бросок происходит ПОСЛЕ основной
- * работы `compile` (генерация CSS уже завершена, вне try/catch парсинга токенов) —
- * не подменяет и не отменяет обычный `onWarning`, только добавляет жёсткий отказ поверх.
+ * работы `compile` (генерация CSS уже завершена, вне try/catch парсинга токенов);
+ * колбэк `onWarning` к этому моменту уже вызван для каждого предупреждения.
  */
-export class MnStrictError extends Error {
+export class MnWarningError extends Error {
   constructor(public readonly warnings: MnWarning[]) {
-    super('MN strict: ' + warnings.length + ' warning(s) during compile:\n'
+    super('MN: ' + warnings.length + ' warning(s) during compile (warningMode: \'error\'):\n'
       + warnings.map((w) => '  ' + w.token + ': ' + w.message).join('\n'));
-    this.name = 'MnStrictError';
+    this.name = 'MnWarningError';
   }
 }
 
@@ -271,10 +271,23 @@ export interface MnOptions {
   media?: Record<string, MnMediaEntry>;
   onError?: (e: Error) => void;
   /**
-   * Реакция на {@link MnWarning} (парсинг-ошибки в утилитах, неизвестный
-   * хендлер, превышение `maxDepth` в режиме `'warn'`). @default 'console'
+   * Что делать с предупреждением компиляции ({@link MnWarning}: ошибка разбора
+   * токена, превышение `maxDepth` в режиме `'warn'`, битое CSS-значение) (D-035):
+   * - `'log'` — печатать (`console.warn`; плагины сборщиков — в лог сборки);
+   * - `'silent'` — молчать;
+   * - `'error'` — после компиляции бросить {@link MnWarningError}: сборка падает.
+   *
+   * По умолчанию `'log'`: токены пользовательского кода часто пересекаются с
+   * обычными CSS-классами, и `'error'` в общем случае ломал бы сборку на ложных
+   * срабатываниях — включать там, где состав токенов контролируется.
+   * @default 'log'
    */
-  onWarning?: 'silent' | 'console' | ((warning: MnWarning) => void);
+  warningMode?: 'log' | 'silent' | 'error';
+  /**
+   * Колбэк на каждое предупреждение — дополнительно к `warningMode`: для своей
+   * обработки (метрики, отчёт), не вместо режима.
+   */
+  onWarning?: (warning: MnWarning) => void;
   /**
    * Мягкий лимит глубины контекстных `<`/`>`-селекторов (`2Parent`, `3Child` и т.п.).
    * Не задан по умолчанию — действует только жёсткий потолок (см.
@@ -301,17 +314,4 @@ export interface MnOptions {
    * точечно.
    */
   altColor?: boolean;
-  /**
-   * `true` — накопленные за цикл {@link MnInstance.compile} предупреждения (см.
-   * {@link MnWarning}) приводят к броску {@link MnStrictError} вместо тихого
-   * `warn-and-continue`. `onWarning` при этом всё равно вызывается как обычно —
-   * `strict` не заменяет его, а добавляет отказ поверх.
-   *
-   * @default false — по умолчанию выключено: токены пользовательского кода часто
-   * пересекаются с обычными CSS-классами и прочей разметкой, случайно попадающей
-   * под парсер минотации, и `strict: true` в общем случае может ломать сборку
-   * на ложных срабатываниях. Включать точечно, в конкретных сборках, где состав
-   * токенов контролируется.
-   */
-  strict?: boolean;
 }

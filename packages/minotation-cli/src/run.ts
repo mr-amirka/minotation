@@ -16,7 +16,7 @@ import {
   dirname, join, relative, resolve,
 } from 'node:path';
 import {
-  formatFileName, manifestFileName, manifestOf,
+  formatFileName, manifestFileName, manifestOf, metricsFileName,
 } from 'minotation-build';
 import type {
   CliArgs,
@@ -49,8 +49,11 @@ export interface RunSettings extends CompileSettings {
    * строка — свой путь, `false` — не писать. @default true
    */
   manifest?: boolean | string;
-  /** Файл для статистики употребления токенов; без него она не собирается. */
-  metricsPath?: string;
+  /**
+   * Статистика употребления токенов (D-032): `true` — `mn-metrics.json` рядом с
+   * CSS, строка — свой путь, `false` — не писать. @default true
+   */
+  metrics?: boolean | string;
 }
 
 /**
@@ -117,16 +120,16 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
     // `--prefix` — короткая запись `selectorPrefix`; флаг важнее конфига.
     selectorPrefix: args.prefix === undefined ? config.selectorPrefix : args.prefix,
     altColor: args.altColor || config.altColor,
-    strict: args.strict || config.strict,
+    warningMode: args.warningMode || config.warningMode,
     skipPartials: args.skipPartials || config.skipPartials,
     // `--no-manifest` выключает; без него решает конфиг (по умолчанию — писать).
     manifest: args.noManifest ? false : config.manifest,
     // `--no-syntax` выключает разбор; без него решает конфиг, а его умолчание
     // (`undefined`) означает «автоматически».
     syntax: args.noSyntax ? false : config.syntax,
-    metricsPath: args.metrics || config.metricsPath,
-    // Считать статистику есть смысл только когда её куда писать.
-    metrics: !!(args.metrics || config.metricsPath),
+    // `--no-metrics` выключает, `-m <файл>` задаёт путь; иначе решает конфиг
+    // (по умолчанию — писать рядом с CSS).
+    metrics: args.noMetrics ? false : (args.metrics || config.metrics),
     include: args.include ? new RegExp(args.include) : config.include,
     exclude: args.exclude ? new RegExp(args.exclude) : config.exclude,
     // Конфиг лежит в корне проекта и подходит под расширение `.js` — без этого
@@ -187,8 +190,14 @@ export function build(settings: RunSettings, report: Reporter): CompileResult {
       ), 'utf8',
     );
   }
-  if (settings.metricsPath && result.metrics) {
-    const metricsFull = resolve(settings.metricsPath);
+  const metrics = metricsFileName(settings.metrics);
+  if (metrics) {
+    // Путь задан явно — от рабочей директории; иначе — рядом с CSS.
+    const metricsFull = typeof settings.metrics === 'string'
+      ? resolve(metrics)
+      : join(dirname(resolve(formatFileName(
+        settings.output, 'mn', '',
+      ))), metrics);
     mkdirSync(dirname(metricsFull), {
       recursive: true,
     });

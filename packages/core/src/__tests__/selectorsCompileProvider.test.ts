@@ -211,7 +211,7 @@ describe('вложенные scope в состоянии', () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const presetStandard = require('../presets/standard').default;
     const mn: any = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);

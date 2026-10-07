@@ -18,7 +18,7 @@ import {
 } from 'node:os';
 import {
   createAttrsScanner, createBuildCollector, createFileFilter, createTokenCollector,
-  formatFileName, manifestFileName, manifestOf, parseAttrs, walkFiles,
+  formatFileName, manifestFileName, manifestOf, metricsFileName, parseAttrs, walkFiles,
 } from '../src/index';
 import {
   presetStandard,
@@ -291,10 +291,10 @@ describe('createTokenCollector — предупреждения', () => {
     expect(collector.takeWarnings()).toEqual([]);
   });
 
-  test("`onWarning: 'silent'` гасит предупреждения", () => {
+  test("`warningMode: 'silent'` гасит предупреждения", () => {
     const collector = createTokenCollector({
       ...OPTIONS,
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     collector.add('/a.html', '<div class="w10zz">');
     collector.css();
@@ -500,14 +500,6 @@ describe('attrs — карта «сканируемый → целевой ат�
       .toEqual(['m h30', 'm p10']);
   });
 
-  test('устаревший attr — ошибка с подсказкой, а не молчаливая потеря токенов', () => {
-    expect(() => createTokenCollector({
-      attr: ['class', 'className'],
-    } as never)).toThrow("use attrs: 'class, className:class'");
-    expect(() => createAttrsScanner({
-      attr: 'class',
-    } as never)).toThrow("use attrs: 'class'");
-  });
 });
 
 describe('createFileFilter — отбор файлов, как в v1 (D-026, D-027)', () => {
@@ -668,11 +660,6 @@ describe('createBuildCollector — записи entry (D-030)', () => {
   });
 
   test('пустой entry — ошибка', () => {
-    // `mn: undefined` — ключ есть, полей нет: подсказка без списка.
-    expect(() => createTokenCollector({
-      ...OPTIONS,
-      mn: undefined,
-    } as never)).toThrow(/top level, e\.g\./);
     expect(() => createBuildCollector({
       entry: {}, 
     }, '/proj')).toThrow('entry is empty');
@@ -717,26 +704,6 @@ describe('опции ядра — плоско, без mn (D-034)', () => {
     expect(collector.css()).toContain('.app .p10{padding:10px}');
   });
 
-  test('старый mn — ошибка с подсказкой; и в записи entry тоже', () => {
-    expect(() => createTokenCollector({
-      ...OPTIONS,
-      mn: {
-        selectorPrefix: '.app ',
-        strict: true, 
-      },
-    } as never)).toThrow('option "mn" was removed: put its fields at the top level (selectorPrefix, strict)');
-    expect(() => createBuildCollector({
-      ...OPTIONS,
-      entry: {
-        admin: {
-          mn: {
-            selectorPrefix: '.adm ', 
-          }, 
-        } as never, 
-      },
-    }, '/proj')).toThrow('option "mn" was removed');
-  });
-
   test('колбэк сканера — onScannerWarning; onWarning сканеру не передаётся', () => {
     const said: string[] = [];
     const scan = createAttrsScanner({
@@ -745,5 +712,112 @@ describe('опции ядра — плоско, без mn (D-034)', () => {
     });
     expect(scan('<div class="p10">', '/a.html')).toEqual(['class p10']);
     expect(said).toEqual([]);
+  });
+});
+
+describe('статистика употребления токенов (D-032)', () => {
+  test('общий список и по файлам; атрибут не class — в ключе; safelist — в tokensTotal', () => {
+    const build = createBuildCollector({
+      ...OPTIONS,
+      attrs: 'class, m',
+      safelist: ['dF'],
+    }, '/proj');
+    build.add('/proj/src/a.html', '<div class="p10 p10 m20" m="p10"></div>');
+    build.add('/proj/src/b.html', '<div class="p10"></div>');
+    build.add('/proj/src/empty.html', '<div></div>');
+
+    expect(build.metrics()).toEqual({
+      filesScanned: 3,
+      tokensTotal: 4,
+      occurrences: 5,
+      tokens: [
+        {
+          name: 'p10',
+          count: 3, 
+        },
+        {
+          name: 'm20',
+          count: 1, 
+        },
+        {
+          name: 'm:p10',
+          count: 1, 
+        },
+      ],
+      files: {
+        'src/a.html': [
+          {
+            name: 'p10',
+            count: 2, 
+          },
+          {
+            name: 'm20',
+            count: 1, 
+          },
+          {
+            name: 'm:p10',
+            count: 1, 
+          },
+        ],
+        'src/b.html': [{
+          name: 'p10',
+          count: 1, 
+        }],
+      },
+    });
+  });
+
+  test('снятый с учёта файл и clear — из статистики уходят; set считается тоже', () => {
+    const build = createBuildCollector(OPTIONS, '/proj');
+    build.add('/proj/a.html', '<div class="p10">');
+    build.set('/proj/b.html', ['class m20', 'class m20']);
+    expect(build.metrics().tokens).toEqual([{
+      name: 'm20',
+      count: 2, 
+    }, {
+      name: 'p10',
+      count: 1, 
+    }]);
+    build.remove('/proj/a.html');
+    expect(build.metrics().filesScanned).toBe(1);
+    build.clear();
+    expect(build.metrics()).toEqual({
+      filesScanned: 0,
+      tokensTotal: 0,
+      occurrences: 0,
+      tokens: [],
+      files: {},
+    });
+  });
+
+  test('равная частота — по имени, отчёт не зависит от порядка файлов', () => {
+    const build = createBuildCollector(OPTIONS, '/proj');
+    build.add('/proj/a.html', '<div class="w10 m20 h30">');
+    expect(build.metrics().tokens.map((t) => t.name)).toEqual([
+      'h30',
+      'm20',
+      'w10',
+    ]);
+  });
+
+  test('путь отчёта: по умолчанию mn-metrics.json, строка — свой, false — нет', () => {
+    expect(metricsFileName(undefined)).toBe('mn-metrics.json');
+    expect(metricsFileName(true)).toBe('mn-metrics.json');
+    expect(metricsFileName('reports/mn.json')).toBe('reports/mn.json');
+    expect(metricsFileName(false)).toBeUndefined();
+  });
+});
+
+describe('warningMode в накопителе (D-035)', () => {
+  test("'error' — сборка падает на предупреждении, колбэк вызван", () => {
+    const seen: string[] = [];
+    const collector = createTokenCollector({
+      ...OPTIONS,
+      warningMode: 'error',
+      onWarning: (warning) => seen.push(warning.token),
+    });
+    collector.add('/a.html', '<div class="w10zz">');
+    expect(() => collector.css()).toThrow("warningMode: 'error'");
+    expect(seen).toEqual(['w10zz']);
   });
 });

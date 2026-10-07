@@ -284,7 +284,7 @@ describe('mnGulp — предупреждения', () => {
     expect(said.join('\n')).toContain('[minotation] w10zz');
   });
 
-  test("`mn.onWarning: 'silent'` гасит вывод", async () => {
+  test("`mn.warningMode: 'silent'` гасит вывод", async () => {
     write('a.html', '<div class="w10zz">');
     const said: string[] = [];
     const warnSpy = jest.spyOn(console, 'warn')
@@ -292,7 +292,7 @@ describe('mnGulp — предупреждения', () => {
 
     try {
       await run('*.html', {
-        onWarning: 'silent',
+        warningMode: 'silent',
       });
     } finally {
       warnSpy.mockRestore();
@@ -336,5 +336,20 @@ describe('minotation-gulp — имя файла, entry и манифест (D-03
     expect(files[site]).toContain('padding:10px');
     expect(files['adm.css']).toContain('margin:20px');
     expect(files['mn-manifest.json']).toBeUndefined();
+  });
+});
+
+describe('minotation-gulp — статистика употребления токенов (D-032)', () => {
+  test('mn-metrics.json в потоке; metrics: false — нет', async () => {
+    write('page.html', '<div class="p10 m20">');
+
+    const files = await run('*.html');
+    expect(JSON.parse(files['mn-metrics.json']).occurrences).toBe(2);
+
+    // Папка вывода общая: убрать отчёт первого прогона.
+    rmSync(join(dest, 'mn-metrics.json'));
+    expect((await run('*.html', {
+      metrics: false, 
+    }))['mn-metrics.json']).toBeUndefined();
   });
 });

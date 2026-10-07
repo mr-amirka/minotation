@@ -163,7 +163,7 @@ describe('CSS validation', () => {
 describe('ядро не бракует то, что построило из осмысленного ввода', () => {
   function cssOf(token: string): string {
     const mn = mnProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
@@ -214,7 +214,7 @@ describe('ядро не бракует то, что построило из ос
 describe('размерные свойства: none, auto и внутренние размеры', () => {
   function cssOf(token) {
     const mn = mnProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);

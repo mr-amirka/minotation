@@ -104,7 +104,7 @@ function collectPairs(): Pair[] {
   for (let i = 0; i < names.length; i++) {
     for (let j = 0; j < ARG_FORMS.length; j++) {
       const mn: any = minotationProvider({
-        onWarning: 'silent',
+        warningMode: 'silent',
       });
       mn.setPresets([presetStandard]);
       mn.getCompiler('class')(names[i] + ARG_FORMS[j]);
@@ -184,7 +184,7 @@ const LEGACY_ALIASES: Record<string, 1> = {
 /** CSS одного токена — для точечных сторожей ниже. */
 function cssOfToken(token: string): string {
   const mn: any = minotationProvider({
-    onWarning: 'silent',
+    warningMode: 'silent',
   });
   mn.setPresets([presetStandard]);
   mn.getCompiler('class')(token);
@@ -249,7 +249,7 @@ describe('вывод ядра против официальной граммат
 describe('ключевые слова семейств совпадают с грамматикой', () => {
   function cssOf(token: string): string {
     const mn: any = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
@@ -417,7 +417,7 @@ describe('ключевые слова семейств совпадают с г�
 describe('списки закрытых перечислений совпадают с грамматикой', () => {
   function compileToken(token: string): string {
     const mn: any = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);

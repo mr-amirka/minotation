@@ -71,12 +71,13 @@ for (const warning of collector.takeWarnings()) {
 | `syntax` | `boolean` | автоматически | разбирать JS/TS парсером (`false` — только текст) |
 | `selectorPrefix` | `string` | — | префикс всех селекторов: `'.app '` → `.app .p10{…}` |
 | `altColor` | `boolean` | `false` | запасное непрозрачное объявление рядом с `rgba` |
-| `strict` | `boolean` | `false` | предупреждение компиляции роняет сборку |
 | `media` | `Record<string, MnMediaEntry>` | стандартные | именованные медиа: `{ wide: { query: '(min-width: 1200px)' } }` → `p10@wide` |
 | `maxDepth`, `maxDepthMode` | `number`, `'warn' \| 'block'` | `10`, `'warn'` | предел глубины контекстных селекторов |
-| `onWarning` | `'silent' \| 'console' \| (w) => void` | в лог сборки | предупреждения компиляции |
+| `warningMode` | `'log' \| 'silent' \| 'error'` | `'log'` | что делать с предупреждением компиляции: в лог сборки, молчать, уронить сборку (D-035) |
+| `onWarning` | `(warning) => void` | — | колбэк на каждое предупреждение — дополнительно к `warningMode` |
 | `onError` | `(e) => void` | — | обработчик ошибок ядра |
 | `onScannerWarning` | `(message) => void` | `console.warn` | колбэк сканера: `syntax: true`, а `typescript` нет |
+| `metrics` | `boolean \| string` | `true` | статистика употребления токенов (`mn-metrics.json`): общий список и по файлам (пути — от корня проекта); в dev не пишется (D-032) |
 | `entry` | `Record<string, MnEntryOptions>` | — | несколько CSS из одной сборки (D-030): записи переопределяют `include`, `exclude`, `skipPartials`, `attrs`, `presets`, `safelist`, поля ядра, `fileName` |
 | `fileName` | `string` | у плагина своё | имя файла с `[name]` (имя записи) и `[hash]` (хеш содержимого) — там, где файл пишет плагин |
 | `manifest` | `boolean \| string` | `true` | `mn-manifest.json` рядом с CSS: `{ "mn.css": "mn.3f9a1c2e.css" }` |
@@ -149,7 +150,7 @@ attrs: { class: 'class', className: 'class' }     // объект
 |-------|------------|
 | `safelist` | токены, нужные всегда, даже если в файлах не встретились; компилируются как классы |
 | `presets` | статические пресеты |
-| поля ядра | `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` — плоско, как в v1 (D-034); вложенного `mn` нет, старая запись — ошибка с подсказкой |
+| поля ядра | `selectorPrefix`, `altColor`, `warningMode`, `media`, `maxDepth`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
 
 | Метод | Что делает |
 |-------|------------|
@@ -176,8 +177,8 @@ attrs: { class: 'class', className: 'class' }     // объект
 
 **Предупреждения перехватываются всегда.** Ядро по умолчанию пишет в
 `console`, а у сборщика свой канал вывода — иначе предупреждение либо теряется
-в потоке сборки, либо дублируется. `onWarning: 'silent'` уважается, своя
-функция вызывается дополнительно.
+в потоке сборки, либо дублируется. `warningMode: 'silent'` уважается,
+`'error'` роняет сборку, колбэк `onWarning` вызывается дополнительно к режиму.
 
 ## `createFileFilter`, `createMatcher`, `flatSafelist`
 

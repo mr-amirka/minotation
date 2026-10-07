@@ -125,7 +125,7 @@ import type {
 } from './types';
 import {
   MnParseError,
-  MnStrictError,
+  MnWarningError,
 } from './types';
 import type {
   MnEntity,
@@ -136,8 +136,8 @@ import type {
 // Присваиваем utils статическому свойству (нужно для обратной совместимости)
 minotationProvider.utils = baseUtils;
 
-/** `MnOptions.onWarning` по умолчанию — `'console'`. */
-function defaultOnWarning(warning: MnWarning): void {
+/** Печать предупреждения в режиме `warningMode: 'log'` (по умолчанию). */
+function logWarning(warning: MnWarning): void {
   console.warn('[minotation] ' + warning.token + ': ' + warning.message);
 }
 
@@ -179,8 +179,9 @@ function minotationProvider(options?: MnOptions) {
     emit(values($$stylesMap).sort(priotitySort));
   }
   /**
-   * Пересчитывает производные из `options` значения ($$onError/$$onWarning/
-   * $$selectorPrefixes/$$altColor/$$strict) и публикует снимок в `mn.options`.
+   * Пересчитывает производные из `options` значения ($$onError/$$logWarning/
+   * $$onWarning/$$selectorPrefixes/$$altColor/$$failOnWarnings) и публикует
+   * снимок в `mn.options`.
    *
    * ПЕРЕСМОТРЕНО 2026-09-23: раньше называлась `updateOptions` и вызывалась
    * на КАЖДОМ `compile`/`recompileFrom`, перечитывая `mn.options` заново —
@@ -199,17 +200,15 @@ function minotationProvider(options?: MnOptions) {
     mn.options = extend({}, settings) as MnOptions;
     const nextSelectorPrefix = settings.selectorPrefix || '';
     $$onError = settings.onError || noop;
-    $$onWarning = settings.onWarning === 'silent'
-      ? noop
-      : typeof settings.onWarning === 'function'
-        ? settings.onWarning
-        : defaultOnWarning;
+    const warningMode = settings.warningMode || 'log';
+    $$logWarning = warningMode === 'log' ? logWarning : noop;
+    $$onWarning = settings.onWarning || noop;
     nextSelectorPrefix === $$lastSelectorPrefix || (
       $$lastSelectorPrefix = nextSelectorPrefix,
       $$selectorPrefixes = keys(selectorsValidateFilter(normalizeSelectors(nextSelectorPrefix)))
     );
     $$altColor = settings.altColor === true;
-    $$strict = !!settings.strict;
+    $$failOnWarnings = warningMode === 'error';
   }
   /**
    * Собирает {@link MnWarning} (парсинг-ошибка/неизвестный хендлер/превышение
@@ -223,6 +222,7 @@ function minotationProvider(options?: MnOptions) {
     }
     $$warningTokens[warning.token] = 1;
     $$warnings = $$warnings.concat([warning]);
+    $$logWarning(warning);
     $$onWarning(warning);
     emitWarnings($$warnings);
   }
@@ -590,7 +590,8 @@ function minotationProvider(options?: MnOptions) {
   let $$onError = noop as (e: Error) => void;
   const warnings$ = mn.warnings$ = observableProvider<MnWarning[]>([]);
   const emitWarnings = warnings$.emit;
-  let $$onWarning = defaultOnWarning;
+  let $$logWarning: (warning: MnWarning) => void = logWarning;
+  let $$onWarning: (warning: MnWarning) => void = noop;
   let $$warnings: MnWarning[] = [];
   let $$warningTokens: Record<string, number> = {};
   let $$updated: number;
@@ -617,7 +618,7 @@ function minotationProvider(options?: MnOptions) {
   let $$force: number;
   let $$selectorPrefixes: string[];
   let $$altColor: boolean;
-  let $$strict: boolean;
+  let $$failOnWarnings: boolean;
   let $$revision = 0;
 
   error$.on((error: Error | undefined) => {
@@ -1063,7 +1064,7 @@ function minotationProvider(options?: MnOptions) {
         // Чужой класс, случайно начавшийся с зарегистрированного тега
         // (`sr-only` → `s`, `mt-auto` → `mt`), пропускается молча — как и
         // любой другой класс без тега. Иначе хендлер бракует остаток, и под
-        // `strict: true` падает вся сборка.
+        // `warningMode: 'error'` падает вся сборка.
         (handle = REGEXP_FOREIGN_KEBAB.test(suffix)
           ? undefined as any
           : $$handlerMap[name])
@@ -1425,8 +1426,8 @@ function minotationProvider(options?: MnOptions) {
     // Error через $$onError (по умолчанию noop). Здесь, после того как вся
     // работа compile уже сделана, throw ничем не перехватывается и доходит
     // до вызывающего кода (сборщика) как есть.
-    if ($$strict && $$warnings.length) {
-      throw new MnStrictError($$warnings);
+    if ($$failOnWarnings && $$warnings.length) {
+      throw new MnWarningError($$warnings);
     }
     return mn;
   };
@@ -1531,7 +1532,7 @@ function minotationProvider(options?: MnOptions) {
   /**
    * Переконфигурирует инстанс после создания — слияние с текущими опциями
    * (частичное обновление, не замена целиком). Единственный поддерживаемый
-   * способ поменять `onError`/`onWarning`/`selectorPrefix`/`altColor`/`strict`
+   * способ поменять `onError`/`onWarning`/`warningMode`/`selectorPrefix`/`altColor`
    * на уже созданном `mn` — эти поля читаются из замыкания и пересчитываются
    * только здесь и при создании инстанса, не на каждой компиляции (см.
    * {@link applyOptions}, пересмотрено 2026-09-23). Прямая мутация `mn.options`

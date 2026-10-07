@@ -8,7 +8,7 @@ import {
 import presetStandard from '../presets/standard';
 import presetPrefixes from '../presets/prefixes';
 import {
-  MnParseError, MnStrictError, type MnWarning,
+  MnParseError, MnWarningError, type MnWarning,
 } from '../core/types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -95,7 +95,7 @@ describe('mn — keyframes и произвольный CSS', () => {
     // Ветка по `prefixes` в `keyframesRender` оставалась непокрытой: по умолчанию
     // карта префиксов пуста, и цикл не делал ни одной итерации.
     const mn: any = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.setPresets([presetStandard, presetPrefixes]);
     mn.setKeyframes('fadeIn', 'from{opacity:0}to{opacity:1}');
@@ -212,40 +212,37 @@ describe('mn — ошибки внутри хендлера', () => {
   });
 });
 
-describe('mn — strict', () => {
-  test('по умолчанию (strict не задан) битый токен не бросает — только warning', () => {
+describe('mn — warningMode: error', () => {
+  test('по умолчанию (warningMode: log) битый токен не бросает — только warning', () => {
     const mn: any = makeMn();
     mn.checkByAttrs('p10zz', 'class');
 
     expect(() => mn.compile()).not.toThrow();
   });
 
-  test('strict: true — битый аргумент роняет compile() через MnStrictError', () => {
+  test('warningMode: error — битый аргумент роняет compile() через MnWarningError', () => {
     const mn: any = makeMn({
-      strict: true,
-      onWarning: 'silent',
+      warningMode: 'error',
     });
     mn.checkByAttrs('p10zz', 'class');
 
-    expect(() => mn.compile()).toThrow(MnStrictError);
+    expect(() => mn.compile()).toThrow(MnWarningError);
   });
 
-  test('strict: true — чужие CSS-классы сборку НЕ роняют', () => {
+  test('warningMode: error — чужие CSS-классы сборку НЕ роняют', () => {
     // Иначе любой проект с собственной семантикой или чужой библиотекой
-    // не смог бы включить strict вообще.
+    // не смог бы включить `warningMode: 'error'` вообще.
     const mn: any = makeMn({
-      strict: true,
-      onWarning: 'silent',
+      warningMode: 'error',
     });
     mn.checkByAttrs('container btn card active swiper-slide uChip', 'class');
 
     expect(() => mn.compile()).not.toThrow();
   });
 
-  test('strict: true — битое CSS-значение от хендлера тоже роняет compile()', () => {
+  test('warningMode: error — битое CSS-значение от хендлера тоже роняет compile()', () => {
     const mn: any = minotationProvider({
-      strict: true,
-      onWarning: 'silent',
+      warningMode: 'error',
     });
     mn.setPresets([presetStandard, (instance: any) => {
       instance('badcss', () => ({
@@ -256,12 +253,12 @@ describe('mn — strict', () => {
     }]);
     mn.checkByAttrs('badcss1', 'class');
 
-    expect(() => mn.compile()).toThrow(MnStrictError);
+    expect(() => mn.compile()).toThrow(MnWarningError);
   });
 
-  test('strict: true — токены без предупреждений компилируются как обычно, без throw', () => {
+  test('warningMode: error — токены без предупреждений компилируются как обычно, без throw', () => {
     const mn: any = makeMn({
-      strict: true,
+      warningMode: 'error',
     });
     mn.getCompiler('class')('p10');
 
@@ -269,15 +266,15 @@ describe('mn — strict', () => {
     expect(cssOf(mn)).toContain('padding:10px');
   });
 
-  test('strict: true — onWarning всё равно вызывается перед throw (strict не подменяет его)', () => {
+  test('warningMode: error — onWarning всё равно вызывается перед throw (режим не подменяет колбэк)', () => {
     const warnings: MnWarning[] = [];
     const mn: any = makeMn({
-      strict: true,
+      warningMode: 'error',
       onWarning: (w: MnWarning) => warnings.push(w),
     });
     mn.checkByAttrs('p10zz', 'class');
 
-    expect(() => mn.compile()).toThrow(MnStrictError);
+    expect(() => mn.compile()).toThrow(MnWarningError);
     expect(warnings.map((w) => w.type)).toContain('parse-error');
   });
 });
@@ -335,7 +332,7 @@ describe('битый аргумент хендлера → warnings$, а не er
     // реальные исключения (TypeError и т.п.) из пользовательских пресетов.
     const errors: unknown[] = [];
     const mn: any = minotationProvider({
-      onWarning: 'silent',
+      warningMode: 'silent',
     });
     mn.error$.on((e: unknown) => errors.push(e));
     mn.setPresets([presetStandard, (instance: any) => {

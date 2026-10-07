@@ -100,12 +100,19 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 
 ```ts
 const mn = minotationProvider({
-  selectorPrefix: '#app',          // префикс для селекторов
-  media: { m: { query: '(max-width: 767px)' } },
-  prefixedAttrs: { transform: 1 }, // авто-вендорные префиксы
-  prefixes: { '-webkit-': 1, '-moz-': 1 },
+  presets: [presetStandard, presetSynonyms, presetMedias],
+  selectorPrefix: '#app ',         // префикс для селекторов: #app .p10{…}
+  media: { m: { query: '(max-width: 767px)' } }, // p10@m
+  altColor: false,                 // запасное непрозрачное объявление рядом с rgba
+  warningMode: 'log',              // 'log' | 'silent' | 'error' — что делать с предупреждением
+  onWarning: (warning) => {},      // колбэк на каждое предупреждение, дополнительно к режиму
+  onError: (error) => {},          // ошибки ядра
+  maxDepth: 10,                    // предел глубины контекстных селекторов (<N, >N)
+  maxDepthMode: 'warn',            // 'warn' | 'block' — что делать при превышении
 });
 ```
+
+Вендорные префиксы подключаются пресетом `presetPrefixes`.
 
 ### `mn.setPresets(presets)`
 

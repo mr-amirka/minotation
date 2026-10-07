@@ -40,7 +40,14 @@ exports.css = () => gulp.src('src/**/*.html')
 | `classVarSuffixes` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
 | `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
-| `mn` | — | опции ядра целиком: `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` |
+| `selectorPrefix` | — | префикс всех селекторов: `'.app '` → `.app .p10{…}` |
+| `altColor` | `false` | запасное непрозрачное объявление рядом с `rgba` |
+| `strict` | `false` | предупреждение компиляции роняет сборку |
+| `media` | стандартные | карта именованных медиа: `{ wide: { query: '(min-width: 1200px)' } }` → `p10@wide` |
+| `maxDepth`, `maxDepthMode` | `10`, `'warn'` | предел глубины контекстных селекторов (`<N`, `>N`) |
+| `onWarning` | в лог сборки | предупреждения компиляции: `'silent'` — молчать, функция — своя обработка |
+| `onError` | — | обработчик ошибок ядра |
+| `onScannerWarning` | `console.warn` | колбэк сканера: `syntax: true`, а пакета `typescript` нет |
 | `fileName` | `'[name].css'` | имя CSS-файла в потоке; `[name]` — запись `entry`, `[hash]` — хеш содержимого |
 | `manifest` | `true` | `mn-manifest.json` в потоке с фактическими именами; с `gulp-rev` — `false` |
 | `entry` | — | несколько CSS из одного пайпа — по файлу на запись |
@@ -83,4 +90,4 @@ mnGulp({ skipPartials: true })
 
 Битые токены печатаются через `console.warn` с префиксом `[minotation]`: у
 gulp нет отдельного канала предупреждений, вывод задачи — он и есть.
-`mn: { onWarning: 'silent' }` их гасит, своя функция вызывается как есть.
+`onWarning: 'silent'` их гасит, своя функция вызывается как есть.

@@ -294,9 +294,7 @@ describe('createTokenCollector — предупреждения', () => {
   test("`onWarning: 'silent'` гасит предупреждения", () => {
     const collector = createTokenCollector({
       ...OPTIONS,
-      mn: {
-        onWarning: 'silent',
-      },
+      onWarning: 'silent',
     });
     collector.add('/a.html', '<div class="w10zz">');
     collector.css();
@@ -308,10 +306,8 @@ describe('createTokenCollector — предупреждения', () => {
     const seen: string[] = [];
     const collector = createTokenCollector({
       ...OPTIONS,
-      mn: {
-        onWarning: (warning) => {
-          seen.push(warning.token);
-        },
+      onWarning: (warning) => {
+        seen.push(warning.token);
       },
     });
     collector.add('/a.html', '<div class="w10zz">');
@@ -592,9 +588,7 @@ describe('createBuildCollector — записи entry (D-030)', () => {
         },
         admin: {
           include: /admin/,
-          mn: {
-            selectorPrefix: '.adm ', 
-          }, 
+          selectorPrefix: '.adm ', 
         },
         all: {},
       },
@@ -674,6 +668,11 @@ describe('createBuildCollector — записи entry (D-030)', () => {
   });
 
   test('пустой entry — ошибка', () => {
+    // `mn: undefined` — ключ есть, полей нет: подсказка без списка.
+    expect(() => createTokenCollector({
+      ...OPTIONS,
+      mn: undefined,
+    } as never)).toThrow(/top level, e\.g\./);
     expect(() => createBuildCollector({
       entry: {}, 
     }, '/proj')).toThrow('entry is empty');
@@ -705,5 +704,46 @@ describe('formatFileName и манифест (D-031)', () => {
     expect(manifestFileName(true)).toBe('mn-manifest.json');
     expect(manifestFileName('dist/css.json')).toBe('dist/css.json');
     expect(manifestFileName(false)).toBeUndefined();
+  });
+});
+
+describe('опции ядра — плоско, без mn (D-034)', () => {
+  test('selectorPrefix, altColor — на верхнем уровне', () => {
+    const collector = createTokenCollector({
+      ...OPTIONS,
+      selectorPrefix: '.app ',
+    });
+    collector.add('/a.html', '<div class="p10">');
+    expect(collector.css()).toContain('.app .p10{padding:10px}');
+  });
+
+  test('старый mn — ошибка с подсказкой; и в записи entry тоже', () => {
+    expect(() => createTokenCollector({
+      ...OPTIONS,
+      mn: {
+        selectorPrefix: '.app ',
+        strict: true, 
+      },
+    } as never)).toThrow('option "mn" was removed: put its fields at the top level (selectorPrefix, strict)');
+    expect(() => createBuildCollector({
+      ...OPTIONS,
+      entry: {
+        admin: {
+          mn: {
+            selectorPrefix: '.adm ', 
+          }, 
+        } as never, 
+      },
+    }, '/proj')).toThrow('option "mn" was removed');
+  });
+
+  test('колбэк сканера — onScannerWarning; onWarning сканеру не передаётся', () => {
+    const said: string[] = [];
+    const scan = createAttrsScanner({
+      syntax: false,
+      onScannerWarning: (message) => said.push(message),
+    });
+    expect(scan('<div class="p10">', '/a.html')).toEqual(['class p10']);
+    expect(said).toEqual([]);
   });
 });

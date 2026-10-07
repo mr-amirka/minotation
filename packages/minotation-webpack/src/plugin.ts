@@ -6,7 +6,6 @@ import { existsSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import type { Compiler } from 'webpack';
 import { Compilation } from 'webpack';
-import type { MnOptions, MnWarning } from 'minotation';
 import {
   presetStandard,
   presetSynonyms,
@@ -27,24 +26,14 @@ import type { MnPluginHandle } from './state';
  * Опции {@link MnWebpackPlugin} — эталонный набор `minotation-build` (D-026):
  * `attrs`, `root`, `extensions`, `include`, `exclude`, `skipPartials`, `presets`,
  * `presetExtensions`, `safelist`, `classVarSuffixes`, `mergeFnNames`, `syntax`,
- * `mn`, `entry`, `fileName`, `manifest`. Описание каждой — в README `minotation-build`.
+ * поля ядра (`selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`,
+ * `onError` — плоско, D-034), `entry`, `fileName`, `manifest`. Описание каждой — в
+ * README `minotation-build`.
  *
  * `root` по умолчанию — `src/` проекта, если он есть, иначе корень проекта
  * (`context` webpack).
  */
-export interface MnWebpackPluginOptions extends Omit<MnBuildOptions, 'onWarning'> {
-  /** То же, что `mn.selectorPrefix`; перекрывает его (исторически у webpack на верхнем уровне). */
-  selectorPrefix?: string;
-  /**
-   * То же, что `mn.onWarning`; перекрывает его. Внимание: в общем наборе
-   * `onWarning` верхнего уровня — колбэк сканера (нет парсера при `syntax: true`),
-   * а здесь — предупреждения компиляции; поэтому в каркас он не передаётся.
-   * Перенос этих полей в `mn` ждёт решения владельца (RESEARCH 10, вопрос 5).
-   */
-  onWarning?: 'silent' | 'console' | ((warning: MnWarning) => void);
-  /** То же, что `mn.media`; перекрывает его. */
-  media?: Record<string, { query?: string; selector?: string; priority?: number }>;
-}
+export type MnWebpackPluginOptions = MnBuildOptions;
 
 /** Модуль с CSS — импортируется в точке входа или корневом layout. */
 export const MN_CSS_REQUEST = 'minotation-webpack/mn.css';
@@ -110,19 +99,12 @@ export class MnWebpackPlugin {
     const options = this.options;
     const context = compiler.context;
     const root = options.root || (existsSync(join(context, 'src')) ? join(context, 'src') : context);
-    const mn: MnOptions = { ...options.mn };
-    options.selectorPrefix === undefined || (mn.selectorPrefix = options.selectorPrefix);
-    options.media === undefined || (mn.media = options.media);
-    options.onWarning === undefined || (mn.onWarning = options.onWarning);
-    const { onWarning: _compileWarnings, ...buildOptions } = options;
-    void _compileWarnings;
     const handle: MnPluginHandle = this.handle = {
       build: createBuildCollector({
-        ...buildOptions,
+        ...options,
         presets: options.presets || DEFAULT_PRESETS,
-        mn,
       }, root),
-      files: createFileFilter(buildOptions, root),
+      files: createFileFilter(options, root),
       root,
       imported: false,
     };

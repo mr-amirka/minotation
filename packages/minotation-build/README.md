@@ -69,8 +69,15 @@ for (const warning of collector.takeWarnings()) {
 | `classVarSuffixes` | `string[]` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
 | `mergeFnNames` | `string[]` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | `boolean` | автоматически | разбирать JS/TS парсером (`false` — только текст) |
-| `mn` | `MnOptions` | — | опции ядра целиком: `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` |
-| `entry` | `Record<string, MnEntryOptions>` | — | несколько CSS из одной сборки (D-030): записи переопределяют `include`, `exclude`, `skipPartials`, `attrs`, `presets`, `safelist`, `mn`, `fileName` |
+| `selectorPrefix` | `string` | — | префикс всех селекторов: `'.app '` → `.app .p10{…}` |
+| `altColor` | `boolean` | `false` | запасное непрозрачное объявление рядом с `rgba` |
+| `strict` | `boolean` | `false` | предупреждение компиляции роняет сборку |
+| `media` | `Record<string, MnMediaEntry>` | стандартные | именованные медиа: `{ wide: { query: '(min-width: 1200px)' } }` → `p10@wide` |
+| `maxDepth`, `maxDepthMode` | `number`, `'warn' \| 'block'` | `10`, `'warn'` | предел глубины контекстных селекторов |
+| `onWarning` | `'silent' \| 'console' \| (w) => void` | в лог сборки | предупреждения компиляции |
+| `onError` | `(e) => void` | — | обработчик ошибок ядра |
+| `onScannerWarning` | `(message) => void` | `console.warn` | колбэк сканера: `syntax: true`, а `typescript` нет |
+| `entry` | `Record<string, MnEntryOptions>` | — | несколько CSS из одной сборки (D-030): записи переопределяют `include`, `exclude`, `skipPartials`, `attrs`, `presets`, `safelist`, поля ядра, `fileName` |
 | `fileName` | `string` | у плагина своё | имя файла с `[name]` (имя записи) и `[hash]` (хеш содержимого) — там, где файл пишет плагин |
 | `manifest` | `boolean \| string` | `true` | `mn-manifest.json` рядом с CSS: `{ "mn.css": "mn.3f9a1c2e.css" }` |
 
@@ -142,7 +149,7 @@ attrs: { class: 'class', className: 'class' }     // объект
 |-------|------------|
 | `safelist` | токены, нужные всегда, даже если в файлах не встретились; компилируются как классы |
 | `presets` | статические пресеты |
-| `mn` | опции mn-инстанса (`selectorPrefix`, `media`, `strict`, `onWarning`) |
+| поля ядра | `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` — плоско, как в v1 (D-034); вложенного `mn` нет, старая запись — ошибка с подсказкой |
 
 | Метод | Что делает |
 |-------|------------|

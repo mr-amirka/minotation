@@ -63,7 +63,14 @@ esbuild.build({
 | `classVarSuffixes` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
 | `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
-| `mn` | — | опции ядра целиком: `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` |
+| `selectorPrefix` | — | префикс всех селекторов: `'.app '` → `.app .p10{…}` |
+| `altColor` | `false` | запасное непрозрачное объявление рядом с `rgba` |
+| `strict` | `false` | предупреждение компиляции роняет сборку |
+| `media` | стандартные | карта именованных медиа: `{ wide: { query: '(min-width: 1200px)' } }` → `p10@wide` |
+| `maxDepth`, `maxDepthMode` | `10`, `'warn'` | предел глубины контекстных селекторов (`<N`, `>N`) |
+| `onWarning` | в лог сборки | предупреждения компиляции: `'silent'` — молчать, функция — своя обработка |
+| `onError` | — | обработчик ошибок ядра |
+| `onScannerWarning` | `console.warn` | колбэк сканера: `syntax: true`, а пакета `typescript` нет |
 | `fileName` | `'[name].css'` | имя файла, который пишет плагин без импорта модуля; `[name]`, `[hash]` |
 | `manifest` | `true` → `mn-manifest.json` | фактические имена файлов; `false` — не писать |
 | `entry` | — | несколько CSS из одной сборки; модуль записи — `virtual:mn/<имя>.css` |

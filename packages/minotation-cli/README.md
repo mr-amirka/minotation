@@ -135,7 +135,7 @@ mn ./src -o ./app.css -m ./metrics.json
 module.exports = {
   input: './src',
   output: './dist/app.css',
-  prefix: '.app',
+  selectorPrefix: '.app ',        // как --prefix
   attrs: 'class, className:class', // строка, массив или объект — как --attrs
   syntax: false,                  // только текстовый разбор (как --no-syntax)
   metricsPath: './metrics.json',  // то же, что -m
@@ -143,7 +143,9 @@ module.exports = {
   include: /\.(html|tsx)$/,
   exclude: /[\\/]vendor[\\/]/,
   presets: [/* свои пресеты вместо стандартного набора */],
-  mn: {/* остальные опции ядра */},
+  altColor: true,                 // как --alt-color
+  strict: true,                   // как --strict
+  media: { wide: { query: '(min-width: 1200px)' } },
   skipPartials: true,             // как --skip-partials
   manifest: './dist/css.json',    // свой путь манифеста; false — как --no-manifest
 };
@@ -157,7 +159,7 @@ module.exports = {
   output: './dist/[name].[hash].css',
   entry: {
     site: { include: /src\/site\// },
-    admin: { include: /src\/admin\//, mn: { selectorPrefix: '.admin ' } },
+    admin: { include: /src\/admin\//, selectorPrefix: '.admin ' },
   },
 };
 ```
@@ -190,7 +192,7 @@ const { compile } = require('minotation-cli');
 
 const { css, files, tokens, warnings } = compile({
   input: './src',
-  prefix: '.app',
+  selectorPrefix: '.app ',        // как --prefix
 });
 ```
 

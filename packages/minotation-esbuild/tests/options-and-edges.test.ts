@@ -42,7 +42,7 @@ describe('minotation-esbuild — опции и граничные случаи',
         presetExtensions: ['.mnjs'],
         fileName: 'styles.css',
         root,
-        mn: { selectorPrefix: '.app ' },
+        selectorPrefix: '.app ',
       })],
     });
 
@@ -210,7 +210,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outdir: join(root, 'out'),
-      plugins: [mnEsbuild({ root, mn: { onWarning: 'silent' } })],
+      plugins: [mnEsbuild({ root, onWarning: 'silent' })],
     });
 
     expect(result.warnings).toEqual([]);
@@ -227,7 +227,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outdir: join(root, 'out'),
-      plugins: [mnEsbuild({ root, mn: { onWarning: (w) => { seen.push(w.token); } } })],
+      plugins: [mnEsbuild({ root, onWarning: (w) => { seen.push(w.token); } })],
     });
 
     expect(seen).toEqual(['w10zz']);

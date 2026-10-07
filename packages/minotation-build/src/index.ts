@@ -111,6 +111,37 @@ function throwRenamedAttr(attr: unknown): never {
     + '([className~="p10"]); "className:class" makes React className produce classes.');
 }
 
+/** Поля ядра, которые в опциях плагина лежат плоско, как в v1 (D-034). */
+export const CORE_OPTION_KEYS = [
+  'selectorPrefix',
+  'altColor',
+  'strict',
+  'media',
+  'maxDepth',
+  'maxDepthMode',
+  'onWarning',
+  'onError',
+] as const;
+
+/** Опции ядра в опциях плагина — на верхнем уровне, без вложенного `mn` (D-034). */
+export type MnCoreOptions = Pick<MnOptions, typeof CORE_OPTION_KEYS[number]>;
+
+/** Опции ядра из опций плагина — только заданные. */
+function coreOptionsOf(options: MnCoreOptions): MnCoreOptions {
+  const out: Record<string, unknown> = {};
+  for (const key of CORE_OPTION_KEYS) {
+    options[key] === undefined || (out[key] = options[key]);
+  }
+  return out as MnCoreOptions;
+}
+
+/** Вложенный `mn` убран (D-034) — ошибка с подсказкой, какие поля куда перенести. */
+function throwRemovedMn(mn: unknown): never {
+  const fields = mn && typeof mn === 'object' ? Object.keys(mn).join(', ') : '';
+  throw new Error('[minotation] option "mn" was removed: put its fields at the top level'
+    + (fields ? ' (' + fields + ')' : '') + ', e.g. { selectorPrefix: \'.app \', strict: true }');
+}
+
 /** Сканер с разворачиванием атрибутов: записи `'<целевой атрибут> <токен>'`. */
 export type AttrsScanner = (source: string, fileName?: string) => string[];
 
@@ -128,10 +159,14 @@ export type AttrsScanner = (source: string, fileName?: string) => string[];
  *
  * @param options — опции сканера и `attrs`
  */
-export function createAttrsScanner(options: Omit<ScannerOptions, 'attr'> & { attrs?: MnAttrs }): AttrsScanner {
+export function createAttrsScanner(options: Omit<ScannerOptions, 'attr' | 'onWarning'> & {
+  attrs?: MnAttrs;
+  onScannerWarning?: (message: string) => void;
+}): AttrsScanner {
   // Конфиги часто на JS, где типов нет: забытый `attr` проигнорировался бы
   // молча, и токены из второго атрибута пропали бы без единого сообщения.
   'attr' in options && throwRenamedAttr((options as { attr?: unknown }).attr);
+  'mn' in options && throwRemovedMn((options as { mn?: unknown }).mn);
   const map = parseAttrs(options.attrs);
   const byTarget: Record<string, string[]> = {};
   for (const from of Object.keys(map)) {
@@ -141,6 +176,10 @@ export function createAttrsScanner(options: Omit<ScannerOptions, 'attr'> & { att
   const classTarget = byTarget.class ? 'class' : targets[0];
   const scanners = targets.map((target) => createScanner({
     ...options,
+    // У сканера свой `onWarning` — о недоступном парсере. В опциях плагина это
+    // имя занято предупреждениями компиляции (D-034), поэтому колбэк сканера
+    // приходит как `onScannerWarning`.
+    onWarning: options.onScannerWarning,
     attr: byTarget[target],
     // Переменные и вызовы сканируются один раз — в группе классов.
     classVarSuffixes: target === classTarget ? options.classVarSuffixes : [],
@@ -180,7 +219,7 @@ export function compileEntries(mn: Pick<ReturnType<typeof minotationProvider>, '
 }
 
 /** Опции {@link createTokenCollector}. */
-export interface TokenCollectorOptions extends Omit<ScannerOptions, 'attr'> {
+export interface TokenCollectorOptions extends Omit<ScannerOptions, 'attr' | 'onWarning'>, MnCoreOptions {
   /** Какие атрибуты сканировать и во что разворачивать — {@link MnAttrs}. По умолчанию `'class'`. */
   attrs?: MnAttrs;
   /**
@@ -192,14 +231,10 @@ export interface TokenCollectorOptions extends Omit<ScannerOptions, 'attr'> {
   /** Статические пресеты; их набор задаёт потребитель. */
   presets?: MnPreset[];
   /**
-   * Опции mn-инстанса.
-   *
-   * `onWarning` здесь особый: предупреждения перехватываются всегда, потому
-   * что ядро по умолчанию пишет в `console`, а у сборщика свой канал вывода.
-   * Явный `'silent'` уважается — тогда не копим и не отдаём; своя функция
-   * вызывается как есть, дополнительно к накоплению.
+   * Колбэк сканера: `syntax: true`, а пакета `typescript` нет. Отдельное имя —
+   * `onWarning` занят предупреждениями компиляции (D-034).
    */
-  mn?: MnOptions;
+  onScannerWarning?: (message: string) => void;
 }
 
 /**
@@ -369,9 +404,10 @@ export interface MnBuildOptions extends TokenCollectorOptions {
 
 /**
  * Опции одной записи `entry` — то, что у записей бывает разным; остальное
- * наследуется от опций верхнего уровня. `mn` сливается по полям.
+ * наследуется от опций верхнего уровня. Поля ядра (`selectorPrefix`, `strict`, …)
+ * — плоско, как у опций плагина (D-034).
  */
-export interface MnEntryOptions {
+export interface MnEntryOptions extends MnCoreOptions {
   /** Какие из просканированных файлов дают токены этой записи. По умолчанию — все. */
   include?: MnFileMatcher;
   /** Какие файлы этой записи не касаются. */
@@ -384,8 +420,6 @@ export interface MnEntryOptions {
   presets?: MnPreset[];
   /** Свой safelist вместо общего. */
   safelist?: string[];
-  /** Поля ядра поверх общих (`selectorPrefix` и т.д.). */
-  mn?: MnOptions;
   /** Своё имя файла — там, где имя назначает плагин (CLI, gulp). */
   fileName?: string;
 }
@@ -554,7 +588,14 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   const scan = createAttrsScanner(options);
   const safelist = flatSafelist(options.safelist).map((token) => 'class ' + token);
   const presets = options.presets;
-  const userOnWarning = options.mn && options.mn.onWarning;
+  /**
+   * `onWarning` особый: предупреждения перехватываются всегда, потому что ядро
+   * по умолчанию пишет в `console`, а у сборщика свой канал вывода. Явный
+   * `'silent'` уважается — тогда не копим и не отдаём; своя функция вызывается
+   * как есть, дополнительно к накоплению.
+   */
+  const userOnWarning = options.onWarning;
+  const core = coreOptionsOf(options);
   const silent = userOnWarning === 'silent';
   /** Токены по файлам — ключ по файлу и снимает файл с учёта, и заменяет набор. */
   const byFile = new Map<string, Set<string>>();
@@ -640,7 +681,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
       }
       const collected: MnWarning[] = [];
       const mn = minotationProvider({
-        ...options.mn,
+        ...core,
         // Перехватываем всегда: ядро по умолчанию пишет в console, а у
         // сборщика свой канал вывода — иначе предупреждение либо теряется в
         // потоке сборки, либо дублируется.
@@ -735,10 +776,6 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
     const merged: MnBuildOptions = {
       ...options,
       ...own,
-      mn: {
-        ...options.mn,
-        ...own.mn,
-      },
     };
     const key = JSON.stringify(parseAttrs(merged.attrs));
     scanners[key] || (scanners[key] = createAttrsScanner(merged));

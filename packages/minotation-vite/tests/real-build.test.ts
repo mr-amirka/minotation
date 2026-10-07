@@ -98,7 +98,7 @@ describe('minotation-vite — реальная сборка', () => {
       attrs: 'data-cls:class',
       extensions: ['.vue'],
       presetExtensions: ['.mnjs'],
-      mn: { selectorPrefix: '.app ' },
+      selectorPrefix: '.app ',
     });
 
     const css = builtCss(root);
@@ -175,7 +175,7 @@ describe('minotation-vite — реальная сборка', () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     try {
-      await expect(runBuild(root, { mn: { strict: true } })).rejects.toThrow(/MN strict/);
+      await expect(runBuild(root, { strict: true })).rejects.toThrow(/MN strict/);
     } finally {
       warnSpy.mockRestore();
     }
@@ -187,7 +187,7 @@ describe('minotation-vite — реальная сборка', () => {
       'src/main.js': 'export const x = 1;\n',
     });
 
-    await runBuild(root, { mn: { strict: true } });
+    await runBuild(root, { strict: true });
 
     expect(builtCss(root)).toContain('padding:10px');
   });
@@ -237,12 +237,12 @@ describe('minotation-vite — предупреждения ядра', () => {
   });
 
   test("onWarning: 'silent' — в лог сборки ничего не уходит", async () => {
-    expect(await warningsOf({ mn: { onWarning: 'silent' } })).not.toContain('[minotation]');
+    expect(await warningsOf({ onWarning: 'silent' })).not.toContain('[minotation]');
   });
 
   test('onWarning-функция вызывается и лог сборки не отменяет', async () => {
     const seen: string[] = [];
-    const said = await warningsOf({ mn: { onWarning: (w) => { seen.push(w.token); } } });
+    const said = await warningsOf({ onWarning: (w) => { seen.push(w.token); } });
 
     // Компиляция за сборку происходит не один раз (модули и index.html —
     // разные хуки), поэтому пользовательская функция видит токен столько же раз.

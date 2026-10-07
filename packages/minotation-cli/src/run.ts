@@ -114,7 +114,8 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
     input: args.input || config.input || DEFAULT_INPUT,
     output: args.output || config.output || DEFAULT_OUTPUT,
     attrs: args.attrs || config.attrs || DEFAULT_ATTRS,
-    prefix: args.prefix === undefined ? config.prefix : args.prefix,
+    // `--prefix` — короткая запись `selectorPrefix`; флаг важнее конфига.
+    selectorPrefix: args.prefix === undefined ? config.selectorPrefix : args.prefix,
     altColor: args.altColor || config.altColor,
     strict: args.strict || config.strict,
     skipPartials: args.skipPartials || config.skipPartials,

@@ -61,7 +61,14 @@ mn-инстансе и возвращает в бандл пустой моду�
 | `classVarSuffixes` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
 | `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
-| `mn` | — | опции ядра целиком: `selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`, `onError` |
+| `selectorPrefix` | — | префикс всех селекторов: `'.app '` → `.app .p10{…}` |
+| `altColor` | `false` | запасное непрозрачное объявление рядом с `rgba` |
+| `strict` | `false` | предупреждение компиляции роняет сборку |
+| `media` | стандартные | карта именованных медиа: `{ wide: { query: '(min-width: 1200px)' } }` → `p10@wide` |
+| `maxDepth`, `maxDepthMode` | `10`, `'warn'` | предел глубины контекстных селекторов (`<N`, `>N`) |
+| `onWarning` | в лог сборки | предупреждения компиляции: `'silent'` — молчать, функция — своя обработка |
+| `onError` | — | обработчик ошибок ядра |
+| `onScannerWarning` | `console.warn` | колбэк сканера: `syntax: true`, а пакета `typescript` нет |
 | `fileName` | по `output.assetFileNames` rollup — `assets/mn-[hash].css` | имя CSS; шаблон с `[name]` и `[hash]` (`'mn.css'` — постоянное имя) |
 | `manifest` | `true` → `mn-manifest.json` | фактические имена: `{ "mn.css": "assets/mn-3f9a1c2e.css" }`; `false` — не писать |
 | `entry` | — | несколько CSS из одной сборки — по файлу на запись |

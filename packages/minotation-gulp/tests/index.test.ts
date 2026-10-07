@@ -167,9 +167,7 @@ describe('mnGulp — реальный пайп', () => {
     write('a.html', '<div class="p10">');
 
     const files = await run('*.html', {
-      mn: {
-        selectorPrefix: '.app ',
-      },
+      selectorPrefix: '.app ',
     });
 
     expect(files['mn.css']).toContain('.app .p10');
@@ -294,9 +292,7 @@ describe('mnGulp — предупреждения', () => {
 
     try {
       await run('*.html', {
-        mn: {
-          onWarning: 'silent',
-        },
+        onWarning: 'silent',
       });
     } finally {
       warnSpy.mockRestore();

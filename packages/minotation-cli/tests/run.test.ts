@@ -75,15 +75,15 @@ describe('loadConfig', () => {
   });
 
   test('читает настройки из файла', () => {
-    const path = write('mn.config.cjs', 'module.exports = { prefix: ".app" };');
+    const path = write('mn.config.cjs', 'module.exports = { selectorPrefix: ".app" };');
     const config = loadConfig(path, report);
-    expect(config.prefix).toBe('.app');
+    expect(config.selectorPrefix).toBe('.app');
     expect(logs.some((m) => m.includes('Config'))).toBe(true);
   });
 
   test('понимает `export default`', () => {
-    const path = write('esm.config.cjs', 'exports.default = { prefix: ".d" };');
-    expect(loadConfig(path, report).prefix).toBe('.d');
+    const path = write('esm.config.cjs', 'exports.default = { selectorPrefix: ".d" };');
+    expect(loadConfig(path, report).selectorPrefix).toBe('.d');
   });
 });
 
@@ -94,15 +94,16 @@ describe('mergeSettings', () => {
       '-p',
       '.cli',
     ]), {
-      prefix: '.config',
+      selectorPrefix: '.config',
     });
-    expect(settings.prefix).toBe('.cli');
+    // `-p` — короткая запись `selectorPrefix`.
+    expect(settings.selectorPrefix).toBe('.cli');
   });
 
   test('без аргумента берётся значение из конфига', () => {
     expect(mergeSettings(parseArgs(['./src']), {
-      prefix: '.config',
-    }).prefix).toBe('.config');
+      selectorPrefix: '.config',
+    }).selectorPrefix).toBe('.config');
   });
 
   test('путь, вывод и атрибут тоже берутся из конфига', () => {

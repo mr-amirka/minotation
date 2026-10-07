@@ -79,7 +79,7 @@ describe('minotation-rollup — реальная сборка', () => {
       extensions: ['.vue'],
       presetExtensions: ['.mnjs'],
       fileName: 'styles.css',
-      mn: { selectorPrefix: '.app ' },
+      selectorPrefix: '.app ',
     });
 
     expect(assets['styles.css']).toContain('.app .edgeToken{color:#f00}');
@@ -283,9 +283,7 @@ describe('проброс предупреждений в rollup (Q-07)', () => {
       'src/app.html': '<div class="p10zz"></div>',
     });
     const warnings = await runCollectingWarnings(root, {
-      mn: {
-        onWarning: 'silent',
-      },
+      onWarning: 'silent',
     });
 
     expect(warnings.filter((w) => w.includes('[minotation]'))).toEqual([]);
@@ -298,10 +296,8 @@ describe('проброс предупреждений в rollup (Q-07)', () => {
     });
     const seen: string[] = [];
     const warnings = await runCollectingWarnings(root, {
-      mn: {
-        onWarning: (w) => {
-          seen.push(w.token);
-        },
+      onWarning: (w) => {
+        seen.push(w.token);
       },
     });
 

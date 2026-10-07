@@ -269,7 +269,7 @@ describe('minotation-webpack — пресеты, лоадеры и предуп�
     expect(loud.assets['mn.css']).toContain('.app .p10{padding:10px}');
     expect(seen).toEqual(['w10zz']);
 
-    const quiet = await runBuild(root, new MnWebpackPlugin({ mn: { onWarning: 'silent' } }));
+    const quiet = await runBuild(root, new MnWebpackPlugin({ onWarning: 'silent' }));
     expect(quiet.warnings.join('\n')).not.toContain('[minotation]');
   });
 

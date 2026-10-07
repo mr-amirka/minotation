@@ -181,12 +181,36 @@ describe('compile', () => {
     expect(JSON.stringify(result.metrics)).toContain('m:p10');
   });
 
-  test('префикс селекторов', () => {
-    write('a.html', '<div class="p10">');
-    expect(compile({
+  test('поля ядра — плоско: selectorPrefix, altColor, strict (D-034)', () => {
+    write('a.html', '<div class="p10 cF00.5">');
+    const css = compile({
       input: dir,
-      prefix: '.app',
-    }).css).toContain('.app');
+      selectorPrefix: '.app ',
+      altColor: true,
+    }).css;
+    expect(css).toContain('.app .p10{padding:10px}');
+    expect(css).toContain('color:#f00');
+    write('b.html', '<div class="w10zz">');
+    expect(() => compile({
+      input: dir,
+      strict: true,
+    })).toThrow(/MN strict/);
+  });
+
+  test('старые mn и prefix в конфиге — ошибка с подсказкой', () => {
+    write('a.html', '<div class="p10">');
+    expect(() => compile({
+      input: dir,
+      mn: {
+        selectorPrefix: '.app', 
+      }, 
+    } as never))
+      .toThrow('option "mn" was removed');
+    expect(() => compile({
+      input: dir,
+      prefix: '.app', 
+    } as never))
+      .toThrow('renamed to "selectorPrefix"');
   });
 
   test('safelist добавляет токены, которых нет в файлах', () => {

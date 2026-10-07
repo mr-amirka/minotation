@@ -23,13 +23,13 @@ import {
   presetMain,
 } from 'minotation';
 import type {
-  MnInstance, MnOptions, MnWarning,
+  MnInstance, MnWarning,
 } from 'minotation';
 import {
-  createAttrsScanner, createBuildCollector, createFileFilter, createMatcher, flatSafelist,
+  CORE_OPTION_KEYS, createAttrsScanner, createBuildCollector, createFileFilter, createMatcher, flatSafelist,
 } from 'minotation-build';
 import type {
-  BuildOutput, MnAttrs, MnEntryOptions, MnFileMatcher,
+  BuildOutput, MnAttrs, MnCoreOptions, MnEntryOptions, MnFileMatcher,
 } from 'minotation-build';
 
 /** Расширения, которые сканируются, если не задано иное. */
@@ -51,8 +51,12 @@ const DEFAULT_EXTENSIONS = [
 /** Что не сканируется никогда. */
 const DEFAULT_EXCLUDE = /[\\/](?:node_modules|\.git|dist|build)[\\/]/;
 
-/** Настройки сборки — то, что CLI собирает из аргументов и конфига. */
-export interface CompileSettings {
+/**
+ * Настройки сборки — то, что CLI собирает из аргументов и конфига. Поля ядра
+ * (`selectorPrefix`, `altColor`, `strict`, `media`, `maxDepth`, `onWarning`,
+ * `onError`) — плоско, как в опциях плагинов и в v1 (D-034).
+ */
+export interface CompileSettings extends MnCoreOptions {
   /** Файл или директория для сканирования. */
   input: string;
   /**
@@ -60,12 +64,6 @@ export interface CompileSettings {
    * `'class, className:class'`, массив или объект. По умолчанию `'class'`.
    */
   attrs?: MnAttrs;
-  /** Префикс селекторов. */
-  prefix?: string;
-  /** Запасное непрозрачное объявление рядом с `rgba`. */
-  altColor?: boolean;
-  /** Прерывать работу на первом битом токене. */
-  strict?: boolean;
   /**
    * Разбирать ли `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
    *
@@ -107,8 +105,6 @@ export interface CompileSettings {
    * используется», «какие токены остались от удалённого компонента».
    */
   metrics?: boolean;
-  /** Остальные опции ядра. */
-  mn?: MnOptions;
   /** Несколько CSS из одного прохода (D-030); `--output` тогда содержит `[name]`. */
   entry?: Record<string, MnEntryOptions>;
 }
@@ -241,6 +237,21 @@ function walk(
  * что с ними делать (вывести, посчитать, уронить сборку), принимает
  * вызывающий — у CLI это зависит от `--strict`.
  */
+/** Поля ядра из настроек; старые `mn`/`prefix` конфига — ошибка с подсказкой. */
+function coreOf(settings: CompileSettings): MnCoreOptions {
+  'mn' in settings && fail('option "mn" was removed: put its fields at the top level of the config');
+  'prefix' in settings && fail('config option "prefix" was renamed to "selectorPrefix" (the --prefix flag stays)');
+  const out: Record<string, unknown> = {};
+  for (const key of CORE_OPTION_KEYS) {
+    settings[key] === undefined || (out[key] = settings[key]);
+  }
+  return out as MnCoreOptions;
+}
+
+function fail(message: string): never {
+  throw new Error('[minotation] ' + message);
+}
+
 export function compile(settings: CompileSettings): CompileResult {
   const files = collectFiles(
     settings.input, settings, settings.ignore,
@@ -299,12 +310,7 @@ export function compile(settings: CompileSettings): CompileResult {
       presetNormalize,
       presetMain,
     ],
-    mn: {
-      ...settings.mn,
-      selectorPrefix: settings.prefix,
-      altColor: settings.altColor,
-      strict: settings.strict,
-    },
+    ...coreOf(settings),
   }, resolve(settings.input));
   for (i = 0; i < l; i++) {
     build.add(files[i], readFileSync(files[i], 'utf8'));

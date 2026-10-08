@@ -24,7 +24,9 @@ function compile(tokens: string[]): { css: string;
   warnings: MnWarning[] } {
   const warnings: MnWarning[] = [];
   const mn: any = minotationProvider({
-    onWarning: (w: MnWarning) => warnings.push(w), 
+    onWarning: (w: MnWarning) => warnings.push(w),
+    // Паритет вывода с v1; о самом `-i` предупреждает importantMode (D-039).
+    importantMode: 'silent',
   });
   mn.setPresets([presetStandard]);
   const c = mn.getCompiler('class');

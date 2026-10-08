@@ -110,9 +110,18 @@ export const CORE_OPTION_KEYS = [
   'media',
   'maxDepth',
   'maxDepthMode',
+  'specificityMode',
+  'importantMode',
   'onWarning',
   'onError',
 ] as const;
+
+/** Предупреждения со своим режимом в ядре (D-039): ядро печатает их само. */
+const OWN_MODE_WARNINGS: Partial<Record<MnWarning['type'], 1>> = {
+  'raised-specificity': 1,
+  important: 1,
+  'max-depth-exceeded': 1,
+};
 
 /** Опции ядра в опциях плагина — на верхнем уровне, без вложенного `mn` (D-034). */
 export type MnCoreOptions = Pick<MnOptions, typeof CORE_OPTION_KEYS[number]>;
@@ -748,7 +757,9 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
         ...core,
         warningMode: warningMode === 'error' ? 'error' : 'silent',
         onWarning: (warning: MnWarning) => {
-          warningMode === 'silent' || collected.push(warning);
+          // `*N`, `-i` и `maxDepth` ядро печатает само по своим режимам, `warningMode`
+          // их не касается (D-039) — в общий вывод плагина они не идут.
+          warningMode === 'silent' || OWN_MODE_WARNINGS[warning.type] || collected.push(warning);
           userOnWarning && userOnWarning(warning);
         },
       });

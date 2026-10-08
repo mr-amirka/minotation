@@ -15,6 +15,7 @@ import {
 import {
   MnParseError as MnParseErrorType,
   MnWarningError as MnWarningErrorType,
+  MnForbiddenTokenError,
 } from '../core/types';
 import presetSynonyms from '../presets/synonyms';
 import presetMedias from '../presets/medias';
@@ -135,22 +136,23 @@ describe('mn — предупреждения и maxDepth', () => {
     // Сообщение объясняет, что делать, как разрешить и как запретить (D-039).
     expect(warnings.find((w) => w.type === 'max-depth-exceeded')!.message).toBe('Context selector depth 5 exceeds maxDepth 2: a long ancestor chain breaks as soon as the'
         + ' markup in between changes — put a class on a closer ancestor instead.'
-        + ' To allow such depth: raise maxDepth; to forbid such tokens: maxDepthMode: \'block\'.');
+        + ' To allow such depth: raise maxDepth; to hide this warning: maxDepthMode: \'silent\';'
+        + ' to forbid such tokens: maxDepthMode: \'strict\'.');
     expect(cssOf(mn)).toContain('padding:10px');
   });
 
-  test('maxDepth в режиме block: токен не даёт CSS, предупреждение уходит в warnings$', () => {
+  test('maxDepth в режиме strict: токен не даёт CSS, compile бросает MnForbiddenTokenError', () => {
     const mn: any = makeMn({
       maxDepth: 2,
-      maxDepthMode: 'block',
-      warningMode: 'silent', 
+      maxDepthMode: 'strict',
     });
-    mn.checkByAttrs('p10<5.parent', 'class');
-    mn.compile();
-
+    mn.checkByAttrs('p10<5.parent m20', 'class');
+    expect(() => mn.compile()).toThrow(MnForbiddenTokenError);
+    // CSS собран — без запрещённого токена.
     expect(cssOf(mn)).not.toContain('padding:10px');
-    const types = mn.warnings$.getValue().map((w: MnWarning) => w.type);
-    expect(types).toContain('max-depth-exceeded');
+    expect(cssOf(mn)).toContain('margin:20px');
+    // Учтён в ошибке, а не в warnings$.
+    expect(mn.warnings$.getValue()).toEqual([]);
   });
 
   test('незнакомое имя — чужой CSS-класс, молчим', () => {

@@ -34,6 +34,10 @@ export interface CliArgs {
   altColor: boolean;
   /** Что делать с предупреждением: `log`, `silent`, `error` (D-035). */
   warningMode?: 'log' | 'silent' | 'error';
+  /** Что делать с накруткой специфичности `*N`: `warn`, `silent`, `strict` (D-039). */
+  specificityMode?: 'warn' | 'silent' | 'strict';
+  /** Что делать с `!important` (`-i`): `warn`, `silent`, `strict` (D-039). */
+  importantMode?: 'warn' | 'silent' | 'strict';
   /** Не разбирать JS/TS парсером — только текстовый поиск. */
   noSyntax: boolean;
   /** Пропускать файлы-партиалы `_*` (D-027). */
@@ -101,6 +105,8 @@ const OPTIONS: Record<string, keyof CliArgs> = {
   '-m': 'metrics',
   '--metrics': 'metrics',
   '--warning-mode': 'warningMode',
+  '--specificity-mode': 'specificityMode',
+  '--important-mode': 'importantMode',
   '--include': 'include',
   '--exclude': 'exclude',
 };
@@ -147,6 +153,10 @@ export function parseArgs(argv: string[]): CliArgs {
   }
   args.warningMode === undefined || WARNING_MODES[args.warningMode]
     || raise('Option "--warning-mode" expects log, silent or error, got "' + args.warningMode + '"');
+  args.specificityMode === undefined || RAISE_MODES[args.specificityMode]
+    || raise('Option "--specificity-mode" expects warn, silent or strict, got "' + args.specificityMode + '"');
+  args.importantMode === undefined || RAISE_MODES[args.importantMode]
+    || raise('Option "--important-mode" expects warn, silent or strict, got "' + args.importantMode + '"');
   return args;
 }
 
@@ -155,6 +165,13 @@ const WARNING_MODES: Record<string, 1> = {
   log: 1,
   silent: 1,
   error: 1,
+};
+
+/** Допустимые значения `--specificity-mode` и `--important-mode` (D-039). */
+const RAISE_MODES: Record<string, 1> = {
+  warn: 1,
+  silent: 1,
+  strict: 1,
 };
 
 function raise(message: string): never {
@@ -178,6 +195,11 @@ Options:
   -p, --prefix <string>  prefix for all selectors
       --alt-color        opaque fallback declaration next to rgba
       --warning-mode <m> warnings: log (default), silent, error (fail the build)
+      --specificity-mode <m>
+                         tokens raising specificity (f10*2): warn (default),
+                         silent, strict (no CSS, fail the build)
+      --important-mode <m>
+                         !important tokens (f10-i): warn (default), silent, strict
       --no-syntax        do not parse JS/TS, text search only
       --skip-partials    skip partial files whose name starts with _
       --no-manifest      do not write mn-manifest.json next to the CSS

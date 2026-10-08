@@ -124,9 +124,11 @@ import type {
   MnEssenceRaw,
   MnEssenceParams,
   MnOptions,
+  MnRaiseMode,
   MnWarning,
 } from './types';
 import {
+  MnForbiddenTokenError,
   MnParseError,
   MnWarningError,
 } from './types';
@@ -142,6 +144,18 @@ minotationProvider.utils = baseUtils;
 /** Печать предупреждения в режиме `warningMode: 'log'` (по умолчанию). */
 function logWarning(warning: MnWarning): void {
   console.warn('[minotation] ' + warning.token + ': ' + warning.message);
+}
+
+/** Случаи со своим режимом `'warn' | 'silent' | 'strict'` (D-039). */
+type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded';
+
+/**
+ * Предупреждение компиляции, а не `*N`/`-i`/`maxDepth` — только такие роняют сборку
+ * при `warningMode: 'error'`: у тех трёх свои режимы (D-039).
+ */
+function isCompileWarning(warning: MnWarning): boolean {
+  return warning.type !== 'raised-specificity' && warning.type !== 'important'
+    && warning.type !== 'max-depth-exceeded';
 }
 
 /**
@@ -215,6 +229,47 @@ function minotationProvider(options?: MnOptions) {
     );
     $$altColor = settings.altColor === true;
     $$failOnWarnings = warningMode === 'error';
+    $$raiseModes = {
+      'raised-specificity': settings.specificityMode || 'warn',
+      important: settings.importantMode || 'warn',
+      'max-depth-exceeded': settings.maxDepthMode || 'warn',
+    };
+  }
+  /**
+   * Токен перебивает стили весом (`*N`, `-i`) или тянется к дальнему предку
+   * (`maxDepth`) — D-039. Режим — своя опция, `warningMode` не участвует: `'warn'`
+   * печатает всегда и не роняет сборку при `warningMode: 'error'`, `'strict'` копит
+   * токен для {@link MnForbiddenTokenError}.
+   *
+   * @param token — исходный токен
+   * @param type — что именно
+   * @param message — текст для режима: `true` — `'strict'`, `false` — `'warn'`
+   * @returns `true` — токен запрещён и не должен давать CSS
+   */
+  function raisedToken(
+    token: string, type: RaiseType, message: (strict: boolean) => string,
+  ): boolean {
+    const mode = $$raiseModes[type];
+    const key = type + ' ' + token;
+    let warning: MnWarning;
+    if (mode === 'silent' || $$raisedTokens[key]) {
+      return mode === 'strict';
+    }
+    $$raisedTokens[key] = 1;
+    warning = {
+      type: type,
+      token: token,
+      message: message(mode === 'strict'),
+    };
+    if (mode === 'strict') {
+      $$forbidden.push(warning);
+      return true;
+    }
+    $$warnings = $$warnings.concat([warning]);
+    logWarning(warning);
+    $$onWarning(warning);
+    emitWarnings($$warnings);
+    return false;
   }
   /**
    * Собирает {@link MnWarning} (парсинг-ошибка/неизвестный хендлер/превышение
@@ -625,6 +680,11 @@ function minotationProvider(options?: MnOptions) {
   let $$selectorPrefixes: string[];
   let $$altColor: boolean;
   let $$failOnWarnings: boolean;
+  let $$raiseModes: Record<RaiseType, MnRaiseMode>;
+  /** Уже учтённые `*N`/`-i` (ключ — тип и токен): одно сообщение на токен. */
+  let $$raisedTokens: Record<string, number> = {};
+  /** Запрещённые в режиме `'strict'` токены текущего состояния (D-039). */
+  let $$forbidden: MnWarning[] = [];
   let $$revision = 0;
 
   error$.on((error: Error | undefined) => {
@@ -637,6 +697,8 @@ function minotationProvider(options?: MnOptions) {
   // сообщать о превышении maxDepth в режиме 'warn' — по тому же соглашению,
   // что и уже существующие internal-геттеры (mn.states/mn._synonyms).
   (mn as any)._collectWarning = collectWarning;
+  // Там же разбирается `*N` и видны эссенции `-i` (D-039).
+  (mn as any)._raisedToken = raisedToken;
 
   function withCatchParseComboNameDecorate(parseComboNameFn: (...args: any[]) => any): (...args: any[]) => any {
     return function (this: unknown) {
@@ -648,7 +710,8 @@ function minotationProvider(options?: MnOptions) {
         return parseComboNameFn.apply(this, arguments as unknown as any[]);
       } catch (ex) {
         if (ex instanceof MnParseError) {
-          collectWarning({
+          // Запрещённый токен уже учтён для MnForbiddenTokenError (D-039).
+          ex.context.forbidden || collectWarning({
             type: ex.context.warningType || 'parse-error',
             token: ex.context.token,
             handler: ex.context.handler,
@@ -1365,6 +1428,8 @@ function minotationProvider(options?: MnOptions) {
     // recompile/__clear уже "чистый лист" для остального состояния.
     $$warnings = [];
     $$warningTokens = {};
+    $$raisedTokens = {};
+    $$forbidden = [];
     emitWarnings($$warnings);
   }
   __clear();
@@ -1432,8 +1497,13 @@ function minotationProvider(options?: MnOptions) {
     // Error через $$onError (по умолчанию noop). Здесь, после того как вся
     // работа compile уже сделана, throw ничем не перехватывается и доходит
     // до вызывающего кода (сборщика) как есть.
-    if ($$failOnWarnings && $$warnings.length) {
-      throw new MnWarningError($$warnings);
+    if ($$forbidden.length) {
+      throw new MnForbiddenTokenError($$forbidden);
+    }
+    // `*N`/`-i` в режиме `'warn'` сборку не роняют: ими управляют свои опции (D-039).
+    const failing = $$failOnWarnings && $$warnings.filter(isCompileWarning);
+    if (failing && failing.length) {
+      throw new MnWarningError(failing);
     }
     return mn;
   };

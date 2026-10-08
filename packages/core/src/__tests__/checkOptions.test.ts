@@ -276,9 +276,13 @@ describe('точки входа ядра', () => {
     } as never))
       .toThrow('[minotation] minotationProvider: unknown option "strict". Known options: presets,');
     expect(() => minotationProvider({
-      maxDepthMode: 'block',
+      maxDepthMode: 'strict',
       maxDepth: 3, 
     })).not.toThrow();
+    // Прежний 'block' — теперь 'strict' (D-039).
+    expect(() => minotationProvider({
+      maxDepthMode: 'block',
+    } as never)).toThrow('option "maxDepthMode" expects "warn", "silent" or "strict", got string "block"');
   });
 
   test('mn.setOptions', () => {

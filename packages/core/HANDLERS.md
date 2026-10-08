@@ -1848,9 +1848,10 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 
 ## `warningMode` — что делать с предупреждением
 
-Предупреждение (`MnWarning`) — битый аргумент хендлера, невалидное CSS-значение,
-превышение `maxDepth` в режиме `'warn'`: токен не даёт CSS-правила, остальная
-компиляция идёт дальше. Что с ним делать, решает одна опция (D-035):
+Предупреждение (`MnWarning`) — битый аргумент хендлера, невалидное CSS-значение:
+токен не даёт CSS-правила, остальная компиляция идёт дальше. Что с ним делать,
+решает одна опция (D-035). Превышение `maxDepth`, `*N` и `-i` ей не подчиняются —
+у них свои режимы (следующий раздел).
 
 | `warningMode` | Что происходит |
 |---|---|
@@ -1892,6 +1893,43 @@ minotationProvider({ warningMode: 'silent', onWarning: (w) => report.push(w) });
 // astro.config.mjs / vite.config.ts
 mnAstro({ attrs: 'class', warningMode: 'error' })
 ```
+
+---
+
+## `maxDepthMode`, `specificityMode`, `importantMode` — свои режимы (D-039)
+
+Три случая, когда токен формально верен, но говорит о проблеме в вёрстке:
+
+| Опция | Токен | Почему подозрительно |
+|---|---|---|
+| `maxDepthMode` (при заданном `maxDepth`) | `p10<5.card` | длинная цепочка предков ломается при правке промежуточной разметки |
+| `specificityMode` | `f10*2` | стили компонента перебивают весом селектора — компоненты воюют между собой |
+| `importantMode` | `f10-i` | `!important` перебивает всё, включая то, чем управляет сам компонент |
+
+У всех трёх одни режимы, по умолчанию `'warn'`; `warningMode` на них не влияет:
+
+| Режим | Что происходит |
+|---|---|
+| `'warn'` (по умолчанию) | CSS есть, предупреждение с подсказкой — в `console.warn` и `onWarning`; сборку не роняет даже при `warningMode: 'error'` |
+| `'silent'` | CSS есть, ни слова — даже при `warningMode: 'log'` |
+| `'strict'` | токен не даёт CSS; после `compile()` — `MnForbiddenTokenError` со списком токенов; сборка падает |
+
+```ts
+mnAstro({ specificityMode: 'strict', importantMode: 'silent' });
+```
+
+```
+[minotation] f10*2: Raising specificity ("*2") usually means components fight over the same
+  styles — override a component's tokens with mne()/mnClass() instead of outweighing them.
+  To hide this warning: specificityMode: 'silent'; to forbid such tokens: specificityMode: 'strict'.
+
+MnForbiddenTokenError: MN: 1 forbidden token(s):
+  f10*2: Raising specificity ("*2") is forbidden (specificityMode: 'strict'), the token gives
+  no CSS — remove "*2" and override the component's tokens with mne()/mnClass(), or allow it:
+  specificityMode: 'warn'.
+```
+
+Как переопределять токены компонента без накрутки — раздел про `mne`/`mnClass` выше.
 
 ---
 

@@ -1,7 +1,8 @@
 /**
  * Комбинаторы глубины и проверка лимитов: жёсткий потолок `MN_MAX_DEPTH_HARD_LIMIT`
- * (всегда, не настраивается) и мягкий `maxDepth` в двух режимах — `'warn'`
- * (предупреждение, токен всё равно компилируется) и `'block'` (`MnParseError`).
+ * (всегда, не настраивается) и мягкий `maxDepth`: что делать при превышении, решает
+ * `onExceed` (режим `maxDepthMode` — в ядре, D-039); `true` — токен запрещён,
+ * разбор обрывается `MnParseError` с `forbidden: true`.
  */
 import {
   getCombinator,
@@ -17,10 +18,10 @@ function makeDepthCheck(over: Partial<MnDepthCheck> = {}): MnDepthCheck & { call
   const calls: Array<[number, number]> = [];
   return {
     maxDepth: 3,
-    maxDepthMode: 'warn',
     token: 'testToken',
     onExceed: (depth, maxDepth) => {
-      calls.push([depth, maxDepth]); 
+      calls.push([depth, maxDepth]);
+      return undefined;
     },
     calls,
     ...over,
@@ -83,9 +84,13 @@ describe('getCombinator', () => {
     expect(check.calls).toEqual([[5, 3]]);
   });
 
-  test('режим block: бросается MnParseError с контекстом токена', () => {
+  test('onExceed вернул true (strict): MnParseError с forbidden — токен не даёт CSS', () => {
+    const calls: Array<[number, number]> = [];
     const check = makeDepthCheck({
-      maxDepthMode: 'block', 
+      onExceed: (depth, maxDepth) => {
+        calls.push([depth, maxDepth]);
+        return true;
+      },
     });
     let error: unknown;
     try {
@@ -98,7 +103,7 @@ describe('getCombinator', () => {
     expect((error as MnParseError).name).toBe('MnParseError');
     // Сообщение объясняет, что делать и как разрешить (D-039).
     expect((error as MnParseError).message).toBe('Context selector depth 5 exceeds maxDepth 3'
-      + ' (maxDepthMode: \'block\'), the token gives no CSS: a long ancestor chain breaks as soon'
+      + ' (maxDepthMode: \'strict\'), the token gives no CSS: a long ancestor chain breaks as soon'
       + ' as the markup in between changes — put a class on a closer ancestor instead.'
       + ' To allow such tokens: raise maxDepth or set maxDepthMode: \'warn\'.');
     expect((error as MnParseError).context).toEqual({
@@ -108,8 +113,10 @@ describe('getCombinator', () => {
       utility: 'getCombinator',
       // Тип задаётся явно, а не угадывается ловящей стороной по utility.
       warningType: 'max-depth-exceeded',
+      // Уже учтён ядром для MnForbiddenTokenError — в warnings$ не идёт.
+      forbidden: true,
     });
-    expect(check.calls).toEqual([]);
+    expect(calls).toEqual([[5, 3]]);
   });
 
   test('maxDepth не задан — мягкая проверка пропускается', () => {

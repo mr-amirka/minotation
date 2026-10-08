@@ -210,6 +210,11 @@ export class MnParseError extends Error {
        * Без него ловящая сторона считает ошибку обычной ошибкой разбора.
        */
       warningType?: MnWarningType;
+      /**
+       * Токен запрещён режимом `'strict'` и уже учтён для {@link MnForbiddenTokenError}
+       * (D-039): ловящая сторона только обрывает разбор, в `warnings$` не кладёт.
+       */
+      forbidden?: boolean;
     }) {
     super(message);
     this.name = 'MnParseError';
@@ -237,8 +242,17 @@ export class MnParseError extends Error {
  * без единого признака ошибки. Предупреждение не блокирует компиляцию, а
  * подсказывает завести синоним и писать одну каноническую форму.
  */
+/**
+ * `'raised-specificity'` (`*N`) и `'important'` (`-i`) — токен перебивает чужие стили
+ * весом, а не составом: признак того, что компоненты дизайн-системы воюют между собой
+ * (D-039). Управляются своими опциями ({@link MnOptions.specificityMode},
+ * {@link MnOptions.importantMode}), `warningMode` на них не влияет.
+ */
 export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'invalid-css-value'
-  | 'unregistered-state';
+  | 'unregistered-state' | 'raised-specificity' | 'important';
+
+/** Что делать с токеном `*N` или `-i` (D-039). */
+export type MnRaiseMode = 'warn' | 'silent' | 'strict';
 
 /**
  * Бросается из {@link MnInstance.compile}, когда `warningMode: 'error'` и за цикл
@@ -251,6 +265,20 @@ export class MnWarningError extends Error {
     super('MN: ' + warnings.length + ' warning(s) during compile (warningMode: \'error\'):\n'
       + warnings.map((w) => '  ' + w.token + ': ' + w.message).join('\n'));
     this.name = 'MnWarningError';
+  }
+}
+
+/**
+ * Бросается из {@link MnInstance.compile}, когда в режиме `'strict'`
+ * ({@link MnOptions.specificityMode}, {@link MnOptions.importantMode}) встретился
+ * запрещённый токен (D-039). Как и {@link MnWarningError} — после основной работы:
+ * CSS собран, запрещённые токены в него не попали.
+ */
+export class MnForbiddenTokenError extends Error {
+  constructor(public readonly tokens: MnWarning[]) {
+    super('MN: ' + tokens.length + ' forbidden token(s):\n'
+      + tokens.map((w) => '  ' + w.token + ': ' + w.message).join('\n'));
+    this.name = 'MnForbiddenTokenError';
   }
 }
 
@@ -295,12 +323,36 @@ export interface MnOptions {
    */
   maxDepth?: number;
   /**
-   * Поведение при превышении {@link MnOptions.maxDepth}:
-   * `'warn'` (по умолчанию) — предупреждение, токен всё равно компилируется
-   * (глубина при этом всё равно не может превысить жёсткий потолок 30);
-   * `'block'` — токен не даёт CSS-правила вообще (как `MnParseError`).
+   * Что делать при превышении {@link MnOptions.maxDepth} (D-039):
+   * - `'warn'` — предупреждение с подсказкой, токен компилируется (глубина всё равно
+   *   не превысит жёсткий потолок 30);
+   * - `'silent'` — молчать;
+   * - `'strict'` — токен не даёт CSS, `compile` бросает {@link MnForbiddenTokenError}.
+   *
+   * `warningMode` на этот случай не влияет.
+   * @default 'warn'
    */
-  maxDepthMode?: 'warn' | 'block';
+  maxDepthMode?: MnRaiseMode;
+  /**
+   * Токены с множителем `*N` (`f10*2` → `.f10\*2.f10\*2`) — накрутка специфичности
+   * (D-039). Перебивать стили компонента весом селектора — признак того, что
+   * компоненты дизайн-системы воюют между собой; переопределять токены компонента
+   * надёжнее через `mne`/`mnClass`.
+   * - `'warn'` — предупреждение с подсказкой (в консоль и в `onWarning`);
+   * - `'silent'` — молчать;
+   * - `'strict'` — токен не даёт CSS, `compile` бросает {@link MnForbiddenTokenError}.
+   *
+   * `warningMode` на этот случай не влияет.
+   * @default 'warn'
+   */
+  specificityMode?: MnRaiseMode;
+  /**
+   * Токены с `-i` (`f10-i` → `!important`) — то же, что {@link specificityMode}, но
+   * грубее: `!important` перебивает всё, включая то, чем управляет сам компонент.
+   * Режимы те же. `warningMode` на этот случай не влияет.
+   * @default 'warn'
+   */
+  importantMode?: MnRaiseMode;
   selectorPrefix?: string;
   /**
    * `true` — рядом с `rgba`-значением выводить запасное непрозрачное

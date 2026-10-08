@@ -108,6 +108,21 @@ describe('parseArgs', () => {
     expect(args.warningMode).toBe('error');
   });
 
+  test('--specificity-mode и --important-mode: warn, silent, strict (D-039)', () => {
+    const args = parseArgs([
+      '--specificity-mode',
+      'strict',
+      '--important-mode',
+      'silent',
+    ]);
+    expect(args.specificityMode).toBe('strict');
+    expect(args.importantMode).toBe('silent');
+    expect(() => parseArgs(['--specificity-mode', 'error']))
+      .toThrow('Option "--specificity-mode" expects warn, silent or strict, got "error"');
+    expect(() => parseArgs(['--important-mode', 'block']))
+      .toThrow('Option "--important-mode" expects warn, silent or strict, got "block"');
+  });
+
   test('--warning-mode принимает только log, silent, error', () => {
     expect(parseArgs(['--warning-mode', 'silent']).warningMode).toBe('silent');
     expect(() => parseArgs(['--warning-mode', 'errror']))

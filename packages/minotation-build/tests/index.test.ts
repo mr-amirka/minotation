@@ -822,6 +822,33 @@ describe('warningMode в накопителе (D-035)', () => {
   });
 });
 
+describe('specificityMode / importantMode в накопителе (D-039)', () => {
+  test("'warn' — ядро печатает само, в warnings накопителя не попадает; колбэк вызван", () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const seen: string[] = [];
+    const collector = createTokenCollector({
+      ...OPTIONS,
+      warningMode: 'error',
+      onWarning: (warning) => seen.push(warning.type),
+    });
+    collector.add('/a.html', '<div class="p10*2 m10-i">');
+    expect(() => collector.css()).not.toThrow();
+    expect(collector.takeWarnings()).toEqual([]);
+    expect(seen.sort()).toEqual(['important', 'raised-specificity']);
+    expect(warn).toHaveBeenCalledTimes(2);
+    warn.mockRestore();
+  });
+
+  test("'strict' — сборка падает с инструкцией", () => {
+    const collector = createTokenCollector({
+      ...OPTIONS,
+      specificityMode: 'strict',
+    });
+    collector.add('/a.html', '<div class="p10*2">');
+    expect(() => collector.css()).toThrow("p10*2: Raising specificity (\"*2\") is forbidden (specificityMode: 'strict')");
+  });
+});
+
 describe('checkBuildOptions — проверка опций плагина (D-038)', () => {
   test('полный набор допустимых опций проходит', () => {
     expect(() => checkBuildOptions({
@@ -862,7 +889,7 @@ describe('checkBuildOptions — проверка опций плагина (D-03
       warningMode: 'error',
       media: {},
       maxDepth: 3,
-      maxDepthMode: 'block',
+      maxDepthMode: 'strict',
       onWarning: () => undefined,
       onError: () => undefined,
     }, 'mnRollup')).not.toThrow();

@@ -37,6 +37,8 @@ mn ./index.html -o ./page.css           # одиночный файл
 | `-p, --prefix <строка>` | префикс для всех селекторов |
 | `--alt-color` | запасное непрозрачное объявление рядом с `rgba` |
 | `--warning-mode <режим>` | что делать с предупреждением о битом токене: `log` — напечатать (по умолчанию), `silent` — промолчать, `error` — код возврата 1 |
+| `--specificity-mode <режим>` | токены с накруткой специфичности (`f10*2`): `warn` — предупреждение с подсказкой (по умолчанию), `silent` — промолчать, `strict` — токен не даёт CSS, код возврата 1 |
+| `--important-mode <режим>` | токены с `!important` (`f10-i`) — режимы те же |
 | `--no-syntax` | не разбирать JS/TS парсером, только текстовый поиск |
 | `--skip-partials` | пропускать файлы-партиалы `_*` |
 | `--no-manifest` | не писать `mn-manifest.json` рядом с CSS (по умолчанию пишется: `{ "mn.css": "mn.3f9a1c2e.css" }`) |
@@ -147,6 +149,9 @@ module.exports = {
   presets: [/* свои пресеты вместо стандартного набора */],
   altColor: true,                 // как --alt-color
   warningMode: 'error',           // как --warning-mode error
+  specificityMode: 'strict',      // как --specificity-mode strict: f10*2 — ошибка
+  importantMode: 'silent',        // как --important-mode silent
+  maxDepth: 3,                    // предел глубины <N/>N; maxDepthMode — как specificityMode
   media: { wide: { query: '(min-width: 1200px)' } },
   skipPartials: true,             // как --skip-partials
   manifest: './dist/css.json',    // свой путь манифеста; false — как --no-manifest
@@ -187,7 +192,7 @@ Error: [minotation] mn.config.js: option "metrics" expects a boolean or a string
 | Код | Когда |
 |-----|-------|
 | 0 | CSS собран |
-| 1 | неизвестная опция, нечитаемый конфиг или — с `--warning-mode error` — битый токен |
+| 1 | неизвестная опция, нечитаемый конфиг, с `--warning-mode error` — битый токен, в режиме `strict` — запрещённый токен (`*N`, `-i`, глубина) |
 
 Без `--warning-mode error` битые токены печатаются предупреждением, но сборку не роняют:
 чужие классы в разметке (`sr-only`, `mt-auto`) — обычное дело.

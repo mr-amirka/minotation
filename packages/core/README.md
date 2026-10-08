@@ -108,7 +108,9 @@ const mn = minotationProvider({
   onWarning: (warning) => {},      // колбэк на каждое предупреждение, дополнительно к режиму
   onError: (error) => {},          // ошибки ядра
   maxDepth: 10,                    // предел глубины контекстных селекторов (<N, >N)
-  maxDepthMode: 'warn',            // 'warn' | 'block' — что делать при превышении
+  maxDepthMode: 'warn',            // 'warn' | 'silent' | 'strict' — что делать при превышении
+  specificityMode: 'warn',         // 'warn' | 'silent' | 'strict' — токены f10*2 (накрутка специфичности)
+  importantMode: 'warn',           // 'warn' | 'silent' | 'strict' — токены f10-i (!important)
 });
 ```
 

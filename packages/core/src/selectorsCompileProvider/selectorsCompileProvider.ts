@@ -15,6 +15,7 @@ import {
   assertMediaNames,
   assertVariantGroups,
   assertTrailingSeparator,
+  REGEXP_MATCH_IMPORTANT,
   REGEXP_MATCH_NAME,
 } from '../core/utils';
 import {
@@ -44,7 +45,10 @@ import {
   mediaFilterIteratee,
 } from './extractMedia';
 import {
-  getCombinator, maxDepthMessage,
+  importantMessage, maxDepthMessage, specificityMessage,
+} from './raiseMessages';
+import {
+  getCombinator,
 } from './getCombinator';
 import type {
   MnDepthCheck,
@@ -188,17 +192,15 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    */
   const $$depthCheck: MnDepthCheck = {
     maxDepth: undefined,
-    maxDepthMode: undefined,
     token: '',
-    onExceed: (depth: number, maxDepth: number) => {
-      (instance as any)._collectWarning?.({
-        type: 'max-depth-exceeded',
-        token: $$depthCheck.token,
-        message: maxDepthMessage(
-          depth, maxDepth, false,
-        ),
-      });
-    },
+    // Режим `maxDepthMode` решает ядро (D-039); без ядра (`selectorsCompileProvider`
+    // отдельно) превышение ни на что не влияет.
+    onExceed: (depth: number, maxDepth: number) => (instance as any)._raisedToken?.(
+      $$depthCheck.token, 'max-depth-exceeded',
+      (strict: boolean) => maxDepthMessage(
+        depth, maxDepth, strict,
+      ),
+    ),
   };
 
   const $$parsers: StrMap<ParseComboNameFn> = {
@@ -308,18 +310,25 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     // между вызовами. Обновляем три поля вместо аллокации объекта с замыканием.
     const $$mnOptions = (instance as any).options || {};
     $$depthCheck.maxDepth = $$mnOptions.maxDepth;
-    $$depthCheck.maxDepthMode = $$mnOptions.maxDepthMode;
     $$depthCheck.token = comboName;
 
     let name = comboName;
     let tgt = targetName;
     let multiplier: number;
+    let suffix: string;
+    let essence: string;
 
     const multiplierMatch = REGEXP_MULTIPLIER.exec(name);
     if (multiplierMatch) {
       name = multiplierMatch[1];
       multiplier = parseInt(multiplierMatch[2]);
       if (multiplier > 1) {
+        // Накрутка специфичности — свой режим (D-039); запрещённый токен CSS не даёт.
+        if ((instance as any)._raisedToken?.(
+          comboName, 'raised-specificity', (strict: boolean) => specificityMessage('*' + multiplier, strict),
+        )) {
+          return [];
+        }
         tgt = repeat(tgt, multiplier);
       }
     }
@@ -328,6 +337,17 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       variantsBase(name, (instance as any).handlerMap || {}),
       suffixesReduce, {} as StrMap<StrMap<number>>,
     );
+    // `!important` (`-i`) виден только в именах эссенций — после разворота групп.
+    for (suffix in suffixes) { // eslint-disable-line
+      for (essence in suffixes[suffix]) { // eslint-disable-line
+        if (REGEXP_MATCH_IMPORTANT.test(essence)
+          && (instance as any)._raisedToken?.(
+            comboName, 'important', importantMessage,
+          )) {
+          return [];
+        }
+      }
+    }
     $$tgt = tgt;
     return (reduceIn as any)(
       suffixes, suffixesIteratee, [],

@@ -169,6 +169,13 @@ describe('mergeSettings', () => {
     expect(mergeSettings(parseArgs([]), {
       warningMode: 'error',
     }).warningMode).toBe('error');
+    // Режимы *N и -i (D-039): флаг важнее конфига.
+    const merged = mergeSettings(parseArgs(['--specificity-mode', 'strict']), {
+      specificityMode: 'silent',
+      importantMode: 'silent',
+    });
+    expect(merged.specificityMode).toBe('strict');
+    expect(merged.importantMode).toBe('silent');
   });
 
   test('синтаксический разбор: по умолчанию авто, `--no-syntax` выключает', () => {

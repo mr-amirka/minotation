@@ -129,6 +129,8 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
     selectorPrefix: args.prefix === undefined ? config.selectorPrefix : args.prefix,
     altColor: args.altColor || config.altColor,
     warningMode: args.warningMode || config.warningMode,
+    specificityMode: args.specificityMode || config.specificityMode,
+    importantMode: args.importantMode || config.importantMode,
     skipPartials: args.skipPartials || config.skipPartials,
     // `--no-manifest` выключает; без него решает конфиг (по умолчанию — писать).
     manifest: args.noManifest ? false : config.manifest,

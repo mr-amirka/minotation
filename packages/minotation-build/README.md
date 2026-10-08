@@ -72,8 +72,10 @@ for (const warning of collector.takeWarnings()) {
 | `selectorPrefix` | `string` | — | префикс всех селекторов: `'.app '` → `.app .p10{…}` |
 | `altColor` | `boolean` | `false` | запасное непрозрачное объявление рядом с `rgba` |
 | `media` | `Record<string, MnMediaEntry>` | стандартные | именованные медиа: `{ wide: { query: '(min-width: 1200px)' } }` → `p10@wide` |
-| `maxDepth`, `maxDepthMode` | `number`, `'warn' \| 'block'` | `10`, `'warn'` | предел глубины контекстных селекторов |
-| `warningMode` | `'log' \| 'silent' \| 'error'` | `'log'` | что делать с предупреждением компиляции: в лог сборки, молчать, уронить сборку (D-035) |
+| `maxDepth`, `maxDepthMode` | `number`, `'warn' \| 'silent' \| 'strict'` | —, `'warn'` | предел глубины контекстных селекторов и режим при превышении (D-039) |
+| `specificityMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с накруткой специфичности `f10*2` (D-039) |
+| `importantMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с `!important` (`f10-i`) (D-039) |
+| `warningMode` | `'log' \| 'silent' \| 'error'` | `'log'` | что делать с предупреждением компиляции: в лог сборки, молчать, уронить сборку (D-035); `maxDepthMode`, `specificityMode`, `importantMode` не затрагивает (D-039) |
 | `onWarning` | `(warning) => void` | — | колбэк на каждое предупреждение — дополнительно к `warningMode` |
 | `onError` | `(e) => void` | — | обработчик ошибок ядра |
 | `onScannerWarning` | `(message) => void` | `console.warn` | колбэк сканера: `syntax: true`, а `typescript` нет |
@@ -173,7 +175,7 @@ attrs: { class: 'class', className: 'class' }     // объект
 |-------|------------|
 | `safelist` | токены, нужные всегда, даже если в файлах не встретились; компилируются как классы |
 | `presets` | статические пресеты |
-| поля ядра | `selectorPrefix`, `altColor`, `warningMode`, `media`, `maxDepth`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
+| поля ядра | `selectorPrefix`, `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `specificityMode`, `importantMode`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
 
 | Метод | Что делает |
 |-------|------------|

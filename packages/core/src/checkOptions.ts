@@ -208,7 +208,15 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   ),
   onWarning: isFunction,
   maxDepth: isCount,
-  maxDepthMode: oneOf('warn', 'block'),
+  maxDepthMode: oneOf(
+    'warn', 'silent', 'strict',
+  ),
+  specificityMode: oneOf(
+    'warn', 'silent', 'strict',
+  ),
+  importantMode: oneOf(
+    'warn', 'silent', 'strict',
+  ),
   selectorPrefix: isString,
   altColor: isBoolean,
 };

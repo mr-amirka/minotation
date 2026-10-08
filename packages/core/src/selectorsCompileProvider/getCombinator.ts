@@ -47,6 +47,27 @@ export function getCombinatorByDepth(depth: number): string {
   return clamped < 1 ? '' : ('>' + repeat('*>', clamped - 1));
 }
 
+/**
+ * Текст о превышении `maxDepth` (D-039): что не так, что делать вместо и как
+ * разрешить или запретить такие токены — пользователь не должен искать это в
+ * документации.
+ *
+ * @param depth — глубина в токене
+ * @param maxDepth — заданный лимит
+ * @param block — режим `'block'`: токен не даёт CSS
+ */
+export function maxDepthMessage(
+  depth: number, maxDepth: number, block: boolean,
+): string {
+  return 'Context selector depth ' + depth + ' exceeds maxDepth ' + maxDepth
+    + (block ? ' (maxDepthMode: \'block\'), the token gives no CSS' : '')
+    + ': a long ancestor chain breaks as soon as the markup in between changes'
+    + ' — put a class on a closer ancestor instead.'
+    + (block
+      ? ' To allow such tokens: raise maxDepth or set maxDepthMode: \'warn\'.'
+      : ' To allow such depth: raise maxDepth; to forbid such tokens: maxDepthMode: \'block\'.');
+}
+
 /** Опциональная проверка мягкого лимита глубины — {@link MnOptions.maxDepth}/`maxDepthMode`. */
 export interface MnDepthCheck {
   /** Мягкий лимит; `undefined` — проверка пропускается (действует только жёсткий потолок). */
@@ -153,8 +174,9 @@ export function getCombinator(
     const maxDepth = depthCheck.maxDepth;
     if (maxDepth !== undefined && depth > maxDepth) {
       if (depthCheck.maxDepthMode === 'block') {
-        throw new MnParseError('Context selector depth (' + depth
-            + ') exceeds maxDepth (' + maxDepth + ')',
+        throw new MnParseError(maxDepthMessage(
+          depth, maxDepth, true,
+        ),
         {
           token: token,
           handler: '',

@@ -44,7 +44,7 @@ import {
   mediaFilterIteratee,
 } from './extractMedia';
 import {
-  getCombinator,
+  getCombinator, maxDepthMessage,
 } from './getCombinator';
 import type {
   MnDepthCheck,
@@ -194,8 +194,9 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       (instance as any)._collectWarning?.({
         type: 'max-depth-exceeded',
         token: $$depthCheck.token,
-        message: 'Context selector depth (' + depth
-          + ') exceeds maxDepth (' + maxDepth + ')',
+        message: maxDepthMessage(
+          depth, maxDepth, false,
+        ),
       });
     },
   };

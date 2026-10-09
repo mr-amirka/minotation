@@ -218,3 +218,59 @@ describe('selectorsCompileProvider без ядра', () => {
     expect(scp.parseClass('f10-i*2<3.a').length).toBeGreaterThan(0);
   });
 });
+
+describe('childSelectorMode — дочерний селектор > (D-041)', () => {
+  const CHILD_WARN = 'Child selector (">1") styles elements the component does not own'
+    + ' — put the class on the child itself instead.'
+    + ' To hide this warning: childSelectorMode: \'silent\'; to forbid such tokens: childSelectorMode: \'strict\'.';
+  const CHILD_STRICT = 'Child selector (">.child") is forbidden (childSelectorMode: \'strict\'), the token gives no CSS'
+    + ' — put the class on the child itself, or allow it: childSelectorMode: \'warn\'.';
+
+  test('по умолчанию warn: CSS есть, предупреждение с подсказкой', () => {
+    const {
+      css, warnings, 
+    } = run('cF00>1');
+    expect(css).toContain('color:#f00');
+    expect(warnings).toEqual([{
+      type: 'child-selector',
+      token: 'cF00>1',
+      message: CHILD_WARN,
+    }]);
+  });
+
+  test('silent', () => {
+    const {
+      warnings, 
+    } = run('cF00>1', {
+      childSelectorMode: 'silent',
+    });
+    expect(warnings).toEqual([]);
+  });
+
+  test('strict: токен не даёт CSS, compile бросает ошибку с инструкцией', () => {
+    const {
+      css, error, 
+    } = run('cF00>.child p10', {
+      childSelectorMode: 'strict',
+    });
+    expect((error as Error).message).toBe('MN: 1 forbidden token(s):\n  cF00>.child: ' + CHILD_STRICT);
+    expect(css).not.toContain('color:#f00');
+    expect(css).toContain('padding:10px');
+  });
+
+  test('контекст предков < не затрагивается', () => {
+    const {
+      warnings, 
+    } = run('cF00<.parent');
+    expect(warnings).toEqual([]);
+  });
+
+  test('warningMode: error из-за дочернего селектора не падает', () => {
+    const {
+      error, 
+    } = run('cF00>1', {
+      warningMode: 'error',
+    });
+    expect(error).toBeUndefined();
+  });
+});

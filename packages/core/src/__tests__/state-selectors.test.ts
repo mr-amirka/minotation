@@ -154,6 +154,8 @@ describe('вырожденные контекстные селекторы: пр
       onWarning: (w: { type: string;
         token?: string;
         message: string }) => warnings.push(w),
+      // Тест не про дочерние селекторы: о них предупреждает childSelectorMode (D-041).
+      childSelectorMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);

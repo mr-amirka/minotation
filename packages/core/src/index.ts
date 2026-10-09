@@ -41,6 +41,7 @@ import {
 } from './scanner';
 import {
   checkOptions as checkOptionsImpl,
+  checkKnownValues as checkKnownValuesImpl,
   describeValue as describeValueImpl,
   oneOf as oneOfImpl,
   optionsOf as optionsOfImpl,
@@ -120,6 +121,7 @@ export const stripComments = stripCommentsImpl;
  * значение — ошибка с подсказкой. Общая для ядра, плагинов и CLI.
  */
 export const checkOptions = checkOptionsImpl;
+export const checkKnownValues = checkKnownValuesImpl;
 export const describeValue = describeValueImpl;
 export const oneOf = oneOfImpl;
 export const optionsOf = optionsOfImpl;

@@ -176,6 +176,7 @@ describe('mergeSettings', () => {
     });
     expect(merged.specificityMode).toBe('strict');
     expect(merged.importantMode).toBe('silent');
+    expect(mergeSettings(parseArgs(['--child-selector-mode', 'silent']), {}).childSelectorMode).toBe('silent');
   });
 
   test('синтаксический разбор: по умолчанию авто, `--no-syntax` выключает', () => {

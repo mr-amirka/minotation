@@ -39,3 +39,13 @@ export function maxDepthMessage(
       : ' To allow such depth: raise maxDepth; to hide this warning: maxDepthMode: \'silent\';'
         + ' to forbid such tokens: maxDepthMode: \'strict\'.');
 }
+
+/** `>` — дочерний селектор; `mark` — дочерняя часть токена (`>1`, `>.child`). */
+export function childSelectorMessage(mark: string, strict: boolean): string {
+  return strict
+    ? 'Child selector ("' + mark + '") is forbidden (childSelectorMode: \'strict\'), the token gives no CSS'
+      + ' — put the class on the child itself, or allow it: childSelectorMode: \'warn\'.'
+    : 'Child selector ("' + mark + '") styles elements the component does not own'
+      + ' — put the class on the child itself instead.'
+      + ' To hide this warning: childSelectorMode: \'silent\'; to forbid such tokens: childSelectorMode: \'strict\'.';
+}

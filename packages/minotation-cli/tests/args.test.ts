@@ -121,6 +121,9 @@ describe('parseArgs', () => {
       .toThrow('Option "--specificity-mode" expects warn, silent or strict, got "error"');
     expect(() => parseArgs(['--important-mode', 'block']))
       .toThrow('Option "--important-mode" expects warn, silent or strict, got "block"');
+    expect(parseArgs(['--child-selector-mode', 'strict']).childSelectorMode).toBe('strict');
+    expect(() => parseArgs(['--child-selector-mode', 'error']))
+      .toThrow('Option "--child-selector-mode" expects warn, silent or strict, got "error"');
   });
 
   test('--warning-mode принимает только log, silent, error', () => {

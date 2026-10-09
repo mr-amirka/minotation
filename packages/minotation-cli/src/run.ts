@@ -131,6 +131,7 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
     warningMode: args.warningMode || config.warningMode,
     specificityMode: args.specificityMode || config.specificityMode,
     importantMode: args.importantMode || config.importantMode,
+    childSelectorMode: args.childSelectorMode || config.childSelectorMode,
     skipPartials: args.skipPartials || config.skipPartials,
     // `--no-manifest` выключает; без него решает конфиг (по умолчанию — писать).
     manifest: args.noManifest ? false : config.manifest,

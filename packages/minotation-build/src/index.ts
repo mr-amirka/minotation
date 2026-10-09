@@ -112,6 +112,7 @@ export const CORE_OPTION_KEYS = [
   'maxDepthMode',
   'specificityMode',
   'importantMode',
+  'childSelectorMode',
   'onWarning',
   'onError',
 ] as const;
@@ -121,6 +122,7 @@ const OWN_MODE_WARNINGS: Partial<Record<MnWarning['type'], 1>> = {
   'raised-specificity': 1,
   important: 1,
   'max-depth-exceeded': 1,
+  'child-selector': 1,
 };
 
 /** Опции ядра в опциях плагина — на верхнем уровне, без вложенного `mn` (D-034). */

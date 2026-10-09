@@ -45,7 +45,7 @@ import {
   mediaFilterIteratee,
 } from './extractMedia';
 import {
-  importantMessage, maxDepthMessage, specificityMessage,
+  childSelectorMessage, importantMessage, maxDepthMessage, specificityMessage,
 } from './raiseMessages';
 import {
   getCombinator,
@@ -317,6 +317,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     let multiplier: number;
     let suffix: string;
     let essence: string;
+    let childs: string[];
 
     const multiplierMatch = REGEXP_MULTIPLIER.exec(name);
     if (multiplierMatch) {
@@ -337,8 +338,16 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       variantsBase(name, (instance as any).handlerMap || {}),
       suffixesReduce, {} as StrMap<StrMap<number>>,
     );
-    // `!important` (`-i`) виден только в именах эссенций — после разворота групп.
+    // `!important` (`-i`) виден только в именах эссенций — после разворота групп;
+    // дочерний сегмент `>` — в суффиксе (D-041).
     for (suffix in suffixes) { // eslint-disable-line
+      if (suffix.indexOf('>') > -1 && (childs = splitChild(suffix)).length > 1
+        && (instance as any)._raisedToken?.(
+          comboName, 'child-selector',
+          (strict: boolean) => childSelectorMessage('>' + childs.slice(1).join('>'), strict),
+        )) {
+        return [];
+      }
       for (essence in suffixes[suffix]) { // eslint-disable-line
         if (REGEXP_MATCH_IMPORTANT.test(essence)
           && (instance as any)._raisedToken?.(

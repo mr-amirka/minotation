@@ -127,6 +127,34 @@ export function checkOptions(
   }
 }
 
+/**
+ * Проверяет значения списка-опции по перечню допустимых (`excludeGroups: ['bootsrap']`):
+ * неизвестное — ошибка с ближайшим допустимым и перечнем (D-042).
+ *
+ * @param values — значения, как их передал пользователь (уже проверено, что это массив строк)
+ * @param known — допустимые значения
+ * @param where — где проверяем (`presetHints`)
+ * @param option — имя опции (`excludeGroups`)
+ * @param what — что это за значения, во множественном числе (`groups`)
+ *
+ * @example
+ * checkKnownValues(['bootsrap'], ['typos', 'tailwind', 'bootstrap'], 'presetHints', 'excludeGroups', 'groups');
+ * // Error: [minotation] presetHints: unknown value "bootsrap" in "excludeGroups". Did you mean "bootstrap"?
+ * //   Known groups: typos, tailwind, bootstrap
+ */
+export function checkKnownValues(
+  values: string[], known: string[], where: string, option: string, what: string,
+): void {
+  let hint: string | undefined;
+  for (const value of values) {
+    if (known.indexOf(value) < 0) {
+      hint = closest(value, known);
+      throw new Error('[minotation] ' + where + ': unknown value "' + value + '" in "' + option + '". '
+        + (hint ? 'Did you mean "' + hint + '"? ' : '') + 'Known ' + what + ': ' + known.join(', '));
+    }
+  }
+}
+
 /** Логическое значение. */
 export const isBoolean: OptionCheck = (value) => (
   typeof value === 'boolean' ? undefined : 'a boolean'
@@ -215,6 +243,9 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
     'warn', 'silent', 'strict',
   ),
   importantMode: oneOf(
+    'warn', 'silent', 'strict',
+  ),
+  childSelectorMode: oneOf(
     'warn', 'silent', 'strict',
   ),
   selectorPrefix: isString,

@@ -131,7 +131,7 @@ export function presetApp(mn: MnInstance): void {
 | `include` | — | какие файлы сканировать: RegExp, путь, функция или массив |
 | `exclude` | — | какие файлы пропускать; важнее `include` |
 | `skipPartials` | `false` | пропускать файлы-партиалы `_*` |
-| `presets` | стандартный набор | статические пресеты; в стандартном наборе первым — `presetHints` (подсказки о `t0`, `flex`, `text-center`, D-024); свой список заменяет набор целиком |
+| `presets` | стандартный набор | статические пресеты; в стандартном наборе первым — `presetHints` (подсказки о `t0`, `flex`, `text-center`, D-024); точечно — `presetHints({ excludeGroups, excludeHandlers })` в своём списке (D-042); свой список заменяет набор целиком |
 | `presetExtensions` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты (`import './app.mn'`) |
 | `safelist` | `[]` | токены, нужные всегда; группы через пробел |
 | `classVarSuffixes` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
@@ -143,7 +143,8 @@ export function presetApp(mn: MnInstance): void {
 | `maxDepth`, `maxDepthMode` | —, `'warn'` | предел глубины контекстных селекторов (`<N`, `>N`); режим при превышении: `'warn'` — предупреждение с подсказкой, `'silent'` — молчать, `'strict'` — токен не даёт CSS, сборка падает (D-039) |
 | `specificityMode` | `'warn'` | токены с накруткой специфичности `f10*2`: `'warn'` — предупреждение с подсказкой, `'silent'` — молчать, `'strict'` — токен не даёт CSS, сборка падает (D-039) |
 | `importantMode` | `'warn'` | токены с `!important` (`f10-i`) — режимы те же (D-039) |
-| `warningMode` | `'log'` | что делать с предупреждением компиляции: `'log'` — в лог сборки, `'silent'` — молчать, `'error'` — уронить сборку; `maxDepthMode`, `specificityMode`, `importantMode` не затрагивает |
+| `childSelectorMode` | `'warn'` | токены с дочерним селектором `>` (`cF00>1`, `cF00>.child`) — режимы те же (D-041) |
+| `warningMode` | `'log'` | что делать с предупреждением компиляции: `'log'` — в лог сборки, `'silent'` — молчать, `'error'` — уронить сборку; `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode` не затрагивает |
 | `onWarning` | — | колбэк `(warning) => void` на каждое предупреждение, дополнительно к `warningMode` |
 | `onError` | — | обработчик ошибок ядра |
 | `onScannerWarning` | `console.warn` | колбэк сканера: `syntax: true`, а пакета `typescript` нет |

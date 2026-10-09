@@ -147,7 +147,7 @@ function logWarning(warning: MnWarning): void {
 }
 
 /** Случаи со своим режимом `'warn' | 'silent' | 'strict'` (D-039). */
-type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded';
+type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded' | 'child-selector';
 
 /**
  * Предупреждение компиляции, а не `*N`/`-i`/`maxDepth` — только такие роняют сборку
@@ -155,7 +155,7 @@ type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded';
  */
 function isCompileWarning(warning: MnWarning): boolean {
   return warning.type !== 'raised-specificity' && warning.type !== 'important'
-    && warning.type !== 'max-depth-exceeded';
+    && warning.type !== 'max-depth-exceeded' && warning.type !== 'child-selector';
 }
 
 /**
@@ -233,6 +233,7 @@ function minotationProvider(options?: MnOptions) {
       'raised-specificity': settings.specificityMode || 'warn',
       important: settings.importantMode || 'warn',
       'max-depth-exceeded': settings.maxDepthMode || 'warn',
+      'child-selector': settings.childSelectorMode || 'warn',
     };
   }
   /**
@@ -1181,7 +1182,7 @@ function minotationProvider(options?: MnOptions) {
         // глубины разбора значения, где ни токена, ни имени хендлера не видно
         // (см. его JSDoc в `presets/standard.ts`). Здесь они известны —
         // дозаполняем, чтобы предупреждение указывало на конкретный токен.
-        collectWarning({
+        ex.context.silent || collectWarning({
           type: ex.context.warningType || 'parse-error',
           token: ex.context.token || value,
           handler: ex.context.handler || name,

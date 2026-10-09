@@ -159,6 +159,8 @@ describe('вырожденная группа вариантов в значен
     const warnings: MnWarning[] = [];
     const mn: any = minotationProvider({
       onWarning: (w: MnWarning) => warnings.push(w),
+      // Тест не про дочерние селекторы: о них предупреждает childSelectorMode (D-041).
+      childSelectorMode: 'silent',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);

@@ -63,11 +63,11 @@ describe('presetHints — подсказки', () => {
     expect(warnings).toEqual([expect.objectContaining({
       type: 'hint',
       token: 't0',
-      message: 'presetHints: "t0" gives no CSS — did you mean "st0"?',
+      message: 'presetHints[typos]: "t0" gives no CSS — did you mean "st0"?',
     }), expect.objectContaining({
       type: 'hint',
       token: 'l10',
-      message: 'presetHints: "l10" gives no CSS — did you mean "sl10"?',
+      message: 'presetHints[typos]: "l10" gives no CSS — did you mean "sl10"?',
     })]);
   });
 
@@ -76,9 +76,9 @@ describe('presetHints — подсказки', () => {
       warnings, 
     } = run('flex text-center justify-content-between');
     expect(warnings.map((w) => w.message)).toEqual([
-      'presetHints: "flex" gives no CSS — in minotation it is "dF"',
-      'presetHints: "text-center" gives no CSS — in minotation it is "taC"',
-      'presetHints: "justify-content-between" gives no CSS — in minotation it is "jcSB"',
+      'presetHints[tailwind]: "flex" gives no CSS — in minotation it is "dF"',
+      'presetHints[bootstrap, tailwind]: "text-center" gives no CSS — in minotation it is "taC"',
+      'presetHints[bootstrap]: "justify-content-between" gives no CSS — in minotation it is "jcSB"',
     ]);
   });
 
@@ -86,7 +86,7 @@ describe('presetHints — подсказки', () => {
     const {
       warnings, 
     } = run('text-muted');
-    expect(warnings.map((w) => w.message)).toEqual(['presetHints: "text-muted" gives no CSS — it looks like a class of another CSS framework,'
+    expect(warnings.map((w) => w.message)).toEqual(['presetHints[bootstrap, tailwind]: "text-muted" gives no CSS — it looks like a class of another CSS framework,'
         + ' and minotation has no such token']);
   });
 
@@ -130,7 +130,7 @@ describe('presetHints — подсказки', () => {
       },
     );
     expect((error as Error).name).toBe('MnWarningError');
-    expect((error as Error).message).toContain('presetHints: "t0" gives no CSS');
+    expect((error as Error).message).toContain('presetHints[typos]: "t0" gives no CSS');
   });
 });
 
@@ -150,7 +150,7 @@ describe('presetHints — таблицы', () => {
   let suffix: string;
   for (name in HINTS.equivalents) { // eslint-disable-line
     for (suffix in HINTS.equivalents[name]) { // eslint-disable-line
-      equivalents.push([name + suffix, HINTS.equivalents[name][suffix]]);
+      equivalents.push([name + suffix, HINTS.equivalents[name][suffix][0]]);
     }
   }
 
@@ -169,5 +169,66 @@ describe('presetHints — таблицы', () => {
       css, 
     } = run(HINTS.typos[typo] + '0');
     expect(hasOwnRule(css, HINTS.typos[typo] + '0')).toBe(true);
+  });
+});
+
+describe('presetHints — фабрика: исключения групп и обработчиков (D-042)', () => {
+  test('excludeGroups: подсказка молчит, если исключена хоть одна её группа', () => {
+    const {
+      warnings, css, 
+    } = run('text-center flex justify-content-between t0', [presetHints({
+      excludeGroups: ['bootstrap'],
+    }), ...STANDARD]);
+    // text-center — и Bootstrap, и Tailwind: Bootstrap подключён, значит класс работает.
+    expect(warnings.map((w) => w.token)).toEqual(['flex', 't0']);
+    expect(hasOwnRule(css, 'text-center')).toBe(false);
+  });
+
+  test('excludeGroups: typos — ловушки опечаток не регистрируются', () => {
+    const {
+      warnings, 
+    } = run('t0 l0 flex', [presetHints({
+      excludeGroups: ['typos'],
+    }), ...STANDARD]);
+    expect(warnings.map((w) => w.token)).toEqual(['flex']);
+  });
+
+  test('excludeHandlers: обработчик не регистрируется', () => {
+    const {
+      warnings, 
+    } = run('flex text-center t0', [presetHints({
+      excludeHandlers: ['text', 't'],
+    }), ...STANDARD]);
+    expect(warnings.map((w) => w.token)).toEqual(['flex']);
+  });
+
+  test('фабрика без опций — как пресет', () => {
+    const {
+      warnings, 
+    } = run('flex', [presetHints({}), ...STANDARD]);
+    expect(warnings.map((w) => w.token)).toEqual(['flex']);
+  });
+
+  test('неизвестная группа — ошибка с ближайшей и перечнем', () => {
+    expect(() => presetHints({
+      excludeGroups: ['bootsrap' as never],
+    })).toThrow('[minotation] presetHints: unknown value "bootsrap" in "excludeGroups". Did you mean "bootstrap"?'
+      + ' Known groups: typos, tailwind, bootstrap');
+  });
+
+  test('неизвестный обработчик без похожих — перечень', () => {
+    expect(() => presetHints({
+      excludeHandlers: ['container'],
+    })).toThrow('[minotation] presetHints: unknown value "container" in "excludeHandlers". Known handlers: '
+      + HINTS.handlers.join(', '));
+  });
+
+  test('неизвестная опция и не тот тип — ошибка проверки опций', () => {
+    expect(() => presetHints({
+      exclude: ['bootstrap'],
+    } as never)).toThrow('[minotation] presetHints: unknown option "exclude".');
+    expect(() => presetHints({
+      excludeGroups: 'bootstrap',
+    } as never)).toThrow('option "excludeGroups" expects an array of strings, got string "bootstrap"');
   });
 });

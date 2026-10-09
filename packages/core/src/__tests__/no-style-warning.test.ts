@@ -24,6 +24,8 @@ function compile(token: string): { css: string;
     onWarning: (w: MnWarning) => {
       warnings.push(w);
     },
+    // Тест не про дочерние селекторы: о них предупреждает childSelectorMode (D-041).
+    childSelectorMode: 'silent',
   });
   mn.setPresets([
     presetStandard,

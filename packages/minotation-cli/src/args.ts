@@ -38,6 +38,8 @@ export interface CliArgs {
   specificityMode?: 'warn' | 'silent' | 'strict';
   /** Что делать с `!important` (`-i`): `warn`, `silent`, `strict` (D-039). */
   importantMode?: 'warn' | 'silent' | 'strict';
+  /** Что делать с дочерними селекторами `>`: `warn`, `silent`, `strict` (D-041). */
+  childSelectorMode?: 'warn' | 'silent' | 'strict';
   /** Не разбирать JS/TS парсером — только текстовый поиск. */
   noSyntax: boolean;
   /** Пропускать файлы-партиалы `_*` (D-027). */
@@ -107,6 +109,7 @@ const OPTIONS: Record<string, keyof CliArgs> = {
   '--warning-mode': 'warningMode',
   '--specificity-mode': 'specificityMode',
   '--important-mode': 'importantMode',
+  '--child-selector-mode': 'childSelectorMode',
   '--include': 'include',
   '--exclude': 'exclude',
 };
@@ -157,6 +160,8 @@ export function parseArgs(argv: string[]): CliArgs {
     || raise('Option "--specificity-mode" expects warn, silent or strict, got "' + args.specificityMode + '"');
   args.importantMode === undefined || RAISE_MODES[args.importantMode]
     || raise('Option "--important-mode" expects warn, silent or strict, got "' + args.importantMode + '"');
+  args.childSelectorMode === undefined || RAISE_MODES[args.childSelectorMode]
+    || raise('Option "--child-selector-mode" expects warn, silent or strict, got "' + args.childSelectorMode + '"');
   return args;
 }
 
@@ -200,6 +205,8 @@ Options:
                          silent, strict (no CSS, fail the build)
       --important-mode <m>
                          !important tokens (f10-i): warn (default), silent, strict
+      --child-selector-mode <m>
+                         child selector tokens (cF00>1): warn (default), silent, strict
       --no-syntax        do not parse JS/TS, text search only
       --skip-partials    skip partial files whose name starts with _
       --no-manifest      do not write mn-manifest.json next to the CSS

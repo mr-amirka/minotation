@@ -90,7 +90,7 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 | `presetMedias` | Медиа-запросы: `m`/`d` (mobile/desktop), `mouse`, `dark` |
 | `presetNormalize` | Лёгкий сброс (box-sizing, margin, img) |
 | `presetMain` | Полный CSS-сброс (аналог normalize.css) |
-| `presetHints` | Подсказки вместо молчания: `t0` → «did you mean `st0`?», `flex` → «в minotation это `dF`», `text-center` → `taC`. Подключать первым — пресет ниже перекрывает его хендлеры; убрать подсказки — не подключать (D-024) |
+| `presetHints` | Подсказки вместо молчания: `t0` → «did you mean `st0`?», `flex` → «в minotation это `dF`», `text-center` → `taC`. Подключать первым — пресет ниже перекрывает его хендлеры. Точечно — фабрикой: `presetHints({ excludeGroups: ['bootstrap'], excludeHandlers: ['flex'] })`; группы — `typos`, `tailwind`, `bootstrap` (D-024, D-042) |
 | `presetPrefixes` | Опциональные `-webkit-`/`-moz-` дубли для заданного списка свойств (`transform`, `flexDirection`, `appearance`, …) |
 
 ## API
@@ -112,6 +112,7 @@ const mn = minotationProvider({
   maxDepthMode: 'warn',            // 'warn' | 'silent' | 'strict' — что делать при превышении
   specificityMode: 'warn',         // 'warn' | 'silent' | 'strict' — токены f10*2 (накрутка специфичности)
   importantMode: 'warn',           // 'warn' | 'silent' | 'strict' — токены f10-i (!important)
+  childSelectorMode: 'warn',       // 'warn' | 'silent' | 'strict' — токены cF00>1 (дочерний селектор)
 });
 ```
 

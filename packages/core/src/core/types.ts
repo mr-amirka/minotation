@@ -215,6 +215,11 @@ export class MnParseError extends Error {
        * (D-039): ловящая сторона только обрывает разбор, в `warnings$` не кладёт.
        */
       forbidden?: boolean;
+      /**
+       * Токен не даёт CSS и сообщать о нём не нужно — подсказка из исключённой группы
+       * `presetHints` (D-042). В `warnings$` не идёт.
+       */
+      silent?: boolean;
     }) {
     super(message);
     this.name = 'MnParseError';
@@ -249,7 +254,7 @@ export class MnParseError extends Error {
  * {@link MnOptions.importantMode}), `warningMode` на них не влияет.
  */
 export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'invalid-css-value'
-  | 'unregistered-state' | 'raised-specificity' | 'important' | 'hint';
+  | 'unregistered-state' | 'raised-specificity' | 'important' | 'hint' | 'child-selector';
 
 /**
  * `'hint'` — класс, которого нет в нотации, но который похож на опечатку или на класс
@@ -358,6 +363,14 @@ export interface MnOptions {
    * @default 'warn'
    */
   importantMode?: MnRaiseMode;
+  /**
+   * Токены с дочерним сегментом `>` (`cF00>1`, `cF00>.child`) — стилизуют элементы,
+   * которыми компонент не владеет (D-041). Режимы те же, что у {@link specificityMode};
+   * `warningMode` на этот случай не влияет. Контекст предков `<` не затрагивается —
+   * его ограничивают {@link maxDepth}/{@link maxDepthMode}.
+   * @default 'warn'
+   */
+  childSelectorMode?: MnRaiseMode;
   selectorPrefix?: string;
   /**
    * `true` — рядом с `rgba`-значением выводить запасное непрозрачное

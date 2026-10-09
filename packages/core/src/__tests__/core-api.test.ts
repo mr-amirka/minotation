@@ -17,6 +17,9 @@ import {
   MnWarningError as MnWarningErrorType,
   MnForbiddenTokenError,
 } from '../core/types';
+import {
+  maxDepthMessage,
+} from '../selectorsCompileProvider/raiseMessages';
 import presetSynonyms from '../presets/synonyms';
 import presetMedias from '../presets/medias';
 import type {
@@ -134,10 +137,9 @@ describe('mn — предупреждения и maxDepth', () => {
 
     expect(warnings.map((w) => w.type)).toContain('max-depth-exceeded');
     // Сообщение объясняет, что делать, как разрешить и как запретить (D-039).
-    expect(warnings.find((w) => w.type === 'max-depth-exceeded')!.message).toBe('Context selector depth 5 exceeds maxDepth 2: a long ancestor chain breaks as soon as the'
-        + ' markup in between changes — put a class on a closer ancestor instead.'
-        + ' To allow such depth: raise maxDepth; to hide this warning: maxDepthMode: \'silent\';'
-        + ' to forbid such tokens: maxDepthMode: \'strict\'.');
+    expect(warnings.find((w) => w.type === 'max-depth-exceeded')!.message).toBe(maxDepthMessage(
+      5, 2, false,
+    ));
     expect(cssOf(mn)).toContain('padding:10px');
   });
 

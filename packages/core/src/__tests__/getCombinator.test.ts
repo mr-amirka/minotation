@@ -13,6 +13,9 @@ import {
 import {
   MnParseError, 
 } from '../core/types';
+import {
+  maxDepthMessage,
+} from '../selectorsCompileProvider/raiseMessages';
 
 function makeDepthCheck(over: Partial<MnDepthCheck> = {}): MnDepthCheck & { calls: Array<[number, number]> } {
   const calls: Array<[number, number]> = [];
@@ -102,10 +105,9 @@ describe('getCombinator', () => {
     expect(error).toBeInstanceOf(MnParseError);
     expect((error as MnParseError).name).toBe('MnParseError');
     // Сообщение объясняет, что делать и как разрешить (D-039).
-    expect((error as MnParseError).message).toBe('Context selector depth 5 exceeds maxDepth 3'
-      + ' (maxDepthMode: \'strict\'), the token gives no CSS: a long ancestor chain breaks as soon'
-      + ' as the markup in between changes — put a class on a closer ancestor instead.'
-      + ' To allow such tokens: raise maxDepth or set maxDepthMode: \'warn\'.');
+    expect((error as MnParseError).message).toBe(maxDepthMessage(
+      5, 3, true,
+    ));
     expect((error as MnParseError).context).toEqual({
       token: 'testToken',
       handler: '',

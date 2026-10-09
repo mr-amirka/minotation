@@ -1930,17 +1930,16 @@ mnAstro({ specificityMode: 'strict', importantMode: 'silent' });
 ```
 
 ```
-[minotation] f10*2: Raising specificity ("*2") usually means components fight over the same
-  styles — override a component's tokens with mne()/mnClass() instead of outweighing them.
-  To hide this warning: specificityMode: 'silent'; to forbid such tokens: specificityMode: 'strict'.
+[minotation] f10*2: Specificity is raised ("*2") — this may mean that component styles override
+  each other. To hide this warning: specificityMode: 'silent'; to forbid such tokens: specificityMode: 'strict'.
 
 MnForbiddenTokenError: MN: 1 forbidden token(s):
   f10*2: Raising specificity ("*2") is forbidden (specificityMode: 'strict'), the token gives
-  no CSS — remove "*2" and override the component's tokens with mne()/mnClass(), or allow it:
-  specificityMode: 'warn'.
+  no CSS. To allow it: specificityMode: 'warn'.
 ```
 
-Как переопределять токены компонента без накрутки — раздел про `mne`/`mnClass` выше.
+Тон сообщений нейтральный: такая запись может быть осознанным решением. Как
+переопределять токены компонента без накрутки — раздел про `mne`/`mnClass` выше.
 
 ---
 

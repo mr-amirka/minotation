@@ -14,21 +14,16 @@ import type {
 import {
   selectorsCompileProvider,
 } from '../selectorsCompileProvider';
+import {
+  childSelectorMessage, importantMessage, maxDepthMessage, specificityMessage,
+} from '../selectorsCompileProvider/raiseMessages';
 
 // Экземпляр ядра нетипизирован снаружи (`checkByAttrs`, `recompile`), как в core-api.test.ts.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const SPECIFICITY_WARN = 'Raising specificity ("*2") usually means components fight over the same'
-  + ' styles — override a component\'s tokens with mne()/mnClass() instead of outweighing them.'
-  + ' To hide this warning: specificityMode: \'silent\'; to forbid such tokens: specificityMode: \'strict\'.';
-const SPECIFICITY_STRICT = 'Raising specificity ("*2") is forbidden (specificityMode: \'strict\'), the token'
-  + ' gives no CSS — remove "*2" and override the component\'s tokens with mne()/mnClass(),'
-  + ' or allow it: specificityMode: \'warn\'.';
-const IMPORTANT_WARN = '"!important" ("-i") overrides everything, including what the component itself controls'
-  + ' — override a component\'s tokens with mne()/mnClass() instead.'
-  + ' To hide this warning: importantMode: \'silent\'; to forbid such tokens: importantMode: \'strict\'.';
-const IMPORTANT_STRICT = '"!important" ("-i") is forbidden (importantMode: \'strict\'), the token gives no CSS'
-  + ' — remove "-i" and override the component\'s tokens with mne()/mnClass(),'
-  + ' or allow it: importantMode: \'warn\'.';
+const SPECIFICITY_WARN = specificityMessage('*2', false);
+const SPECIFICITY_STRICT = specificityMessage('*2', true);
+const IMPORTANT_WARN = importantMessage(false);
+const IMPORTANT_STRICT = importantMessage(true);
 
 /** Компилирует токены; возвращает CSS, предупреждения и брошенную ошибку. */
 function run(tokens: string, options: MnOptions = {}) {
@@ -220,11 +215,8 @@ describe('selectorsCompileProvider без ядра', () => {
 });
 
 describe('childSelectorMode — дочерний селектор > (D-041)', () => {
-  const CHILD_WARN = 'Child selector (">1") styles elements the component does not own'
-    + ' — put the class on the child itself instead.'
-    + ' To hide this warning: childSelectorMode: \'silent\'; to forbid such tokens: childSelectorMode: \'strict\'.';
-  const CHILD_STRICT = 'Child selector (">.child") is forbidden (childSelectorMode: \'strict\'), the token gives no CSS'
-    + ' — put the class on the child itself, or allow it: childSelectorMode: \'warn\'.';
+  const CHILD_WARN = childSelectorMessage('>1', false);
+  const CHILD_STRICT = childSelectorMessage('>.child', true);
 
   test('по умолчанию warn: CSS есть, предупреждение с подсказкой', () => {
     const {
@@ -272,5 +264,34 @@ describe('childSelectorMode — дочерний селектор > (D-041)', ()
       warningMode: 'error',
     });
     expect(error).toBeUndefined();
+  });
+});
+
+describe('тексты сообщений — нейтральный тон (замечание владельца 2026-10-09)', () => {
+  test.each([
+    [specificityMessage('*2', false), 'Specificity is raised ("*2") — this may mean that component styles override'
+      + ' each other. To hide this warning: specificityMode: \'silent\'; to forbid such tokens: specificityMode: \'strict\'.'],
+    [specificityMessage('*2', true), 'Raising specificity ("*2") is forbidden (specificityMode: \'strict\'), the token'
+      + ' gives no CSS. To allow it: specificityMode: \'warn\'.'],
+    [importantMessage(false), '"!important" is used ("-i") — this may mean that component styles override each other.'
+      + ' To hide this warning: importantMode: \'silent\'; to forbid such tokens: importantMode: \'strict\'.'],
+    [importantMessage(true), '"!important" ("-i") is forbidden (importantMode: \'strict\'), the token gives no CSS.'
+      + ' To allow it: importantMode: \'warn\'.'],
+    [maxDepthMessage(
+      5, 2, false,
+    ), 'Context selector depth 5 exceeds maxDepth 2 — styles depend on a long chain of'
+      + ' ancestors, which may make the markup harder to change. To allow such depth: raise maxDepth;'
+      + ' to hide this warning: maxDepthMode: \'silent\'; to forbid such tokens: maxDepthMode: \'strict\'.'],
+    [maxDepthMessage(
+      5, 3, true,
+    ), 'Context selector depth 5 exceeds maxDepth 3 (maxDepthMode: \'strict\'), the token'
+      + ' gives no CSS. To allow such tokens: raise maxDepth or set maxDepthMode: \'warn\'.'],
+    [childSelectorMessage('>h2', false), 'Styles are applied to child elements (">h2") — this may indicate that the'
+      + ' design architecture could be improved. To hide this warning: childSelectorMode: \'silent\';'
+      + ' to forbid such tokens: childSelectorMode: \'strict\'.'],
+    [childSelectorMessage('>h2', true), 'Styles for child elements (">h2") are forbidden (childSelectorMode: \'strict\'),'
+      + ' the token gives no CSS. To allow them: childSelectorMode: \'warn\'.'],
+  ])('%s', (actual, expected) => {
+    expect(actual).toBe(expected);
   });
 });

@@ -259,6 +259,12 @@ function collect(
   if (!value) {
     return;
   }
+  if (typeof value === 'object') {
+    collectFlags(
+      seen, output, value as Record<string, unknown>,
+    );
+    return;
+  }
   // Обход С КОНЦА без `split`: массив подстрок здесь — аллокация на каждый вызов,
   // а `mne` зовётся на каждый рендер. Границы слов ищем сами, наружу уходят только
   // те подстроки, которые действительно попали в результат.
@@ -296,19 +302,45 @@ function collect(
 }
 
 /**
+ * Объект флагов `{ классы: условие }`, как у `classnames` (D-040): ключи с истинным
+ * значением — слой переопределения. Ключи обходятся С КОНЦА, как и токены строки:
+ * правый ключ важнее левого.
+ */
+function collectFlags(
+  seen: Record<string, number>, output: string[], flags: Record<string, unknown>,
+): void {
+  const keys = Object.keys(flags);
+  let i = keys.length;
+  while (i--) {
+    flags[keys[i]] && collect(
+      seen, output, keys[i],
+    );
+  }
+}
+
+/**
+ * Аргумент {@link mne} и функции из {@link mnClass}: строка токенов или объект флагов
+ * `{ классы: условие }` (D-040). Пустые значения пропускаются — удобно для
+ * `cond && 'p10'`.
+ */
+export type MnClassValue = string | Record<string, unknown> | null | undefined | false;
+
+/**
  * Сливает наборы токенов: каждый следующий аргумент переопределяет предыдущие.
  *
  * @param className — базовый набор
- * @param overrides — переопределения; чем правее, тем выше приоритет
+ * @param overrides — переопределения; чем правее, тем выше приоритет. Строка или
+ *   объект флагов `{ классы: условие }`, как у `classnames` (D-040)
  * @returns строка для атрибута `class`
  * @example
  * mne('f20 dB bgC', 'f24 bg4');        // => 'dB f24 bg4'
  * mne('f20', undefined);               // => 'f20'
  * mne('f20 p10', 'f24@sm');            // => 'f20 p10 f24@sm' (разные контексты)
  * mne('btn f20', 'btn-primary f24');   // => 'btn btn-primary f24'
+ * mne('dB f12', props.className, { cF00: isError, dN: !isOpen }); // флаги — как classnames
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function mne(className?: string | null, ...overrides: Array<string | null | undefined>): string {
+export function mne(className?: MnClassValue, ...overrides: MnClassValue[]): string {
   // `arguments` вместо rest-параметров (конвенция coding.md §6.1): объявленные
   // выше нужны только для сигнатуры и подсказок IDE, массив из них не строится.
   // Наружу `arguments` не передаётся — только элемент: иначе V8 материализует
@@ -334,15 +366,17 @@ export function mne(className?: string | null, ...overrides: Array<string | null
  * компонента.
  *
  * @param className — базовый набор токенов
- * @returns функцию, принимающую переопределения
+ * @returns функцию, принимающую переопределения — строки или объекты флагов (D-040)
  * @example
  * const textAClass = mnClass('f20 dB bgC');
  *
  * export function TextA(props) {
  *   return <div {...props} className={textAClass(props.className)} />;
  * }
+ *
+ * textAClass('cF00', { bar: true, baz: false }); // => 'f20 dB bgC cF00 bar'
  */
-export function mnClass(className?: string | null): (...overrides: Array<string | null | undefined>) => string {
+export function mnClass(className?: string | null): (...overrides: MnClassValue[]) => string {
   // Плоский `[токен, ключ, токен, ключ, …]` — один массив вместо массива пар.
   const base: string[] = [];
   if (className) {

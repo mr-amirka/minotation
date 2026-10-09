@@ -63,7 +63,7 @@ for (const warning of collector.takeWarnings()) {
 | `include` | `MnFileMatcher` | — | какие файлы сканировать вместо `extensions`: RegExp, путь, функция или массив |
 | `exclude` | `MnFileMatcher` | — | какие файлы пропускать; важнее `include` |
 | `skipPartials` | `boolean` | `false` | пропускать файлы-партиалы `_*` (D-027) |
-| `presets` | `MnPreset[]` | стандартный набор | статические пресеты |
+| `presets` | `MnPreset[]` | стандартный набор | статические пресеты; стандартный набор начинается с `presetHints` (D-024) |
 | `presetExtensions` | `string[]` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты (`import './app.mn'`) |
 | `safelist` | `string[]` | `[]` | токены, нужные всегда; группы через пробел: `['crP taL vaT']` |
 | `classVarSuffixes` | `string[]` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |

@@ -7,6 +7,7 @@ import { join } from 'path';
 import type { Compiler } from 'webpack';
 import { Compilation } from 'webpack';
 import {
+  presetHints,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -41,6 +42,8 @@ export const MN_CSS_REQUEST = 'minotation-webpack/mn.css';
 const REGEXP_MN_CSS = /[\\/]minotation-(?:webpack|next)[\\/]mn\.css$/;
 
 const DEFAULT_PRESETS: Array<(mn: MnInstance) => void> = [
+  // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
+  presetHints,
   presetStandard,
   presetSynonyms,
   presetMedias,

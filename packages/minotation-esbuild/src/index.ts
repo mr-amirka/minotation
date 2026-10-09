@@ -1,6 +1,7 @@
 import type { Plugin, PluginBuild } from 'esbuild';
 import type { MnWarning } from 'minotation';
 import {
+  presetHints,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -139,6 +140,8 @@ export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
     // Опции целиком; ниже — то, что плагин подставляет сам.
     ...options,
     presets: options.presets || [
+      // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
+      presetHints,
       presetStandard,
       presetSynonyms,
       presetMedias,

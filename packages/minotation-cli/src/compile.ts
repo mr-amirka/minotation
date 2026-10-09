@@ -16,6 +16,7 @@ import {
   join, resolve,
 } from 'node:path';
 import {
+  presetHints,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -256,6 +257,8 @@ export function compile(settings: CompileSettings): CompileResult {
     safelist: settings.safelist,
     entry: settings.entry,
     presets: settings.presets || [
+      // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
+      presetHints,
       presetStandard,
       presetSynonyms,
       presetMedias,

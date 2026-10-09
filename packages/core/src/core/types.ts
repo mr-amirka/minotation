@@ -249,8 +249,13 @@ export class MnParseError extends Error {
  * {@link MnOptions.importantMode}), `warningMode` на них не влияет.
  */
 export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'invalid-css-value'
-  | 'unregistered-state' | 'raised-specificity' | 'important';
+  | 'unregistered-state' | 'raised-specificity' | 'important' | 'hint';
 
+/**
+ * `'hint'` — класс, которого нет в нотации, но который похож на опечатку или на класс
+ * другой системы (`t0`, `flex`); выдаёт пресет `presetHints` (D-024). Подчиняется
+ * `warningMode`, как обычное предупреждение.
+ */
 /** Что делать с токеном `*N` или `-i` (D-039). */
 export type MnRaiseMode = 'warn' | 'silent' | 'strict';
 

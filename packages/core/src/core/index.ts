@@ -675,7 +675,8 @@ function minotationProvider(options?: MnOptions) {
   let $$stylesMap: Record<string, MnStyleEntry> = $$data.stylesMap = {};
   let $$assigned: Record<string, Record<string, Record<string, number>>> = $$data.assigned = {};
   let $$media: Record<string, MnMediaEntry> = mn.media = settings.media || {};
-  let $$handlerMap: Record<string, ((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number }> = mn.handlerMap = {};
+  let $$handlerMap: Record<string, ((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number;
+    hint?: number }> = mn.handlerMap = {};
   let $$force: number;
   let $$selectorPrefixes: string[];
   let $$altColor: boolean;
@@ -1112,7 +1113,8 @@ function minotationProvider(options?: MnOptions) {
     let name = '';
     let ni: string | undefined;
     let suffix = '';
-    let handle: (((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number }) | undefined;
+    let handle: (((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number;
+      hint?: number }) | undefined;
     let params: MnEssenceParams;
     let essence: MnEssenceRaw | void | 0;
     let err: Error;
@@ -1134,9 +1136,10 @@ function minotationProvider(options?: MnOptions) {
         // (`sr-only` → `s`, `mt-auto` → `mt`), пропускается молча — как и
         // любой другой класс без тега. Иначе хендлер бракует остаток, и под
         // `warningMode: 'error'` падает вся сборка.
-        (handle = REGEXP_FOREIGN_KEBAB.test(suffix)
-          ? undefined as any
-          : $$handlerMap[name])
+        // Исключение — хендлер-ловушка пресета подсказок (`hint`, D-024): ему
+        // kebab-суффикс и нужен (`text-center` → «в minotation это taC»).
+        (handle = $$handlerMap[name])
+          && (!REGEXP_FOREIGN_KEBAB.test(suffix) || handle.hint)
           ? (
             params = {
               name: name,
@@ -1179,7 +1182,7 @@ function minotationProvider(options?: MnOptions) {
         // (см. его JSDoc в `presets/standard.ts`). Здесь они известны —
         // дозаполняем, чтобы предупреждение указывало на конкретный токен.
         collectWarning({
-          type: 'parse-error',
+          type: ex.context.warningType || 'parse-error',
           token: ex.context.token || value,
           handler: ex.context.handler || name,
           arg: ex.context.arg || suffix,

@@ -573,3 +573,59 @@ describe('кеш ключей (2026-09-25)', () => {
       .toBe('py7 px12 bg--ink c--bg');
   });
 });
+
+describe('mne / mnClass — объект флагов, как classnames (D-040)', () => {
+  test('ключи с истинным значением добавляются, с ложным — нет', () => {
+    expect(mne('dB f12', {
+      bar: true,
+      baz: false,
+    })).toBe('dB f12 bar');
+    expect(mne('foo', {
+      bar: 1,
+      baz: 0,
+      qux: '',
+      quux: 'yes',
+      nil: null,
+    })).toBe('foo bar quux');
+  });
+
+  test('флаги — слой переопределения: перекрывают токены левее', () => {
+    expect(mne('cF00 p10', {
+      c0F0: true,
+    })).toBe('p10 c0F0');
+    // Правее флагов — строка: она важнее.
+    expect(mne(
+      'p10', {
+        p20: true,
+      }, 'p30',
+    )).toBe('p30');
+  });
+
+  test('правый ключ важнее левого; ключ — несколько токенов', () => {
+    expect(mne('', {
+      p10: true,
+      p20: true,
+    })).toBe('p20');
+    expect(mne('dB', {
+      'f12 cF00': true,
+    })).toBe('dB f12 cF00');
+  });
+
+  test('пустые значения и false пропускаются', () => {
+    const open = false;
+    expect(mne(
+      'dB', undefined, null, open && 'dN', {},
+    )).toBe('dB');
+  });
+
+  test('mnClass: флаги в возвращённой функции', () => {
+    const someClass = mnClass('dB f12');
+    expect(someClass('cF00', {
+      bar: true,
+      baz: false,
+    })).toBe('dB f12 cF00 bar');
+    expect(someClass({
+      f14: true,
+    })).toBe('dB f14');
+  });
+});

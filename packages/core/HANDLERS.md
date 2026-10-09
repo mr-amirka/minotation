@@ -936,6 +936,16 @@ export function TextA(props) {
 <TextA className="f24 bg4" />   // → class="dB f24 bg4"
 ```
 
+Флаги — как у `classnames`, без отдельной библиотеки (D-040): объект
+`{ классы: условие }` добавляет ключи с истинным значением и, как строка,
+перекрывает токены левее.
+
+```jsx
+mne('dB f12', props.className, { cF00: isError, dN: !isOpen });
+textAClass('cF00', { bar: true, baz: false });   // → 'f20 dB bgC cF00 bar'
+mne('cF00 p10', { c0F0: isOk });                 // isOk → 'p10 c0F0'
+```
+
 Токены конфликтуют, если совпали **тег и контекст** — имя хендлера плюс всё, что
 задаёт, когда и к чему правило применяется:
 

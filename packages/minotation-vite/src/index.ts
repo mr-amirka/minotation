@@ -1,5 +1,6 @@
 import type { ModuleNode, Plugin, ViteDevServer } from 'vite';
 import {
+  presetHints,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -160,6 +161,8 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
     inject: oneOf('inline', 'link', false),
   });
   const staticPresets = options.presets || [
+    // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
+    presetHints,
     presetStandard,
     presetSynonyms,
     presetMedias,

@@ -93,7 +93,7 @@ mnAstro({ attrs: 'class', classVarSuffixes: ['Class', 'Cls'], safelist: ['crP ta
 | `include` | — | какие файлы сканировать: RegExp, путь, функция или массив |
 | `exclude` | — | какие файлы пропускать; важнее `include` |
 | `skipPartials` | `false` | пропускать файлы-партиалы `_*` |
-| `presets` | стандартный набор | статические пресеты |
+| `presets` | стандартный набор | статические пресеты; в стандартном наборе первым — `presetHints` (подсказки о `t0`, `flex`, `text-center`, D-024); свой список заменяет набор целиком |
 | `presetExtensions` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты (`import './app.mn'`) |
 | `safelist` | `[]` | токены, нужные всегда; группы через пробел |
 | `classVarSuffixes` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |

@@ -1,6 +1,7 @@
 import type { Plugin, PluginContext } from 'rollup';
 import type { MnWarning } from 'minotation';
 import {
+  presetHints,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -113,6 +114,8 @@ export function mnRollup(options: MnRollupOptions = {}): Plugin {
     // Опции целиком; ниже — то, что плагин подставляет сам.
     ...options,
     presets: options.presets || [
+      // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
+      presetHints,
       presetStandard,
       presetSynonyms,
       presetMedias,

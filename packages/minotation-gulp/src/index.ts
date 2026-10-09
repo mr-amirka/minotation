@@ -37,6 +37,7 @@ import type {
   MnBuildOptions,
 } from 'minotation-build';
 import {
+  presetHints,
   presetStandard,
   presetSynonyms,
   presetMedias,
@@ -61,6 +62,8 @@ import {
 export type MnGulpOptions = MnBuildOptions;
 
 const DEFAULT_PRESETS = [
+  // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
+  presetHints,
   presetStandard,
   presetSynonyms,
   presetMedias,

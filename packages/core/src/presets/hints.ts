@@ -18,7 +18,7 @@ import {
   MnParseError,
 } from '../core/types';
 import type {
-  MnEssenceParams,
+  MnEssenceParams, MnPresetObject,
 } from '../core/types';
 import {
   checkKnownValues, checkOptions, isStringArray,
@@ -289,8 +289,8 @@ function apply(mn: MnInstance, options: PresetHintsOptions): void {
  * mn.setPresets([presetHints({ excludeGroups: ['bootstrap'], excludeHandlers: ['flex'] }), presetStandard]);
  */
 function presetHints(mn: MnInstance): void;
-function presetHints(options: PresetHintsOptions): (mn: MnInstance) => void;
-function presetHints(arg: MnInstance | PresetHintsOptions): void | ((mn: MnInstance) => void) {
+function presetHints(options: PresetHintsOptions): MnPresetObject;
+function presetHints(arg: MnInstance | PresetHintsOptions): void | MnPresetObject {
   // Инстанс `mn` — функция, опции — объект: так пресет различает два способа вызова.
   if (typeof arg === 'function') {
     apply(arg, {});
@@ -308,7 +308,11 @@ function presetHints(arg: MnInstance | PresetHintsOptions): void | ((mn: MnInsta
   checkKnownValues(
     arg.excludeHandlers || [], HANDLERS, PRESET_NAME, 'excludeHandlers', 'handlers',
   );
-  return (mn: MnInstance) => apply(mn, arg);
+  // Фабрика — пресет-объект с именем: на него можно сослаться в `requires` (D-045).
+  return {
+    name: PRESET_NAME,
+    setup: (mn: MnInstance) => apply(mn, arg),
+  };
 }
 
 export default presetHints;

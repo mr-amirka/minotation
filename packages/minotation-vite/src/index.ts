@@ -11,6 +11,8 @@ import {
 import type { MnInstance, MnWarning } from 'minotation';
 import { checkBuildOptions as checkBuildOptionsImpl, createBuildCollector, createFileFilter, metricsFileName, walkFiles } from 'minotation-build';
 import type { BuildCollector, FileFilter, MnBuildOptions } from 'minotation-build';
+import { asPreset } from 'minotation-build';
+import type { MnPreset } from 'minotation';
 import {
   readFileSync,
   readdirSync,
@@ -92,7 +94,7 @@ function mnEntryOf(id: string): string | undefined {
  * const preset = evalPresetFile('/src/mn/app.mn.ts');
  * if (preset) mn.setPresets([preset]);
  */
-function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
+function evalPresetFile(id: string): MnPreset | null {
   let source: string;
   try {
     source = readFileSync(id, 'utf-8');
@@ -120,7 +122,7 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
     );
     fn(req, mod, mod.exports, dirname(id), id);
     const preset = mod.exports['default'] ?? Object.values(mod.exports).find(v => typeof v === 'function');
-    return typeof preset === 'function' ? (preset as (mn: MnInstance) => void) : null;
+    return asPreset(preset);
   } catch (e) {
     console.error('[mnVite] Failed to evaluate preset file:', id, e);
     return null;

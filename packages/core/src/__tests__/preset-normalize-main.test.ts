@@ -4,8 +4,9 @@
  * Смоук-тесты presetNormalize и presetMain.
  *
  * mn.assign в этих пресетах ссылается на эссенции (lh115%, bxzBB, bgTransparent
- * и т.п.), зарегистрированные presetStandard — поэтому presetStandard обязателен
- * в комбинации, иначе правила молча не срендерятся (essence lookup вернёт пусто).
+ * и т.п.), зарегистрированные presetStandard, а presetMain — ещё и на медиа `@mouse`
+ * из presetMedias. До D-045 без них правила молча не рендерились; теперь пресеты
+ * объявляют `requires`, и неподключённая зависимость — ошибка.
  */
 
 const mnProvider = require('../index').default || require('../index').minotationProvider;
@@ -58,18 +59,23 @@ describe('presetNormalize', () => {
 });
 
 describe('presetMain', () => {
+  test('без presetMedias — ошибка о зависимости (D-045): иначе a{cursor:pointer}@mouse пропадал молча', () => {
+    expect(() => compile([presetStandard, presetMain]))
+      .toThrow('[minotation] presetMain requires "presetMedias", which is not connected.');
+  });
+
   test('компилируется без ошибок вместе с presetStandard', () => {
-    const { errors } = compile([presetStandard, presetMain]);
+    const { errors } = compile([presetStandard, presetMedias, presetMain]);
     expect(errors).toEqual([]);
   });
 
   test('html{-webkit-tap-highlight-color:#000}', () => {
-    const { css } = compile([presetStandard, presetMain]);
+    const { css } = compile([presetStandard, presetMedias, presetMain]);
     expect(css).toContain('-webkit-tap-highlight-color:#000');
   });
 
   test('*, *:before, *:after{box-sizing:border-box}', () => {
-    const { css } = compile([presetStandard, presetMain]);
+    const { css } = compile([presetStandard, presetMedias, presetMain]);
     expect(css).toContain('box-sizing:border-box');
   });
 });

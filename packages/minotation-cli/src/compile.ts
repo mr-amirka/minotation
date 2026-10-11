@@ -28,6 +28,7 @@ import {
 } from 'minotation';
 import type {
   MnInstance, MnWarning, OptionSchema,
+  MnPreset,
 } from 'minotation';
 import {
   BUILD_OPTIONS_SCHEMA, CORE_OPTION_KEYS, createBuildCollector, createFileFilter, createMatcher,
@@ -131,7 +132,7 @@ export interface CompileSettings extends MnCoreOptions {
    */
   ignore?: string[];
   /** Пресеты; по умолчанию стандартный набор. */
-  presets?: Array<(mn: MnInstance) => void>;
+  presets?: MnPreset[];
   /** Токены, которые нужны всегда, даже если их нет в файлах; группы через пробел. */
   safelist?: string[];
   /** Несколько CSS из одного прохода (D-030); `--output` тогда содержит `[name]`. */

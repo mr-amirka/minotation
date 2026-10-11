@@ -28,6 +28,7 @@ import {
   presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
+import type { MnPreset } from 'minotation';
 import { createMnRuntime } from 'minotation-runtime';
 
 const DEFAULT_PRESETS = [presetStandard, presetSynonyms, presetMedias, presetNormalize, presetMain];
@@ -36,7 +37,7 @@ export interface MnIframeProps {
   /** Рендерится внутрь `contentDocument.body` iframe (через `createPortal`). */
   children: ReactNode;
   /** @default [presetStandard, presetSynonyms, presetMedias, presetNormalize, presetMain] */
-  presets?: Array<(mn: MnInstance) => void>;
+  presets?: MnPreset[];
   /** Атрибут `class` внутри iframe. @default 'class' */
   attr?: string;
   className?: string;

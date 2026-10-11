@@ -197,6 +197,13 @@ export const isFunctionArray: OptionCheck = (value) => (
     ? undefined : 'an array of functions'
 );
 
+/** Массив пресетов: функций или пресет-объектов (поля объекта проверяет `setPresets`, D-045). */
+export const isPresetArray: OptionCheck = (value) => (
+  Array.isArray(value) && value.every((item) => typeof item === 'function'
+    || Object.prototype.toString.call(item) === '[object Object]')
+    ? undefined : 'an array of presets (functions or preset objects)'
+);
+
 /** Одно из перечисленных значений: `"log", "silent" or "error"`. */
 export function oneOf(...values: unknown[]): OptionCheck {
   const list = values.map((value) => JSON.stringify(value));
@@ -228,7 +235,7 @@ export function optionsOf(schema: OptionSchema): OptionCheck {
 
 /** Схема опций провайдера ({@link MnOptions}). */
 export const CORE_OPTIONS_SCHEMA: OptionSchema = {
-  presets: isFunctionArray,
+  presets: isPresetArray,
   media: isObject,
   onError: isFunction,
   warningMode: oneOf(

@@ -17,7 +17,7 @@ import {
   tmpdir,
 } from 'node:os';
 import {
-  checkBuildOptions, createAttrsScanner, createBuildCollector, createFileFilter, createTokenCollector,
+  asPreset, checkBuildOptions, createAttrsScanner, createBuildCollector, createFileFilter, createTokenCollector,
   formatFileName, manifestFileName, manifestOf, metricsFileName, parseAttrs, walkFiles,
 } from '../src/index';
 import {
@@ -956,5 +956,22 @@ describe('checkBuildOptions — проверка опций плагина (D-03
       manifest: 1, 
     }, 'mnGulp'))
       .toThrow('option "manifest" expects a boolean or a string, got number 1');
+  });
+});
+
+describe('asPreset — экспорт файла динамического пресета (D-045)', () => {
+  test('функция и пресет-объект — пресет; остальное — null', () => {
+    const fn = () => undefined;
+    const obj = {
+      name: 'presetApp',
+      setup: fn,
+    };
+    expect(asPreset(fn)).toBe(fn);
+    expect(asPreset(obj)).toBe(obj);
+    expect(asPreset({
+      name: 'x',
+    })).toBeNull();
+    expect(asPreset(null)).toBeNull();
+    expect(asPreset(1)).toBeNull();
   });
 });

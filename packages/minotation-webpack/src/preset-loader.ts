@@ -17,6 +17,8 @@
  */
 import type { LoaderDefinitionFunction } from 'webpack';
 import type { MnInstance } from 'minotation';
+import type { MnPreset } from 'minotation';
+import { asPreset } from 'minotation-build';
 import { transformSync } from 'esbuild';
 import { createRequire } from 'module';
 import { dirname } from 'path';
@@ -30,7 +32,7 @@ import { getState } from './state';
  * @returns пресет-функция или `undefined`, если файл ничего такого не экспортирует
  * @throws если файл не транспилируется или падает при исполнении
  */
-export function evalPreset(id: string, source: string): ((mn: MnInstance) => void) | undefined {
+export function evalPreset(id: string, source: string): MnPreset | undefined {
   const loaderName = id.endsWith('.tsx') ? 'tsx' : id.endsWith('.ts') ? 'ts' : 'js';
   const { code } = transformSync(source, {
     loader: loaderName,
@@ -43,7 +45,7 @@ export function evalPreset(id: string, source: string): ((mn: MnInstance) => voi
   const fn = new Function('require', 'module', 'exports', '__dirname', '__filename', code);
   fn(req, mod, mod.exports, dirname(id), id);
   const preset = mod.exports['default'] ?? Object.values(mod.exports).find(v => typeof v === 'function');
-  return typeof preset === 'function' ? preset as (mn: MnInstance) => void : undefined;
+  return asPreset(preset) || undefined;
 }
 
 const presetLoader: LoaderDefinitionFunction = function (source) {

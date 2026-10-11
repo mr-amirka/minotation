@@ -6,55 +6,61 @@
 import {
   MnInstance,
 } from '../types';
+import type {
+  MnPresetObject,
+} from '../core/types';
 
 const WEBKIT = '-webkit-',
   MOZ = '-moz-';
 
-export default (mn: MnInstance) => {
-  const {
-    utils,
-    propertiesStringify,
-  } = mn;
-  const {
-    flags,
-    extend,
-  } = utils;
-  const {
-    prefixedAttrs,
-  } = propertiesStringify;
-  flags([WEBKIT, MOZ], propertiesStringify.prefixes);
+export default {
+  name: 'presetPrefixes',
+  setup: (mn: MnInstance) => {
+    const {
+      utils,
+      propertiesStringify,
+    } = mn;
+    const {
+      flags,
+      extend,
+    } = utils;
+    const {
+      prefixedAttrs,
+    } = propertiesStringify;
+    flags([WEBKIT, MOZ], propertiesStringify.prefixes);
 
-  extend(prefixedAttrs, {
-    appearance: flags([WEBKIT]),
-    overflowScrolling: flags([WEBKIT]),
-  });
+    extend(prefixedAttrs, {
+      appearance: flags([WEBKIT]),
+      overflowScrolling: flags([WEBKIT]),
+    });
 
-  flags([
-    'backdropFilter',
-    'backgroundClip',
-    'transform',
-    'transformStyle',
-    'transitionDuration',
-    'pointerEvents',
-    'userSelect',
-    'filter',
-    'flex',
-    'flexDirection',
-    'flexBasis',
-    'flexWrap',
-    'flexFlow',
-    'flexGrow',
-    'flexShrink',
-    'justifyContent',
-    'alignItems',
-    'alignContent',
-    'alignSelf',
-    'boxPack',
-    'boxDirection',
-    'boxOrient',
-    'order',
-    // 'opacity',
-    'boxSizing',
-    'textSizeAdjust',
-  ], prefixedAttrs);
-};
+    flags([
+      'backdropFilter',
+      'backgroundClip',
+      'transform',
+      'transformStyle',
+      'transitionDuration',
+      'pointerEvents',
+      'userSelect',
+      'filter',
+      'flex',
+      'flexDirection',
+      'flexBasis',
+      'flexWrap',
+      'flexFlow',
+      'flexGrow',
+      'flexShrink',
+      'justifyContent',
+      'alignItems',
+      'alignContent',
+      'alignSelf',
+      'boxPack',
+      'boxDirection',
+      'boxOrient',
+      'order',
+      // 'opacity',
+      'boxSizing',
+      'textSizeAdjust',
+    ], prefixedAttrs);
+  },
+} as MnPresetObject;

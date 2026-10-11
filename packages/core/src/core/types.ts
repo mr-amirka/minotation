@@ -303,9 +303,27 @@ export interface MnWarning {
   error?: MnParseError;
 }
 
+/**
+ * Пресет-объект (D-045): имя, зависимости и режим синтаксиса. Функция-пресет
+ * `(mn) => void` остаётся допустимой — у неё просто нет метаданных.
+ */
+export interface MnPresetObject {
+  /** Уникальное имя: по нему другие пресеты объявляют зависимость. */
+  name: string;
+  /** Имена пресетов, без которых этот не работает. Порядок в списке — любой. */
+  requires?: string[];
+  /** Режим синтаксиса строк, которые регистрирует пресет. Пока — только канонический. */
+  notationMode?: 'context-qualified';
+  /** Регистрация хендлеров, статик, синонимов — как тело функции-пресета. */
+  setup(mn: MnInstance): void;
+}
+
+/** Пресет: функция или пресет-объект с метаданными (D-045). */
+export type MnPreset = ((mn: MnInstance) => void) | MnPresetObject;
+
 /** Опции провайдера */
 export interface MnOptions {
-  presets?: Array<(mn: MnInstance) => void>;
+  presets?: MnPreset[];
   media?: Record<string, MnMediaEntry>;
   onError?: (e: Error) => void;
   /**

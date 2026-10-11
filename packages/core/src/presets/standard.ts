@@ -1676,6 +1676,9 @@ import {
   MnHandler,
   MnHandlerResult,
 } from '../types';
+import type {
+  MnPresetObject,
+} from '../core/types';
 import {
   MnParseError,
 } from '../core/types';
@@ -1684,47 +1687,49 @@ import type {
 } from '../core/types';
 
 
-export default (mn: MnInstance) => {
-  const {
-    utils,
-    setKeyframes,
-  } = mn;
-  const {
-    isDefined,
-    map,
-    mapIn,
-    filter,
-    forIn,
-    forEach,
-    upperFirst,
-    lowerFirst,
-    toUpper,
-    camelToKebabCase,
-    isArray,
-    flags,
-    reduce,
-    size,
-    intval,
-    floatval,
-    color: getColor,
-    colorGetBackground,
-    spaceNormalize,
-    routeParseProvider,
-    indexOf,
-    toFixed,
-  } = utils;
+export default {
+  name: 'presetStandard',
+  setup: (mn: MnInstance) => {
+    const {
+      utils,
+      setKeyframes,
+    } = mn;
+    const {
+      isDefined,
+      map,
+      mapIn,
+      filter,
+      forIn,
+      forEach,
+      upperFirst,
+      lowerFirst,
+      toUpper,
+      camelToKebabCase,
+      isArray,
+      flags,
+      reduce,
+      size,
+      intval,
+      floatval,
+      color: getColor,
+      colorGetBackground,
+      spaceNormalize,
+      routeParseProvider,
+      indexOf,
+      toFixed,
+    } = utils;
 
-  const parseVals = routeParseProvider(PATTERN_VAL);
+    const parseVals = routeParseProvider(PATTERN_VAL);
 
 
 
-  function validateUnit(unit?: string): string | undefined {
-    if (!unit || indexOf(UNITS, unit) > -1) {
-      return unit;
+    function validateUnit(unit?: string): string | undefined {
+      if (!unit || indexOf(UNITS, unit) > -1) {
+        return unit;
+      }
+      throwInvalid('Unit "' + unit + '" is invalid');
     }
-    throwInvalid('Unit "' + unit + '" is invalid');
-  }
-  /**
+    /**
    * Собирает угол для `rotate*()`: число плюс единица угла.
    *
    * Единица не проверялась вовсе — в CSS уходило то, что написано:
@@ -1736,16 +1741,16 @@ export default (mn: MnInstance) => {
    * Поворот измеряется только углом, поэтому список короткий и закрытый;
    * умолчание `deg` сохраняется (`rx45` → `rotateX(45deg)`).
    */
-  function assertAngle(
-    value: string, unit: string | undefined, raw: string,
-  ): string {
-    REGEXP_BARE_NUMBER.test(value) || throwInvalid('Value "' + raw
+    function assertAngle(
+      value: string, unit: string | undefined, raw: string,
+    ): string {
+      REGEXP_BARE_NUMBER.test(value) || throwInvalid('Value "' + raw
       + '" is invalid: rotation is a number');
-    (!unit || indexOf(ANGLE_UNITS, unit) > -1) || throwInvalid('Unit "' + unit
+      (!unit || indexOf(ANGLE_UNITS, unit) > -1) || throwInvalid('Unit "' + unit
       + '" is invalid: rotation is measured in angle units (' + ANGLE_UNITS.join(', ') + ')');
-    return value + (unit || 'deg');
-  }
-  /**
+      return value + (unit || 'deg');
+    }
+    /**
    * Бракует слово, которого хендлер не знает.
    *
    * Разбор значения пропускал ЛЮБОЕ camelCase-слово насквозь, только кебабя
@@ -1764,22 +1769,22 @@ export default (mn: MnInstance) => {
    * @param symonyms — словарь кратких записей хендлера
    * @param keywords — допустимые ключевые слова конкретного свойства
    */
-  function assertKnownWord(
-    value: string,
-    raw: string,
-    symonyms?: Record<string, any>,
-    keywords?: Record<string, 1>,
-  ): string {
-    if (GLOBAL_KEYWORDS[value]
+    function assertKnownWord(
+      value: string,
+      raw: string,
+      symonyms?: Record<string, any>,
+      keywords?: Record<string, 1>,
+    ): string {
+      if (GLOBAL_KEYWORDS[value]
       || (symonyms && symonyms[raw])
       || (keywords && keywords[value])) {
-      return value;
-    }
-    return throwInvalid('Value "' + raw + '" is invalid: expected a number '
+        return value;
+      }
+      return throwInvalid('Value "' + raw + '" is invalid: expected a number '
       + 'with a unit, a variable, calc or a keyword of this property');
-  }
+    }
 
-  /**
+    /**
    * Значение одиночного свойства-длины: либо слово из его списка, либо число с
    * единицей.
    *
@@ -1795,47 +1800,47 @@ export default (mn: MnInstance) => {
    * @param allow — флаги допустимого, см. {@link LENGTH_PERCENT}
    * @param defaultUnit — единица для голого числа
    */
-  /**
+    /**
    * У свойства только процент: ни другой единицы, ни голого нуля.
    *
    * Ноль — особый случай: {@link lengthOrWord} отдаёт его без единицы, как
    * и положено длинам, но `text-size-adjust:0` невалиден.
    */
-  function assertPercentOnly(p: MnEssenceParams): void {
-    (p.num === '0' || (p.unit && p.unit !== '%'))
+    function assertPercentOnly(p: MnEssenceParams): void {
+      (p.num === '0' || (p.unit && p.unit !== '%'))
       && throwInvalid('Value "' + p.suffix + '" is invalid: '
         + 'text-size-adjust takes a percentage');
-  }
-  function lengthOrWord(
-    p: MnEssenceParams,
-    keywords: Record<string, 1>,
-    allow: number,
-    defaultUnit: string,
-    symonyms?: Record<string, string>,
-  ): string {
-    const camel = p.camel;
-    if (camel) {
-      return assertKnownWord(
-        toKebabCase(symonyms && symonyms[camel] || camel),
-        camel, symonyms, keywords,
-      );
     }
-    const num = p.num;
-    if (num == '0') {
-      return num;
-    }
-    const unit = p.unit;
-    unit === '%' && !(allow & LENGTH_PERCENT) && throwInvalid('Value "'
+    function lengthOrWord(
+      p: MnEssenceParams,
+      keywords: Record<string, 1>,
+      allow: number,
+      defaultUnit: string,
+      symonyms?: Record<string, string>,
+    ): string {
+      const camel = p.camel;
+      if (camel) {
+        return assertKnownWord(
+          toKebabCase(symonyms && symonyms[camel] || camel),
+          camel, symonyms, keywords,
+        );
+      }
+      const num = p.num;
+      if (num == '0') {
+        return num;
+      }
+      const unit = p.unit;
+      unit === '%' && !(allow & LENGTH_PERCENT) && throwInvalid('Value "'
       + p.suffix + '" is invalid: percent is not allowed for this property');
-    // Знак здесь не проверяется: все четыре свойства этого пути
-    // (`outline-offset`, `letter-spacing`, `text-size-adjust`,
-    // `font-size-adjust`) отрицательные значения принимают. Появится пятое,
-    // которое не принимает, — проверка добавится вместе с ним, а мёртвой
-    // ветки до тех пор нет.
-    return (p.sign || '') + (num as string) + (validateUnit(unit) || defaultUnit);
-  }
+      // Знак здесь не проверяется: все четыре свойства этого пути
+      // (`outline-offset`, `letter-spacing`, `text-size-adjust`,
+      // `font-size-adjust`) отрицательные значения принимают. Появится пятое,
+      // которое не принимает, — проверка добавится вместе с ним, а мёртвой
+      // ветки до тех пор нет.
+      return (p.sign || '') + (num as string) + (validateUnit(unit) || defaultUnit);
+    }
 
-  /**
+    /**
    * Бракует минус у свойства, которое отрицательных значений не принимает.
    *
    * Флаг `positive` у {@link getVal} был, но доходил только до
@@ -1850,14 +1855,14 @@ export default (mn: MnInstance) => {
    * `width`, `border-width`, `font-size`, `border-radius` — нет. Поэтому
    * решает вызывающая сторона тем же флагом, каким и раньше.
    */
-  function assertSign(
-    sign: string | undefined, positive: number | undefined, suffix: any,
-  ): void {
-    sign === '-' && positive
+    function assertSign(
+      sign: string | undefined, positive: number | undefined, suffix: any,
+    ): void {
+      sign === '-' && positive
       && throwInvalid('Value "' + suffix
         + '" is invalid: negative value is not allowed for this property');
-  }
-  /**
+    }
+    /**
    * Бракует процент у свойства, которое принимает только длину.
    *
    * Процент — отдельный тип значения, и свойства делятся по нему не так, как
@@ -1866,93 +1871,93 @@ export default (mn: MnInstance) => {
    * `b10%` давало `border-width:10%`, а `b1/2` — `border-width:50%` (дробь
    * всегда разворачивается в процент). Браузер такие правила отбрасывает.
    */
-  function assertPercent(noPercent: number | undefined, suffix: any): void {
-    noPercent && throwInvalid('Value "' + suffix
+    function assertPercent(noPercent: number | undefined, suffix: any): void {
+      noPercent && throwInvalid('Value "' + suffix
       + '" is invalid: this property takes a length, percent is not allowed');
-  }
-  function getVal(
-    suffix: any,
-    positive?: number,
-    one?: number,
-    defaultUnit?: string,
-    noOtherName?: number,
-    symonyms?: Record<string, any>,
-    keywords?: Record<string, 1>,
-    noPercent?: number,
-  ): [string, number] {
+    }
+    function getVal(
+      suffix: any,
+      positive?: number,
+      one?: number,
+      defaultUnit?: string,
+      noOtherName?: number,
+      symonyms?: Record<string, any>,
+      keywords?: Record<string, 1>,
+      noPercent?: number,
+    ): [string, number] {
     // Все 6 вызовов getVal в этом файле передают defaultUnit='px' явно —
     // фолбэк недостижим (подтверждено и в v1, 2026-09-23). Параметр остаётся
     // опциональным в сигнатуре (иначе конфликт с предшествующими optional
     // positive/one — TS1016), реальное значение гарантирует вызывающая сторона.
     /* istanbul ignore next */
-    defaultUnit = defaultUnit || 'px';
-    const parts = splitValueParts('' + suffix);
-    const l = parts.length;
-    one && l > 1 && throwInvalid('There must be one parameter');
-    l > 4 && throwInvalid('There should not be more than 4 parameters');
-    const output: string[] = new Array(l);
-    let i = 0;
-    let otherName: string | undefined;
-    let add: string | undefined;
-    let total: string | undefined;
-    let vv: string | undefined;
-    let vva: string | undefined;
-    let num: string | undefined;
-    let val: string;
-    let p: Record<string, any>;
-    let sa: string | undefined;
-    for (; i < l; i++) {
-      parseVals(parts[i], p = {});
-      if (otherName = p.otherName) {
-        noOtherName && throwInvalid();
-        output[i] = assertKnownWord(
-          toKebabCase(symonyms && symonyms[otherName] || otherName),
-          otherName, symonyms, keywords,
-        );
-        continue;
-      }
-      // NOTE: p.vl не работает из-за бага routeParseProvider в fundamentool.
-      // Используем p.num/p.otherName/p.vv как признаки наличия значения.
-      (p.num != null || p.otherName || p.vv) || throwInvalid();
-      num = p.num;
-      vv = p.vv;
-      add = p.add;
-      total = p.total;
-      vva = p.vva;
-      sa = p.sa;
-      val = num == '0'
-        ? num
-        : (
-          vv ? (
-            (p.env ? 'env(' : 'var(') + vv
+      defaultUnit = defaultUnit || 'px';
+      const parts = splitValueParts('' + suffix);
+      const l = parts.length;
+      one && l > 1 && throwInvalid('There must be one parameter');
+      l > 4 && throwInvalid('There should not be more than 4 parameters');
+      const output: string[] = new Array(l);
+      let i = 0;
+      let otherName: string | undefined;
+      let add: string | undefined;
+      let total: string | undefined;
+      let vv: string | undefined;
+      let vva: string | undefined;
+      let num: string | undefined;
+      let val: string;
+      let p: Record<string, any>;
+      let sa: string | undefined;
+      for (; i < l; i++) {
+        parseVals(parts[i], p = {});
+        if (otherName = p.otherName) {
+          noOtherName && throwInvalid();
+          output[i] = assertKnownWord(
+            toKebabCase(symonyms && symonyms[otherName] || otherName),
+            otherName, symonyms, keywords,
+          );
+          continue;
+        }
+        // NOTE: p.vl не работает из-за бага routeParseProvider в fundamentool.
+        // Используем p.num/p.otherName/p.vv как признаки наличия значения.
+        (p.num != null || p.otherName || p.vv) || throwInvalid();
+        num = p.num;
+        vv = p.vv;
+        add = p.add;
+        total = p.total;
+        vva = p.vva;
+        sa = p.sa;
+        val = num == '0'
+          ? num
+          : (
+            vv ? (
+              (p.env ? 'env(' : 'var(') + vv
               + (p.va ? (validateUnit(p.vu) ? '' : defaultUnit) : '') + ')'
-          ) : (assertSign(
-            p.sign, positive, suffix,
-          ), p.sign || '') + (
-            total
-              ? (assertPercent(noPercent, suffix),
-              toFixed(100 * floatNormalize(num, positive) / floatNormalize(total, positive)) + '%')
-              : (p.unit === '%' && assertPercent(noPercent, suffix),
-              toFixed(num as string) + validateUnit(p.unit || defaultUnit))
-          )
-        );
-      output[i] = add ? calc(
-        val,
-        sa as string,
-        vva
-          ? ((p.nva ? 'env(' : 'var(') + vva
+            ) : (assertSign(
+              p.sign, positive, suffix,
+            ), p.sign || '') + (
+              total
+                ? (assertPercent(noPercent, suffix),
+                toFixed(100 * floatNormalize(num, positive) / floatNormalize(total, positive)) + '%')
+                : (p.unit === '%' && assertPercent(noPercent, suffix),
+                toFixed(num as string) + validateUnit(p.unit || defaultUnit))
+            )
+          );
+        output[i] = add ? calc(
+          val,
+          sa as string,
+          vva
+            ? ((p.nva ? 'env(' : 'var(') + vva
               + (p.vaa ? (validateUnit(p.vua) ? '' : defaultUnit) : '') + ')')
-          : ('' + floatNormalize(p.addv)
+            : ('' + floatNormalize(p.addv)
               + validateUnit(p.addu || defaultUnit)),
-      ) : val;
+        ) : val;
+      }
+      return [output.join(' '), l - 1];
     }
-    return [output.join(' '), l - 1];
-  }
 
-  function toKebabCase(v: string): string {
-    return camelToKebabCase(lowerFirst(v));
-  }
-  /**
+    function toKebabCase(v: string): string {
+      return camelToKebabCase(lowerFirst(v));
+    }
+    /**
    * Нормализует «свободное» значение хендлера, которое не разбирается общим
    * `getVal`: `_` — разделитель частей (`\_` — литеральный символ), каждая
    * часть ОТДЕЛЬНО проверяется на CSS-переменную (`--name` → `var(--name)`,
@@ -1971,16 +1976,16 @@ export default (mn: MnInstance) => {
    * `ol_3px_solid_--marker` начинается с `_` и целиком уходил в сырой режим,
    * давая невалидное `outline:3px solid --marker` (2026-09-23).
    */
-  function valueNormalize(v: string): string {
-    const raw = v[0] == '_';
-    const parts = splitValueParts(
-      raw ? snakeLeftTrim(v) : v, 1, 1,
-    );
-    let i = parts.length;
-    let part: string;
-    while (i--) {
-      part = parts[i];
-      parts[i] = cssVarValue(part)
+    function valueNormalize(v: string): string {
+      const raw = v[0] == '_';
+      const parts = splitValueParts(
+        raw ? snakeLeftTrim(v) : v, 1, 1,
+      );
+      let i = parts.length;
+      let part: string;
+      while (i--) {
+        part = parts[i];
+        parts[i] = cssVarValue(part)
         || varListValue(part)
         // Строка в кавычках — готовое значение, кебабить её нельзя:
         // `qRU` давало `'\00-a-b'` вместо `'\00AB'` (заглавные буквы
@@ -1988,12 +1993,12 @@ export default (mn: MnInstance) => {
         || ((raw || part[0] === '"' || part[0] === '\'')
           ? part
           : toKebabCase(part));
+      }
+      // `\0` возвращается в `_` ТОЛЬКО после spaceNormalize — иначе та превратила
+      // бы его в пробел уже внутри имени переменной (см. splitValueParts).
+      return spaceNormalize(parts.join('_')).replace(REGEXP_VAR_UNDERSCORE, '_');
     }
-    // `\0` возвращается в `_` ТОЛЬКО после spaceNormalize — иначе та превратила
-    // бы его в пробел уже внутри имени переменной (см. splitValueParts).
-    return spaceNormalize(parts.join('_')).replace(REGEXP_VAR_UNDERSCORE, '_');
-  }
-  /**
+    /**
    * Разворачивает список значений через запятую, когда имя переменной в нём
    * явно завершено точкой с запятой: `--a;,--b` → `var(--a),var(--b)`.
    *
@@ -2009,32 +2014,32 @@ export default (mn: MnInstance) => {
    * @returns `undefined`, если это не список — тогда часть обрабатывается как
    *   раньше.
    */
-  function varListValue(part: string): string | undefined {
-    if (part.indexOf(';') < 0 || part.indexOf(',') < 0) {
-      return;
+    function varListValue(part: string): string | undefined {
+      if (part.indexOf(';') < 0 || part.indexOf(',') < 0) {
+        return;
+      }
+      const items = splitTopLevel(part);
+      const l = items.length;
+      const out: string[] = new Array(l);
+      let i = 0;
+      let item: string;
+      for (; i < l; i++) {
+        item = items[i];
+        out[i] = cssVarValue(item) || item;
+      }
+      return out.join(',');
     }
-    const items = splitTopLevel(part);
-    const l = items.length;
-    const out: string[] = new Array(l);
-    let i = 0;
-    let item: string;
-    for (; i < l; i++) {
-      item = items[i];
-      out[i] = cssVarValue(item) || item;
+    function fontNameNormalize(s: string): string {
+      const c = s[0];
+      return spaceNormalize(c == '_'
+        ? snakeLeftTrim(s)
+        : (
+          c == '\'' || c == '-'
+            ? s
+            : toKebabCase(s)
+        ));
     }
-    return out.join(',');
-  }
-  function fontNameNormalize(s: string): string {
-    const c = s[0];
-    return spaceNormalize(c == '_'
-      ? snakeLeftTrim(s)
-      : (
-        c == '\'' || c == '-'
-          ? s
-          : toKebabCase(s)
-      ));
-  }
-  /**
+    /**
    * Хендлер со словарём кратких записей значения.
    *
    * Синоним разворачивается в ЗНАЧЕНИЕ напрямую. Раньше это был алиас на
@@ -2044,31 +2049,31 @@ export default (mn: MnInstance) => {
    * значение, а {@link assertSynonymAbbr} бракует длинные формы, у которых
    * есть краткая.
    */
-  function synonymProvider(
-    propName: string | string[],
-    synonyms: Record<string, any>,
-    priority?: number,
-    _style?: Record<string, any>,
-    // Свойство принимает не только слова из словаря, но и число/длину.
-    numeric?: 1,
-    // Значение свойства составное (`display: inline flow-root`), поэтому у
-    // него остаётся сырой режим — перечислить такие сочетания словарём нельзя.
-    composite?: 1,
-  ): MnHandler {
-    let props: Record<string, number>;
-    // Обратный индекс: длинное слово → краткая запись, строится из самого
-    // словаря, поэтому новый синоним сразу начинает бракать свою длинную форму.
-    const byWord: Record<string, string> = {};
-    forIn(synonyms, (word: string, abbr: string) => {
-      abbr && (byWord[valueNormalize(word)] = abbr);
-    });
-    // Допустимые слова — значения самого словаря: словарь задан на свойство,
-    // поэтому отдельная таблица не нужна.
-    const keywords: Record<string, 1> = {};
-    forIn(synonyms, (word: string) => {
-      keywords[valueNormalize(word)] = 1;
-    });
-    /**
+    function synonymProvider(
+      propName: string | string[],
+      synonyms: Record<string, any>,
+      priority?: number,
+      _style?: Record<string, any>,
+      // Свойство принимает не только слова из словаря, но и число/длину.
+      numeric?: 1,
+      // Значение свойства составное (`display: inline flow-root`), поэтому у
+      // него остаётся сырой режим — перечислить такие сочетания словарём нельзя.
+      composite?: 1,
+    ): MnHandler {
+      let props: Record<string, number>;
+      // Обратный индекс: длинное слово → краткая запись, строится из самого
+      // словаря, поэтому новый синоним сразу начинает бракать свою длинную форму.
+      const byWord: Record<string, string> = {};
+      forIn(synonyms, (word: string, abbr: string) => {
+        abbr && (byWord[valueNormalize(word)] = abbr);
+      });
+      // Допустимые слова — значения самого словаря: словарь задан на свойство,
+      // поэтому отдельная таблица не нужна.
+      const keywords: Record<string, 1> = {};
+      forIn(synonyms, (word: string) => {
+        keywords[valueNormalize(word)] = 1;
+      });
+      /**
      * Проверяет значение, которого нет в словаре кратких записей.
      *
      * Длинная форма бракуется в пользу краткой (две записи одного значения
@@ -2095,100 +2100,100 @@ export default (mn: MnInstance) => {
      * свойств этого пути пять — `display`, `list-style`, `overscroll-behavior`,
      * `text-decoration`, `touch-action` (2026-09-26).
      */
-    function assertSynonymAbbr(p: MnEssenceParams, value: string): void {
+      function assertSynonymAbbr(p: MnEssenceParams, value: string): void {
       // Сюда доходит только запись, которой НЕТ в словаре кратких форм
       // (её перехватывает `synonyms[p.suffix]` выше), поэтому если у значения
       // есть аббревиатура — записано точно длинной формой.
-      const abbr = byWord[value];
-      if (abbr) {
-        throwInvalid('Write it shorter: "' + p.name + abbr
+        const abbr = byWord[value];
+        if (abbr) {
+          throwInvalid('Write it shorter: "' + p.name + abbr
           + '" instead of "' + p.name + p.suffix + '" — same value');
-      }
-      // Составное значение проверяется ПО ЧАСТЯМ, а не пропускается целиком:
-      // перечень у таких свойств тоже закрыт, просто значение из нескольких
-      // слов. Пропуск оставлял дыру — `d_solid` давало `display:solid`,
-      // `ovb_solid` — `overscroll-behavior:solid` (2026-09-27).
-      if (composite && value.indexOf(' ') > -1) {
-        const parts = value.split(' ');
-        let i = parts.length;
-        while (i--) {
-          assertSynonymPart(p, parts[i]);
         }
-        return;
+        // Составное значение проверяется ПО ЧАСТЯМ, а не пропускается целиком:
+        // перечень у таких свойств тоже закрыт, просто значение из нескольких
+        // слов. Пропуск оставлял дыру — `d_solid` давало `display:solid`,
+        // `ovb_solid` — `overscroll-behavior:solid` (2026-09-27).
+        if (composite && value.indexOf(' ') > -1) {
+          const parts = value.split(' ');
+          let i = parts.length;
+          while (i--) {
+            assertSynonymPart(p, parts[i]);
+          }
+          return;
+        }
+        assertSynonymPart(p, value);
       }
-      assertSynonymPart(p, value);
-    }
-    /** Список сокращений хендлера: `aiC (center), aiFE (flex-end), …`. */
-    function abbrHint(name: string): string {
-      const items: string[] = [];
-      forIn(synonyms, (word: string, abbr: string) => {
-        abbr && items.push(name + abbr + ' (' + valueNormalize(word) + ')');
-      });
-      return availableHint(items);
-    }
-    /** Одна часть значения: слово из словаря, число (если оно тут законно) или функция. */
-    function assertSynonymPart(p: MnEssenceParams, value: string): void {
-      if (value.indexOf('(') > -1
+      /** Список сокращений хендлера: `aiC (center), aiFE (flex-end), …`. */
+      function abbrHint(name: string): string {
+        const items: string[] = [];
+        forIn(synonyms, (word: string, abbr: string) => {
+          abbr && items.push(name + abbr + ' (' + valueNormalize(word) + ')');
+        });
+        return availableHint(items);
+      }
+      /** Одна часть значения: слово из словаря, число (если оно тут законно) или функция. */
+      function assertSynonymPart(p: MnEssenceParams, value: string): void {
+        if (value.indexOf('(') > -1
         // Строка в кавычках — готовое значение (`q_"a"_"b"`), словарём его
         // не перечислить.
         || value[0] === '"' || value[0] === '\''
         || GLOBAL_KEYWORDS[value] || keywords[value]) {
-        return;
-      }
-      REGEXP_BARE_WORD.test(value)
-        ? throwInvalid('Value "' + p.suffix + '" is invalid for "' + p.name
+          return;
+        }
+        REGEXP_BARE_WORD.test(value)
+          ? throwInvalid('Value "' + p.suffix + '" is invalid for "' + p.name
           + '": no such abbreviation, and it is not a keyword' + abbrHint(p.name))
-        : (numeric
+          : (numeric
           // Число у такого свойства — длина или процент, а не что угодно:
           // `bgpx10zz` давало `background-position-x:10zz`, `va10s` —
           // `vertical-align:10s`.
-          ? (REGEXP_LENGTH_PART.test(value)
+            ? (REGEXP_LENGTH_PART.test(value)
             || throwInvalid('Value "' + p.suffix + '" is invalid for "'
               + p.name + '": expected a length'))
-          : throwInvalid('Value "' + p.suffix + '" is invalid for "'
+            : throwInvalid('Value "' + p.suffix + '" is invalid for "'
             + p.name + '": the set of values is closed, a number is not allowed'
             + abbrHint(p.name)));
-    }
-    return isArray(propName)
-      ? (props = flags(propName), ((p: MnEssenceParams) => {
-        let s: string; let style: Record<string, any>; let synonym: any; let propName: string;
-        if (synonym = synonyms[s = p.suffix]) {
-          style = {};
-          s = valueNormalize(synonym);
+      }
+      return isArray(propName)
+        ? (props = flags(propName), ((p: MnEssenceParams) => {
+          let s: string; let style: Record<string, any>; let synonym: any; let propName: string;
+          if (synonym = synonyms[s = p.suffix]) {
+            style = {};
+            s = valueNormalize(synonym);
           for (propName in props) style[propName] = s; // eslint-disable-line
-          return styleWrap(style, priority);
-        }
-        if (s) {
+            return styleWrap(style, priority);
+          }
+          if (s) {
           // valueNormalize, а не fontNameNormalize: массивную форму используют
           // только page-break-хендлеры (`pgba`/`pgbb`/`pgbi`), к именам шрифтов
           // отношения не имеющие. Через fontNameNormalize переменная уходила в
           // CSS литералом — `pgba--v` давал `page-break-after:--v` (2026-09-23).
+            s = valueNormalize(s);
+            assertSynonymAbbr(p, s);
+            style = {};
+          for (propName in props) style[propName] = s; // eslint-disable-line
+            return styleWrap(style, priority);
+          }
+        }))
+        : ((p: MnEssenceParams) => {
+          let s: string; let style: Record<string, any>; let synonym: any;
+          if (synonym = synonyms[s = p.suffix]) {
+            style = {};
+            style[propName as string] = valueNormalize(synonym);
+            return styleWrap(style, priority);
+          }
+          if (!s) {
+            return _style ? styleWrap(_style, priority) : 0;
+          }
           s = valueNormalize(s);
           assertSynonymAbbr(p, s);
           style = {};
-          for (propName in props) style[propName] = s; // eslint-disable-line
+          style[propName as string] = s;
           return styleWrap(style, priority);
-        }
-      }))
-      : ((p: MnEssenceParams) => {
-        let s: string; let style: Record<string, any>; let synonym: any;
-        if (synonym = synonyms[s = p.suffix]) {
-          style = {};
-          style[propName as string] = valueNormalize(synonym);
-          return styleWrap(style, priority);
-        }
-        if (!s) {
-          return _style ? styleWrap(_style, priority) : 0;
-        }
-        s = valueNormalize(s);
-        assertSynonymAbbr(p, s);
-        style = {};
-        style[propName as string] = s;
-        return styleWrap(style, priority);
-      });
-  }
+        });
+    }
 
-  /**
+    /**
  * Ведущая решётка перед hex — лишний символ: цвет в нотации пишется без неё
  * (`bgF00`, а не `bg#F00`). Бракуем, чтобы не плодить вторую запись того же
  * результата.
@@ -2197,7 +2202,7 @@ export default (mn: MnInstance) => {
  * (`bgLinear-gradient\(180deg,#f00,#00f\)`), и именно ради них `#` перед hex
  * перестал быть границей селектора.
  */
-  /**
+    /**
  * Короткая запись ТОГО ЖЕ цвета, если она есть, иначе `undefined`.
  *
  * Один цвет записывался несколькими способами: `cF`, `cFF`, `cFFF`, `cFFFFFF`
@@ -2209,58 +2214,58 @@ export default (mn: MnInstance) => {
  * `AAA` → `A`, `AAAB` → `AB` (одинаковые R/G/B — остаётся цвет и альфа).
  * Применяется повторно: `FFFFFF` → `FFF` → `F`.
  */
-  function shorterHex(hex: string): string | undefined {
-    let current = hex;
-    let step: string | undefined;
-    do {
-      step = shorterHexStep(current);
-      step && (current = step);
-    } while (step);
-    return current === hex ? undefined : current;
-  }
-  function shorterHexStep(hex: string): string | undefined {
-    const l = hex.length;
-    let i: number;
-    // Полностью непрозрачная альфа ничего не добавляет: `cFF` = `cF`,
-    // `cF00F` = `cF00`, `c0A0A12F` = `c0A0A12`. Альфа — последний символ при
-    // длине 2/4/7 и последние два при 8.
-    if ((l === 2 || l === 4 || l === 7) && hex[l - 1].toLowerCase() === 'f') {
-      return hex.slice(0, l - 1);
+    function shorterHex(hex: string): string | undefined {
+      let current = hex;
+      let step: string | undefined;
+      do {
+        step = shorterHexStep(current);
+        step && (current = step);
+      } while (step);
+      return current === hex ? undefined : current;
     }
-    if (l === 8 && hex.slice(6).toLowerCase() === 'ff') {
-      return hex.slice(0, 6);
-    }
-    if (l === 6 || l === 8) {
-      for (i = 0; i < l; i += 2) {
-        if (hex[i].toLowerCase() !== hex[i + 1].toLowerCase()) {
-          return;
+    function shorterHexStep(hex: string): string | undefined {
+      const l = hex.length;
+      let i: number;
+      // Полностью непрозрачная альфа ничего не добавляет: `cFF` = `cF`,
+      // `cF00F` = `cF00`, `c0A0A12F` = `c0A0A12`. Альфа — последний символ при
+      // длине 2/4/7 и последние два при 8.
+      if ((l === 2 || l === 4 || l === 7) && hex[l - 1].toLowerCase() === 'f') {
+        return hex.slice(0, l - 1);
+      }
+      if (l === 8 && hex.slice(6).toLowerCase() === 'ff') {
+        return hex.slice(0, 6);
+      }
+      if (l === 6 || l === 8) {
+        for (i = 0; i < l; i += 2) {
+          if (hex[i].toLowerCase() !== hex[i + 1].toLowerCase()) {
+            return;
+          }
         }
+        let halved = '';
+        for (i = 0; i < l; i += 2) {
+          halved += hex[i];
+        }
+        return halved;
       }
-      let halved = '';
-      for (i = 0; i < l; i += 2) {
-        halved += hex[i];
-      }
-      return halved;
-    }
-    // `AAA` → `A`, `AAAB` → `AB`: первые три задают цвет, четвёртый — альфа.
-    if ((l === 3 || l === 4)
+      // `AAA` → `A`, `AAAB` → `AB`: первые три задают цвет, четвёртый — альфа.
+      if ((l === 3 || l === 4)
     && hex[0].toLowerCase() === hex[1].toLowerCase()
     && hex[1].toLowerCase() === hex[2].toLowerCase()) {
-      return hex[0] + hex.slice(3);
+        return hex[0] + hex.slice(3);
+      }
     }
-  }
-  /**
+    /**
    * Альфа-канал: сколько символов занимает и каков делитель. Длина значения
    * задаёт форму (см. HANDLERS.md): 2 = цвет+альфа, 4 = RGB+альфа,
    * 7 = RRGGBB+альфа, 8 = RRGGBB+AA.
    */
-  const HEX_ALPHA_FORM: Record<number, [number, number]> = {
-    2: [1, 15],
-    4: [1, 15],
-    7: [1, 15],
-    8: [2, 255],
-  };
-  /**
+    const HEX_ALPHA_FORM: Record<number, [number, number]> = {
+      2: [1, 15],
+      4: [1, 15],
+      7: [1, 15],
+      8: [2, 255],
+    };
+    /**
    * Каноничная запись альфа-канала, если текущая не такова.
    *
    * Альфа всегда пишется десятичной дробью: `cA.67`, `cF00.5`, `c0.0`.
@@ -2269,24 +2274,24 @@ export default (mn: MnInstance) => {
    * намеренно нет: две формы записи одного и того же сложнее запомнить,
    * чем одну.
    */
-  function canonicalAlpha(hex: string): string | undefined {
+    function canonicalAlpha(hex: string): string | undefined {
     // Уже десятичная — ничего не меняем.
-    if (hex.indexOf('.') > -1) {
-      return;
-    }
-    const form = HEX_ALPHA_FORM[hex.length];
-    if (!form) {
-      return;
-    }
-    const alpha = parseInt(hex.slice(hex.length - form[0]), 16);
-    return hex.slice(0, hex.length - form[0]) + '.'
+      if (hex.indexOf('.') > -1) {
+        return;
+      }
+      const form = HEX_ALPHA_FORM[hex.length];
+      if (!form) {
+        return;
+      }
+      const alpha = parseInt(hex.slice(hex.length - form[0]), 16);
+      return hex.slice(0, hex.length - form[0]) + '.'
       + toFixed(alpha / form[1]).replace(REGEXP_LEADING_ZERO, '');
-  }
-  /** Значение-функция: `color-mix(…)`, `oklch(…)`, `light-dark(…)`. */
-  const REGEXP_COLOR_FUNCTION = /^[a-z][a-z0-9-]*\(/i;
-  /** CSS-переменная с альфой: `--warn.3` → 30% непрозрачности. */
-  const REGEXP_VAR_WITH_ALPHA = /^(---?[^.;\s]+)\.([0-9]+)$/;
-  /**
+    }
+    /** Значение-функция: `color-mix(…)`, `oklch(…)`, `light-dark(…)`. */
+    const REGEXP_COLOR_FUNCTION = /^[a-z][a-z0-9-]*\(/i;
+    /** CSS-переменная с альфой: `--warn.3` → 30% непрозрачности. */
+    const REGEXP_VAR_WITH_ALPHA = /^(---?[^.;\s]+)\.([0-9]+)$/;
+    /**
    * Значение цвета, которое НЕ разбирается как код: функция или переменная
    * с альфой. Возвращает готовый CSS или `undefined`, если это обычный цвет.
    *
@@ -2305,21 +2310,21 @@ export default (mn: MnInstance) => {
    * скобке (`Color-mix(a,b)` → `camel: 'Color'`), поэтому по разобранным
    * полям её не восстановить.
    */
-  function rawColorValue(suffix: string): string | undefined {
-    if (!suffix) {
-      return;
-    }
-    if (REGEXP_COLOR_FUNCTION.test(suffix)) {
-      return valueNormalize(suffix);
-    }
-    const withAlpha = REGEXP_VAR_WITH_ALPHA.exec(suffix);
-    if (withAlpha) {
+    function rawColorValue(suffix: string): string | undefined {
+      if (!suffix) {
+        return;
+      }
+      if (REGEXP_COLOR_FUNCTION.test(suffix)) {
+        return valueNormalize(suffix);
+      }
+      const withAlpha = REGEXP_VAR_WITH_ALPHA.exec(suffix);
+      if (withAlpha) {
       // `.3` → 30%, `.67` → 67% — как у кодов.
-      return 'color-mix(in srgb, var(' + withAlpha[1] + ') '
+        return 'color-mix(in srgb, var(' + withAlpha[1] + ') '
         + toFixed(parseFloat('0.' + withAlpha[2]) * 100) + '%, transparent)';
+      }
     }
-  }
-  /**
+    /**
    * Бракует цвет, у которого есть более короткая или более читаемая запись.
    *
    * `hex` объявлен как `string | number | undefined`, а не `string`: поле
@@ -2327,22 +2332,22 @@ export default (mn: MnInstance) => {
    * отсутствует. Приводить его к строке на месте вызова нельзя — `'' +
    * undefined` даёт `"undefined"`, и проверка ниже перестала бы срабатывать.
    */
-  function assertShortestHex(p: MnEssenceParams, hex?: string | number): void {
-    if (!hex) {
-      return;
-    }
-    hex = '' + hex;
-    const shorter = shorterHex(hex);
-    const best = canonicalAlpha(shorter || hex) || shorter;
-    if (best && best !== hex) {
-      throwInvalid('Write the color as "' + p.name + best
+    function assertShortestHex(p: MnEssenceParams, hex?: string | number): void {
+      if (!hex) {
+        return;
+      }
+      hex = '' + hex;
+      const shorter = shorterHex(hex);
+      const best = canonicalAlpha(shorter || hex) || shorter;
+      if (best && best !== hex) {
+        throwInvalid('Write the color as "' + p.name + best
         + '" instead of "' + p.name + hex + '" — same value');
+      }
     }
-  }
-  /** Ведущий `0` перед точкой — в нотации альфа пишется как `.67`, не `0.67`. */
-  const REGEXP_LEADING_ZERO = /^0?\./;
-  const REGEXP_LEADING_HASH_HEX = /^#[0-9A-Fa-f]{3,8}$/;
-  /**
+    /** Ведущий `0` перед точкой — в нотации альфа пишется как `.67`, не `0.67`. */
+    const REGEXP_LEADING_ZERO = /^0?\./;
+    const REGEXP_LEADING_HASH_HEX = /^#[0-9A-Fa-f]{3,8}$/;
+    /**
  * Обратный индекс `COLOR_SYNONYMS`: длинное слово → аббревиатура.
  *
  * Нужен, чтобы забраковать вторую запись того же цвета: `cCurrentColor` при
@@ -2351,11 +2356,11 @@ export default (mn: MnInstance) => {
  * начали отдавать значение напрямую — до этого длинная форма была нужна как
  * цель ссылки и убрать её было нельзя.
  */
-  const COLOR_SYNONYM_BY_WORD: Record<string, string> = {};
-  forIn(COLOR_SYNONYMS, (word: string, abbr: string) => {
-    COLOR_SYNONYM_BY_WORD[word.toLowerCase()] = abbr;
-  });
-  /**
+    const COLOR_SYNONYM_BY_WORD: Record<string, string> = {};
+    forIn(COLOR_SYNONYMS, (word: string, abbr: string) => {
+      COLOR_SYNONYM_BY_WORD[word.toLowerCase()] = abbr;
+    });
+    /**
    * Проверяет словесное значение цвета.
    *
    * Разбор пропускал ЛЮБОЕ camelCase-слово как цвет: `bcZzz` давал
@@ -2365,260 +2370,260 @@ export default (mn: MnInstance) => {
    *
    * У слова, для которого есть аббревиатура, форма одна — краткая.
    */
-  function assertColorAbbr(p: MnEssenceParams): void {
-    const camel = p.camel;
-    if (!camel) {
-      return;
-    }
-    const abbr = COLOR_SYNONYM_BY_WORD[camel.toLowerCase()];
-    if (abbr) {
-      throwInvalid('Write the color shorter: "' + p.name + abbr
+    function assertColorAbbr(p: MnEssenceParams): void {
+      const camel = p.camel;
+      if (!camel) {
+        return;
+      }
+      const abbr = COLOR_SYNONYM_BY_WORD[camel.toLowerCase()];
+      if (abbr) {
+        throwInvalid('Write the color shorter: "' + p.name + abbr
       + '" instead of "' + p.name + camel + '"');
-    }
-    // `p.camel` заполняет не только разбор цвета, но и generic-разбор ядра:
-    // у `cF00` там окажется `F` (первая заглавная буква кода). Словом значение
-    // считается, только если камель — это ВЕСЬ суффикс и кода/переменной нет.
-    if (camel !== p.suffix || p.color || p.vv
+      }
+      // `p.camel` заполняет не только разбор цвета, но и generic-разбор ядра:
+      // у `cF00` там окажется `F` (первая заглавная буква кода). Словом значение
+      // считается, только если камель — это ВЕСЬ суффикс и кода/переменной нет.
+      if (camel !== p.suffix || p.color || p.vv
       || REGEXP_PLAIN_HEX.test(p.suffix)) {
-      return;
-    }
-    GLOBAL_KEYWORDS[toKebabCase(camel)] || throwInvalid('Value "' + camel
+        return;
+      }
+      GLOBAL_KEYWORDS[toKebabCase(camel)] || throwInvalid('Value "' + camel
       + '" is not a color: expected a code (`F00`), a variable or '
       + 'a keyword');
-  }
-  /** Одиночный hex без альфы/градиента — только цифры. */
-  const REGEXP_PLAIN_HEX = /^[0-9A-Fa-f]+$/;
+    }
+    /** Одиночный hex без альфы/градиента — только цифры. */
+    const REGEXP_PLAIN_HEX = /^[0-9A-Fa-f]+$/;
 
-  function backgroundProvider(propName: string): MnHandler {
-    return (p: MnEssenceParams) => {
-      let v: string; let style: Record<string, any>;
-      p.negative && throwInvalid();
-      if (REGEXP_LEADING_HASH_HEX.test(p.suffix)) {
-        throwInvalid('Redundant "#": write the color without it — "'
+    function backgroundProvider(propName: string): MnHandler {
+      return (p: MnEssenceParams) => {
+        let v: string; let style: Record<string, any>;
+        p.negative && throwInvalid();
+        if (REGEXP_LEADING_HASH_HEX.test(p.suffix)) {
+          throwInvalid('Redundant "#": write the color without it — "'
           + p.name + p.suffix.slice(1) + '" instead of "' + p.name + p.suffix + '"');
-      }
-      // Синонимы проверяем ДО разбора как цвета: буквы аббревиатур бывают
-      // валидными hex-цифрами, и без этого `bgAC` (AccentColor) уходил в
-      // `#aaa`, `bgBB` (ButtonBorder) — в `#bb` (2026-09-24).
-      const raw = rawColorValue(p.suffix);
-      if (raw) {
-        style = {};
-        style[propName] = raw;
-        return styleWrap(style);
-      }
-      const synonym = COLOR_SYNONYMS[p.suffix];
-      if (synonym) {
+        }
+        // Синонимы проверяем ДО разбора как цвета: буквы аббревиатур бывают
+        // валидными hex-цифрами, и без этого `bgAC` (AccentColor) уходил в
+        // `#aaa`, `bgBB` (ButtonBorder) — в `#bb` (2026-09-24).
+        const raw = rawColorValue(p.suffix);
+        if (raw) {
+          style = {};
+          style[propName] = raw;
+          return styleWrap(style);
+        }
+        const synonym = COLOR_SYNONYMS[p.suffix];
+        if (synonym) {
         // Значение НАПРЯМУЮ, без алиаса на длинную форму (`bgCurrentColor`):
         // иначе длинная форма нужна как цель ссылки и её нельзя забраковать,
         // а она даёт вторую запись того же цвета. Смена механизма 2026-09-24.
-        style = {};
-        style[propName] = getColor(synonym);
-        return styleWrap(style);
-      }
-      // Одиночный цвет (не градиент, не переменная) — проверяем, нет ли записи
-      // короче. Градиент (`bgF00-00F`) разбирается своим парсером, части в нём
-      // проверять здесь нечем.
-      assertColorAbbr(p);
-      REGEXP_PLAIN_HEX.test(p.suffix) && assertShortestHex(p, p.suffix);
-      if (!(v = p.suffix)) {
-        return normalizeDefault(p);
-      }
-      // `colorGetBackground` возвращает СПИСОК значений (браузерные варианты
-      // одного фона), поэтому проверяется первое — форма у них одна.
-      const result = colorGetBackground(v);
-      const first: string = '' + result[0];
-      // Проверяется РЕЗУЛЬТАТ, а не суффикс: мини-язык фона богаче, чем можно
-      // описать одной регуляркой на вход (угол `_g90`, радиальный `_r`,
-      // повторяющийся `_rpt`, переменные через `;`). Зато результат всегда
-      // одной из трёх форм — цвет, функция или подстановка.
-      //
-      // Числовые формы доходили до вывода как есть: `bg10zz` давало
-      // `background:10zz`, `bg1/2` — `background:1/2`, `bg10_20` —
-      // `background:10_20`.
-      REGEXP_BACKGROUND_RESULT.test(first)
+          style = {};
+          style[propName] = getColor(synonym);
+          return styleWrap(style);
+        }
+        // Одиночный цвет (не градиент, не переменная) — проверяем, нет ли записи
+        // короче. Градиент (`bgF00-00F`) разбирается своим парсером, части в нём
+        // проверять здесь нечем.
+        assertColorAbbr(p);
+        REGEXP_PLAIN_HEX.test(p.suffix) && assertShortestHex(p, p.suffix);
+        if (!(v = p.suffix)) {
+          return normalizeDefault(p);
+        }
+        // `colorGetBackground` возвращает СПИСОК значений (браузерные варианты
+        // одного фона), поэтому проверяется первое — форма у них одна.
+        const result = colorGetBackground(v);
+        const first: string = '' + result[0];
+        // Проверяется РЕЗУЛЬТАТ, а не суффикс: мини-язык фона богаче, чем можно
+        // описать одной регуляркой на вход (угол `_g90`, радиальный `_r`,
+        // повторяющийся `_rpt`, переменные через `;`). Зато результат всегда
+        // одной из трёх форм — цвет, функция или подстановка.
+        //
+        // Числовые формы доходили до вывода как есть: `bg10zz` давало
+        // `background:10zz`, `bg1/2` — `background:1/2`, `bg10_20` —
+        // `background:10_20`.
+        REGEXP_BACKGROUND_RESULT.test(first)
         || throwInvalid('Value "' + v + '" is invalid for "' + p.name
           + '": expected a color (`F00`), a gradient (`F00-00F`) or a variable');
-      // Проверки формы результата мало: мусор ВНУТРИ градиента в неё
-      // укладывается — `bg100%-20px` собиралось в
-      // `linear-gradient(180deg,100% 0%,20px 100%)`. Поэтому у градиента
-      // проверяется каждый стоп.
-      assertGradientStops(
-        first, v, p.name,
-      );
-      // `mask-image` цвета не принимает вовсе — маска задаётся градиентом или
-      // картинкой. Одиночный цвет там давал заведомо нерабочее правило
-      // (`maskbgF00` → `mask-image:#f00`).
-      propName === 'maskImage' && (first[0] === '#' || first.indexOf('rgba(') === 0)
+        // Проверки формы результата мало: мусор ВНУТРИ градиента в неё
+        // укладывается — `bg100%-20px` собиралось в
+        // `linear-gradient(180deg,100% 0%,20px 100%)`. Поэтому у градиента
+        // проверяется каждый стоп.
+        assertGradientStops(
+          first, v, p.name,
+        );
+        // `mask-image` цвета не принимает вовсе — маска задаётся градиентом или
+        // картинкой. Одиночный цвет там давал заведомо нерабочее правило
+        // (`maskbgF00` → `mask-image:#f00`).
+        propName === 'maskImage' && (first[0] === '#' || first.indexOf('rgba(') === 0)
         && throwInvalid('Value "' + v + '" is invalid for "' + p.name
           + '": a mask is a gradient (`maskbgF00-00F`) or a variable, '
           + '`mask-image` does not accept a single color');
-      style = {};
-      style[propName] = result;
-      return styleWrap(style);
-    };
-  }
+        style = {};
+        style[propName] = result;
+        return styleWrap(style);
+      };
+    }
 
-  forIn(mapIn(SIDES_MAP, (sides) => reduce(
-    sides, (dst, key) => {
-      dst[key] = 1; return dst; 
-    }, {},
-  )), (sides, suffix) => {
-    const priority = suffix ? (4 - size(sides)) : 0;
-    const bsSidesSet = sidesSetter((side) => 'border' + side + '-style');
-    const bcSidesSet = sidesSetter((side) => 'border' + side + '-color');
-    const biSidesSet = sidesSetter((side) => 'border' + side + '-image');
+    forIn(mapIn(SIDES_MAP, (sides) => reduce(
+      sides, (dst, key) => {
+        dst[key] = 1; return dst; 
+      }, {},
+    )), (sides, suffix) => {
+      const priority = suffix ? (4 - size(sides)) : 0;
+      const bsSidesSet = sidesSetter((side) => 'border' + side + '-style');
+      const bcSidesSet = sidesSetter((side) => 'border' + side + '-color');
+      const biSidesSet = sidesSetter((side) => 'border' + side + '-image');
 
-    function sidesSetter(handle: (side: string) => string): (v: any) => Record<string, any> {
-      const propsMap: Record<string, number> = {};
-      forIn(sides, (_val, propSide) => {
-        propsMap[handle(propSide)] = 1; 
-      });
-      return (v: any) => {
+      function sidesSetter(handle: (side: string) => string): (v: any) => Record<string, any> {
+        const propsMap: Record<string, number> = {};
+        forIn(sides, (_val, propSide) => {
+          propsMap[handle(propSide)] = 1; 
+        });
+        return (v: any) => {
         /* istanbul ignore next — защита фабрики, а не живая ветка: единственный
            вызывающий (`handleProvider` ниже) передаёт сюда `getVal()[0]`, а тот
            всегда возвращает строку (`output.join(' ')`), битый же вход роняет
            сам `getVal`. Страховка оставлена: `sidesSetter` — фабрика, её
            результат живёт в замыкании и может быть вызван из нового места. */
-        isDefined(v) || throwInvalid();
-        const style: Record<string, any> = {};
-        let pName: string;
+          isDefined(v) || throwInvalid();
+          const style: Record<string, any> = {};
+          let pName: string;
         for (pName in propsMap) style[pName] = v; // eslint-disable-line
-        return style;
-      };
-    }
+          return style;
+        };
+      }
 
-    function handleProvider(
-      sidesSet: (v: any) => Record<string, any>,
-      // Порядок параметров унаследован; `symonyms` обязателен по смыслу, но
-      // объявить его таким нельзя — он идёт после необязательных (TS1016).
-      // Оба вызывающих передают словарь своего семейства.
-      nosign?: any,
-      one?: any,
-      symonyms?: Record<string, string>,
-      noPercent?: any,
-    ): MnHandler {
+      function handleProvider(
+        sidesSet: (v: any) => Record<string, any>,
+        // Порядок параметров унаследован; `symonyms` обязателен по смыслу, но
+        // объявить его таким нельзя — он идёт после необязательных (TS1016).
+        // Оба вызывающих передают словарь своего семейства.
+        nosign?: any,
+        one?: any,
+        symonyms?: Record<string, string>,
+        noPercent?: any,
+      ): MnHandler {
       // Словарь задан на семейство, а не общий на все размеры: `mA` →
       // `margin:auto` валиден, а `pA` → `padding:auto` — нет. Допустимые слова
       // выводятся из значений словаря, поэтому длинная форма (`bThin`) работает
       // наравне с краткой (`bTN`).
-      const keywords: Record<string, 1> = {};
-      forIn(symonyms as Record<string, string>, (word: string) => {
-        keywords[toKebabCase(word)] = 1;
-      });
-      return (p: MnEssenceParams) => {
-        let suffix: string; let synonym: any;
-        if (!(suffix = p.suffix)) {
-          return normalizeDefault(p, 0);
-        }
-        if (synonym = (symonyms as Record<string, string>)[suffix]) {
-          return normalizeDefault(p, synonym);
-        }
-        const v = getVal(
-          suffix, nosign, one, 'px', 0, symonyms, keywords, noPercent,
+        const keywords: Record<string, 1> = {};
+        forIn(symonyms as Record<string, string>, (word: string) => {
+          keywords[toKebabCase(word)] = 1;
+        });
+        return (p: MnEssenceParams) => {
+          let suffix: string; let synonym: any;
+          if (!(suffix = p.suffix)) {
+            return normalizeDefault(p, 0);
+          }
+          if (synonym = (symonyms as Record<string, string>)[suffix]) {
+            return normalizeDefault(p, synonym);
+          }
+          const v = getVal(
+            suffix, nosign, one, 'px', 0, symonyms, keywords, noPercent,
+          );
+          return styleWrap(sidesSet(v[0]), priority + v[1]);
+        };
+      }
+
+      forIn({
+        p: [
+          'padding',
+          0,
+          1,
+          // Ключевых слов у padding нет вовсе — только длины и CSS-wide.
+          {},
+        ],
+        m: [
+          'margin',
+          0,
+          0,
+          {
+            A: 'Auto',
+          },
+        ],
+        b: [
+          'border',
+          '-width',
+          1,
+          {
+            TN: 'Thin',
+            M: 'Medium',
+            TC: 'Thick',
+          },
+          // `border-width` — это `<line-width>`, то есть длина или одно из трёх
+          // слов. Процентов не принимает, в отличие от `padding`/`margin`.
+          1,
+        ],
+      }, (args: any[], pfx: string) => {
+        const propName = args[0];
+        const propSuffix = args[1] || '';
+        mn(
+          pfx + suffix, handleProvider(
+            sidesSetter((side) => propName + side + propSuffix),
+            args[2],
+            suffix,
+            args[3],
+            args[4],
+          ), '', 1,
         );
-        return styleWrap(sidesSet(v[0]), priority + v[1]);
-      };
-    }
+      });
 
-    forIn({
-      p: [
-        'padding',
-        0,
-        1,
-        // Ключевых слов у padding нет вовсе — только длины и CSS-wide.
-        {},
-      ],
-      m: [
-        'margin',
-        0,
-        0,
-        {
-          A: 'Auto',
-        },
-      ],
-      b: [
-        'border',
-        '-width',
-        1,
-        {
-          TN: 'Thin',
-          M: 'Medium',
-          TC: 'Thick',
-        },
-        // `border-width` — это `<line-width>`, то есть длина или одно из трёх
-        // слов. Процентов не принимает, в отличие от `padding`/`margin`.
-        1,
-      ],
-    }, (args: any[], pfx: string) => {
-      const propName = args[0];
-      const propSuffix = args[1] || '';
       mn(
-        pfx + suffix, handleProvider(
-          sidesSetter((side) => propName + side + propSuffix),
-          args[2],
-          suffix,
-          args[3],
-          args[4],
-        ), '', 1,
-      );
-    });
-
-    mn(
-      's' + suffix, handleProvider(
-        suffix
-          ? sidesSetter((side) => replace(
-            side, REGEXP_TRIM_KEBAB_LEFT, '',
-          ))
-          : (v) => {
+        's' + suffix, handleProvider(
+          suffix
+            ? sidesSetter((side) => replace(
+              side, REGEXP_TRIM_KEBAB_LEFT, '',
+            ))
+            : (v) => {
             /* istanbul ignore next — та же защита, что в `sidesSetter` выше:
                `v` приходит из `getVal()[0]` и строкой быть обязан. */
-            isDefined(v) || throwInvalid();
-            return {
-              top: v,
-              bottom: v,
-              left: v,
-              right: v,
-            };
+              isDefined(v) || throwInvalid();
+              return {
+                top: v,
+                bottom: v,
+                left: v,
+                right: v,
+              };
+            },
+          0,
+          1,
+          {
+            A: 'Auto',
           },
-        0,
-        1,
-        {
-          A: 'Auto',
-        },
-      ), '', 1,
-    );
-    mn('bs' + suffix, (p) => {
-      let s, synonym;
-      return (synonym = BORDER_STYLE_SYNONYMS[s = p.suffix])
-        ? normalizeDefault(p, synonym)
-        : (
-          s
+        ), '', 1,
+      );
+      mn('bs' + suffix, (p) => {
+        let s, synonym;
+        return (synonym = BORDER_STYLE_SYNONYMS[s = p.suffix])
+          ? normalizeDefault(p, synonym)
+          : (
+            s
             // Стиль границы — закрытый перечень (`<line-style>`), но
             // проверки не было вовсе: `bs10` давало `border-style:10`,
             // `bsF00` — `border-style:f00`, `bsZzz` — `border-style:zzz`.
             // Без стороны свойство берёт до четырёх значений
             // (`border-style: solid dotted`), со стороной — одно.
-            ? styleWrap(bsSidesSet(assertEnumValue(
-              valueNormalize(s), BORDER_STYLE_KEYWORDS,
-              suffix ? 0 : 1, 'bs' + suffix, s,
-            )), priority + 1)
-            : normalizeDefault(p, 'Solid')
-        );
-    });
-    mn(
-      'bc' + suffix, (p) => {
-        let v: string | undefined; let synonym: any;
-        const raw = rawColorValue(p.suffix);
-        if (raw) {
-          return styleWrap(bcSidesSet(raw), priority + 1);
-        }
-        return (synonym = COLOR_SYNONYMS[p.suffix || 'CT'])
-          ? styleWrap(bcSidesSet(getColor(synonym)), priority + 1)
-          : (
-            (v = p.value)
-              ? (assertColorAbbr(p),
-              assertShortestHex(p, p.color),
-              styleWrap(bcSidesSet(getColor(v)), priority + 1))
+              ? styleWrap(bsSidesSet(assertEnumValue(
+                valueNormalize(s), BORDER_STYLE_KEYWORDS,
+                suffix ? 0 : 1, 'bs' + suffix, s,
+              )), priority + 1)
+              : normalizeDefault(p, 'Solid')
+          );
+      });
+      mn(
+        'bc' + suffix, (p) => {
+          let v: string | undefined; let synonym: any;
+          const raw = rawColorValue(p.suffix);
+          if (raw) {
+            return styleWrap(bcSidesSet(raw), priority + 1);
+          }
+          return (synonym = COLOR_SYNONYMS[p.suffix || 'CT'])
+            ? styleWrap(bcSidesSet(getColor(synonym)), priority + 1)
+            : (
+              (v = p.value)
+                ? (assertColorAbbr(p),
+                assertShortestHex(p, p.color),
+                styleWrap(bcSidesSet(getColor(v)), priority + 1))
               // Суффикс есть, но PATTERN_COLOR его не разобрал (напр. второй
               // цвет через `_` — множественные border-color не поддерживаются,
               // см. HANDLERS.md) — бракуем токен, а не тихо подставляем чёрный
@@ -2628,301 +2633,301 @@ export default (mn: MnInstance) => {
               // Проверка `p.suffix ?` убрана как недостижимая: пустой
               // суффикс перехватывает `COLOR_SYNONYMS[p.suffix || 'CT']` выше
               // (голый `bc` → currentColor), так что сюда доходит только непустой.
-              : throwInvalid()
-          );
-      }, PATTERN_COLOR, 1,
-    );
-    mn('bi' + suffix, (p) => {
-      let s;
-      if (!(s = p.suffix)) {
-        return styleWrap(biSidesSet('none'), priority + 1);
-      }
-      const value = valueNormalize(s);
-      return styleWrap(biSidesSet(borderImageValue(
-        value.split(' '), s, 'bi' + suffix,
-      )), priority + 1);
+                : throwInvalid()
+            );
+        }, PATTERN_COLOR, 1,
+      );
+      mn('bi' + suffix, (p) => {
+        let s;
+        if (!(s = p.suffix)) {
+          return styleWrap(biSidesSet('none'), priority + 1);
+        }
+        const value = valueNormalize(s);
+        return styleWrap(biSidesSet(borderImageValue(
+          value.split(' '), s, 'bi' + suffix,
+        )), priority + 1);
+      });
     });
-  });
 
 
-  forIn({
-    sq: ['width', 'height'],
-    w: ['width'],
-    h: ['height'],
-  }, (props, essencePrefix) => {
-    const length = props.length;
-    const priority = 2 - length;
-    forEach([
-      '',
-      'min',
-      'max',
-    ], (sfx) => {
+    forIn({
+      sq: ['width', 'height'],
+      w: ['width'],
+      h: ['height'],
+    }, (props, essencePrefix) => {
+      const length = props.length;
+      const priority = 2 - length;
+      forEach([
+        '',
+        'min',
+        'max',
+      ], (sfx) => {
       // `max-*` принимает `none` и НЕ принимает `auto`; `width`/`min-*` —
       // наоборот. Словарь кратких записей сужается под свой вариант, поэтому
       // `wmaxN` работает, а `wN` (`width:none`) бракуется.
-      const keywords = sfx === 'max' ? KEYWORDS_SIZE_MAX : KEYWORDS_SIZE;
-      const symonyms: Record<string, string> = {};
-      forIn(SIZE_SYNONYMS, (word: string, abbr: string) => {
-        keywords[toKebabCase(word)] && (symonyms[abbr] = word);
-      });
-      const propMap: Record<string, number> = {};
+        const keywords = sfx === 'max' ? KEYWORDS_SIZE_MAX : KEYWORDS_SIZE;
+        const symonyms: Record<string, string> = {};
+        forIn(SIZE_SYNONYMS, (word: string, abbr: string) => {
+          keywords[toKebabCase(word)] && (symonyms[abbr] = word);
+        });
+        const propMap: Record<string, number> = {};
       let propName, i = 0; // eslint-disable-line
-      for (; i < length; i++) {
-        propName = props[i];
-        propMap[sfx ? (sfx + '-' + propName) : propName] = 1;
-      }
-      mn(
-        essencePrefix + sfx, (p) => {
-          const suffix = p.suffix;
-          if (!suffix) {
-            return normalizeDefault(p, '100%');
-          }
-          const synonym = symonyms[suffix];
-          if (synonym) {
-            return normalizeDefault(p, synonym);
-          }
-          const v = getVal(
-            suffix, 1, 1, 'px', 0, symonyms, keywords,
-          );
-          const [value] = v;
-          const style: Record<string, any> = {};
-          let propName;
+        for (; i < length; i++) {
+          propName = props[i];
+          propMap[sfx ? (sfx + '-' + propName) : propName] = 1;
+        }
+        mn(
+          essencePrefix + sfx, (p) => {
+            const suffix = p.suffix;
+            if (!suffix) {
+              return normalizeDefault(p, '100%');
+            }
+            const synonym = symonyms[suffix];
+            if (synonym) {
+              return normalizeDefault(p, synonym);
+            }
+            const v = getVal(
+              suffix, 1, 1, 'px', 0, symonyms, keywords,
+            );
+            const [value] = v;
+            const style: Record<string, any> = {};
+            let propName;
         for (propName in propMap) style[propName] = value; // eslint-disable-line
-          return styleWrap(style, priority + v[1]);
-        }, '', 1,
-      );
+            return styleWrap(style, priority + v[1]);
+          }, '', 1,
+        );
+      });
     });
-  });
 
-  /**
+    /**
    * `gap8` → `gap:8px` (обе оси разом). Для разных значений по осям —
    * атомарные `gapx` (column-gap, горизонталь) / `gapy` (row-gap, вертикаль),
    * по образцу `px`/`py` у padding/margin. Многозначной формы `gap8_16`
    * намеренно нет (принцип атомарности) — `gapx16 gapy8` вместо неё.
    */
-  function gapHandlerProvider(propName: string) {
-    return (p: MnEssenceParams) => {
-      const suffix = p.suffix;
-      if (!suffix) {
-        return normalizeDefault(p, '100%');
-      }
-      // `normal` — initial value у gap-семейства; размерам (`w`/`h`/`p`/`m`)
-      // оно не подходит, поэтому словарь здесь свой.
-      if (suffix === 'N') {
-        return normalizeDefault(p, 'Normal');
-      }
-      const v = getVal(
-        suffix, 1, 1, 'px', 0, GAP_SYNONYMS, KEYWORDS_NORMAL,
-      );
-      // 1 CSS-свойство — priority = 2 - 1, как у соседних w/h (props.length === 1)
-      const priority = 1;
-      const style: Record<string, any> = {};
-      style[propName] = v[0];
-      return styleWrap(style, priority + v[1]);
-    };
-  }
-  mn(
-    'gap', gapHandlerProvider('gap'), '', 1,
-  );
-  mn(
-    'gapx', gapHandlerProvider('columnGap'), '', 1,
-  );
-  mn(
-    'gapy', gapHandlerProvider('rowGap'), '', 1,
-  );
-
-  mn('tbl', styleWrap({
-    display: 'table',
-  }));
-  mn('tbl.cell', {
-    selectors: ['>*'],
-    style: {
-      display: 'table-cell',
-      verticalAlign: 'middle',
-    },
-  });
-
-  // flex horizontal align
-  forIn({
-    start: {
-      boxPack: 'start',
-      justifyContent: 'flex-start',
-    },
-    center: {
-      boxPack: 'center',
-      justifyContent: 'center',
-    },
-    end: {
-      boxPack: 'end',
-      justifyContent: 'flex-end',
-    },
-    around: {
-      justifyContent: 'space-around',
-    },
-    between: {
-      boxPack: 'justify',
-      justifyContent: 'space-between',
-    },
-  }, (style, essenceName) => {
-    const capitalized = upperFirst(essenceName);
-    const name = 'fxa' + capitalized;
-    mn(name, styleWrap(style, 1));
-    mn('fxa' + capitalized[0], name);
-  });
-
-  // flex vertical align
-  forIn({
-    start: {
-      boxAlign: 'start',
-      alignItems: 'flex-start',
-      alignContent: 'flex-start',
-    },
-    center: {
-      boxAlign: 'center',
-      alignItems: 'center',
-      alignContent: 'center',
-    },
-    end: {
-      boxAlign: 'end',
-      alignItems: 'flex-end',
-      alignContent: 'flex-end',
-    },
-    stretch: {
-      boxAlign: 'stretch',
-      alignItems: 'stretch',
-      alignContent: 'stretch',
-    },
-  }, (style, essenceName) => {
-    mn('fya' + upperFirst(essenceName), styleWrap(style, 1));
-  });
-
-  forIn({
-    S: 'Start',
-    C: 'Center',
-    E: 'End',
-    A: 'Around',
-    ST: 'Stretch',
-  }, (essenceName, abbr) => {
-    mn('fya' + abbr, 'fya' + essenceName);
-  });
-
-  forIn({
-    dn: 'transitionDuration',
-    delay: 'transitionDelay',
-  }, (propName, essenceName) => {
-    mn(essenceName, (p) => {
-      let num;
-      return p.camel || p.negative ? 0 : ((num = p.num)
-        ? styleWrap({
-          [propName]: num + 'ms',
-        }, 1)
-        : normalizeDefault(p, 250)
-      );
-    });
-  });
-
-  forIn({
-    c: ['color'],
-    stroke: ['stroke'],
-    fill: ['fill'],
-    olc: ['outlineColor', 1],
-    bgc: ['backgroundColor', 1],
-    temc: ['textEmphasisColor', 1],
-    tdc: ['textDecorationColor', 1],
-    // WebkitTapHighlightColor — вендорное свойство без нестандартного аналога
-    // (camelCase с ведущей заглавной буквы camelToKebabCase превращает в
-    // '-webkit-tap-highlight-color', см. fundamentool). Добавлено 2026-09-23
-    // взамен ручного mn.css({html:{'-webkit-tap-highlight-color':'#000'}})
-    // в presets/main.ts — единственного оставшегося в проекте вызова mn.css.
-    thc: ['WebkitTapHighlightColor', 1],
-  }, (options: any[], pfx: string) => {
-    const propName = options[0];
-    const priority = options[1] || 0;
-    mn(
-      pfx, (p) => {
-        let s: Record<string, any>; let v: string | undefined; let synonym: any;
-        const raw = rawColorValue(p.suffix);
-        if (raw) {
-          s = {};
-          s[propName] = raw;
-          return styleWrap(s, priority);
+    function gapHandlerProvider(propName: string) {
+      return (p: MnEssenceParams) => {
+        const suffix = p.suffix;
+        if (!suffix) {
+          return normalizeDefault(p, '100%');
         }
-        return (synonym = COLOR_SYNONYMS[p.suffix || 'CT'])
-          ? (s = {}, s[propName] = getColor(synonym), styleWrap(s, priority))
-          : (
-            v = p.value,
-            v || throwInvalid(),
-            // При несовпадении PATTERN_COLOR в `p.value` остаётся значение от
-            // generic-разбора ядра, и `c-5` уходило в CSS как `color:-5`.
-            // Цвет считается разобранным, только если сработала одна из веток
-            // самого PATTERN_COLOR: код, переменная или слово.
-            (p.color || p.vv || p.camel) || throwInvalid('Value "' + p.suffix
+        // `normal` — initial value у gap-семейства; размерам (`w`/`h`/`p`/`m`)
+        // оно не подходит, поэтому словарь здесь свой.
+        if (suffix === 'N') {
+          return normalizeDefault(p, 'Normal');
+        }
+        const v = getVal(
+          suffix, 1, 1, 'px', 0, GAP_SYNONYMS, KEYWORDS_NORMAL,
+        );
+        // 1 CSS-свойство — priority = 2 - 1, как у соседних w/h (props.length === 1)
+        const priority = 1;
+        const style: Record<string, any> = {};
+        style[propName] = v[0];
+        return styleWrap(style, priority + v[1]);
+      };
+    }
+    mn(
+      'gap', gapHandlerProvider('gap'), '', 1,
+    );
+    mn(
+      'gapx', gapHandlerProvider('columnGap'), '', 1,
+    );
+    mn(
+      'gapy', gapHandlerProvider('rowGap'), '', 1,
+    );
+
+    mn('tbl', styleWrap({
+      display: 'table',
+    }));
+    mn('tbl.cell', {
+      selectors: ['>*'],
+      style: {
+        display: 'table-cell',
+        verticalAlign: 'middle',
+      },
+    });
+
+    // flex horizontal align
+    forIn({
+      start: {
+        boxPack: 'start',
+        justifyContent: 'flex-start',
+      },
+      center: {
+        boxPack: 'center',
+        justifyContent: 'center',
+      },
+      end: {
+        boxPack: 'end',
+        justifyContent: 'flex-end',
+      },
+      around: {
+        justifyContent: 'space-around',
+      },
+      between: {
+        boxPack: 'justify',
+        justifyContent: 'space-between',
+      },
+    }, (style, essenceName) => {
+      const capitalized = upperFirst(essenceName);
+      const name = 'fxa' + capitalized;
+      mn(name, styleWrap(style, 1));
+      mn('fxa' + capitalized[0], name);
+    });
+
+    // flex vertical align
+    forIn({
+      start: {
+        boxAlign: 'start',
+        alignItems: 'flex-start',
+        alignContent: 'flex-start',
+      },
+      center: {
+        boxAlign: 'center',
+        alignItems: 'center',
+        alignContent: 'center',
+      },
+      end: {
+        boxAlign: 'end',
+        alignItems: 'flex-end',
+        alignContent: 'flex-end',
+      },
+      stretch: {
+        boxAlign: 'stretch',
+        alignItems: 'stretch',
+        alignContent: 'stretch',
+      },
+    }, (style, essenceName) => {
+      mn('fya' + upperFirst(essenceName), styleWrap(style, 1));
+    });
+
+    forIn({
+      S: 'Start',
+      C: 'Center',
+      E: 'End',
+      A: 'Around',
+      ST: 'Stretch',
+    }, (essenceName, abbr) => {
+      mn('fya' + abbr, 'fya' + essenceName);
+    });
+
+    forIn({
+      dn: 'transitionDuration',
+      delay: 'transitionDelay',
+    }, (propName, essenceName) => {
+      mn(essenceName, (p) => {
+        let num;
+        return p.camel || p.negative ? 0 : ((num = p.num)
+          ? styleWrap({
+            [propName]: num + 'ms',
+          }, 1)
+          : normalizeDefault(p, 250)
+        );
+      });
+    });
+
+    forIn({
+      c: ['color'],
+      stroke: ['stroke'],
+      fill: ['fill'],
+      olc: ['outlineColor', 1],
+      bgc: ['backgroundColor', 1],
+      temc: ['textEmphasisColor', 1],
+      tdc: ['textDecorationColor', 1],
+      // WebkitTapHighlightColor — вендорное свойство без нестандартного аналога
+      // (camelCase с ведущей заглавной буквы camelToKebabCase превращает в
+      // '-webkit-tap-highlight-color', см. fundamentool). Добавлено 2026-09-23
+      // взамен ручного mn.css({html:{'-webkit-tap-highlight-color':'#000'}})
+      // в presets/main.ts — единственного оставшегося в проекте вызова mn.css.
+      thc: ['WebkitTapHighlightColor', 1],
+    }, (options: any[], pfx: string) => {
+      const propName = options[0];
+      const priority = options[1] || 0;
+      mn(
+        pfx, (p) => {
+          let s: Record<string, any>; let v: string | undefined; let synonym: any;
+          const raw = rawColorValue(p.suffix);
+          if (raw) {
+            s = {};
+            s[propName] = raw;
+            return styleWrap(s, priority);
+          }
+          return (synonym = COLOR_SYNONYMS[p.suffix || 'CT'])
+            ? (s = {}, s[propName] = getColor(synonym), styleWrap(s, priority))
+            : (
+              v = p.value,
+              v || throwInvalid(),
+              // При несовпадении PATTERN_COLOR в `p.value` остаётся значение от
+              // generic-разбора ядра, и `c-5` уходило в CSS как `color:-5`.
+              // Цвет считается разобранным, только если сработала одна из веток
+              // самого PATTERN_COLOR: код, переменная или слово.
+              (p.color || p.vv || p.camel) || throwInvalid('Value "' + p.suffix
               + '" is not a color: expected a code (`F00`), a variable '
               + 'or a keyword'),
-            assertColorAbbr(p),
-            assertShortestHex(p, p.color),
-            s = {},
-            s[propName] = getColor(v as string),
-            styleWrap(s, priority)
-          );
-      }, PATTERN_COLOR,
-    );
-  });
+              assertColorAbbr(p),
+              assertShortestHex(p, p.color),
+              s = {},
+              s[propName] = getColor(v as string),
+              styleWrap(s, priority)
+            );
+        }, PATTERN_COLOR,
+      );
+    });
 
-  forIn({
+    forIn({
     // backgroundImage: url(...)
-    bgi: 'backgroundImage',
-    // listStyleImage: url(...)
-    lisi: 'listStyleImage',
-    maski: 'maskImage',
-  }, (propName, name) => {
-    mn(name, (p) => {
-      const style: Record<string, any> = {};
-      let url: string;
-      // Переменная подставляется как значение целиком, а не заворачивается в
-      // url: `bgi--hero` — это `background-image:var(--hero)` (сама
-      // переменная и содержит `url(…)`), а не `url("--hero")`, которое
-      // ссылалось бы на файл с таким именем (2026-09-23).
-      //
-      // Готовое значение тоже не заворачивается: обёртка была безусловной, и
-      // `bgi_url\(a\.png\)` давало `url("url(a.png)")`, `bgi_none` —
-      // `url("none")`, `bgiN` — `url("N")`, а градиент превращался в имя файла
-      // (`url("linear-gradient(red,blue)")`). Оборачивается только голый путь
-      // (2026-09-26).
-      style[propName] = (url = snakeLeftTrim(p.suffix))
-        ? (cssVarValue(url)
+      bgi: 'backgroundImage',
+      // listStyleImage: url(...)
+      lisi: 'listStyleImage',
+      maski: 'maskImage',
+    }, (propName, name) => {
+      mn(name, (p) => {
+        const style: Record<string, any> = {};
+        let url: string;
+        // Переменная подставляется как значение целиком, а не заворачивается в
+        // url: `bgi--hero` — это `background-image:var(--hero)` (сама
+        // переменная и содержит `url(…)`), а не `url("--hero")`, которое
+        // ссылалось бы на файл с таким именем (2026-09-23).
+        //
+        // Готовое значение тоже не заворачивается: обёртка была безусловной, и
+        // `bgi_url\(a\.png\)` давало `url("url(a.png)")`, `bgi_none` —
+        // `url("none")`, `bgiN` — `url("N")`, а градиент превращался в имя файла
+        // (`url("linear-gradient(red,blue)")`). Оборачивается только голый путь
+        // (2026-09-26).
+        style[propName] = (url = snakeLeftTrim(p.suffix))
+          ? (cssVarValue(url)
           // Ключ ищется в нижнем регистре: и краткая запись (`bgiN`), и
           // полная (`bgiNone`, `bgiInherit`) — одно и то же слово.
           || (IMAGE_KEYWORDS[url.toLowerCase()]
             || (url.indexOf('(') > -1 ? url : 'url("' + url + '")')))
-        : 'none';
-      return styleWrap(style, 1);
+          : 'none';
+        return styleWrap(style, 1);
+      });
     });
-  });
 
-  forIn({
-    float: {
-      lt: 'left',
-      jt: 'none',
-      rt: 'right',
-    },
-  }, (valsMap, propName) => {
-    forIn(valsMap, (value, pfx) => {
-      mn(pfx, (p) => {
-        return p.suffix ? 0 : styleWrap({
-          [propName]: value,
+    forIn({
+      float: {
+        lt: 'left',
+        jt: 'none',
+        rt: 'right',
+      },
+    }, (valsMap, propName) => {
+      forIn(valsMap, (value, pfx) => {
+        mn(pfx, (p) => {
+          return p.suffix ? 0 : styleWrap({
+            [propName]: value,
+          });
         });
       });
     });
-  });
 
-  mn(
-    'x', (p) => {
-      const scale = p.s;
-      const angle = p.angle;
-      const z = p.z;
-      return styleWrap({
-        transform:
+    mn(
+      'x', (p) => {
+        const scale = p.s;
+        const angle = p.angle;
+        const z = p.z;
+        return styleWrap({
+          transform:
         'translate(' + (floatNormalize(p.x || '0') + ('' + (p.xu || 'px'))) + ','
         + (floatNormalize(p.y || '0') + ('' + (p.yu || 'px'))) + ')'
         + (z ? (' translateZ('
@@ -2934,415 +2939,415 @@ export default (mn: MnInstance) => {
           (REGEXP_ANGLE_TAIL.exec(p.suffix) as RegExpExecArray)[1],
           p.name + p.suffix,
         ) + ')') : ''),
-      }); // eslint-disable-next-line
+        }); // eslint-disable-next-line
   }, '^' + PATTERN_DIGITS + ':x?(%):xu?([yY]' + PATTERN_DIGITS
     + ':y(%):yu?)?([zZ]' + PATTERN_DIGITS
     + ':z(%):zu?)?([sS]([0-9\\.]+):s)?([rR](x|y|z):dir'
     + PATTERN_DIGITS + ':angle([a-z]+):unit?)?$',
-  );
-
-  mn('spnr', (p) => {
-    let v;
-    return isNaN(v = (v = p.value) ? parseInt(v) : 3000) || v < 1 ? 0 : (
-      setKeyframes(
-        'spinner-animate', {
-          from: {
-            transform: 'rotateZ(0deg)',
-          },
-          to: {
-            transform: 'rotateZ(360deg)',
-          },
-        }, 1,
-      ),
-      styleWrap({
-        animation: 'spinner-animate ' + v + 'ms infinite linear',
-      })
     );
-  });
 
-  forEach([
-    'x',
-    'y',
-    'z',
-  ], (suffix) => {
-    const prefix = 'rotate' + toUpper(suffix) + '(';
-    mn('r' + suffix, (p) => {
+    mn('spnr', (p) => {
       let v;
-      return (v = p.value) ? styleWrap({
-        transform: prefix + assertAngle(
-          v, p.unit, p.name + p.suffix,
-        ) + ')',
-      }) : normalizeDefault(p, 180);
+      return isNaN(v = (v = p.value) ? parseInt(v) : 3000) || v < 1 ? 0 : (
+        setKeyframes(
+          'spinner-animate', {
+            from: {
+              transform: 'rotateZ(0deg)',
+            },
+            to: {
+              transform: 'rotateZ(360deg)',
+            },
+          }, 1,
+        ),
+        styleWrap({
+          animation: 'spinner-animate ' + v + 'ms infinite linear',
+        })
+      );
     });
-  });
 
-  forIn(SHADOW_HANDLERS, ([propName, handler], pfx) => {
+    forEach([
+      'x',
+      'y',
+      'z',
+    ], (suffix) => {
+      const prefix = 'rotate' + toUpper(suffix) + '(';
+      mn('r' + suffix, (p) => {
+        let v;
+        return (v = p.value) ? styleWrap({
+          transform: prefix + assertAngle(
+            v, p.unit, p.name + p.suffix,
+          ) + ')',
+        }) : normalizeDefault(p, 180);
+      });
+    });
+
+    forIn(SHADOW_HANDLERS, ([propName, handler], pfx) => {
     /**
      * Собирает ОДНУ тень из её разобранного суффикса.
      *
      * Возвращает пустую строку, когда тени нет (`bxsh` без значения или
      * `m0` — ноль повторов): вызывающий превращает это в `none`.
      */
-    function shadowValue(part: string, name: string): string {
+      function shadowValue(part: string, name: string): string {
       // Вся тень одной переменной: `bxsh--shadow` → `box-shadow:var(--shadow)`.
       // У любого другого свойства `--x` означает значение целиком, и тень не
       // исключение. В позицию blur переменная ставится явно — `bxshB--blur`.
-      const whole = cssVarValue(part);
-      if (whole) {
-        return whole;
-      }
-      const parsed = REGEXP_SHADOW_SUFFIX.exec(part);
-      parsed || throwInvalid('"' + name + part + '" is only partly parsed: '
+        const whole = cssVarValue(part);
+        if (whole) {
+          return whole;
+        }
+        const parsed = REGEXP_SHADOW_SUFFIX.exec(part);
+        parsed || throwInvalid('"' + name + part + '" is only partly parsed: '
         + 'the order is blur (a number or a B-- variable), then x, y, r, m, c, in');
-      const p = parsed as RegExpExecArray;
-      const repeatCount = intval(
-        p[MN_SHADOW_M], 1, 0,
-      );
-      // Значение (blur) — ведущее число или переменная; модификаторы его не
-      // содержат.
-      let value = p[MN_SHADOW_VALUE] || p[MN_SHADOW_BLUR_VAR];
-      if (!value) {
+        const p = parsed as RegExpExecArray;
+        const repeatCount = intval(
+          p[MN_SHADOW_M], 1, 0,
+        );
+        // Значение (blur) — ведущее число или переменная; модификаторы его не
+        // содержат.
+        let value = p[MN_SHADOW_VALUE] || p[MN_SHADOW_BLUR_VAR];
+        if (!value) {
         // Модификаторы без ведущего значения — описка: `bxshR3` раньше давало
         // мусор `Rpx` в позиции blur, а потом молча превращалось в `none`.
-        part && throwInvalid('"' + name + part + '" has no leading value: '
+          part && throwInvalid('"' + name + part + '" has no leading value: '
           + 'blur goes first — "' + name + '19r3"');
-        return '';
-      }
-      if (repeatCount < 1) {
-        return '';
-      }
-      // `;` — терминатор имени переменной, как везде в нотации: без него имя
-      // жадно забрало бы следующие модификаторы (`bxshB--blur;c--shadow`).
-      value[0] === '-' && (value = cssVarValue(value) as string);
-      const colors = getColor(p[MN_SHADOW_COLOR] || '0');
-      // Последняя группа регулярки — `in` (inset).
-      const prefixIn = p[p.length - 1] ? 'inset ' : '';
-      const colorsLength = colors.length;
-      // Единица склейки была жёстко `px`: `bxsh10em` давало
-      // `0px 0px 10px 0px #000` — единица молча терялась. Модификаторы x/y/r
-      // по грамматике суффикса — целые без единицы, поэтому единица у записи
-      // одна на все её длины.
-      const unit = p[MN_SHADOW_UNIT] || 'px';
-      const output = new Array(colorsLength);
+          return '';
+        }
+        if (repeatCount < 1) {
+          return '';
+        }
+        // `;` — терминатор имени переменной, как везде в нотации: без него имя
+        // жадно забрало бы следующие модификаторы (`bxshB--blur;c--shadow`).
+        value[0] === '-' && (value = cssVarValue(value) as string);
+        const colors = getColor(p[MN_SHADOW_COLOR] || '0');
+        // Последняя группа регулярки — `in` (inset).
+        const prefixIn = p[p.length - 1] ? 'inset ' : '';
+        const colorsLength = colors.length;
+        // Единица склейки была жёстко `px`: `bxsh10em` давало
+        // `0px 0px 10px 0px #000` — единица молча терялась. Модификаторы x/y/r
+        // по грамматике суффикса — целые без единицы, поэтому единица у записи
+        // одна на все её длины.
+        const unit = p[MN_SHADOW_UNIT] || 'px';
+        const output = new Array(colorsLength);
       let sample, v, color, i, ci = 0; // eslint-disable-line
-      for (;ci < colorsLength; ci++) {
-        color = colors[ci];
-        sample = prefixIn
+        for (;ci < colorsLength; ci++) {
+          color = colors[ci];
+          sample = prefixIn
           + shadowJoin(handler(
             p[MN_SHADOW_X] || 0, p[MN_SHADOW_Y] || 0,
             value, p[MN_SHADOW_R] || 0, color,
           ),
           unit);
-        v = new Array(repeatCount);
-        for (i = repeatCount; i--;) {
-          v[i] = sample;
+          v = new Array(repeatCount);
+          for (i = repeatCount; i--;) {
+            v[i] = sample;
+          }
+          output[ci] = v.join(',');
         }
-        output[ci] = v.join(',');
+        return output.join(',');
       }
-      return output.join(',');
-    }
 
-    mn(pfx, (p) => {
-      const suffix = p.suffix;
-      const style: Record<string, any> = {};
-      if (SHADOW_KEYWORDS[suffix]) {
-        style[propName] = 'none';
-        return styleWrap(style);
-      }
-      // Несколько РАЗНЫХ теней — через запятую. Модификатор `m` повторяет одну
-      // и ту же, а сырой режим на списке ломался: запятая уходила внутрь
-      // `var(…)` и давала `var(--shadow,0) 1px 2px var(--shadow2)`.
-      const parts = splitTopLevel(suffix);
-      const l = parts.length;
-      const out: string[] = new Array(l);
-      let i = 0;
-      let one: string;
-      for (; i < l; i++) {
-        one = shadowValue(parts[i], p.name);
-        if (!one) {
+      mn(pfx, (p) => {
+        const suffix = p.suffix;
+        const style: Record<string, any> = {};
+        if (SHADOW_KEYWORDS[suffix]) {
           style[propName] = 'none';
           return styleWrap(style);
         }
-        out[i] = one;
-      }
-      style[propName] = out.join(',');
-      return styleWrap(style);
+        // Несколько РАЗНЫХ теней — через запятую. Модификатор `m` повторяет одну
+        // и ту же, а сырой режим на списке ломался: запятая уходила внутрь
+        // `var(…)` и давала `var(--shadow,0) 1px 2px var(--shadow2)`.
+        const parts = splitTopLevel(suffix);
+        const l = parts.length;
+        const out: string[] = new Array(l);
+        let i = 0;
+        let one: string;
+        for (; i < l; i++) {
+          one = shadowValue(parts[i], p.name);
+          if (!one) {
+            style[propName] = 'none';
+            return styleWrap(style);
+          }
+          out[i] = one;
+        }
+        style[propName] = out.join(',');
+        return styleWrap(style);
+      });
     });
-  });
 
 
-  mn(
-    'r', (p) => {
-      const v = getVal(
-        p.suffix || 10000, 1, 0, 'px', 1,
-      );
-      return styleWrap({
-        borderRadius: v[0],
-      }, v[1]);
-    }, '', 1,
-  );
-
-
-  // border-radius by sides
-  forIn({
-    lt: 'top-left',
-    lb: 'bottom-left',
-    rt: 'top-right',
-    rb: 'bottom-right',
-  }, (side, suffix) => {
-    const propName = 'border-' + side + '-radius';
     mn(
-      'r' + suffix, (p) => {
-        const style: Record<string, any> = {};
-        style[propName] = getVal(
-          p.suffix || 10000, 1, 1, 'px', 1,
-        )[0];
-        return styleWrap(style, 2);
+      'r', (p) => {
+        const v = getVal(
+          p.suffix || 10000, 1, 0, 'px', 1,
+        );
+        return styleWrap({
+          borderRadius: v[0],
+        }, v[1]);
       }, '', 1,
     );
-  });
 
 
-  forIn({
-    f: [
-      'fontSize',
-      '',
-      1,
-      1,
-      {
-        I: 'Inherit',
-      },
-    ],
-    sw: [
-      'strokeWidth',
-      0,
-      0,
-      1,
-    ],
-    olw: [
-      'outlineWidth',
-      0,
-      1,
-      1,
-      {
-        TN: 'Thin',
-        M: 'Medium',
-        TC: 'Thick',
-      },
-      // Та же `<line-width>`, что у `border-width`: длина или слово, без
-      // процентов.
-      1,
-    ],
-    // `grid-gap` — сокращение для двух дорожек (`row column`), поэтому здесь
-    // два значения допустимы, а у покомпонентных `ggc`/`ggr` — нет.
-    gg: [
-      'gridGap',
-      0,
-      1,
-      0,
-      {
-        U: 'Unset',
-        N: 'Normal',
-      },
-    ],
-    ggc: [
-      'gridColumnGap',
-      0,
-      2,
-      1,
-      {
-        U: 'Unset',
-        R: 'Revert',
-        N: 'Normal',
-      },
-    ],
-    ggr: [
-      'gridRowGap',
-      0,
-      2,
-      1,
-      {
-        U: 'Unset',
-        R: 'Revert',
-        N: 'Normal',
-      },
-    ],
-  }, (options: any[], pfx: string) => {
-    const [propName, defaultValue] = options;
-    const priority = options[2] || 0;
-    const one = options[3];
-    const synonyms = options[4] || {};
-    const noPercent = options[5];
-    // Допустимые слова выводятся из значений самого словаря: если хендлер
-    // объявил `N: 'Normal'`, то `normal` валиден и полной записью. Отдельная
-    // таблица здесь не нужна — словарь уже задан на свойство, а не на семейство.
-    const keywords: Record<string, 1> = {};
-    forIn(synonyms, (word: string) => {
-      keywords[toKebabCase(word)] = 1;
+    // border-radius by sides
+    forIn({
+      lt: 'top-left',
+      lb: 'bottom-left',
+      rt: 'top-right',
+      rb: 'bottom-right',
+    }, (side, suffix) => {
+      const propName = 'border-' + side + '-radius';
+      mn(
+        'r' + suffix, (p) => {
+          const style: Record<string, any> = {};
+          style[propName] = getVal(
+            p.suffix || 10000, 1, 1, 'px', 1,
+          )[0];
+          return styleWrap(style, 2);
+        }, '', 1,
+      );
     });
-    mn(pfx, (p) => {
-      let style, suffix, synonym, v;
-      return (synonym = synonyms[suffix = p.suffix])
-        ? normalizeDefault(p, synonym)
-        : (
-          v = getVal(
-            suffix || defaultValue,
-            1, one, 'px', 0, synonyms, keywords, noPercent,
-          ),
-          style = {} as Record<string, any>,
-          style[propName] = v[0],
-          styleWrap(style, priority + v[1])
-        );
+
+
+    forIn({
+      f: [
+        'fontSize',
+        '',
+        1,
+        1,
+        {
+          I: 'Inherit',
+        },
+      ],
+      sw: [
+        'strokeWidth',
+        0,
+        0,
+        1,
+      ],
+      olw: [
+        'outlineWidth',
+        0,
+        1,
+        1,
+        {
+          TN: 'Thin',
+          M: 'Medium',
+          TC: 'Thick',
+        },
+        // Та же `<line-width>`, что у `border-width`: длина или слово, без
+        // процентов.
+        1,
+      ],
+      // `grid-gap` — сокращение для двух дорожек (`row column`), поэтому здесь
+      // два значения допустимы, а у покомпонентных `ggc`/`ggr` — нет.
+      gg: [
+        'gridGap',
+        0,
+        1,
+        0,
+        {
+          U: 'Unset',
+          N: 'Normal',
+        },
+      ],
+      ggc: [
+        'gridColumnGap',
+        0,
+        2,
+        1,
+        {
+          U: 'Unset',
+          R: 'Revert',
+          N: 'Normal',
+        },
+      ],
+      ggr: [
+        'gridRowGap',
+        0,
+        2,
+        1,
+        {
+          U: 'Unset',
+          R: 'Revert',
+          N: 'Normal',
+        },
+      ],
+    }, (options: any[], pfx: string) => {
+      const [propName, defaultValue] = options;
+      const priority = options[2] || 0;
+      const one = options[3];
+      const synonyms = options[4] || {};
+      const noPercent = options[5];
+      // Допустимые слова выводятся из значений самого словаря: если хендлер
+      // объявил `N: 'Normal'`, то `normal` валиден и полной записью. Отдельная
+      // таблица здесь не нужна — словарь уже задан на свойство, а не на семейство.
+      const keywords: Record<string, 1> = {};
+      forIn(synonyms, (word: string) => {
+        keywords[toKebabCase(word)] = 1;
+      });
+      mn(pfx, (p) => {
+        let style, suffix, synonym, v;
+        return (synonym = synonyms[suffix = p.suffix])
+          ? normalizeDefault(p, synonym)
+          : (
+            v = getVal(
+              suffix || defaultValue,
+              1, one, 'px', 0, synonyms, keywords, noPercent,
+            ),
+            style = {} as Record<string, any>,
+            style[propName] = v[0],
+            styleWrap(style, priority + v[1])
+          );
+      });
     });
-  });
 
 
-  forIn({
-    '': 0,
-    x: 1,
-    y: 1,
-  }, (priority, suffix) => {
-    const propName = 'overflow' + toUpper(suffix);
-    const handle = synonymProvider(
-      propName, {
-        '': 'Hidden',
-        V: 'Visible',
-        H: 'Hidden',
-        S: 'Scroll',
-        A: 'Auto',
-        // `clip` — как `hidden`, но без создания scroll-контейнера.
-        C: 'Clip',
+    forIn({
+      '': 0,
+      x: 1,
+      y: 1,
+    }, (priority, suffix) => {
+      const propName = 'overflow' + toUpper(suffix);
+      const handle = synonymProvider(
+        propName, {
+          '': 'Hidden',
+          V: 'Visible',
+          H: 'Hidden',
+          S: 'Scroll',
+          A: 'Auto',
+          // `clip` — как `hidden`, но без создания scroll-контейнера.
+          C: 'Clip',
         // `composite`: две оси в одном значении — `overflow: hidden auto`.
-      }, priority, 0 as any, 0 as any, 1,
-    );
+        }, priority, 0 as any, 0 as any, 1,
+      );
 
-    mn('ov' + suffix, function (this: unknown) {
+      mn('ov' + suffix, function (this: unknown) {
       // `arguments` вместо rest — §6.1: хендлер зовётся на каждый токен.
       // Приведение нужно только для `apply` в строгом режиме.
       // eslint-disable-next-line
       const essence = handle.apply(this, arguments as unknown as [MnEssenceParams]);
-      if (essence) {
-        const s = essence.style;
-        const v = s && s[propName];
-        if (v === 'scroll' || v === 'auto') {
-          essence.exts = ['ovscT'];
+        if (essence) {
+          const s = essence.style;
+          const v = s && s[propName];
+          if (v === 'scroll' || v === 'auto') {
+            essence.exts = ['ovscT'];
+          }
         }
-      }
-      return essence;
+        return essence;
+      });
     });
-  });
 
-  mn('pos', (p) => {
-    let s, synonym, v;
-    return (synonym = POSITION_SYNONYMS[s = p.suffix])
-      ? normalizeDefault(p, synonym)
-      : (
+    mn('pos', (p) => {
+      let s, synonym, v;
+      return (synonym = POSITION_SYNONYMS[s = p.suffix])
+        ? normalizeDefault(p, synonym)
+        : (
         /* istanbul ignore next — ветка `0` недостижима: пустой суффикс
            разбирает `POSITION_SYNONYMS['']` выше (голый `pos` → `relative`).
            Оставлена как страховка на случай правки карты синонимов. */
-        s ? (
+          s ? (
           // Перечень у `position` закрыт, поэтому сюда доходит либо слово из
           // него, либо ошибка: `pos10` давало `position:10`, `posZzz` —
           // `position:zzz`.
-          v = assertEnumValue(
-            valueNormalize(s), ENUM_KEYWORDS.position, 0, 'pos', s,
-          ),
-          styleWrap({
-            position: v,
-          }, POSITION_PRIORITIES[v] || 0)
-        ) : 0
-      );
-  });
+            v = assertEnumValue(
+              valueNormalize(s), ENUM_KEYWORDS.position, 0, 'pos', s,
+            ),
+            styleWrap({
+              position: v,
+            }, POSITION_PRIORITIES[v] || 0)
+          ) : 0
+        );
+    });
 
-  mn({
-    cfx: {
-      exts: ['posS'],
-      childs: {
-        pale: {
-          selectors: [':before', ':after'],
-          style: {
-            content: '" "',
-            clear: 'both',
-            display: 'table',
+    mn({
+      cfx: {
+        exts: ['posS'],
+        childs: {
+          pale: {
+            selectors: [':before', ':after'],
+            style: {
+              content: '" "',
+              clear: 'both',
+              display: 'table',
+            },
           },
         },
       },
-    },
 
-    // background: (...)
-    bg: backgroundProvider('background'),
+      // background: (...)
+      bg: backgroundProvider('background'),
 
-    // font-weight
-    fw: (p) => {
-      const camel = p.camel;
-      const synonym = camel && FONT_WEIGHT_SYNONYMS[camel];
-      // `fw6` → 600 (цифра-сокращение) и `fw600` → 600 (значение CSS как есть).
-      // До 2026-09-22 второе молча давало 900: число всегда умножалось на 100
-      // и зажималось в 1..9, то есть самая естественная запись была неверной.
-      const num = p.num;
-      return synonym ? normalizeDefault(p, synonym) : p.negative ? 0 : styleWrap({
-        fontWeight: camel
+      // font-weight
+      fw: (p) => {
+        const camel = p.camel;
+        const synonym = camel && FONT_WEIGHT_SYNONYMS[camel];
+        // `fw6` → 600 (цифра-сокращение) и `fw600` → 600 (значение CSS как есть).
+        // До 2026-09-22 второе молча давало 900: число всегда умножалось на 100
+        // и зажималось в 1..9, то есть самая естественная запись была неверной.
+        const num = p.num;
+        return synonym ? normalizeDefault(p, synonym) : p.negative ? 0 : styleWrap({
+          fontWeight: camel
           // Слово не проверялось: `fwZzz` давало `font-weight:zzz`, `fwA` —
           // `font-weight:a`, `fwF00` — `font-weight:f`. Список закрытый,
           // выводится из того же словаря кратких записей.
-          ? assertKnownWord(
-            toKebabCase(camel), camel, FONT_WEIGHT_SYNONYMS, FONT_WEIGHT_KEYWORDS,
-          )
+            ? assertKnownWord(
+              toKebabCase(camel), camel, FONT_WEIGHT_SYNONYMS, FONT_WEIGHT_KEYWORDS,
+            )
           // `num` приходит из разбора строкой; сравнение и деление ведём
           // числом явно, а не полагаясь на приведение оператором.
-          : (+(num as string) >= 100
-            ? 100 * intval(
-              +(num as string) / 100, 1, 1, 9,
-            )
-            : 100 * intval(
-              num, 1, 1, 9,
-            )),
-      }, 1);
-    },
+            : (+(num as string) >= 100
+              ? 100 * intval(
+                +(num as string) / 100, 1, 1, 9,
+              )
+              : 100 * intval(
+                num, 1, 1, 9,
+              )),
+        }, 1);
+      },
 
-    // position
-    rlv: 'posR',
-    abs: 'posA',
-    fixed: 'posF',
+      // position
+      rlv: 'posR',
+      abs: 'posA',
+      fixed: 'posF',
     'static': 'posS', // eslint-disable-line
-    sticky: 'posSK',
+      sticky: 'posSK',
 
     'break': styleWrap({ // eslint-disable-line
-      whiteSpace: 'normal',
-      wordBreak: 'break-word',
-    }),
-    z: (p) => {
-      let num;
-      // `z-index` — целое число или `auto`. Дробь давала `z-index:1.5`,
-      // правило, которое браузер отбрасывает целиком.
-      return p.camel ? 0 : ((num = p.num) ? (
-        REGEXP_INTEGER.test(num) || throwInvalid('Value "' + p.suffix
+        whiteSpace: 'normal',
+        wordBreak: 'break-word',
+      }),
+      z: (p) => {
+        let num;
+        // `z-index` — целое число или `auto`. Дробь давала `z-index:1.5`,
+        // правило, которое браузер отбрасывает целиком.
+        return p.camel ? 0 : ((num = p.num) ? (
+          REGEXP_INTEGER.test(num) || throwInvalid('Value "' + p.suffix
           + '" is invalid: z-index is an integer'),
-        styleWrap({
-          zIndex: num,
-        })
-      ) : normalizeDefault(p, 1));
-    },
-    /**
+          styleWrap({
+            zIndex: num,
+          })
+        ) : normalizeDefault(p, 1));
+      },
+      /**
      * `opacity`. Число — проценты (`o50` → `.5`), как в 1.x. Дробь меньше единицы
      * трактуется как готовая доля (`o0.5` → `.5`): до 2026-09-22 такая запись
      * молча давала `opacity:0` (0.5 % округлялось в ноль), хотя это самый
      * естественный для CSS вариант записи.
      */
-    o: (p) => {
-      let v, num;
-      return p.camel || p.negative ? 0 : (
-        (v = cssVarValue(p.suffix || '')) ? styleWrap({
-          opacity: v, 
-        // `p.num` — группа регулярки, то есть строка. Раньше здесь шла
-        // арифметика прямо по ней (`num * 0.01`) и работала на неявном
-        // приведении; `+num` делает то же самое, но видимо.
-        }) : ((num = p.num) ? styleWrap({
-          opacity: (+num > 0 && +num < 1) ? toFixed(+num) : toFixed(+num * 0.01),
-        }) : normalizeDefault(p))
-      );
-    },
-    /**
+      o: (p) => {
+        let v, num;
+        return p.camel || p.negative ? 0 : (
+          (v = cssVarValue(p.suffix || '')) ? styleWrap({
+            opacity: v, 
+            // `p.num` — группа регулярки, то есть строка. Раньше здесь шла
+            // арифметика прямо по ней (`num * 0.01`) и работала на неявном
+            // приведении; `+num` делает то же самое, но видимо.
+          }) : ((num = p.num) ? styleWrap({
+            opacity: (+num > 0 && +num < 1) ? toFixed(+num) : toFixed(+num * 0.01),
+          }) : normalizeDefault(p))
+        );
+      },
+      /**
      * `line-height`. **Один способ на каждый смысл:** голое число — безразмерный
      * множитель, как в CSS (`lh1.5` → `line-height:1.5`; потомки наследуют
      * коэффициент); любая единица пишется явно и проходит как есть
@@ -3355,712 +3360,712 @@ export default (mn: MnInstance) => {
      * приходилось два способа записи, да ещё и с подменой семантики —
      * `150%` наследуется вычисленным значением, а `1.5` коэффициентом.
      */
-    lh: (p) => {
-      let num, unit, v;
-      return p.camel ? 0 : (
-        (v = cssVarValue(p.suffix || '')) ? styleWrap({
-          lineHeight: v,
-        }) : (
+      lh: (p) => {
+        let num, unit, v;
+        return p.camel ? 0 : (
+          (v = cssVarValue(p.suffix || '')) ? styleWrap({
+            lineHeight: v,
+          }) : (
           // Единица не проверялась: `lh10zz` давало `line-height:10zz`,
           // `lh10s` — `line-height:10s`. Безразмерная форма при этом
           // сохраняется — она и есть основная.
-          unit = validateUnit(p.unit),
-          (num = p.num) ? styleWrap({
-            lineHeight: num == '0' ? num : (unit ? num + unit : num),
-          }) : normalizeDefault(p, '1')
-        )
-      );
-    },
-    tsa: (p) => {
-      let v;
-      return p.negative ? 0 : (
-        (v = cssVarValue(p.suffix || '')) ? styleWrap({
-          textSizeAdjust: v,
-        }) : (p.value ? styleWrap({
+            unit = validateUnit(p.unit),
+            (num = p.num) ? styleWrap({
+              lineHeight: num == '0' ? num : (unit ? num + unit : num),
+            }) : normalizeDefault(p, '1')
+          )
+        );
+      },
+      tsa: (p) => {
+        let v;
+        return p.negative ? 0 : (
+          (v = cssVarValue(p.suffix || '')) ? styleWrap({
+            textSizeAdjust: v,
+          }) : (p.value ? styleWrap({
           // По грамматике это `none | auto | <percentage>`: единица по
           // умолчанию `%`, любая другая недопустима. Было `px`, поэтому
           // `tsa10` давало `text-size-adjust:10px`, `tsa10px` проходило, а
           // `tsa0` давало `text-size-adjust:0` — ноль там тоже невалиден.
-          textSizeAdjust: (assertPercentOnly(p),
-          lengthOrWord(
-            p, TEXT_SIZE_ADJUST_KEYWORDS, LENGTH_PERCENT,
-            '%', TEXT_SIZE_ADJUST_SYNONYMS,
-          )),
-        }) : normalizeDefault(p, '100%'))
-      );
-    },
-    fsa: (p) => {
-      let v;
-      return p.negative ? 0 : (
-        (v = cssVarValue(p.suffix || '')) ? styleWrap({
-          fontSizeAdjust: v,
-        }) : (p.value ? styleWrap({
+            textSizeAdjust: (assertPercentOnly(p),
+            lengthOrWord(
+              p, TEXT_SIZE_ADJUST_KEYWORDS, LENGTH_PERCENT,
+              '%', TEXT_SIZE_ADJUST_SYNONYMS,
+            )),
+          }) : normalizeDefault(p, '100%'))
+        );
+      },
+      fsa: (p) => {
+        let v;
+        return p.negative ? 0 : (
+          (v = cssVarValue(p.suffix || '')) ? styleWrap({
+            fontSizeAdjust: v,
+          }) : (p.value ? styleWrap({
           // `N` здесь — краткая запись `none`, а не начало слова: она разобрана
           // до общего пути, поэтому остаётся отдельной веткой.
-          fontSizeAdjust: p.camel == 'N'
-            ? 'none'
+            fontSizeAdjust: p.camel == 'N'
+              ? 'none'
             // Значение безразмерное (`font-size-adjust:0.5`): единицы по
             // умолчанию нет, и явная тоже недопустима — `fsa10px` давало
             // `font-size-adjust:10px`.
-            : (p.unit && throwInvalid('Value "' + p.suffix
+              : (p.unit && throwInvalid('Value "' + p.suffix
               + '" is invalid: font-size-adjust is a unitless number'),
-            lengthOrWord(
-              p, FONT_SIZE_ADJUST_KEYWORDS, 0, '',
-            )),
-        }) : 0)
-      );
-    },
-    // `outline-offset` — длина со знаком, без процентов и без ключевых слов
-    // помимо CSS-wide.
-    olo: (p) => {
-      let v;
-      return (v = cssVarValue(p.suffix || '')) ? styleWrap({
-        outlineOffset: v,
-      }) : (p.value ? styleWrap({
-        outlineOffset: lengthOrWord(
-          p, EMPTY_KEYWORDS, 0, 'px',
-        ),
-      }) : normalizeDefault(p));
-    },
+              lengthOrWord(
+                p, FONT_SIZE_ADJUST_KEYWORDS, 0, '',
+              )),
+          }) : 0)
+        );
+      },
+      // `outline-offset` — длина со знаком, без процентов и без ключевых слов
+      // помимо CSS-wide.
+      olo: (p) => {
+        let v;
+        return (v = cssVarValue(p.suffix || '')) ? styleWrap({
+          outlineOffset: v,
+        }) : (p.value ? styleWrap({
+          outlineOffset: lengthOrWord(
+            p, EMPTY_KEYWORDS, 0, 'px',
+          ),
+        }) : normalizeDefault(p));
+      },
 
-    of: synonymProvider('objectFit', {
-      '': 'Cover',
-      F: 'Fill',
-      CT: 'Contain',
-      CV: 'Cover',
-      N: 'None',
-      SD: 'ScaleDown',
-    }),
-
-    d: synonymProvider(
-      'display', {
-        '': 'Block',
-        B: 'Block',
+      of: synonymProvider('objectFit', {
+        '': 'Cover',
+        F: 'Fill',
+        CT: 'Contain',
+        CV: 'Cover',
         N: 'None',
-        F: 'Flex',
-        IF: 'InlineFlex',
-        I: 'Inline',
-        IB: 'InlineBlock',
-        LI: 'ListItem',
-        RI: 'RunIn',
-        CP: 'Compact',
-        TB: 'Table',
-        ITB: 'InlineTable',
-        TBCP: 'TableCaption',
-        TBCL: 'TableColumn',
-        TBCLG: 'TableColumnGroup',
-        TBHG: 'TableHeaderGroup',
-        TBFG: 'TableFooterGroup',
-        TBR: 'TableRow',
-        TBRG: 'TableRowGroup',
-        TBC: 'TableCell',
-        RB: 'Ruby',
-        RBB: 'RubyBase',
-        RBBG: 'RubyBaseGroup',
-        RBT: 'RubyText',
-        RBTG: 'RubyTextGroup',
-        // Современные значения (добавлено 2026-09-22): раньше `dG` падало в
-        // буквальный `display:g` — короткие формы должны работать, а не ломаться.
-        G: 'Grid',
-        IG: 'InlineGrid',
-        FR: 'FlowRoot',
-        CN: 'Contents',
-        // `F` занято `flex`, `FR` — `flow-root`, поэтому `flow` — `FW`.
-        FW: 'Flow',
-        ILI: 'InlineListItem',
-        RBBC: 'RubyBaseContainer',
-        RBTC: 'RubyTextContainer',
-        IFR: 'InlineFlowRoot',
-      // `composite`: внешний и внутренний тип разом
-      // (`display: inline flow-root`).
-      }, 0, 0 as any, 0 as any, 1,
-    ),
+        SD: 'ScaleDown',
+      }),
 
-    dir: synonymProvider('direction', {
-      LTR: 'Ltr',
-      RTL: 'Rtl',
-      I: 'Inherit',
-      R: 'Revert',
-      RL: 'RevertLayer',
-      U: 'Unset',
-    }),
+      d: synonymProvider(
+        'display', {
+          '': 'Block',
+          B: 'Block',
+          N: 'None',
+          F: 'Flex',
+          IF: 'InlineFlex',
+          I: 'Inline',
+          IB: 'InlineBlock',
+          LI: 'ListItem',
+          RI: 'RunIn',
+          CP: 'Compact',
+          TB: 'Table',
+          ITB: 'InlineTable',
+          TBCP: 'TableCaption',
+          TBCL: 'TableColumn',
+          TBCLG: 'TableColumnGroup',
+          TBHG: 'TableHeaderGroup',
+          TBFG: 'TableFooterGroup',
+          TBR: 'TableRow',
+          TBRG: 'TableRowGroup',
+          TBC: 'TableCell',
+          RB: 'Ruby',
+          RBB: 'RubyBase',
+          RBBG: 'RubyBaseGroup',
+          RBT: 'RubyText',
+          RBTG: 'RubyTextGroup',
+          // Современные значения (добавлено 2026-09-22): раньше `dG` падало в
+          // буквальный `display:g` — короткие формы должны работать, а не ломаться.
+          G: 'Grid',
+          IG: 'InlineGrid',
+          FR: 'FlowRoot',
+          CN: 'Contents',
+          // `F` занято `flex`, `FR` — `flow-root`, поэтому `flow` — `FW`.
+          FW: 'Flow',
+          ILI: 'InlineListItem',
+          RBBC: 'RubyBaseContainer',
+          RBTC: 'RubyTextContainer',
+          IFR: 'InlineFlowRoot',
+          // `composite`: внешний и внутренний тип разом
+          // (`display: inline flow-root`).
+        }, 0, 0 as any, 0 as any, 1,
+      ),
 
-    // `composite`: берёт два значения — по оси X и Y
-    // (`overscroll-behavior: contain auto`).
-    ovb: synonymProvider(
-      'overscrollBehavior', OVERSCROLL_BEHAVIOR_PRIORITIES, 0, 0 as any, 0 as any, 1,
-    ),
-    ovbx: synonymProvider('overscrollBehaviorX', OVERSCROLL_BEHAVIOR_PRIORITIES),
-    ovby: synonymProvider('overscrollBehaviorY', OVERSCROLL_BEHAVIOR_PRIORITIES),
+      dir: synonymProvider('direction', {
+        LTR: 'Ltr',
+        RTL: 'Rtl',
+        I: 'Inherit',
+        R: 'Revert',
+        RL: 'RevertLayer',
+        U: 'Unset',
+      }),
 
-    maskt: synonymProvider('maskType', {
-      L: 'Luminance',
-      A: 'Alpha',
-      I: 'Inherit',
-      R: 'Revert',
-      RL: 'RevertLayer',
-      U: 'Unset',
-    }),
+      // `composite`: берёт два значения — по оси X и Y
+      // (`overscroll-behavior: contain auto`).
+      ovb: synonymProvider(
+        'overscrollBehavior', OVERSCROLL_BEHAVIOR_PRIORITIES, 0, 0 as any, 0 as any, 1,
+      ),
+      ovbx: synonymProvider('overscrollBehaviorX', OVERSCROLL_BEHAVIOR_PRIORITIES),
+      ovby: synonymProvider('overscrollBehaviorY', OVERSCROLL_BEHAVIOR_PRIORITIES),
 
-    maskm: synonymProvider('maskMode', {
-      L: 'Luminance',
-      A: 'Alpha',
-      I: 'Inherit',
-      R: 'Revert',
-      RL: 'RevertLayer',
-      U: 'Unset',
-      MS: 'MatchSource',
-    }),
+      maskt: synonymProvider('maskType', {
+        L: 'Luminance',
+        A: 'Alpha',
+        I: 'Inherit',
+        R: 'Revert',
+        RL: 'RevertLayer',
+        U: 'Unset',
+      }),
 
-    maskbg: backgroundProvider('maskImage'),
+      maskm: synonymProvider('maskMode', {
+        L: 'Luminance',
+        A: 'Alpha',
+        I: 'Inherit',
+        R: 'Revert',
+        RL: 'RevertLayer',
+        U: 'Unset',
+        MS: 'MatchSource',
+      }),
 
-    cl: synonymProvider('clear', {
-      '': 'Both',
-      B: 'Both',
-      N: 'None',
-      L: 'Left',
-      R: 'Right',
-      IS: 'InlineStart',
-      IE: 'InlineEnd',
-    }),
-    v: synonymProvider('visibility', {
-      '': 'Hidden',
-      V: 'Visible',
-      H: 'Hidden',
-      C: 'Collapse',
-    }),
-    ovs: synonymProvider('overflowStyle', {
-      '': 'Scrollbar',
-      S: 'Scrollbar',
-      A: 'Auto',
-      P: 'Panner',
-      M: 'Move',
-      MQ: 'Marquee',
-    }),
-    ovsc: synonymProvider('-webkitOverflowScrolling', {
-      '': 'Touch',
-      A: 'Auto',
-      T: 'Touch',
-    }),
-    cp: synonymProvider('clip', {
-      A: 'Auto',
-      R: 'Rect\\(top_right_bottom_left\\)',
-    }),
-    rsz: synonymProvider('resize', {
-      '': 'None',
-      N: 'None',
-      B: 'Both',
-      H: 'Horizontal',
-      V: 'Vertical',
-      // Логические оси: `BL`, а не `B` — та уже занята `both`.
-      BL: 'Block',
-      IL: 'Inline',
-    }),
-    /**
+      maskbg: backgroundProvider('maskImage'),
+
+      cl: synonymProvider('clear', {
+        '': 'Both',
+        B: 'Both',
+        N: 'None',
+        L: 'Left',
+        R: 'Right',
+        IS: 'InlineStart',
+        IE: 'InlineEnd',
+      }),
+      v: synonymProvider('visibility', {
+        '': 'Hidden',
+        V: 'Visible',
+        H: 'Hidden',
+        C: 'Collapse',
+      }),
+      ovs: synonymProvider('overflowStyle', {
+        '': 'Scrollbar',
+        S: 'Scrollbar',
+        A: 'Auto',
+        P: 'Panner',
+        M: 'Move',
+        MQ: 'Marquee',
+      }),
+      ovsc: synonymProvider('-webkitOverflowScrolling', {
+        '': 'Touch',
+        A: 'Auto',
+        T: 'Touch',
+      }),
+      cp: synonymProvider('clip', {
+        A: 'Auto',
+        R: 'Rect\\(top_right_bottom_left\\)',
+      }),
+      rsz: synonymProvider('resize', {
+        '': 'None',
+        N: 'None',
+        B: 'Both',
+        H: 'Horizontal',
+        V: 'Vertical',
+        // Логические оси: `BL`, а не `B` — та уже занята `both`.
+        BL: 'Block',
+        IL: 'Inline',
+      }),
+      /**
      * `cursor`. Однобуквенные заняты исторически (`C` — crosshair, `P` — pointer,
      * `A` — auto), поэтому добавленные 2026-09-24 значения берут по две буквы.
      * Курсоры изменения размера — направление + `R`: `crER` (e-resize),
      * `crNWR` (nw-resize), `crNSR` (ns-resize).
      */
-    cr: synonymProvider('cursor', {
-      '': 'Pointer',
-      A: 'Auto',
-      D: 'Default',
-      C: 'Crosshair',
-      HA: 'Hand',
-      HE: 'Help',
-      M: 'Move',
-      P: 'Pointer',
-      T: 'Text',
-      N: 'None',
-      NA: 'NotAllowed',
-      W: 'Wait',
-      PR: 'Progress',
-      CM: 'ContextMenu',
-      CE: 'Cell',
-      VT: 'VerticalText',
-      AL: 'Alias',
-      CO: 'Copy',
-      ND: 'NoDrop',
-      G: 'Grab',
-      GG: 'Grabbing',
-      ZI: 'ZoomIn',
-      ZO: 'ZoomOut',
-      AS: 'AllScroll',
-      CR: 'ColResize',
-      RR: 'RowResize',
-      ER: 'EResize',
-      NR: 'NResize',
-      SR: 'SResize',
-      WR: 'WResize',
-      NER: 'NeResize',
-      NWR: 'NwResize',
-      SER: 'SeResize',
-      SWR: 'SwResize',
-      EWR: 'EwResize',
-      NSR: 'NsResize',
-      NESWR: 'NeswResize',
-      NWSER: 'NwseResize',
-    }),
-    jc: synonymProvider('justifyContent', {
-      '': 'Center',
-      C: 'Center',
-      FE: 'FlexEnd',
-      FS: 'FlexStart',
-      SA: 'SpaceAround',
-      SB: 'SpaceBetween',
-      // Добавлено 2026-09-22 — набор приведён к `ac`/`as`, где эти ключи уже были.
-      S: 'Start',
-      E: 'End',
-      SE: 'SpaceEvenly',
-      N: 'Normal',
-      ST: 'Stretch',
-      L: 'Left',
-      R: 'Right',
-    }),
-    ai: synonymProvider('alignItems', {
-      '': 'Center',
-      C: 'Center',
-      B: 'Baseline',
-      FE: 'FlexEnd',
-      FS: 'FlexStart',
-      // 2026-09-22: буквы приведены к `as`/`ac` — `S` это Start, `ST` — Stretch.
-      // Раньше `aiS` значило Stretch, и одна и та же буква у трёх родственных
-      // свойств означала разное. Ломающее изменение, но v2 не публиковалась,
-      // а в самой библиотеке `aiS` нигде не использовался.
-      S: 'Start',
-      ST: 'Stretch',
-      E: 'End',
-      N: 'Normal',
-      SS: 'SelfStart',
-      SE: 'SelfEnd',
-      FB: 'First_baseline',
-      LB: 'Last_baseline',
-      AC: 'AnchorCenter',
-    }),
-    bxz: synonymProvider('boxSizing', {
-      '': 'BorderBox',
-      BB: 'BorderBox',
-      CB: 'ContentBox',
-    }),
-    fs: synonymProvider(
-      'fontStyle', {
-        '': 'Italic',
+      cr: synonymProvider('cursor', {
+        '': 'Pointer',
+        A: 'Auto',
+        D: 'Default',
+        C: 'Crosshair',
+        HA: 'Hand',
+        HE: 'Help',
+        M: 'Move',
+        P: 'Pointer',
+        T: 'Text',
+        N: 'None',
+        NA: 'NotAllowed',
+        W: 'Wait',
+        PR: 'Progress',
+        CM: 'ContextMenu',
+        CE: 'Cell',
+        VT: 'VerticalText',
+        AL: 'Alias',
+        CO: 'Copy',
+        ND: 'NoDrop',
+        G: 'Grab',
+        GG: 'Grabbing',
+        ZI: 'ZoomIn',
+        ZO: 'ZoomOut',
+        AS: 'AllScroll',
+        CR: 'ColResize',
+        RR: 'RowResize',
+        ER: 'EResize',
+        NR: 'NResize',
+        SR: 'SResize',
+        WR: 'WResize',
+        NER: 'NeResize',
+        NWR: 'NwResize',
+        SER: 'SeResize',
+        SWR: 'SwResize',
+        EWR: 'EwResize',
+        NSR: 'NsResize',
+        NESWR: 'NeswResize',
+        NWSER: 'NwseResize',
+      }),
+      jc: synonymProvider('justifyContent', {
+        '': 'Center',
+        C: 'Center',
+        FE: 'FlexEnd',
+        FS: 'FlexStart',
+        SA: 'SpaceAround',
+        SB: 'SpaceBetween',
+        // Добавлено 2026-09-22 — набор приведён к `ac`/`as`, где эти ключи уже были.
+        S: 'Start',
+        E: 'End',
+        SE: 'SpaceEvenly',
         N: 'Normal',
-        I: 'Italic',
-        O: 'Oblique',
-      }, 1,
-    ),
-    /**
+        ST: 'Stretch',
+        L: 'Left',
+        R: 'Right',
+      }),
+      ai: synonymProvider('alignItems', {
+        '': 'Center',
+        C: 'Center',
+        B: 'Baseline',
+        FE: 'FlexEnd',
+        FS: 'FlexStart',
+        // 2026-09-22: буквы приведены к `as`/`ac` — `S` это Start, `ST` — Stretch.
+        // Раньше `aiS` значило Stretch, и одна и та же буква у трёх родственных
+        // свойств означала разное. Ломающее изменение, но v2 не публиковалась,
+        // а в самой библиотеке `aiS` нигде не использовался.
+        S: 'Start',
+        ST: 'Stretch',
+        E: 'End',
+        N: 'Normal',
+        SS: 'SelfStart',
+        SE: 'SelfEnd',
+        FB: 'First_baseline',
+        LB: 'Last_baseline',
+        AC: 'AnchorCenter',
+      }),
+      bxz: synonymProvider('boxSizing', {
+        '': 'BorderBox',
+        BB: 'BorderBox',
+        CB: 'ContentBox',
+      }),
+      fs: synonymProvider(
+        'fontStyle', {
+          '': 'Italic',
+          N: 'Normal',
+          I: 'Italic',
+          O: 'Oblique',
+        }, 1,
+      ),
+      /**
      * `font-variant` — шорткат над семейством `font-variant-*`. Было два
      * синонима из ~30 значений; добавлены 2026-09-24. Практически ходовые тут
      * `fvTN` (`tabular-nums` — цифры одной ширины в таблицах), `fvSZ`
      * (`slashed-zero`) и капитель.
      */
-    fv: synonymProvider(
-      'fontVariant', {
-        N: 'Normal',
-        NO: 'None',
-        SC: 'SmallCaps',
-        ASC: 'AllSmallCaps',
-        PC: 'PetiteCaps',
-        APC: 'AllPetiteCaps',
-        U: 'Unicase',
-        TC: 'TitlingCaps',
-        // Лигатуры.
-        CL: 'CommonLigatures',
-        NCL: 'NoCommonLigatures',
-        DL: 'DiscretionaryLigatures',
-        NDL: 'NoDiscretionaryLigatures',
-        HL: 'HistoricalLigatures',
-        NHL: 'NoHistoricalLigatures',
-        C: 'Contextual',
-        NC: 'NoContextual',
-        HF: 'HistoricalForms',
-        // Цифры.
-        LN: 'LiningNums',
-        ON: 'OldstyleNums',
-        PN: 'ProportionalNums',
-        TN: 'TabularNums',
-        DF: 'DiagonalFractions',
-        SF: 'StackedFractions',
-        O: 'Ordinal',
-        SZ: 'SlashedZero',
-        // Восточноазиатские.
-        S: 'Simplified',
-        T: 'Traditional',
-        FW: 'FullWidth',
-        PW: 'ProportionalWidth',
-        R: 'Ruby',
-      }, 1,
-    ),
-    fef: synonymProvider(
-      'fontEffect', {
-        N: 'None',
-        EG: 'Engrave',
-        EB: 'Emboss',
-        O: 'Outline',
-      }, 1,
-    ),
-    fsm: synonymProvider(
-      'fontSmooth', {
-        A: 'Auto',
-        N: 'Never',
-        AW: 'Always',
-        // Абсолютные размеры — порог, ниже которого сглаживание отключается.
-        XXS: 'XxSmall',
-        XS: 'XSmall',
-        S: 'Small',
-        M: 'Medium',
-        L: 'Large',
-        XL: 'XLarge',
-        XXL: 'XxLarge',
-        XXXL: 'XxxLarge',
-      }, 1,
-    ),
-    fst: synonymProvider(
-      'fontStretch', {
-        N: 'Normal',
-        UC: 'UltraCondensed',
-        EC: 'ExtraCondensed',
-        C: 'Condensed',
-        SC: 'SemiCondensed',
-        SE: 'SemiExpanded',
-        E: 'Expanded',
-        EE: 'ExtraExpanded',
-        UE: 'UltraExpanded',
-      }, 1,
-    ),
-    tcha: synonymProvider(
-      'touchAction', {
-        A: 'Auto',
-        N: 'None',
-        M: 'Manipulation',
-        I: 'Initial',
-        R: 'Revert',
-        U: 'Unset',
-        RL: 'RevertLayer',
-        PX: 'PanX',
-        PY: 'PanY',
-        PL: 'PanLeft',
-        PR: 'PanRight',
-        PU: 'PanUp',
-        PD: 'PanDown',
-        PZ: 'PinchZoom',
-      // `composite`: оси комбинируются (`touch-action: pan-x pan-y`).
-      }, 0, 0 as any, 0 as any, 1,
-    ),
-    ta: synonymProvider('textAlign', {
-      L: 'Left',
-      C: 'Center',
-      R: 'Right',
-      J: 'Justify',
-      E: 'End',
-      S: 'Start',
-      MP: 'MatchParent',
-    }),
-    tal: synonymProvider(
-      'textAlignLast', {
-        A: 'Auto',
+      fv: synonymProvider(
+        'fontVariant', {
+          N: 'Normal',
+          NO: 'None',
+          SC: 'SmallCaps',
+          ASC: 'AllSmallCaps',
+          PC: 'PetiteCaps',
+          APC: 'AllPetiteCaps',
+          U: 'Unicase',
+          TC: 'TitlingCaps',
+          // Лигатуры.
+          CL: 'CommonLigatures',
+          NCL: 'NoCommonLigatures',
+          DL: 'DiscretionaryLigatures',
+          NDL: 'NoDiscretionaryLigatures',
+          HL: 'HistoricalLigatures',
+          NHL: 'NoHistoricalLigatures',
+          C: 'Contextual',
+          NC: 'NoContextual',
+          HF: 'HistoricalForms',
+          // Цифры.
+          LN: 'LiningNums',
+          ON: 'OldstyleNums',
+          PN: 'ProportionalNums',
+          TN: 'TabularNums',
+          DF: 'DiagonalFractions',
+          SF: 'StackedFractions',
+          O: 'Ordinal',
+          SZ: 'SlashedZero',
+          // Восточноазиатские.
+          S: 'Simplified',
+          T: 'Traditional',
+          FW: 'FullWidth',
+          PW: 'ProportionalWidth',
+          R: 'Ruby',
+        }, 1,
+      ),
+      fef: synonymProvider(
+        'fontEffect', {
+          N: 'None',
+          EG: 'Engrave',
+          EB: 'Emboss',
+          O: 'Outline',
+        }, 1,
+      ),
+      fsm: synonymProvider(
+        'fontSmooth', {
+          A: 'Auto',
+          N: 'Never',
+          AW: 'Always',
+          // Абсолютные размеры — порог, ниже которого сглаживание отключается.
+          XXS: 'XxSmall',
+          XS: 'XSmall',
+          S: 'Small',
+          M: 'Medium',
+          L: 'Large',
+          XL: 'XLarge',
+          XXL: 'XxLarge',
+          XXXL: 'XxxLarge',
+        }, 1,
+      ),
+      fst: synonymProvider(
+        'fontStretch', {
+          N: 'Normal',
+          UC: 'UltraCondensed',
+          EC: 'ExtraCondensed',
+          C: 'Condensed',
+          SC: 'SemiCondensed',
+          SE: 'SemiExpanded',
+          E: 'Expanded',
+          EE: 'ExtraExpanded',
+          UE: 'UltraExpanded',
+        }, 1,
+      ),
+      tcha: synonymProvider(
+        'touchAction', {
+          A: 'Auto',
+          N: 'None',
+          M: 'Manipulation',
+          I: 'Initial',
+          R: 'Revert',
+          U: 'Unset',
+          RL: 'RevertLayer',
+          PX: 'PanX',
+          PY: 'PanY',
+          PL: 'PanLeft',
+          PR: 'PanRight',
+          PU: 'PanUp',
+          PD: 'PanDown',
+          PZ: 'PinchZoom',
+          // `composite`: оси комбинируются (`touch-action: pan-x pan-y`).
+        }, 0, 0 as any, 0 as any, 1,
+      ),
+      ta: synonymProvider('textAlign', {
         L: 'Left',
         C: 'Center',
         R: 'Right',
         J: 'Justify',
         E: 'End',
         S: 'Start',
-      }, 1,
-    ),
-    /**
+        MP: 'MatchParent',
+      }),
+      tal: synonymProvider(
+        'textAlignLast', {
+          A: 'Auto',
+          L: 'Left',
+          C: 'Center',
+          R: 'Right',
+          J: 'Justify',
+          E: 'End',
+          S: 'Start',
+        }, 1,
+      ),
+      /**
      * `text-decoration` — шорткат: линия + стиль + толщина + цвет. Стили
      * (`solid`/`wavy`/…) и толщина (`auto`/`from-font`) добавлены 2026-09-24
      * ТОЛЬКО сюда: `text-decoration-line` их не принимает, а карту `TD_SYNONYMS`
      * они делят.
      */
-    td: synonymProvider(
-      'textDecoration', {
-        ...TD_SYNONYMS,
-        S: 'Solid',
-        DB: 'Double',
-        DT: 'Dotted',
-        DS: 'Dashed',
-        W: 'Wavy',
-        A: 'Auto',
-        FF: 'FromFont',
-      // `numeric`: толщина линии — длина (`text-decoration: underline 2px`).
-      // `composite`: линия, стиль, цвет и толщина в одном значении
-      // (`text-decoration: underline wavy red`).
-      }, 0, 0 as any, 1, 1,
-    ),
-    tdl: synonymProvider(
-      'textDecorationLine', TD_SYNONYMS, 1,
-    ),
-    tj: synonymProvider(
-      'textJustify', {
-        A: 'Auto',
+      td: synonymProvider(
+        'textDecoration', {
+          ...TD_SYNONYMS,
+          S: 'Solid',
+          DB: 'Double',
+          DT: 'Dotted',
+          DS: 'Dashed',
+          W: 'Wavy',
+          A: 'Auto',
+          FF: 'FromFont',
+          // `numeric`: толщина линии — длина (`text-decoration: underline 2px`).
+          // `composite`: линия, стиль, цвет и толщина в одном значении
+          // (`text-decoration: underline wavy red`).
+        }, 0, 0 as any, 1, 1,
+      ),
+      tdl: synonymProvider(
+        'textDecorationLine', TD_SYNONYMS, 1,
+      ),
+      tj: synonymProvider(
+        'textJustify', {
+          A: 'Auto',
+          N: 'None',
+          ICH: 'InterCharacter',
+          IW: 'InterWord',
+          II: 'InterIdeograph',
+          IC: 'InterCluster',
+          D: 'Distribute',
+          K: 'Kashida',
+          T: 'Tibetan',
+        }, 0, {
+          textAlign: 'justify',
+        },
+      ),
+      // `composite`: значение задаётся для начала и конца строки отдельно.
+      tov: synonymProvider(
+        'textOverflow', {
+          '': 'Ellipsis',
+          C: 'Clip',
+          E: 'Ellipsis',
+        }, 0, 0 as any, 0 as any, 1,
+      ),
+      tt: synonymProvider('textTransform', {
+        '': 'Uppercase',
         N: 'None',
-        ICH: 'InterCharacter',
-        IW: 'InterWord',
-        II: 'InterIdeograph',
-        IC: 'InterCluster',
-        D: 'Distribute',
-        K: 'Kashida',
-        T: 'Tibetan',
-      }, 0, {
-        textAlign: 'justify',
-      },
-    ),
-    // `composite`: значение задаётся для начала и конца строки отдельно.
-    tov: synonymProvider(
-      'textOverflow', {
-        '': 'Ellipsis',
-        C: 'Clip',
-        E: 'Ellipsis',
-      }, 0, 0 as any, 0 as any, 1,
-    ),
-    tt: synonymProvider('textTransform', {
-      '': 'Uppercase',
-      N: 'None',
-      C: 'Capitalize',
-      U: 'Uppercase',
-      L: 'Lowercase',
-      FL: 'FullWidth',
-      FSK: 'FullSizeKana',
-      MA: 'MathAuto',
-    }),
-    /**
+        C: 'Capitalize',
+        U: 'Uppercase',
+        L: 'Lowercase',
+        FL: 'FullWidth',
+        FSK: 'FullSizeKana',
+        MA: 'MathAuto',
+      }),
+      /**
      * `text-wrap`. Карта синонимов пересобрана 2026-09-24: прежние `N`/`NO`/`U`/`S`
      * (`normal`/`none`/`unrestricted`/`suppress`) — значения из черновика CSS Text 3,
      * которого не стало; ни одно из них не валидно по текущей спецификации, то есть
      * `twN` давал CSS, молча отбрасываемый браузером. Заодно не было сокращений у
      * ВСЕХ шести реальных значений, включая ходовые `balance` и `pretty`.
      */
-    tw: synonymProvider('textWrap', {
-      W: 'Wrap',
-      NW: 'Nowrap',
-      B: 'Balance',
-      P: 'Pretty',
-      S: 'Stable',
-      A: 'Auto',
-    }),
-    /**
+      tw: synonymProvider('textWrap', {
+        W: 'Wrap',
+        NW: 'Nowrap',
+        B: 'Balance',
+        P: 'Pretty',
+        S: 'Stable',
+        A: 'Auto',
+      }),
+      /**
      * `letter-spacing`. Голое число получает `px` (`lts2` → `2px`), как и остальные
      * размеры в нотации; единицы указываются явно (`lts0.06em`). До 2026-09-22
      * значение выводилось без единицы (`lts1.5` → `letter-spacing:1.5`) — невалидный CSS,
      * который браузер отбрасывал.
      */
-    lts: (p) => {
-      let v;
-      return p.suffix === 'N'
-        ? normalizeDefault(p, 'Normal')
-        : ((v = cssVarValue(p.suffix || '')) ? styleWrap({
-          letterSpacing: v,
-        }) : (
-          (p.camel || p.num != null) ? styleWrap({
-            letterSpacing: lengthOrWord(
-              p, LETTER_SPACING_KEYWORDS, LENGTH_PERCENT, 'px',
-            ),
-          }) : 0
-        ));
-    },
-    ws: synonymProvider('whiteSpace', {
-      '': 'Nowrap',
-      N: 'Normal',
-      P: 'Pre',
-      NW: 'Nowrap',
-      PW: 'PreWrap',
-      PL: 'PreLine',
-      BS: 'BreakSpaces',
-      // CSS Text 4: `white-space` стал шорткатом над `white-space-collapse`
-      // и `text-wrap`. `P` уже занято `pre`, поэтому `preserve` — `PR`.
-      C: 'Collapse',
-      PR: 'Preserve',
-      PRB: 'PreserveBreaks',
-      PRS: 'PreserveSpaces',
-      W: 'Wrap',
-    }),
-    /**
+      lts: (p) => {
+        let v;
+        return p.suffix === 'N'
+          ? normalizeDefault(p, 'Normal')
+          : ((v = cssVarValue(p.suffix || '')) ? styleWrap({
+            letterSpacing: v,
+          }) : (
+            (p.camel || p.num != null) ? styleWrap({
+              letterSpacing: lengthOrWord(
+                p, LETTER_SPACING_KEYWORDS, LENGTH_PERCENT, 'px',
+              ),
+            }) : 0
+          ));
+      },
+      ws: synonymProvider('whiteSpace', {
+        '': 'Nowrap',
+        N: 'Normal',
+        P: 'Pre',
+        NW: 'Nowrap',
+        PW: 'PreWrap',
+        PL: 'PreLine',
+        BS: 'BreakSpaces',
+        // CSS Text 4: `white-space` стал шорткатом над `white-space-collapse`
+        // и `text-wrap`. `P` уже занято `pre`, поэтому `preserve` — `PR`.
+        C: 'Collapse',
+        PR: 'Preserve',
+        PRB: 'PreserveBreaks',
+        PRS: 'PreserveSpaces',
+        W: 'Wrap',
+      }),
+      /**
      * `white-space-collapse`. Карта пересобрана 2026-09-24: прежние
      * `N`/`K`/`L`/`BS`/`BA` (`normal`/`keep-all`/`loose`/`break-strict`/`break-all`)
      * — значения `word-break`/`line-break`, к этому свойству не относящиеся;
      * НИ ОДНО из них не валидно, то есть любой токен `wsc*` давал CSS, молча
      * отбрасываемый браузером.
      */
-    wsc: synonymProvider('whiteSpaceCollapse', {
-      C: 'Collapse',
-      P: 'Preserve',
-      PB: 'PreserveBreaks',
-      PS: 'PreserveSpaces',
-      BS: 'BreakSpaces',
-    }),
-    wb: synonymProvider('wordBreak', {
-      N: 'Normal',
-      K: 'KeepAll',
-      BA: 'BreakAll',
-      BW: 'BreakWord',
-      AP: 'AutoPhrase',
-    }),
-    /**
+      wsc: synonymProvider('whiteSpaceCollapse', {
+        C: 'Collapse',
+        P: 'Preserve',
+        PB: 'PreserveBreaks',
+        PS: 'PreserveSpaces',
+        BS: 'BreakSpaces',
+      }),
+      wb: synonymProvider('wordBreak', {
+        N: 'Normal',
+        K: 'KeepAll',
+        BA: 'BreakAll',
+        BW: 'BreakWord',
+        AP: 'AutoPhrase',
+      }),
+      /**
      * `word-wrap` (исторический алиас `overflow-wrap`). Значения `none`,
      * `unrestricted`, `suppress` убраны 2026-09-24 — невалидны по спецификации,
      * давали нерабочий CSS; добавлено `anywhere`.
      */
-    ww: synonymProvider('wordWrap', {
-      N: 'Normal',
-      NM: 'Normal',
-      B: 'BreakWord',
-      BW: 'BreakWord',
-      A: 'Anywhere',
-    }),
-    bgr: synonymProvider(
-      'backgroundRepeat', {
-        '': 'Repeat',
-        R: 'Repeat',
-        N: 'NoRepeat',
-        X: 'RepeatX',
-        Y: 'RepeatY',
-        SP: 'Space',
-        RD: 'Round',
-      }, 1,
-    ),
-    bga: synonymProvider(
-      'backgroundAttachment', {
-        F: 'Fixed',
-        S: 'Scroll',
-        L: 'Local',
-      }, 1,
-    ),
-    bgbk: synonymProvider(
-      'backgroundBreak', {
-        BB: 'BoundingBox',
-        EB: 'EachBox',
-        C: 'Continuous',
-      }, 1,
-    ),
-    bgcp: synonymProvider(
-      'backgroundClip', {
-        '': 'PaddingBox',
-        BB: 'BorderBox',
-        PB: 'PaddingBox',
-        CB: 'ContentBox',
-        NC: 'NoClip',
+      ww: synonymProvider('wordWrap', {
+        N: 'Normal',
+        NM: 'Normal',
+        B: 'BreakWord',
+        BW: 'BreakWord',
+        A: 'Anywhere',
+      }),
+      bgr: synonymProvider(
+        'backgroundRepeat', {
+          '': 'Repeat',
+          R: 'Repeat',
+          N: 'NoRepeat',
+          X: 'RepeatX',
+          Y: 'RepeatY',
+          SP: 'Space',
+          RD: 'Round',
+        }, 1,
+      ),
+      bga: synonymProvider(
+        'backgroundAttachment', {
+          F: 'Fixed',
+          S: 'Scroll',
+          L: 'Local',
+        }, 1,
+      ),
+      bgbk: synonymProvider(
+        'backgroundBreak', {
+          BB: 'BoundingBox',
+          EB: 'EachBox',
+          C: 'Continuous',
+        }, 1,
+      ),
+      bgcp: synonymProvider(
+        'backgroundClip', {
+          '': 'PaddingBox',
+          BB: 'BorderBox',
+          PB: 'PaddingBox',
+          CB: 'ContentBox',
+          NC: 'NoClip',
+          T: 'Text',
+          BA: 'BorderArea',
+        }, 1,
+      ),
+      bgo: synonymProvider(
+        'backgroundOrigin', {
+          BB: 'BorderBox',
+          PB: 'PaddingBox',
+          CB: 'ContentBox',
+        }, 1,
+      ),
+      // `numeric` + `composite`: размер задаётся длинами или процентами, и их
+      // может быть два — ширина и высота (`background-size: 100% .16em`).
+      bgs: synonymProvider(
+        'backgroundSize', {
+          A: 'Auto',
+          CT: 'Contain',
+          CV: 'Cover',
+        }, 1, 0 as any, 1, 1,
+      ),
+      // `composite`: кавычки задаются парами — открывающая и закрывающая, и
+      // пар может быть несколько (для вложенных уровней).
+      q: synonymProvider(
+        'quotes', {
+          A: 'Auto',
+          N: 'None',
+          RU: `'\\00AB'_'\\00BB'_'\\201E'_'\\201C'`,
+          EN: `'\\201C'_'\\201D'_'\\2018'_'\\2019'`,
+        }, 1, 0 as any, 0 as any, 1,
+      ),
+      ols: synonymProvider(
+        'outlineStyle', OUTLINE_STYLE_SYNONYMS, 1,
+      ),
+      cps: synonymProvider('captionSide', {
+        T: 'Top',
+        B: 'Bottom',
+        L: 'Left',
+        R: 'Right',
+        TO: 'TopOutside',
+        BO: 'BottomOutside',
+      }),
+      ec: synonymProvider('emptyCells', {
+        S: 'Show',
+        H: 'Hide',
+        U: 'Unset',
+      }),
+      bdcl: synonymProvider(
+        'borderCollapse', {
+          C: 'Collapse',
+          S: 'Separate',
+        }, 1,
+      ),
+      lis: synonymProvider(
+        'listStyle', {
+          N: 'None',
+          S: 'Square',
+          D: 'Disc',
+          DC: 'Decimal',
+          DCLZ: 'DecimalLeadingZero',
+          LR: 'LowerRoman',
+          UR: 'UpperRoman',
+          C: 'Circle',
+          I: 'Inside',
+          O: 'Outside',
+          // `composite`: тип, позиция и картинка в одном значении
+          // (`list-style: disc inside`).
+        }, 0, 0 as any, 0 as any, 1,
+      ),
+      lisp: synonymProvider(
+        'listStylePosition', {
+          I: 'Inside',
+          O: 'Outside',
+        }, 1,
+      ),
+      list: synonymProvider(
+        'listStyleType', {
+          N: 'None',
+          S: 'Square',
+          D: 'Disc',
+          DC: 'Decimal',
+          DCLZ: 'DecimalLeadingZero',
+          LR: 'LowerRoman',
+          UR: 'UpperRoman',
+          C: 'Circle',
+        }, 1,
+      ),
+      pgbb: synonymProvider(['pageBreakBefore', 'breakBefore'], BREAK_AFTER_SYNONYMS),
+      pgba: synonymProvider(['pageBreakAfter', 'breakAfter'], BREAK_AFTER_SYNONYMS),
+      pgbi: synonymProvider(['pageBreakInside', 'breakInside'], {
+        A: 'Auto',
+        AV: 'Avoid',
+        AVP: 'AvoidPage',
+        AVC: 'AvoidColumn',
+        AVRN: 'AvoidRegion',
+      }),
+      us: synonymProvider('userSelect', {
+        A: 'Auto',
+        N: 'None',
         T: 'Text',
-        BA: 'BorderArea',
-      }, 1,
-    ),
-    bgo: synonymProvider(
-      'backgroundOrigin', {
-        BB: 'BorderBox',
-        PB: 'PaddingBox',
-        CB: 'ContentBox',
-      }, 1,
-    ),
-    // `numeric` + `composite`: размер задаётся длинами или процентами, и их
-    // может быть два — ширина и высота (`background-size: 100% .16em`).
-    bgs: synonymProvider(
-      'backgroundSize', {
-        A: 'Auto',
-        CT: 'Contain',
-        CV: 'Cover',
-      }, 1, 0 as any, 1, 1,
-    ),
-    // `composite`: кавычки задаются парами — открывающая и закрывающая, и
-    // пар может быть несколько (для вложенных уровней).
-    q: synonymProvider(
-      'quotes', {
+        C: 'Contain',
+        E: 'Element',
+        // `A` занято `auto`, поэтому `all` — `AL`.
+        AL: 'All',
+      }),
+      e: synonymProvider('pointerEvents', {
         A: 'Auto',
         N: 'None',
-        RU: `'\\00AB'_'\\00BB'_'\\201E'_'\\201C'`,
-        EN: `'\\201C'_'\\201D'_'\\2018'_'\\2019'`,
-      }, 1, 0 as any, 0 as any, 1,
-    ),
-    ols: synonymProvider(
-      'outlineStyle', OUTLINE_STYLE_SYNONYMS, 1,
-    ),
-    cps: synonymProvider('captionSide', {
-      T: 'Top',
-      B: 'Bottom',
-      L: 'Left',
-      R: 'Right',
-      TO: 'TopOutside',
-      BO: 'BottomOutside',
-    }),
-    ec: synonymProvider('emptyCells', {
-      S: 'Show',
-      H: 'Hide',
-      U: 'Unset',
-    }),
-    bdcl: synonymProvider(
-      'borderCollapse', {
-        C: 'Collapse',
-        S: 'Separate',
-      }, 1,
-    ),
-    lis: synonymProvider(
-      'listStyle', {
-        N: 'None',
-        S: 'Square',
-        D: 'Disc',
-        DC: 'Decimal',
-        DCLZ: 'DecimalLeadingZero',
-        LR: 'LowerRoman',
-        UR: 'UpperRoman',
-        C: 'Circle',
-        I: 'Inside',
-        O: 'Outside',
-      // `composite`: тип, позиция и картинка в одном значении
-      // (`list-style: disc inside`).
-      }, 0, 0 as any, 0 as any, 1,
-    ),
-    lisp: synonymProvider(
-      'listStylePosition', {
-        I: 'Inside',
-        O: 'Outside',
-      }, 1,
-    ),
-    list: synonymProvider(
-      'listStyleType', {
-        N: 'None',
-        S: 'Square',
-        D: 'Disc',
-        DC: 'Decimal',
-        DCLZ: 'DecimalLeadingZero',
-        LR: 'LowerRoman',
-        UR: 'UpperRoman',
-        C: 'Circle',
-      }, 1,
-    ),
-    pgbb: synonymProvider(['pageBreakBefore', 'breakBefore'], BREAK_AFTER_SYNONYMS),
-    pgba: synonymProvider(['pageBreakAfter', 'breakAfter'], BREAK_AFTER_SYNONYMS),
-    pgbi: synonymProvider(['pageBreakInside', 'breakInside'], {
-      A: 'Auto',
-      AV: 'Avoid',
-      AVP: 'AvoidPage',
-      AVC: 'AvoidColumn',
-      AVRN: 'AvoidRegion',
-    }),
-    us: synonymProvider('userSelect', {
-      A: 'Auto',
-      N: 'None',
-      T: 'Text',
-      C: 'Contain',
-      E: 'Element',
-      // `A` занято `auto`, поэтому `all` — `AL`.
-      AL: 'All',
-    }),
-    e: synonymProvider('pointerEvents', {
-      A: 'Auto',
-      N: 'None',
-      V: 'Visible',
-      VP: '_visiblePainted',
-      VF: '_visibleFill',
-      VS: '_visibleStroke',
-      P: 'Painted',
-      F: 'Fill',
-      S: 'Stroke',
-      // `A` занято `auto`, поэтому `all` — `AL`.
-      AL: 'All',
-    }),
-    /**
+        V: 'Visible',
+        VP: '_visiblePainted',
+        VF: '_visibleFill',
+        VS: '_visibleStroke',
+        P: 'Painted',
+        F: 'Fill',
+        S: 'Stroke',
+        // `A` занято `auto`, поэтому `all` — `AL`.
+        AL: 'All',
+      }),
+      /**
      * `object-position`. Общий хендлер здесь остаётся: атомарных
      * `object-position-x/y` в CSS не существует, разложить не на что.
      * Составные формы — свободным значением: `op_left_top`, `op50%_0`.
@@ -4070,14 +4075,14 @@ export default (mn: MnInstance) => {
      * на каждую комбинацию осей, тогда как атомарные `bgpx`/`bgpy`
      * переиспользуются между комбинациями.
      */
-    // `composite`: две координаты в одном значении
-    // (`object-position: left top`). Атомарных `object-position-x/y` в CSS нет,
-    // поэтому разложить его, как `bgpx`/`bgpy`, нельзя.
-    // `numeric`: координаты задаются и числами — `op50%_50%`.
-    op: synonymProvider(
-      'objectPosition', POSITION_KEYWORDS, 1, 0 as any, 1, 1,
-    ),
-    /**
+      // `composite`: две координаты в одном значении
+      // (`object-position: left top`). Атомарных `object-position-x/y` в CSS нет,
+      // поэтому разложить его, как `bgpx`/`bgpy`, нельзя.
+      // `numeric`: координаты задаются и числами — `op50%_50%`.
+      op: synonymProvider(
+        'objectPosition', POSITION_KEYWORDS, 1, 0 as any, 1, 1,
+      ),
+      /**
      * Оси `background-position`. Ключевые слова у них РАЗНЫЕ: горизонтальная
      * принимает `left`/`right`/`x-start`/`x-end`, вертикальная —
      * `top`/`bottom`/`y-start`/`y-end`. До 2026-09-24 карт не было вовсе, и
@@ -4086,141 +4091,141 @@ export default (mn: MnInstance) => {
      * Помечены `numeric`: позиция задаётся не только словом, но и длиной или
      * процентом — `bgpx50%`, `bgpy10px`.
      */
-    bgpx: synonymProvider(
-      'backgroundPositionX', {
-        L: 'Left',
+      bgpx: synonymProvider(
+        'backgroundPositionX', {
+          L: 'Left',
+          C: 'Center',
+          R: 'Right',
+          XS: 'XStart',
+          XE: 'XEnd',
+        }, 2, 0 as any, 1,
+      ),
+      bgpy: synonymProvider(
+        'backgroundPositionY', {
+          T: 'Top',
+          C: 'Center',
+          B: 'Bottom',
+          YS: 'YStart',
+          YE: 'YEnd',
+        }, 2, 0 as any, 1,
+      ),
+      as: synonymProvider('alignSelf', {
+        A: 'Auto',
+        N: 'Normal',
+        B: 'Baseline',
         C: 'Center',
-        R: 'Right',
-        XS: 'XStart',
-        XE: 'XEnd',
-      }, 2, 0 as any, 1,
-    ),
-    bgpy: synonymProvider(
-      'backgroundPositionY', {
-        T: 'Top',
-        C: 'Center',
-        B: 'Bottom',
-        YS: 'YStart',
-        YE: 'YEnd',
-      }, 2, 0 as any, 1,
-    ),
-    as: synonymProvider('alignSelf', {
-      A: 'Auto',
-      N: 'Normal',
-      B: 'Baseline',
-      C: 'Center',
-      FS: 'FlexStart',
-      FE: 'FlexEnd',
-      SS: 'SelfStart',
-      SE: 'SelfEnd',
-      S: 'Start',
-      E: 'End',
-      ST: 'Stretch',
-      FB: 'First_baseline',
-      LB: 'Last_baseline',
-      AC: 'AnchorCenter',
-    }),
-    /**
+        FS: 'FlexStart',
+        FE: 'FlexEnd',
+        SS: 'SelfStart',
+        SE: 'SelfEnd',
+        S: 'Start',
+        E: 'End',
+        ST: 'Stretch',
+        FB: 'First_baseline',
+        LB: 'Last_baseline',
+        AC: 'AnchorCenter',
+      }),
+      /**
      * `justify-self` / `justify-items` — grid-раскладка. Буквы `S`/`ST`/`E`/`C`/`N`/`B`
      * согласованы с `jc`/`ai`/`as`/`ac`; `L`/`R` — как у `jc`, `justify-items`
      * и `justify-self` их тоже принимают (унаследовано от `text-align`).
      */
-    js: synonymProvider('justifySelf', {
-      A: 'Auto',
-      N: 'Normal',
-      B: 'Baseline',
-      C: 'Center',
-      S: 'Start',
-      E: 'End',
-      ST: 'Stretch',
-      SS: 'SelfStart',
-      SE: 'SelfEnd',
-      L: 'Left',
-      R: 'Right',
-      FB: 'First_baseline',
-      LB: 'Last_baseline',
-      AC: 'AnchorCenter',
-      FS: 'FlexStart',
-      FE: 'FlexEnd',
-    }),
-    ji: synonymProvider('justifyItems', {
-      N: 'Normal',
-      B: 'Baseline',
-      C: 'Center',
-      S: 'Start',
-      E: 'End',
-      ST: 'Stretch',
-      SS: 'SelfStart',
-      SE: 'SelfEnd',
-      L: 'Left',
-      R: 'Right',
-      LG: 'Legacy',
-      AC: 'AnchorCenter',
-      FS: 'FlexStart',
-      FE: 'FlexEnd',
-    }),
-    ac: synonymProvider('alignContent', {
-      S: 'Start',
-      E: 'End',
-      C: 'Center',
-      FS: 'FlexStart',
-      FE: 'FlexEnd',
-      SB: 'SpaceBetween',
-      SA: 'SpaceAround',
-      ST: 'Stretch',
-      SE: 'SpaceEvenly',
-      N: 'Normal',
-      B: 'Baseline',
-    }),
-    va: synonymProvider(
-      'verticalAlign', {
-        SUP: 'Super',
-        // `S` свободна: `super` исторически занял `SUP`, а не `S`.
-        S: 'Sub',
-        SUB: 'Sub',
-        T: 'Top',
-        TT: 'TextTop',
-        M: 'Middle',
-        BL: 'Baseline',
-        B: 'Bottom',
-        TB: 'TextBottom',
-      // `numeric`: сдвиг базовой линии задаётся длиной или процентом
-      // (`vertical-align: -0.125em`).
-      }, 0, 0 as any, 1,
-    ),
-    wm: synonymProvider('writingMode', {
-      '': 'LrTb',
-      BTL: 'BtLr',
-      BTR: 'BtRl',
-      LRB: 'LrBt',
-      LRT: 'LrTb',
-      RLB: 'RlTb',
-      TBL: 'TbLr',
-      TBR: 'TbRl',
-      HT: 'HorizontalTb',
-      HB: 'HorizontalBt',
-      SRL: 'SidewaysRl',
-      SLR: 'SidewaysLr',
-      VR: 'VerticalRl',
-      VL: 'VerticalLr',
-    }),
-    fxd: synonymProvider(
-      'flexDirection', {
-        C: 'Column',
-        CR: 'ColumnReverse',
-        R: 'Row',
-        RR: 'RowReverse',
-        U: 'Unset',
-      }, 1,
-    ),
-    fxw: synonymProvider(
-      'flexWrap', {
-        NW: 'Nowrap',
-        W: 'Wrap',
-        WR: 'WrapReverse',
-      }, 1,
-    ),
-    /**
+      js: synonymProvider('justifySelf', {
+        A: 'Auto',
+        N: 'Normal',
+        B: 'Baseline',
+        C: 'Center',
+        S: 'Start',
+        E: 'End',
+        ST: 'Stretch',
+        SS: 'SelfStart',
+        SE: 'SelfEnd',
+        L: 'Left',
+        R: 'Right',
+        FB: 'First_baseline',
+        LB: 'Last_baseline',
+        AC: 'AnchorCenter',
+        FS: 'FlexStart',
+        FE: 'FlexEnd',
+      }),
+      ji: synonymProvider('justifyItems', {
+        N: 'Normal',
+        B: 'Baseline',
+        C: 'Center',
+        S: 'Start',
+        E: 'End',
+        ST: 'Stretch',
+        SS: 'SelfStart',
+        SE: 'SelfEnd',
+        L: 'Left',
+        R: 'Right',
+        LG: 'Legacy',
+        AC: 'AnchorCenter',
+        FS: 'FlexStart',
+        FE: 'FlexEnd',
+      }),
+      ac: synonymProvider('alignContent', {
+        S: 'Start',
+        E: 'End',
+        C: 'Center',
+        FS: 'FlexStart',
+        FE: 'FlexEnd',
+        SB: 'SpaceBetween',
+        SA: 'SpaceAround',
+        ST: 'Stretch',
+        SE: 'SpaceEvenly',
+        N: 'Normal',
+        B: 'Baseline',
+      }),
+      va: synonymProvider(
+        'verticalAlign', {
+          SUP: 'Super',
+          // `S` свободна: `super` исторически занял `SUP`, а не `S`.
+          S: 'Sub',
+          SUB: 'Sub',
+          T: 'Top',
+          TT: 'TextTop',
+          M: 'Middle',
+          BL: 'Baseline',
+          B: 'Bottom',
+          TB: 'TextBottom',
+          // `numeric`: сдвиг базовой линии задаётся длиной или процентом
+          // (`vertical-align: -0.125em`).
+        }, 0, 0 as any, 1,
+      ),
+      wm: synonymProvider('writingMode', {
+        '': 'LrTb',
+        BTL: 'BtLr',
+        BTR: 'BtRl',
+        LRB: 'LrBt',
+        LRT: 'LrTb',
+        RLB: 'RlTb',
+        TBL: 'TbLr',
+        TBR: 'TbRl',
+        HT: 'HorizontalTb',
+        HB: 'HorizontalBt',
+        SRL: 'SidewaysRl',
+        SLR: 'SidewaysLr',
+        VR: 'VerticalRl',
+        VL: 'VerticalLr',
+      }),
+      fxd: synonymProvider(
+        'flexDirection', {
+          C: 'Column',
+          CR: 'ColumnReverse',
+          R: 'Row',
+          RR: 'RowReverse',
+          U: 'Unset',
+        }, 1,
+      ),
+      fxw: synonymProvider(
+        'flexWrap', {
+          NW: 'Nowrap',
+          W: 'Wrap',
+          WR: 'WrapReverse',
+        }, 1,
+      ),
+      /**
      * `font` — только то, что не выражается атомарно.
      *
      * Shorthand принимает либо системный шрифт одним словом, либо набор из
@@ -4235,27 +4240,27 @@ export default (mn: MnInstance) => {
      * нотации отдельных тегов не имеют. Той же природы системные шрифты:
      * `font: menu` задаёт весь набор сразу.
      */
-    font: (p) => {
-      let s, v;
-      if (!(s = p.suffix)) {
-        return 0;
-      }
-      v = valueNormalize(s);
-      // Пробел в значении означает составную форму (`16px/1.55 var(--font)`) —
-      // её и убираем, даже когда внутри есть подстановка. Целиком подстановка
-      // (`font--v`) проходит: что в переменной, здесь не видно.
-      v.indexOf(' ') > -1 && throwInvalid('Value "' + s + '" is invalid: '
+      font: (p) => {
+        let s, v;
+        if (!(s = p.suffix)) {
+          return 0;
+        }
+        v = valueNormalize(s);
+        // Пробел в значении означает составную форму (`16px/1.55 var(--font)`) —
+        // её и убираем, даже когда внутри есть подстановка. Целиком подстановка
+        // (`font--v`) проходит: что в переменной, здесь не видно.
+        v.indexOf(' ') > -1 && throwInvalid('Value "' + s + '" is invalid: '
         + 'size, line height and family are set by atomic tokens — '
         + '"f16 lh1.55 ff--font"; "font" only takes system fonts');
-      return styleWrap({
-        font: v.indexOf('(') > -1
-          ? v
-          : assertKnownWord(
-            v, s, 0 as any, FONT_KEYWORDS,
-          ),
-      });
-    },
-    /**
+        return styleWrap({
+          font: v.indexOf('(') > -1
+            ? v
+            : assertKnownWord(
+              v, s, 0 as any, FONT_KEYWORDS,
+            ),
+        });
+      },
+      /**
      * `transition` — слоты в фиксированном порядке
      * `свойство длительность плавность задержка`, несколько переходов через
      * запятую.
@@ -4264,43 +4269,43 @@ export default (mn: MnInstance) => {
      * но задать РАЗНЫЕ параметры разным свойствам ими нельзя — они пишут по
      * одному значению на все сразу. Ради этого случая shorthand и остаётся.
      */
-    tn: (p) => {
-      let s, i;
-      if (!(s = p.suffix)) {
-        return 0;
-      }
-      const value = valueNormalize(s);
-      // `,` разделяет переходы, пробел — части одного перехода. Запятые
-      // внутри скобок (`cubic-bezier(0,0,1,1)`) разделителем не считаются.
-      const list = splitTopLevel(value);
-      const l = list.length;
-      let out: string[] = [];
-      for (i = 0; i < l; i++) {
-        out = out.concat(transitionValue(list[i].trim().split(' '), s));
-      }
-      return styleWrap({
-        transition: out.join(','),
-      });
-    },
-    ff: (p) => {
-      let s, v;
-      if (!(s = p.suffix)) {
-        return 0;
-      }
-      if (v = cssVarValue(s)) {
+      tn: (p) => {
+        let s, i;
+        if (!(s = p.suffix)) {
+          return 0;
+        }
+        const value = valueNormalize(s);
+        // `,` разделяет переходы, пробел — части одного перехода. Запятые
+        // внутри скобок (`cubic-bezier(0,0,1,1)`) разделителем не считаются.
+        const list = splitTopLevel(value);
+        const l = list.length;
+        let out: string[] = [];
+        for (i = 0; i < l; i++) {
+          out = out.concat(transitionValue(list[i].trim().split(' '), s));
+        }
         return styleWrap({
-          fontFamily: v,
+          transition: out.join(','),
+        });
+      },
+      ff: (p) => {
+        let s, v;
+        if (!(s = p.suffix)) {
+          return 0;
+        }
+        if (v = cssVarValue(s)) {
+          return styleWrap({
+            fontFamily: v,
+          }, 1);
+        }
+        // Имя шрифта — идентификатор или строка; число и длина им быть не могут
+        // (`ff10px` давало `font-family:10px`).
+        const list = map(fontNameNormalize(s).split(REGEXP_COMMA), __wr);
+        assertFontNames(list, s);
+        return styleWrap({
+          fontFamily: list.join(','),
         }, 1);
-      }
-      // Имя шрифта — идентификатор или строка; число и длина им быть не могут
-      // (`ff10px` давало `font-family:10px`).
-      const list = map(fontNameNormalize(s).split(REGEXP_COMMA), __wr);
-      assertFontNames(list, s);
-      return styleWrap({
-        fontFamily: list.join(','),
-      }, 1);
-    },
-    /**
+      },
+      /**
      * `content`. Ведущий `_` означает «дальше текст» и **сам ставит кавычки**:
      * `cnt_Hello_World` → `content:"Hello World"`. Без него значение обязано
      * быть ключевым словом свойства.
@@ -4318,281 +4323,282 @@ export default (mn: MnInstance) => {
      * Не оборачиваются два случая: значение целиком вызов функции
      * (`cnt_attr\(href\)`) и подстановка (`cnt--v`).
      */
-    cnt: (p) => {
-      let s, v;
-      if (!(s = p.suffix)) {
+      cnt: (p) => {
+        let s, v;
+        if (!(s = p.suffix)) {
+          return styleWrap({
+            content: 'none',
+          });
+        }
+        // Краткие записи разбираются до общего пути: `cntE` — пустая строка,
+        // и кебабить её нечего.
+        if (v = CONTENT_SYNONYMS[s]) {
+          return styleWrap({
+            content: v,
+          });
+        }
+        v = valueNormalize(s);
         return styleWrap({
-          content: 'none',
-        });
-      }
-      // Краткие записи разбираются до общего пути: `cntE` — пустая строка,
-      // и кебабить её нечего.
-      if (v = CONTENT_SYNONYMS[s]) {
-        return styleWrap({
-          content: v,
-        });
-      }
-      v = valueNormalize(s);
-      return styleWrap({
-        content: s[0] === '_'
+          content: s[0] === '_'
           // Текста после `_` нет — пустая строка. Суффикс из НЕСКОЛЬКИХ
           // подчёркиваний бракуется: пробел пишется мнемоникой `cntS`, и
           // двух записей одного значения быть не должно.
-          ? (v
-            ? (v.indexOf('(') > -1 ? v : '"' + quoteEscape(v) + '"')
-            : (s.length > 1 && throwInvalid('Value "' + s
+            ? (v
+              ? (v.indexOf('(') > -1 ? v : '"' + quoteEscape(v) + '"')
+              : (s.length > 1 && throwInvalid('Value "' + s
               + '" is invalid: a space is written as "cntS", an empty string as "cnt_"'),
-            '""'))
-          : (v.indexOf('(') > -1
-            ? v
-            : assertKnownWord(
-              v, s, 0 as any, CONTENT_KEYWORDS,
-            )),
-      });
-    },
-    ft: ftProvider('filter'),
-    ftb: ftProvider('backdropFilter'),
-  });
+              '""'))
+            : (v.indexOf('(') > -1
+              ? v
+              : assertKnownWord(
+                v, s, 0 as any, CONTENT_KEYWORDS,
+              )),
+        });
+      },
+      ft: ftProvider('filter'),
+      ftb: ftProvider('backdropFilter'),
+    });
 
-  function ftProvider(propName: string): MnHandler {
-    return (p: MnEssenceParams) => {
-      let v: string; let s: Record<string, any>;
-      return (v = filter(map(p.suffix.split(REGEXP_FILTER_SEP),
-        (v: string) => {
-          let matchs: RegExpExecArray | null; let name: string; let options: any;
-          if (!v || !(matchs = REGEXP_FILTER_NAME.exec(v))) {
-            return 0;
-          }
-          options = FILTER_MAP[name = lowerFirst(matchs[1])];
-          const fn = camelToKebabCase(options && options[0] || name);
-          FILTER_FUNCTIONS[fn] || throwInvalid('Value "' + p.suffix
+    function ftProvider(propName: string): MnHandler {
+      return (p: MnEssenceParams) => {
+        let v: string; let s: Record<string, any>;
+        return (v = filter(map(p.suffix.split(REGEXP_FILTER_SEP),
+          (v: string) => {
+            let matchs: RegExpExecArray | null; let name: string; let options: any;
+            if (!v || !(matchs = REGEXP_FILTER_NAME.exec(v))) {
+              return 0;
+            }
+            options = FILTER_MAP[name = lowerFirst(matchs[1])];
+            const fn = camelToKebabCase(options && options[0] || name);
+            FILTER_FUNCTIONS[fn] || throwInvalid('Value "' + p.suffix
             + '" is invalid: "' + fn + '" is not a filter function');
-          return fn + '(' + (matchs[2] || options && options[1] || '')
+            return fn + '(' + (matchs[2] || options && options[1] || '')
             + (matchs[3] || options && options[2] || '') + ')';
-        }), Boolean).join(' ')) ? (
-          s = {},
-          s[propName] = v,
-          styleWrap(s)
-        ) : 0;
-    };
-  }
+          }), Boolean).join(' ')) ? (
+            s = {},
+            s[propName] = v,
+            styleWrap(s)
+          ) : 0;
+      };
+    }
 
-  forIn({
-    ar: ['aspectRatio'],
+    forIn({
+      ar: ['aspectRatio'],
 
-    col: ['columns'],
-    wid: ['widows'],
-    orp: ['orphans'],
-    coi: ['counterIncrement'],
-    cor: ['counterReset'],
-    wos: [
-      'wordSpacing',
-      0,
-      LENGTH_SIGN,
-      0,
-      {
-        normal: 1,
-      },
-    ],
-    apc: ['appearance'],
+      col: ['columns'],
+      wid: ['widows'],
+      orp: ['orphans'],
+      coi: ['counterIncrement'],
+      cor: ['counterReset'],
+      wos: [
+        'wordSpacing',
+        0,
+        LENGTH_SIGN,
+        0,
+        {
+          normal: 1,
+        },
+      ],
+      apc: ['appearance'],
 
-    ti: [
-      'textIndent',
-      0,
-      LENGTH_PERCENT | LENGTH_SIGN,
-    ],
+      ti: [
+        'textIndent',
+        0,
+        LENGTH_PERCENT | LENGTH_SIGN,
+      ],
 
-    tp: ['transitionProperty', 1],
-    ttf: ['transitionTimingFunction', 1],
+      tp: ['transitionProperty', 1],
+      ttf: ['transitionTimingFunction', 1],
 
 
 
-    g: ['grid'],
-    gt: ['gridTemplate', 1],
-    gtc: [
-      'gridTemplateColumns',
-      2,
-      0,
-      1,
-    ],
-    gtr: [
-      'gridTemplateRows',
-      2,
-      0,
-      1,
-    ],
-    gac: ['gridAutoColumns', 1],
-    gar: ['gridAutoRows', 1],
-    gaf: ['gridAutoFlow', 1],
+      g: ['grid'],
+      gt: ['gridTemplate', 1],
+      gtc: [
+        'gridTemplateColumns',
+        2,
+        0,
+        1,
+      ],
+      gtr: [
+        'gridTemplateRows',
+        2,
+        0,
+        1,
+      ],
+      gac: ['gridAutoColumns', 1],
+      gar: ['gridAutoRows', 1],
+      gaf: ['gridAutoFlow', 1],
 
-    gr: ['gridRow', 1],
-    gc: ['gridColumn', 1],
+      gr: ['gridRow', 1],
+      gc: ['gridColumn', 1],
 
-    fx: ['flex'],
-    fxb: [
-      'flexBasis',
-      1,
-      LENGTH_PERCENT,
-      0,
-      {
-        auto: 1,
-        content: 1,
-        'min-content': 1,
-        'max-content': 1,
-        'fit-content': 1,
-      },
-    ],
-    fxf: ['flexFlow', 1],
-    fxg: ['flexGrow', 1],
-    fxs: ['flexShrink', 1],
+      fx: ['flex'],
+      fxb: [
+        'flexBasis',
+        1,
+        LENGTH_PERCENT,
+        0,
+        {
+          auto: 1,
+          content: 1,
+          'min-content': 1,
+          'max-content': 1,
+          'fit-content': 1,
+        },
+      ],
+      fxf: ['flexFlow', 1],
+      fxg: ['flexGrow', 1],
+      fxs: ['flexShrink', 1],
 
-    or: ['order'],
-    tds: ['textDecorationSkip', 1],
-    tdsi: ['textDecorationSkipInk', 2],
-    tdt: [
-      'textDecorationThickness',
-      1,
-      LENGTH_PERCENT | LENGTH_SIGN,
-      0,
-      {
-        auto: 1,
-        'from-font': 1,
-      },
-    ],
-    tdst: ['textDecorationStyle', 2],
-    tuo: [
-      'textUnderlineOffset',
-      2,
-      LENGTH_PERCENT | LENGTH_SIGN,
-      0,
-      {
-        auto: 1,
-      },
-    ],
-    tup: ['textUnderlinePosition', 2],
+      or: ['order'],
+      tds: ['textDecorationSkip', 1],
+      tdsi: ['textDecorationSkipInk', 2],
+      tdt: [
+        'textDecorationThickness',
+        1,
+        LENGTH_PERCENT | LENGTH_SIGN,
+        0,
+        {
+          auto: 1,
+          'from-font': 1,
+        },
+      ],
+      tdst: ['textDecorationStyle', 2],
+      tuo: [
+        'textUnderlineOffset',
+        2,
+        LENGTH_PERCENT | LENGTH_SIGN,
+        0,
+        {
+          auto: 1,
+        },
+      ],
+      tup: ['textUnderlinePosition', 2],
 
-    ts: ['transformStyle'],
-    mbm: ['mixBlendMode'],
-    bsp: [
-      'borderSpacing',
-      0,
-      LENGTH_MULTI,
-    ],
-    // bdrs: ['borderRadius'],
-    zm: ['zoom'],
-    tem: ['textEmphasis'],
-    temp: ['textEmphasisPosition', 1],
-    tems: ['textEmphasisStyle', 1],
-    ir: ['imageRendering'],
+      ts: ['transformStyle'],
+      mbm: ['mixBlendMode'],
+      bsp: [
+        'borderSpacing',
+        0,
+        LENGTH_MULTI,
+      ],
+      // bdrs: ['borderRadius'],
+      zm: ['zoom'],
+      tem: ['textEmphasis'],
+      temp: ['textEmphasisPosition', 1],
+      tems: ['textEmphasisStyle', 1],
+      ir: ['imageRendering'],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  }, (options: any[], essenceName: string) => {
-    const propName: string = options[0];
-    const priority: number | undefined = options[1];
-    const lengthy: number | undefined = options[2];
-    const autoRepeat: number | undefined = options[3];
-    const keywords: Record<string, 1> | undefined = options[4];
-    // §6.3: `priority || 0` вычислялся на каждый вызов хендлера, причём дважды —
-    // выносим на холодный путь регистрации.
-    const stylePriority = priority || 0;
-    // Свойство с закрытым перечислением: значение обязано быть из списка.
-    // Список ищется по имени свойства, а не выписывается в строку реестра —
-    // сам факт наличия и означает «здесь перечисление».
-    const enumWords = ENUM_KEYWORDS[propName];
-    const valuePattern = VALUE_PATTERNS[propName];
-    const slots = SLOT_VALIDATORS[propName];
-    mn(essenceName, (p) => {
-      let s, repeated;
-      let style: Record<string, any>;
-      style = {};
-      if (!(s = p.suffix)) {
+    }, (options: any[], essenceName: string) => {
+      const propName: string = options[0];
+      const priority: number | undefined = options[1];
+      const lengthy: number | undefined = options[2];
+      const autoRepeat: number | undefined = options[3];
+      const keywords: Record<string, 1> | undefined = options[4];
+      // §6.3: `priority || 0` вычислялся на каждый вызов хендлера, причём дважды —
+      // выносим на холодный путь регистрации.
+      const stylePriority = priority || 0;
+      // Свойство с закрытым перечислением: значение обязано быть из списка.
+      // Список ищется по имени свойства, а не выписывается в строку реестра —
+      // сам факт наличия и означает «здесь перечисление».
+      const enumWords = ENUM_KEYWORDS[propName];
+      const valuePattern = VALUE_PATTERNS[propName];
+      const slots = SLOT_VALIDATORS[propName];
+      mn(essenceName, (p) => {
+        let s, repeated;
+        let style: Record<string, any>;
+        style = {};
+        if (!(s = p.suffix)) {
         // Свойству-длине пустой суффикс даёт `0`, как у `p`/`m`/`b`; остальным
         // значения по умолчанию нет — они принимают произвольное слово, и
         // угадывать за автора нечего.
-        return lengthy ? (style[propName] = '0', styleWrap(style, stylePriority)) : 0;
-      }
-      if (autoRepeat && (repeated = autoRepeatValue(s, essenceName))) {
-        style[propName] = repeated;
-        return styleWrap(style, stylePriority);
-      }
-      s = valueNormalize(s);
-      // У свойства-длины голое слово почти всегда ошибка: `tiA` давало
-      // `text-indent:a`, `wosN` — `word-spacing:n`. Список слов задан на
-      // свойство; у остальных хендлеров блока значения произвольны
-      // (`apcNone`, `irPixelated`), и проверять там нечего.
-      lengthy && REGEXP_BARE_WORD.test(s) && !GLOBAL_KEYWORDS[s]
+          return lengthy ? (style[propName] = '0', styleWrap(style, stylePriority)) : 0;
+        }
+        if (autoRepeat && (repeated = autoRepeatValue(s, essenceName))) {
+          style[propName] = repeated;
+          return styleWrap(style, stylePriority);
+        }
+        s = valueNormalize(s);
+        // У свойства-длины голое слово почти всегда ошибка: `tiA` давало
+        // `text-indent:a`, `wosN` — `word-spacing:n`. Список слов задан на
+        // свойство; у остальных хендлеров блока значения произвольны
+        // (`apcNone`, `irPixelated`), и проверять там нечего.
+        lengthy && REGEXP_BARE_WORD.test(s) && !GLOBAL_KEYWORDS[s]
         && !(keywords && keywords[s])
         && throwInvalid('Value "' + p.suffix + '" is invalid for "'
           + essenceName + '": expected a length or a keyword of this property');
-      // У свойства с закрытым перечислением проверяется значение ЦЕЛИКОМ, а не
-      // только его словесная форма: `irF00` — не слово (`f00`), но и не
-      // значение `image-rendering`. Подстановка и функция проходят: их
-      // содержимое здесь разбирать нечем.
-      if (slots) {
+        // У свойства с закрытым перечислением проверяется значение ЦЕЛИКОМ, а не
+        // только его словесная форма: `irF00` — не слово (`f00`), но и не
+        // значение `image-rendering`. Подстановка и функция проходят: их
+        // содержимое здесь разбирать нечем.
+        if (slots) {
         // Составное значение разбирается по слотам своего свойства.
         // CSS-wide keywords и подстановка ЦЕЛИКОМ проходят мимо: перечислить
         // их в слотах нечем, а валидны они везде. Проверка на пробел
         // обязательна — иначе `var(--g) 1 auto` сходило бы за одну подстановку
         // и слоты не работали бы вовсе.
-        s = (GLOBAL_KEYWORDS[s]
+          s = (GLOBAL_KEYWORDS[s]
           || (REGEXP_SUBSTITUTION.test(s) && s.indexOf(' ') < 0))
-          ? s
-          : slots(
-            s.split(' '), p.suffix, essenceName,
-          );
-      } else if (valuePattern) {
+            ? s
+            : slots(
+              s.split(' '), p.suffix, essenceName,
+            );
+        } else if (valuePattern) {
         // Свойство берёт безразмерное число; слово у него — только из списка,
         // если список есть.
-        valuePattern.test(s) || (enumWords && (enumWords[s] || GLOBAL_KEYWORDS[s]))
+          valuePattern.test(s) || (enumWords && (enumWords[s] || GLOBAL_KEYWORDS[s]))
           || s.indexOf('(') > -1
           || throwInvalid('Value "' + p.suffix + '" is invalid for "'
             + essenceName + '": expected a unitless number');
-      } else if (enumWords) {
-        s = assertEnumValue(
-          s, enumWords, ENUM_MULTI[propName], essenceName, p.suffix,
-        );
-      }
-      style[propName] = lengthy
-        ? assertLengthValue(
-          defaultUnitNormalize(s), essenceName, p.suffix, lengthy,
-        )
-        : s;
-      return styleWrap(style, stylePriority);
+        } else if (enumWords) {
+          s = assertEnumValue(
+            s, enumWords, ENUM_MULTI[propName], essenceName, p.suffix,
+          );
+        }
+        style[propName] = lengthy
+          ? assertLengthValue(
+            defaultUnitNormalize(s), essenceName, p.suffix, lengthy,
+          )
+          : s;
+        return styleWrap(style, stylePriority);
+      });
     });
-  });
 
-  mn(
-    'ratio', (p) => {
-      p.other && throwInvalid();
-      const v = '' + toFixed(100 * floatval(
-        p.oh || p.h || 100, 1, 1,
-      )
+    mn(
+      'ratio', (p) => {
+        p.other && throwInvalid();
+        const v = '' + toFixed(100 * floatval(
+          p.oh || p.h || 100, 1, 1,
+        )
       / floatval(
         p.w || 100, 1, 1,
       )) + '%';
-      return {
-        exts: ['rlv'],
-        style: {
-          paddingTop: p.add
-            ? normalizeCalc(
-              v,
-              '' + p.sa + floatNormalize(p.addv),
-              validateUnit('' + (p.addu || 'px')) as string,
-            )
-            : v,
-        },
-        childs: {
-          overlay: {
-            selectors: ['>*'],
-            exts: ['abs' + p.ni, 's' + p.ni],
+        return {
+          exts: ['rlv'],
+          style: {
+            paddingTop: p.add
+              ? normalizeCalc(
+                v,
+                '' + p.sa + floatNormalize(p.addv),
+                validateUnit('' + (p.addu || 'px')) as string,
+              )
+              : v,
           },
-        },
-      };
+          childs: {
+            overlay: {
+              selectors: ['>*'],
+              exts: ['abs' + p.ni, 's' + p.ni],
+            },
+          },
+        };
       // eslint-disable-next-line
   }, '^((((\\d+):w)x((\\d+):h))|(\\d+):oh)?(([-+]):sa([0-9\\.]+):addv([a-z%]+):addu?):add?|(.*):other', 1);
 
-  mn({
-    contrast: styleWrap({
-      imageRendering: ['optimize-contrast', '-webkit-optimize-contrast'],
-    }),
-  });
-};
+    mn({
+      contrast: styleWrap({
+        imageRendering: ['optimize-contrast', '-webkit-optimize-contrast'],
+      }),
+    });
+  },
+} as MnPresetObject;

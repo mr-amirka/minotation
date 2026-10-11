@@ -93,6 +93,29 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 | `presetHints` | Подсказки вместо молчания: `t0` → «did you mean `st0`?», `flex` → «в minotation это `dF`», `text-center` → `taC`. Подключать первым — пресет ниже перекрывает его хендлеры. Точечно — фабрикой: `presetHints({ excludeGroups: ['bootstrap'], excludeHandlers: ['flex'] })`; группы — `typos`, `tailwind`, `bootstrap` (D-024, D-042) |
 | `presetPrefixes` | Опциональные `-webkit-`/`-moz-` дубли для заданного списка свойств (`transform`, `flexDirection`, `appearance`, …) |
 
+### Пресет-объект и зависимости (D-045)
+
+Пресет — функция `(mn) => {…}` или объект с метаданными. Зависимости можно перечислять в
+`setPresets` в любом порядке: ядро подключит их раньше зависящего.
+
+```ts
+const presetApp = {
+  name: 'presetApp',
+  requires: ['presetStandard', 'presetMedias'],
+  setup(mn) {
+    mn.assign({ '.card': 'p16 bgF r8 sh2@md' });
+  },
+};
+
+mn.setPresets([presetApp, presetMedias, presetStandard]);   // порядок — любой
+mn.setPresets([presetApp]);
+// Error: [minotation] presetApp requires "presetStandard", which is not connected. Connected presets: presetApp
+```
+
+Стандартные пресеты — объекты с именами; `presetNormalize` требует `presetStandard`,
+`presetMain` — `presetStandard` и `presetMedias`. `presetHints({ … })` возвращает объект
+с именем `presetHints`.
+
 ## API
 
 ### `minotationProvider(options?)`

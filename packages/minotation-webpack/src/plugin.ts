@@ -15,6 +15,7 @@ import {
   presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
+import type { MnPreset } from 'minotation';
 import {
   checkBuildOptions, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, walkFiles,
 } from 'minotation-build';
@@ -41,7 +42,7 @@ export const MN_CSS_REQUEST = 'minotation-webpack/mn.css';
 /** Заглушки `mn.css` этого пакета и `minotation-next`: содержимое даёт CSS-лоадер. */
 const REGEXP_MN_CSS = /[\\/]minotation-(?:webpack|next)[\\/]mn\.css$/;
 
-const DEFAULT_PRESETS: Array<(mn: MnInstance) => void> = [
+const DEFAULT_PRESETS: MnPreset[] = [
   // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
   presetHints,
   presetStandard,
@@ -193,7 +194,7 @@ export class MnWebpackPlugin {
   /** Выполняет пресет-файл; битый — снимает с учёта, ошибку печатает. */
   private loadPreset(file: string): void {
     const handle = this.handle as MnPluginHandle;
-    let preset: ((mn: MnInstance) => void) | undefined;
+    let preset: MnPreset | undefined;
     try {
       preset = evalPreset(file, readFileSync(file, 'utf-8'));
     } catch (e) {

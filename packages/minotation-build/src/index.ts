@@ -31,14 +31,33 @@ import {
 } from 'node:path';
 import {
   CORE_OPTIONS_SCHEMA, checkOptions, createScanner, isBoolean, isBooleanOrString,
-  isFunction, isFunctionArray, isString, isStringArray, minotationProvider, optionsOf,
+  isFunction, isPresetArray, isString, isStringArray, minotationProvider, optionsOf,
 } from 'minotation';
 import type {
-  MnInstance, MnOptions, MnWarning, OptionCheck, OptionSchema, ScannerOptions,
+  MnInstance, MnOptions, MnPreset as MnCorePreset, MnWarning, OptionCheck, OptionSchema, ScannerOptions,
 } from 'minotation';
 
 /** Пресет — функция, донастраивающая mn-инстанс. */
-export type MnPreset = (mn: MnInstance) => void;
+/** Пресет: функция или пресет-объект `{ name, requires, setup }` (D-045). */
+export type MnPreset = MnCorePreset;
+
+/**
+ * Экспорт файла динамического пресета (`import './app.mn'`) как пресет: функция или
+ * пресет-объект с `setup` (D-045). Иное — `null`: файл не пресет.
+ *
+ * @param value — `default`-экспорт модуля (или сам модуль)
+ * @returns пресет или `null`
+ * @example
+ * asPreset((mn) => mn('x', h));                     // функция
+ * asPreset({ name: 'presetApp', setup(mn) {} });    // объект
+ * asPreset({ default: 1 });                         // null
+ */
+export function asPreset(value: unknown): MnPreset | null {
+  return typeof value === 'function'
+    || value !== null && typeof value === 'object' && typeof (value as { setup?: unknown }).setup === 'function'
+    ? value as MnPreset
+    : null;
+}
 
 /**
  * Какие атрибуты сканировать и во что разворачивать их селекторы (D-025, как в v1).
@@ -461,7 +480,7 @@ export const ENTRY_OPTIONS_SCHEMA: OptionSchema = {
 /** Допустимые опции плагина — общий набор {@link MnBuildOptions} (D-038). */
 export const BUILD_OPTIONS_SCHEMA: OptionSchema = {
   ...ENTRY_OPTIONS_SCHEMA,
-  presets: isFunctionArray,
+  presets: isPresetArray,
   onScannerWarning: isFunction,
   classVarSuffixes: isStringArray,
   mergeFnNames: isStringArray,

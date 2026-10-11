@@ -53,6 +53,7 @@ import {
   isBooleanOrString as isBooleanOrStringImpl,
   isStringArray as isStringArrayImpl,
   isFunctionArray as isFunctionArrayImpl,
+  isPresetArray as isPresetArrayImpl,
   CORE_OPTIONS_SCHEMA as CORE_OPTIONS_SCHEMA_IMPL,
 } from './checkOptions';
 import {
@@ -133,6 +134,7 @@ export const isObject = isObjectImpl;
 export const isBooleanOrString = isBooleanOrStringImpl;
 export const isStringArray = isStringArrayImpl;
 export const isFunctionArray = isFunctionArrayImpl;
+export const isPresetArray = isPresetArrayImpl;
 export const CORE_OPTIONS_SCHEMA = CORE_OPTIONS_SCHEMA_IMPL;
 export const mne = mneImpl;
 export const mnClass = mnClassImpl;
@@ -163,6 +165,8 @@ export type {
   MnWarningType,
   MnOptions,
   MnRaiseMode,
+  MnPreset,
+  MnPresetObject,
 } from './core/types';
 import {
   MnParseError as MnParseErrorImpl,

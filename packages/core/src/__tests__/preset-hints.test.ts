@@ -11,13 +11,13 @@ import presetHints, {
   HINTS,
 } from '../presets/hints';
 import type {
-  MnOptions, MnWarning,
+  MnOptions, MnPreset, MnWarning,
 } from '../core/types';
 import type {
   MnInstance,
 } from '../types';
 
-const STANDARD = [
+const STANDARD: MnPreset[] = [
   presetStandard,
   presetSynonyms,
   presetMedias,

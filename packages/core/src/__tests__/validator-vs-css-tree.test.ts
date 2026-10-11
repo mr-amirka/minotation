@@ -60,7 +60,7 @@ function collectHandlerNames(): string[] {
       );
     },
   });
-  presetStandard(spy as any);
+  presetStandard.setup(spy as any);
   return names;
 }
 

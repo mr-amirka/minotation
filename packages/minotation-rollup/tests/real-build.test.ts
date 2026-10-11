@@ -67,6 +67,19 @@ describe('minotation-rollup — реальная сборка', () => {
     expect(code).not.toContain('mn-rollup-fixture-marker-4a8e');
   });
 
+  test('файл пресета экспортирует пресет-объект — применяется, как функция (D-045)', async () => {
+    const root = makeProject({
+      'src/main.js': "import './theme.mn.ts';\nexport const x = 1;\n",
+      'src/app.html': '<div class="objToken"></div>',
+      'src/theme.mn.ts': "export default { name: 'presetTheme', requires: ['presetStandard'],"
+        + " setup(mn) { mn('objToken', 'cF00'); } };\n",
+    });
+
+    const { css } = await runBuild(root, {});
+
+    expect(css).toContain('.objToken{color:#f00}');
+  });
+
   test('кастомные attr/extensions/presetExtensions/fileName/mn + вложенные директории + named-экспорт пресета', async () => {
     const root = makeProject({
       'src/main.js': "import './presets/theme.mnjs';\nexport const x = 1;\n",

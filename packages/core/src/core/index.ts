@@ -124,9 +124,14 @@ import type {
   MnEssenceRaw,
   MnEssenceParams,
   MnOptions,
+  MnPreset,
+  MnPresetObject,
   MnRaiseMode,
   MnWarning,
 } from './types';
+import {
+  orderPresets,
+} from './presetOrder';
 import {
   MnForbiddenTokenError,
   MnParseError,
@@ -144,6 +149,11 @@ minotationProvider.utils = baseUtils;
 /** Печать предупреждения в режиме `warningMode: 'log'` (по умолчанию). */
 function logWarning(warning: MnWarning): void {
   console.warn('[minotation] ' + warning.token + ': ' + warning.message);
+}
+
+/** Пресет как функция `(mn) => void` — для `eachTry`. */
+function asPresetFunction(preset: MnPreset): (mn: MnInstance) => void {
+  return typeof preset === 'function' ? preset : (mn) => preset.setup(mn);
 }
 
 /** Случаи со своим режимом `'warn' | 'silent' | 'strict'` (D-039). */
@@ -184,9 +194,17 @@ function minotationProvider(options?: MnOptions) {
   // замыканий — каждое обращение к полю требовало проверки на `undefined`,
   // хотя значение выставляется первой же строкой.
   let settings: MnOptions = options || {};
-  function setPresets(presets: Array<(mn: MnInstance) => void>): any {
+  /** Подключённые пресет-объекты по имени — для `requires` следующих вызовов (D-045). */
+  const $$presetNames: Record<string, MnPresetObject> = {};
+  function setPresets(presets: MnPreset[]): any {
+    // Порядок по зависимостям и проверки — до выполнения хоть одного пресета.
+    const ordered = orderPresets(presets, $$presetNames);
+    let preset: MnPreset;
+    for (preset of ordered) {
+      typeof preset === 'function' || ($$presetNames[preset.name] = preset);
+    }
     eachTry(
-      presets,
+      ordered.map(asPresetFunction),
       [mn],
       mn,
       // `eachTry` отдаёт перехваченное как `unknown`: бросить можно что

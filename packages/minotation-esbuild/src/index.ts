@@ -9,6 +9,8 @@ import {
   presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
+import type { MnPreset } from 'minotation';
+import { asPreset } from 'minotation-build';
 import {
   checkBuildOptions, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, walkFiles,
 } from 'minotation-build';
@@ -54,7 +56,7 @@ const REGEXP_MN_VIRTUAL = /^virtual:mn(?:\/([^/]+))?\.css$/;
  * @param id - абсолютный путь к файлу пресета
  * @returns экспортированная пресет-функция или `null` при ошибке
  */
-function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
+function evalPresetFile(id: string): MnPreset | null {
   let source: string;
   try {
     source = readFileSync(id, 'utf-8');
@@ -81,7 +83,7 @@ function evalPresetFile(id: string): ((mn: MnInstance) => void) | null {
     );
     fn(req, mod, mod.exports, dirname(id), id);
     const preset = mod.exports['default'] ?? Object.values(mod.exports).find(v => typeof v === 'function');
-    return typeof preset === 'function' ? (preset as (mn: MnInstance) => void) : null;
+    return asPreset(preset);
   } catch (e) {
     console.error('[mnEsbuild] Failed to evaluate preset file:', id, e);
     return null;

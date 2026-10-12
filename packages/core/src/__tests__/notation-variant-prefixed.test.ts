@@ -249,6 +249,18 @@ describe("'variant-prefixed' без меток и без ядра", () => {
     const scp: any = selectorsCompileProvider(instance);
     expect(() => scp.parseClass('md:p10')).toThrow('Variant "md:" is unknown');
   });
+
+  test("selectorsCompileProvider отдельно, 'breakpoint-prefixed': медиа нет — брейкпоинт неизвестен", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- экземпляр провайдера нетипизирован снаружи
+    const instance: any = Object.assign(() => undefined, {
+      options: {
+        notationMode: 'breakpoint-prefixed',
+      },
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- то же
+    const scp: any = selectorsCompileProvider(instance);
+    expect(() => scp.parseClass('SM_p10')).toThrow('Breakpoint "SM_" is unknown');
+  });
 });
 
 describe('компилятор с режимом: getCompiler(attr, mode) — режим файла разметки (D-045 этап 3)', () => {
@@ -279,5 +291,71 @@ describe('компилятор с режимом: getCompiler(attr, mode) — р
     // Полная пересборка — компилятор с режимом не теряется.
     mn.recompile();
     expect(mn.styles$.getValue().map((s) => s.content).join(' ')).toContain('.hover\\:cF00:hover{color:#f00}');
+  });
+});
+
+describe("notationMode: 'breakpoint-prefixed' — quantum-css (D-045 этап 4)", () => {
+  function compileQ(tokens: string, media: Record<string, unknown> = {}) {
+    const mn = minotationProvider({
+      warningMode: 'silent',
+      notationMode: 'breakpoint-prefixed',
+      media: {
+        sm: {
+          query: '(min-width: 576px)',
+          priority: 1,
+        },
+        ...media,
+      } as never,
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')(tokens);
+    mn.compile();
+    return {
+      css: mn.styles$.getValue().map((s) => s.content).join(' '),
+      warnings: mn.warnings$.getValue(),
+    };
+  }
+
+  test('без брейкпоинта — утилита как есть', () => {
+    expect(compileQ('px15').css).toBe('.px15{padding-left:15px;padding-right:15px}');
+  });
+
+  test('SM_ — медиа sm (имя строчными)', () => {
+    expect(compileQ('SM_px15').css).toBe('@media (min-width: 576px){.SM_px15{padding-left:15px;padding-right:15px}}');
+  });
+
+  test('имя медиа как записано — важнее строчного', () => {
+    const {
+      css, 
+    } = compileQ('LG_p10', {
+      LG: {
+        query: '(min-width: 992px)',
+        priority: 2,
+      },
+    });
+    expect(css).toBe('@media (min-width: 992px){.LG_p10{padding:10px}}');
+  });
+
+  test('неизвестный брейкпоинт — предупреждение, CSS нет', () => {
+    const {
+      css, warnings, 
+    } = compileQ('XL_p10');
+    expect(css).toBe('');
+    expect(warnings).toEqual([expect.objectContaining({
+      type: 'parse-error',
+      token: 'XL_p10',
+      message: 'Breakpoint "XL_" is unknown — "XL" and "xl" are not media names. The class gives no CSS.',
+    })]);
+  });
+
+  test('конструкции minotation не применяются: @, <, :', () => {
+    const {
+      css, 
+    } = compileQ('p10@sm p10:h p10<.a');
+    expect(css).toBe('');
+  });
+
+  test('строчный префикс — не брейкпоинт: часть утилиты', () => {
+    expect(compileQ('sm_p10').css).toBe('');
   });
 });

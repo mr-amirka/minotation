@@ -255,7 +255,9 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   childSelectorMode: oneOf(
     'warn', 'silent', 'strict',
   ),
-  notationMode: oneOf('context-qualified', 'variant-prefixed'),
+  notationMode: oneOf(
+    'context-qualified', 'variant-prefixed', 'breakpoint-prefixed',
+  ),
   selectorPrefix: isString,
   altColor: isBoolean,
   contextWhere: isBoolean,

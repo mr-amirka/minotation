@@ -41,7 +41,7 @@ export interface CliArgs {
   /** Что делать с дочерними селекторами `>`: `warn`, `silent`, `strict` (D-041). */
   childSelectorMode?: 'warn' | 'silent' | 'strict';
   /** Режим синтаксиса нотации: `context-qualified`, `variant-prefixed` (D-045). */
-  notationMode?: 'context-qualified' | 'variant-prefixed';
+  notationMode?: 'context-qualified' | 'variant-prefixed' | 'breakpoint-prefixed';
   /** Конфликт режимов синтаксиса между файлами: `warn`, `strict` (D-045). */
   notationConflictMode?: 'warn' | 'strict';
   /** Контекст селектора в `:where()` (D-049). */
@@ -172,8 +172,9 @@ export function parseArgs(argv: string[]): CliArgs {
     || raise('Option "--important-mode" expects warn, silent or strict, got "' + args.importantMode + '"');
   args.childSelectorMode === undefined || RAISE_MODES[args.childSelectorMode]
     || raise('Option "--child-selector-mode" expects warn, silent or strict, got "' + args.childSelectorMode + '"');
-  args.notationMode === undefined || args.notationMode === 'context-qualified' || args.notationMode === 'variant-prefixed'
-    || raise('Option "--notation-mode" expects context-qualified or variant-prefixed, got "' + args.notationMode + '"');
+  args.notationMode === undefined || NOTATION_MODES[args.notationMode]
+    || raise('Option "--notation-mode" expects context-qualified, variant-prefixed or breakpoint-prefixed, got "'
+      + args.notationMode + '"');
   args.notationConflictMode === undefined || args.notationConflictMode === 'warn' || args.notationConflictMode === 'strict'
     || raise('Option "--notation-conflict-mode" expects warn or strict, got "' + args.notationConflictMode + '"');
   return args;
@@ -184,6 +185,13 @@ const WARNING_MODES: Record<string, 1> = {
   log: 1,
   silent: 1,
   error: 1,
+};
+
+/** Допустимые значения `--notation-mode` (D-045). */
+const NOTATION_MODES: Record<string, 1> = {
+  'context-qualified': 1,
+  'variant-prefixed': 1,
+  'breakpoint-prefixed': 1,
 };
 
 /** Допустимые значения `--specificity-mode` и `--important-mode` (D-039). */
@@ -225,6 +233,7 @@ Options:
       --notation-mode <m>
                          notation syntax: context-qualified (default, bg-blue-500:hover@md)
                          or variant-prefixed (Tailwind-like, md:hover:bg-blue-500)
+                         or breakpoint-prefixed (quantum-css-like, SM_px15)
       --notation-conflict-mode <m>
                          a class meaning different things in files with different
                          notation modes: warn (default) or strict (fail the build)

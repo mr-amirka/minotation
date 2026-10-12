@@ -17,7 +17,9 @@ import type {
 const PRESET_SCHEMA: OptionSchema = {
   name: isString,
   requires: isStringArray,
-  notationMode: oneOf('context-qualified', 'variant-prefixed'),
+  notationMode: oneOf(
+    'context-qualified', 'variant-prefixed', 'breakpoint-prefixed',
+  ),
   setup: isFunction,
 };
 

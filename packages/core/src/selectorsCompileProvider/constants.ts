@@ -93,3 +93,6 @@ export const REGEXP_SCOPE_SUFFIX = /^([A-Za-z0-9-_$]+)(.*)$/;
 export const SCOPE_START = '[';
 /** Закрывающая граница вложенного scope в значении синонима, см. `scopeSplit2` в `getSynonyms`. */
 export const SCOPE_END = ']';
+/** Брейкпоинт quantum-css перед утилитой: `SM_bgc-dg` → `[1]` `SM`, `[2]` `bgc-dg` (D-045 этап 4). */
+export const REGEXP_BREAKPOINT_PREFIX = /^([A-Z][A-Z0-9]*)_(.+)$/;
+

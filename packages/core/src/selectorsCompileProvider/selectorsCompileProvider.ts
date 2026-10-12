@@ -38,6 +38,7 @@ import {
   REGEXP_SCOPE_SUFFIX,
   SCOPE_END,
   SCOPE_START,
+  REGEXP_BREAKPOINT_PREFIX,
   splitChild,
   splitParent,
   splitState,
@@ -307,8 +308,12 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     // Режим синтаксиса (D-045): строки пресета — в режиме пресета (на время его `setup`),
     // остальное — в режиме проекта. Свой разборщик на режим (D-047); по умолчанию —
     // 'context-qualified' ниже.
-    if (((instance as any)._presetMode || $$markupMode || $$mnOptions.notationMode) === 'variant-prefixed') {
+    const mode = (instance as any)._presetMode || $$markupMode || $$mnOptions.notationMode;
+    if (mode === 'variant-prefixed') {
       return parseVariantPrefixed(comboName, targetName);
+    }
+    if (mode === 'breakpoint-prefixed') {
+      return parseBreakpointPrefixed(comboName, targetName);
     }
 
     let name = comboName;
@@ -480,6 +485,41 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       i = base.lastIndexOf('-', i - 1);
     }
     return false;
+  }
+
+  /**
+   * Разборщик `'breakpoint-prefixed'` (quantum-css, D-045 этап 4): необязательный брейкпоинт
+   * заглавными буквами с `_` перед утилитой — `SM_bgc-dfb-hf`, `MD_px15`. Брейкпоинт ищется в
+   * `mn.media` как записан, затем строчными (`SM` → `sm`); неизвестный — предупреждение.
+   * Утилита целиком — эссенция: остальная грамматика — у хендлеров клона (D-049).
+   */
+  function parseBreakpointPrefixed(comboName: string,
+    targetName: string): Array<[StrMap<number>, AltMap]> {
+    const matchs = REGEXP_BREAKPOINT_PREFIX.exec(comboName);
+    const media: StrMap<unknown> = (instance as any).media || {};
+    const essences: StrMap<number> = {};
+    let name: string | undefined;
+    if (matchs) {
+      name = media[matchs[1]] ? matchs[1] : matchs[1].toLowerCase();
+      media[name] || throwUnknownBreakpoint(comboName, matchs[1]);
+    }
+    essences[unslash(matchs ? matchs[2] : comboName)] = 1;
+    return [[essences, buildContext([[[
+      '',
+      '',
+      undefined,
+      name,
+    ]], []], targetName)]];
+  }
+
+  function throwUnknownBreakpoint(comboName: string, prefix: string): never {
+    throw new MnParseError('Breakpoint "' + prefix + '_" is unknown — "' + prefix + '" and "'
+      + prefix.toLowerCase() + '" are not media names. The class gives no CSS.', {
+      token: comboName,
+      handler: '',
+      arg: prefix,
+      utility: 'breakpoint-prefixed',
+    });
   }
 
   function throwUnknownVariant(comboName: string, prefix: string): never {

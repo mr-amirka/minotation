@@ -77,7 +77,7 @@ describe('readNotationDirective — комментарий @minotation в нач
     expect(() => readNotationDirective('/* @minotation notationMod: variant-prefixed */', 'Button.tsx'))
       .toThrow('[minotation] Button.tsx @minotation: unknown option "notationMod". Did you mean "notationMode"?');
     expect(() => readNotationDirective('/* @minotation notationMode: tailwind */', 'Button.tsx'))
-      .toThrow('option "notationMode" expects "context-qualified" or "variant-prefixed", got string "tailwind"');
+      .toThrow('option "notationMode" expects "context-qualified", "variant-prefixed" or "breakpoint-prefixed", got string "tailwind"');
     expect(() => readNotationDirective('/* @minotation variant-prefixed */', 'Button.tsx'))
       .toThrow('[minotation] Button.tsx: "@minotation variant-prefixed" expects "key: value"');
   });

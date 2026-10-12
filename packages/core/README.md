@@ -113,6 +113,13 @@ mn.variantPrefixedSynonyms({ group: '.group', peer: '.peer~' });  // метки:
 | `peer-invalid:cF00` | `.peer:invalid~.peer-invalid\:cF00{…}` — сосед через `variantPrefixedSynonyms` |
 | `!p10` | `.\!p10{padding:10px!important}` |
 
+`'breakpoint-prefixed'` — брейкпоинт перед классом, как в quantum-css: `SM_px15` →
+`@media sm {.SM_px15{…}}`. Брейкпоинт — заглавными с `_`, ищется в `mn.media` как записан,
+затем строчными; неизвестный — предупреждение.
+
+В режимах, кроме `'context-qualified'`, действует только грамматика оригинала: конструкции
+minotation (`<`, `>`, `@`, `:`, группы) не применяются (D-049).
+
 Имя есть и среди синонимов, и среди медиа — берётся синоним. Метки — только
 зарегистрированные, как в Tailwind (`group`, `peer`); `grop-hover:` или своё имя — неизвестная
 приставка: предупреждение, CSS нет (своя метка пишется нотацией minotation: `cF00<.vasya:h`). Строки пресета (`assign`, `exts`) разбираются в режиме пресета

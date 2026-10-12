@@ -62,6 +62,8 @@ import type {
 import {
   joinMapsWithFirstValue,
   joinPrefixWithFirstValue,
+  joinWhere,
+  wrapWhere,
 } from './joinMaps';
 
 /**
@@ -289,6 +291,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     const $$mnOptions = (instance as any).options || {};
     $$depthCheck.maxDepth = $$mnOptions.maxDepth;
     $$depthCheck.token = comboName;
+    $$contextWhere = !!$$mnOptions.contextWhere;
     // Режим синтаксиса (D-045): строки пресета — в режиме пресета (на время его `setup`),
     // остальное — в режиме проекта. Свой разборщик на режим (D-047); по умолчанию —
     // 'context-qualified' ниже.
@@ -357,6 +360,8 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * `reduceIn` синхронный, рекурсии через него не возникает.
    */
   let $$tgt: string;
+  /** `contextWhere` текущего разбора (D-049) — читается из опций в начале `parseComboName`. */
+  let $$contextWhere = false;
 
   function suffixesIteratee(
     items: Array<[StrMap<number>, AltMap]>, essences: StrMap<number>, suffix: string,
@@ -571,13 +576,60 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     const childs = context[1];
     const l = childs.length;
     let i = 0;
-    let alts = buildChain(context[0], targetName);
+    // `contextWhere` (D-049): всё, кроме стилизуемого элемента, — в `:where()`. Без детей
+    // элемент — сам класс, его предки уходят в `:is(:where(…) *)`; с детьми элемент — последний
+    // ребёнок, всё до него — в `:where(…)`.
+    let alts = $$contextWhere && !l
+      ? buildChainWhere(context[0], targetName)
+      : buildChain(context[0], targetName);
     for (; i < l; i++) {
       alts = joinMapsWithFirstValue(
-        alts, buildChain(childs[i][1], ''), childs[i][0],
+        $$contextWhere && i === l - 1 ? wrapWhere(alts) : alts,
+        buildChain(childs[i][1], ''),
+        childs[i][0],
       );
     }
     return mapIn(alts, mediaFilterIteratee as any);
+  }
+
+  /**
+   * Цепочка с предками в `:where()`: `.x:is(:where(.card:hover) *)`. Если в сегменте самого
+   * элемента есть сосед (`cF00+.b`), стилизуется сосед — класс тоже уходит в `:where()`:
+   * `:where(.cF00\+\.b)+.b`.
+   */
+  function buildChainWhere(chain: MnChain, targetName: string): AltMap {
+    const segment = chain[0];
+    const at = lastSiblingCombinator(segment[1]);
+    const subject = joinPrefixWithFirstValue(
+      at < 0
+        ? targetName + segment[1]
+        : ':where(' + targetName + segment[1].slice(0, at) + ')' + segment[1].slice(at),
+      buildStates(segment[2]),
+      segment[3],
+    );
+    return chain.length > 1
+      ? joinWhere(
+        buildChain(chain.slice(1), ''), subject, chain[1][0],
+      )
+      : subject;
+  }
+
+  /** Позиция последнего неэкранированного `+`/`~` вне скобок; `-1` — нет. */
+  function lastSiblingCombinator(selector: string): number {
+    let i = selector.length;
+    let depth = 0;
+    let ch: string;
+    while (i--) {
+      ch = selector[i];
+      if (ch === ']' || ch === ')') {
+        depth++;
+      } else if (ch === '[' || ch === '(') {
+        depth--;
+      } else if (!depth && (ch === '+' || ch === '~') && selector[i - 1] !== '\\') {
+        return i;
+      }
+    }
+    return -1;
   }
 
   /** Цепочка → AltMap: элемент склеивается с `targetName`, предки — через свои комбинаторы. */

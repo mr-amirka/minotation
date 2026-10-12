@@ -405,6 +405,13 @@ export interface MnOptions {
    * @default 'context-qualified'
    */
   notationMode?: MnNotationMode;
+  /**
+   * Контекст селектора в `:where()` (D-049) — во всех режимах: специфичность остаётся только у
+   * стилизуемого элемента, как у вариантов Tailwind v4.
+   * `cF00<.card:h` → `.cF00…:is(:where(.card:hover) *)` вместо `.card:hover .cF00…`.
+   * @default false
+   */
+  contextWhere?: boolean;
   selectorPrefix?: string;
   /**
    * `true` — рядом с `rgba`-значением выводить запасное непрозрачное

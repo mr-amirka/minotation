@@ -258,4 +258,5 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   notationMode: oneOf('context-qualified', 'variant-prefixed'),
   selectorPrefix: isString,
   altColor: isBoolean,
+  contextWhere: isBoolean,
 };

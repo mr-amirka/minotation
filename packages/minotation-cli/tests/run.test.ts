@@ -180,6 +180,10 @@ describe('mergeSettings', () => {
     expect(mergeSettings(parseArgs([]), {
       notationMode: 'variant-prefixed',
     }).notationMode).toBe('variant-prefixed');
+    expect(mergeSettings(parseArgs(['--context-where']), {}).contextWhere).toBe(true);
+    expect(mergeSettings(parseArgs([]), {
+      contextWhere: true,
+    }).contextWhere).toBe(true);
   });
 
   test('синтаксический разбор: по умолчанию авто, `--no-syntax` выключает', () => {

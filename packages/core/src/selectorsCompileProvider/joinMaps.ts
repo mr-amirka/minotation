@@ -95,3 +95,57 @@ export function joinPrefixWithFirstValue(
   }
   return output;
 }
+
+/**
+ * Склейка «предок + элемент» с контекстом в `:where()` (`contextWhere`, D-049): специфичность
+ * остаётся только у элемента. `.card:hover` + ` ` + `.x` → `.x:is(:where(.card:hover) *)`;
+ * висячий комбинатор соседа уходит из скобок: `.peer:focus~` → `.x:is(:where(.peer:focus)~*)`.
+ * Медиа — как у {@link joinMapsWithFirstValue} (префикс — предок).
+ *
+ * @param parents — селекторы предка (префиксы)
+ * @param subjects — селекторы элемента
+ * @param combinator — комбинатор между ними (` `, `>`, `>*>`)
+ */
+export function joinWhere(
+  parents: AltMap,
+  subjects: AltMap,
+  combinator: string,
+): AltMap {
+  const output: AltMap = {};
+  let parent: string;
+  let subject: string;
+  let pv: AltEntry[];
+  let inner: string;
+  let tail: string;
+  let tmp: AltEntry[];
+  let last: string;
+  for (parent in parents) {
+    pv = parents[parent];
+    last = parent[parent.length - 1];
+    if ((last === '~' || last === '+') && parent[parent.length - 2] !== '\\') {
+      inner = parent.slice(0, -1);
+      tail = ')' + last + '*)';
+    } else {
+      inner = parent;
+      tail = ')' + (combinator === ' ' ? ' ' : combinator) + '*)';
+    }
+    for (subject in subjects) {
+      tmp = output[subject + ':is(:where(' + inner + tail] = slice(subjects[subject]);
+      tmp[0] = pv[0] || tmp[0];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      pushArray(tmp as any, slice(pv, 1));
+    }
+  }
+  return output;
+}
+
+/** Ключи карты в `:where(…)`: контекст перед ребёнком `>` (`contextWhere`, D-049). */
+export function wrapWhere(alts: AltMap): AltMap {
+  const output: AltMap = {};
+  let key: string;
+  for (key in alts) {
+    output[':where(' + key + ')'] = alts[key];
+  }
+  return output;
+}
+

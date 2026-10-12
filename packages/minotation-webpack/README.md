@@ -107,6 +107,7 @@ module.exports = {
 | `importantMode` | `'warn'` | токены с `!important` (`f10-i`) — режимы те же (D-039) |
 | `childSelectorMode` | `'warn'` | токены с дочерним селектором `>` (`cF00>1`, `cF00>.child`) — режимы те же (D-041) |
 | `notationMode` | `'context-qualified'` | режим синтаксиса классов: `'context-qualified'` (`bg-blue-500:hover@md`) или `'variant-prefixed'` (как Tailwind: `md:hover:bg-blue-500`); строки пресетов — в режиме пресета (D-045) |
+| `contextWhere` | `false` | контекст селектора в `:where()`: специфичность только у класса, как у вариантов Tailwind v4 (`cF00<.card:h` → `.cF00…:is(:where(.card:hover) *)`), во всех режимах (D-049) |
 | `warningMode` | `'log'` | что делать с предупреждением компиляции: `'log'` — в лог сборки, `'silent'` — молчать, `'error'` — уронить сборку; `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode` не затрагивает |
 | `onWarning` | — | колбэк `(warning) => void` на каждое предупреждение, дополнительно к `warningMode` |
 | `onError` | — | обработчик ошибок ядра |

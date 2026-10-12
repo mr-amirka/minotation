@@ -163,6 +163,7 @@ const mn = minotationProvider({
   importantMode: 'warn',           // 'warn' | 'silent' | 'strict' — токены f10-i (!important)
   childSelectorMode: 'warn',       // 'warn' | 'silent' | 'strict' — токены cF00>1 (дочерний селектор)
   notationMode: 'context-qualified', // или 'variant-prefixed' — запись как в Tailwind: md:hover:p10
+  contextWhere: false,             // true — контекст в :where(): .p10…:is(:where(.card:hover) *)
 });
 ```
 

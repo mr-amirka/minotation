@@ -42,6 +42,8 @@ export interface CliArgs {
   childSelectorMode?: 'warn' | 'silent' | 'strict';
   /** Режим синтаксиса нотации: `context-qualified`, `variant-prefixed` (D-045). */
   notationMode?: 'context-qualified' | 'variant-prefixed';
+  /** Контекст селектора в `:where()` (D-049). */
+  contextWhere: boolean;
   /** Не разбирать JS/TS парсером — только текстовый поиск. */
   noSyntax: boolean;
   /** Пропускать файлы-партиалы `_*` (D-027). */
@@ -77,12 +79,14 @@ const DEFAULTS: CliArgs = {
   skipPartials: false,
   noManifest: false,
   noMetrics: false,
+  contextWhere: false,
   help: false,
   version: false,
 };
 
 /** Опции без значения. */
 const FLAGS: Record<string, keyof CliArgs> = {
+  '--context-where': 'contextWhere',
   '-w': 'watch',
   '--watch': 'watch',
   '--alt-color': 'altColor',
@@ -212,6 +216,7 @@ Options:
                          !important tokens (f10-i): warn (default), silent, strict
       --child-selector-mode <m>
                          child selector tokens (cF00>1): warn (default), silent, strict
+      --context-where    wrap selector context in :where() (Tailwind v4 specificity)
       --notation-mode <m>
                          notation syntax: context-qualified (default, bg-blue-500:hover@md)
                          or variant-prefixed (Tailwind-like, md:hover:bg-blue-500)

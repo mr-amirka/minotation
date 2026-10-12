@@ -133,6 +133,7 @@ export const CORE_OPTION_KEYS = [
   'importantMode',
   'childSelectorMode',
   'notationMode',
+  'contextWhere',
   'onWarning',
   'onError',
 ] as const;

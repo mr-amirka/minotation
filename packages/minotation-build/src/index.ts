@@ -30,11 +30,35 @@ import {
   basename, join, relative,
 } from 'node:path';
 import {
+  clearPackageDirectiveCache as clearPackageDirectiveCacheImpl,
+  readFileNotation as readFileNotationImpl,
+  readNotationDirective as readNotationDirectiveImpl,
+  readPackageDirective as readPackageDirectiveImpl,
+} from './directives';
+import type {
+  MnNotationDirective,
+} from './directives';
+
+export type {
+  MnNotationDirective,
+} from './directives';
+// Константы, а не `export { … } from`: та форма компилируется в геттеры, которых не видит
+// cjs-module-lexer (импорт из ESM падал — см. шапку `index.ts` ядра).
+/** Директива `@minotation` в начале файла (D-045 этап 3). */
+export const readNotationDirective = readNotationDirectiveImpl;
+/** Поле `"minotation"` ближайшего `package.json`. */
+export const readPackageDirective = readPackageDirectiveImpl;
+/** Сброс кеша `package.json`. */
+export const clearPackageDirectiveCache = clearPackageDirectiveCacheImpl;
+/** Режим и требования файла по старшинству: файл → пакет. */
+export const readFileNotation = readFileNotationImpl;
+import {
   CORE_OPTIONS_SCHEMA, checkOptions, createScanner, isBoolean, isBooleanOrString,
-  isFunction, isPresetArray, isString, isStringArray, minotationProvider, optionsOf,
+  isFunction, isPresetArray, isString, isStringArray, minotationProvider, oneOf, optionsOf,
 } from 'minotation';
 import type {
-  MnInstance, MnOptions, MnPreset as MnCorePreset, MnWarning, OptionCheck, OptionSchema, ScannerOptions,
+  MnNotationMode, MnOptions, MnPreset as MnCorePreset, MnWarning, OptionCheck, OptionSchema,
+  ScannerOptions,
 } from 'minotation';
 
 /** Пресет — функция, донастраивающая mn-инстанс. */
@@ -119,6 +143,10 @@ export function parseAttrs(attrs?: MnAttrs): Record<string, string> {
       + '. Expected e.g. "class", "class, className:class" or { className: "class" }');
   }
   return out;
+}
+
+function fail(message: string): never {
+  throw new Error('[minotation] ' + message);
 }
 
 /** Поля ядра, которые в опциях плагина лежат плоско, как в v1 (D-034). */
@@ -223,11 +251,18 @@ export function createAttrsScanner(options: Omit<ScannerOptions, 'attr' | 'onWar
 export function compileEntries(mn: Pick<ReturnType<typeof minotationProvider>, 'getCompiler'>, entries: Iterable<string>): void {
   const compilers: Record<string, (value: string) => void> = {};
   let at: number;
+  let mode: number;
   let target: string;
+  let key: string;
   for (const entry of entries) {
-    at = entry.indexOf(' ');
-    target = entry.slice(0, at);
-    (compilers[target] || (compilers[target] = mn.getCompiler(target)))(entry.slice(at + 1));
+    // `режим\0цель токен` — запись из файла со своим режимом синтаксиса (D-045 этап 3).
+    mode = entry.indexOf('\0');
+    at = entry.indexOf(' ', mode + 1);
+    target = entry.slice(mode + 1, at);
+    key = mode < 0 ? target : entry.slice(0, at);
+    (compilers[key] || (compilers[key] = mode < 0
+      ? mn.getCompiler(target)
+      : mn.getCompiler(target, entry.slice(0, mode) as MnNotationMode)))(entry.slice(at + 1));
   }
 }
 
@@ -248,6 +283,12 @@ export interface TokenCollectorOptions extends Omit<ScannerOptions, 'attr' | 'on
    * `onWarning` занят предупреждениями компиляции (D-034).
    */
   onScannerWarning?: (message: string) => void;
+  /**
+   * Один класс в файлах с разными режимами синтаксиса значит разное (D-045): `'warn'` —
+   * предупреждение, в CSS — разбор первого по пути файла, где класс даёт CSS; `'strict'` —
+   * ошибка. `'silent'` нет: такой конфликт калечит вывод. @default 'warn'
+   */
+  notationConflictMode?: 'warn' | 'strict';
 }
 
 /**
@@ -494,6 +535,7 @@ export const BUILD_OPTIONS_SCHEMA: OptionSchema = {
   entry: optionsOf(ENTRY_OPTIONS_SCHEMA),
   manifest: isBooleanOrString,
   metrics: isBooleanOrString,
+  notationConflictMode: oneOf('warn', 'strict'),
 };
 
 /**
@@ -643,7 +685,7 @@ export interface TokenCollector {
    * Нужен там, где сканирует не сам каркас: в webpack файл читает лоадер, а
    * CSS собирает плагин — между ними только общий стейт.
    */
-  set(id: string, tokens: Iterable<string>): boolean;
+  set(id: string, tokens: Iterable<string>, notation?: MnNotationDirective): boolean;
   /** Снимает файл с учёта (удалён, перестал подходить под фильтр). */
   remove(id: string): boolean;
   /** Регистрирует динамический пресет из файла (`*.mn.ts`). */
@@ -695,6 +737,14 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   const core = coreOptionsOf(options);
   /** Токены по файлам — ключ по файлу и снимает файл с учёта, и заменяет набор. */
   const byFile = new Map<string, Set<string>>();
+  /**
+   * Режим синтаксиса файла, если он отличается от режима проекта, и требуемые пресеты
+   * (D-045 этап 3): директива `@minotation` в файле → `"minotation"` в `package.json`.
+   */
+  const fileModes = new Map<string, MnNotationMode>();
+  const fileRequires = new Map<string, string[]>();
+  const projectMode = options.notationMode || 'context-qualified';
+  const conflictMode = options.notationConflictMode || 'warn';
   /** Динамические пресеты из файлов, по пути. */
   const dynamic = new Map<string, MnPreset>();
   let warnings: MnWarning[] = [];
@@ -703,10 +753,34 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   let cachedCss = '';
 
   function add(id: string, source: string): boolean {
-    return set(id, scan(source, id));
+    return set(
+      id, scan(source, id), readFileNotation(source, id),
+    );
   }
 
-  function set(id: string, tokens: Iterable<string>): boolean {
+  /** Режим и требования файла; изменились — кеш CSS сбрасывается. */
+  function setMeta(
+    id: string, mode: MnNotationMode | undefined, requires: string[] | undefined,
+  ): boolean {
+    const changed = fileModes.get(id) !== mode
+      || (fileRequires.get(id) || []).join() !== (requires || []).join();
+    mode ? fileModes.set(id, mode) : fileModes.delete(id);
+    requires && requires.length ? fileRequires.set(id, requires) : fileRequires.delete(id);
+    changed && (cacheKey = '');
+    return changed;
+  }
+
+  function set(
+    id: string, tokens: Iterable<string>, notation?: MnNotationDirective,
+  ): boolean {
+    const mode = notation && notation.notationMode;
+    const changed = setMeta(
+      id, mode && mode !== projectMode ? mode : undefined, notation && notation.requires,
+    );
+    return setTokens(id, tokens) || changed;
+  }
+
+  function setTokens(id: string, tokens: Iterable<string>): boolean {
     const next = new Set<string>(tokens);
     if (!next.size) {
       return remove(id);
@@ -721,6 +795,8 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   }
 
   function remove(id: string): boolean {
+    fileModes.delete(id);
+    fileRequires.delete(id);
     if (!byFile.delete(id)) {
       return false;
     }
@@ -730,14 +806,98 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
 
   function collect(): string[] {
     const all = new Set<string>(safelist);
-    for (const tokens of byFile.values()) {
-      for (const token of tokens) {
-        all.add(token);
+    let mode: MnNotationMode | undefined;
+    // Файлы — по пути: при конфликте режимов выигрывает первый (детерминированно).
+    for (const id of Array.from(byFile.keys()).sort()) {
+      mode = fileModes.get(id);
+      for (const token of byFile.get(id) as Set<string>) {
+        all.add(mode ? mode + '\0' + token : token);
       }
     }
     // Порядок фиксирован: иначе слепок набора менялся бы от перестановки, и
     // кеш не срабатывал бы там, где ничего не изменилось.
     return Array.from(all).sort();
+  }
+
+  /**
+   * `requires` файлов и пакетов (D-045 этап 3): нужного пресета нет среди подключённых —
+   * ошибка с именем файла. Сравниваются имена пресет-объектов.
+   */
+  function checkRequires(all: MnPreset[]): void {
+    const connected: string[] = [];
+    for (const preset of all) {
+      typeof preset === 'function' || connected.push(preset.name);
+    }
+    for (const [id, requires] of fileRequires) {
+      for (const name of requires) {
+        connected.indexOf(name) < 0 && fail(relative(process.cwd(), id) + ' requires preset "' + name
+          + '", which is not connected. Connected presets: ' + (connected.join(', ') || 'none'));
+      }
+    }
+  }
+
+  /**
+   * Конфликт режимов (D-045): класс встречается в файлах с разными режимами и в них даёт
+   * разный CSS. `'warn'` — предупреждение и одна запись: из первого (по пути) файла, где
+   * класс даёт CSS; `'strict'` — ошибка.
+   */
+  function resolveConflicts(
+    entries: string[], all: MnPreset[], out: MnWarning[],
+  ): string[] {
+    const byToken = new Map<string, string[]>();
+    let at: number;
+    let token: string;
+    for (const entry of entries) {
+      at = entry.indexOf('\0');
+      token = entry.slice(at + 1);
+      (byToken.get(token) || byToken.set(token, []).get(token) as string[]).push(entry);
+    }
+    const drop = new Set<string>();
+    let variants: string[];
+    let outputs: string[];
+    let keep: number;
+    let message: string;
+    for ([token, variants] of byToken) {
+      if (variants.length < 2) {
+        continue;
+      }
+      outputs = variants.map((entry) => compileAlone(entry, all));
+      if (outputs.every((css) => css === outputs[0])) {
+        continue;
+      }
+      keep = Math.max(outputs.findIndex(Boolean), 0);
+      message = 'Class "' + token.slice(token.indexOf(' ') + 1) + '" means different things in different notation'
+        + ' modes: ' + variants.map((entry, index) => modeOf(entry) + (outputs[index] ? '' : ' (no CSS)'))
+        .join(', ') + '. Kept: ' + modeOf(variants[keep]) + '. To fail the build instead:'
+        + ' notationConflictMode: \'strict\'.';
+      conflictMode === 'strict' && fail(message);
+      out.push({
+        type: 'notation-conflict',
+        token: token.slice(token.indexOf(' ') + 1),
+        message,
+      });
+      variants.forEach((entry, index) => index === keep || drop.add(entry));
+    }
+    return drop.size ? entries.filter((entry) => !drop.has(entry)) : entries;
+  }
+
+  function modeOf(entry: string): string {
+    const at = entry.indexOf('\0');
+    return at < 0 ? projectMode : entry.slice(0, at);
+  }
+
+  /** CSS одного класса в своём режиме — для сравнения при конфликте. */
+  function compileAlone(entry: string, all: MnPreset[]): string {
+    const mn = minotationProvider({
+      ...core,
+      warningMode: 'silent',
+    });
+    mn.setPresets(all);
+    compileEntries(mn, [entry]);
+    mn.compile();
+    return mn.styles$.getValue()
+      .map((s: { content: string }) => s.content)
+      .join('\n');
   }
 
   return {
@@ -760,6 +920,8 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     },
     clear(): void {
       byFile.clear();
+      fileModes.clear();
+      fileRequires.clear();
       dynamic.clear();
       cacheKey = '';
     },
@@ -786,12 +948,15 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
           userOnWarning && userOnWarning(warning);
         },
       });
-      presets && mn.setPresets(presets.concat(Array.from(dynamic.values())));
-      presets || mn.setPresets(Array.from(dynamic.values()));
+      const allPresets = (presets || []).concat(Array.from(dynamic.values()));
+      checkRequires(allPresets);
+      mn.setPresets(allPresets);
       // Каждый токен — в свой целевой атрибут (D-025). До 2026-10-05 всё шло
       // в `class`, и `m="p10"` давал `.p10` вместо `[m~="p10"]` — так в v2
       // потерялась опция `attrs` из v1.
-      compileEntries(mn, tokens);
+      compileEntries(mn, resolveConflicts(
+        tokens, allPresets, collected,
+      ));
       mn.compile();
       warnings = collected;
       cachedCss = mn.styles$.getValue()
@@ -904,7 +1069,7 @@ export interface BuildCollector {
   /** Сканирует файл один раз на каждый набор `attrs` и раздаёт токены записям. */
   add(id: string, source: string): boolean;
   /** Готовые записи сканера (webpack: сканирует лоадер) — раздать записям. */
-  set(id: string, entries: Iterable<string>): boolean;
+  set(id: string, entries: Iterable<string>, notation?: MnNotationDirective): boolean;
   remove(id: string): boolean;
   has(id: string): boolean;
   setPreset(id: string, preset: MnPreset): void;
@@ -976,12 +1141,16 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
     };
   });
   const l = parts.length;
-  function distribute(id: string, entriesOf: (key: string) => string[]): boolean {
+  function distribute(
+    id: string, entriesOf: (key: string) => string[], notation: MnNotationDirective | undefined,
+  ): boolean {
     let changed = false;
     let i = 0;
     for (; i < l; i++) {
       changed = (parts[i].filter.accepts(id)
-        ? parts[i].collector.set(id, entriesOf(parts[i].key))
+        ? parts[i].collector.set(
+          id, entriesOf(parts[i].key), notation,
+        )
         : parts[i].collector.remove(id)) || changed;
     }
     return changed;
@@ -992,12 +1161,19 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
       const scanned: Record<string, string[]> = {};
       const scan = (key: string): string[] => scanned[key] || (scanned[key] = scanners[key](source, id));
       count(id, scan(metricsKey));
-      return distribute(id, scan);
+      // Режим и требования файла читаются один раз на файл, а не на запись `entry`.
+      return distribute(
+        id, scan, readFileNotation(source, id),
+      );
     },
-    set(id: string, found: Iterable<string>): boolean {
+    set(
+      id: string, found: Iterable<string>, notation?: MnNotationDirective,
+    ): boolean {
       const list = Array.from(found);
       count(id, list);
-      return distribute(id, () => list);
+      return distribute(
+        id, () => list, notation,
+      );
     },
     remove(id: string): boolean {
       counts.delete(id);

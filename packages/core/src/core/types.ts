@@ -254,7 +254,9 @@ export class MnParseError extends Error {
  * {@link MnOptions.importantMode}), `warningMode` на них не влияет.
  */
 export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'invalid-css-value'
-  | 'unregistered-state' | 'raised-specificity' | 'important' | 'hint' | 'child-selector';
+  | 'unregistered-state' | 'raised-specificity' | 'important' | 'hint' | 'child-selector'
+  /** Класс в файлах с разными режимами синтаксиса значит разное (D-045, `notationConflictMode`). */
+  | 'notation-conflict';
 
 /**
  * `'hint'` — класс, которого нет в нотации, но который похож на опечатку или на класс

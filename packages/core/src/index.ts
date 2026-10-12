@@ -167,6 +167,7 @@ export type {
   MnRaiseMode,
   MnPreset,
   MnPresetObject,
+  MnNotationMode,
 } from './core/types';
 import {
   MnParseError as MnParseErrorImpl,

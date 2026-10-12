@@ -42,6 +42,8 @@ export interface CliArgs {
   childSelectorMode?: 'warn' | 'silent' | 'strict';
   /** Режим синтаксиса нотации: `context-qualified`, `variant-prefixed` (D-045). */
   notationMode?: 'context-qualified' | 'variant-prefixed';
+  /** Конфликт режимов синтаксиса между файлами: `warn`, `strict` (D-045). */
+  notationConflictMode?: 'warn' | 'strict';
   /** Контекст селектора в `:where()` (D-049). */
   contextWhere: boolean;
   /** Не разбирать JS/TS парсером — только текстовый поиск. */
@@ -117,6 +119,7 @@ const OPTIONS: Record<string, keyof CliArgs> = {
   '--important-mode': 'importantMode',
   '--child-selector-mode': 'childSelectorMode',
   '--notation-mode': 'notationMode',
+  '--notation-conflict-mode': 'notationConflictMode',
   '--include': 'include',
   '--exclude': 'exclude',
 };
@@ -171,6 +174,8 @@ export function parseArgs(argv: string[]): CliArgs {
     || raise('Option "--child-selector-mode" expects warn, silent or strict, got "' + args.childSelectorMode + '"');
   args.notationMode === undefined || args.notationMode === 'context-qualified' || args.notationMode === 'variant-prefixed'
     || raise('Option "--notation-mode" expects context-qualified or variant-prefixed, got "' + args.notationMode + '"');
+  args.notationConflictMode === undefined || args.notationConflictMode === 'warn' || args.notationConflictMode === 'strict'
+    || raise('Option "--notation-conflict-mode" expects warn or strict, got "' + args.notationConflictMode + '"');
   return args;
 }
 
@@ -220,6 +225,9 @@ Options:
       --notation-mode <m>
                          notation syntax: context-qualified (default, bg-blue-500:hover@md)
                          or variant-prefixed (Tailwind-like, md:hover:bg-blue-500)
+      --notation-conflict-mode <m>
+                         a class meaning different things in files with different
+                         notation modes: warn (default) or strict (fail the build)
       --no-syntax        do not parse JS/TS, text search only
       --skip-partials    skip partial files whose name starts with _
       --no-manifest      do not write mn-manifest.json next to the CSS

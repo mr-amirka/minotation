@@ -55,6 +55,7 @@ export const CONFIG_SCHEMA: OptionSchema = {
     'entry',
     'manifest',
     'metrics',
+    'notationConflictMode',
   ]),
   input: isString,
   output: isString,
@@ -137,6 +138,8 @@ export interface CompileSettings extends MnCoreOptions {
   safelist?: string[];
   /** Несколько CSS из одного прохода (D-030); `--output` тогда содержит `[name]`. */
   entry?: Record<string, MnEntryOptions>;
+  /** Конфликт режимов синтаксиса между файлами (D-045): `warn` или `strict`. */
+  notationConflictMode?: 'warn' | 'strict';
 }
 
 /** Результат сборки. */
@@ -257,6 +260,7 @@ export function compile(settings: CompileSettings): CompileResult {
     syntax: settings.syntax,
     safelist: settings.safelist,
     entry: settings.entry,
+    notationConflictMode: settings.notationConflictMode,
     presets: settings.presets || [
       // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
       presetHints,

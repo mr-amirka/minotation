@@ -78,6 +78,7 @@ for (const warning of collector.takeWarnings()) {
 | `childSelectorMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с дочерним селектором `>` (`cF00>1`) (D-041) |
 | `notationMode` | `'context-qualified' \| 'variant-prefixed'` | `'context-qualified'` | режим синтаксиса классов разметки (D-045) |
 | `contextWhere` | `boolean` | `false` | контекст селектора в `:where()` — специфичность только у класса (D-049) |
+| `notationConflictMode` | `'warn' \| 'strict'` | `'warn'` | класс в файлах с разными режимами синтаксиса значит разное — предупреждение или ошибка (D-045) |
 | `warningMode` | `'log' \| 'silent' \| 'error'` | `'log'` | что делать с предупреждением компиляции: в лог сборки, молчать, уронить сборку (D-035); `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode` не затрагивает (D-039, D-041) |
 | `onWarning` | `(warning) => void` | — | колбэк на каждое предупреждение — дополнительно к `warningMode` |
 | `onError` | `(e) => void` | — | обработчик ошибок ядра |
@@ -117,6 +118,43 @@ mnGulp({ entry: { admin: { incude: /admin/ } } });
 `undefined` в значении — то же, что отсутствие ключа: опции можно собирать
 условно. Свой плагин поверх общего набора проверяет опции так же —
 `checkBuildOptions(options, 'myPlugin', { ownOption: isBoolean })`.
+
+## Режим синтаксиса файла и требования UI-библиотек (D-045)
+
+Классы разметки разбираются в режиме по старшинству: **комментарий в файле → поле
+`"minotation"` в `package.json` ближайшего пакета → `notationMode` в конфиге плагина**.
+Так файлы UI-библиотеки разбираются в её режиме внутри проекта с другим режимом.
+
+```tsx
+// @minotation notationMode: variant-prefixed; requires: presetTailwind
+export const Button = () => <button className="px-4 hover:bg-blue-500" />;
+```
+
+```html
+<!-- @minotation notationMode: variant-prefixed -->
+```
+
+```json
+{ "name": "@acme/ui", "minotation": { "notationMode": "variant-prefixed", "requires": ["presetTailwind"] } }
+```
+
+Директива читается из первых 2 КБ файла: `/* … */`, строка ` * …` блочного комментария,
+`<!-- … -->`, `// …`. Опечатка в ключе или значении — ошибка с подсказкой и именем файла.
+
+`requires` — пресеты, без которых классы файла не работают; не подключён — ошибка:
+
+```
+[minotation] src/ui/Button.tsx requires preset "presetTailwind", which is not connected.
+  Connected presets: presetHints, presetStandard
+```
+
+Один класс в файлах с разными режимами может значить разное — `notationConflictMode`:
+
+```
+[minotation] hover:cF00: Class "hover:cF00" means different things in different notation modes:
+  context-qualified (no CSS), variant-prefixed. Kept: variant-prefixed.
+  To fail the build instead: notationConflictMode: 'strict'.
+```
 
 ## Как CSS попадает на страницу и защита от кеша (D-031)
 

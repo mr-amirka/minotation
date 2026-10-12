@@ -239,12 +239,8 @@ describe('часть имени: начинается с, заканчивает
   }
 
   test.each([
-    ['cF00>.^btn-', '.cF00\\>\\.\\^btn- [class^=btn-]{color:#f00}'],
-    ['cF00>.$-active', '.cF00\\>\\.\\$-active [class$=-active]{color:#f00}'],
-    ['cF00.^is-', '.cF00\\.\\^is-[class^=is-]{color:#f00}'],
     ['cF00#^main', '.cF00\\#\\^main[id^=main]{color:#f00}'],
     ['cF00#$-x', '.cF00\\#\\$-x[id$=-x]{color:#f00}'],
-    ['cF00<.$-open', '[class$=-open] .cF00\\<\\.\\$-open{color:#f00}'],
   ])('%s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
@@ -252,7 +248,6 @@ describe('часть имени: начинается с, заканчивает
   test.each([
     // Значение — не идентификатор CSS: без кавычек был бы битый CSS.
     ['cF00>.*1x', '.cF00\\>\\.\\*1x [class*="1x"]{color:#f00}'],
-    ['cF00>.^1x', '.cF00\\>\\.\\^1x [class^="1x"]{color:#f00}'],
     ['cF00>.*a$b', '.cF00\\>\\.\\*a\\$b [class*="a$b"]{color:#f00}'],
     ['cF00>.*-1', '.cF00\\>\\.\\*-1 [class*="-1"]{color:#f00}'],
     // Идентификатор — без кавычек, вывод минимальный.
@@ -262,10 +257,16 @@ describe('часть имени: начинается с, заканчивает
     expect(compile(token).css).toBe(css);
   });
 
-  test.each(['cF00>.*a*', 'cF00.^x*', 'cF00#$id*'])('%s — висячая *: брак, CSS нет', (token) => {
+  test.each(['cF00>.*a*', 'cF00#$id*', 'cF00#^id*'])('%s — висячая *: брак, CSS нет', (token) => {
     const { css, warnings } = compile(token);
     expect(css).toBe('');
     expect(warnings.map((w: { type: string }) => w.type)).toEqual(['parse-error']);
     expect(warnings[0].message).toContain('ends with "*" with nothing after it');
+  });
+
+  test.each(['cF00>.^btn-', 'cF00.$-active', 'cF00<.^x'])('%s — начало/конец строки class: брак (D-050)', (token) => {
+    const { css, warnings } = compile(token);
+    expect(css).toBe('');
+    expect(warnings[0].message).toContain('checks the start or end of the whole class attribute');
   });
 });

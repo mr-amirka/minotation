@@ -7,13 +7,13 @@
  *    разворот массива, склейка. Позволяет писать селекторы в обратном порядке:
  *    `Parent!Child` → `ChildParent`.
  *
- * 2. **Часть имени класса** (D-050) — `.*текст` → `[class*=текст]` (содержит),
- *    `.^текст` → `[class^=текст]` (начинается с), `.$текст` → `[class$=текст]`
- *    (заканчивается на). Значение в кавычках, только если без них оно не идентификатор CSS
- *    (`.*1x` → `[class*="1x"]`). Висячая `*` в конце (`.*a*`) — брак.
+ * 2. **Часть имени класса** (D-050) — `.*текст` → `[class*=текст]` (содержит). Значение в
+ *    кавычках, только если без них оно не идентификатор CSS (`.*1x` → `[class*="1x"]`).
+ *    Висячая `*` в конце (`.*a*`) — брак; `.^`/`.$` — брак (проверяли бы всю строку `class`).
  *    В MN звёздочка означает «содержит подстроку».
  *
- * 3. **Часть id** — то же для `#*`, `#^`, `#$` → `[id*=…]`, `[id^=…]`, `[id$=…]`.
+ * 3. **Часть id** — `#*`, `#^`, `#$` → `[id*=…]`, `[id^=…]` (начинается с), `[id$=…]`
+ *    (заканчивается на): у `id` одно значение, начало и конец осмысленны.
  *
  * 4. **Скобки функционального псевдокласса** ({@link pseudoBrackets}, применяется
  *    ТОЛЬКО к селекторам `mn.assign`/`essence.selectors`) — `:not[.plain]` →
@@ -75,14 +75,27 @@ function attrPartReplacer(
   match: string, kind: string, operator: string, text: string, dangling: string,
 ): string {
   dangling && throwDanglingStar(match);
+  // `^=`/`$=` проверяют начало и конец всей строки `class`, а не каждого класса: у
+  // `class="card btn-x"` `.^btn-` не совпал бы. Решение владельца — не поддерживать (D-050).
+  kind === '.' && operator !== '*' && throwClassAnchor(match, operator);
   return '[' + (kind === '.' ? 'class' : 'id') + operator + '='
     + (REGEXP_CSS_IDENT.test(text) ? text : '"' + text + '"') + ']';
 }
 
+function throwClassAnchor(match: string, operator: string): never {
+  throw new MnParseError('"' + match + '" is not supported: CSS [class' + operator + '=…] checks the start'
+    + ' or end of the whole class attribute, not of each class, so it rarely matches. Use ".*text"'
+    + ' (contains)', {
+    token: '',
+    handler: '',
+    arg: match,
+    utility: 'selectorNormalize',
+  });
+}
+
 function throwDanglingStar(match: string): never {
   throw new MnParseError('"' + match + '" ends with "*" with nothing after it. Use "'
-    + match[0] + '*text" (contains), "' + match[0] + '^text" (starts with) or "'
-    + match[0] + '$text" (ends with)', {
+    + match[0] + '*text" (contains)' + (match[0] === '#' ? ', "#^text" (starts with) or "#$text" (ends with)' : ''), {
     token: '',
     handler: '',
     arg: match,

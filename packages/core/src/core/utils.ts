@@ -466,6 +466,12 @@ export function assertVariantGroups(
  * Экранированный сепаратор — часть значения и не задет: `bgi_a\.` останется
  * как написано.
  *
+ * **Исключение — `+`/`~` в конце сегмента предка `<`** (исправлено 2026-10-12, регрессия
+ * относительно v1): `cF00<.peer~` → `.peer~ .cF00\<\.peer\~{…}` — валидный CSS «класс после
+ * соседа `.peer`» (пробел вокруг комбинатора в CSS незначим). Так в v1 писали аналог
+ * `peer-*` из Tailwind; проверка висячих сепараторов запрещала это с 2026-09-24. Висячий
+ * комбинатор без `<` (`p10~`) или в сегменте ребёнка (`p10>1~`) по-прежнему брак.
+ *
  * @throws {MnParseError} если имя заканчивается неэкранированным сепаратором
  */
 export function assertTrailingSeparator(value: string, utility: string): void {
@@ -482,12 +488,41 @@ export function assertTrailingSeparator(value: string, utility: string): void {
   if (slashes % 2) {
     return;
   }
+  if ((value[l - 1] === '+' || value[l - 1] === '~') && endsInParentSegment(value)) {
+    return;
+  }
   throwVariantGroup(
     'Name "' + value + '" ends with "' + value[l - 1] + '" with nothing after it: '
       + 'no context is set, and a dangling character would reach CSS. Complete it or '
       + 'escape the character if it belongs to the value',
     value, utility,
   );
+}
+
+/**
+ * Последний неэкранированный контекстный разделитель (`<` или `>`) в имени — `<`:
+ * хвост имени — сегмент предка.
+ */
+function endsInParentSegment(value: string): boolean {
+  let i = value.length - 1;
+  let ch: string;
+  let slashes: number;
+  let j: number;
+  while (i--) {
+    ch = value[i];
+    if (ch !== '<' && ch !== '>') {
+      continue;
+    }
+    slashes = 0;
+    j = i;
+    while (j-- && value[j] === '\\') {
+      slashes++;
+    }
+    if (slashes % 2 === 0) {
+      return ch === '<';
+    }
+  }
+  return false;
 }
 
 /**

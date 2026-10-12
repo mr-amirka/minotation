@@ -144,7 +144,12 @@ export function getCombinator(
     );
   }
   // Дочернему сегменту без селектора нужна явная цель: `.fx\>1>` — битый CSS.
-  const selector = depthMatchs[2] || (child ? '*' : '');
+  // Дочернему сегменту, начатому комбинатором соседа (`>1+.b`), нужна цель перед ним:
+  // иначе выходило `>+.b` — битый CSS, и в v1 тоже. `*` — «любой прямой ребёнок»
+  // (исправлено 2026-10-12).
+  const selector = child && depthMatchs[2] && (depthMatchs[2][0] === '+' || depthMatchs[2][0] === '~')
+    ? '*' + depthMatchs[2]
+    : depthMatchs[2] || (child ? '*' : '');
   if (!selector) {
     throwDegenerate(
       'Depth (' + depth + ') without a selector is not allowed: the rule would match '

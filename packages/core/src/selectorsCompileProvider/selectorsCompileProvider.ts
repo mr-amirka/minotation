@@ -225,9 +225,21 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * @param attrName — имя HTML-атрибута
    * @returns функция разбора значения этого атрибута
    */
-  function parseComboNameProvider(attrName: string): ParseComboNameFn {
-    return $$parsers[attrName]
-      || ($$parsers[attrName] = parseAttrProvider(attrName));
+  /**
+   * Разборщик значений атрибута. `mode` — режим синтаксиса классов этого компилятора
+   * (режим файла разметки, D-045 этап 3); без него — режим проекта (`options.notationMode`).
+   */
+  function parseComboNameProvider(attrName: string, mode?: string): ParseComboNameFn {
+    const key = mode ? attrName + ' ' + mode : attrName;
+    const base = $$parsers[attrName] || ($$parsers[attrName] = parseAttrProvider(attrName));
+    return $$parsers[key] || ($$parsers[key] = (comboName: string) => {
+      $$markupMode = mode;
+      try {
+        return base(comboName);
+      } finally {
+        $$markupMode = undefined;
+      }
+    });
   }
 
   /**
@@ -295,7 +307,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     // Режим синтаксиса (D-045): строки пресета — в режиме пресета (на время его `setup`),
     // остальное — в режиме проекта. Свой разборщик на режим (D-047); по умолчанию —
     // 'context-qualified' ниже.
-    if (((instance as any)._presetMode || $$mnOptions.notationMode) === 'variant-prefixed') {
+    if (((instance as any)._presetMode || $$markupMode || $$mnOptions.notationMode) === 'variant-prefixed') {
       return parseVariantPrefixed(comboName, targetName);
     }
 
@@ -360,6 +372,8 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * `reduceIn` синхронный, рекурсии через него не возникает.
    */
   let $$tgt: string;
+  /** Режим синтаксиса компилятора разметки на время разбора (D-045 этап 3). */
+  let $$markupMode: string | undefined;
   /** `contextWhere` текущего разбора (D-049) — читается из опций в начале `parseComboName`. */
   let $$contextWhere = false;
 

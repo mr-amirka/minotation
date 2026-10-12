@@ -250,3 +250,34 @@ describe("'variant-prefixed' без меток и без ядра", () => {
     expect(() => scp.parseClass('md:p10')).toThrow('Variant "md:" is unknown');
   });
 });
+
+describe('компилятор с режимом: getCompiler(attr, mode) — режим файла разметки (D-045 этап 3)', () => {
+  test('проект context-qualified, классы «файла библиотеки» — variant-prefixed', () => {
+    const mn = minotationProvider({
+      warningMode: 'silent',
+    });
+    mn.setPresets([presetStandard, presetTailwindish]);
+    mn.getCompiler('class')('p10:hover');
+    mn.getCompiler('class', 'variant-prefixed')('hover:cF00');
+    mn.compile();
+    const css = mn.styles$.getValue().map((s) => s.content).join(' ');
+    expect(css).toContain('.p10\\:hover:hover{padding:10px}');
+    expect(css).toContain('.hover\\:cF00:hover{color:#f00}');
+  });
+
+  test('один класс в двух режимах — два разбора, каждый в своём компиляторе', () => {
+    const mn = minotationProvider({
+      warningMode: 'silent',
+    });
+    mn.setPresets([presetStandard, presetTailwindish]);
+    mn.getCompiler('class')('hover:cF00');
+    mn.compile();
+    expect(mn.styles$.getValue().map((s) => s.content).join(' ')).not.toContain('hover\\:cF00');
+    mn.getCompiler('class', 'variant-prefixed')('hover:cF00');
+    mn.compile();
+    expect(mn.styles$.getValue().map((s) => s.content).join(' ')).toContain('.hover\\:cF00:hover{color:#f00}');
+    // Полная пересборка — компилятор с режимом не теряется.
+    mn.recompile();
+    expect(mn.styles$.getValue().map((s) => s.content).join(' ')).toContain('.hover\\:cF00:hover{color:#f00}');
+  });
+});

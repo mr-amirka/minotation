@@ -126,6 +126,7 @@ import type {
   MnOptions,
   MnPreset,
   MnPresetObject,
+  MnNotationMode,
   MnRaiseMode,
   MnWarning,
 } from './types';
@@ -521,9 +522,15 @@ function minotationProvider(options?: MnOptions) {
     );
   }
 
-  function getCompiler(attrName: string): MnCompiler {
-    return $$compilers[attrName]
-      || ($$compilers[attrName] = __compileProvider(attrName));
+  /**
+   * Компилятор атрибута. `mode` — режим синтаксиса его классов (режим файла разметки, D-045
+   * этап 3): у каждого режима свой компилятор и свой кеш. Без `mode` — режим проекта.
+   */
+  function getCompiler(attrName: string, mode?: MnNotationMode): MnCompiler {
+    const key = mode ? attrName + ' ' + mode : attrName;
+    mode && ($$compilerModes[key] = [attrName, mode]);
+    return $$compilers[key]
+      || ($$compilers[key] = __compileProvider(attrName));
   }
 
   /**
@@ -556,8 +563,12 @@ function minotationProvider(options?: MnOptions) {
 
   /** Кэширующая обёртка над `parseComboNameProvider(attrName)` — сама обёртка (try/catch) не пересоздаётся на каждый вызов {@link updateAttrByMap}/{@link updateAttrByValues}, а живёт всё время жизни инстанса, как {@link getCompiler}. */
   function getParseComboName(attrName: string): ParseComboNameFn {
+    // Ключ компилятора с режимом — `'class variant-prefixed'` (см. getCompiler).
+    const meta = $$compilerModes[attrName];
     return $$parseComboNameCache[attrName]
-      || ($$parseComboNameCache[attrName] = withCatchParseComboNameDecorate(parseComboNameProvider(attrName)));
+      || ($$parseComboNameCache[attrName] = withCatchParseComboNameDecorate(meta
+        ? parseComboNameProvider(meta[0], meta[1])
+        : parseComboNameProvider(attrName)));
   }
 
   /**
@@ -626,7 +637,7 @@ function minotationProvider(options?: MnOptions) {
    * @param attrs — имя атрибута или список имён (`'class'`, `['class', 'id']`)
    */
   mn.recursiveCheckByAttrs = (node: any, attrs: string | string[]): any => {
-    eachApply((isString(attrs) ? [attrs] : attrs).map(getCompiler)
+    eachApply((isString(attrs) ? [attrs] : attrs).map((attr: string) => getCompiler(attr))
       .map(x => x.recursiveCheck), [node]);
     return mn;
   };
@@ -639,7 +650,7 @@ function minotationProvider(options?: MnOptions) {
    * @param attrs — имя атрибута или список имён
    */
   mn.checkOneNodeByAttrs = (node: any, attrs: string | string[]): any => {
-    eachApply((isString(attrs) ? [attrs] : attrs).map(getCompiler)
+    eachApply((isString(attrs) ? [attrs] : attrs).map((attr: string) => getCompiler(attr))
       .map(x => x.checkNode), [node]);
     return mn;
   };
@@ -653,7 +664,7 @@ function minotationProvider(options?: MnOptions) {
   mn.checkByAttrs = (v: string, attrs: string | string[]): any => {
     isString(attrs)
       ? getCompiler(attrs)(v)
-      : eachApply(attrs.map(getCompiler), [v]);
+      : eachApply(attrs.map((attr: string) => getCompiler(attr)), [v]);
     return mn;
   };
   /**
@@ -677,6 +688,8 @@ function minotationProvider(options?: MnOptions) {
   mn.options = extend({}, options) as MnOptions;
   const $$data = mn.data = {} as MnData;
   const $$compilers: Record<string, MnCompiler> = $$data.compilers = {};
+  /** Ключ компилятора с режимом → `[атрибут, режим]` (D-045 этап 3). */
+  const $$compilerModes: Record<string, [string, MnNotationMode]> = {};
   const $$parseComboNameCache: Record<string, ParseComboNameFn> = {};
   let $$lastSelectorPrefix: string | undefined | 0 = 0; // 0 — сентинел "ещё не считали", отличим от валидного undefined
   const cssPropertiesStringify: IStringifyCss = mn.propertiesStringify

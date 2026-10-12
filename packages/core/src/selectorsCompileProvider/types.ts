@@ -26,3 +26,25 @@ export type AltMap = StrMap<AltEntry[]>;
  *   по одной паре на каждый уникальный набор суффиксов (`variants` разворачивает `(a|b)`)
  */
 export type ParseComboNameFn = (comboName: string, targetName?: string) => Array<[StrMap<number>, AltMap]>;
+
+/**
+ * Узел состояний сегмента (D-047): `[имена, вложенные узлы]`. `':h:f'` → `[['', 'h', 'f'], undefined]`:
+ * первое имя — литеральный префикс (пустой, если состояния начинаются с `:`), остальные —
+ * состояния; вложенные — содержимое `[…]` (`:nth-child[2n]`).
+ */
+export type MnStateNode = [string[], MnStateNode[] | undefined];
+
+/**
+ * Сегмент контекста (D-047): `[комбинатор к предыдущему сегменту, селектор, состояния, медиа]`.
+ * У первого сегмента цепочки (сам элемент или ребёнок) комбинатор пустой.
+ */
+export type MnSegment = [string, string, MnStateNode[] | undefined, string | undefined];
+
+/** Цепочка: `[0]` — элемент (или ребёнок), дальше — предки `<` в порядке записи. */
+export type MnChain = MnSegment[];
+
+/**
+ * Контекст токена — эталонная структура (D-047): цепочка элемента и дети `>` —
+ * `[комбинатор, цепочка ребёнка]`. Её выдаёт разборщик режима, строит селекторы — общий код.
+ */
+export type MnContext = [MnChain, Array<[string, MnChain]>];

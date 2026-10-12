@@ -5,7 +5,6 @@ import {
   extend,
   mapIn,
   push,
-  reduce,
   reduceIn,
   repeat,
   unslash,
@@ -23,6 +22,10 @@ import {
 } from '../selectorNormalize';
 import type {
   AltMap,
+  MnChain,
+  MnContext,
+  MnSegment,
+  MnStateNode,
   ParseComboNameFn,
   StrMap,
 } from './types';
@@ -132,7 +135,7 @@ function variantsBase(comboName: string, handlerMap: Record<string, unknown>): s
  *
  * Несколько эссенций с БУКВАЛЬНО одинаковым суффиксом (например разные значения одного
  * префикса, `w50:hover` и `w100:hover`) попадают в один и тот же `suffixes[suffix]`, чтобы
- * их общий контекст (`getParents`/`getSynonyms`) вычислялся один раз на всех, а не на
+ * их общий контекст (`parseContext`/`buildContext`) вычислялся один раз на всех, а не на
  * каждую эссенцию отдельно.
  *
  * @param suffixes — аккумулятор `нормализованный суффикс → { имя эссенции: 1 }`
@@ -256,7 +259,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   /**
    * Редьюсер для `>child`-сегментов суффикса (см. {@link parseComboName}).
    *
-   * Каждый `childName` — самостоятельная `<parent`-цепочка (см. {@link getParents}),
+   * Каждый `childName` — самостоятельная `<parent`-цепочка (см. {@link parseChain}),
    * без явного целевого селектора (`alt: '*'` — если сам сегмент не задаёт класс/id,
    * подставляется wildcard). Она пристыковывается к уже накопленным `alts`
    * (более ранний, «внешний» селектор) через комбинатор из числового depth-префикса
@@ -265,34 +268,6 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    *
    * @param alts — селектор(ы), накопленные до этого `>`-сегмента
    * @param childName — один `>`-сегмент суффикса (может нести свой depth-префикс и `<`-цепочку)
-   */
-  function childsIteratee(alts: AltMap, childName: string): AltMap {
-    const part = getCombinator(
-      childName, $$depthCheck, true,
-    );
-    return joinMapsWithFirstValue(
-      alts,
-      getParents(part[1], 0 as any),
-      part[0],
-    );
-  }
-
-  /**
-   * Разбирает одно MN-комбо-имя (значение `class`/`id`/атрибута) в карту CSS-селекторов.
-   *
-   * Конвейер: `(a|b)`-варианты → группировка по общему суффиксу-контексту
-   * (`<parent`/`>child`/`:state`/`@media`, {@link suffixesReduce}) → для каждой группы —
-   * `<`-цепочка предков через {@link getParents}, затем последовательные `>`-сегменты
-   * через {@link childsIteratee} → схлопывание медиа-дублей ({@link mediaFilterIteratee}).
-   * Полная грамматика контекстов.
-   *
-   * Хвостовой множитель `*N` (см. `REGEXP_MULTIPLIER`) дублирует `targetName` N раз
-   * ПОДРЯД без разделителя — это буст CSS-специфичности (`.el*3` → `.el.el.el`), а не
-   * повтор правила.
-   *
-   * @param comboName — сырое имя (например `w50:hover<Parent`)
-   * @param targetName — уже готовый целевой CSS-селектор (`.w50`, `#id`, `[attr~="..."]`)
-   * @returns массив пар `[карта имён эссенций → 1, карта селектор → медиа-альтернативы]`
    */
   function parseComboName(comboName: string,
     targetName: string): Array<[StrMap<number>, AltMap]> {
@@ -377,65 +352,151 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   function suffixesIteratee(
     items: Array<[StrMap<number>, AltMap]>, essences: StrMap<number>, suffix: string,
   ): Array<[StrMap<number>, AltMap]> {
-    const childs = splitChild(suffix as any as string);
-    const first = getParents(childs.shift(), $$tgt);
-    return push(items, [essences, mapIn(reduce(
-      childs, childsIteratee as any, first,
-    ), mediaFilterIteratee as any)]);
+    return push(items, [essences, buildContext(parseContext(suffix), $$tgt)]);
   }
 
   /**
-   * Разбирает `<`-цепочку предков (`Child<1Parent<2GrandParent`) в AltMap готовых CSS-селекторов.
+   * Фаза разбора `'context-qualified'` (D-047): строка контекста (`:h@md<.group>1`) →
+   * {@link MnContext}. Ошибки и проверки глубины (`getCombinator`) — здесь.
    *
-   * Части, разделённые `<`, идут от цели к самому дальнему предку. Первая часть
-   * склеивается с `targetName`; каждая следующая — с накопленным результатом через
-   * комбинатор, определяемый её собственным числовым depth-префиксом
-   * (`getCombinator`: `0`/нет → пробел-потомок, `1` → `>`, `2+` → `> *>...`).
-   * Каждая часть может нести собственный `:state`-суффикс, разворачиваемый в
-   * {@link getEssence}/{@link getSynonyms}, и `@media`-суффикс ({@link extractMedia}).
-   *
-   * **Параметр `alt` убран 2026-09-25.** Он подставлял `'*'` (любой элемент), когда
-   * и `targetName`, и имя первой части пусты. С отбраковкой вырожденных контекстных сегментов (2026-09-24) пустой сегмент
-   * контекстного селектора бракуется в `getCombinator` и до сюда не доходит —
-   * тот же остаток механизма, что и `depthMatchs[2] || ''` там же.
-   *
-   * @param name — `<`-цепочка (без ведущего разделителя)
-   * @param targetName — готовый селектор самого элемента (пусто — используется рекурсивно из {@link childsIteratee})
-   * @returns AltMap итоговых селекторов предковой цепочки
+   * @param suffix — нормализованный контекст одного варианта токена
+   * @returns эталонная структура контекста
    */
-  function getParents(name: string,
-    targetName: string): AltMap {
+  function parseContext(suffix: string): MnContext {
+    const childNames = splitChild(suffix);
+    const chain = parseChain(childNames.shift() as string);
+    const childs: Array<[string, MnChain]> = [];
+    const l = childNames.length;
+    let i = 0;
+    let part: [string, string];
+    for (; i < l; i++) {
+      part = getCombinator(
+        childNames[i], $$depthCheck, true,
+      );
+      childs.push([part[0], parseChain(part[1])]);
+    }
+    return [chain, childs];
+  }
+
+  /**
+   * `<`-цепочка (`Child<1Parent<2GrandParent`) → {@link MnChain}: первая часть — сам
+   * элемент (без комбинатора), каждая следующая — предок со своим комбинатором глубины
+   * (`getCombinator`: `0`/нет → пробел, `1` → `>`, `2+` → `> *>…`), состояниями и медиа.
+   */
+  function parseChain(name: string): MnChain {
     const parts = splitParent(name);
     const l = parts.length;
-    let i = 1;
-    let mediaNames: string[] = [];
-    let essence = getEssence(extractMedia(mediaNames, parts[0]));
-    let alts = joinPrefixWithFirstValue(
-      (targetName || '') + essence[0],
-      essence[1],
-      mediaNames[0],
-    );
+    const chain: MnChain = [];
+    let i = 0;
+    let mediaNames: string[];
     let part: [string, string];
-
     for (; i < l; i++) {
       mediaNames = [];
-      part = getCombinator(extractMedia(mediaNames, parts[i]), $$depthCheck);
-      essence = getEssence(part[1]);
+      part = i
+        ? getCombinator(extractMedia(mediaNames, parts[i]), $$depthCheck)
+        : ['', extractMedia(mediaNames, parts[i])];
+      chain.push(parseSegment(
+        part[0], part[1], mediaNames[0],
+      ));
+    }
+    return chain;
+  }
+
+  /** Делит часть цепочки на селектор и состояния (`Parent:hover` → `Parent`, `:hover`). */
+  function parseSegment(
+    combinator: string, name: string, media: string | undefined,
+  ): MnSegment {
+    const i = name.indexOf(':');
+    return i < 0
+      ? [
+        combinator,
+        name,
+        undefined,
+        media,
+      ]
+      : [
+        combinator,
+        unslash(name.slice(0, i)),
+        parseStates(name.slice(i)),
+        media,
+      ];
+  }
+
+  /** `':h:f[2n]'` → дерево {@link MnStateNode}: `[`/`]` — вложенность, `:` — состояния. */
+  function parseStates(value: string): MnStateNode[] {
+    return toStateNodes(scopeSplit2(
+      value, SCOPE_START, SCOPE_END,
+    ));
+  }
+
+  function toStateNodes(scopes: ScopeNode[]): MnStateNode[] {
+    const l = scopes.length;
+    const out: MnStateNode[] = [];
+    let i = 0;
+    let scope: ScopeNode;
+    for (; i < l; i++) {
+      scope = scopes[i];
+      out.push([splitState(scope[0]), scope[1] && toStateNodes(scope[1])]);
+    }
+    return out;
+  }
+
+  /**
+   * Фаза построения (D-047), общая для всех режимов: {@link MnContext} → селекторы с
+   * медиа-альтернативами.
+   *
+   * @param context — эталонная структура контекста
+   * @param targetName — готовый селектор самого элемента (`.p10`, `#id`)
+   */
+  function buildContext(context: MnContext, targetName: string): AltMap {
+    const childs = context[1];
+    const l = childs.length;
+    let i = 0;
+    let alts = buildChain(context[0], targetName);
+    for (; i < l; i++) {
+      alts = joinMapsWithFirstValue(
+        alts, buildChain(childs[i][1], ''), childs[i][0],
+      );
+    }
+    return mapIn(alts, mediaFilterIteratee as any);
+  }
+
+  /** Цепочка → AltMap: элемент склеивается с `targetName`, предки — через свои комбинаторы. */
+  function buildChain(chain: MnChain, targetName: string): AltMap {
+    const l = chain.length;
+    let segment = chain[0];
+    let alts = joinPrefixWithFirstValue(
+      targetName + segment[1],
+      buildStates(segment[2]),
+      segment[3],
+    );
+    let i = 1;
+    for (; i < l; i++) {
+      segment = chain[i];
       alts = joinMapsWithFirstValue(
         joinPrefixWithFirstValue(
-          essence[0],
-          essence[1],
-          mediaNames[0],
+          segment[1],
+          buildStates(segment[2]),
+          segment[3],
         ),
         alts,
-        part[0],
+        segment[0],
       );
     }
     return alts;
   }
 
+  /** Без состояний — одна пустая альтернатива: нечего раскрывать. */
+  function buildStates(states: MnStateNode[] | undefined): AltMap {
+    return states
+      ? getSynonyms(states)
+      : {
+        '': [],
+      };
+  }
+
   /**
-   * Разбирает `:state`-часть суффикса (после первого `:` в {@link getEssence}) в AltMap.
+   * Разбирает `:state`-часть суффикса (после первого `:` в {@link parseSegment}) в AltMap.
    *
    * `value` сначала делится на вложенные scope через `scopeSplit2(value, SCOPE_START, SCOPE_END)`
    * (границы `[`/`]`; локальный порт `mn-utils/scopeSplit2` из v1 — `fundamentool.scopeSplit`
@@ -452,23 +513,21 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * @param value — `:state`-суффикс (например `:hover`, `:(hover|focus)`)
    * @returns AltMap раскрытых состояний
    */
-  function getSynonyms(value: string): AltMap {
+  function getSynonyms(nodes: MnStateNode[]): AltMap {
     let alts: AltMap = {
       '': [], 
     };
-    base(scopeSplit2(
-      value, SCOPE_START, SCOPE_END,
-    ), 1);
+    base(nodes, 1);
     return alts;
 
-    function base(scopes: ScopeNode[], hasTop: number): void {
+    function base(scopes: MnStateNode[], hasTop: number): void {
       const scopesL = scopes.length;
       let scopesI = 0;
-      let scope: ScopeNode;
+      let scope: MnStateNode;
       let state: string;
       let _state: string;
       let states: string[];
-      let childs: ScopeNode[] | undefined;
+      let childs: MnStateNode[] | undefined;
       let ns: string[];
       let si: number;
       let statesL: number;
@@ -483,19 +542,21 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
 
       for (; scopesI < scopesL; scopesI++) {
         scope = scopes[scopesI];
-        states = splitState(scope[0]);
-        head = states.shift();
+        // Узел уже разобран (D-047): `[0]` — литеральный префикс, дальше — имена
+        // состояний. Массив общий для кеша разбора — не мутируется.
+        states = scope[0];
+        head = states[0];
         if (head) {
           _pushSuffix(head);
         }
         statesL = states.length;
-        statesI = 0;
+        statesI = 1;
 
         for (; statesI < statesL; statesI++) {
           // Пустое имя — признак псевдоЭЛЕМЕНТА (`p10::before` даёт пару
           // ['', 'before']). О следующем за ним имени предупреждать не о чем:
           // `::before` — не состояние и синонимом не заводится.
-          wasEmpty = !states[statesI - 1] && statesI > 0;
+          wasEmpty = !states[statesI - 1] && statesI > 1;
           _state = state = unslash(states[statesI]);
           matches = REGEXP_SCOPE_SUFFIX.exec(_state);
           if (matches) {
@@ -554,22 +615,6 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
         alts[prefix + suffix] = prefixes[prefix];
       }
     }
-  }
-
-  /**
-   * Делит одну часть `<`-цепочки на имя эссенции и её `:state`-суффикс.
-   *
-   * @param name — часть цепочки (например `Parent:hover`)
-   * @returns `[имя без суффикса, AltMap состояний]` — без `:` в имени AltMap состоит
-   *   из одной пустой альтернативы `{ '': [] }` (нечего раскрывать)
-   */
-  function getEssence(name: string): [string, AltMap] {
-    const i = name.indexOf(':');
-    return i < 0
-      ? [name, {
-        '': [], 
-      }]
-      : [unslash(name.slice(0, i)), getSynonyms(name.slice(i))];
   }
 
   return extend(instance || (instance = parseComboName as ParseComboNameFn),

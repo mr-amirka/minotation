@@ -20,6 +20,9 @@ import {
 import {
   selectorNormalize,
 } from '../selectorNormalize';
+import {
+  MnParseError,
+} from '../core/types';
 import type {
   AltMap,
   MnChain,
@@ -286,6 +289,12 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     const $$mnOptions = (instance as any).options || {};
     $$depthCheck.maxDepth = $$mnOptions.maxDepth;
     $$depthCheck.token = comboName;
+    // Режим синтаксиса (D-045): строки пресета — в режиме пресета (на время его `setup`),
+    // остальное — в режиме проекта. Свой разборщик на режим (D-047); по умолчанию —
+    // 'context-qualified' ниже.
+    if (((instance as any)._presetMode || $$mnOptions.notationMode) === 'variant-prefixed') {
+      return parseVariantPrefixed(comboName, targetName);
+    }
 
     let name = comboName;
     let tgt = targetName;
@@ -353,6 +362,109 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     items: Array<[StrMap<number>, AltMap]>, essences: StrMap<number>, suffix: string,
   ): Array<[StrMap<number>, AltMap]> {
     return push(items, [essences, buildContext(parseContext(suffix), $$tgt)]);
+  }
+
+  /**
+   * Разборщик `'variant-prefixed'` (Tailwind, D-045/D-046): приставки варианта перед
+   * классом — `dark:md:hover:group-hover:bg-blue-500`, `!mt-4`. Каждая приставка ищется:
+   * 1. среди синонимов и `mn.states` — состояние самого элемента;
+   * 2. среди имён медиа (`mn.media`) — медиа; имя есть и там, и там — берётся синоним;
+   * 3. по шаблону `{имя}-{синоним|медиа}` — метка-предок `.имя` с этим состоянием или
+   *    медиа (`group-hover`); отношение и селектор метки можно задать
+   *    `mn.variantPrefixedSynonyms({ peer: '.peer~' })` — тогда сосед (`peer-invalid`).
+   * Неизвестная приставка — предупреждение, CSS нет. Строк контекста нет: сразу
+   * эталонная структура (D-047).
+   *
+   * @param comboName — класс в записи Tailwind
+   * @param targetName — готовый селектор самого элемента
+   */
+  function parseVariantPrefixed(comboName: string,
+    targetName: string): Array<[StrMap<number>, AltMap]> {
+    const prefixes = splitState(comboName);
+    const l = prefixes.length - 1;
+    const states: string[] = [''];
+    const medias: string[] = [];
+    const chain: MnChain = [[
+      '',
+      '',
+      undefined,
+      undefined,
+    ]];
+    const media: StrMap<unknown> = (instance as any).media || {};
+    const essences: StrMap<number> = {};
+    let utility = prefixes[l];
+    let prefix: string;
+    let i = 0;
+    for (; i < l; i++) {
+      prefix = prefixes[i];
+      $$synonyms[prefix] || $$states[prefix]
+        ? states.push(prefix)
+        : media[prefix]
+          ? medias.push(prefix)
+          : pushVariantParent(
+            chain, prefix, media,
+          ) || throwUnknownVariant(comboName, prefix);
+    }
+    states.length > 1 && (chain[0][2] = [[states, undefined]]);
+    medias.length && (chain[0][3] = medias.join('&'));
+    if (utility[0] === '!') {
+      utility = utility.slice(1);
+      if ((instance as any)._raisedToken?.(
+        comboName, 'important', importantMessage,
+      )) {
+        return [];
+      }
+      essences[unslash(utility) + '-i'] = 1;
+    } else {
+      essences[unslash(utility)] = 1;
+    }
+    return [[essences, buildContext([chain, []], targetName)]];
+  }
+
+  /**
+   * `{имя}-{синоним|медиа}` → предок-метка в цепочке. Перебор с правого дефиса, чтобы
+   * хвост рос: `peer-focus-visible` — сначала `visible`, потом `focus-visible`.
+   *
+   * @returns найдено ли совпадение
+   */
+  function pushVariantParent(
+    chain: MnChain, prefix: string, media: StrMap<unknown>,
+  ): boolean {
+    const relations: StrMap<string> = (instance as any)._variantPrefixedSynonyms || {};
+    let i = prefix.lastIndexOf('-');
+    let name: string;
+    let rest: string;
+    let relation: string | undefined;
+    let last: string;
+    while (i > 0) {
+      name = prefix.slice(0, i);
+      rest = prefix.slice(i + 1);
+      if ($$synonyms[rest] || $$states[rest] || media[rest]) {
+        relation = relations[name];
+        last = relation ? relation[relation.length - 1] : '';
+        chain.push([
+          last === '~' || last === '+' || last === '>' ? last : ' ',
+          relation
+            ? (last === '~' || last === '+' || last === '>' ? relation.slice(0, -1) : relation)
+            : '.' + escapeCss(name),
+          $$synonyms[rest] || $$states[rest] ? [[['', rest], undefined]] : undefined,
+          $$synonyms[rest] || $$states[rest] ? undefined : rest,
+        ]);
+        return true;
+      }
+      i = prefix.lastIndexOf('-', i - 1);
+    }
+    return false;
+  }
+
+  function throwUnknownVariant(comboName: string, prefix: string): never {
+    throw new MnParseError('Variant "' + prefix + ':" is unknown — it is neither a synonym nor a media'
+      + ' name, and "{name}-{synonym|media}" does not match it. The class gives no CSS.', {
+      token: comboName,
+      handler: '',
+      arg: prefix,
+      utility: 'variant-prefixed',
+    });
   }
 
   /**

@@ -143,8 +143,8 @@ describe('orderPresets — устойчивая топологическая с�
     expect(() => orderPresets([{
       name: 'a',
       setup: () => undefined,
-      notationMode: 'variant-prefixed',
-    } as never], {})).toThrow('option "notationMode" expects "context-qualified"');
+      notationMode: 'tailwind',
+    } as never], {})).toThrow('option "notationMode" expects "context-qualified" or "variant-prefixed"');
   });
 });
 

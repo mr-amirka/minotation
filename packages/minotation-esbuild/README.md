@@ -70,6 +70,7 @@ esbuild.build({
 | `specificityMode` | `'warn'` | токены с накруткой специфичности `f10*2`: `'warn'` — предупреждение с подсказкой, `'silent'` — молчать, `'strict'` — токен не даёт CSS, сборка падает (D-039) |
 | `importantMode` | `'warn'` | токены с `!important` (`f10-i`) — режимы те же (D-039) |
 | `childSelectorMode` | `'warn'` | токены с дочерним селектором `>` (`cF00>1`, `cF00>.child`) — режимы те же (D-041) |
+| `notationMode` | `'context-qualified'` | режим синтаксиса классов: `'context-qualified'` (`bg-blue-500:hover@md`) или `'variant-prefixed'` (как Tailwind: `md:hover:bg-blue-500`); строки пресетов — в режиме пресета (D-045) |
 | `warningMode` | `'log'` | что делать с предупреждением компиляции: `'log'` — в лог сборки, `'silent'` — молчать, `'error'` — уронить сборку; `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode` не затрагивает |
 | `onWarning` | — | колбэк `(warning) => void` на каждое предупреждение, дополнительно к `warningMode` |
 | `onError` | — | обработчик ошибок ядра |

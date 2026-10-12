@@ -40,6 +40,7 @@ mn ./index.html -o ./page.css           # одиночный файл
 | `--specificity-mode <режим>` | токены с накруткой специфичности (`f10*2`): `warn` — предупреждение с подсказкой (по умолчанию), `silent` — промолчать, `strict` — токен не даёт CSS, код возврата 1 |
 | `--important-mode <режим>` | токены с `!important` (`f10-i`) — режимы те же |
 | `--child-selector-mode <режим>` | токены с дочерним селектором `>` (`cF00>1`) — режимы те же |
+| `--notation-mode <режим>` | синтаксис классов: `context-qualified` (по умолчанию, `bg-blue-500:hover@md`) или `variant-prefixed` (как Tailwind, `md:hover:bg-blue-500`) |
 | `--no-syntax` | не разбирать JS/TS парсером, только текстовый поиск |
 | `--skip-partials` | пропускать файлы-партиалы `_*` |
 | `--no-manifest` | не писать `mn-manifest.json` рядом с CSS (по умолчанию пишется: `{ "mn.css": "mn.3f9a1c2e.css" }`) |

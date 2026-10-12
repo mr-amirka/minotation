@@ -304,6 +304,13 @@ export interface MnWarning {
 }
 
 /**
+ * Режим синтаксиса нотации (D-045): `'context-qualified'` — запись minotation
+ * (`bg-blue-500:hover@md`), `'variant-prefixed'` — варианты перед классом, как в Tailwind
+ * (`md:hover:bg-blue-500`).
+ */
+export type MnNotationMode = 'context-qualified' | 'variant-prefixed';
+
+/**
  * Пресет-объект (D-045): имя, зависимости и режим синтаксиса. Функция-пресет
  * `(mn) => void` остаётся допустимой — у неё просто нет метаданных.
  */
@@ -312,8 +319,11 @@ export interface MnPresetObject {
   name: string;
   /** Имена пресетов, без которых этот не работает. Порядок в списке — любой. */
   requires?: string[];
-  /** Режим синтаксиса строк, которые регистрирует пресет. Пока — только канонический. */
-  notationMode?: 'context-qualified';
+  /**
+   * Режим синтаксиса строк, которые регистрирует пресет (`assign`, `exts`) — на время его
+   * `setup`, независимо от режима проекта. @default 'context-qualified'
+   */
+  notationMode?: MnNotationMode;
   /** Регистрация хендлеров, статик, синонимов — как тело функции-пресета. */
   setup(mn: MnInstance): void;
 }
@@ -389,6 +399,12 @@ export interface MnOptions {
    * @default 'warn'
    */
   childSelectorMode?: MnRaiseMode;
+  /**
+   * Режим синтаксиса классов разметки (D-045): `'context-qualified'` (по умолчанию) или
+   * `'variant-prefixed'` (Tailwind). Строки пресетов разбираются в режиме пресета.
+   * @default 'context-qualified'
+   */
+  notationMode?: MnNotationMode;
   selectorPrefix?: string;
   /**
    * `true` — рядом с `rgba`-значением выводить запасное непрозрачное

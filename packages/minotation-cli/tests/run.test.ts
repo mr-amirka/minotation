@@ -177,6 +177,9 @@ describe('mergeSettings', () => {
     expect(merged.specificityMode).toBe('strict');
     expect(merged.importantMode).toBe('silent');
     expect(mergeSettings(parseArgs(['--child-selector-mode', 'silent']), {}).childSelectorMode).toBe('silent');
+    expect(mergeSettings(parseArgs([]), {
+      notationMode: 'variant-prefixed',
+    }).notationMode).toBe('variant-prefixed');
   });
 
   test('синтаксический разбор: по умолчанию авто, `--no-syntax` выключает', () => {

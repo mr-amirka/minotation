@@ -21,7 +21,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, no-cond-assign -- см. комментарий выше */
 
 import {
-  checkOptions, CORE_OPTIONS_SCHEMA,
+  checkOptions, CORE_OPTIONS_SCHEMA, describeValue, isObject as isObjectOption,
 } from '../checkOptions';
 import {
   eachApply,
@@ -151,9 +151,26 @@ function logWarning(warning: MnWarning): void {
   console.warn('[minotation] ' + warning.token + ': ' + warning.message);
 }
 
-/** Пресет как функция `(mn) => void` — для `eachTry`. */
+/**
+ * Пресет как функция `(mn) => void` — для `eachTry`. На время выполнения пресета его строки
+ * разбираются в его режиме синтаксиса (D-045): у объекта — `notationMode`, у функции и
+ * объекта без него — `'context-qualified'`, на котором написаны стандартные пресеты.
+ */
 function asPresetFunction(preset: MnPreset): (mn: MnInstance) => void {
-  return typeof preset === 'function' ? preset : (mn) => preset.setup(mn);
+  const mode = typeof preset === 'function' ? 'context-qualified' : preset.notationMode || 'context-qualified';
+  const setup = typeof preset === 'function' ? preset : preset.setup;
+  return (mn) => {
+    (mn as any)._presetMode = mode;
+    try {
+      setup(mn);
+    } finally {
+      (mn as any)._presetMode = undefined;
+    }
+  };
+}
+
+function fail(message: string): never {
+  throw new Error('[minotation] ' + message);
 }
 
 /** Случаи со своим режимом `'warn' | 'silent' | 'strict'` (D-039). */
@@ -1594,6 +1611,32 @@ function minotationProvider(options?: MnOptions) {
    */
   // synonym/selectors: произвольная вложенная форма, см. baseSetSynonyms/normalizeSelectors.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  /**
+   * Метки вариантов `{имя}-{состояние}` для `'variant-prefixed'` (D-046): селектор метки и
+   * отношение к элементу. Без записи имя — предок `.имя` (`group-hover:` → `.group:hover .x`);
+   * с записью `peer: '.peer~'` — сосед (`peer-invalid:` → `.peer:invalid~.x`).
+   *
+   * @param map — имя → селектор метки, в конце — комбинатор (`~`, `+`, `>`) или без него (предок)
+   * @returns mn (чейнинг)
+   * @example
+   * mn.variantPrefixedSynonyms({ peer: '.peer~' });
+   */
+  mn.variantPrefixedSynonyms = (map: Record<string, string>): any => {
+    checkOptions(
+      {
+        map,
+      }, {
+        map: isObjectOption,
+      }, 'mn.variantPrefixedSynonyms',
+    );
+    let name: string;
+    for (name in map) { // eslint-disable-line
+      typeof map[name] === 'string' && map[name]
+        || fail('mn.variantPrefixedSynonyms: "' + name + '" expects a selector string, got ' + describeValue(map[name]));
+    }
+    extend((mn as any)._variantPrefixedSynonyms || ((mn as any)._variantPrefixedSynonyms = {}), map);
+    return mn;
+  };
   mn.synonyms = (synonym: string | Record<string, any>, selectors?: string | Record<string, any>): any => {
     isObject(synonym)
       ? forIn(synonym, baseSetSynonyms)

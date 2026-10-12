@@ -122,6 +122,9 @@ describe('parseArgs', () => {
     expect(() => parseArgs(['--important-mode', 'block']))
       .toThrow('Option "--important-mode" expects warn, silent or strict, got "block"');
     expect(parseArgs(['--child-selector-mode', 'strict']).childSelectorMode).toBe('strict');
+    expect(parseArgs(['--notation-mode', 'variant-prefixed']).notationMode).toBe('variant-prefixed');
+    expect(() => parseArgs(['--notation-mode', 'tailwind']))
+      .toThrow('Option "--notation-mode" expects context-qualified or variant-prefixed, got "tailwind"');
     expect(() => parseArgs(['--child-selector-mode', 'error']))
       .toThrow('Option "--child-selector-mode" expects warn, silent or strict, got "error"');
   });

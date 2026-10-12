@@ -141,6 +141,11 @@ export interface MnInstance {
   // selectors: произвольная вложенная форма, см. baseSetSynonyms/normalizeSelectors в core/index.ts.
   synonyms(synonym: string, selectors: string | Record<string, any>): void; // eslint-disable-line @typescript-eslint/no-explicit-any
   /**
+   * Метки вариантов `{имя}-{состояние}` для `notationMode: 'variant-prefixed'` (D-046):
+   * `{ peer: '.peer~' }` — `peer-invalid:x` → `.peer:invalid~.x`.
+   */
+  variantPrefixedSynonyms(map: Record<string, string>): MnInstance;
+  /**
    * Переконфигурирует инстанс после создания — слияние с текущими опциями
    * (частичное обновление, не замена целиком). Единственный поддерживаемый
    * способ поменять `onError`/`onWarning`/`warningMode`/`selectorPrefix`/`altColor`

@@ -93,6 +93,30 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 | `presetHints` | Подсказки вместо молчания: `t0` → «did you mean `st0`?», `flex` → «в minotation это `dF`», `text-center` → `taC`. Подключать первым — пресет ниже перекрывает его хендлеры. Точечно — фабрикой: `presetHints({ excludeGroups: ['bootstrap'], excludeHandlers: ['flex'] })`; группы — `typos`, `tailwind`, `bootstrap` (D-024, D-042) |
 | `presetPrefixes` | Опциональные `-webkit-`/`-moz-` дубли для заданного списка свойств (`transform`, `flexDirection`, `appearance`, …) |
 
+### Режим синтаксиса `notationMode` (D-045, D-046)
+
+`'context-qualified'` (по умолчанию) — запись minotation: `cF00:h@md<.group`.
+`'variant-prefixed'` — варианты перед классом, как в Tailwind: `md:hover:group-hover:cF00`.
+
+```ts
+const mn = minotationProvider({ notationMode: 'variant-prefixed' });
+mn.synonyms({ hover: ':hover', invalid: ':invalid' });   // приставки — синонимы и имена mn.media
+mn.variantPrefixedSynonyms({ peer: '.peer~' });          // метка с отношением «сосед»
+```
+
+| Класс | CSS |
+|---|---|
+| `hover:cF00` | `.hover\:cF00:hover{color:#f00}` |
+| `md:cF00` | `@media (min-width: 768px){.md\:cF00{…}}` |
+| `group-hover:cF00` | `.group:hover .group-hover\:cF00{…}` — `{имя}-{синоним\|медиа}`: предок-метка |
+| `peer-invalid:cF00` | `.peer:invalid~.peer-invalid\:cF00{…}` — сосед через `variantPrefixedSynonyms` |
+| `!p10` | `.\!p10{padding:10px!important}` |
+
+Имя есть и среди синонимов, и среди медиа — берётся синоним. Неизвестная приставка —
+предупреждение, CSS нет. Строки пресета (`assign`, `exts`) разбираются в режиме пресета
+(`notationMode` пресет-объекта, по умолчанию `'context-qualified'`), классы разметки — в
+режиме проекта.
+
 ### Пресет-объект и зависимости (D-045)
 
 Пресет — функция `(mn) => {…}` или объект с метаданными. Зависимости можно перечислять в
@@ -136,6 +160,7 @@ const mn = minotationProvider({
   specificityMode: 'warn',         // 'warn' | 'silent' | 'strict' — токены f10*2 (накрутка специфичности)
   importantMode: 'warn',           // 'warn' | 'silent' | 'strict' — токены f10-i (!important)
   childSelectorMode: 'warn',       // 'warn' | 'silent' | 'strict' — токены cF00>1 (дочерний селектор)
+  notationMode: 'context-qualified', // или 'variant-prefixed' — запись как в Tailwind: md:hover:p10
 });
 ```
 

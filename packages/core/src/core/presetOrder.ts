@@ -13,11 +13,11 @@ import type {
   MnPreset, MnPresetObject,
 } from './types';
 
-/** Допустимые поля пресет-объекта. Режимы синтаксиса, кроме канонического, — следующий этап. */
+/** Допустимые поля пресет-объекта. */
 const PRESET_SCHEMA: OptionSchema = {
   name: isString,
   requires: isStringArray,
-  notationMode: oneOf('context-qualified'),
+  notationMode: oneOf('context-qualified', 'variant-prefixed'),
   setup: isFunction,
 };
 

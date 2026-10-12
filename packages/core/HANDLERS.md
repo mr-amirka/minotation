@@ -1475,6 +1475,25 @@ className={`mt1 mx0 w bxzBB px1.5 py0.75 r1 b1 bsS dn200
 
 ---
 
+## Часть имени класса или id: `.*` и `#*`
+
+`.*текст` — элемент, в классе которого **есть** `текст` (`[class*=текст]`); `#*текст` — то же
+для `id`. Удобно для чужих компонентов с генерируемыми именами (`MuiSlider-root`,
+`css-1x2y3z-active`). Работает везде, где селектор: на самом элементе, у предка `<`, у
+потомка `>`.
+
+| Токен | CSS |
+|-------|-----|
+| `cF00.*-active` | `.cF00\.\*-active[class*=-active]{color:#f00}` — сам элемент |
+| `cF00<.*-active` | `[class*=-active] .cF00\<\.\*-active{color:#f00}` — предок |
+| `cF00>.*MuiSlider` | `.cF00\>\.\*MuiSlider [class*=MuiSlider]{color:#f00}` — потомок |
+| `cF00#*-disabled` | `.cF00\#\*-disabled[id*=-disabled]{color:#f00}` — по `id` |
+| `cF00.*-active:h` | `.cF00\.\*-active\:h[class*=-active]:hover{color:#f00}` — с состоянием |
+| `cF00<.*-active>.*-item` | `[class*=-active] .cF00\<\.\*-active\>\.\*-item [class*=-item]{color:#f00}` |
+
+`*=` — «содержит» в любом месте значения атрибута: `.*-active` подходит и к `btn-active`,
+и к `is-active-now`.
+
 ## Соседи: `+` и `~`
 
 `+` (следующий сосед) и `~` (любой следующий сосед) — обычные CSS-комбинаторы внутри

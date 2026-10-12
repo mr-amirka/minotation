@@ -33,6 +33,7 @@ const presetTailwindish: MnPresetObject = {
       priority: 1,
     };
     mn.variantPrefixedSynonyms({
+      group: '.group',
       peer: '.peer~',
     });
     mn.assign('.btn', 'hover:c0F0');
@@ -102,12 +103,25 @@ describe("notationMode: 'variant-prefixed'", () => {
     expect(compile('group-hover:cF00').css).toContain('.group:hover .group-hover\\:cF00{color:#f00}');
   });
 
-  test('произвольное имя метки: vasya-hover', () => {
-    expect(compile('vasya-hover:cF00').css).toContain('.vasya:hover .vasya-hover\\:cF00{color:#f00}');
+  test('незарегистрированная метка — неизвестный вариант, как в Tailwind (D-048)', () => {
+    const {
+      css, warnings, 
+    } = compile('vasya-hover:cF00 grop-hover:cF00');
+    expect(css).not.toContain('vasya');
+    expect(css).not.toContain('grop');
+    expect(warnings.map((w) => w.token)).toEqual(['vasya-hover:cF00', 'grop-hover:cF00']);
   });
 
-  test('{имя}-{медиа} — предок внутри медиа', () => {
-    expect(compile('vasya-md:cF00').css).toContain('@media (min-width: 768px){.vasya .vasya-md\\:cF00{color:#f00}}');
+  test('{метка}-{медиа} — предок внутри медиа', () => {
+    expect(compile('group-md:cF00').css).toContain('@media (min-width: 768px){.group .group-md\\:cF00{color:#f00}}');
+  });
+
+  test('именованная метка: group-hover/item, peer-invalid/email (D-048)', () => {
+    const {
+      css, 
+    } = compile('group-hover/item:cF00 peer-invalid/email:c0F0');
+    expect(css).toContain('.group\\/item:hover .group-hover\\/item\\:cF00{color:#f00}');
+    expect(css).toContain('.peer\\/email:invalid~.peer-invalid\\/email\\:c0F0{color:#0f0}');
   });
 
   test('peer через variantPrefixedSynonyms — сосед', () => {
@@ -147,7 +161,8 @@ describe("notationMode: 'variant-prefixed'", () => {
       type: 'parse-error',
       token: 'wat:cF00',
       message: 'Variant "wat:" is unknown — it is neither a synonym nor a media name, and'
-        + ' "{name}-{synonym|media}" does not match it. The class gives no CSS.',
+        + ' "{label}-{synonym|media}" does not match a label registered with'
+        + ' mn.variantPrefixedSynonyms. The class gives no CSS.',
     })]);
   });
 
@@ -208,7 +223,7 @@ describe('mn.variantPrefixedSynonyms — проверка', () => {
 });
 
 describe("'variant-prefixed' без меток и без ядра", () => {
-  test('без variantPrefixedSynonyms — любое имя даёт предка', () => {
+  test('без variantPrefixedSynonyms меток нет: peer-hover — неизвестный вариант', () => {
     const mn = minotationProvider({
       warningMode: 'silent',
       notationMode: 'variant-prefixed',
@@ -219,8 +234,8 @@ describe("'variant-prefixed' без меток и без ядра", () => {
     });
     mn.getCompiler('class')('peer-hover:cF00');
     mn.compile();
-    expect(mn.styles$.getValue().map((s) => s.content).join(''))
-      .toContain('.peer:hover .peer-hover\\:cF00{color:#f00}');
+    expect(mn.styles$.getValue().map((s) => s.content).join('')).not.toContain('peer-hover');
+    expect(mn.warnings$.getValue().map((w) => w.type)).toEqual(['parse-error']);
   });
 
   test('selectorsCompileProvider отдельно: медиа нет — приставка неизвестна', () => {

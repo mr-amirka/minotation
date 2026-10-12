@@ -101,19 +101,21 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 ```ts
 const mn = minotationProvider({ notationMode: 'variant-prefixed' });
 mn.synonyms({ hover: ':hover', invalid: ':invalid' });   // приставки — синонимы и имена mn.media
-mn.variantPrefixedSynonyms({ peer: '.peer~' });          // метка с отношением «сосед»
+mn.variantPrefixedSynonyms({ group: '.group', peer: '.peer~' });  // метки: предок и сосед
 ```
 
 | Класс | CSS |
 |---|---|
 | `hover:cF00` | `.hover\:cF00:hover{color:#f00}` |
 | `md:cF00` | `@media (min-width: 768px){.md\:cF00{…}}` |
-| `group-hover:cF00` | `.group:hover .group-hover\:cF00{…}` — `{имя}-{синоним\|медиа}`: предок-метка |
+| `group-hover:cF00` | `.group:hover .group-hover\:cF00{…}` — `{метка}-{синоним\|медиа}`: метка из `variantPrefixedSynonyms` |
+| `group-hover/item:cF00` | `.group\/item:hover .group-hover\/item\:cF00{…}` — именованная метка (класс `group/item`) |
 | `peer-invalid:cF00` | `.peer:invalid~.peer-invalid\:cF00{…}` — сосед через `variantPrefixedSynonyms` |
 | `!p10` | `.\!p10{padding:10px!important}` |
 
-Имя есть и среди синонимов, и среди медиа — берётся синоним. Неизвестная приставка —
-предупреждение, CSS нет. Строки пресета (`assign`, `exts`) разбираются в режиме пресета
+Имя есть и среди синонимов, и среди медиа — берётся синоним. Метки — только
+зарегистрированные, как в Tailwind (`group`, `peer`); `grop-hover:` или своё имя — неизвестная
+приставка: предупреждение, CSS нет (своя метка пишется нотацией minotation: `cF00<.vasya:h`). Строки пресета (`assign`, `exts`) разбираются в режиме пресета
 (`notationMode` пресет-объекта, по умолчанию `'context-qualified'`), классы разметки — в
 режиме проекта.
 

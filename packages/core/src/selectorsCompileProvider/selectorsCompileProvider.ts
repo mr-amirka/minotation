@@ -369,9 +369,9 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * классом — `dark:md:hover:group-hover:bg-blue-500`, `!mt-4`. Каждая приставка ищется:
    * 1. среди синонимов и `mn.states` — состояние самого элемента;
    * 2. среди имён медиа (`mn.media`) — медиа; имя есть и там, и там — берётся синоним;
-   * 3. по шаблону `{имя}-{синоним|медиа}` — метка-предок `.имя` с этим состоянием или
-   *    медиа (`group-hover`); отношение и селектор метки можно задать
-   *    `mn.variantPrefixedSynonyms({ peer: '.peer~' })` — тогда сосед (`peer-invalid`).
+   * 3. по шаблону `{метка}-{синоним|медиа}[/имя]` — метка, зарегистрированная в
+   *    `mn.variantPrefixedSynonyms` (`group: '.group'` — предок, `peer: '.peer~'` — сосед),
+   *    с этим состоянием или медиа (D-048).
    * Неизвестная приставка — предупреждение, CSS нет. Строк контекста нет: сразу
    * эталонная структура (D-047).
    *
@@ -422,8 +422,12 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   }
 
   /**
-   * `{имя}-{синоним|медиа}` → предок-метка в цепочке. Перебор с правого дефиса, чтобы
-   * хвост рос: `peer-focus-visible` — сначала `visible`, потом `focus-visible`.
+   * `{метка}-{синоним|медиа}[/имя]` → метка в цепочке (D-046, D-048). Метка — только
+   * зарегистрированная в `mn.variantPrefixedSynonyms` (`group: '.group'`, `peer: '.peer~'`),
+   * как в Tailwind: иное имя — неизвестный вариант (опечатка `grop-hover:` не проходит
+   * молча). `/имя` — именованная метка: `group-hover/item:` → `.group\/item:hover …`.
+   * Перебор с правого дефиса, чтобы хвост рос: `peer-focus-visible` — сначала `visible`,
+   * потом `focus-visible`.
    *
    * @returns найдено ли совпадение
    */
@@ -431,35 +435,38 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     chain: MnChain, prefix: string, media: StrMap<unknown>,
   ): boolean {
     const relations: StrMap<string> = (instance as any)._variantPrefixedSynonyms || {};
-    let i = prefix.lastIndexOf('-');
-    let name: string;
+    const slash = prefix.indexOf('/');
+    const base = slash < 0 ? prefix : prefix.slice(0, slash);
+    const label = slash < 0 ? '' : escapeCss(prefix.slice(slash));
+    let i = base.lastIndexOf('-');
     let rest: string;
     let relation: string | undefined;
     let last: string;
+    let isState: unknown;
     while (i > 0) {
-      name = prefix.slice(0, i);
-      rest = prefix.slice(i + 1);
-      if ($$synonyms[rest] || $$states[rest] || media[rest]) {
-        relation = relations[name];
-        last = relation ? relation[relation.length - 1] : '';
+      relation = relations[base.slice(0, i)];
+      rest = base.slice(i + 1);
+      isState = $$synonyms[rest] || $$states[rest];
+      if (relation && (isState || media[rest])) {
+        last = relation[relation.length - 1];
+        last = last === '~' || last === '+' || last === '>' ? last : '';
         chain.push([
-          last === '~' || last === '+' || last === '>' ? last : ' ',
-          relation
-            ? (last === '~' || last === '+' || last === '>' ? relation.slice(0, -1) : relation)
-            : '.' + escapeCss(name),
-          $$synonyms[rest] || $$states[rest] ? [[['', rest], undefined]] : undefined,
-          $$synonyms[rest] || $$states[rest] ? undefined : rest,
+          last || ' ',
+          (last ? relation.slice(0, -1) : relation) + label,
+          isState ? [[['', rest], undefined]] : undefined,
+          isState ? undefined : rest,
         ]);
         return true;
       }
-      i = prefix.lastIndexOf('-', i - 1);
+      i = base.lastIndexOf('-', i - 1);
     }
     return false;
   }
 
   function throwUnknownVariant(comboName: string, prefix: string): never {
     throw new MnParseError('Variant "' + prefix + ':" is unknown — it is neither a synonym nor a media'
-      + ' name, and "{name}-{synonym|media}" does not match it. The class gives no CSS.', {
+      + ' name, and "{label}-{synonym|media}" does not match a label registered with'
+      + ' mn.variantPrefixedSynonyms. The class gives no CSS.', {
       token: comboName,
       handler: '',
       arg: prefix,

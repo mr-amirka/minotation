@@ -61,7 +61,7 @@ const PATTERN_DIGITS = '(-?[0-9\\.]+)';
 // помнить, какой хендлер каким путём разбирается: без `;?` привычное
 // `c--my_ink;` молча не давало правила (2026-09-23).
 const PATTERN_BASE_COLOR = '([A-Z][a-z][A-Za-z]+):camel|([A-Fa-f0-9]+(\\.[0-9]+)?):color|(-?--[^;]+):vv;?';
-const PATTERN_COLOR = '^(' + PATTERN_BASE_COLOR + '):value';
+const PATTERN_COLOR = '^(' + PATTERN_BASE_COLOR + '):value$';
 
 const PATTERN_VAL = '^(((([A-Za-z]+):otherName|([-]):sign?'
   + PATTERN_DIGITS + ':num(/' + PATTERN_DIGITS
@@ -2861,7 +2861,10 @@ export default {
               // generic-разбора ядра, и `c-5` уходило в CSS как `color:-5`.
               // Цвет считается разобранным, только если сработала одна из веток
               // самого PATTERN_COLOR: код, переменная или слово.
-              (p.color || p.vv || p.camel) || throwInvalid('Value "' + p.suffix
+              // `p.camel` заполняет и общий разбор ядра: у `F00.active` это `F`, и
+              // хвост молча терялся (`color:#fff`, найдено 2026-10-12). Слово — цвет,
+              // только если оно и есть всё значение.
+              (p.color || p.vv || p.camel && p.camel === p.suffix) || throwInvalid('Value "' + p.suffix
               + '" is not a color: expected a code (`F00`), a variable '
               + 'or a keyword'),
               assertColorAbbr(p),

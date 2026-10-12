@@ -602,15 +602,18 @@ describe('self-class условия — полный CSS пайплайн', () =
     expect(result).not.toContain('.cF\\.active{');
   });
 
-  test('cF\\.active (экранированная точка) → без self-class условия, весь суффикс — один класс', () => {
+  test('maski_a\\.png (экранированная точка) → без self-class условия, точка — часть значения', () => {
     // HANDLERS.md «Экранирование»: `\` перед точкой подавляет её трактовку как
     // границы self-class — в отличие от cF.active (см. тест выше), ".active"
     // здесь НЕ становится отдельным CSS-условием, а сама экранирующая обратная
     // косая черта остаётся в токене и удваивается при экранировании для CSS
     // (итог: три `\` подряд — один от исходного экранирования, два от escapeCss
     // самого символа `\`).
-    const result = css('cF\\.active');
-    expect(result).toBe('.cF\\\\\\.active{color:#fff}');
+    // До 2026-10-12 здесь был `cF\\.active` → `color:#fff`: хендлер цвета молча отбрасывал
+    // хвост `\\.active`. Теперь такой цвет — брак, и экранирование проверяется на значении,
+    // где точка действительно нужна.
+    const result = css('maski_a\\.png');
+    expect(result).toBe('.maski_a\\\\\\.png{mask-image:url("a.png")}');
   });
 
   test('cF.38 (только opacity — НЕ self-class) → .cF\\.38{color:rgba(255,255,255,.38)}', () => {
@@ -773,12 +776,10 @@ describe('self-class +WORD условия — полный CSS пайплайн'
     return inst.styles$.getValue().map(s => s.content).join('');
   }
 
-  test('cF+38 — числовой суффикс, нет self-class (нет adjacent sibling)', () => {
-    // +38 остаётся в suffix; colorVal не обрабатывает + как opacity-разделитель
-    const result = css('cF+38');
-    expect(result).toContain('.cF\\+38{');
-    // Нет adjacent sibling условия — просто класс без суффикса
-    expect(result).not.toContain('.cF\\+38+');
+  test('cF+38 — числовой суффикс, нет self-class: значение `F+38` — не цвет, брак', () => {
+    // `+38` остаётся в значении (это не сосед: после `+` цифра). До 2026-10-12 хендлер цвета
+    // молча отбрасывал хвост и давал `color:#fff`; теперь — брак, CSS нет.
+    expect(css('cF+38')).toBe('');
   });
 
   test('cF+active → .cF\\+active+active{color:#fff}', () => {
@@ -790,10 +791,11 @@ describe('self-class +WORD условия — полный CSS пайплайн'
     expect(result).toContain('color:#fff');
   });
 
-  test('bgcF+12+active → .bgcF\\+12\\+active+active', () => {
-    // +12 в suffix, +active — self-class; colorVal не обрабатывает + как opacity
-    const result = css('bgcF+12+active');
-    expect(result).toContain('.bgcF\\+12\\+active+active');
+  test('bgcF.12+active → .bgcF\\.12\\+active+active', () => {
+    // +active — сосед; было `bgcF+12+active` с неверным цветом `F+12` (молча `#fff`, см. выше).
+    const result = css('bgcF.12+active');
+    expect(result).toContain('.bgcF\\.12\\+active+active');
+    expect(result).toContain('rgba(255,255,255,.12)');
   });
 
   test('cF.38+active → .cF\\.38\\+active+active', () => {

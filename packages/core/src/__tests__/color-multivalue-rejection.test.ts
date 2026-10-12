@@ -101,3 +101,31 @@ describe('border-color: легитимные случаи не задеты фи
     expect(errorCount).toBe(0);
   });
 });
+
+describe('цвет: хвост после кода не теряется молча (2026-10-12)', () => {
+  test.each([
+    'fillF00x',
+    'cF00x',
+    'strokeF+1',
+  ])('%s — брак, CSS нет', (token) => {
+    const mn = minotationProvider({
+      warningMode: 'silent',
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')(token);
+    mn.compile();
+    expect(mn.styles$.getValue().map((s) => s.content).join('')).toBe('');
+    expect(mn.warnings$.getValue().map((w) => w.type)).toEqual(['parse-error']);
+  });
+
+  test("'variant-prefixed': cF00.active целиком в хендлере — брак, а не color:#fff", () => {
+    const mn = minotationProvider({
+      warningMode: 'silent',
+      notationMode: 'variant-prefixed',
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')('cF00.active');
+    mn.compile();
+    expect(mn.styles$.getValue().map((s) => s.content).join('')).toBe('');
+  });
+});

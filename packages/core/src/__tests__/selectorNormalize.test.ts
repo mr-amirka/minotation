@@ -49,8 +49,8 @@ describe('selectorNormalize', () => {
       expect(selectorNormalize('.*my-class')).toBe('[class*=my-class]');
     });
 
-    test('с $: .*my$Class → [class*=my$Class]', () => {
-      expect(selectorNormalize('.*my$Class')).toBe('[class*=my$Class]');
+    test('с $: .*my$Class → [class*="my$Class"]', () => {
+      expect(selectorNormalize('.*my$Class')).toBe('[class*="my$Class"]');
     });
   });
 

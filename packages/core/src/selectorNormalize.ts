@@ -7,10 +7,13 @@
  *    разворот массива, склейка. Позволяет писать селекторы в обратном порядке:
  *    `Parent!Child` → `ChildParent`.
  *
- * 2. **Wildcard-класс (`.*`)** — `.*className` → `[class*=className]`.
+ * 2. **Часть имени класса** (D-050) — `.*текст` → `[class*=текст]` (содержит),
+ *    `.^текст` → `[class^=текст]` (начинается с), `.$текст` → `[class$=текст]`
+ *    (заканчивается на). Значение в кавычках, только если без них оно не идентификатор CSS
+ *    (`.*1x` → `[class*="1x"]`). Висячая `*` в конце (`.*a*`) — брак.
  *    В MN звёздочка означает «содержит подстроку».
  *
- * 3. **Wildcard-id (`#*`)** — `#*idName` → `[id*=idName]`.
+ * 3. **Часть id** — то же для `#*`, `#^`, `#$` → `[id*=…]`, `[id^=…]`, `[id$=…]`.
  *
  * 4. **Скобки функционального псевдокласса** ({@link pseudoBrackets}, применяется
  *    ТОЛЬКО к селекторам `mn.assign`/`essence.selectors`) — `:not[.plain]` →
@@ -50,17 +53,42 @@
  * selectorNormalize('#*main')         // → '[id*=main]'
  */
 import {
+  MnParseError,
+} from './core/types';
+import {
   escapedSplitProvider,
 } from 'fundamentool';
 
 /** Сплиттер по `!` с учётом экранирования (base-версия без unslash). */
 const splitReverse = escapedSplitProvider('!').base;
 
-/** `.*className` → `[class*=className]` */
-const REGEXP_CLASS_SUBSTR = /\.\*([A-Za-z0-9-_$]+)/g;
+/**
+ * `.*текст` / `.^текст` / `.$текст` и то же с `#` (D-050): `[1]` — `.` или `#`, `[2]` —
+ * оператор, `[3]` — текст, `[4]` — висячая `*` (брак).
+ */
+const REGEXP_ATTR_PART = /([.#])([*^$])([A-Za-z0-9_$-]+)(\*?)/g;
 
-/** `#*idName` → `[id*=idName]` */
-const REGEXP_ID_SUBSTR = /#\*([A-Za-z0-9-_$]+)/g;
+/** Корректный идентификатор CSS — значение атрибута можно не брать в кавычки. */
+const REGEXP_CSS_IDENT = /^(?:-?[A-Za-z_]|--)[A-Za-z0-9_-]*$/;
+
+function attrPartReplacer(
+  match: string, kind: string, operator: string, text: string, dangling: string,
+): string {
+  dangling && throwDanglingStar(match);
+  return '[' + (kind === '.' ? 'class' : 'id') + operator + '='
+    + (REGEXP_CSS_IDENT.test(text) ? text : '"' + text + '"') + ']';
+}
+
+function throwDanglingStar(match: string): never {
+  throw new MnParseError('"' + match + '" ends with "*" with nothing after it. Use "'
+    + match[0] + '*text" (contains), "' + match[0] + '^text" (starts with) or "'
+    + match[0] + '$text" (ends with)', {
+    token: '',
+    handler: '',
+    arg: match,
+    utility: 'selectorNormalize',
+  });
+}
 
 /** Имя псевдокласса/псевдоэлемента сразу после `:` или `::`. */
 const REGEXP_PSEUDO_NAME = /^:{1,2}[A-Za-z][A-Za-z-]*/;
@@ -132,6 +160,5 @@ export function selectorNormalize(minotationSelector: string): string {
   return splitReverse(minotationSelector)
     .reverse()
     .join('')
-    .replace(REGEXP_CLASS_SUBSTR, '[class*=$1]')
-    .replace(REGEXP_ID_SUBSTR, '[id*=$1]');
+    .replace(REGEXP_ATTR_PART, attrPartReplacer);
 }

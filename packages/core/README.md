@@ -120,6 +120,7 @@ mn.variantPrefixedSynonyms({ group: '.group', peer: '.peer~' });  // метки:
 | `has-[img]:` / `not-[.x]:` / `nth-[3n+1]:` / `nth-last-[2]:` | `:has(img)` / `:not(.x)` / `:nth-child(3n+1)` / `:nth-last-child(2)` |
 | `in-[.card]:` / `group-[.open]:` / `peer-[.open]:` | `:where(.card) …` / `.group.open …` / `.peer.open~…` |
 | `min-[600px]:` / `max-[600px]:` | `@media (width >= 600px)` / `(width < 600px)` |
+| `d:` / `d:max-d2:` | голая точка — «от точки», как в Tailwind (D-060): `(width >= 992px)` / `… and (width < 1200px)`; в записи minotation `@d` по-прежнему «до точки» |
 | `min-d:` / `max-m4:` | сравнение с шириной точки медиа (`width`, D-054) |
 | `*:` / `**:` | дети `>*` / потомки ` *` |
 | `supports-[display:grid]:` | `@supports (display:grid){…}` |
@@ -214,10 +215,41 @@ const presetTailwindSpacing = (mn) => {
 | `mt-[37px]` | `margin-top:37px` — в режиме `'tailwind-compatible'` (в записи minotation `[…]` — атрибут) |
 | `pt-7` при карте `0…5` | предупреждение: `step "7" is not in the scale (0, 1, 2, 3, 4, 5)` |
 
+Имена с дефисом (`'min-w'`, `'gap-x'`, `'translate-x'`) тоже можно: ядро находит хендлер по
+первым буквам (`min`), поэтому `defineScale` ставит под первой частью диспетчер, и он выбирает
+вторую часть (D-061).
+
 `separator: ''` — запись без дефиса (`p2`, Basscss). Шаги карты регистрируются статикой, как
 и слова: буквенный шаг (`md`) иначе был бы принят за чужой kebab-класс. Ведущий `-` ядро
 передаёт только хендлеру с флагом `negative`: у остальных `-p10` — чужой класс, как раньше.
 Опции проверяются: неизвестный ключ — ошибка с подсказкой.
+
+### Хендлеры для имён Tailwind из нескольких частей — `tw()` (D-061)
+
+Хендлер находится по первым буквам класса (`gap-x-2` → `gap`); остаток разбирает декоратор
+`tw()` и отдаёт хендлеру готовую структуру. Хендлер ничего не вернул — класс чужой, без
+предупреждения, как в Tailwind.
+
+```ts
+import { tw } from 'minotation';
+
+mn('gap', tw(({ parts, arbitrary }) => {
+  const property = parts[0] === 'x' ? 'columnGap' : parts[0] === 'y' ? 'rowGap' : 'gap';
+  const step = property === 'gap' ? parts[0] : parts[1];
+  const value = arbitrary || (step && step * 0.25 + 'rem');
+  return value ? { style: { [property]: value } } : undefined;
+}), '', 1);
+```
+
+| Остаток класса | Что получает хендлер |
+|---|---|
+| `gap-x-2` | `{ parts: ['x', '2'] }` |
+| `bg-blue-500/50` | `{ parts: ['blue', '500'], modifier: '50' }` |
+| `w-1/2` | `{ parts: ['1'], modifier: '2' }` — дробь или прозрачность, решает хендлер |
+| `w-[37px]` / `m-[1px_2px]` | `{ arbitrary: '37px' }` / `'1px 2px'` |
+| `text-[length:1rem]` | `{ type: 'length', arbitrary: '1rem' }` |
+| `fill-(--brand)` | `{ arbitrary: 'var(--brand)' }` |
+| `-translate-x-2` | `{ parts: ['x', '2'], negative: true }` — при `tw(handler, { negative: true })` |
 
 ## API
 

@@ -72,6 +72,10 @@ import presetHintsDefault from './presets/hints';
 import {
   defineScale as defineScaleImpl,
 } from './presets/scale';
+import {
+  tw as twImpl,
+  parseTwSuffix as parseTwSuffixImpl,
+} from './presets/tw';
 
 export const minotationProvider = minotationProviderImpl;
 export default coreDefault;
@@ -156,6 +160,9 @@ export type {
   MnScaleOptions,
 } from './presets/scale';
 export type {
+  MnTwArgs, MnTwHandler, MnTwOptions, MnTwWrapped,
+} from './presets/tw';
+export type {
   OptionCheck, OptionSchema,
 } from './checkOptions';
 export type {
@@ -196,3 +203,5 @@ export const presetPrefixes = presetPrefixesDefault;
 /** Подсказки о классах, которых нет в нотации (`t0` → `st0`, `flex` → `dF`) — D-024. */
 export const presetHints = presetHintsDefault;
 export const defineScale = defineScaleImpl;
+export const tw = twImpl;
+export const parseTwSuffix = parseTwSuffixImpl;

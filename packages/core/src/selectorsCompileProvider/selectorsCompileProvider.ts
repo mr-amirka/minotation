@@ -510,7 +510,10 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       $$synonyms[prefix] || $$states[prefix]
         ? states.push(prefix)
         : media[prefix]
-          ? medias.push(prefix)
+          // Точка — «от точки», как в Tailwind (D-060); описание без точки — как есть.
+          ? medias.push(pointQuery(
+            media, prefix, '>=',
+          ) || prefix)
           : pushTailwindVariant(
             chain, childs, medias, marks, prefix, comboName,
           )
@@ -701,13 +704,23 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
 
   /** `min-md`/`max-md` — сравнение с точкой медиа (`width`, D-054). */
   function pushBreakpointCompare(medias: string[], prefix: string): boolean {
-    const media = (instance as any).media || {};
-    const entry = media[prefix.slice(4)];
-    if (!entry || entry.width === undefined) {
-      return false;
-    }
-    medias.push(registerQuery(media, '(width ' + (prefix[1] === 'i' ? '>=' : '<') + ' ' + entry.width + 'px)'));
-    return true;
+    const query = pointQuery(
+      (instance as any).media || {}, prefix.slice(4), prefix[1] === 'i' ? '>=' : '<',
+    );
+    return !!query && !!medias.push(query);
+  }
+
+  /**
+   * Запрос к точке медиа (`width`/`height`, D-054) в записи Tailwind: `md` → `(width >= 768px)`.
+   *
+   * @returns имя зарегистрированного запроса или `''`, если у описания нет точки
+   */
+  function pointQuery(
+    media: StrMap<any>, name: string, operator: string,
+  ): string {
+    const entry = media[name];
+    const side = !entry ? '' : entry.width !== undefined ? 'width' : entry.height !== undefined ? 'height' : '';
+    return side ? registerQuery(media, '(' + side + ' ' + operator + ' ' + entry[side] + 'px)') : '';
   }
 
   /** Часть произвольного варианта до `&` — предок: `.dark_&` → `.dark`, `.a>&` → `.a` и `>`. */

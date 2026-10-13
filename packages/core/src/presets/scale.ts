@@ -20,6 +20,15 @@ import {
 import type {
   OptionCheck,
 } from '../checkOptions';
+import {
+  foreign,
+} from './tw';
+import type {
+  MnTwWrapped,
+} from './tw';
+import {
+  REGEXP_FOREIGN_KEBAB,
+} from '../core/utils';
 
 /** Опции {@link defineScale}. */
 export interface MnScaleOptions {
@@ -79,6 +88,9 @@ const SCALE_SCHEMA = {
   negative: isBoolean,
   arbitrary: isBoolean,
 };
+
+/** Шаг-слово: такой класс, не найденный среди статики, — чужой. */
+const REGEXP_WORD = /^[a-z]/i;
 
 /** Числовой шаг: `4`, `2.5`. */
 const REGEXP_STEP = /^\d+(?:\.\d+)?$/;
@@ -162,10 +174,10 @@ export function defineScale(mn: MnInstance, options: MnScaleOptions): MnInstance
       name = key + side;
       properties = sides[side].map((part) => camel(options.properties[key] + (part ? '-' + part : '')));
       // Статика важнее хендлера; хендлер — для числовых шагов, `-[…]` и шага с `!important`.
-      mn(
-        name, scaleHandler(
+      register(
+        mn, name, scaleHandler(
           name, properties, separator, options,
-        ) as never, '', 1,
+        ),
       );
       for (word in keywords) { // eslint-disable-line
         mn(name + separator + word, {
@@ -181,6 +193,71 @@ export function defineScale(mn: MnInstance, options: MnScaleOptions): MnInstance
   return mn;
 }
 
+/** Хендлер шкалы: флаг `negative` — для ядра. */
+type ScaleHandler = ((p: MnEssenceParams) => { style: Record<string, string> }) & { negative?: number };
+
+/** Хендлер-диспетчер первой части имени (`min` для `min-w`, `min-h`), D-061. */
+type Dispatcher = MnTwWrapped & {
+  table: Record<string, ScaleHandler>;
+  fallback?: ScaleHandler;
+};
+
+/**
+ * Регистрирует хендлер шкалы. Имя с дефисом (`min-w`, `gap-x`) ядро не найдёт — хендлер
+ * ищется по первым буквам (D-061): под первой частью (`min`) — диспетчер, он выбирает
+ * самую длинную подходящую вторую часть. Простое имя при уже заведённом диспетчере —
+ * его запасной хендлер (`gap` рядом с `gap-x`).
+ */
+function register(
+  mn: MnInstance, name: string, handler: ScaleHandler,
+): void {
+  const at = name.indexOf('-');
+  const head = at < 0 ? name : name.slice(0, at);
+  // `handlerMap` у экземпляра есть всегда (ядро заводит его при создании).
+  const existing = (mn as unknown as { handlerMap: Record<string, Dispatcher> }).handlerMap[head];
+  let dispatcher = existing && existing.table ? existing : undefined;
+  if (at < 0 && !dispatcher) {
+    mn(
+      name, handler as never, '', 1,
+    );
+    return;
+  }
+  if (!dispatcher) {
+    dispatcher = dispatcherOf(existing as ScaleHandler | undefined);
+    mn(
+      head, dispatcher as never, '', 1,
+    );
+  }
+  at < 0 ? (dispatcher.fallback = handler) : (dispatcher.table[name.slice(at + 1)] = handler);
+  handler.negative && (dispatcher.negative = 1);
+}
+
+function dispatcherOf(fallback: ScaleHandler | undefined): Dispatcher {
+  const dispatcher = ((p: MnEssenceParams) => {
+    const suffix = p.suffix;
+    const table = dispatcher.table;
+    let best = '';
+    let tail: string;
+    for (tail in table) { // eslint-disable-line
+      tail.length > best.length && suffix.slice(1, tail.length + 1) === tail && suffix[0] === '-'
+        && (suffix.length === tail.length + 1 || suffix[tail.length + 1] === '-') && (best = tail);
+    }
+    const handler = best ? table[best] : dispatcher.fallback;
+    const rest = best ? suffix.slice(best.length + 1) : suffix;
+    // Запасной хендлер видит то же, что видел бы без диспетчера: kebab-остаток и чужой минус — чужой класс.
+    return handler && (!p.sign || handler.negative) && (best || !REGEXP_FOREIGN_KEBAB.test(rest))
+      ? handler({
+        ...p,
+        suffix: rest,
+      })
+      : foreign(p);
+  }) as Dispatcher;
+  dispatcher.table = {};
+  dispatcher.kebab = 1;
+  dispatcher.fallback = fallback;
+  return dispatcher;
+}
+
 function styleOf(properties: string[], value: string): Record<string, string> {
   const style: Record<string, string> = {};
   for (const property of properties) {
@@ -191,7 +268,7 @@ function styleOf(properties: string[], value: string): Record<string, string> {
 
 function scaleHandler(
   name: string, properties: string[], separator: string, options: MnScaleOptions,
-): ((p: MnEssenceParams) => { style: Record<string, string> }) & { negative?: number } {
+): ScaleHandler {
   const scale = options.scale;
   const steps = typeof scale === 'function' ? '' : Object.keys(scale).join(', ');
   const handler = (p: MnEssenceParams): { style: Record<string, string> } => {
@@ -201,6 +278,8 @@ function scaleHandler(
     suffix.slice(0, separator.length) === separator && step || fail(
       name, suffix, 'expects a step of the scale',
     );
+    // Слово вне слов и карты (`min-w-foo`) — чужой класс, молча; кривое число — предупреждение.
+    REGEXP_WORD.test(step) && foreign(p);
     if (options.arbitrary && step[0] === '[' && step[step.length - 1] === ']' && step.length > 2) {
       value = step.slice(1, -1).replace(REGEXP_ARBITRARY_SPACE, (match) => (match === '_' ? ' ' : '_'));
     } else if (typeof scale === 'function') {

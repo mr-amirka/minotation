@@ -99,6 +99,10 @@ describe('произвольные варианты и семейства', () =
     ['max-[600px]:cF00', '@media (width < 600px){.max-\\[600px\\]\\:cF00{color:#f00}}'],
     ['min-d:cF00', '@media (width >= 992px){.min-d\\:cF00{color:#f00}}'],
     ['max-m4:cF00', '@media (width < 480px){.max-m4\\:cF00{color:#f00}}'],
+    // Голая точка — «от точки», как в Tailwind (D-060).
+    ['d:cF00', '@media (width >= 992px){.d\\:cF00{color:#f00}}'],
+    ['d:max-d2:cF00', '@media (width >= 992px) and (width < 1200px){.d\\:max-d2\\:cF00{color:#f00}}'],
+    ['dark:cF00', '@media (prefers-color-scheme: dark){.dark\\:cF00{color:#f00}}'],
   ])('медиа: %s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
@@ -160,6 +164,20 @@ describe('пограничные случаи', () => {
     mn.getCompiler('class')('next-[.x]:cF00 parent-[.y]:cF00');
     mn.compile();
     expect(mn.styles$.getValue().map((s) => s.content).join(' ')).toBe('.a.x+.next-\\[\\.x\\]\\:cF00,.b.y>.parent-\\[\\.y\\]\\:cF00{color:#f00}');
+  });
+
+  test('точка по высоте', () => {
+    const mn = minotationProvider({
+      warningMode: 'silent',
+      notationMode: 'tailwind-compatible',
+    });
+    mn.setPresets([presetStandard]);
+    mn.media.tall = {
+      height: 800,
+    };
+    mn.getCompiler('class')('tall:cF00 max-tall:c0F0');
+    mn.compile();
+    expect(mn.styles$.getValue().map((s) => s.content)).toEqual(['@media (height >= 800px){.tall\\:cF00{color:#f00}}', '@media (height < 800px){.max-tall\\:c0F0{color:#0f0}}']);
   });
 
   test('max-{медиа без width} — неизвестный вариант', () => {

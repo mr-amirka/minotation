@@ -1351,6 +1351,7 @@ function minotationProvider(options?: MnOptions) {
     let suffix = '';
     let handle: (((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number;
       hint?: number;
+      kebab?: number;
       negative?: number }) | undefined;
     let params: MnEssenceParams;
     let essence: MnEssenceRaw | void | 0;
@@ -1393,7 +1394,8 @@ function minotationProvider(options?: MnOptions) {
         // kebab-суффикс и нужен (`text-center` → «в minotation это taC»).
         (handle = $$handlerMap[name])
           && (!sign || handle.negative)
-          && (!REGEXP_FOREIGN_KEBAB.test(suffix) || handle.hint)
+          // `hint` (D-024) и `kebab` (`tw()`, D-061) — хендлер сам разбирает kebab-остаток.
+          && (!REGEXP_FOREIGN_KEBAB.test(suffix) || handle.hint || handle.kebab)
           ? (
             params = {
               name: name,

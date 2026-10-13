@@ -169,12 +169,19 @@ function asPresetFunction(preset: MnPreset): (mn: MnInstance) => void {
   const setup = typeof preset === 'function' ? preset : preset.setup;
   return (mn) => {
     (mn as any)._presetMode = mode;
+    (mn as any)._presetName = presetLabel(preset);
     try {
       setup(mn);
     } finally {
       (mn as any)._presetMode = undefined;
+      (mn as any)._presetName = '';
     }
   };
+}
+
+/** Имя пресета для сообщений: имя объекта, имя функции или «безымянный пресет». */
+function presetLabel(preset: MnPreset): string {
+  return typeof preset === 'function' ? preset.name || 'an unnamed preset' : preset.name;
 }
 
 function fail(message: string): never {
@@ -196,8 +203,11 @@ function round(value: number): number {
  */
 type MnDomainFn = (p: MnEssenceParams, value: string) => MnEssenceResult | 0 | null | false | void;
 
-/** Запись домена: префикс остатка имени (`''`, `A`, `-w`, `-w-full`) и функция. */
-type MnDomainEntry = [string, MnDomainFn];
+/**
+ * Запись домена: префикс остатка имени (`''`, `A`, `-w`, `-w-full`), функция и пресет, который
+ * её зарегистрировал (`''` — вне пресета), — для `handlerConflictMode` (D-067).
+ */
+type MnDomainEntry = [string, MnDomainFn, string];
 
 /** Ключ домена — первые строчные буквы имени, остальное — префикс записи (D-063). */
 const REGEXP_DOMAIN = /^([a-z]*)(.*)$/;
@@ -215,7 +225,7 @@ function prefixMatches(rest: string, prefix: string): boolean {
 }
 
 type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded' | 'child-selector'
-  | 'unknown-media' | 'suspect-class';
+  | 'unknown-media' | 'suspect-class' | 'handler-conflict' | 'preset-conflict';
 
 /** Типы медиа CSS: известны без описания в `mn.media` (D-058). */
 const CSS_MEDIA_TYPES: Record<string, number> = {
@@ -259,7 +269,8 @@ function throwNoHandler(name: string, value: string): never {
 function isCompileWarning(warning: MnWarning): boolean {
   return warning.type !== 'raised-specificity' && warning.type !== 'important'
     && warning.type !== 'max-depth-exceeded' && warning.type !== 'child-selector'
-    && warning.type !== 'unknown-media' && warning.type !== 'suspect-class';
+    && warning.type !== 'unknown-media' && warning.type !== 'suspect-class'
+    && warning.type !== 'handler-conflict' && warning.type !== 'preset-conflict';
 }
 
 /**
@@ -290,6 +301,8 @@ function minotationProvider(options?: MnOptions) {
   let settings: MnOptions = options || {};
   /** Подключённые пресет-объекты по имени — для `requires` следующих вызовов (D-045). */
   const $$presetNames: Record<string, MnPresetObject> = {};
+  /** Конфликты имён под `handlerConflictMode: 'strict'` за один `setPresets` (D-067). */
+  let $$strictConflicts: string[] = [];
   function setPresets(presets: MnPreset[]): any {
     // Порядок по зависимостям и проверки — до выполнения хоть одного пресета.
     const ordered = orderPresets(presets, $$presetNames);
@@ -297,6 +310,8 @@ function minotationProvider(options?: MnOptions) {
     for (preset of ordered) {
       typeof preset === 'function' || ($$presetNames[preset.name] = preset);
     }
+    checkEcosystems();
+    $$strictConflicts = [];
     eachTry(
       ordered.map(asPresetFunction),
       [mn],
@@ -305,8 +320,36 @@ function minotationProvider(options?: MnOptions) {
       // угодно, а в `error$` должен уходить именно `Error`.
       (ex: unknown) => emitError(asError(ex)),
     );
+    // Конфликт имён под `'strict'` копится, пока пресеты выполняются (`eachTry` перехватил бы
+    // бросок), и бросается здесь — наружу, как неподключённый `requires` (D-067).
+    $$strictConflicts.length && fail($$strictConflicts.join('; '));
     return mn;
   }
+  /**
+   * Маркеры экосистем (D-067): два подключённых пресета, чьи списки `ecosystems` не пересекаются, —
+   * предупреждение `presetConflictMode`. Пресет без списка нейтрален.
+   */
+  function checkEcosystems(): void {
+    const marked = values($$presetNames).filter((preset) => preset.ecosystems);
+    const l = marked.length;
+    let i = 0;
+    let j: number;
+    let a: MnPresetObject;
+    let b: MnPresetObject;
+    for (; i < l; i++) {
+      for (j = i + 1; j < l; j++) {
+        a = marked[i];
+        b = marked[j];
+        (a.ecosystems as string[]).some((name) => (b.ecosystems as string[]).indexOf(name) > -1)
+          || raiseConfiguration(
+            'preset-conflict', a.name + ' (' + (a.ecosystems as string[]).join(', ') + ') and ' + b.name
+              + ' (' + (b.ecosystems as string[]).join(', ') + ') belong to different preset ecosystems',
+            'presetConflictMode',
+          );
+      }
+    }
+  }
+
   function styleRender(): void {
     emit(values($$stylesMap).sort(priotitySort));
   }
@@ -348,6 +391,8 @@ function minotationProvider(options?: MnOptions) {
       'child-selector': settings.childSelectorMode || 'warn',
       'unknown-media': settings.unknownMediaMode || 'warn',
       'suspect-class': settings.suspectClassMode || 'warn',
+      'handler-conflict': settings.handlerConflictMode || 'warn',
+      'preset-conflict': settings.presetConflictMode || 'warn',
     };
   }
   /**
@@ -591,8 +636,7 @@ function minotationProvider(options?: MnOptions) {
     }
     // Статика ищется через домен, как и хендлер (D-063); `box@sm` — переопределение медиа,
     // его находят по полному имени из `initEssence`, отдельной записи домена ему не нужно.
-    $$staticsEssences[essenceName] || essenceName.indexOf('@') > -1
-      || setDomainEntry(essenceName, staticEntry(essenceName));
+    essenceName.indexOf('@') > -1 || setDomainEntry(essenceName, staticEntry(essenceName));
     baseSetEssenseBase(
       essenceName, path, extendedEssence,
     );
@@ -1516,20 +1560,61 @@ function minotationProvider(options?: MnOptions) {
     const matchs = REGEXP_DOMAIN.exec(fullName) as RegExpExecArray;
     const entries = $$domains[matchs[1]] || ($$domains[matchs[1]] = []);
     const prefix = matchs[2];
+    const owner: string = (mn as any)._presetName || '';
     const l = entries.length;
     let i = 0;
+    let entry: MnDomainEntry;
     for (; i < l; i++) {
-      if (entries[i][0] === prefix) {
-        entries[i][1] = fn;
+      entry = entries[i];
+      if (entry[0] === prefix) {
+        // Одно имя от двух пресетов (D-067); вне пресета (код приложения) — не сравниваем.
+        owner && entry[2] && entry[2] !== owner && raiseConfiguration(
+          'handler-conflict', '"' + fullName + '" is registered by ' + entry[2] + ' and ' + owner
+            + ' — ' + owner + ' wins', 'handlerConflictMode',
+        );
+        entry[1] = fn;
+        entry[2] = owner;
         return;
       }
-      if (entries[i][0].length < prefix.length) {
+      if (entry[0].length < prefix.length) {
         break;
       }
     }
     entries.splice(
-      i, 0, [prefix, fn],
+      i, 0, [
+        prefix,
+        fn,
+        owner,
+      ],
     );
+  }
+
+  /**
+   * Предупреждение о настройке пресетов (D-067): при регистрации, а не при компиляции, — поэтому
+   * `'strict'` бросает сразу, как неподключённый `requires`.
+   */
+  function raiseConfiguration(
+    type: 'handler-conflict' | 'preset-conflict', message: string, option: string,
+  ): void {
+    const mode = $$raiseModes[type];
+    const warning: MnWarning = {
+      type: type,
+      token: '',
+      message: message + '. To hide this warning: ' + option + ': \'silent\'.',
+    };
+    if (mode === 'silent' || $$raisedTokens[type + ' ' + message]) {
+      return;
+    }
+    $$raisedTokens[type + ' ' + message] = 1;
+    if (mode === 'strict') {
+      type === 'preset-conflict' && fail(message + ' (' + option + ': \'strict\')');
+      $$strictConflicts.push(message + ' (' + option + ': \'strict\')');
+      return;
+    }
+    $$warnings = $$warnings.concat([warning]);
+    logWarning(warning);
+    $$onWarning(warning);
+    emitWarnings($$warnings);
   }
 
   function initEssence(

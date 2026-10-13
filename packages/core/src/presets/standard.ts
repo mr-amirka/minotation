@@ -1747,6 +1747,7 @@ function withSuspectCheck(instance: MnInstance): MnInstance {
 
 export default {
   name: 'presetStandard',
+  ecosystems: ['minotation'],
   setup: (instance: MnInstance) => {
     const mn = withSuspectCheck(instance);
     const {

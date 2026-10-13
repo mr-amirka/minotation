@@ -17,6 +17,7 @@ import type {
 const PRESET_SCHEMA: OptionSchema = {
   name: isString,
   requires: isStringArray,
+  ecosystems: isStringArray,
   notationMode: oneOf(
     'context-qualified', 'tailwind-compatible', 'breakpoint-prefixed', 'property-value',
   ),

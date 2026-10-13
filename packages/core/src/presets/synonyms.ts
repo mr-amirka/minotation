@@ -12,6 +12,7 @@ import type {
 
 export default {
   name: 'presetSynonyms',
+  ecosystems: ['minotation'],
   setup: (mn: MnInstance) => {
   // synonyms
     mn.synonyms({

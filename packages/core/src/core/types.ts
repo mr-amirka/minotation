@@ -277,7 +277,11 @@ export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'invalid-css-
   /** Имя медиа не описано в `mn.media` (D-058, `unknownMediaMode`). */
   | 'unknown-media'
   /** Хендлер распознал класс другой системы — `fw-bold` (D-065, D-066, `suspectClassMode`). */
-  | 'suspect-class';
+  | 'suspect-class'
+  /** Одно имя зарегистрировано двумя пресетами (D-067, `handlerConflictMode`). */
+  | 'handler-conflict'
+  /** Подключены пресеты несовместимых экосистем (D-067, `presetConflictMode`). */
+  | 'preset-conflict';
 
 /**
  * `'hint'` — класс, которого нет в нотации, но который похож на опечатку или на класс
@@ -348,6 +352,12 @@ export interface MnPresetObject {
    * `setup`, независимо от режима проекта. @default 'context-qualified'
    */
   notationMode?: MnNotationMode;
+  /**
+   * Экосистемы пресетов, с которыми этот пресет совместим (D-067): `['minotation']`,
+   * `['tailwind']`, `['minotation', 'tailwind']`. Два подключённых пресета без общей экосистемы —
+   * предупреждение `presetConflictMode`. Без поля пресет нейтрален. С `notationMode` не связано.
+   */
+  ecosystems?: string[];
   /** Регистрация хендлеров, статик, синонимов — как тело функции-пресета. */
   setup(mn: MnInstance): void;
 }
@@ -439,6 +449,19 @@ export interface MnOptions {
    * @default 'warn'
    */
   suspectClassMode?: MnRaiseMode;
+  /**
+   * Одно имя (домен и префикс) зарегистрировано двумя пресетами — побеждает последний (D-067).
+   * `'warn'` — предупреждение при подключении пресетов; `'silent'` — молча; `'strict'` — ошибка
+   * `setPresets`. Имена из кода приложения (`mn(…)` вне пресета) не сравниваются.
+   * @default 'warn'
+   */
+  handlerConflictMode?: MnRaiseMode;
+  /**
+   * Подключены пресеты, чьи списки `ecosystems` не пересекаются (D-067): `presetStandard`
+   * (`minotation`) и клон Tailwind (`tailwind`). Пресет без списка нейтрален. Режимы те же.
+   * @default 'warn'
+   */
+  presetConflictMode?: MnRaiseMode;
   /**
    * Режим синтаксиса классов разметки (D-045): `'context-qualified'` (по умолчанию) или
    * `'tailwind-compatible'` (Tailwind). Строки пресетов разбираются в режиме пресета.

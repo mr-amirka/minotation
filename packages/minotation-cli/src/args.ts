@@ -44,6 +44,10 @@ export interface CliArgs {
   unknownMediaMode?: 'warn' | 'silent' | 'strict';
   /** Класс другой CSS-системы (`fw-bold`): `warn`, `silent`, `strict` (D-065). */
   suspectClassMode?: 'warn' | 'silent' | 'strict';
+  /** Одно имя от двух пресетов: `warn`, `silent`, `strict` (D-067). */
+  handlerConflictMode?: 'warn' | 'silent' | 'strict';
+  /** Пресеты несовместимых экосистем: `warn`, `silent`, `strict` (D-067). */
+  presetConflictMode?: 'warn' | 'silent' | 'strict';
   /** Режим синтаксиса нотации: `context-qualified`, `tailwind-compatible` (D-045). */
   notationMode?: 'context-qualified' | 'tailwind-compatible' | 'breakpoint-prefixed' | 'property-value';
   /** Конфликт режимов синтаксиса между файлами: `warn`, `strict` (D-045). */
@@ -124,6 +128,8 @@ const OPTIONS: Record<string, keyof CliArgs> = {
   '--child-selector-mode': 'childSelectorMode',
   '--unknown-media-mode': 'unknownMediaMode',
   '--suspect-class-mode': 'suspectClassMode',
+  '--handler-conflict-mode': 'handlerConflictMode',
+  '--preset-conflict-mode': 'presetConflictMode',
   '--notation-mode': 'notationMode',
   '--notation-conflict-mode': 'notationConflictMode',
   '--include': 'include',
@@ -182,6 +188,10 @@ export function parseArgs(argv: string[]): CliArgs {
     || raise('Option "--unknown-media-mode" expects warn, silent or strict, got "' + args.unknownMediaMode + '"');
   args.suspectClassMode === undefined || RAISE_MODES[args.suspectClassMode]
     || raise('Option "--suspect-class-mode" expects warn, silent or strict, got "' + args.suspectClassMode + '"');
+  args.handlerConflictMode === undefined || RAISE_MODES[args.handlerConflictMode]
+    || raise('Option "--handler-conflict-mode" expects warn, silent or strict, got "' + args.handlerConflictMode + '"');
+  args.presetConflictMode === undefined || RAISE_MODES[args.presetConflictMode]
+    || raise('Option "--preset-conflict-mode" expects warn, silent or strict, got "' + args.presetConflictMode + '"');
   args.notationMode === undefined || NOTATION_MODES[args.notationMode]
     || raise('Option "--notation-mode" expects context-qualified, tailwind-compatible, breakpoint-prefixed or property-value, got "'
       + args.notationMode + '"');
@@ -245,6 +255,10 @@ Options:
       --suspect-class-mode <m>
                          classes of other CSS frameworks (fw-bold): warn (default),
                          silent, strict
+      --handler-conflict-mode <m>
+                         one name registered by two presets: warn (default), silent, strict
+      --preset-conflict-mode <m>
+                         presets of incompatible ecosystems: warn (default), silent, strict
       --context-where    wrap selector context in :where() (Tailwind v4 specificity)
       --notation-mode <m>
                          notation syntax: context-qualified (default, bg-blue-500:hover@md)

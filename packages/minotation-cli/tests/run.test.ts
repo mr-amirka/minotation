@@ -183,6 +183,16 @@ describe('mergeSettings', () => {
     expect(mergeSettings(parseArgs([]), {
       suspectClassMode: 'silent',
     }).suspectClassMode).toBe('silent');
+    expect(mergeSettings(parseArgs([
+      '--handler-conflict-mode',
+      'silent',
+      '--preset-conflict-mode',
+      'strict',
+    ]), {}))
+      .toMatchObject({
+        handlerConflictMode: 'silent',
+        presetConflictMode: 'strict',
+      });
     expect(mergeSettings(parseArgs([]), {
       notationMode: 'tailwind-compatible',
     }).notationMode).toBe('tailwind-compatible');

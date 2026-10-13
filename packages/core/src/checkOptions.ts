@@ -261,6 +261,12 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   suspectClassMode: oneOf(
     'warn', 'silent', 'strict',
   ),
+  handlerConflictMode: oneOf(
+    'warn', 'silent', 'strict',
+  ),
+  presetConflictMode: oneOf(
+    'warn', 'silent', 'strict',
+  ),
   notationMode: oneOf(
     'context-qualified', 'tailwind-compatible', 'breakpoint-prefixed', 'property-value',
   ),

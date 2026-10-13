@@ -78,6 +78,8 @@ for (const warning of collector.takeWarnings()) {
 | `childSelectorMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с дочерним селектором `>` (`cF00>1`) (D-041) |
 | `unknownMediaMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | неизвестное имя медиа (`p10@zz`) (D-058) |
 | `suspectClassMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | класс другой CSS-системы (`fw-bold`, `sr-only`) (D-065) |
+| `handlerConflictMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | одно имя от двух пресетов (D-067) |
+| `presetConflictMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | пресеты несовместимых экосистем (D-067) |
 | `notationMode` | `'context-qualified' \| 'tailwind-compatible' \| 'breakpoint-prefixed' \| 'property-value'` | `'context-qualified'` | режим синтаксиса классов разметки (D-045) |
 | `contextWhere` | `boolean` | `false` | контекст селектора в `:where()` — специфичность только у класса (D-049) |
 | `notationConflictMode` | `'warn' \| 'strict'` | `'warn'` | класс в файлах с разными режимами синтаксиса значит разное — предупреждение или ошибка (D-045) |
@@ -218,7 +220,7 @@ attrs: { class: 'class', className: 'class' }     // объект
 |-------|------------|
 | `safelist` | токены, нужные всегда, даже если в файлах не встретились; компилируются как классы |
 | `presets` | статические пресеты |
-| поля ядра | `selectorPrefix`, `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `suspectClassMode`, `notationMode`, `contextWhere`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
+| поля ядра | `selectorPrefix`, `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `suspectClassMode`, `handlerConflictMode`, `presetConflictMode`, `notationMode`, `contextWhere`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
 
 | Метод | Что делает |
 |-------|------------|

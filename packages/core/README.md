@@ -208,6 +208,36 @@ mn('min-w-full', { style: { minWidth: '100%' } }); // домен min: ['-w-full'
 
 Префикс, кончающийся дефисом (`text-`), подходит и перед буквой: `text-muted` → остаток `muted`.
 
+### Конфликты пресетов — `handlerConflictMode`, `presetConflictMode` (D-067)
+
+**Одно имя от двух пресетов.** Если одну и ту же запись (домен и префикс) регистрируют два
+пресета, побеждает последний, и при подключении выдаётся предупреждение `handler-conflict`:
+
+```ts
+mn.setPresets([presetHints, presetStandard, presetFlex]);
+// "flex" is registered by presetHints and presetFlex — presetFlex wins.
+//   To hide this warning: handlerConflictMode: 'silent'.
+```
+
+Имена из кода приложения (`mn(…)` вне пресета) не сравниваются. `'strict'` — ошибка `setPresets`.
+
+**Экосистемы.** Пресет может указать, с какими экосистемами пресетов он совместим, — поле
+`ecosystems`. Два подключённых пресета без общей экосистемы — предупреждение `preset-conflict`.
+Пресет без поля нейтрален; поле не связано с `notationMode`.
+
+```ts
+const presetTailwind = { name: 'presetTailwind', ecosystems: ['tailwind'], setup(mn) { … } };
+
+mn.setPresets([presetStandard, presetTailwind]);
+// presetStandard (minotation) and presetTailwind (tailwind) belong to different preset ecosystems.
+//   To hide this warning: presetConflictMode: 'silent'.
+
+mn.setPresets([presetMedias, presetTailwind]);   // presetMedias: ['minotation', 'tailwind'] — без предупреждения
+```
+
+Маркеры стандартных пресетов: `presetStandard`, `presetSynonyms` — `minotation`; `presetMedias` —
+`minotation`, `tailwind`; остальные нейтральны.
+
 ### Классы других CSS-систем — `suspectClassMode` (D-065, D-066)
 
 Хендлер вызывается всегда, когда для имени есть запись, и решает сам. Хендлеры `presetStandard`
@@ -311,6 +341,8 @@ const mn = minotationProvider({
   childSelectorMode: 'warn',       // 'warn' | 'silent' | 'strict' — токены cF00>1 (дочерний селектор)
   unknownMediaMode: 'warn',        // 'warn' | 'silent' | 'strict' — неизвестное имя медиа p10@zz
   suspectClassMode: 'warn',        // 'warn' | 'silent' | 'strict' — класс другой системы fw-bold
+  handlerConflictMode: 'warn',     // 'warn' | 'silent' | 'strict' — одно имя от двух пресетов
+  presetConflictMode: 'warn',      // 'warn' | 'silent' | 'strict' — пресеты несовместимых экосистем
   notationMode: 'context-qualified', // или 'tailwind-compatible' — запись как в Tailwind: md:hover:p10
   contextWhere: false,             // true — контекст в :where(): .p10…:is(:where(.card:hover) *)
 });

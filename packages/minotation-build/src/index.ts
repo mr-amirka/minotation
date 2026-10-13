@@ -162,6 +162,8 @@ export const CORE_OPTION_KEYS = [
   'childSelectorMode',
   'unknownMediaMode',
   'suspectClassMode',
+  'handlerConflictMode',
+  'presetConflictMode',
   'notationMode',
   'contextWhere',
   'onWarning',
@@ -176,6 +178,8 @@ const OWN_MODE_WARNINGS: Partial<Record<MnWarning['type'], 1>> = {
   'child-selector': 1,
   'unknown-media': 1,
   'suspect-class': 1,
+  'handler-conflict': 1,
+  'preset-conflict': 1,
 };
 
 /** Опции ядра в опциях плагина — на верхнем уровне, без вложенного `mn` (D-034). */

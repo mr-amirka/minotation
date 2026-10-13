@@ -104,14 +104,26 @@ describe('presetHints — подсказки', () => {
       },
     }));
     const {
-      css, warnings, 
+      css, warnings,
     } = run('flex', [
       presetHints,
       ...STANDARD,
       own,
     ]);
-    expect(warnings).toEqual([]);
+    // Одно имя от двух пресетов — handlerConflictMode (D-067); подсказки об этом классе нет.
+    expect(warnings.map((w) => w.type)).toEqual(['handler-conflict']);
+    expect(warnings[0].message).toBe('"flex" is registered by presetHints and own — own wins.'
+      + ' To hide this warning: handlerConflictMode: \'silent\'.');
     expect(hasOwnRule(css, 'flex')).toBe(true);
+    expect(run(
+      'flex', [
+        presetHints,
+        ...STANDARD,
+        own,
+      ], {
+        handlerConflictMode: 'silent',
+      },
+    ).warnings).toEqual([]);
   });
 
   test('kebab-суффикс у обычного хендлера: хендлер вызывается и сообщает сам (D-065)', () => {

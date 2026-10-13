@@ -39,6 +39,7 @@ import {
   SCOPE_END,
   SCOPE_START,
   MN_ESSENCE_PAIR,
+  MN_RAW_PROPERTY,
   REGEXP_BREAKPOINT_PREFIX,
   splitChild,
   splitParent,
@@ -195,6 +196,12 @@ function escapeClass(name: string): string {
   return escapeCss(name).replace(REGEXP_UNESCAPED_CLASS_CHARS, '\\$&');
 }
 const REGEXP_UNESCAPED_CLASS_CHARS = /[{}&]/g;
+
+/** `_` — пробел в произвольном значении Tailwind, `\\_` — само подчёркивание. */
+const REGEXP_ARBITRARY_SPACE = /\\_|_/g;
+
+/** Хвост произвольного варианта после `&` уходит к потомку: `>` или пробел вне скобок. */
+const REGEXP_ARBITRARY_CHILD = /^[^(]*[> ]/;
 
 /** Символ имени свойства Master CSS. */
 const REGEXP_PROPERTY_CHAR = /[A-Za-z0-9-]/;
@@ -474,7 +481,8 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    */
   function parseVariantPrefixed(comboName: string,
     targetName: string): Array<[StrMap<number>, AltMap]> {
-    const prefixes = splitState(comboName);
+    // `:` внутри `[…]`/`(…)` — часть произвольного значения или варианта (D-055).
+    const prefixes = splitTopLevelColon(comboName);
     const l = prefixes.length - 1;
     const states: string[] = [''];
     const medias: string[] = [];
@@ -484,6 +492,8 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       undefined,
       undefined,
     ]];
+    const childs: Array<[string, MnChain]> = [];
+    const marks: string[] = [];
     const media: StrMap<unknown> = (instance as any).media || {};
     const essences: StrMap<number> = {};
     let utility = prefixes[l];
@@ -495,24 +505,186 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
         ? states.push(prefix)
         : media[prefix]
           ? medias.push(prefix)
-          : pushVariantParent(
-            chain, prefix, media,
-          ) || throwUnknownVariant(comboName, prefix);
+          : pushTailwindVariant(
+            chain, childs, medias, marks, prefix, comboName,
+          )
+            || pushVariantParent(
+              chain, prefix, media,
+            ) || throwUnknownVariant(comboName, prefix);
     }
     states.length > 1 && (chain[0][2] = [[states, undefined]]);
     medias.length && (chain[0][3] = medias.join('&'));
-    if (utility[0] === '!') {
-      utility = utility.slice(1);
-      if ((instance as any)._raisedToken?.(
-        comboName, 'important', importantMessage,
-      )) {
-        return [];
-      }
-      essences[unslash(utility) + '-i'] = 1;
-    } else {
-      essences[unslash(utility)] = 1;
+    // Стили дочерних элементов (`*:`, `[&>li]:`) — childSelectorMode, как в других режимах (D-041).
+    if (marks.length && (instance as any)._raisedToken?.(
+      comboName, 'child-selector',
+      (strict: boolean) => childSelectorMessage(marks.join(', '), strict),
+    )) {
+      return [];
     }
-    return [[essences, buildContext([chain, []], targetName)]];
+    // `!` — в начале (v3) или в конце (v4).
+    const important = utility[0] === '!' || utility[utility.length - 1] === '!';
+    important && (utility = utility[0] === '!' ? utility.slice(1) : utility.slice(0, -1));
+    if (important && (instance as any)._raisedToken?.(
+      comboName, 'important', importantMessage,
+    )) {
+      return [];
+    }
+    essences[tailwindEssence(utility) + (important ? '-i' : '')] = 1;
+    return [[essences, buildContext([chain, childs], targetName)]];
+  }
+
+  /**
+   * Эссенция утилиты Tailwind: произвольное свойство `[свойство:значение]` — сырая
+   * декларация (D-055, только в этом режиме), иначе утилита как есть — хендлер получает
+   * суффикс целиком (`w-[37px]` → `-[37px]`).
+   */
+  function tailwindEssence(utility: string): string {
+    return utility[0] === '[' && utility[utility.length - 1] === ']' && utility.indexOf(':') > 0
+      ? MN_RAW_PROPERTY + arbitrary(utility.slice(1, -1))
+      : unslash(utility);
+  }
+
+  /**
+   * Варианты Tailwind с аргументом и семейства (D-049, таблица вариантов Tailwind):
+   * `[&…]`, `group-[…]`, `peer-[…]`, `data-*`, `aria-*`, `min-*`/`max-*`, `has-[…]`, `not-[…]`,
+   * `nth-[…]`, `nth-last-[…]`, `in-[…]`, `*`, `**`. At-правила (`supports-[…]`, `[@…]`) —
+   * предупреждение: в выводе ядра есть только `@media`.
+   *
+   * @returns распознан ли вариант
+   */
+  function pushTailwindVariant(
+    chain: MnChain, childs: Array<[string, MnChain]>, medias: string[], marks: string[], prefix: string,
+    comboName: string,
+  ): boolean {
+    const self = chain[0];
+    const bracket = prefix.indexOf('-[');
+    const name = bracket > 0 && prefix[prefix.length - 1] === ']' ? prefix.slice(0, bracket) : '';
+    const value = name ? arbitrary(prefix.slice(bracket + 2, -1)) : '';
+    let relation: string | undefined;
+    let at: number;
+    if (prefix === '*' || prefix === '**') {
+      childs.push([prefix === '*' ? '>' : ' ', [[
+        '',
+        '*',
+        undefined,
+        undefined,
+      ]]]);
+      marks.push(prefix);
+      return true;
+    }
+    if (prefix[0] === '[' && prefix[prefix.length - 1] === ']') {
+      const selector = arbitrary(prefix.slice(1, -1));
+      selector[0] === '@' && throwUnknownVariant(
+        comboName, prefix, 'only @media at-rules exist in the output',
+      );
+      at = selector.indexOf('&');
+      at < 0 && throwUnknownVariant(
+        comboName, prefix, 'an arbitrary variant needs "&" for the element',
+      );
+      self[1] += selector.slice(at + 1);
+      REGEXP_ARBITRARY_CHILD.test(selector.slice(at + 1)) && marks.push(prefix);
+      at && pushArbitraryParent(chain, selector.slice(0, at));
+      return true;
+    }
+    if (name === 'supports') {
+      return throwUnknownVariant(
+        comboName, prefix, 'only @media at-rules exist in the output',
+      );
+    }
+    if (name === 'data' || name === 'aria') {
+      self[1] += '[' + name + '-' + value + ']';
+      return true;
+    }
+    if (prefix.slice(0, 5) === 'data-' || prefix.slice(0, 5) === 'aria-') {
+      self[1] += '[' + prefix + (prefix[0] === 'a' ? '="true"' : '') + ']';
+      return true;
+    }
+    if (name === 'has' || name === 'not') {
+      self[1] += ':' + name + '(' + value + ')';
+      return true;
+    }
+    if (name === 'nth' || name === 'nth-last') {
+      self[1] += ':' + name + '-child(' + value + ')';
+      return true;
+    }
+    if (name === 'in') {
+      chain.push([
+        ' ',
+        ':where(' + value + ')',
+        undefined,
+        undefined,
+      ]);
+      return true;
+    }
+    if (name === 'min' || name === 'max') {
+      medias.push(registerQuery((instance as any).media || {}, '(width ' + (name === 'min' ? '>=' : '<') + ' '
+        + value + ')'));
+      return true;
+    }
+    if (name && (relation = ((instance as any)._variantPrefixedSynonyms || {})[name])) {
+      // `group-[.is-published]` — метка с произвольным условием.
+      chain.push(labelSegment(
+        relation, value, undefined, undefined,
+      ));
+      return true;
+    }
+    if (prefix.slice(0, 4) === 'min-' || prefix.slice(0, 4) === 'max-') {
+      return pushBreakpointCompare(medias, prefix);
+    }
+    return false;
+  }
+
+  /** `min-md`/`max-md` — сравнение с точкой медиа (`width`, D-054). */
+  function pushBreakpointCompare(medias: string[], prefix: string): boolean {
+    const media = (instance as any).media || {};
+    const entry = media[prefix.slice(4)];
+    if (!entry || entry.width === undefined) {
+      return false;
+    }
+    medias.push(registerQuery(media, '(width ' + (prefix[1] === 'i' ? '>=' : '<') + ' ' + entry.width + 'px)'));
+    return true;
+  }
+
+  /** Часть произвольного варианта до `&` — предок: `.dark_&` → `.dark`, `.a>&` → `.a` и `>`. */
+  function pushArbitraryParent(chain: MnChain, before: string): void {
+    const last = before[before.length - 1];
+    const combinator = last === '>' || last === '+' || last === '~' ? last : ' ';
+    chain.push([
+      combinator,
+      before.slice(0, combinator === ' ' ? before.length : -1).trim(),
+      undefined,
+      undefined,
+    ]);
+  }
+
+  /** Произвольное значение Tailwind: `_` — пробел, `\_` — подчёркивание. */
+  function arbitrary(value: string): string {
+    return value.replace(REGEXP_ARBITRARY_SPACE, (match) => (match === '_' ? ' ' : '_'));
+  }
+
+  /** `:` вне `[…]`/`(…)` и не экранированный — разделитель приставок. */
+  function splitTopLevelColon(source: string): string[] {
+    const out: string[] = [];
+    const l = source.length;
+    let depth = 0;
+    let from = 0;
+    let i = 0;
+    let ch: string;
+    for (; i < l; i++) {
+      ch = source[i];
+      if (ch === '\\') {
+        i++;
+      } else if (ch === '[' || ch === '(') {
+        depth++;
+      } else if (ch === ']' || ch === ')') {
+        depth--;
+      } else if (ch === ':' && !depth) {
+        out.push(source.slice(from, i));
+        from = i + 1;
+      }
+    }
+    out.push(source.slice(from));
+    return out;
   }
 
   /**
@@ -535,26 +707,37 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     let i = base.lastIndexOf('-');
     let rest: string;
     let relation: string | undefined;
-    let last: string;
     let isState: unknown;
     while (i > 0) {
       relation = relations[base.slice(0, i)];
       rest = base.slice(i + 1);
       isState = $$synonyms[rest] || $$states[rest];
       if (relation && (isState || media[rest])) {
-        last = relation[relation.length - 1];
-        last = last === '~' || last === '+' || last === '>' ? last : '';
-        chain.push([
-          last || ' ',
-          (last ? relation.slice(0, -1) : relation) + label,
-          isState ? [[['', rest], undefined]] : undefined,
-          isState ? undefined : rest,
-        ]);
+        chain.push(labelSegment(
+          relation, label, isState ? [[['', rest], undefined]] : undefined, isState ? undefined : rest,
+        ));
         return true;
       }
       i = base.lastIndexOf('-', i - 1);
     }
     return false;
+  }
+
+  /**
+   * Сегмент метки из `mn.variantPrefixedSynonyms`: комбинатор в конце селектора метки
+   * (`.peer~`) — отношение к элементу, без него — предок.
+   */
+  function labelSegment(
+    relation: string, tail: string, states: MnStateNode[] | undefined, mediaName: string | undefined,
+  ): MnSegment {
+    const last = relation[relation.length - 1];
+    const combinator = last === '~' || last === '+' || last === '>' ? last : '';
+    return [
+      combinator || ' ',
+      (combinator ? relation.slice(0, -1) : relation) + tail,
+      states,
+      mediaName,
+    ];
   }
 
   /**
@@ -866,16 +1049,19 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     });
   }
 
-  function throwUnknownVariant(comboName: string, prefix: string): never {
-    throw new MnParseError('Variant "' + prefix + ':" is unknown — it is neither a synonym nor a media'
-      + ' name, and "{label}-{synonym|media}" does not match a label registered with'
-      + ' mn.variantPrefixedSynonyms. The class gives no CSS.', {
+  function throwUnknownVariant(
+    comboName: string, prefix: string, reason?: string,
+  ): never {
+    throw new MnParseError('Variant "' + prefix + ':" ' + (reason ? 'is not supported: ' + reason
+      : 'is unknown — it is neither a synonym nor a media name, and "{label}-{synonym|media}" does'
+        + ' not match a label registered with mn.variantPrefixedSynonyms') + '. The class gives no CSS.', {
       token: comboName,
       handler: '',
       arg: prefix,
       utility: 'tailwind-compatible',
     });
   }
+
 
   /**
    * Фаза разбора `'context-qualified'` (D-047): строка контекста (`:h@md<.group>1`) →

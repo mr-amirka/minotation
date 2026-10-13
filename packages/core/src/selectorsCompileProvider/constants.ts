@@ -100,4 +100,9 @@ export const REGEXP_BREAKPOINT_PREFIX = /^([A-Z][A-Z0-9]*)_(.+)$/;
  * задаёт имя явно (`bg` + `blue-70` у Master CSS), ядро не ищет его регуляркой.
  */
 export const MN_ESSENCE_PAIR = '\u0001';
+/**
+ * Метка эссенции «произвольное свойство» Tailwind `[свойство:значение]` (D-055): сырая
+ * декларация без хендлера — только из режима `'tailwind-compatible'`.
+ */
+export const MN_RAW_PROPERTY = '\u0002';
 

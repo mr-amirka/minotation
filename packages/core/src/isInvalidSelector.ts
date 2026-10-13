@@ -1,7 +1,7 @@
 /**
  * Проверка валидности CSS-селектора класса.
  *
- * Удаляет закавыченные строки и CSS-экранирования (`\` + символ),
+ * Заменяет закавыченные строки и CSS-экранирования (`\` + символ) буквой,
  * затем проверяет, что после ведущей `.` нет недопустимых символов.
  *
  * Проверяются символы **сразу после точки** (`.X`):
@@ -53,7 +53,9 @@ const REGEXP_BARE_COMMA = /,/;
 const REGEXP_IN_PARENS = /\([^()]*\)/;
 
 export function isInvalidSelector(selector: string): boolean {
-  const bare = selector.replace(REGEXP_IN_QUOTES_AND_ESCAPED, '');
+  // Замена буквой, а не пустой строкой: иначе `.\[1bad` превращается в `.1bad` и
+  // экранированный первый символ выдаётся за цифру сразу после точки.
+  const bare = selector.replace(REGEXP_IN_QUOTES_AND_ESCAPED, 'a');
   if (REGEXP_INVALID.test(bare)) {
     return true;
   }

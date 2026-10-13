@@ -111,7 +111,20 @@ mn.variantPrefixedSynonyms({ group: '.group', peer: '.peer~' });  // метки:
 | `group-hover:cF00` | `.group:hover .group-hover\:cF00{…}` — `{метка}-{синоним\|медиа}`: метка из `variantPrefixedSynonyms` |
 | `group-hover/item:cF00` | `.group\/item:hover .group-hover\/item\:cF00{…}` — именованная метка (класс `group/item`) |
 | `peer-invalid:cF00` | `.peer:invalid~.peer-invalid\:cF00{…}` — сосед через `variantPrefixedSynonyms` |
-| `!p10` | `.\!p10{padding:10px!important}` |
+| `!p10` / `p10!` | `!important` — в начале (Tailwind v3) или в конце (v4) |
+| `[mask-type:luminance]` | `{mask-type:luminance}` — произвольное свойство, сырая декларация без хендлера, только в этом режиме (D-055); `_` — пробел, `\_` — подчёркивание |
+| `w-[37px]` | хендлер `w` получает суффикс `-[37px]` целиком — разбирать его дело пресета-клона |
+| `[&>li]:cF00` / `[.dark_&]:cF00` | `…>li{…}` / `.dark .…{…}` — произвольный вариант: `&` — сам элемент |
+| `data-[state=open]:` / `data-active:` | `[data-state=open]` / `[data-active]` |
+| `aria-[sort=ascending]:` / `aria-checked:` | `[aria-sort=ascending]` / `[aria-checked="true"]` |
+| `has-[img]:` / `not-[.x]:` / `nth-[3n+1]:` / `nth-last-[2]:` | `:has(img)` / `:not(.x)` / `:nth-child(3n+1)` / `:nth-last-child(2)` |
+| `in-[.card]:` / `group-[.open]:` / `peer-[.open]:` | `:where(.card) …` / `.group.open …` / `.peer.open~…` |
+| `min-[600px]:` / `max-[600px]:` | `@media (width >= 600px)` / `(width < 600px)` |
+| `min-d:` / `max-m4:` | сравнение с шириной точки медиа (`width`, D-054) |
+| `*:` / `**:` | дети `>*` / потомки ` *` |
+
+`supports-[…]:` и `[@…]:` — предупреждение: в выводе ядра из at-правил есть только `@media`.
+Стили детей (`*:`, `**:`, `[&>li]:`, `[&_li]:`) проходят через `childSelectorMode`, как в других режимах.
 
 `'breakpoint-prefixed'` — брейкпоинт перед классом, как в quantum-css: `SM_px15` →
 `@media sm {.SM_px15{…}}`. Брейкпоинт — заглавными с `_`, ищется в `mn.media` как записан,

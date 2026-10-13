@@ -22,6 +22,7 @@
 
 import {
   MN_ESSENCE_PAIR,
+  MN_RAW_PROPERTY,
 } from '../selectorsCompileProvider/constants';
 import {
   checkOptions, CORE_OPTIONS_SCHEMA, describeValue, isObject as isObjectOption,
@@ -187,6 +188,17 @@ function round(value: number): number {
 
 /** Случаи со своим режимом `'warn' | 'silent' | 'strict'` (D-039). */
 type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded' | 'child-selector';
+
+/** Имя свойства произвольной декларации: CSS-идентификатор или переменная. */
+const REGEXP_RAW_PROPERTY = /^-{0,2}[a-zA-Z_][\w-]*$/;
+
+function throwRawProperty(body: string): never {
+  throw new MnParseError('Arbitrary property "[' + body + ']" expects "[property:value]"', {
+    token: '[' + body + ']',
+    handler: '',
+    arg: body,
+  });
+}
 
 function throwNoHandler(name: string, value: string): never {
   throw new MnParseError('Property "' + name + '" has no handler: the class gives no CSS', {
@@ -1268,6 +1280,23 @@ function minotationProvider(options?: MnOptions) {
     });
   }
 
+  /**
+   * Сырая декларация `свойство:значение` (D-055): без хендлера, `!important` — суффиксом `-i`.
+   * Свойство — как написано (`--brand` тоже); пустое значение — брак.
+   */
+  function __rawProperty(value: string): ReturnType<typeof __normalize> {
+    const important = value.slice(-2) === '-i';
+    const body = important ? value.slice(0, -2) : value;
+    const at = body.indexOf(':');
+    const property = body.slice(0, at).trim();
+    const style: Record<string, string> = {};
+    REGEXP_RAW_PROPERTY.test(property) && body.slice(at + 1).trim() || throwRawProperty(body);
+    style[property] = body.slice(at + 1).trim() + (important ? '!important' : '');
+    return __normalize({
+      style,
+    });
+  }
+
   function __initEssence(value: string): MnEssenceResult | 0 | null | false | void {
     let matchs: RegExpExecArray | null;
     // Пустая строка, а не `undefined`: обе читаются в `catch`, куда можно
@@ -1290,6 +1319,10 @@ function minotationProvider(options?: MnOptions) {
         return __normalize({
           style: varStyle,
         });
+      }
+      // Произвольное свойство Tailwind `[mask-type:luminance]` (D-055) — сырая декларация.
+      if (value[0] === MN_RAW_PROPERTY) {
+        return __rawProperty(value.slice(1));
       }
       // Эссенция-пара «имя\u0001значение» от разборщика режима (D-045 этап 5): имя задано
       // явно, регулярка имени не нужна — `bg:blue-70` у Master CSS даёт `bg` + `blue-70`.

@@ -239,12 +239,10 @@ function typoHandler(name: string): (p: MnEssenceParams) => void {
   return (p) => hint(['typos'], '"' + name + p.suffix + '" gives no CSS — did you mean "' + tag + p.suffix + '"?');
 }
 
-/** Регистрирует ловушку: `skip` — без разбора значения, `hint` — получает и kebab-суффикс. */
+/** Регистрирует ловушку: `skip` — без разбора значения; kebab-суффикс ядро отдаёт любому хендлеру (D-062). */
 function register(
   mn: MnInstance, name: string, handler: (p: MnEssenceParams) => void,
 ): void {
-  (handler as { hint?: number }).hint = 1;
-  // Пустой паттерн — хендлер регистрируется как есть, без обёртки: флаг `hint` сохраняется.
   mn(
     name, handler as never, '', 1,
   );

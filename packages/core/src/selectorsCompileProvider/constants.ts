@@ -106,3 +106,9 @@ export const MN_ESSENCE_PAIR = '\u0001';
  */
 export const MN_RAW_PROPERTY = '\u0002';
 
+/**
+ * Метка ведущего минуса Tailwind (`-mt-4`, D-064): разборщик `'tailwind-compatible'` снимает `-` и
+ * ставит метку, ядро передаёт хендлеру `p.sign = '-'`. Своя эссенция, отдельная от `mt-4`.
+ */
+export const MN_NEGATIVE = '\u0003';
+

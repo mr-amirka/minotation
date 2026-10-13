@@ -77,10 +77,11 @@ for (const warning of collector.takeWarnings()) {
 | `importantMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с `!important` (`f10-i`) (D-039) |
 | `childSelectorMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с дочерним селектором `>` (`cF00>1`) (D-041) |
 | `unknownMediaMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | неизвестное имя медиа (`p10@zz`) (D-058) |
+| `suspectClassMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | класс другой CSS-системы (`fw-bold`, `sr-only`) (D-065) |
 | `notationMode` | `'context-qualified' \| 'tailwind-compatible' \| 'breakpoint-prefixed' \| 'property-value'` | `'context-qualified'` | режим синтаксиса классов разметки (D-045) |
 | `contextWhere` | `boolean` | `false` | контекст селектора в `:where()` — специфичность только у класса (D-049) |
 | `notationConflictMode` | `'warn' \| 'strict'` | `'warn'` | класс в файлах с разными режимами синтаксиса значит разное — предупреждение или ошибка (D-045) |
-| `warningMode` | `'log' \| 'silent' \| 'error'` | `'log'` | что делать с предупреждением компиляции: в лог сборки, молчать, уронить сборку (D-035); `maxDepthMode`, `specificityMode`, `importantMode`, `unknownMediaMode`, `childSelectorMode` не затрагивает (D-039, D-041) |
+| `warningMode` | `'log' \| 'silent' \| 'error'` | `'log'` | что делать с предупреждением компиляции: в лог сборки, молчать, уронить сборку (D-035); `maxDepthMode`, `specificityMode`, `importantMode`, `unknownMediaMode`, `suspectClassMode`, `childSelectorMode` не затрагивает (D-039, D-041) |
 | `onWarning` | `(warning) => void` | — | колбэк на каждое предупреждение — дополнительно к `warningMode` |
 | `onError` | `(e) => void` | — | обработчик ошибок ядра |
 | `onScannerWarning` | `(message) => void` | `console.warn` | колбэк сканера: `syntax: true`, а `typescript` нет |
@@ -217,7 +218,7 @@ attrs: { class: 'class', className: 'class' }     // объект
 |-------|------------|
 | `safelist` | токены, нужные всегда, даже если в файлах не встретились; компилируются как классы |
 | `presets` | статические пресеты |
-| поля ядра | `selectorPrefix`, `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `notationMode`, `contextWhere`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
+| поля ядра | `selectorPrefix`, `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `suspectClassMode`, `notationMode`, `contextWhere`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
 
 | Метод | Что делает |
 |-------|------------|

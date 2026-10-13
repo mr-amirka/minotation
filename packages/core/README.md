@@ -186,6 +186,43 @@ mn.setPresets([presetApp]);
 `presetMain` — `presetStandard` и `presetMedias`. `presetHints({ … })` возвращает объект
 с именем `presetHints`.
 
+### Как ядро находит хендлер: домены (D-063)
+
+Имя записи (хендлера или статики) делится на **домен** — первые строчные буквы — и **префикс** —
+остаток: `min-w` → домен `min`, префикс `-w`; `mA` → `m` + `A`; `p` → `p` + `''`. Записи домена
+хранятся списком `[префикс, функция]`, самый длинный префикс первым; статика — тоже функция.
+
+```ts
+mn('min-w', minWHandler);                          // домен min: ['-w', minWHandler]
+mn('min-w-full', { style: { minWidth: '100%' } }); // домен min: ['-w-full', статика]
+```
+
+| Класс | Что происходит |
+|---|---|
+| `min-w-full` | префикс `-w-full`, хвоста нет → статика |
+| `min-w-4` | префикс `-w` → `minWHandler` с `-4` |
+| `min-w-hm` | префикс `-w` → `minWHandler` с `-hm`; не разобрал — предупреждение «нужно значение» |
+| `min-w-fullx` | у статики `-w-full` есть хвост → уступает более короткому префиксу `-w` |
+| `min-wide` | префикс на букве не режет слово: `-w` не подходит, записи `''` нет — класс не токен, молча |
+| `btn-primary` | домена `btn` нет — класс не токен, молча |
+
+Префикс, кончающийся дефисом (`text-`), подходит и перед буквой: `text-muted` → остаток `muted`.
+
+### Классы других CSS-систем — `suspectClassMode` (D-065, D-066)
+
+Хендлер вызывается всегда, когда для имени есть запись, и решает сам. Хендлеры `presetStandard`
+распознают значение вида `-слово` — так пишут классы Bootstrap и Tailwind, в записи minotation
+таких значений нет — и сообщают об этом отчётом `suspect-class`:
+
+| Класс | Отчёт |
+|---|---|
+| `fw-bold` (Bootstrap) | `suspect-class`: `"-bold" is not a value of "fw" — this looks like a class of another CSS framework` |
+| `sr-only`, `z-n1`, `mt-auto` | то же |
+| `w10zz` | `parse-error`: настоящая ошибка в токене, как раньше |
+
+`suspectClassMode: 'warn'` (по умолчанию) — предупреждение, CSS нет, `warningMode: 'error'` сборку
+из-за таких классов не роняет; `'silent'` — молча; `'strict'` — брак сборки.
+
 ### Шкала для пресетов-клонов — `defineScale` (D-059)
 
 Одним вызовом — хендлеры на все сочетания «свойство × сторона» и статики на слова. Для
@@ -196,11 +233,11 @@ import { defineScale } from 'minotation';
 
 const presetTailwindSpacing = (mn) => {
   defineScale(mn, {
-    properties: { m: 'margin' },
+    properties: { m: 'margin', 'min-w': 'min-width' },
     sides: { '': [''], t: ['top'], x: ['left', 'right'] /* … */ },
     scale: (step) => step * 0.25 + 'rem',  // или карта { 0: '0', 1: '.25rem', … }
     keywords: { auto: 'auto', px: '1px' },
-    negative: true,                         // -mt-4
+    negative: true,                         // -mt-4 в записи Tailwind
     arbitrary: true,                        // mt-[37px]
   });
   defineScale(mn, { properties: { p: 'padding' }, /* … без negative */ });
@@ -211,33 +248,34 @@ const presetTailwindSpacing = (mn) => {
 |---|---|
 | `mt-4` / `mx-2.5` | `margin-top:1rem` / `margin-left:0.625rem;margin-right:0.625rem` |
 | `mx-auto` / `mt-px` | слова — статикой |
-| `-mt-4` / `-mt-[var(--g)]` | `margin-top:-1rem` / `calc(var(--g) * -1)` — ведущий `-`, только при `negative: true` |
+| `-mt-4` / `-mt-px` / `-mt-[var(--g)]` | `margin-top:-1rem` / `-1px` / `calc(var(--g) * -1)` — в режиме `'tailwind-compatible'` при `negative: true` |
+| `-p-4` без `negative` | CSS нет, молча — как в Tailwind |
 | `mt-[37px]` | `margin-top:37px` — в режиме `'tailwind-compatible'` (в записи minotation `[…]` — атрибут) |
 | `pt-7` при карте `0…5` | предупреждение: `step "7" is not in the scale (0, 1, 2, 3, 4, 5)` |
 
-Имена с дефисом (`'min-w'`, `'gap-x'`, `'translate-x'`) тоже можно: ядро находит хендлер по
-первым буквам (`min`), поэтому `defineScale` ставит под первой частью диспетчер, и он выбирает
-вторую часть (D-061).
+Имена с дефисом (`'min-w'`, `'gap-x'`, `'translate-x'`) ядро находит само — это домен и префикс.
+`separator: ''` — запись без дефиса (`p2`, Basscss). Шаги карты регистрируются статикой, как и
+слова. Опции проверяются: неизвестный ключ — ошибка с подсказкой.
 
-`separator: ''` — запись без дефиса (`p2`, Basscss). Шаги карты регистрируются статикой, как
-и слова: буквенный шаг (`md`) иначе был бы принят за чужой kebab-класс. Ведущий `-` ядро
-передаёт только хендлеру с флагом `negative`: у остальных `-p10` — чужой класс, как раньше.
-Опции проверяются: неизвестный ключ — ошибка с подсказкой.
+### Отрицательные значения в записи Tailwind (D-064)
 
-### Хендлеры для имён Tailwind из нескольких частей — `tw()` (D-061)
+В режиме `'tailwind-compatible'` ведущий `-` (`-mt-4`) разборщик снимает, а хендлер получает
+`p.sign = '-'` и решает сам: принял — отрицательный CSS, ничего не вернул — CSS нет, молча.
+Флагов у хендлера нет. В записи minotation `-mt-4` — не токен (минус там пишется в значении:
+`mt-10` → `margin-top:-10px`).
 
-Хендлер находится по первым буквам класса (`gap-x-2` → `gap`); остаток разбирает декоратор
-`tw()` и отдаёт хендлеру готовую структуру. Хендлер ничего не вернул — класс чужой, без
-предупреждения, как в Tailwind.
+### Разбор остатка в записи Tailwind — `tw()` (D-061)
+
+Обёртка без флагов: собирает остаток класса после имени и отдаёт хендлеру готовую структуру.
 
 ```ts
 import { tw } from 'minotation';
 
-mn('gap', tw(({ parts, arbitrary }) => {
+mn('gap', tw(({ parts, arbitrary, negative }) => {
   const property = parts[0] === 'x' ? 'columnGap' : parts[0] === 'y' ? 'rowGap' : 'gap';
   const step = property === 'gap' ? parts[0] : parts[1];
   const value = arbitrary || (step && step * 0.25 + 'rem');
-  return value ? { style: { [property]: value } } : undefined;
+  return value && !negative ? { style: { [property]: value } } : undefined;
 }), '', 1);
 ```
 
@@ -249,7 +287,7 @@ mn('gap', tw(({ parts, arbitrary }) => {
 | `w-[37px]` / `m-[1px_2px]` | `{ arbitrary: '37px' }` / `'1px 2px'` |
 | `text-[length:1rem]` | `{ type: 'length', arbitrary: '1rem' }` |
 | `fill-(--brand)` | `{ arbitrary: 'var(--brand)' }` |
-| `-translate-x-2` | `{ parts: ['x', '2'], negative: true }` — при `tw(handler, { negative: true })` |
+| `-translate-x-2` | `{ parts: ['x', '2'], negative: true }` |
 
 ## API
 
@@ -272,6 +310,7 @@ const mn = minotationProvider({
   importantMode: 'warn',           // 'warn' | 'silent' | 'strict' — токены f10-i (!important)
   childSelectorMode: 'warn',       // 'warn' | 'silent' | 'strict' — токены cF00>1 (дочерний селектор)
   unknownMediaMode: 'warn',        // 'warn' | 'silent' | 'strict' — неизвестное имя медиа p10@zz
+  suspectClassMode: 'warn',        // 'warn' | 'silent' | 'strict' — класс другой системы fw-bold
   notationMode: 'context-qualified', // или 'tailwind-compatible' — запись как в Tailwind: md:hover:p10
   contextWhere: false,             // true — контекст в :where(): .p10…:is(:where(.card:hover) *)
 });

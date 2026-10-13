@@ -23,6 +23,7 @@
 import {
   MN_ESSENCE_PAIR,
   MN_RAW_PROPERTY,
+  MN_NEGATIVE,
 } from '../selectorsCompileProvider/constants';
 import {
   checkOptions, CORE_OPTIONS_SCHEMA, describeValue, isObject as isObjectOption,
@@ -68,6 +69,9 @@ import {
   isInvalidSelector,
 } from '../isInvalidSelector';
 import {
+  suspectClassMessage,
+} from '../selectorsCompileProvider/raiseMessages';
+import {
   baseUtils,
   observableProvider,
   OBJECT,
@@ -96,8 +100,6 @@ import {
   SPLIT_AMP,
   REGEXP_MEDIA_PRIORITY,
   REGEXP_MATCH_VAR,
-  REGEXP_MATCH_NAME,
-  REGEXP_FOREIGN_KEBAB,
   REGEXP_MATCH_IMPORTANT,
   REGEXP_IMPORTANT,
   REGEXP_MATCH_VALUE,
@@ -188,8 +190,32 @@ function round(value: number): number {
 }
 
 /** Случаи со своим режимом `'warn' | 'silent' | 'strict'` (D-039). */
+/**
+ * Функция записи домена (D-063): готовая эссенция, `0` — CSS нет (причина сообщена), `undefined` —
+ * запись не подходит (статика с хвостом), искать дальше.
+ */
+type MnDomainFn = (p: MnEssenceParams, value: string) => MnEssenceResult | 0 | null | false | void;
+
+/** Запись домена: префикс остатка имени (`''`, `A`, `-w`, `-w-full`) и функция. */
+type MnDomainEntry = [string, MnDomainFn];
+
+/** Ключ домена — первые строчные буквы имени, остальное — префикс записи (D-063). */
+const REGEXP_DOMAIN = /^([a-z]*)(.*)$/;
+
+/**
+ * Подходит ли префикс записи к остатку имени. Префикс, кончающийся буквой, не режет слово
+ * пополам: `-w` подходит к `-w-4` и `-w4`, но не к `-wide` (D-063, уточнение правила 3).
+ */
+function prefixMatches(rest: string, prefix: string): boolean {
+  const l = prefix.length;
+  const last = prefix[l - 1];
+  const next = rest[l];
+  return !l || rest.slice(0, l) === prefix && !(next >= 'a' && next <= 'z'
+    && (last >= 'a' && last <= 'z' || last >= 'A' && last <= 'Z'));
+}
+
 type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded' | 'child-selector'
-  | 'unknown-media';
+  | 'unknown-media' | 'suspect-class';
 
 /** Типы медиа CSS: известны без описания в `mn.media` (D-058). */
 const CSS_MEDIA_TYPES: Record<string, number> = {
@@ -233,7 +259,7 @@ function throwNoHandler(name: string, value: string): never {
 function isCompileWarning(warning: MnWarning): boolean {
   return warning.type !== 'raised-specificity' && warning.type !== 'important'
     && warning.type !== 'max-depth-exceeded' && warning.type !== 'child-selector'
-    && warning.type !== 'unknown-media';
+    && warning.type !== 'unknown-media' && warning.type !== 'suspect-class';
 }
 
 /**
@@ -321,6 +347,7 @@ function minotationProvider(options?: MnOptions) {
       'max-depth-exceeded': settings.maxDepthMode || 'warn',
       'child-selector': settings.childSelectorMode || 'warn',
       'unknown-media': settings.unknownMediaMode || 'warn',
+      'suspect-class': settings.suspectClassMode || 'warn',
     };
   }
   /**
@@ -480,10 +507,11 @@ function minotationProvider(options?: MnOptions) {
     const type = typeof extendedEssence;
     type === FUNCTION
       ? (
-        v = $$handlerMap[essencePath] = paramsMatchPath
+        v = paramsMatchPath
           ? handlerWrap(extendedEssence as MnHandler, paramsMatchPath)
           : extendedEssence as (p: MnEssenceParams) => MnEssenceRaw | void | 0,
-        v.skip = skip || 0
+        v.skip = skip || 0,
+        setDomainEntry(essencePath, handlerEntry(v))
       )
       : (
         type === OBJECT
@@ -561,6 +589,10 @@ function minotationProvider(options?: MnOptions) {
         path, MN_ESSENCE_CHILDS_KEY, essencePath[i],
       );
     }
+    // Статика ищется через домен, как и хендлер (D-063); `box@sm` — переопределение медиа,
+    // его находят по полному имени из `initEssence`, отдельной записи домена ему не нужно.
+    $$staticsEssences[essenceName] || essenceName.indexOf('@') > -1
+      || setDomainEntry(essenceName, staticEntry(essenceName));
     baseSetEssenseBase(
       essenceName, path, extendedEssence,
     );
@@ -775,8 +807,8 @@ function minotationProvider(options?: MnOptions) {
   let $$stylesMap: Record<string, MnStyleEntry> = $$data.stylesMap = {};
   let $$assigned: Record<string, Record<string, Record<string, number>>> = $$data.assigned = {};
   let $$media: Record<string, MnMediaEntry> = mn.media = settings.media || {};
-  let $$handlerMap: Record<string, ((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number;
-    hint?: number }> = mn.handlerMap = {};
+  // Домены имён (D-063): первые строчные буквы → записи `[префикс, функция]`.
+  let $$domains: Record<string, MnDomainEntry[]> = mn.domains = {};
   let $$force: number;
   let $$selectorPrefixes: string[];
   let $$altColor: boolean;
@@ -1340,24 +1372,29 @@ function minotationProvider(options?: MnOptions) {
     });
   }
 
+  /**
+   * Разбор класса через домены (D-063): ключ домена — первые строчные буквы имени (`min-w-4` →
+   * `min`), записи домена — `[префикс остатка, функция]`, самый длинный префикс первым. Первая
+   * функция, давшая результат, побеждает; статика с непустым хвостом результата не даёт —
+   * поиск идёт к следующему, более короткому префиксу. Проверки «чужого» класса нет (D-065):
+   * хендлер вызывается всегда и решает сам.
+   */
   function __initEssence(value: string): MnEssenceResult | 0 | null | false | void {
     let matchs: RegExpExecArray | null;
     // Пустая строка, а не `undefined`: обе читаются в `catch`, куда можно
-    // попасть и до их присваивания. Раньше в предупреждение в таком случае
-    // уходило `undefined` вместо имени хендлера — на опечатке в самом начале
-    // разбора сообщение получалось бессодержательным.
+    // попасть и до их присваивания.
     let name = '';
-    let ni: string | undefined;
     let suffix = '';
-    let handle: (((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number;
-      hint?: number;
-      kebab?: number;
-      negative?: number }) | undefined;
-    let params: MnEssenceParams;
-    let essence: MnEssenceRaw | void | 0;
-    let err: Error;
-    let pair: number;
+    let ni = '';
     let sign = '';
+    let body = value;
+    let pair: number;
+    let entries: MnDomainEntry[] | undefined;
+    let entry: MnDomainEntry;
+    let prefix: string;
+    let result: MnEssenceResult | 0 | null | false | void;
+    let i = 0;
+    let l: number;
     try {
       if (matchs = REGEXP_MATCH_VAR.exec(value)) {
         const varStyle: Record<string, string> = {};
@@ -1370,70 +1407,46 @@ function minotationProvider(options?: MnOptions) {
       if (value[0] === MN_RAW_PROPERTY) {
         return __rawProperty(value.slice(1));
       }
-      // Эссенция-пара «имя\u0001значение» от разборщика режима (D-045 этап 5): имя задано
-      // явно, регулярка имени не нужна — `bg:blue-70` у Master CSS даёт `bg` + `blue-70`.
-      // Ведущий `-` (`-mt-4`) — отрицательное значение; доходит только до хендлера с флагом
-      // `negative` (D-059), для прочих класс чужой, как и раньше.
-      return (matchs = (pair = value.indexOf(MN_ESSENCE_PAIR)) < 0
-        ? REGEXP_MATCH_NAME.exec(value[0] === '-' ? (sign = '-', value.slice(1)) : value)
-        : [
-          value,
-          value.slice(0, pair),
-          value.slice(pair + 1),
-        ] as unknown as RegExpExecArray) && (
-        name = matchs[1],
-        (matchs = REGEXP_MATCH_IMPORTANT.exec(suffix = matchs[2])) && (
-          suffix = matchs[1],
-          ni = matchs[2]
-        ),
-        // Чужой класс, случайно начавшийся с зарегистрированного тега
-        // (`sr-only` → `s`, `mt-auto` → `mt`), пропускается молча — как и
-        // любой другой класс без тега. Иначе хендлер бракует остаток, и под
-        // `warningMode: 'error'` падает вся сборка.
-        // Исключение — хендлер-ловушка пресета подсказок (`hint`, D-024): ему
-        // kebab-суффикс и нужен (`text-center` → «в minotation это taC»).
-        (handle = $$handlerMap[name])
-          && (!sign || handle.negative)
-          // `hint` (D-024) и `kebab` (`tw()`, D-061) — хендлер сам разбирает kebab-остаток.
-          && (!REGEXP_FOREIGN_KEBAB.test(suffix) || handle.hint || handle.kebab)
-          ? (
-            params = {
-              name: name,
-              suffix: suffix,
-              ni: ni || '',
-              sign: sign,
-            },
-            handle.skip || (matchs = REGEXP_MATCH_VALUE.exec(suffix)) && (
-              params.value = matchs[2],
-              params.camel = matchs[3],
-              params.num = matchs[4],
-              params.negative = matchs[5],
-              params.unit = matchs[6],
-              params.other = matchs[7]
-            ),
-            // Хендлер найден, но ничего не вернул — автор явно писал MN-токен,
-            // а стиля не будет (`fx` без значения). Молчать нельзя (D-021):
-            // сборка оставалась зелёной, и пропажу замечали только в браузере.
-            (essence = handle(params)) || throwNoStyle(value, name),
-            (essence as MnEssenceRaw).important = ni ? 1 : 0,
-            essence && !validateEssenceStyle(
-              essence, value, name,
-            ) && (essence = undefined),
-            __normalize(essence)
-          )
-          // Хендлера с таким именем нет — значит это вообще не MN-токен, а
-          // чужой CSS-класс (`container`, `btn`, `swiper-slide`, семантика из
-          // собственного CSS проекта). Молчим: сам синтаксис нотации
-          // предполагает соседство с любыми другими классами
-          // (`cF00.active`), а чужих имён может быть сколько угодно — на
-          // каждое из них предупреждать означает забивать вывод мусором.
-          // Предупреждение остаётся там, где автор ЯВНО писал MN-токен и
-          // ошибся в аргументе: хендлер найден, но разбор не удался
-          // (`parse-error`, ниже). Исключение — пара от разборщика режима: там имя
-          // свойства задано явно, и отсутствие хендлера — ошибка автора, а не чужой класс.
-          : pair < 0 ? undefined : throwNoHandler(name, value)
-      );
+      // Ведущий `-` Tailwind (`-mt-4`) разборщик режима помечает знаком; хендлер получает
+      // `p.sign` и решает сам (D-064). В записи minotation `-mt-4` — не токен.
+      value[0] === MN_NEGATIVE && (sign = '-', body = value.slice(1));
+      // Эссенция-пара «имя\u0001значение» от разборщика режима (D-045 этап 5): имя задано явно.
+      (pair = body.indexOf(MN_ESSENCE_PAIR)) < 0
+        ? (matchs = REGEXP_DOMAIN.exec(body) as RegExpExecArray, name = matchs[1], suffix = matchs[2])
+        : (name = body.slice(0, pair), suffix = body.slice(pair + 1));
+      (matchs = REGEXP_MATCH_IMPORTANT.exec(suffix)) && (suffix = matchs[1], ni = matchs[2]);
+      entries = $$domains[name];
+      l = entries ? entries.length : 0;
+      const rest = suffix;
+      const domain = name;
+      for (; i < l; i++) {
+        entry = (entries as MnDomainEntry[])[i];
+        prefix = entry[0];
+        if (prefixMatches(rest, prefix)) {
+          name = domain + prefix;
+          suffix = rest.slice(prefix.length);
+          result = entry[1]({
+            name: name,
+            suffix: suffix,
+            ni: ni,
+            sign: sign,
+          }, value);
+          if (result !== undefined) {
+            return result;
+          }
+        }
+      }
+      // Ни одна запись не подошла — это не токен minotation (`container`, `btn`): молчим.
+      // Исключение — пара от разборщика режима: имя свойства задано явно.
+      return pair < 0 ? undefined : throwNoHandler(domain, value);
     } catch (ex) {
+      // Хендлер распознал класс другой системы (D-065, D-066) — своя опция `suspectClassMode`.
+      if (ex instanceof MnParseError && ex.context.warningType === 'suspect-class') {
+        raisedToken(
+          value, 'suspect-class', (strict: boolean) => suspectClassMessage(ex.message, strict),
+        );
+        return;
+      }
       if (ex instanceof MnParseError) {
         // Контекст может быть пустым: `throwInvalid` в пресетах зовётся из
         // глубины разбора значения, где ни токена, ни имени хендлера не видно
@@ -1450,20 +1463,80 @@ function minotationProvider(options?: MnOptions) {
         });
         return;
       }
-      err = new Error('MN parsing error for essence "'
-        + value + '": ' + asError(ex).message);
-      emitError(err);
+      emitError(new Error('MN parsing error for essence "' + value + '": ' + asError(ex).message));
     }
   }
+
+  /**
+   * Запись домена для хендлера: разбор значения, `!important`, проверка CSS, нормализация —
+   * то, что ядро делало после вызова хендлера. Возвращает готовую эссенцию или `0` (CSS нет,
+   * причина уже сообщена) — но не `undefined`: хендлер свой остаток всегда принимает.
+   */
+  function handlerEntry(handle: ((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number }): MnDomainFn {
+    return (params, value) => {
+      const matchs = handle.skip ? null : REGEXP_MATCH_VALUE.exec(params.suffix);
+      let essence: MnEssenceRaw | void | 0;
+      matchs && (
+        params.value = matchs[2],
+        params.camel = matchs[3],
+        params.num = matchs[4],
+        params.negative = matchs[5],
+        params.unit = matchs[6],
+        params.other = matchs[7]
+      );
+      // Хендлер ничего не вернул — автор писал токен, а стиля не будет (`fx` без значения).
+      // Молчать нельзя (D-021): пропажу иначе замечали бы только в браузере. Исключение —
+      // минус Tailwind (`-p-4`), который хендлер не принимает: CSS нет, молча, как в Tailwind (D-064).
+      if (!(essence = handle(params))) {
+        return params.sign ? 0 : throwNoStyle(value, params.name);
+      }
+      (essence as MnEssenceRaw).important = params.ni ? 1 : 0;
+      return validateEssenceStyle(
+        essence as MnEssenceRaw, value, params.name,
+      ) && __normalize(essence) || 0;
+    };
+  }
+
+  /**
+   * Запись домена для статики: эссенция из хранилища статики (`-i` — её версия с
+   * `!important`). Хвост после префикса или минус Tailwind — не она: `undefined`, поиск идёт
+   * к более короткому префиксу (`min-w-fullx` → `min-w`).
+   */
+  function staticEntry(essenceName: string): MnDomainFn {
+    const important = essenceName + '-i';
+    return (params) => (params.suffix || params.sign ? undefined
+      : $$staticsEssences[params.ni ? important : essenceName]);
+  }
+
+  /**
+   * Регистрирует запись в домене имени: заменяет запись с тем же префиксом, иначе вставляет,
+   * сохраняя порядок «длинный префикс первым».
+   */
+  function setDomainEntry(fullName: string, fn: MnDomainFn): void {
+    const matchs = REGEXP_DOMAIN.exec(fullName) as RegExpExecArray;
+    const entries = $$domains[matchs[1]] || ($$domains[matchs[1]] = []);
+    const prefix = matchs[2];
+    const l = entries.length;
+    let i = 0;
+    for (; i < l; i++) {
+      if (entries[i][0] === prefix) {
+        entries[i][1] = fn;
+        return;
+      }
+      if (entries[i][0].length < prefix.length) {
+        break;
+      }
+    }
+    entries.splice(
+      i, 0, [prefix, fn],
+    );
+  }
+
   function initEssence(
     essenceName: string, essence: MnEssenceResult, excludes: Record<string, number>,
   ): void {
-    const staticEssence = $$staticsEssences[essenceName];
-    // Ветка "staticEssence не MN_ESSENCE_INITED" убрана 2026-09-23: единственное
-    // место записи в $$staticsEssences (baseSetEssenseBase, см. ниже) заводит
-    // запись ВСЕГДА с inited=1 — прочитанный отсюда staticEssence гарантированно
-    // уже инициализирован. Подтверждено сверкой с v1 (та же гарантия там же).
-    const tmpEssence = staticEssence || __initEssence(essenceName);
+    // Статика и хендлеры ищутся одним путём — через домен (D-063): статика — запись домена.
+    const tmpEssence = __initEssence(essenceName);
 
     if (!tmpEssence) {
       return;
@@ -1668,10 +1741,10 @@ function minotationProvider(options?: MnOptions) {
     });
   }
   function __clear() {
-    // mn.media/mn.handlerMap заведены при создании инстанса (см. выше) —
+    // mn.media/mn.domains заведены при создании инстанса (см. выше) —
     // фолбэк на пустой объект здесь не нужен
     $$media = mn.media;
-    $$handlerMap = mn.handlerMap;
+    $$domains = mn.domains;
     $$essences = $$data.essences = {};
     $$root = $$data.root = {};
     $$statics = $$data.statics || ($$data.statics = {

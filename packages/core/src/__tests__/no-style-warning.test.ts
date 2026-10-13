@@ -82,7 +82,14 @@ describe('хендлер без стиля — предупреждение (D-0
       presetSynonyms,
       presetMedias,
     ]);
-    const silent = Object.keys(mn.handlerMap).filter((name) => {
+    // Имена всех записей доменов (D-063): домен + префикс.
+    const names: string[] = [];
+    for (const domain of Object.keys(mn.domains)) {
+      for (const entry of mn.domains[domain]) {
+        names.push(domain + entry[0]);
+      }
+    }
+    const silent = names.filter((name) => {
       if (!/^[a-z]/.test(name)) {
         return false;
       }

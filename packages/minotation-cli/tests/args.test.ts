@@ -131,6 +131,9 @@ describe('parseArgs', () => {
     expect(() => parseArgs(['--child-selector-mode', 'error']))
       .toThrow('Option "--child-selector-mode" expects warn, silent or strict, got "error"');
     expect(parseArgs(['--unknown-media-mode', 'strict']).unknownMediaMode).toBe('strict');
+    expect(parseArgs(['--suspect-class-mode', 'silent']).suspectClassMode).toBe('silent');
+    expect(() => parseArgs(['--suspect-class-mode', 'off']))
+      .toThrow('Option "--suspect-class-mode" expects warn, silent or strict, got "off"');
     expect(() => parseArgs(['--unknown-media-mode', 'warning']))
       .toThrow('Option "--unknown-media-mode" expects warn, silent or strict, got "warning"');
   });

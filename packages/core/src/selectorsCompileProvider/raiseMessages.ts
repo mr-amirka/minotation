@@ -17,6 +17,17 @@ export function specificityMessage(mark: string, strict: boolean): string {
 }
 
 /** `-i` — `!important`. */
+/**
+ * Отчёт `suspect-class` (D-065, D-066): хендлер распознал в значении класс другой системы
+ * (`fw-bold`). `reason` — что сказал сам хендлер.
+ */
+export function suspectClassMessage(reason: string, strict: boolean): string {
+  return strict
+    ? reason + ' (suspectClassMode: \'strict\'). To allow such classes: suspectClassMode: \'warn\'.'
+    : reason + '. To hide this warning: suspectClassMode: \'silent\'; to forbid such classes:'
+      + ' suspectClassMode: \'strict\'.';
+}
+
 export function importantMessage(strict: boolean): string {
   return strict
     ? '"!important" ("-i") is forbidden (importantMode: \'strict\'), the token gives no CSS.'

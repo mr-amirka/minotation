@@ -160,7 +160,7 @@ export type {
   MnScaleOptions,
 } from './presets/scale';
 export type {
-  MnTwArgs, MnTwHandler, MnTwOptions, MnTwWrapped,
+  MnTwArgs, MnTwHandler,
 } from './presets/tw';
 export type {
   OptionCheck, OptionSchema,

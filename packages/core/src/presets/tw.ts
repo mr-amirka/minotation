@@ -3,12 +3,12 @@
  * (`mn('gap', tw(handler))`), хендлер находится по первым буквам, а остаток класса
  * (`gap-x-2` → `-x-2`) разбирается здесь один раз и отдаётся хендлеру готовой структурой.
  */
-import {
-  MnParseError,
+import type {
+  MnEssenceParams,
 } from '../core/types';
 import type {
-  MnEssenceParams, MnEssenceRaw,
-} from '../core/types';
+  MnHandler, MnHandlerResult,
+} from '../types';
 
 /** Разобранный остаток класса для хендлера в {@link tw}. */
 export interface MnTwArgs {
@@ -23,30 +23,21 @@ export interface MnTwArgs {
   type?: string;
   /** После `/` вне скобок: `bg-blue-500/50` → `50`, `w-1/2` → `2`. */
   modifier?: string;
-  /** Класс с ведущим `-` (`-translate-x-2`): только при `negative: true`. */
+  /**
+   * Класс с ведущим `-` (`-translate-x-2`). Ядро передаёт такой класс только хендлеру,
+   * объявившему `negative` (D-059): `handler.negative = 1` при регистрации.
+   */
   negative: boolean;
 }
 
-/** Хендлер под {@link tw}: ничего не вернул — класс чужой, без предупреждения. */
-export type MnTwHandler = (args: MnTwArgs, p: MnEssenceParams) => MnEssenceRaw | void | 0;
-
-/** Опции {@link tw}. */
-export interface MnTwOptions {
-  /** Принимать ли ведущий `-` (`-mt-4`, `-translate-x-2`), D-059. */
-  negative?: boolean;
-}
+/** Хендлер под {@link tw}: ничего не вернул на kebab-остаток — класс чужой, без предупреждения (D-062). */
+export type MnTwHandler = (args: MnTwArgs, p: MnEssenceParams) => MnHandlerResult | void | 0;
 
 /** `[тип:значение]`: тип — слово перед двоеточием. */
 const REGEXP_ARBITRARY_TYPE = /^([a-z-]+):(.+)$/;
 
 /** `_` — пробел, `\_` — само подчёркивание. */
 const REGEXP_ARBITRARY_SPACE = /\\_|_/g;
-
-/** Хендлер, обёрнутый в {@link tw}: флаги для ядра. */
-export type MnTwWrapped = ((p: MnEssenceParams) => MnEssenceRaw | void | 0) & {
-  kebab: number;
-  negative?: number;
-};
 
 /**
  * Разбирает остаток класса после имени хендлера: части через `-`, произвольное значение в
@@ -108,12 +99,11 @@ export function parseTwSuffix(suffix: string, negative: boolean): MnTwArgs | und
 
 /**
  * Оборачивает хендлер для записи Tailwind (D-061): разбор остатка — здесь, хендлеру —
- * готовая структура {@link MnTwArgs}. Хендлер ничего не вернул или остаток не в форме
- * Tailwind — класс чужой, без предупреждения (как в Tailwind). Ошибка разбора значения
- * (`throw` из хендлера) — предупреждение, как у любого хендлера.
+ * готовая структура {@link MnTwArgs}. Обёртка только собирает остаток — флагов
+ * не ставит (D-062): kebab-остаток, на который хендлер ничего не вернул или который не в форме
+ * Tailwind, ядро само считает чужим классом и молчит, как Tailwind.
  *
  * @param handler — хендлер, получающий разобранный остаток
- * @param options — `negative: true` — принимать ведущий `-`
  * @returns хендлер для `mn(name, …)`
  * @example
  * mn('gap', tw(({ parts, arbitrary }) => {
@@ -124,23 +114,9 @@ export function parseTwSuffix(suffix: string, negative: boolean): MnTwArgs | und
  * }));
  * // gap-2 → gap:.5rem; gap-x-4 → column-gap:1rem; gap-y-[3px] → row-gap:3px; gap-foo → чужой класс
  */
-export function tw(handler: MnTwHandler, options?: MnTwOptions): MnTwWrapped {
-  const wrapped = ((p: MnEssenceParams) => {
+export function tw(handler: MnTwHandler): MnHandler {
+  return (p: MnEssenceParams) => {
     const args = parseTwSuffix(p.suffix, p.sign === '-');
-    const result = args && handler(args, p);
-    return result || foreign(p);
-  }) as MnTwWrapped;
-  wrapped.kebab = 1;
-  options && options.negative && (wrapped.negative = 1);
-  return wrapped;
-}
-
-/** Чужой класс: без CSS и без предупреждения. */
-export function foreign(p: MnEssenceParams): never {
-  throw new MnParseError('', {
-    token: p.name + p.suffix,
-    handler: p.name,
-    arg: p.suffix,
-    silent: true,
-  });
+    return args ? handler(args, p) : undefined;
+  };
 }

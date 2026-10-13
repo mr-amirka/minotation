@@ -40,6 +40,7 @@ import {
   SCOPE_START,
   MN_ESSENCE_PAIR,
   MN_RAW_PROPERTY,
+  MN_NEGATIVE,
   REGEXP_BREAKPOINT_PREFIX,
   splitChild,
   splitParent,
@@ -100,12 +101,12 @@ import {
  * Настоящие ошибки в токенах это не затрагивает: у `w50@`, `p10:`, `cF00.`
  * тег зарегистрирован, предупреждение остаётся.
  */
-function looksLikeToken(comboName: string, handlerMap: Record<string, unknown>): boolean {
+function looksLikeToken(comboName: string, domains: Record<string, unknown>): boolean {
   const matched = REGEXP_MATCH_NAME.exec(comboName);
-  return !!matched && !!handlerMap[matched[1]];
+  return !!matched && !!domains[matched[1]];
 }
 
-function variantsBase(comboName: string, handlerMap: Record<string, unknown>): string[] {
+function variantsBase(comboName: string, domains: Record<string, unknown>): string[] {
   // Вырожденная группа (скобки без `|`) молча съедала бы сами скобки — см.
   // JSDoc `assertVariantGroups`. Бросается MnParseError: `parseComboName`
   // обёрнут перехватчиком, который превращает её в warning `parse-error`,
@@ -113,7 +114,7 @@ function variantsBase(comboName: string, handlerMap: Record<string, unknown>): s
   //
   // Проверки структуры — только для того, что похоже на MN-токен: иначе
   // чужой класс из разметки роняет сборку под `strict`.
-  if (!looksLikeToken(comboName, handlerMap)) {
+  if (!looksLikeToken(comboName, domains)) {
     return variants(comboName, false)[0];
   }
   // Структуру скобок проверяем по записи: непарная или пустая скобка видна
@@ -417,7 +418,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     }
 
     const suffixes = reduceIn(
-      variantsBase(name, (instance as any).handlerMap || {}),
+      variantsBase(name, (instance as any).domains || {}),
       suffixesReduce, {} as StrMap<StrMap<number>>,
     );
     // `!important` (`-i`) виден только в именах эссенций — после разворота групп;
@@ -549,9 +550,11 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * произвольном значении — само подчёркивание, его разбирает хендлер.
    */
   function tailwindEssence(utility: string): string {
-    return utility[0] === '[' && utility[utility.length - 1] === ']' && utility.indexOf(':') > 0
-      ? MN_RAW_PROPERTY + arbitrary(utility.slice(1, -1))
-      : utility.indexOf('[') < 0 ? unslash(utility) : utility;
+    // Ведущий `-` (`-mt-4`) — метка для ядра, хендлер получит `p.sign` (D-064).
+    return utility[0] === '-' && utility.length > 1 ? MN_NEGATIVE + tailwindEssence(utility.slice(1))
+      : utility[0] === '[' && utility[utility.length - 1] === ']' && utility.indexOf(':') > 0
+        ? MN_RAW_PROPERTY + arbitrary(utility.slice(1, -1))
+        : utility.indexOf('[') < 0 ? unslash(utility) : utility;
   }
 
   /**
@@ -958,7 +961,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     while (i < l && REGEXP_PROPERTY_CHAR.test(source[i])) {
       i++;
     }
-    if (source[i] !== ':' || !((instance as any).handlerMap || {})[source.slice(start, i)]) {
+    if (source[i] !== ':' || !((instance as any).domains || {})[source.slice(start, i)]) {
       return i;
     }
     return valueEnd(source, i + 1);

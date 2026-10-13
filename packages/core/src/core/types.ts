@@ -275,7 +275,9 @@ export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'invalid-css-
   /** Класс в файлах с разными режимами синтаксиса значит разное (D-045, `notationConflictMode`). */
   | 'notation-conflict'
   /** Имя медиа не описано в `mn.media` (D-058, `unknownMediaMode`). */
-  | 'unknown-media';
+  | 'unknown-media'
+  /** Хендлер распознал класс другой системы — `fw-bold` (D-065, D-066, `suspectClassMode`). */
+  | 'suspect-class';
 
 /**
  * `'hint'` — класс, которого нет в нотации, но который похож на опечатку или на класс
@@ -429,6 +431,14 @@ export interface MnOptions {
    * @default 'warn'
    */
   unknownMediaMode?: MnRaiseMode;
+  /**
+   * Класс другой CSS-системы, начавшийся с имени хендлера (`fw-bold` — Bootstrap, `sr-only`) —
+   * хендлер его распознаёт и сообщает (D-065, D-066). `'warn'` — предупреждение, CSS нет;
+   * `'silent'` — молча; `'strict'` — брак сборки (`MnForbiddenTokenError`). `warningMode` на
+   * этот случай не влияет: с `'error'` сборка из-за таких классов не падает.
+   * @default 'warn'
+   */
+  suspectClassMode?: MnRaiseMode;
   /**
    * Режим синтаксиса классов разметки (D-045): `'context-qualified'` (по умолчанию) или
    * `'tailwind-compatible'` (Tailwind). Строки пресетов разбираются в режиме пресета.

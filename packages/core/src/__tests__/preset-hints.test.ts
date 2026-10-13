@@ -114,11 +114,11 @@ describe('presetHints — подсказки', () => {
     expect(hasOwnRule(css, 'flex')).toBe(true);
   });
 
-  test('kebab-суффикс у обычного хендлера по-прежнему пропускается молча', () => {
+  test('kebab-суффикс у обычного хендлера: хендлер вызывается и сообщает сам (D-065)', () => {
     const {
-      warnings, 
+      warnings,
     } = run('mt-auto sr-only');
-    expect(warnings).toEqual([]);
+    expect(warnings.map((w) => w.token)).toEqual(['mt-auto', 'sr-only']);
   });
 
   test('подсказка подчиняется warningMode: error роняет сборку', () => {

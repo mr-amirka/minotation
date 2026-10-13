@@ -1685,11 +1685,70 @@ import {
 import type {
   MnEssenceParams,
 } from '../core/types';
+import {
+  handlerWrap,
+} from '../core/utils';
 
+/**
+ * Значение вида `-слово` (`-bold`, `-only`, `-red-500`, `-caption`): в записи minotation таких
+ * нет (проверено 2026-09-27: `--v`, `w-5`, `w10-5`, `_a-b`, `From-font` под него не подходят),
+ * а у классов других систем — сплошь (`fw-bold` — Bootstrap, `sr-only` — Bootstrap/Tailwind).
+ */
+const REGEXP_SUSPECT_VALUE = /^-[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+
+function throwSuspect(p: MnEssenceParams): never {
+  throw new MnParseError('"' + p.name + p.suffix + '": "' + p.suffix + '" is not a value of "' + p.name
+    + '" — this looks like a class of another CSS framework, it gives no CSS', {
+    token: p.name + p.suffix,
+    handler: p.name,
+    arg: p.suffix,
+    warningType: 'suspect-class',
+  });
+}
+
+/**
+ * Хендлеры пресета сами распознают класс другой системы (D-065, D-066): значение `-слово`
+ * не разбирается, а даёт отчёт `suspect-class` (`suspectClassMode`). Одна проверка на все
+ * хендлеры пресета — при регистрации, а не в каждом: раньше 25 из них такие значения
+ * принимали и давали неверный CSS (`fw-bold` → `font-weight:100`). Паттерн разбора
+ * (`mn(name, handler, pattern)`) оборачивается здесь же, чтобы проверка шла раньше него.
+ */
+function withSuspectCheck(instance: MnInstance): MnInstance {
+  const guard = (handler: MnHandler): MnHandler => (p) => (REGEXP_SUSPECT_VALUE.test(p.suffix)
+    ? throwSuspect(p) : handler(p));
+  return new Proxy(instance, {
+    apply(
+      target, thisArg, args: unknown[],
+    ) {
+      const first = args[0];
+      const essence = args[1];
+      const pattern = args[2] as string | string[] | undefined;
+      const map: Record<string, unknown> = {};
+      let name: string;
+      if (typeof first === 'string') {
+        return typeof essence === 'function'
+          ? target(
+            first, guard(pattern
+              ? handlerWrap(essence as MnHandler as never, pattern) as MnHandler
+              : essence as MnHandler) as never, '', args[3] as number,
+          )
+          : target(...(args as Parameters<MnInstance>));
+      }
+      // Форма-карта `mn({ fw: handler, cfx: { … } })`: хендлеры в ней — те же хендлеры.
+      for (name in first as Record<string, unknown>) { // eslint-disable-line
+        map[name] = typeof (first as Record<string, unknown>)[name] === 'function'
+          ? guard((first as Record<string, MnHandler>)[name])
+          : (first as Record<string, unknown>)[name];
+      }
+      return target(map as never);
+    },
+  });
+}
 
 export default {
   name: 'presetStandard',
-  setup: (mn: MnInstance) => {
+  setup: (instance: MnInstance) => {
+    const mn = withSuspectCheck(instance);
     const {
       utils,
       setKeyframes,
@@ -2801,11 +2860,12 @@ export default {
       mn('fya' + upperFirst(essenceName), styleWrap(style, 1));
     });
 
+    // `A` (Around) у `fya` нет: `fyaAround` не существует, псевдоним молча давал пустой класс
+    // (найдено сторожем «хендлер без стиля», когда тот стал обходить и статику, 2026-10-13).
     forIn({
       S: 'Start',
       C: 'Center',
       E: 'End',
-      A: 'Around',
       ST: 'Stretch',
     }, (essenceName, abbr) => {
       mn('fya' + abbr, 'fya' + essenceName);

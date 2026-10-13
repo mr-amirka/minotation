@@ -75,7 +75,14 @@ describe('подсказка: какие записи у хендлера ест
     ]);
     const bad: string[] = [];
     let suggested = 0;
-    for (const name of Object.keys(mn.handlerMap)) {
+    // Имена всех записей доменов (D-063): домен + префикс.
+    const names: string[] = [];
+    for (const domain of Object.keys(mn.domains)) {
+      for (const entry of mn.domains[domain]) {
+        names.push(domain + entry[0]);
+      }
+    }
+    for (const name of names) {
       for (const probe of ['Qqz', '10']) {
         for (const warning of compile(name + probe).warnings) {
           for (const token of suggestions(warning.message)) {

@@ -67,8 +67,20 @@ describe('шкала-функция (Tailwind)', () => {
     ['-mt-px', '.-mt-px{margin-top:-1px}'],
     ['-mt-0', '.-mt-0{margin-top:-0rem}'],
   ])('%s → %s', (token, css) => {
-    expect(compile(token, TAILWIND).css).toBe(css);
-    expect(compile(token, TAILWIND).warnings).toEqual([]);
+    // Ведущий минус — запись Tailwind (D-064), поэтому режим `'tailwind-compatible'`.
+    expect(compile(
+      token, TAILWIND, 'tailwind-compatible',
+    ).css).toBe(css);
+    expect(compile(
+      token, TAILWIND, 'tailwind-compatible',
+    ).warnings).toEqual([]);
+  });
+
+  test('в записи minotation -mt-4 — не токен: молча', () => {
+    expect(compile('-mt-4', TAILWIND)).toEqual({
+      css: '',
+      warnings: [],
+    });
   });
 
   test.each([
@@ -94,10 +106,12 @@ describe('шкала-функция (Tailwind)', () => {
     expect(result.warnings).toEqual([message]);
   });
 
-  test('-mx-auto — слово не число, отрицательной статики нет: чужой класс, молча', () => {
-    expect(compile('-mx-auto', TAILWIND)).toEqual({
+  test('-mx-auto — у слова нет отрицания: предупреждение', () => {
+    expect(compile(
+      '-mx-auto', TAILWIND, 'tailwind-compatible',
+    )).toEqual({
       css: '',
-      warnings: [],
+      warnings: ['"mx-auto": "auto" has no negative value'],
     });
   });
 });
@@ -139,22 +153,28 @@ describe('шкала-карта (Bootstrap) и разделитель', () => {
     expect(compile('pt-7', BOOTSTRAP).warnings).toEqual(['"pt-7": step "7" is not in the scale (0, 1, 3, v)']);
   });
 
-  test('без negative ведущий - — чужой класс, молча', () => {
-    expect(compile('-pt-3', BOOTSTRAP)).toEqual({
+  test('без negative ведущий - — CSS нет, молча (D-064)', () => {
+    expect(compile(
+      '-pt-3', BOOTSTRAP, 'tailwind-compatible',
+    )).toEqual({
       css: '',
       warnings: [],
     });
   });
 
   test('отрицание не числа — calc', () => {
-    expect(compile('-pt-v', {
-      ...BOOTSTRAP,
-      negative: true,
-    }).css).toBe('.-pt-v{padding-top:calc(var(--gap) * -1)}');
-    expect(compile('-pt-0', {
-      ...BOOTSTRAP,
-      negative: true,
-    }).css).toBe('.-pt-0{padding-top:0}');
+    expect(compile(
+      '-pt-v', {
+        ...BOOTSTRAP,
+        negative: true,
+      }, 'tailwind-compatible',
+    ).css).toBe('.-pt-v{padding-top:calc(var(--gap) * -1)}');
+    expect(compile(
+      '-pt-0', {
+        ...BOOTSTRAP,
+        negative: true,
+      }, 'tailwind-compatible',
+    ).css).toBe('.-pt-0{padding-top:0}');
   });
 
   test("separator: '' (Basscss mt2) и стороны по умолчанию", () => {

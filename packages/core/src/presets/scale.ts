@@ -20,15 +20,6 @@ import {
 import type {
   OptionCheck,
 } from '../checkOptions';
-import {
-  foreign,
-} from './tw';
-import type {
-  MnTwWrapped,
-} from './tw';
-import {
-  REGEXP_FOREIGN_KEBAB,
-} from '../core/utils';
 
 /** Опции {@link defineScale}. */
 export interface MnScaleOptions {
@@ -48,7 +39,10 @@ export interface MnScaleOptions {
   scale: ((step: number) => string) | Record<string, string>;
   /** Слова — статикой: `{ auto: 'auto', px: '1px' }` → `mx-auto`, `mt-px`. */
   keywords?: Record<string, string>;
-  /** Отрицательные значения с ведущим `-`: `-mt-4` → `margin-top:-1rem` (D-059). */
+  /**
+   * Отрицательные значения с ведущим `-` в записи Tailwind: `-mt-4` → `margin-top:-1rem`. Минус
+   * приходит хендлеру как `p.sign` (D-064); без этой опции такой класс CSS не даёт.
+   */
   negative?: boolean;
   /** Произвольное значение в скобках, как в Tailwind: `mt-[37px]` (`_` — пробел). */
   arbitrary?: boolean;
@@ -88,9 +82,6 @@ const SCALE_SCHEMA = {
   negative: isBoolean,
   arbitrary: isBoolean,
 };
-
-/** Шаг-слово: такой класс, не найденный среди статики, — чужой. */
-const REGEXP_WORD = /^[a-z]/i;
 
 /** Числовой шаг: `4`, `2.5`. */
 const REGEXP_STEP = /^\d+(?:\.\d+)?$/;
@@ -156,8 +147,8 @@ export function defineScale(mn: MnInstance, options: MnScaleOptions): MnInstance
     '': [''],
   };
   const separator = options.separator === undefined ? '-' : options.separator;
-  // Шаги карты — тоже статикой: буквенный шаг (`pt-v`, `q-pa-md`) ядро сочло бы чужим
-  // kebab-классом, и до хендлера он не дошёл бы. Хендлер ловит числовой шаг вне карты.
+  // Шаги карты — тоже статикой: слово-шаг (`pt-v`, `q-pa-md`) — точное имя, без разбора.
+  // Хендлер ловит числовой шаг вне карты, `-[…]` и отрицательные значения.
   const keywords: Record<string, string> = typeof options.scale === 'function'
     ? options.keywords || {}
     : {
@@ -173,89 +164,20 @@ export function defineScale(mn: MnInstance, options: MnScaleOptions): MnInstance
     for (side in sides) { // eslint-disable-line
       name = key + side;
       properties = sides[side].map((part) => camel(options.properties[key] + (part ? '-' + part : '')));
-      // Статика важнее хендлера; хендлер — для числовых шагов, `-[…]` и шага с `!important`.
-      register(
-        mn, name, scaleHandler(
-          name, properties, separator, options,
-        ),
+      // Имя с дефисом (`min-w`, `gap-x`) ядро находит само: домен `min`, префикс `-w` (D-063).
+      mn(
+        name, scaleHandler(
+          name, properties, separator, keywords, options,
+        ) as never, '', 1,
       );
       for (word in keywords) { // eslint-disable-line
         mn(name + separator + word, {
           style: styleOf(properties, keywords[word]),
         } as never);
-        // `-mt-px` — слово с минусом: число или функция (`var(--gap)`); `auto` не отрицается.
-        options.negative && REGEXP_NEGATABLE.test(keywords[word]) && mn('-' + name + separator + word, {
-          style: styleOf(properties, negate(keywords[word])),
-        } as never);
       }
     }
   }
   return mn;
-}
-
-/** Хендлер шкалы: флаг `negative` — для ядра. */
-type ScaleHandler = ((p: MnEssenceParams) => { style: Record<string, string> }) & { negative?: number };
-
-/** Хендлер-диспетчер первой части имени (`min` для `min-w`, `min-h`), D-061. */
-type Dispatcher = MnTwWrapped & {
-  table: Record<string, ScaleHandler>;
-  fallback?: ScaleHandler;
-};
-
-/**
- * Регистрирует хендлер шкалы. Имя с дефисом (`min-w`, `gap-x`) ядро не найдёт — хендлер
- * ищется по первым буквам (D-061): под первой частью (`min`) — диспетчер, он выбирает
- * самую длинную подходящую вторую часть. Простое имя при уже заведённом диспетчере —
- * его запасной хендлер (`gap` рядом с `gap-x`).
- */
-function register(
-  mn: MnInstance, name: string, handler: ScaleHandler,
-): void {
-  const at = name.indexOf('-');
-  const head = at < 0 ? name : name.slice(0, at);
-  // `handlerMap` у экземпляра есть всегда (ядро заводит его при создании).
-  const existing = (mn as unknown as { handlerMap: Record<string, Dispatcher> }).handlerMap[head];
-  let dispatcher = existing && existing.table ? existing : undefined;
-  if (at < 0 && !dispatcher) {
-    mn(
-      name, handler as never, '', 1,
-    );
-    return;
-  }
-  if (!dispatcher) {
-    dispatcher = dispatcherOf(existing as ScaleHandler | undefined);
-    mn(
-      head, dispatcher as never, '', 1,
-    );
-  }
-  at < 0 ? (dispatcher.fallback = handler) : (dispatcher.table[name.slice(at + 1)] = handler);
-  handler.negative && (dispatcher.negative = 1);
-}
-
-function dispatcherOf(fallback: ScaleHandler | undefined): Dispatcher {
-  const dispatcher = ((p: MnEssenceParams) => {
-    const suffix = p.suffix;
-    const table = dispatcher.table;
-    let best = '';
-    let tail: string;
-    for (tail in table) { // eslint-disable-line
-      tail.length > best.length && suffix.slice(1, tail.length + 1) === tail && suffix[0] === '-'
-        && (suffix.length === tail.length + 1 || suffix[tail.length + 1] === '-') && (best = tail);
-    }
-    const handler = best ? table[best] : dispatcher.fallback;
-    const rest = best ? suffix.slice(best.length + 1) : suffix;
-    // Запасной хендлер видит то же, что видел бы без диспетчера: kebab-остаток и чужой минус — чужой класс.
-    return handler && (!p.sign || handler.negative) && (best || !REGEXP_FOREIGN_KEBAB.test(rest))
-      ? handler({
-        ...p,
-        suffix: rest,
-      })
-      : foreign(p);
-  }) as Dispatcher;
-  dispatcher.table = {};
-  dispatcher.kebab = 1;
-  dispatcher.fallback = fallback;
-  return dispatcher;
 }
 
 function styleOf(properties: string[], value: string): Record<string, string> {
@@ -266,36 +188,45 @@ function styleOf(properties: string[], value: string): Record<string, string> {
   return style;
 }
 
+/**
+ * Хендлер шкалы. Ведущий минус Tailwind приходит как `p.sign` (D-064): без `negative: true`
+ * хендлер ничего не возвращает — CSS нет, без предупреждения.
+ */
 function scaleHandler(
-  name: string, properties: string[], separator: string, options: MnScaleOptions,
-): ScaleHandler {
+  name: string, properties: string[], separator: string, keywords: Record<string, string>,
+  options: MnScaleOptions,
+): (p: MnEssenceParams) => { style: Record<string, string> } | undefined {
   const scale = options.scale;
   const steps = typeof scale === 'function' ? '' : Object.keys(scale).join(', ');
-  const handler = (p: MnEssenceParams): { style: Record<string, string> } => {
+  return (p: MnEssenceParams) => {
     const suffix = p.suffix;
     const step = suffix.slice(separator.length);
-    let value: string | undefined;
+    const negative = p.sign === '-';
+    let value: string;
+    if (negative && !options.negative) {
+      return undefined;
+    }
     suffix.slice(0, separator.length) === separator && step || fail(
       name, suffix, 'expects a step of the scale',
     );
-    // Слово вне слов и карты (`min-w-foo`) — чужой класс, молча; кривое число — предупреждение.
-    REGEXP_WORD.test(step) && foreign(p);
     if (options.arbitrary && step[0] === '[' && step[step.length - 1] === ']' && step.length > 2) {
       value = step.slice(1, -1).replace(REGEXP_ARBITRARY_SPACE, (match) => (match === '_' ? ' ' : '_'));
+    } else if (Object.prototype.hasOwnProperty.call(keywords, step)) {
+      // Сюда слово доходит только с минусом (`-mt-px`): без минуса его берёт статика.
+      value = REGEXP_NEGATABLE.test(keywords[step]) ? keywords[step] : fail(
+        name, suffix, '"' + step + '" has no negative value',
+      );
     } else if (typeof scale === 'function') {
       value = REGEXP_STEP.test(step) ? scale(parseFloat(step)) : fail(
         name, suffix, 'step "' + step + '" is not a number',
       );
     } else {
-      // Шаги карты — статика (в том числе с `!important`): сюда доходит только шаг вне карты.
       value = fail(
         name, suffix, 'step "' + step + '" is not in the scale (' + steps + ')',
       );
     }
     return {
-      style: styleOf(properties, p.sign === '-' ? negate(value) : value),
+      style: styleOf(properties, negative ? negate(value) : value),
     };
   };
-  options.negative && ((handler as { negative?: number }).negative = 1);
-  return handler;
 }

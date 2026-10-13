@@ -158,23 +158,28 @@ describe('parseTwSuffix', () => {
   });
 });
 
-describe('tw()', () => {
+describe('tw() — обёртка без флагов (D-061, D-064)', () => {
   function gap(mn: MnInstance) {
     mn(
       'gap', tw(({
-        parts, arbitrary,
+        parts, arbitrary, negative,
       }: MnTwArgs) => {
         const property = parts[0] === 'x' ? 'columnGap' : parts[0] === 'y' ? 'rowGap' : 'gap';
         const step = property === 'gap' ? parts[0] : parts[1];
         const value = arbitrary || step && /^\d+$/.test(step) && Number(step) * 0.25 + 'rem';
-        return value ? {
+        // Отрицательного зазора нет: хендлер ничего не возвращает — CSS нет, молча.
+        return value && !negative ? {
           style: {
             [property]: value,
           },
         } : undefined;
-      }) as never, '', 1,
+      }), '', 1,
     );
   }
+
+  test('обёртка — просто функция, без свойств', () => {
+    expect(Object.keys(tw(() => undefined))).toEqual([]);
+  });
 
   test.each([
     ['gap-2', '.gap-2{gap:0.5rem}'],
@@ -188,16 +193,23 @@ describe('tw()', () => {
     'gap-foo',
     'gap-x-',
     'gap',
-    '-gap-2',
-  ])('%s — чужой класс, молча', (token) => {
-    expect(compile(token, gap)).toEqual({
+  ])('%s — хендлер ничего не вернул: «нужно значение» (D-065)', (token) => {
+    expect(compile(token, gap).warnings).toEqual(['"' + token + '" produced no CSS: handler "gap" needs a value here']);
+  });
+
+  test('остаток не в форме Tailwind — хендлер не вызывается, «нужно значение»', () => {
+    expect(compile('gap-x--2', gap).warnings).toEqual(['"gap-x--2" produced no CSS: handler "gap" needs a value here']);
+  });
+
+  test('-gap-2 — минус, который хендлер не принимает: CSS нет, молча', () => {
+    expect(compile('-gap-2', gap)).toEqual({
       css: '',
       warnings: [],
     });
   });
 
-  test('negative: true — ведущий - доходит до хендлера', () => {
-    expect(compile('-translate-x-2', (mn) => {
+  test('минус приходит параметром: хендлер решает сам', () => {
+    expect(compile('-translate-x-2 translate-x-2', (mn) => {
       mn(
         'translate', tw(({
           parts, negative,
@@ -205,25 +217,13 @@ describe('tw()', () => {
           style: {
             translate: (negative ? '-' : '') + Number(parts[1]) * 0.25 + 'rem 0',
           },
-        }), {
-          negative: true,
-        }) as never, '', 1,
+        })), '', 1,
       );
-    }).css).toBe('.-translate-x-2{translate:-0.5rem 0}');
-  });
-
-  test('ошибка из хендлера — предупреждение, как у любого хендлера', () => {
-    expect(compile('bad-x', (mn) => {
-      mn(
-        'bad', tw(() => {
-          throw new Error('broken');
-        }) as never, '', 1,
-      );
-    }).css).toBe('');
+    }).css).toBe('.-translate-x-2{translate:-0.5rem 0}.translate-x-2{translate:0.5rem 0}');
   });
 });
 
-describe('defineScale: имена с дефисом (D-061)', () => {
+describe('defineScale: имена с дефисом — домены (D-063)', () => {
   function sizes(mn: MnInstance) {
     defineScale(mn, {
       properties: {
@@ -249,6 +249,10 @@ describe('defineScale: имена с дефисом (D-061)', () => {
         'translate-x': 'translate',
       },
       scale: (step) => step * 0.25 + 'rem',
+      keywords: {
+        px: '1px',
+        auto: 'auto',
+      },
       negative: true,
     });
   }
@@ -261,6 +265,7 @@ describe('defineScale: имена с дефисом (D-061)', () => {
     ['gap-2', '.gap-2{gap:0.5rem}'],
     ['gap-x-4', '.gap-x-4{column-gap:1rem}'],
     ['-gap-x-4', '.-gap-x-4{column-gap:-1rem}'],
+    ['-gap-x-px', '.-gap-x-px{column-gap:-1px}'],
     ['-translate-x-2', '.-translate-x-2{translate:-0.5rem}'],
   ])('%s → %s', (token, css) => {
     expect(compile(token, sizes).css).toBe(css);
@@ -268,23 +273,30 @@ describe('defineScale: имена с дефисом (D-061)', () => {
 
   test.each([
     'min-foo-4',
-    'min-w-foo',
-    'gap-foo',
+    'min-4',
     '-gap-2',
     '-min-w-4',
-    'min-4',
-  ])('%s — чужой класс, молча', (token) => {
+    'min-wide',
+  ])('%s — не подходит ни одна запись или минус не принят: молча', (token) => {
     expect(compile(token, sizes)).toEqual({
       css: '',
       warnings: [],
     });
   });
 
-  test('кривое число — предупреждение', () => {
-    expect(compile('min-w-4x', sizes).warnings).toEqual(['"min-w-4x": step "4x" is not a number']);
+  test.each([
+    ['min-w-foo', '"min-w-foo": step "foo" is not a number'],
+    ['min-w-4x', '"min-w-4x": step "4x" is not a number'],
+    ['-gap-x-auto', '"gap-x-auto": "auto" has no negative value'],
+  ])('%s — запись нашлась, значение не разобрано: предупреждение (D-063, ответ 1)', (token, message) => {
+    expect(compile(token, sizes).warnings).toEqual([message]);
   });
 
-  test('простое имя раньше диспетчера — становится его запасным хендлером', () => {
+  test('статика с хвостом уступает хендлеру (D-063, ответ 2): min-w-fullx → min-w', () => {
+    expect(compile('min-w-fullx', sizes).warnings).toEqual(['"min-w-fullx": step "fullx" is not a number']);
+  });
+
+  test('порядок регистрации не важен: простое имя после имени с дефисом', () => {
     expect(compile('gap-2 gap-x-1', (mn) => {
       defineScale(mn, {
         properties: {

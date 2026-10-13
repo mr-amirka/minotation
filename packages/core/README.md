@@ -185,6 +185,40 @@ mn.setPresets([presetApp]);
 `presetMain` — `presetStandard` и `presetMedias`. `presetHints({ … })` возвращает объект
 с именем `presetHints`.
 
+### Шкала для пресетов-клонов — `defineScale` (D-059)
+
+Одним вызовом — хендлеры на все сочетания «свойство × сторона» и статики на слова. Для
+клонов Tailwind, Bootstrap, Vuetify, Primer, Basscss: шкалу и имена задаёт пресет.
+
+```ts
+import { defineScale } from 'minotation';
+
+const presetTailwindSpacing = (mn) => {
+  defineScale(mn, {
+    properties: { m: 'margin' },
+    sides: { '': [''], t: ['top'], x: ['left', 'right'] /* … */ },
+    scale: (step) => step * 0.25 + 'rem',  // или карта { 0: '0', 1: '.25rem', … }
+    keywords: { auto: 'auto', px: '1px' },
+    negative: true,                         // -mt-4
+    arbitrary: true,                        // mt-[37px]
+  });
+  defineScale(mn, { properties: { p: 'padding' }, /* … без negative */ });
+};
+```
+
+| Класс | CSS |
+|---|---|
+| `mt-4` / `mx-2.5` | `margin-top:1rem` / `margin-left:0.625rem;margin-right:0.625rem` |
+| `mx-auto` / `mt-px` | слова — статикой |
+| `-mt-4` / `-mt-[var(--g)]` | `margin-top:-1rem` / `calc(var(--g) * -1)` — ведущий `-`, только при `negative: true` |
+| `mt-[37px]` | `margin-top:37px` — в режиме `'tailwind-compatible'` (в записи minotation `[…]` — атрибут) |
+| `pt-7` при карте `0…5` | предупреждение: `step "7" is not in the scale (0, 1, 2, 3, 4, 5)` |
+
+`separator: ''` — запись без дефиса (`p2`, Basscss). Шаги карты регистрируются статикой, как
+и слова: буквенный шаг (`md`) иначе был бы принят за чужой kebab-класс. Ведущий `-` ядро
+передаёт только хендлеру с флагом `negative`: у остальных `-p10` — чужой класс, как раньше.
+Опции проверяются: неизвестный ключ — ошибка с подсказкой.
+
 ## API
 
 ### `minotationProvider(options?)`

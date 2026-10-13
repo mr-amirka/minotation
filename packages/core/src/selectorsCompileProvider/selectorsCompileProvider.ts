@@ -542,12 +542,13 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   /**
    * Эссенция утилиты Tailwind: произвольное свойство `[свойство:значение]` — сырая
    * декларация (D-055, только в этом режиме), иначе утилита как есть — хендлер получает
-   * суффикс целиком (`w-[37px]` → `-[37px]`).
+   * суффикс целиком (`w-[37px]` → `-[37px]`); со скобками — без снятия `\\`: `\\_` в
+   * произвольном значении — само подчёркивание, его разбирает хендлер.
    */
   function tailwindEssence(utility: string): string {
     return utility[0] === '[' && utility[utility.length - 1] === ']' && utility.indexOf(':') > 0
       ? MN_RAW_PROPERTY + arbitrary(utility.slice(1, -1))
-      : unslash(utility);
+      : utility.indexOf('[') < 0 ? unslash(utility) : utility;
   }
 
   /**

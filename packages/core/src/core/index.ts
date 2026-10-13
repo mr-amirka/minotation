@@ -1350,11 +1350,13 @@ function minotationProvider(options?: MnOptions) {
     let ni: string | undefined;
     let suffix = '';
     let handle: (((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number;
-      hint?: number }) | undefined;
+      hint?: number;
+      negative?: number }) | undefined;
     let params: MnEssenceParams;
     let essence: MnEssenceRaw | void | 0;
     let err: Error;
     let pair: number;
+    let sign = '';
     try {
       if (matchs = REGEXP_MATCH_VAR.exec(value)) {
         const varStyle: Record<string, string> = {};
@@ -1369,8 +1371,10 @@ function minotationProvider(options?: MnOptions) {
       }
       // Эссенция-пара «имя\u0001значение» от разборщика режима (D-045 этап 5): имя задано
       // явно, регулярка имени не нужна — `bg:blue-70` у Master CSS даёт `bg` + `blue-70`.
+      // Ведущий `-` (`-mt-4`) — отрицательное значение; доходит только до хендлера с флагом
+      // `negative` (D-059), для прочих класс чужой, как и раньше.
       return (matchs = (pair = value.indexOf(MN_ESSENCE_PAIR)) < 0
-        ? REGEXP_MATCH_NAME.exec(value)
+        ? REGEXP_MATCH_NAME.exec(value[0] === '-' ? (sign = '-', value.slice(1)) : value)
         : [
           value,
           value.slice(0, pair),
@@ -1388,12 +1392,14 @@ function minotationProvider(options?: MnOptions) {
         // Исключение — хендлер-ловушка пресета подсказок (`hint`, D-024): ему
         // kebab-суффикс и нужен (`text-center` → «в minotation это taC»).
         (handle = $$handlerMap[name])
+          && (!sign || handle.negative)
           && (!REGEXP_FOREIGN_KEBAB.test(suffix) || handle.hint)
           ? (
             params = {
               name: name,
               suffix: suffix,
               ni: ni || '',
+              sign: sign,
             },
             handle.skip || (matchs = REGEXP_MATCH_VALUE.exec(suffix)) && (
               params.value = matchs[2],

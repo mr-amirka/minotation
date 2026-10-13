@@ -75,6 +75,8 @@ export interface MnEssenceParams {
   negative?: string;
   unit?: string;
   other?: string;
+  /** `'-'` — класс с ведущим минусом (`-mt-4`), только для хендлера с флагом `negative` (D-059). */
+  sign?: string;
   [key: string]: string | number | undefined;
 }
 

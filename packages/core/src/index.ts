@@ -69,6 +69,9 @@ import presetNormalizeDefault from './presets/normalize';
 import presetMainDefault from './presets/main';
 import presetPrefixesDefault from './presets/prefixes';
 import presetHintsDefault from './presets/hints';
+import {
+  defineScale as defineScaleImpl,
+} from './presets/scale';
 
 export const minotationProvider = minotationProviderImpl;
 export default coreDefault;
@@ -150,6 +153,9 @@ export type {
   MnClassValue,
 } from './mne';
 export type {
+  MnScaleOptions,
+} from './presets/scale';
+export type {
   OptionCheck, OptionSchema,
 } from './checkOptions';
 export type {
@@ -189,3 +195,4 @@ export const presetMain = presetMainDefault;
 export const presetPrefixes = presetPrefixesDefault;
 /** Подсказки о классах, которых нет в нотации (`t0` → `st0`, `flex` → `dF`) — D-024. */
 export const presetHints = presetHintsDefault;
+export const defineScale = defineScaleImpl;

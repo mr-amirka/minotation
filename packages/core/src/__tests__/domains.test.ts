@@ -128,7 +128,7 @@ describe('поиск (D-063)', () => {
   test("статика не берёт минус Tailwind: -min-w-full уступает хендлеру -w, тот минус не принял — молча", () => {
     expect(compile(
       '-min-w-full', minWidth, {
-        notationMode: 'tailwind-compatible',
+        notationMode: 'tw4-compatible',
       },
     )).toMatchObject({
       css: '',

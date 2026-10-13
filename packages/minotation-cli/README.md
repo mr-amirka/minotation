@@ -46,7 +46,7 @@ mn ./index.html -o ./page.css           # одиночный файл
 | `--preset-conflict-mode <режим>` | пресеты несовместимых экосистем — режимы те же (D-067) |
 | `--notation-conflict-mode <режим>` | класс в файлах с разными режимами синтаксиса значит разное: `warn` (по умолчанию) или `strict` |
 | `--context-where` | контекст селектора в `:where()`: специфичность только у класса, как в Tailwind v4 |
-| `--notation-mode <режим>` | синтаксис классов: `context-qualified` (по умолчанию, `bg-blue-500:hover@md`), `tailwind-compatible` (как Tailwind, `md:hover:bg-blue-500`) `breakpoint-prefixed` (как quantum-css, `SM_px15`) или `property-value` (как Master CSS, `bg:blue:hover@md`) |
+| `--notation-mode <режим>` | синтаксис классов: `context-qualified` (по умолчанию, `bg-blue-500:hover@md`), `tw4-compatible` (как Tailwind, `md:hover:bg-blue-500`) `breakpoint-prefixed` (как quantum-css, `SM_px15`) или `property-value` (как Master CSS, `bg:blue:hover@md`) |
 | `--no-syntax` | не разбирать JS/TS парсером, только текстовый поиск |
 | `--skip-partials` | пропускать файлы-партиалы `_*` |
 | `--no-manifest` | не писать `mn-manifest.json` рядом с CSS (по умолчанию пишется: `{ "mn.css": "mn.3f9a1c2e.css" }`) |

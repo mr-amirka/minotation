@@ -1,5 +1,5 @@
 /**
- * Режим `'tailwind-compatible'`: произвольные значения и варианты Tailwind (D-049, D-055) —
+ * Режим `'tw4-compatible'`: произвольные значения и варианты Tailwind (D-049, D-055) —
  * `[свойство:значение]`, `-[…]` в утилите, `[&…]:`, `data-*`, `aria-*`, `min-*`/`max-*`,
  * `has-[…]`, `not-[…]`, `nth-[…]`, `in-[…]`, `group-[…]`, `*:`, `**:`, `!` в конце.
  */
@@ -17,7 +17,7 @@ function compile(tokens: string, options: MnOptions = {}) {
   const warnings: MnWarning[] = [];
   const mn = minotationProvider({
     warningMode: 'silent',
-    notationMode: 'tailwind-compatible',
+    notationMode: 'tw4-compatible',
     childSelectorMode: 'silent',
     onWarning: (w) => warnings.push(w),
     ...options,
@@ -154,7 +154,7 @@ describe('пограничные случаи', () => {
   test('метка с комбинатором + и >: group-[…] берёт отношение из селектора метки', () => {
     const mn = minotationProvider({
       warningMode: 'silent',
-      notationMode: 'tailwind-compatible',
+      notationMode: 'tw4-compatible',
     });
     mn.setPresets([presetStandard]);
     mn.variantPrefixedSynonyms({
@@ -169,7 +169,7 @@ describe('пограничные случаи', () => {
   test('точка по высоте', () => {
     const mn = minotationProvider({
       warningMode: 'silent',
-      notationMode: 'tailwind-compatible',
+      notationMode: 'tw4-compatible',
     });
     mn.setPresets([presetStandard]);
     mn.media.tall = {
@@ -192,7 +192,7 @@ describe('пограничные случаи', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- экземпляр провайдера нетипизирован снаружи
     const instance: any = Object.assign(() => undefined, {
       options: {
-        notationMode: 'tailwind-compatible',
+        notationMode: 'tw4-compatible',
       },
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- то же
@@ -238,7 +238,7 @@ describe('at-правила: @supports, @container (D-057)', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- экземпляр провайдера нетипизирован снаружи
     const instance: any = Object.assign(() => undefined, {
       options: {
-        notationMode: 'tailwind-compatible',
+        notationMode: 'tw4-compatible',
       },
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- то же

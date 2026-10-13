@@ -13,7 +13,7 @@ import type {
 export default {
   name: 'presetMedias',
   // Точки работают и в записи Tailwind (`d:` — от точки, D-060), признаки — везде (D-067).
-  ecosystems: ['minotation', 'tailwind'],
+  ecosystems: ['minotation', 'tw4'],
   setup: (mn: MnInstance) => {
     const {
       media,

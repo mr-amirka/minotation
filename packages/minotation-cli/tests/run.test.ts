@@ -194,8 +194,8 @@ describe('mergeSettings', () => {
         presetConflictMode: 'strict',
       });
     expect(mergeSettings(parseArgs([]), {
-      notationMode: 'tailwind-compatible',
-    }).notationMode).toBe('tailwind-compatible');
+      notationMode: 'tw4-compatible',
+    }).notationMode).toBe('tw4-compatible');
     expect(mergeSettings(parseArgs(['--context-where']), {}).contextWhere).toBe(true);
     expect(mergeSettings(parseArgs(['--notation-conflict-mode', 'strict']), {}).notationConflictMode).toBe('strict');
     expect(mergeSettings(parseArgs([]), {

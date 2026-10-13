@@ -69,6 +69,11 @@ import presetNormalizeDefault from './presets/normalize';
 import presetMainDefault from './presets/main';
 import presetPrefixesDefault from './presets/prefixes';
 import presetHintsDefault from './presets/hints';
+import presetTw4Default from './presets/tw4';
+import {
+  TW4_THEME as TW4_THEME_IMPL,
+  TW4_VERSION as TW4_VERSION_IMPL,
+} from './presets/tw4Theme';
 import {
   defineScale as defineScaleImpl,
 } from './presets/scale';
@@ -202,6 +207,11 @@ export const presetMain = presetMainDefault;
 export const presetPrefixes = presetPrefixesDefault;
 /** Подсказки о классах, которых нет в нотации (`t0` → `st0`, `flex` → `dF`) — D-024. */
 export const presetHints = presetHintsDefault;
+/** Клон Tailwind 4 (D-068): вместо `presetStandard`, запись `'tw4-compatible'`. */
+export const presetTw4 = presetTw4Default;
+/** Тема Tailwind 4, с которой работает `presetTw4`, и её версия. */
+export const TW4_THEME = TW4_THEME_IMPL;
+export const TW4_VERSION = TW4_VERSION_IMPL;
 export const defineScale = defineScaleImpl;
 export const tw = twImpl;
 export const parseTwSuffix = parseTwSuffixImpl;

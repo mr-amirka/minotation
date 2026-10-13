@@ -118,10 +118,10 @@ describe('цвет: хвост после кода не теряется мол�
     expect(mn.warnings$.getValue().map((w) => w.type)).toEqual(['parse-error']);
   });
 
-  test("'tailwind-compatible': cF00.active целиком в хендлере — брак, а не color:#fff", () => {
+  test("'tw4-compatible': cF00.active целиком в хендлере — брак, а не color:#fff", () => {
     const mn = minotationProvider({
       warningMode: 'silent',
-      notationMode: 'tailwind-compatible',
+      notationMode: 'tw4-compatible',
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')('cF00.active');

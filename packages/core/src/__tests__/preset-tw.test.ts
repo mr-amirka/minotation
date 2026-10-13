@@ -23,7 +23,7 @@ function compile(tokens: string, setup: (mn: MnInstance) => void) {
   const warnings: MnWarning[] = [];
   const mn = minotationProvider({
     warningMode: 'silent',
-    notationMode: 'tailwind-compatible',
+    notationMode: 'tw4-compatible',
     onWarning: (w) => warnings.push(w),
   });
   mn.setPresets([setup]);

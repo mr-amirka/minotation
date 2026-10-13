@@ -144,7 +144,7 @@ describe('orderPresets — устойчивая топологическая с�
       name: 'a',
       setup: () => undefined,
       notationMode: 'tailwind',
-    } as never], {})).toThrow('option "notationMode" expects "context-qualified", "tailwind-compatible", "breakpoint-prefixed" or "property-value"');
+    } as never], {})).toThrow('option "notationMode" expects "context-qualified", "tw4-compatible", "breakpoint-prefixed" or "property-value"');
   });
 });
 

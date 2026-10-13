@@ -690,7 +690,7 @@ function minotationProvider(options?: MnOptions) {
 
   /** Кэширующая обёртка над `parseComboNameProvider(attrName)` — сама обёртка (try/catch) не пересоздаётся на каждый вызов {@link updateAttrByMap}/{@link updateAttrByValues}, а живёт всё время жизни инстанса, как {@link getCompiler}. */
   function getParseComboName(attrName: string): ParseComboNameFn {
-    // Ключ компилятора с режимом — `'class tailwind-compatible'` (см. getCompiler).
+    // Ключ компилятора с режимом — `'class tw4-compatible'` (см. getCompiler).
     const meta = $$compilerModes[attrName];
     return $$parseComboNameCache[attrName]
       || ($$parseComboNameCache[attrName] = withCatchParseComboNameDecorate(meta
@@ -1992,7 +1992,7 @@ function minotationProvider(options?: MnOptions) {
   // synonym/selectors: произвольная вложенная форма, см. baseSetSynonyms/normalizeSelectors.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   /**
-   * Метки вариантов `{имя}-{состояние}` для `'tailwind-compatible'` (D-046): селектор метки и
+   * Метки вариантов `{имя}-{состояние}` для `'tw4-compatible'` (D-046): селектор метки и
    * отношение к элементу. Без записи имя — предок `.имя` (`group-hover:` → `.group:hover .x`);
    * с записью `peer: '.peer~'` — сосед (`peer-invalid:` → `.peer:invalid~.x`).
    *

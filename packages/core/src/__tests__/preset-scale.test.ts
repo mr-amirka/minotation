@@ -67,12 +67,12 @@ describe('шкала-функция (Tailwind)', () => {
     ['-mt-px', '.-mt-px{margin-top:-1px}'],
     ['-mt-0', '.-mt-0{margin-top:-0rem}'],
   ])('%s → %s', (token, css) => {
-    // Ведущий минус — запись Tailwind (D-064), поэтому режим `'tailwind-compatible'`.
+    // Ведущий минус — запись Tailwind (D-064), поэтому режим `'tw4-compatible'`.
     expect(compile(
-      token, TAILWIND, 'tailwind-compatible',
+      token, TAILWIND, 'tw4-compatible',
     ).css).toBe(css);
     expect(compile(
-      token, TAILWIND, 'tailwind-compatible',
+      token, TAILWIND, 'tw4-compatible',
     ).warnings).toEqual([]);
   });
 
@@ -88,9 +88,9 @@ describe('шкала-функция (Tailwind)', () => {
     ['mx-[calc(1rem_+_2px)]', '.mx-\\[calc\\(1rem_\\+_2px\\)\\]{margin-left:calc(1rem + 2px);margin-right:calc(1rem + 2px)}'],
     ['-mt-[var(--gap)]', '.-mt-\\[var\\(--gap\\)\\]{margin-top:calc(var(--gap) * -1)}'],
     ['mt-[a\\_b]', '.mt-\\[a\\\\_b\\]{margin-top:a_b}'],
-  ])("произвольное значение в 'tailwind-compatible': %s", (token, css) => {
+  ])("произвольное значение в 'tw4-compatible': %s", (token, css) => {
     expect(compile(
-      token, TAILWIND, 'tailwind-compatible',
+      token, TAILWIND, 'tw4-compatible',
     ).css).toBe(css);
   });
 
@@ -100,7 +100,7 @@ describe('шкала-функция (Tailwind)', () => {
     ['mt-[]', '"mt-[]": step "[]" is not a number'],
   ])('%s — предупреждение', (token, message) => {
     const result = compile(
-      token, TAILWIND, 'tailwind-compatible',
+      token, TAILWIND, 'tw4-compatible',
     );
     expect(result.css).toBe('');
     expect(result.warnings).toEqual([message]);
@@ -108,7 +108,7 @@ describe('шкала-функция (Tailwind)', () => {
 
   test('-mx-auto — у слова нет отрицания: предупреждение', () => {
     expect(compile(
-      '-mx-auto', TAILWIND, 'tailwind-compatible',
+      '-mx-auto', TAILWIND, 'tw4-compatible',
     )).toEqual({
       css: '',
       warnings: ['"mx-auto": "auto" has no negative value'],
@@ -142,10 +142,10 @@ describe('шкала-карта (Bootstrap) и разделитель', () => {
 
   test('шаг карты с !important — через хендлер (статика без -i)', () => {
     expect(compile(
-      'pt-3!', BOOTSTRAP, 'tailwind-compatible',
+      'pt-3!', BOOTSTRAP, 'tw4-compatible',
     ).css).toBe('.pt-3\\!{padding-top:1rem!important}');
     expect(compile(
-      'mt-4!', TAILWIND, 'tailwind-compatible',
+      'mt-4!', TAILWIND, 'tw4-compatible',
     ).css).toBe('.mt-4\\!{margin-top:1rem!important}');
   });
 
@@ -155,7 +155,7 @@ describe('шкала-карта (Bootstrap) и разделитель', () => {
 
   test('без negative ведущий - — CSS нет, молча (D-064)', () => {
     expect(compile(
-      '-pt-3', BOOTSTRAP, 'tailwind-compatible',
+      '-pt-3', BOOTSTRAP, 'tw4-compatible',
     )).toEqual({
       css: '',
       warnings: [],
@@ -167,13 +167,13 @@ describe('шкала-карта (Bootstrap) и разделитель', () => {
       '-pt-v', {
         ...BOOTSTRAP,
         negative: true,
-      }, 'tailwind-compatible',
+      }, 'tw4-compatible',
     ).css).toBe('.-pt-v{padding-top:calc(var(--gap) * -1)}');
     expect(compile(
       '-pt-0', {
         ...BOOTSTRAP,
         negative: true,
-      }, 'tailwind-compatible',
+      }, 'tw4-compatible',
     ).css).toBe('.-pt-0{padding-top:0}');
   });
 

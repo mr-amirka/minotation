@@ -141,7 +141,7 @@ export interface MnInstance {
   // selectors: произвольная вложенная форма, см. baseSetSynonyms/normalizeSelectors в core/index.ts.
   synonyms(synonym: string, selectors: string | Record<string, any>): void; // eslint-disable-line @typescript-eslint/no-explicit-any
   /**
-   * Метки вариантов `{имя}-{состояние}` для `notationMode: 'tailwind-compatible'` (D-046):
+   * Метки вариантов `{имя}-{состояние}` для `notationMode: 'tw4-compatible'` (D-046):
    * `{ peer: '.peer~' }` — `peer-invalid:x` → `.peer:invalid~.x`.
    */
   variantPrefixedSynonyms(map: Record<string, string>): MnInstance;

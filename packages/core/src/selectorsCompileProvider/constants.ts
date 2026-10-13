@@ -102,12 +102,12 @@ export const REGEXP_BREAKPOINT_PREFIX = /^([A-Z][A-Z0-9]*)_(.+)$/;
 export const MN_ESSENCE_PAIR = '\u0001';
 /**
  * Метка эссенции «произвольное свойство» Tailwind `[свойство:значение]` (D-055): сырая
- * декларация без хендлера — только из режима `'tailwind-compatible'`.
+ * декларация без хендлера — только из режима `'tw4-compatible'`.
  */
 export const MN_RAW_PROPERTY = '\u0002';
 
 /**
- * Метка ведущего минуса Tailwind (`-mt-4`, D-064): разборщик `'tailwind-compatible'` снимает `-` и
+ * Метка ведущего минуса Tailwind (`-mt-4`, D-064): разборщик `'tw4-compatible'` снимает `-` и
  * ставит метку, ядро передаёт хендлеру `p.sign = '-'`. Своя эссенция, отдельная от `mt-4`.
  */
 export const MN_NEGATIVE = '\u0003';

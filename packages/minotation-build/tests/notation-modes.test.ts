@@ -47,15 +47,15 @@ afterEach(() => {
 
 describe('readNotationDirective — комментарий @minotation в начале файла', () => {
   test.each([
-    ['/* @minotation notationMode: tailwind-compatible */', {
-      notationMode: 'tailwind-compatible',
+    ['/* @minotation notationMode: tw4-compatible */', {
+      notationMode: 'tw4-compatible',
     }],
-    ['// @minotation notationMode: tailwind-compatible; requires: presetA, presetB', {
-      notationMode: 'tailwind-compatible',
+    ['// @minotation notationMode: tw4-compatible; requires: presetA, presetB', {
+      notationMode: 'tw4-compatible',
       requires: ['presetA', 'presetB'],
     }],
-    ['/* @minotation notationMode: tailwind-compatible; */', {
-      notationMode: 'tailwind-compatible',
+    ['/* @minotation notationMode: tw4-compatible; */', {
+      notationMode: 'tw4-compatible',
     }],
     ['<!-- @minotation requires: presetTailwind -->\n<div>', {
       requires: ['presetTailwind'],
@@ -69,17 +69,17 @@ describe('readNotationDirective — комментарий @minotation в нач
 
   test('нет директивы — undefined; директива далеко от начала — не читается', () => {
     expect(readNotationDirective('<div class="p10">', 'a.html')).toBeUndefined();
-    expect(readNotationDirective('x'.repeat(3000) + '/* @minotation notationMode: tailwind-compatible */', 'a.tsx'))
+    expect(readNotationDirective('x'.repeat(3000) + '/* @minotation notationMode: tw4-compatible */', 'a.tsx'))
       .toBeUndefined();
   });
 
   test('ошибки: опечатка в ключе, неверный режим, нет двоеточия', () => {
-    expect(() => readNotationDirective('/* @minotation notationMod: tailwind-compatible */', 'Button.tsx'))
+    expect(() => readNotationDirective('/* @minotation notationMod: tw4-compatible */', 'Button.tsx'))
       .toThrow('[minotation] Button.tsx @minotation: unknown option "notationMod". Did you mean "notationMode"?');
     expect(() => readNotationDirective('/* @minotation notationMode: tailwind */', 'Button.tsx'))
-      .toThrow('option "notationMode" expects "context-qualified", "tailwind-compatible", "breakpoint-prefixed" or "property-value", got string "tailwind"');
-    expect(() => readNotationDirective('/* @minotation tailwind-compatible */', 'Button.tsx'))
-      .toThrow('[minotation] Button.tsx: "@minotation tailwind-compatible" expects "key: value"');
+      .toThrow('option "notationMode" expects "context-qualified", "tw4-compatible", "breakpoint-prefixed" or "property-value", got string "tailwind"');
+    expect(() => readNotationDirective('/* @minotation tw4-compatible */', 'Button.tsx'))
+      .toThrow('[minotation] Button.tsx: "@minotation tw4-compatible" expects "key: value"');
   });
 });
 
@@ -98,20 +98,20 @@ describe('readPackageDirective — поле "minotation" ближайшего pa
     ), JSON.stringify({
       name: 'lib',
       minotation: {
-        notationMode: 'tailwind-compatible',
+        notationMode: 'tw4-compatible',
         requires: ['presetTailwindish'],
       },
     }));
     expect(readPackageDirective(join(
       dir, 'lib', 'src', 'a.tsx',
     ))).toEqual({
-      notationMode: 'tailwind-compatible',
+      notationMode: 'tw4-compatible',
       requires: ['presetTailwindish'],
     });
     expect(readPackageDirective(join(
       dir, 'lib', 'src', 'b.tsx',
     ))).toEqual({
-      notationMode: 'tailwind-compatible',
+      notationMode: 'tw4-compatible',
       requires: ['presetTailwindish'],
     });
     expect(readPackageDirective(join(dir, 'app.tsx'))).toBeUndefined();
@@ -137,14 +137,14 @@ describe('readPackageDirective — поле "minotation" ближайшего pa
 });
 
 describe('накопитель: классы в режиме своего файла', () => {
-  test('файл с директивой tailwind-compatible в проекте context-qualified', () => {
+  test('файл с директивой tw4-compatible в проекте context-qualified', () => {
     const collector = createTokenCollector({
       attrs: 'class',
       presets: PRESETS,
       warningMode: 'silent',
     });
     collector.add(join(dir, 'App.html'), '<div class="p10:hover"></div>');
-    collector.add(join(dir, 'Button.tsx'), '// @minotation notationMode: tailwind-compatible\n<button class="hover:cF00">');
+    collector.add(join(dir, 'Button.tsx'), '// @minotation notationMode: tw4-compatible\n<button class="hover:cF00">');
     const css = collector.css();
     expect(css).toContain('.p10\\:hover:hover{padding:10px}');
     expect(css).toContain('.hover\\:cF00:hover{color:#f00}');
@@ -156,7 +156,7 @@ describe('накопитель: классы в режиме своего фай
       dir, 'ui', 'package.json',
     ), JSON.stringify({
       minotation: {
-        notationMode: 'tailwind-compatible',
+        notationMode: 'tw4-compatible',
       },
     }));
     const collector = createTokenCollector({
@@ -179,8 +179,8 @@ describe('накопитель: классы в режиме своего фай
     const file = join(dir, 'a.html');
     expect(collector.add(file, '<!-- @minotation notationMode: context-qualified --><b class="p10">')).toBe(true);
     expect(collector.css()).toContain('.p10{padding:10px}');
-    expect(collector.add(file, '<!-- @minotation notationMode: tailwind-compatible --><b class="p10">')).toBe(true);
-    expect(collector.add(file, '<!-- @minotation notationMode: tailwind-compatible --><b class="p10">')).toBe(false);
+    expect(collector.add(file, '<!-- @minotation notationMode: tw4-compatible --><b class="p10">')).toBe(true);
+    expect(collector.add(file, '<!-- @minotation notationMode: tw4-compatible --><b class="p10">')).toBe(false);
     collector.remove(file);
     collector.clear();
   });
@@ -213,7 +213,7 @@ describe('requires — нужный пресет подключён', () => {
 });
 
 describe('notationConflictMode — один класс в разных режимах значит разное', () => {
-  const tailwindFile = '// @minotation notationMode: tailwind-compatible\n<b class="hover:cF00">';
+  const tailwindFile = '// @minotation notationMode: tw4-compatible\n<b class="hover:cF00">';
   const projectFile = '<b class="hover:cF00">';
 
   test("'warn' (по умолчанию): предупреждение, в CSS — разбор, который даёт CSS", () => {
@@ -228,7 +228,7 @@ describe('notationConflictMode — один класс в разных режи�
       type: 'notation-conflict',
       token: 'hover:cF00',
       message: 'Class "hover:cF00" means different things in different notation modes:'
-        + ' context-qualified (no CSS), tailwind-compatible. Kept: tailwind-compatible.'
+        + ' context-qualified (no CSS), tw4-compatible. Kept: tw4-compatible.'
         + ' To fail the build instead: notationConflictMode: \'strict\'.',
     }]);
   });
@@ -250,7 +250,7 @@ describe('notationConflictMode — один класс в разных режи�
       presets: PRESETS,
     });
     collector.add(join(dir, 'a.html'), '<b class="p10">');
-    collector.add(join(dir, 'b.tsx'), '// @minotation notationMode: tailwind-compatible\n<b class="p10">');
+    collector.add(join(dir, 'b.tsx'), '// @minotation notationMode: tw4-compatible\n<b class="p10">');
     expect(collector.css()).toContain('.p10{padding:10px}');
     expect(collector.takeWarnings()).toEqual([]);
   });
@@ -263,10 +263,10 @@ describe('createBuildCollector — директива доходит до зап
       presets: PRESETS,
       warningMode: 'silent',
     }, dir);
-    build.add(join(dir, 'a.tsx'), '// @minotation notationMode: tailwind-compatible\n<b class="hover:cF00">');
+    build.add(join(dir, 'a.tsx'), '// @minotation notationMode: tw4-compatible\n<b class="hover:cF00">');
     build.set(
       join(dir, 'b.tsx'), ['class hover:c0F0'], {
-        notationMode: 'tailwind-compatible',
+        notationMode: 'tw4-compatible',
       },
     );
     const css = build.outputs().map((output) => output.css).join('');

@@ -26,7 +26,7 @@ function connect(presets: MnPreset[], options: MnOptions = {}) {
 
 const tailwindish: MnPresetObject = {
   name: 'presetTailwindish',
-  ecosystems: ['tailwind'],
+  ecosystems: ['tw4'],
   setup(mn: MnInstance) {
     mn(
       'mt', () => ({
@@ -115,10 +115,10 @@ describe('handlerConflictMode', () => {
 });
 
 describe('presetConflictMode — маркеры экосистем', () => {
-  test("'warn' — presetStandard (minotation) и клон (tailwind)", () => {
+  test("'warn' — presetStandard (minotation) и клон (tw4)", () => {
     expect(connect([presetStandard, tailwindish], {
       handlerConflictMode: 'silent',
-    })).toEqual(['preset-conflict: presetStandard (minotation) and presetTailwindish (tailwind) belong to different'
+    })).toEqual(['preset-conflict: presetStandard (minotation) and presetTailwindish (tw4) belong to different'
         + ' preset ecosystems. To hide this warning: presetConflictMode: \'silent\'.']);
   });
 

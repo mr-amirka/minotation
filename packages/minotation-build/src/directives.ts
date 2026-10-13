@@ -28,7 +28,7 @@ export interface MnNotationDirective {
 
 const DIRECTIVE_SCHEMA: OptionSchema = {
   notationMode: oneOf(
-    'context-qualified', 'tailwind-compatible', 'breakpoint-prefixed', 'property-value',
+    'context-qualified', 'tw4-compatible', 'breakpoint-prefixed', 'property-value',
   ),
   requires: isStringArray,
 };
@@ -47,15 +47,15 @@ function fail(message: string): never {
 }
 
 /**
- * Читает директиву из начала файла: `notationMode: tailwind-compatible; requires: presetA, presetB`.
+ * Читает директиву из начала файла: `notationMode: tw4-compatible; requires: presetA, presetB`.
  * Неизвестный ключ или значение — ошибка с подсказкой и именем файла (D-038).
  *
  * @param source — текст файла
  * @param where — имя файла для сообщений
  * @returns директива или `undefined`, если её нет
  * @example
- * readNotationDirective('/* @minotation notationMode: tailwind-compatible *\/', 'Button.tsx');
- * // => { notationMode: 'tailwind-compatible' }
+ * readNotationDirective('/* @minotation notationMode: tw4-compatible *\/', 'Button.tsx');
+ * // => { notationMode: 'tw4-compatible' }
  */
 export function readNotationDirective(source: string, where: string): MnNotationDirective | undefined {
   const matchs = REGEXP_DIRECTIVE.exec(source.length > HEAD_LENGTH ? source.slice(0, HEAD_LENGTH) : source);

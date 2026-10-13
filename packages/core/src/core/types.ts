@@ -332,11 +332,11 @@ export interface MnWarning {
 
 /**
  * Режим синтаксиса нотации (D-045): `'context-qualified'` — запись minotation
- * (`bg-blue-500:hover@md`), `'tailwind-compatible'` — варианты перед классом, как в Tailwind
+ * (`bg-blue-500:hover@md`), `'tw4-compatible'` — варианты перед классом, как в Tailwind
  * (`md:hover:bg-blue-500`), `'breakpoint-prefixed'` — брейкпоинт перед классом, как в quantum-css
  * (`SM_bgc-dg`), `'property-value'` — `свойство:значение`, как в Master CSS (`bg:blue:hover@md`).
  */
-export type MnNotationMode = 'context-qualified' | 'tailwind-compatible' | 'breakpoint-prefixed' | 'property-value';
+export type MnNotationMode = 'context-qualified' | 'tw4-compatible' | 'breakpoint-prefixed' | 'property-value';
 
 /**
  * Пресет-объект (D-045): имя, зависимости и режим синтаксиса. Функция-пресет
@@ -354,7 +354,7 @@ export interface MnPresetObject {
   notationMode?: MnNotationMode;
   /**
    * Экосистемы пресетов, с которыми этот пресет совместим (D-067): `['minotation']`,
-   * `['tailwind']`, `['minotation', 'tailwind']`. Два подключённых пресета без общей экосистемы —
+   * `['tw4']`, `['minotation', 'tw4']`. Два подключённых пресета без общей экосистемы —
    * предупреждение `presetConflictMode`. Без поля пресет нейтрален. С `notationMode` не связано.
    */
   ecosystems?: string[];
@@ -464,7 +464,7 @@ export interface MnOptions {
   presetConflictMode?: MnRaiseMode;
   /**
    * Режим синтаксиса классов разметки (D-045): `'context-qualified'` (по умолчанию) или
-   * `'tailwind-compatible'` (Tailwind). Строки пресетов разбираются в режиме пресета.
+   * `'tw4-compatible'` (Tailwind). Строки пресетов разбираются в режиме пресета.
    * @default 'context-qualified'
    */
   notationMode?: MnNotationMode;

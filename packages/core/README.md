@@ -92,14 +92,15 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 | `presetMain` | Полный CSS-сброс (аналог normalize.css) |
 | `presetHints` | Подсказки вместо молчания: `t0` → «did you mean `st0`?», `flex` → «в minotation это `dF`», `text-center` → `taC`. Подключать первым — пресет ниже перекрывает его хендлеры. Точечно — фабрикой: `presetHints({ excludeGroups: ['bootstrap'], excludeHandlers: ['flex'] })`; группы — `typos`, `tailwind`, `bootstrap` (D-024, D-042) |
 | `presetPrefixes` | Опциональные `-webkit-`/`-moz-` дубли для заданного списка свойств (`transform`, `flexDirection`, `appearance`, …) |
+| `presetTw4` | Клон Tailwind 4 (подмножество) — **вместо** `presetStandard`, запись `'tw4-compatible'`, тема Tailwind 4.3.3 (D-068). См. «Клон Tailwind 4» ниже |
 
 ### Режим синтаксиса `notationMode` (D-045, D-046)
 
 `'context-qualified'` (по умолчанию) — запись minotation: `cF00:h@md<.group`.
-`'tailwind-compatible'` — варианты перед классом, как в Tailwind: `md:hover:group-hover:cF00`.
+`'tw4-compatible'` — варианты перед классом, как в Tailwind: `md:hover:group-hover:cF00`.
 
 ```ts
-const mn = minotationProvider({ notationMode: 'tailwind-compatible' });
+const mn = minotationProvider({ notationMode: 'tw4-compatible' });
 mn.synonyms({ hover: ':hover', invalid: ':invalid' });   // приставки — синонимы и имена mn.media
 mn.variantPrefixedSynonyms({ group: '.group', peer: '.peer~' });  // метки: предок и сосед
 ```
@@ -208,6 +209,47 @@ mn('min-w-full', { style: { minWidth: '100%' } }); // домен min: ['-w-full'
 
 Префикс, кончающийся дефисом (`text-`), подходит и перед буквой: `text-muted` → остаток `muted`.
 
+### Клон Tailwind 4 — `presetTw4` (D-043, D-068)
+
+Подключается **вместо** `presetStandard`, разметка — в записи Tailwind (`notationMode: 'tw4-compatible'`).
+Значения — как у Tailwind 4: через переменные темы, сама тема — блоком `:root`.
+
+```ts
+import { minotationProvider, presetMedias, presetTw4 } from 'minotation';
+
+const mn = minotationProvider({ notationMode: 'tw4-compatible' });
+mn.setPresets([presetMedias, presetTw4]);
+// class="mt-4 md:flex hover:bg-blue-500/50 text-sm font-bold rounded-lg"
+```
+
+| Класс | CSS |
+|---|---|
+| `mt-4` / `-mt-4` / `mx-auto` | `margin-top:calc(var(--spacing) * 4)` / `* -4` / `margin-inline:auto` |
+| `w-1/2` / `w-md` / `size-8` | `calc(1/2 * 100%)` / `var(--container-md)` / ширина и высота |
+| `grid-cols-3` / `col-span-2` | `repeat(3, minmax(0, 1fr))` / `span 2 / span 2` |
+| `text-sm` / `text-sm/6` | `font-size:var(--text-sm);line-height:var(--text-sm--line-height)` / `calc(var(--spacing) * 6)` |
+| `bg-blue-500/50` | `color-mix(in oklab, var(--color-blue-500) 50%, transparent)` |
+| `border-t-4` / `rounded-t-lg` | `border-style:solid;border-top-width:4px` / оба верхних угла `var(--radius-lg)` |
+| `md:flex` / `max-md:hidden` | `@media (width >= 768px)` / `(width < 768px)` |
+| `hover:` `first:` `odd:` `open:` `before:` `group-hover:` `peer-invalid:` | варианты |
+
+Подмножество: отступы (`m*`, `p*`, `gap*`, `space-x/y`), размеры (`w`, `h`, `size`, `min-*`, `max-*`),
+`display`, позиционирование (`inset`, `top`…, `z`, `order`), flex/grid, типографика (`text-*`,
+`font-*`, `leading`, `tracking`, регистр, `truncate`), цвета `text-`/`bg-`/`border-` с `/N`, рамки,
+скругления, брейкпоинты `sm`…`2xl`, варианты-синонимы и метки `group`/`peer`. Тени, трансформации,
+переходы, анимации, фильтры — пока нет.
+
+**Отличия от Tailwind 4**, сознательные:
+- в `:root` выводится вся тема (как у Tailwind с `theme(static)`), а не только использованные
+  переменные;
+- брейкпоинты — в px (`(width >= 768px)`), у Tailwind — в rem (`48rem`); при 16px это одно и то же;
+- `hover:` без обёртки `@media (hover: hover)`;
+- `space-x-4` — `>:not(:last-child)` с `margin-inline-end`, без `--tw-space-x-reverse`;
+- `border` пишет `border-style:solid` явно — у Tailwind то же даёт `--tw-border-style` и preflight.
+
+Тема снята с `tailwindcss@4.3.3`: копия `theme.css` (MIT) лежит в `reference/tailwindcss-4.3.3/`,
+модуль `src/presets/tw4Theme.ts` генерирует `node scripts/tw4-theme.mjs`; тест сверяет SHA-256.
+
 ### Конфликты пресетов — `handlerConflictMode`, `presetConflictMode` (D-067)
 
 **Одно имя от двух пресетов.** Если одну и ту же запись (домен и префикс) регистрируют два
@@ -226,17 +268,17 @@ mn.setPresets([presetHints, presetStandard, presetFlex]);
 Пресет без поля нейтрален; поле не связано с `notationMode`.
 
 ```ts
-const presetTailwind = { name: 'presetTailwind', ecosystems: ['tailwind'], setup(mn) { … } };
+const presetTw4 = { name: 'presetTw4', ecosystems: ['tw4'], setup(mn) { … } };
 
-mn.setPresets([presetStandard, presetTailwind]);
-// presetStandard (minotation) and presetTailwind (tailwind) belong to different preset ecosystems.
+mn.setPresets([presetStandard, presetTw4]);
+// presetStandard (minotation) and presetTw4 (tw4) belong to different preset ecosystems.
 //   To hide this warning: presetConflictMode: 'silent'.
 
-mn.setPresets([presetMedias, presetTailwind]);   // presetMedias: ['minotation', 'tailwind'] — без предупреждения
+mn.setPresets([presetMedias, presetTw4]);   // presetMedias: ['minotation', 'tw4'] — без предупреждения
 ```
 
 Маркеры стандартных пресетов: `presetStandard`, `presetSynonyms` — `minotation`; `presetMedias` —
-`minotation`, `tailwind`; остальные нейтральны.
+`minotation`, `tw4`; остальные нейтральны.
 
 ### Классы других CSS-систем — `suspectClassMode` (D-065, D-066)
 
@@ -278,9 +320,9 @@ const presetTailwindSpacing = (mn) => {
 |---|---|
 | `mt-4` / `mx-2.5` | `margin-top:1rem` / `margin-left:0.625rem;margin-right:0.625rem` |
 | `mx-auto` / `mt-px` | слова — статикой |
-| `-mt-4` / `-mt-px` / `-mt-[var(--g)]` | `margin-top:-1rem` / `-1px` / `calc(var(--g) * -1)` — в режиме `'tailwind-compatible'` при `negative: true` |
+| `-mt-4` / `-mt-px` / `-mt-[var(--g)]` | `margin-top:-1rem` / `-1px` / `calc(var(--g) * -1)` — в режиме `'tw4-compatible'` при `negative: true` |
 | `-p-4` без `negative` | CSS нет, молча — как в Tailwind |
-| `mt-[37px]` | `margin-top:37px` — в режиме `'tailwind-compatible'` (в записи minotation `[…]` — атрибут) |
+| `mt-[37px]` | `margin-top:37px` — в режиме `'tw4-compatible'` (в записи minotation `[…]` — атрибут) |
 | `pt-7` при карте `0…5` | предупреждение: `step "7" is not in the scale (0, 1, 2, 3, 4, 5)` |
 
 Имена с дефисом (`'min-w'`, `'gap-x'`, `'translate-x'`) ядро находит само — это домен и префикс.
@@ -289,7 +331,7 @@ const presetTailwindSpacing = (mn) => {
 
 ### Отрицательные значения в записи Tailwind (D-064)
 
-В режиме `'tailwind-compatible'` ведущий `-` (`-mt-4`) разборщик снимает, а хендлер получает
+В режиме `'tw4-compatible'` ведущий `-` (`-mt-4`) разборщик снимает, а хендлер получает
 `p.sign = '-'` и решает сам: принял — отрицательный CSS, ничего не вернул — CSS нет, молча.
 Флагов у хендлера нет. В записи minotation `-mt-4` — не токен (минус там пишется в значении:
 `mt-10` → `margin-top:-10px`).
@@ -343,7 +385,7 @@ const mn = minotationProvider({
   suspectClassMode: 'warn',        // 'warn' | 'silent' | 'strict' — класс другой системы fw-bold
   handlerConflictMode: 'warn',     // 'warn' | 'silent' | 'strict' — одно имя от двух пресетов
   presetConflictMode: 'warn',      // 'warn' | 'silent' | 'strict' — пресеты несовместимых экосистем
-  notationMode: 'context-qualified', // или 'tailwind-compatible' — запись как в Tailwind: md:hover:p10
+  notationMode: 'context-qualified', // или 'tw4-compatible' — запись как в Tailwind: md:hover:p10
   contextWhere: false,             // true — контекст в :where(): .p10…:is(:where(.card:hover) *)
 });
 ```

@@ -19,7 +19,7 @@ const PRESET_SCHEMA: OptionSchema = {
   requires: isStringArray,
   ecosystems: isStringArray,
   notationMode: oneOf(
-    'context-qualified', 'tailwind-compatible', 'breakpoint-prefixed', 'property-value',
+    'context-qualified', 'tw4-compatible', 'breakpoint-prefixed', 'property-value',
   ),
   setup: isFunction,
 };

@@ -193,7 +193,7 @@ describe('§K .*WORD + @media&selector combinator', () => {
   test('cF.*-active@sm&safari → @media sm { .safari CLASS[class*=-active] }', () => {
     const mn = makeBase();
     check(mn, 'cF.*-active@sm&safari');
-    expect(css(mn)).toBe('@media (max-width:640px){.safari .cF\\.\\*-active\\@sm&safari[class*=-active]{color:#F}}');
+    expect(css(mn)).toBe('@media (max-width:640px){.safari .cF\\.\\*-active\\@sm\\&safari[class*=-active]{color:#F}}');
   });
 });
 

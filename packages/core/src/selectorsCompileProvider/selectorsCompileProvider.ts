@@ -187,13 +187,14 @@ function suffixesReduce(suffixes: StrMap<StrMap<number>>,
  * // → [[{ w50: 1 }, { '.w50': [[0, undefined]] }]]
  */
 /**
- * Имя класса для селектора: `escapeCss` и вдобавок `{`/`}` — их приносят группы Master CSS
- * (`{p:10;m:5}`, D-051); без экранирования селектор битый.
+ * Имя класса для селектора: `escapeCss` и вдобавок `{`, `}` (группы Master CSS, D-051) и `&`
+ * (медиа `@sm&safari`, D-053) — без экранирования селектор битый: `&` вне вложенности — это
+ * селектор вложения.
  */
 function escapeClass(name: string): string {
-  return escapeCss(name).replace(REGEXP_BRACES, '\\$&');
+  return escapeCss(name).replace(REGEXP_UNESCAPED_CLASS_CHARS, '\\$&');
 }
-const REGEXP_BRACES = /[{}]/g;
+const REGEXP_UNESCAPED_CLASS_CHARS = /[{}&]/g;
 
 /** Символ имени свойства Master CSS. */
 const REGEXP_PROPERTY_CHAR = /[A-Za-z0-9-]/;

@@ -68,25 +68,25 @@ describe('§13.1 & combinator — объединение query + selector мед
   test('w900@sm&safari → @media sm { .safari .token{...} }', () => {
     const mn = makeBase();
     check(mn, 'w900@sm&safari');
-    expect(css(mn)).toBe('@media (max-width:640px){.safari .w900\\@sm&safari{width:900px}}');
+    expect(css(mn)).toBe('@media (max-width:640px){.safari .w900\\@sm\\&safari{width:900px}}');
   });
 
   test('w800@sm&safari<.parent → @media sm { .safari .parent .token{...} }', () => {
     const mn = makeBase();
     check(mn, 'w800@sm&safari<.parent');
-    expect(css(mn)).toBe('@media (max-width:640px){.safari .parent .w800\\@sm&safari\\<\\.parent{width:800px}}');
+    expect(css(mn)).toBe('@media (max-width:640px){.safari .parent .w800\\@sm\\&safari\\<\\.parent{width:800px}}');
   });
 
   test('w700@sm&md → два query объединяются через "and"', () => {
     const mn = makeBase();
     check(mn, 'w700@sm&md');
-    expect(css(mn)).toBe('@media (max-width:640px) and (max-width:768px){.w700\\@sm&md{width:700px}}');
+    expect(css(mn)).toBe('@media (max-width:640px) and (max-width:768px){.w700\\@sm\\&md{width:700px}}');
   });
 
   test('w700<.parent@sm&md → query "and", родительский контекст', () => {
     const mn = makeBase();
     check(mn, 'w700<.parent@sm&md');
-    expect(css(mn)).toBe('@media (max-width:640px) and (max-width:768px){.parent .w700\\<\\.parent\\@sm&md{width:700px}}');
+    expect(css(mn)).toBe('@media (max-width:640px) and (max-width:768px){.parent .w700\\<\\.parent\\@sm\\&md{width:700px}}');
   });
 
   test('selector-only: w900@safari → нет @media, только .safari префикс', () => {
@@ -321,7 +321,7 @@ describe('§13.5 Комплексные комбинации — v1 parity', () 
     return mn;
   }
 
-  const CLASS_A = '.\\(w500\\|p10\\)\\:hm\\<\\.parent\\.active\\>\\.child\\@dark&iphone';
+  const CLASS_A = '.\\(w500\\|p10\\)\\:hm\\<\\.parent\\.active\\>\\.child\\@dark\\&iphone';
   const PRE     = '.dark.iphone.mouse .parent.active ';
 
   test('§A (w500|p10):hm<.parent.active>.child@dark&iphone — width под :hover + .hover', () => {
@@ -341,13 +341,13 @@ describe('§13.5 Комплексные комбинации — v1 parity', () 
   test('§B cF@mouse&m&iphone — три-позиционный &: query + два selector', () => {
     const mn = makeComplex();
     check(mn, 'cF@mouse&m&iphone');
-    expect(css(mn)).toBe('@media (max-width:992px){.mouse.iphone .cF\\@mouse&m&iphone{color:#F}}');
+    expect(css(mn)).toBe('@media (max-width:992px){.mouse.iphone .cF\\@mouse\\&m\\&iphone{color:#F}}');
   });
 
   test('§C cA@print&d&x100 — три-позиционный &: два query + height template', () => {
     const mn = makeComplex();
     check(mn, 'cA@print&d&x100');
-    expect(css(mn)).toBe('@media print and (min-width:993px) and (max-height: 100px){.cA\\@print&d&x100{color:#A}}');
+    expect(css(mn)).toBe('@media print and (min-width:993px) and (max-height: 100px){.cA\\@print\\&d\\&x100{color:#A}}');
   });
 
   test('§D w100:om — synonym-with-media (одиночный :focus@m)', () => {

@@ -197,7 +197,7 @@ describe("'property-value' — медиа", () => {
     ['p:10@>md', '@media (min-width: 1024.02px){.p\\:10\\@\\>md{padding:10px}}'],
     ['p:10@>=768', '@media (min-width: 768px){.p\\:10\\@\\>\\=768{padding:10px}}'],
     ['p:10@768', '@media (min-width: 768px){.p\\:10\\@768{padding:10px}}'],
-    ['p:10@768&<1024', '@media (min-width: 768px) and (max-width: 1023.98px){.p\\:10\\@768&\\<1024{padding:10px}}'],
+    ['p:10@768&<1024', '@media (min-width: 768px) and (max-width: 1023.98px){.p\\:10\\@768\\&\\<1024{padding:10px}}'],
     ['p:10@dark', '@media (prefers-color-scheme: dark){.p\\:10\\@dark{padding:10px}}'],
     ['p:10@light', '@media (prefers-color-scheme: light){.p\\:10\\@light{padding:10px}}'],
     ['p:10@print', '@media print{.p\\:10\\@print{padding:10px}}'],
@@ -206,7 +206,7 @@ describe("'property-value' — медиа", () => {
     ['p:10@motion', '@media (prefers-reduced-motion: no-preference){.p\\:10\\@motion{padding:10px}}'],
     ['p:10@reduced-motion', '@media (prefers-reduced-motion: reduce){.p\\:10\\@reduced-motion{padding:10px}}'],
     ['p:10@media(any-hover:hover)', '@media (any-hover:hover){.p\\:10\\@media\\(any-hover\\:hover\\){padding:10px}}'],
-    ['p:10@md&dark', '@media (min-width: 1024px) and (prefers-color-scheme: dark){.p\\:10\\@md&dark{padding:10px}}'],
+    ['p:10@md&dark', '@media (min-width: 1024px) and (prefers-color-scheme: dark){.p\\:10\\@md\\&dark{padding:10px}}'],
   ])('%s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);
   });

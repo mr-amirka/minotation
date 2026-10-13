@@ -38,6 +38,7 @@ import {
   REGEXP_SCOPE_SUFFIX,
   SCOPE_END,
   SCOPE_START,
+  MN_ESSENCE_PAIR,
   REGEXP_BREAKPOINT_PREFIX,
   splitChild,
   splitParent,
@@ -185,6 +186,66 @@ function suffixesReduce(suffixes: StrMap<StrMap<number>>,
  * const result = scp.parseClass('w50');
  * // → [[{ w50: 1 }, { '.w50': [[0, undefined]] }]]
  */
+/**
+ * Имя класса для селектора: `escapeCss` и вдобавок `{`/`}` — их приносят группы Master CSS
+ * (`{p:10;m:5}`, D-051); без экранирования селектор битый.
+ */
+function escapeClass(name: string): string {
+  return escapeCss(name).replace(REGEXP_BRACES, '\\$&');
+}
+const REGEXP_BRACES = /[{}]/g;
+
+/** Символ имени свойства Master CSS. */
+const REGEXP_PROPERTY_CHAR = /[A-Za-z0-9-]/;
+/** Конец значения Master CSS вне скобок (D-051). */
+const VALUE_STOPS: Record<string, 1> = {
+  ':': 1,
+  '@': 1,
+  '!': 1,
+  '>': 1,
+  '_': 1,
+  '+': 1,
+  '~': 1,
+  '[': 1,
+};
+/** Конец состояния/селектора Master CSS вне скобок. */
+const PART_STOPS: Record<string, 1> = {
+  ':': 1,
+  '@': 1,
+  '!': 1,
+  '>': 1,
+  '_': 1,
+  '+': 1,
+  '~': 1,
+};
+/** Сокращения состояний Master CSS. */
+const MASTER_STATES: Record<string, (args: string) => string> = {
+  first: () => 'first-child',
+  last: () => 'last-child',
+  odd: () => 'nth-child(odd)',
+  even: () => 'nth-child(even)',
+  nth: (args) => 'nth-child' + args,
+};
+/** Псевдоэлементы, которые Master CSS пишет с одним `:`. */
+const MASTER_PSEUDO_ELEMENTS: Record<string, 1> = {
+  before: 1,
+  after: 1,
+};
+/** Слова медиа Master CSS. */
+const MASTER_MEDIA: Record<string, string> = {
+  dark: '(prefers-color-scheme: dark)',
+  light: '(prefers-color-scheme: light)',
+  print: 'print',
+  landscape: '(orientation: landscape)',
+  portrait: '(orientation: portrait)',
+  motion: '(prefers-reduced-motion: no-preference)',
+  'reduced-motion': '(prefers-reduced-motion: reduce)',
+};
+/** Сравнение в медиа Master CSS: `<md`, `>=1024`, `768`. */
+const REGEXP_MASTER_MEDIA_COMPARE = /^(<=|>=|<|>)?([0-9.]+|[A-Za-z][A-Za-z0-9-]*)$/;
+/** Ширина в запросе брейкпоинта. */
+const REGEXP_WIDTH = /\((?:min|max)-width:\s*([0-9.]+)px\)/;
+
 export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   let $$states: StrMap<string[]>;
   let $$synonyms: StrMap<AltMap>;
@@ -258,7 +319,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * @param comboName — одно слово из атрибута `class`
    */
   function parseClass(comboName: string): ReturnType<ParseComboNameFn> {
-    return parseComboName(comboName, '.' + escapeCss(comboName));
+    return parseComboName(comboName, '.' + escapeClass(comboName));
   }
 
   /**
@@ -314,6 +375,9 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     }
     if (mode === 'breakpoint-prefixed') {
       return parseBreakpointPrefixed(comboName, targetName);
+    }
+    if (mode === 'property-value') {
+      return parsePropertyValue(comboName, targetName);
     }
 
     let name = comboName;
@@ -377,6 +441,11 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * `reduceIn` синхронный, рекурсии через него не возникает.
    */
   let $$tgt: string;
+  /**
+   * Не предупреждать о незарегистрированных состояниях (D-051): у Master CSS `:hover`,
+   * `:nth(2)` — штатная запись оригинала, а не опечатка.
+   */
+  let $$quietStates = false;
   /** Режим синтаксиса компилятора разметки на время разбора (D-045 этап 3). */
   let $$markupMode: string | undefined;
   /** `contextWhere` текущего разбора (D-049) — читается из опций в начале `parseComboName`. */
@@ -510,6 +579,280 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       undefined,
       name,
     ]], []], targetName)]];
+  }
+
+  /**
+   * Разборщик `'property-value'` (Master CSS, D-045 этап 5, D-051): `свойство:значение`
+   * (`bg:blue-60`, `b:1|solid|red`), шорткат без значения (`block`), группа `{a;b}`, затем
+   * в любом порядке — `!`, состояния (`:hover`, `::before`, `:nth(2)`), селекторы (`>li`,
+   * `_h1` — потомок, `+span`, `~div`, `[open]`, `.active`) и в конце медиа (`@md`, `@<md`,
+   * `@>=1024`, `@768&<1024`, `@dark`, `@media(any-hover:hover)`). Имя свойства — хендлер:
+   * эссенция-пара `имя\u0001значение`, без регулярки имени.
+   */
+  function parsePropertyValue(comboName: string,
+    targetName: string): Array<[StrMap<number>, AltMap]> {
+    const l = comboName.length;
+    const essences: StrMap<number> = {};
+    const compounds: Array<[string, string, string[]]> = [[
+      '',
+      '',
+      [''],
+    ]];
+    let decls: string[];
+    let important = false;
+    let media: string | undefined;
+    let current = compounds[0];
+    let i: number;
+    let j: number;
+    let ch: string;
+    if (comboName[0] === '{') {
+      j = closeAt(comboName, 0);
+      j < 0 && throwPropertyValue(comboName, 'the group "{" is not closed');
+      decls = splitTopLevel(comboName.slice(1, j), ';');
+      i = j + 1;
+    } else {
+      i = declarationEnd(comboName, 0);
+      decls = [comboName.slice(0, i)];
+    }
+    while (i < l) {
+      ch = comboName[i];
+      if (ch === '!') {
+        important = true;
+        i++;
+      } else if (ch === '@') {
+        media = masterMedia(comboName.slice(i + 1), comboName);
+        i = l;
+      } else if (ch === ':') {
+        j = partEnd(comboName, i + (comboName[i + 1] === ':' ? 2 : 1));
+        pushMasterState(current[2], comboName.slice(i, j));
+        i = j;
+      } else if (ch === '>' || ch === '_' || ch === '+' || ch === '~') {
+        j = partEnd(comboName, i + 1);
+        current = [
+          ch === '_' ? ' ' : ch,
+          comboName.slice(i + 1, j),
+          [''],
+        ];
+        compounds.push(current);
+        i = j;
+      } else {
+        j = partEnd(comboName, i + 1);
+        current[1] += comboName.slice(i, j);
+        i = j;
+      }
+    }
+    for (const decl of decls) {
+      j = decl.indexOf(':');
+      essences[(j < 0 ? decl : decl.slice(0, j) + MN_ESSENCE_PAIR + decl.slice(j + 1)) + (important ? '-i' : '')] = 1;
+    }
+    if (important && (instance as any)._raisedToken?.(
+      comboName, 'important', importantMessage,
+    )) {
+      return [];
+    }
+    const childs: Array<[string, MnChain]> = [];
+    const compoundsLength = compounds.length;
+    let compound: [string, string, string[]];
+    for (i = 1; i < compoundsLength; i++) {
+      compound = compounds[i];
+      if ((compound[0] === '>' || compound[0] === ' ') && (instance as any)._raisedToken?.(
+        comboName, 'child-selector',
+        (strict: boolean) => childSelectorMessage((compound[0] === ' ' ? '_' : '>') + compound[1], strict),
+      )) {
+        return [];
+      }
+      childs.push([compound[0], [[
+        '',
+        compound[1],
+        statesOf(compound[2]),
+        undefined,
+      ]]]);
+    }
+    $$quietStates = true;
+    try {
+      return [[essences, buildContext([[[
+        '',
+        compounds[0][1],
+        statesOf(compounds[0][2]),
+        media,
+      ]], childs], targetName)]];
+    } finally {
+      $$quietStates = false;
+    }
+  }
+
+  function statesOf(names: string[]): MnStateNode[] | undefined {
+    return names.length > 1 ? [[names, undefined]] : undefined;
+  }
+
+  /**
+   * Конец объявления: имя, затем — если это хендлер — `:значение` до первого контекстного
+   * символа вне скобок и кавычек. Не хендлер — шорткат без значения (`block`), `:` дальше —
+   * состояние.
+   */
+  function declarationEnd(source: string, start: number): number {
+    let i = start;
+    const l = source.length;
+    while (i < l && REGEXP_PROPERTY_CHAR.test(source[i])) {
+      i++;
+    }
+    if (source[i] !== ':' || !((instance as any).handlerMap || {})[source.slice(start, i)]) {
+      return i;
+    }
+    return valueEnd(source, i + 1);
+  }
+
+  /** Конец значения: вне скобок и кавычек — `:`, `@`, `!`, `>`, `_`, `+`, `~`, `[` или `.буква`. */
+  function valueEnd(source: string, start: number): number {
+    const l = source.length;
+    let i = start;
+    let depth = 0;
+    let quote = '';
+    let ch: string;
+    for (; i < l; i++) {
+      ch = source[i];
+      if (quote) {
+        ch === quote && (quote = '');
+      } else if (ch === '\'' || ch === '"') {
+        quote = ch;
+      } else if (ch === '(') {
+        depth++;
+      } else if (ch === ')') {
+        depth--;
+      } else if (!depth && (VALUE_STOPS[ch] || ch === '.' && /[A-Za-z]/.test(source[i + 1] || ''))) {
+        return i;
+      }
+    }
+    return i;
+  }
+
+  /** Конец состояния или селектора: до следующего контекстного символа вне скобок. */
+  function partEnd(source: string, start: number): number {
+    const l = source.length;
+    let i = start;
+    let depth = 0;
+    let ch: string;
+    for (; i < l; i++) {
+      ch = source[i];
+      if (ch === '(' || ch === '[') {
+        depth++;
+      } else if (ch === ')' || ch === ']') {
+        depth--;
+      } else if (!depth && PART_STOPS[ch]) {
+        return i;
+      }
+    }
+    return i;
+  }
+
+  /** Индекс парной `}`; `-1` — нет. */
+  function closeAt(source: string, start: number): number {
+    const l = source.length;
+    let depth = 0;
+    let i = start;
+    for (; i < l; i++) {
+      source[i] === '{' && depth++;
+      if (source[i] === '}' && !--depth) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  function splitTopLevel(source: string, separator: string): string[] {
+    const out: string[] = [];
+    const l = source.length;
+    let depth = 0;
+    let from = 0;
+    let i = 0;
+    for (; i < l; i++) {
+      source[i] === '(' && depth++;
+      source[i] === ')' && depth--;
+      if (!depth && source[i] === separator) {
+        out.push(source.slice(from, i));
+        from = i + 1;
+      }
+    }
+    out.push(source.slice(from));
+    return out.filter(Boolean);
+  }
+
+  /**
+   * Состояние Master CSS: `:hover` — как есть, `::before`/`:before`/`:after` — псевдоэлемент,
+   * `:first`, `:last`, `:odd`, `:even`, `:nth(N)` — сокращения оригинала; зарегистрированный
+   * синоним важнее.
+   */
+  function pushMasterState(names: string[], part: string): void {
+    const pseudoElement = part[1] === ':';
+    const name = part.slice(pseudoElement ? 2 : 1);
+    const head = REGEXP_SCOPE_SUFFIX.exec(name);
+    const base = head ? head[1] : name;
+    if ($$synonyms[base] || $$states[base]) {
+      names.push(name);
+    } else if (pseudoElement || MASTER_PSEUDO_ELEMENTS[base]) {
+      names.push('', name);
+    } else {
+      // Сокращение найдено по `head[1]` — значит, `head` есть.
+      names.push(MASTER_STATES[base] ? MASTER_STATES[base]((head as RegExpExecArray)[2]) : name);
+    }
+  }
+
+  /**
+   * Медиа Master CSS → выражение для ядра: атомы через `&`. Имя из `mn.media` — как есть;
+   * сравнения (`<`, `<=`, `>`, `>=`) с числом или именем брейкпоинта и слова оригинала
+   * (`dark`, `print`, `landscape`, …) — готовым запросом; `media(…)` — как написано.
+   */
+  function masterMedia(expression: string, comboName: string): string {
+    const media: StrMap<{ query?: string }> = (instance as any).media || {};
+    return splitTopLevel(expression, '&').map((atom) => {
+      const matchs = REGEXP_MASTER_MEDIA_COMPARE.exec(atom);
+      const isNumber = !!matchs && /^[0-9.]+$/.test(matchs[2]);
+      let width: number;
+      let query: string;
+      if (atom.slice(0, 6) === 'media(') {
+        return registerQuery(media, atom.slice(5));
+      }
+      if (!matchs || !matchs[1] && !isNumber) {
+        // Имя без сравнения: своё медиа проекта, слово оригинала или неизвестное.
+        return media[atom] ? atom : MASTER_MEDIA[atom]
+          ? registerQuery(media, MASTER_MEDIA[atom])
+          : throwPropertyValue(comboName, 'media "' + atom + '" is unknown');
+      }
+      width = isNumber ? parseFloat(matchs[2]) : widthOf(
+        media[matchs[2]], matchs[2], comboName,
+      );
+      query = matchs[1] === '<' ? '(max-width: ' + (width - 0.02) + 'px)'
+        : matchs[1] === '<=' ? '(max-width: ' + width + 'px)'
+          : matchs[1] === '>' ? '(min-width: ' + (width + 0.02) + 'px)'
+            : '(min-width: ' + width + 'px)';
+      return registerQuery(media, query);
+    }).join('&');
+  }
+
+  /** Ширина брейкпоинта из его запроса (`(min-width: 1024px)`). */
+  function widthOf(
+    entry: { query?: string } | undefined, name: string, comboName: string,
+  ): number {
+    const matchs = entry && REGEXP_WIDTH.exec(entry.query || '');
+    return matchs ? parseFloat(matchs[1]) : throwPropertyValue(comboName, 'media "' + name
+      + '" has no width to compare with');
+  }
+
+  /** Готовый запрос как имя медиа: ядро разрешит его при выводе (D-051). */
+  function registerQuery(media: StrMap<{ query?: string }>, query: string): string {
+    media[query] || (media[query] = {
+      query,
+    });
+    return query;
+  }
+
+  function throwPropertyValue(comboName: string, message: string): never {
+    throw new MnParseError('"' + comboName + '": ' + message + '. The class gives no CSS.', {
+      token: comboName,
+      handler: '',
+      arg: '',
+      utility: 'property-value',
+    });
   }
 
   function throwUnknownBreakpoint(comboName: string, prefix: string): never {
@@ -810,7 +1153,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
               // в стандарте), но предупреждаем: `p10:fv` иначе давал мёртвое
               // правило `.p10\:fv:fv{…}` молча. Пустое имя — это `::before`
               // и подобные, там предупреждать не о чем.
-              _state && !wasEmpty && (instance as any)._collectWarning?.({
+              _state && !wasEmpty && !$$quietStates && (instance as any)._collectWarning?.({
                 type: 'unregistered-state',
                 token: $$depthCheck.token,
                 message: 'State ":' + _state + '" is not registered — neither as a synonym '

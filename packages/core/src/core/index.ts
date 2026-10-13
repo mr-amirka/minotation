@@ -21,6 +21,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, no-cond-assign -- см. комментарий выше */
 
 import {
+  MN_ESSENCE_PAIR,
+} from '../selectorsCompileProvider/constants';
+import {
   checkOptions, CORE_OPTIONS_SCHEMA, describeValue, isObject as isObjectOption,
 } from '../checkOptions';
 import {
@@ -176,6 +179,14 @@ function fail(message: string): never {
 
 /** Случаи со своим режимом `'warn' | 'silent' | 'strict'` (D-039). */
 type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded' | 'child-selector';
+
+function throwNoHandler(name: string, value: string): never {
+  throw new MnParseError('Property "' + name + '" has no handler: the class gives no CSS', {
+    token: value.replace(MN_ESSENCE_PAIR, ':'),
+    handler: name,
+    arg: '',
+  });
+}
 
 /**
  * Предупреждение компиляции, а не `*N`/`-i`/`maxDepth` — только такие роняют сборку
@@ -1167,6 +1178,7 @@ function minotationProvider(options?: MnOptions) {
     let params: MnEssenceParams;
     let essence: MnEssenceRaw | void | 0;
     let err: Error;
+    let pair: number;
     try {
       if (matchs = REGEXP_MATCH_VAR.exec(value)) {
         const varStyle: Record<string, string> = {};
@@ -1175,7 +1187,15 @@ function minotationProvider(options?: MnOptions) {
           style: varStyle,
         });
       }
-      return (matchs = REGEXP_MATCH_NAME.exec(value)) && (
+      // Эссенция-пара «имя\u0001значение» от разборщика режима (D-045 этап 5): имя задано
+      // явно, регулярка имени не нужна — `bg:blue-70` у Master CSS даёт `bg` + `blue-70`.
+      return (matchs = (pair = value.indexOf(MN_ESSENCE_PAIR)) < 0
+        ? REGEXP_MATCH_NAME.exec(value)
+        : [
+          value,
+          value.slice(0, pair),
+          value.slice(pair + 1),
+        ] as unknown as RegExpExecArray) && (
         name = matchs[1],
         (matchs = REGEXP_MATCH_IMPORTANT.exec(suffix = matchs[2])) && (
           suffix = matchs[1],
@@ -1221,8 +1241,9 @@ function minotationProvider(options?: MnOptions) {
           // каждое из них предупреждать означает забивать вывод мусором.
           // Предупреждение остаётся там, где автор ЯВНО писал MN-токен и
           // ошибся в аргументе: хендлер найден, но разбор не удался
-          // (`parse-error`, ниже).
-          : undefined
+          // (`parse-error`, ниже). Исключение — пара от разборщика режима: там имя
+          // свойства задано явно, и отсутствие хендлера — ошибка автора, а не чужой класс.
+          : pair < 0 ? undefined : throwNoHandler(name, value)
       );
     } catch (ex) {
       if (ex instanceof MnParseError) {

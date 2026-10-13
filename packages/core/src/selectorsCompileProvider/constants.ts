@@ -95,4 +95,9 @@ export const SCOPE_START = '[';
 export const SCOPE_END = ']';
 /** Брейкпоинт quantum-css перед утилитой: `SM_bgc-dg` → `[1]` `SM`, `[2]` `bgc-dg` (D-045 этап 4). */
 export const REGEXP_BREAKPOINT_PREFIX = /^([A-Z][A-Z0-9]*)_(.+)$/;
+/**
+ * Разделитель эссенции-пары «имя хендлера, значение» (D-045 этап 5): разборщик режима
+ * задаёт имя явно (`bg` + `blue-70` у Master CSS), ядро не ищет его регуляркой.
+ */
+export const MN_ESSENCE_PAIR = '\u0001';
 

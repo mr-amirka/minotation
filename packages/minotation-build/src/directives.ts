@@ -28,7 +28,7 @@ export interface MnNotationDirective {
 
 const DIRECTIVE_SCHEMA: OptionSchema = {
   notationMode: oneOf(
-    'context-qualified', 'variant-prefixed', 'breakpoint-prefixed',
+    'context-qualified', 'variant-prefixed', 'breakpoint-prefixed', 'property-value',
   ),
   requires: isStringArray,
 };

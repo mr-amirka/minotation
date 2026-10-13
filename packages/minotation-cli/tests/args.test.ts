@@ -127,7 +127,7 @@ describe('parseArgs', () => {
     expect(() => parseArgs(['--notation-conflict-mode', 'silent']))
       .toThrow('Option "--notation-conflict-mode" expects warn or strict, got "silent"');
     expect(() => parseArgs(['--notation-mode', 'tailwind']))
-      .toThrow('Option "--notation-mode" expects context-qualified, variant-prefixed or breakpoint-prefixed, got "tailwind"');
+      .toThrow('Option "--notation-mode" expects context-qualified, variant-prefixed, breakpoint-prefixed or property-value, got "tailwind"');
     expect(() => parseArgs(['--child-selector-mode', 'error']))
       .toThrow('Option "--child-selector-mode" expects warn, silent or strict, got "error"');
   });

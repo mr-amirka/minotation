@@ -41,7 +41,7 @@ export interface CliArgs {
   /** Что делать с дочерними селекторами `>`: `warn`, `silent`, `strict` (D-041). */
   childSelectorMode?: 'warn' | 'silent' | 'strict';
   /** Режим синтаксиса нотации: `context-qualified`, `variant-prefixed` (D-045). */
-  notationMode?: 'context-qualified' | 'variant-prefixed' | 'breakpoint-prefixed';
+  notationMode?: 'context-qualified' | 'variant-prefixed' | 'breakpoint-prefixed' | 'property-value';
   /** Конфликт режимов синтаксиса между файлами: `warn`, `strict` (D-045). */
   notationConflictMode?: 'warn' | 'strict';
   /** Контекст селектора в `:where()` (D-049). */
@@ -173,7 +173,7 @@ export function parseArgs(argv: string[]): CliArgs {
   args.childSelectorMode === undefined || RAISE_MODES[args.childSelectorMode]
     || raise('Option "--child-selector-mode" expects warn, silent or strict, got "' + args.childSelectorMode + '"');
   args.notationMode === undefined || NOTATION_MODES[args.notationMode]
-    || raise('Option "--notation-mode" expects context-qualified, variant-prefixed or breakpoint-prefixed, got "'
+    || raise('Option "--notation-mode" expects context-qualified, variant-prefixed, breakpoint-prefixed or property-value, got "'
       + args.notationMode + '"');
   args.notationConflictMode === undefined || args.notationConflictMode === 'warn' || args.notationConflictMode === 'strict'
     || raise('Option "--notation-conflict-mode" expects warn or strict, got "' + args.notationConflictMode + '"');
@@ -192,6 +192,7 @@ const NOTATION_MODES: Record<string, 1> = {
   'context-qualified': 1,
   'variant-prefixed': 1,
   'breakpoint-prefixed': 1,
+  'property-value': 1,
 };
 
 /** Допустимые значения `--specificity-mode` и `--important-mode` (D-039). */
@@ -234,6 +235,7 @@ Options:
                          notation syntax: context-qualified (default, bg-blue-500:hover@md)
                          or variant-prefixed (Tailwind-like, md:hover:bg-blue-500)
                          or breakpoint-prefixed (quantum-css-like, SM_px15)
+                         or property-value (Master CSS-like, bg:blue:hover@md)
       --notation-conflict-mode <m>
                          a class meaning different things in files with different
                          notation modes: warn (default) or strict (fail the build)

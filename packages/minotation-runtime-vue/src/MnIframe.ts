@@ -33,7 +33,7 @@ import {
   presetNormalize,
   presetMain,
 } from 'minotation';
-import type { MnInstance } from 'minotation';
+import type { MnPreset } from 'minotation';
 import { createMnRuntime, type MnRuntimeHandle } from 'minotation-runtime';
 
 const DEFAULT_PRESETS = [presetStandard, presetSynonyms, presetMedias, presetNormalize, presetMain];
@@ -49,7 +49,7 @@ const DEFAULT_PRESETS = [presetStandard, presetSynonyms, presetMedias, presetNor
 export const MnIframe = defineComponent({
   name: 'MnIframe',
   props: {
-    presets: { type: Array as PropType<Array<(mn: MnInstance) => void>>, default: undefined },
+    presets: { type: Array as PropType<MnPreset[]>, default: undefined },
     /** Атрибут `class` внутри iframe. @default 'class' */
     attr: { type: String, default: undefined },
     /** Обязателен для доступности — у `<iframe>` без `title` нет осмысленного имени для screen reader'ов. */

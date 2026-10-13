@@ -18,7 +18,7 @@ const PRESET_SCHEMA: OptionSchema = {
   name: isString,
   requires: isStringArray,
   notationMode: oneOf(
-    'context-qualified', 'variant-prefixed', 'breakpoint-prefixed',
+    'context-qualified', 'variant-prefixed', 'breakpoint-prefixed', 'property-value',
   ),
   setup: isFunction,
 };

@@ -309,9 +309,9 @@ export interface MnWarning {
  * Режим синтаксиса нотации (D-045): `'context-qualified'` — запись minotation
  * (`bg-blue-500:hover@md`), `'variant-prefixed'` — варианты перед классом, как в Tailwind
  * (`md:hover:bg-blue-500`), `'breakpoint-prefixed'` — брейкпоинт перед классом, как в quantum-css
- * (`SM_bgc-dg`).
+ * (`SM_bgc-dg`), `'property-value'` — `свойство:значение`, как в Master CSS (`bg:blue:hover@md`).
  */
-export type MnNotationMode = 'context-qualified' | 'variant-prefixed' | 'breakpoint-prefixed';
+export type MnNotationMode = 'context-qualified' | 'variant-prefixed' | 'breakpoint-prefixed' | 'property-value';
 
 /**
  * Пресет-объект (D-045): имя, зависимости и режим синтаксиса. Функция-пресет

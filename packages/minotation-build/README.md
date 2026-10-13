@@ -76,7 +76,7 @@ for (const warning of collector.takeWarnings()) {
 | `specificityMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с накруткой специфичности `f10*2` (D-039) |
 | `importantMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с `!important` (`f10-i`) (D-039) |
 | `childSelectorMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с дочерним селектором `>` (`cF00>1`) (D-041) |
-| `notationMode` | `'context-qualified' \| 'variant-prefixed' \| 'breakpoint-prefixed'` | `'context-qualified'` | режим синтаксиса классов разметки (D-045) |
+| `notationMode` | `'context-qualified' \| 'variant-prefixed' \| 'breakpoint-prefixed' \| 'property-value'` | `'context-qualified'` | режим синтаксиса классов разметки (D-045) |
 | `contextWhere` | `boolean` | `false` | контекст селектора в `:where()` — специфичность только у класса (D-049) |
 | `notationConflictMode` | `'warn' \| 'strict'` | `'warn'` | класс в файлах с разными режимами синтаксиса значит разное — предупреждение или ошибка (D-045) |
 | `warningMode` | `'log' \| 'silent' \| 'error'` | `'log'` | что делать с предупреждением компиляции: в лог сборки, молчать, уронить сборку (D-035); `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode` не затрагивает (D-039, D-041) |

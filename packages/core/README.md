@@ -87,7 +87,7 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 |--------|----------|
 | `presetStandard` | 40+ обработчиков: размеры, отступы, цвета, flex, transform |
 | `presetSynonyms` | Синонимы: `h`→`:hover`, `f`→`:focus`, `a`→`:active` |
-| `presetMedias` | Медиа-запросы: `m`/`d` (mobile/desktop), `mouse`, `dark` |
+| `presetMedias` | Точки по ширине `m…`/`d…` (`@m4` — до 480px, `@d-` — от 992px, `@m4-d` — между), `mouse`, `dark` (D-054) |
 | `presetNormalize` | Лёгкий сброс (box-sizing, margin, img) |
 | `presetMain` | Полный CSS-сброс (аналог normalize.css) |
 | `presetHints` | Подсказки вместо молчания: `t0` → «did you mean `st0`?», `flex` → «в minotation это `dF`», `text-center` → `taC`. Подключать первым — пресет ниже перекрывает его хендлеры. Точечно — фабрикой: `presetHints({ excludeGroups: ['bootstrap'], excludeHandlers: ['flex'] })`; группы — `typos`, `tailwind`, `bootstrap` (D-024, D-042) |
@@ -96,10 +96,10 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 ### Режим синтаксиса `notationMode` (D-045, D-046)
 
 `'context-qualified'` (по умолчанию) — запись minotation: `cF00:h@md<.group`.
-`'variant-prefixed'` — варианты перед классом, как в Tailwind: `md:hover:group-hover:cF00`.
+`'tailwind-compatible'` — варианты перед классом, как в Tailwind: `md:hover:group-hover:cF00`.
 
 ```ts
-const mn = minotationProvider({ notationMode: 'variant-prefixed' });
+const mn = minotationProvider({ notationMode: 'tailwind-compatible' });
 mn.synonyms({ hover: ':hover', invalid: ':invalid' });   // приставки — синонимы и имена mn.media
 mn.variantPrefixedSynonyms({ group: '.group', peer: '.peer~' });  // метки: предок и сосед
 ```
@@ -189,7 +189,7 @@ const mn = minotationProvider({
   specificityMode: 'warn',         // 'warn' | 'silent' | 'strict' — токены f10*2 (накрутка специфичности)
   importantMode: 'warn',           // 'warn' | 'silent' | 'strict' — токены f10-i (!important)
   childSelectorMode: 'warn',       // 'warn' | 'silent' | 'strict' — токены cF00>1 (дочерний селектор)
-  notationMode: 'context-qualified', // или 'variant-prefixed' — запись как в Tailwind: md:hover:p10
+  notationMode: 'context-qualified', // или 'tailwind-compatible' — запись как в Tailwind: md:hover:p10
   contextWhere: false,             // true — контекст в :where(): .p10…:is(:where(.card:hover) *)
 });
 ```

@@ -76,7 +76,7 @@ for (const warning of collector.takeWarnings()) {
 | `specificityMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с накруткой специфичности `f10*2` (D-039) |
 | `importantMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с `!important` (`f10-i`) (D-039) |
 | `childSelectorMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с дочерним селектором `>` (`cF00>1`) (D-041) |
-| `notationMode` | `'context-qualified' \| 'variant-prefixed' \| 'breakpoint-prefixed' \| 'property-value'` | `'context-qualified'` | режим синтаксиса классов разметки (D-045) |
+| `notationMode` | `'context-qualified' \| 'tailwind-compatible' \| 'breakpoint-prefixed' \| 'property-value'` | `'context-qualified'` | режим синтаксиса классов разметки (D-045) |
 | `contextWhere` | `boolean` | `false` | контекст селектора в `:where()` — специфичность только у класса (D-049) |
 | `notationConflictMode` | `'warn' \| 'strict'` | `'warn'` | класс в файлах с разными режимами синтаксиса значит разное — предупреждение или ошибка (D-045) |
 | `warningMode` | `'log' \| 'silent' \| 'error'` | `'log'` | что делать с предупреждением компиляции: в лог сборки, молчать, уронить сборку (D-035); `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode` не затрагивает (D-039, D-041) |
@@ -126,16 +126,16 @@ mnGulp({ entry: { admin: { incude: /admin/ } } });
 Так файлы UI-библиотеки разбираются в её режиме внутри проекта с другим режимом.
 
 ```tsx
-// @minotation notationMode: variant-prefixed; requires: presetTailwind
+// @minotation notationMode: tailwind-compatible; requires: presetTailwind
 export const Button = () => <button className="px-4 hover:bg-blue-500" />;
 ```
 
 ```html
-<!-- @minotation notationMode: variant-prefixed -->
+<!-- @minotation notationMode: tailwind-compatible -->
 ```
 
 ```json
-{ "name": "@acme/ui", "minotation": { "notationMode": "variant-prefixed", "requires": ["presetTailwind"] } }
+{ "name": "@acme/ui", "minotation": { "notationMode": "tailwind-compatible", "requires": ["presetTailwind"] } }
 ```
 
 Директива читается из первых 2 КБ файла: `/* … */`, строка ` * …` блочного комментария,
@@ -152,7 +152,7 @@ export const Button = () => <button className="px-4 hover:bg-blue-500" />;
 
 ```
 [minotation] hover:cF00: Class "hover:cF00" means different things in different notation modes:
-  context-qualified (no CSS), variant-prefixed. Kept: variant-prefixed.
+  context-qualified (no CSS), tailwind-compatible. Kept: tailwind-compatible.
   To fail the build instead: notationConflictMode: 'strict'.
 ```
 

@@ -148,6 +148,14 @@ export interface MnMediaEntry {
   query?: string;
   selector?: string;
   priority?: number;
+  /**
+   * Точка по ширине (D-054) — вместо `query`; запрос строится по записи в токене:
+   * `@имя` — до точки (`max-width: width − 0.02px`), `@имя-` — от точки (`min-width`),
+   * `@a-b` — от точки `a` до точки `b`.
+   */
+  width?: number;
+  /** То же по высоте (`max-height` / `min-height`). */
+  height?: number;
 }
 
 /** Кортеж медиа-выражения: [name, priority, query, selector] */
@@ -307,11 +315,11 @@ export interface MnWarning {
 
 /**
  * Режим синтаксиса нотации (D-045): `'context-qualified'` — запись minotation
- * (`bg-blue-500:hover@md`), `'variant-prefixed'` — варианты перед классом, как в Tailwind
+ * (`bg-blue-500:hover@md`), `'tailwind-compatible'` — варианты перед классом, как в Tailwind
  * (`md:hover:bg-blue-500`), `'breakpoint-prefixed'` — брейкпоинт перед классом, как в quantum-css
  * (`SM_bgc-dg`), `'property-value'` — `свойство:значение`, как в Master CSS (`bg:blue:hover@md`).
  */
-export type MnNotationMode = 'context-qualified' | 'variant-prefixed' | 'breakpoint-prefixed' | 'property-value';
+export type MnNotationMode = 'context-qualified' | 'tailwind-compatible' | 'breakpoint-prefixed' | 'property-value';
 
 /**
  * Пресет-объект (D-045): имя, зависимости и режим синтаксиса. Функция-пресет
@@ -404,7 +412,7 @@ export interface MnOptions {
   childSelectorMode?: MnRaiseMode;
   /**
    * Режим синтаксиса классов разметки (D-045): `'context-qualified'` (по умолчанию) или
-   * `'variant-prefixed'` (Tailwind). Строки пресетов разбираются в режиме пресета.
+   * `'tailwind-compatible'` (Tailwind). Строки пресетов разбираются в режиме пресета.
    * @default 'context-qualified'
    */
   notationMode?: MnNotationMode;

@@ -60,12 +60,12 @@ describe("contextWhere — 'context-qualified'", () => {
   });
 });
 
-describe("contextWhere — 'variant-prefixed'", () => {
+describe("contextWhere — 'tailwind-compatible'", () => {
   test('group-hover и peer-invalid — как в Tailwind v4', () => {
     const mn = minotationProvider({
       warningMode: 'silent',
       contextWhere: true,
-      notationMode: 'variant-prefixed',
+      notationMode: 'tailwind-compatible',
     });
     mn.setPresets([presetStandard]);
     mn.synonyms({

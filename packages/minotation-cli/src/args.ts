@@ -40,8 +40,8 @@ export interface CliArgs {
   importantMode?: 'warn' | 'silent' | 'strict';
   /** Что делать с дочерними селекторами `>`: `warn`, `silent`, `strict` (D-041). */
   childSelectorMode?: 'warn' | 'silent' | 'strict';
-  /** Режим синтаксиса нотации: `context-qualified`, `variant-prefixed` (D-045). */
-  notationMode?: 'context-qualified' | 'variant-prefixed' | 'breakpoint-prefixed' | 'property-value';
+  /** Режим синтаксиса нотации: `context-qualified`, `tailwind-compatible` (D-045). */
+  notationMode?: 'context-qualified' | 'tailwind-compatible' | 'breakpoint-prefixed' | 'property-value';
   /** Конфликт режимов синтаксиса между файлами: `warn`, `strict` (D-045). */
   notationConflictMode?: 'warn' | 'strict';
   /** Контекст селектора в `:where()` (D-049). */
@@ -173,7 +173,7 @@ export function parseArgs(argv: string[]): CliArgs {
   args.childSelectorMode === undefined || RAISE_MODES[args.childSelectorMode]
     || raise('Option "--child-selector-mode" expects warn, silent or strict, got "' + args.childSelectorMode + '"');
   args.notationMode === undefined || NOTATION_MODES[args.notationMode]
-    || raise('Option "--notation-mode" expects context-qualified, variant-prefixed, breakpoint-prefixed or property-value, got "'
+    || raise('Option "--notation-mode" expects context-qualified, tailwind-compatible, breakpoint-prefixed or property-value, got "'
       + args.notationMode + '"');
   args.notationConflictMode === undefined || args.notationConflictMode === 'warn' || args.notationConflictMode === 'strict'
     || raise('Option "--notation-conflict-mode" expects warn or strict, got "' + args.notationConflictMode + '"');
@@ -190,7 +190,7 @@ const WARNING_MODES: Record<string, 1> = {
 /** Допустимые значения `--notation-mode` (D-045). */
 const NOTATION_MODES: Record<string, 1> = {
   'context-qualified': 1,
-  'variant-prefixed': 1,
+  'tailwind-compatible': 1,
   'breakpoint-prefixed': 1,
   'property-value': 1,
 };
@@ -233,7 +233,7 @@ Options:
       --context-where    wrap selector context in :where() (Tailwind v4 specificity)
       --notation-mode <m>
                          notation syntax: context-qualified (default, bg-blue-500:hover@md)
-                         or variant-prefixed (Tailwind-like, md:hover:bg-blue-500)
+                         or tailwind-compatible (Tailwind-like, md:hover:bg-blue-500)
                          or breakpoint-prefixed (quantum-css-like, SM_px15)
                          or property-value (Master CSS-like, bg:blue:hover@md)
       --notation-conflict-mode <m>

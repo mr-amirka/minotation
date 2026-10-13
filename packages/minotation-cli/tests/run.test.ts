@@ -178,8 +178,8 @@ describe('mergeSettings', () => {
     expect(merged.importantMode).toBe('silent');
     expect(mergeSettings(parseArgs(['--child-selector-mode', 'silent']), {}).childSelectorMode).toBe('silent');
     expect(mergeSettings(parseArgs([]), {
-      notationMode: 'variant-prefixed',
-    }).notationMode).toBe('variant-prefixed');
+      notationMode: 'tailwind-compatible',
+    }).notationMode).toBe('tailwind-compatible');
     expect(mergeSettings(parseArgs(['--context-where']), {}).contextWhere).toBe(true);
     expect(mergeSettings(parseArgs(['--notation-conflict-mode', 'strict']), {}).notationConflictMode).toBe('strict');
     expect(mergeSettings(parseArgs([]), {

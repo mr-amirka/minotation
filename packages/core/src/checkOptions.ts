@@ -256,7 +256,7 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
     'warn', 'silent', 'strict',
   ),
   notationMode: oneOf(
-    'context-qualified', 'variant-prefixed', 'breakpoint-prefixed', 'property-value',
+    'context-qualified', 'tailwind-compatible', 'breakpoint-prefixed', 'property-value',
   ),
   selectorPrefix: isString,
   altColor: isBoolean,

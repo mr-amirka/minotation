@@ -29,77 +29,32 @@ See source:
 [minimalist-notation/presets/medias.js](https://github.com/mr-amirka/minimalist-notation/presets/blob/master/medias.js)
 
 
-```js
-module.exports = (mn) => {
-  const {media, utils} = mn;
-  const {forEach} = utils;
+Точки по ширине (D-054) — запрос строится по записи в токене: `@имя` — до точки,
+`@имя-` — от точки, `@a-b` — между точками.
 
-  forEach([
-    // mobile
-    ['m', '(max-width: 992px)'],
-    ['m2', '(max-width: 768px)'],
-    ['m3', '(max-width: 640px)'],
-    ['m4', '(max-width: 480px)'],
-    ['m5', '(max-width: 360px)'],
-    ['m6', '(max-width: 320px)'],
-
-    ['m2-', '(min-width: 768px) and (max-width: 992px)'],
-    ['m3-', '(min-width: 640px) and (max-width: 992px)'],
-    ['m4-', '(min-width: 480px) and (max-width: 992px)'],
-    ['m5-', '(min-width: 360px) and (max-width: 992px)'],
-    ['m6-', '(min-width: 320px) and (max-width: 992px)'],
-
-    // desktop
-    ['d', '(min-width: 992px)'],
-    ['d2', '(min-width: 1200px)'],
-    ['d3', '(min-width: 1600px)'],
-    ['d4', '(min-width: 1920px)'],
-
-    ['-d4', '(min-width: 992px) and (max-width: 1920px)'],
-    ['-d3', '(min-width: 992px) and (max-width: 1600px)'],
-    ['-d2', '(min-width: 992px) and (max-width: 1200px)'],
-
-    // if has mouse, touch pad, advanced stylus digitizers
-    ['mouse', '(pointer: fine) and (hover: hover)'],
-
-  ], (v, i) => {
-    media[v[0]] = {query: v[1], priority: i};
-  });
-
-  // user agents
-  forEach([
-    'linux', 'mozilla', 'firefox', 'opera', 'trident', 'edge',
-    'chrome', 'ubuntu', 'chromium', 'safari', 'msie', 'WebKit', 'AppleWebKit',
-    'mobile', 'ie', 'webtv', 'konqueror', 'blackberry', 'android', 'iron',
-    'iphone', 'ipod', 'ipad', 'mac', 'darwin', 'windows', 'freebsd',
-  ], (name) => {
-    media[name] = {selector: '.' + name};
-  });
-};
+```ts
+// src/presets/medias.ts (сокращённо)
+forIn({
+  m: 992, m2: 768, m3: 640, m4: 480, m5: 360, m6: 320, m7: 312, m8: 272,
+  d: 992, d2: 1200, d3: 1600, d4: 1920, d5: 2300, d6: 2560,
+}, (width, name) => {
+  media[name] = { width };
+});
+media.mouse = { query: '(pointer: fine) and (hover: hover)' };
+media.dark = { query: '(prefers-color-scheme: dark)' };
+// user agents — media[name] = { selector: '.' + name }
 ```
 
-
-**Examples:**  
+**Examples:**
 
 ```html
-<div class="ph15 ph10@m w1100@d2">...</div>
-```  
+<div class="ph15 ph10@m w1100@d2- w900@m4-d">...</div>
+```
 ```css
-.ph15 {
-  padding-left: 15px;
-  padding-right: 15px;
-}
-@media (max-width: 992px) {
-  .ph10\@m {
-    padding-left: 10px;
-    padding-right: 10px;
-  }
-}
-@media (min-width: 1200px) {
-  .w1100\@d2 {
-    width: 1100px;
-  }
-}
+.ph15 { padding-left: 15px; padding-right: 15px; }
+@media (max-width: 991.98px) { .ph10\@m { padding-left: 10px; padding-right: 10px; } }
+@media (min-width: 1200px) { .w1100\@d2- { width: 1100px; } }
+@media (min-width: 480px) and (max-width: 991.98px) { .w900\@m4-d { width: 900px; } }
 ```
 
 -------------------------

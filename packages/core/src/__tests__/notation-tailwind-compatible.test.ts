@@ -1,5 +1,5 @@
 /**
- * Режим синтаксиса `'variant-prefixed'` (Tailwind) — D-045, D-046, D-047.
+ * Режим синтаксиса `'tailwind-compatible'` (Tailwind) — D-045, D-046, D-047.
  *
  * Приставки ищутся среди синонимов и `mn.states`, затем среди имён медиа; шаблон
  * `{имя}-{синоним|медиа}` — метка-предок или, через `mn.variantPrefixedSynonyms`, сосед.
@@ -20,7 +20,7 @@ import {
 /** Пресет-клон в миниатюре: синонимы и медиа в записи Tailwind, хендлеры — стандартные. */
 const presetTailwindish: MnPresetObject = {
   name: 'presetTailwindish',
-  notationMode: 'variant-prefixed',
+  notationMode: 'tailwind-compatible',
   setup(mn: MnInstance) {
     mn.synonyms({
       hover: ':hover',
@@ -44,7 +44,7 @@ function compile(tokens: string, options: MnOptions = {}) {
   const warnings: MnWarning[] = [];
   const mn = minotationProvider({
     warningMode: 'silent',
-    notationMode: 'variant-prefixed',
+    notationMode: 'tailwind-compatible',
     onWarning: (w) => warnings.push(w),
     ...options,
   });
@@ -67,7 +67,7 @@ function compile(tokens: string, options: MnOptions = {}) {
   };
 }
 
-describe("notationMode: 'variant-prefixed'", () => {
+describe("notationMode: 'tailwind-compatible'", () => {
   test('состояние из синонимов', () => {
     expect(compile('hover:cF00').css).toContain('.hover\\:cF00:hover{color:#f00}');
   });
@@ -79,7 +79,7 @@ describe("notationMode: 'variant-prefixed'", () => {
   test('имя и в синонимах, и в медиа — берётся синоним', () => {
     const mn = minotationProvider({
       warningMode: 'silent',
-      notationMode: 'variant-prefixed',
+      notationMode: 'tailwind-compatible',
     });
     mn.setPresets([presetStandard, presetTailwindish]);
     mn.media.hover = {
@@ -204,7 +204,7 @@ describe('mn.variantPrefixedSynonyms — проверка', () => {
   test('отношения +, >, предок без комбинатора', () => {
     const mn = minotationProvider({
       warningMode: 'silent',
-      notationMode: 'variant-prefixed',
+      notationMode: 'tailwind-compatible',
     });
     mn.setPresets([presetStandard, presetTailwindish]);
     mn.variantPrefixedSynonyms({
@@ -222,11 +222,11 @@ describe('mn.variantPrefixedSynonyms — проверка', () => {
   });
 });
 
-describe("'variant-prefixed' без меток и без ядра", () => {
+describe("'tailwind-compatible' без меток и без ядра", () => {
   test('без variantPrefixedSynonyms меток нет: peer-hover — неизвестный вариант', () => {
     const mn = minotationProvider({
       warningMode: 'silent',
-      notationMode: 'variant-prefixed',
+      notationMode: 'tailwind-compatible',
     });
     mn.setPresets([presetStandard]);
     mn.synonyms({
@@ -242,7 +242,7 @@ describe("'variant-prefixed' без меток и без ядра", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- экземпляр провайдера нетипизирован снаружи
     const instance: any = Object.assign(() => undefined, {
       options: {
-        notationMode: 'variant-prefixed',
+        notationMode: 'tailwind-compatible',
       },
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- то же
@@ -264,13 +264,13 @@ describe("'variant-prefixed' без меток и без ядра", () => {
 });
 
 describe('компилятор с режимом: getCompiler(attr, mode) — режим файла разметки (D-045 этап 3)', () => {
-  test('проект context-qualified, классы «файла библиотеки» — variant-prefixed', () => {
+  test('проект context-qualified, классы «файла библиотеки» — tailwind-compatible', () => {
     const mn = minotationProvider({
       warningMode: 'silent',
     });
     mn.setPresets([presetStandard, presetTailwindish]);
     mn.getCompiler('class')('p10:hover');
-    mn.getCompiler('class', 'variant-prefixed')('hover:cF00');
+    mn.getCompiler('class', 'tailwind-compatible')('hover:cF00');
     mn.compile();
     const css = mn.styles$.getValue().map((s) => s.content).join(' ');
     expect(css).toContain('.p10\\:hover:hover{padding:10px}');
@@ -285,7 +285,7 @@ describe('компилятор с режимом: getCompiler(attr, mode) — р
     mn.getCompiler('class')('hover:cF00');
     mn.compile();
     expect(mn.styles$.getValue().map((s) => s.content).join(' ')).not.toContain('hover\\:cF00');
-    mn.getCompiler('class', 'variant-prefixed')('hover:cF00');
+    mn.getCompiler('class', 'tailwind-compatible')('hover:cF00');
     mn.compile();
     expect(mn.styles$.getValue().map((s) => s.content).join(' ')).toContain('.hover\\:cF00:hover{color:#f00}');
     // Полная пересборка — компилятор с режимом не теряется.

@@ -122,12 +122,12 @@ describe('parseArgs', () => {
     expect(() => parseArgs(['--important-mode', 'block']))
       .toThrow('Option "--important-mode" expects warn, silent or strict, got "block"');
     expect(parseArgs(['--child-selector-mode', 'strict']).childSelectorMode).toBe('strict');
-    expect(parseArgs(['--notation-mode', 'variant-prefixed']).notationMode).toBe('variant-prefixed');
+    expect(parseArgs(['--notation-mode', 'tailwind-compatible']).notationMode).toBe('tailwind-compatible');
     expect(parseArgs(['--notation-conflict-mode', 'strict']).notationConflictMode).toBe('strict');
     expect(() => parseArgs(['--notation-conflict-mode', 'silent']))
       .toThrow('Option "--notation-conflict-mode" expects warn or strict, got "silent"');
     expect(() => parseArgs(['--notation-mode', 'tailwind']))
-      .toThrow('Option "--notation-mode" expects context-qualified, variant-prefixed, breakpoint-prefixed or property-value, got "tailwind"');
+      .toThrow('Option "--notation-mode" expects context-qualified, tailwind-compatible, breakpoint-prefixed or property-value, got "tailwind"');
     expect(() => parseArgs(['--child-selector-mode', 'error']))
       .toThrow('Option "--child-selector-mode" expects warn, silent or strict, got "error"');
   });

@@ -19,6 +19,7 @@ export default {
     } = mn;
     const {
       forEach,
+      forIn,
     } = utils;
     /*
   forEach([
@@ -38,52 +39,38 @@ export default {
   ], (v, i) => media[v[0]] = {query: v[1], priority: i});
   */
 
-    forEach([
-    // mobile
-      ['m', '(max-width: 991.98px)'],
-      ['m2', '(max-width: 767.98px)'],
-      ['m3', '(max-width: 639.98px)'],
-      ['m4', '(max-width: 479.98px)'],
-      ['m5', '(max-width: 359.98px)'],
-      ['m6', '(max-width: 319.98px)'],
-      ['m7', '(max-width: 311.98px)'], // Apple Watch 312 × 390
-      ['m8', '(max-width: 271.98px)'], // Apple Watch 272 × 340
+    // Точки по ширине (D-054): запрос строится по записи — `@m4` до точки
+    // (`max-width: 479.98px`), `@d-` от точки (`min-width: 992px`), `@m4-d` между точками.
+    // Готовые диапазоны (`m4-`, `-d2`) убраны: пишутся синтаксисом (`@m4-m`, `@d-d2`).
+    // `m` и `d` — одна точка 992px под двумя именами: `@m` = `@d` = `max-width: 991.98px`.
+    forIn({
+      m: 992,
+      m2: 768,
+      m3: 640,
+      m4: 480,
+      m5: 360,
+      m6: 320,
+      m7: 312, // Apple Watch 312 × 390
+      m8: 272, // Apple Watch 272 × 340
+      d: 992,
+      d2: 1200,
+      d3: 1600,
+      d4: 1920,
+      d5: 2300,
+      d6: 2560,
+    }, (width: number, name: string) => {
+      media[name] = {
+        width,
+      };
+    });
 
-      ['m2-', '(min-width: 768px) and (max-width: 991.98px)'],
-      ['m3-', '(min-width: 640px) and (max-width: 991.98px)'],
-      ['m4-', '(min-width: 480px) and (max-width: 991.98px)'],
-      ['m5-', '(min-width: 360px) and (max-width: 991.98px)'],
-      ['m6-', '(min-width: 320px) and (max-width: 991.98px)'],
-      ['m7-', '(min-width: 312px) and (max-width: 991.98px)'],
-      ['m8-', '(min-width: 272px) and (max-width: 991.98px)'],
-
-      // desktop
-      ['d', '(min-width: 992px)'],
-      ['d2', '(min-width: 1200px)'],
-      ['d3', '(min-width: 1600px)'],
-      ['d4', '(min-width: 1920px)'],
-      ['d5', '(min-width: 2300px)'],
-      ['d6', '(min-width: 2560px)'],
-
-      ['-d6', '(min-width: 992px) and (max-width: 2559.98px)'],
-      ['-d5', '(min-width: 992px) and (max-width: 2299.98px)'],
-      ['-d4', '(min-width: 992px) and (max-width: 1919.98px)'],
-      ['-d3', '(min-width: 992px) and (max-width: 1599.98px)'],
-      ['-d2', '(min-width: 992px) and (max-width: 1199.98px)'],
-
-      // if has mouse, touch pad, advanced stylus digitizers
-      ['mouse', '(pointer: fine) and (hover: hover)'],
-
-      ['dark', '(prefers-color-scheme: dark)'],
-    ], (v, i) => {
+    forEach([['mouse', '(pointer: fine) and (hover: hover)'], ['dark', '(prefers-color-scheme: dark)']], (v: string[], i: number) => {
       media[v[0]] = {
         query: v[1],
         priority: i,
       };
     });
 
-
-    // user agents
     forEach([
       'iframe',
       'linux',

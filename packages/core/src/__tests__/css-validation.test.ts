@@ -104,12 +104,14 @@ describe('CSS validation', () => {
 
   test('медиа-запросы генерируют валидный CSS', () => {
     const mn = make([presetStandard, presetMedias]);
-    mn.getCompiler('class')('p10@m p10@d p10@m5 p10@dark');
+    // D-054: `@d` — до точки 992px, `@d-` — от неё, `@m4-d` — между точками.
+    mn.getCompiler('class')('p10@m p10@d- p10@m5 p10@dark p10@m4-d');
     mn.compile();
     const css = mn.styles$.getValue().map(s => s.content).join('\n');
     expect(() => postcss.parse(css)).not.toThrow();
     expect(css).toContain('@media (max-width: 991.98px)');
     expect(css).toContain('@media (min-width: 992px)');
+    expect(css).toContain('@media (min-width: 480px) and (max-width: 991.98px)');
   });
 
   test('полный CSS-вывод парсится postcss без ошибок (все пресеты)', () => {

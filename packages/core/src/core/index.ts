@@ -177,6 +177,14 @@ function fail(message: string): never {
   throw new Error('[minotation] ' + message);
 }
 
+/** Число — граница медиа-диапазона (`@480-d`). */
+const REGEXP_MEDIA_NUMBER = /^[0-9]+(?:\.[0-9]+)?$/;
+
+/** Округление границы до сотых: `479.98`, а не `479.97999999999996`. */
+function round(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 /** Случаи со своим режимом `'warn' | 'silent' | 'strict'` (D-039). */
 type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded' | 'child-selector';
 
@@ -574,7 +582,7 @@ function minotationProvider(options?: MnOptions) {
 
   /** Кэширующая обёртка над `parseComboNameProvider(attrName)` — сама обёртка (try/catch) не пересоздаётся на каждый вызов {@link updateAttrByMap}/{@link updateAttrByValues}, а живёт всё время жизни инстанса, как {@link getCompiler}. */
   function getParseComboName(attrName: string): ParseComboNameFn {
-    // Ключ компилятора с режимом — `'class variant-prefixed'` (см. getCompiler).
+    // Ключ компилятора с режимом — `'class tailwind-compatible'` (см. getCompiler).
     const meta = $$compilerModes[attrName];
     return $$parseComboNameCache[attrName]
       || ($$parseComboNameCache[attrName] = withCatchParseComboNameDecorate(meta
@@ -832,6 +840,7 @@ function minotationProvider(options?: MnOptions) {
     let mediaTemplate: [string] | [string, number | undefined];
     let name: string;
     let media: MnMediaEntry | undefined;
+    let point: [string, number] | undefined;
     const medias: Array<[string, number | undefined, string, string] | []> = [];
     const names: string[] = [];
     const queries: string[] = [];
@@ -853,7 +862,10 @@ function minotationProvider(options?: MnOptions) {
       priority = mediaPriority;
       for (;iAnd < lAnd; iAnd++) {
         (fragment = partsAnd[iAnd]) && (
-          (media = $$media[fragment]) ? (
+          (point = mediaPointQuery(fragment)) ? (
+            push(outputQuery, point[0]),
+            isDefined(priority) || (priority = point[1])
+          ) : (media = $$media[fragment]) ? (
             (query = media.query) && push(outputQuery, query),
             (selector = media.selector) && push(outputSelector, selector),
             isDefined(priority) || (priority = media.priority)
@@ -887,6 +899,98 @@ function minotationProvider(options?: MnOptions) {
         '',
       ]);
     return medias;
+  }
+
+  /**
+   * Точки медиа `width`/`height` (D-054): `@имя` — до точки, `@имя-` — от точки, `@a-b` — от
+   * точки `a` до точки `b` (граница может быть и числом: `@480-d`). Не точка — `undefined`,
+   * дальше — обычное имя или числовой шаблон.
+   *
+   * @returns `[запрос, приоритет]`: «до» — `−граница` (меньшие ниже по CSS и важнее), «от» —
+   *   `+граница`
+   */
+  function mediaPointQuery(fragment: string): [string, number] | undefined {
+    const entry = $$media[fragment];
+    if (entry) {
+      return pointOf(entry, fragment) ? upTo(entry) : undefined;
+    }
+    const dash = fragment.indexOf('-');
+    if (dash < 0) {
+      return undefined;
+    }
+    if (dash === fragment.length - 1) {
+      const from = $$media[fragment.slice(0, -1)];
+      return from && pointOf(from, fragment) ? fromPoint(from) : undefined;
+    }
+    const lower = boundOf(fragment.slice(0, dash), fragment);
+    const upper = boundOf(fragment.slice(dash + 1), fragment);
+    if (!lower || !upper) {
+      return undefined;
+    }
+    if (lower[0] !== upper[0]) {
+      return mediaProblem(fragment, 'mixes width and height');
+    }
+    return ['(min-' + lower[0] + ': ' + lower[1] + 'px) and (max-' + upper[0] + ': '
+      + (upper[2] ? round(upper[1] - 0.02) : upper[1]) + 'px)', -upper[1]];
+  }
+
+  /** Есть ли у описания точка; `query` вместе с точкой — предупреждение, берётся `query`. */
+  function pointOf(entry: MnMediaEntry, fragment: string): boolean {
+    const has = isDefined(entry.width) || isDefined(entry.height);
+    if (has && entry.query) {
+      mediaProblem(fragment, 'has both "query" and "width"/"height" — "query" is used');
+      return false;
+    }
+    return has;
+  }
+
+  function upTo(entry: MnMediaEntry): [string, number] {
+    const side = isDefined(entry.width) ? 'width' : 'height';
+    const value = (side === 'width' ? entry.width : entry.height) as number;
+    return ['(max-' + side + ': ' + round(value - 0.02) + 'px)', -value];
+  }
+
+  function fromPoint(entry: MnMediaEntry): [string, number] {
+    const side = isDefined(entry.width) ? 'width' : 'height';
+    const value = (side === 'width' ? entry.width : entry.height) as number;
+    return ['(min-' + side + ': ' + value + 'px)', value];
+  }
+
+  /** Граница диапазона: имя с точкой → `[сторона, точка, 1]`, число → `['width', число, 0]`. */
+  function boundOf(part: string, fragment: string): [string, number, number] | undefined {
+    const entry = $$media[part];
+    if (entry && pointOf(entry, fragment)) {
+      return isDefined(entry.width) ? [
+        'width',
+        entry.width as number,
+        1,
+      ] : [
+        'height',
+        entry.height as number,
+        1,
+      ];
+    }
+    return REGEXP_MEDIA_NUMBER.test(part) ? [
+      'width',
+      parseFloat(part),
+      0,
+    ] : undefined;
+  }
+
+  /**
+   * Медиа разбирается при выводе CSS, вне перехвата ошибок разбора токена: бросок уронил бы
+   * компиляцию. Поэтому — предупреждение и заведомо ложное условие: правило не действует.
+   */
+  function mediaProblem(fragment: string, problem: string): [string, number] {
+    collectWarning({
+      type: 'parse-error',
+      token: '@' + fragment,
+      handler: '',
+      arg: fragment,
+      utility: 'parseMediaExpression',
+      message: 'Media "@' + fragment + '" ' + problem,
+    });
+    return ['not all', 0];
   }
 
   function parseMediaTemplate(mediaName: string): [string] | [string, number | undefined] {
@@ -1646,7 +1750,7 @@ function minotationProvider(options?: MnOptions) {
   // synonym/selectors: произвольная вложенная форма, см. baseSetSynonyms/normalizeSelectors.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   /**
-   * Метки вариантов `{имя}-{состояние}` для `'variant-prefixed'` (D-046): селектор метки и
+   * Метки вариантов `{имя}-{состояние}` для `'tailwind-compatible'` (D-046): селектор метки и
    * отношение к элементу. Без записи имя — предок `.имя` (`group-hover:` → `.group:hover .x`);
    * с записью `peer: '.peer~'` — сосед (`peer-invalid:` → `.peer:invalid~.x`).
    *

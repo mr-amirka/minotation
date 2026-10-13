@@ -371,7 +371,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     // остальное — в режиме проекта. Свой разборщик на режим (D-047); по умолчанию —
     // 'context-qualified' ниже.
     const mode = (instance as any)._presetMode || $$markupMode || $$mnOptions.notationMode;
-    if (mode === 'variant-prefixed') {
+    if (mode === 'tailwind-compatible') {
       return parseVariantPrefixed(comboName, targetName);
     }
     if (mode === 'breakpoint-prefixed') {
@@ -459,7 +459,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   }
 
   /**
-   * Разборщик `'variant-prefixed'` (Tailwind, D-045/D-046): приставки варианта перед
+   * Разборщик `'tailwind-compatible'` (Tailwind, D-045/D-046): приставки варианта перед
    * классом — `dark:md:hover:group-hover:bg-blue-500`, `!mt-4`. Каждая приставка ищется:
    * 1. среди синонимов и `mn.states` — состояние самого элемента;
    * 2. среди имён медиа (`mn.media`) — медиа; имя есть и там, и там — берётся синоним;
@@ -873,7 +873,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       token: comboName,
       handler: '',
       arg: prefix,
-      utility: 'variant-prefixed',
+      utility: 'tailwind-compatible',
     });
   }
 

@@ -822,6 +822,30 @@ describe('warningMode в накопителе (D-035)', () => {
   });
 });
 
+describe('unknownMediaMode в накопителе (D-058)', () => {
+  test("'warn' — своя опция: warningMode 'error' сборку не роняет, ядро печатает само", () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const collector = createTokenCollector({
+      ...OPTIONS,
+      warningMode: 'error',
+    });
+    collector.add('/a.html', '<div class="p10@zz">');
+    expect(collector.css()).toContain('@media zz{');
+    expect(collector.takeWarnings()).toEqual([]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  test("'strict' — сборка падает", () => {
+    const collector = createTokenCollector({
+      ...OPTIONS,
+      unknownMediaMode: 'strict',
+    });
+    collector.add('/a.html', '<div class="p10@zz">');
+    expect(() => collector.css()).toThrow("unknownMediaMode: 'strict'");
+  });
+});
+
 describe('specificityMode / importantMode в накопителе (D-039)', () => {
   test("'warn' — ядро печатает само, в warnings накопителя не попадает; колбэк вызван", () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);

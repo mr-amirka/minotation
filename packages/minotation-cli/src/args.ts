@@ -40,6 +40,8 @@ export interface CliArgs {
   importantMode?: 'warn' | 'silent' | 'strict';
   /** Что делать с дочерними селекторами `>`: `warn`, `silent`, `strict` (D-041). */
   childSelectorMode?: 'warn' | 'silent' | 'strict';
+  /** Неизвестное имя медиа (`p10@zz`): `warn`, `silent`, `strict` (D-058). */
+  unknownMediaMode?: 'warn' | 'silent' | 'strict';
   /** Режим синтаксиса нотации: `context-qualified`, `tailwind-compatible` (D-045). */
   notationMode?: 'context-qualified' | 'tailwind-compatible' | 'breakpoint-prefixed' | 'property-value';
   /** Конфликт режимов синтаксиса между файлами: `warn`, `strict` (D-045). */
@@ -118,6 +120,7 @@ const OPTIONS: Record<string, keyof CliArgs> = {
   '--specificity-mode': 'specificityMode',
   '--important-mode': 'importantMode',
   '--child-selector-mode': 'childSelectorMode',
+  '--unknown-media-mode': 'unknownMediaMode',
   '--notation-mode': 'notationMode',
   '--notation-conflict-mode': 'notationConflictMode',
   '--include': 'include',
@@ -172,6 +175,8 @@ export function parseArgs(argv: string[]): CliArgs {
     || raise('Option "--important-mode" expects warn, silent or strict, got "' + args.importantMode + '"');
   args.childSelectorMode === undefined || RAISE_MODES[args.childSelectorMode]
     || raise('Option "--child-selector-mode" expects warn, silent or strict, got "' + args.childSelectorMode + '"');
+  args.unknownMediaMode === undefined || RAISE_MODES[args.unknownMediaMode]
+    || raise('Option "--unknown-media-mode" expects warn, silent or strict, got "' + args.unknownMediaMode + '"');
   args.notationMode === undefined || NOTATION_MODES[args.notationMode]
     || raise('Option "--notation-mode" expects context-qualified, tailwind-compatible, breakpoint-prefixed or property-value, got "'
       + args.notationMode + '"');
@@ -230,6 +235,8 @@ Options:
                          !important tokens (f10-i): warn (default), silent, strict
       --child-selector-mode <m>
                          child selector tokens (cF00>1): warn (default), silent, strict
+      --unknown-media-mode <m>
+                         unknown media names (p10@zz): warn (default), silent, strict
       --context-where    wrap selector context in :where() (Tailwind v4 specificity)
       --notation-mode <m>
                          notation syntax: context-qualified (default, bg-blue-500:hover@md)

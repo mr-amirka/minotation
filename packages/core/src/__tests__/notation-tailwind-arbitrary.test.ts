@@ -107,12 +107,7 @@ describe('произвольные варианты и семейства', () =
     expect(compile(token).css).toBe(css);
   });
 
-  test.each([
-    ['[@media(print)]:cF00', 'Variant "[@media(print)]:" is not supported: only @media at-rules exist in the output'],
-    ['supports-[display:grid]:cF00', 'Variant "supports-[display:grid]:" is not supported: only @media at-rules exist in the output'],
-    ['[.x]:cF00', 'Variant "[.x]:" is not supported: an arbitrary variant needs "&" for the element'],
-    ['max-zz:cF00', 'Variant "max-zz:" is unknown'],
-  ])('%s — предупреждение', (token, message) => {
+  test.each([['[.x]:cF00', 'Variant "[.x]:" is not supported: an arbitrary variant needs "&" for the element'], ['max-zz:cF00', 'Variant "max-zz:" is unknown']])('%s — предупреждение', (token, message) => {
     const {
       css, warnings,
     } = compile(token);
@@ -189,5 +184,53 @@ describe('пограничные случаи', () => {
     });
     expect(() => scp.parseClass('group-[.x]:cF00')).toThrow('Variant "group-[.x]:" is unknown');
     expect(() => scp.parseClass('min-d:cF00')).toThrow('Variant "min-d:" is unknown');
+  });
+});
+
+describe('at-правила: @supports, @container (D-057)', () => {
+  test.each([
+    ['supports-[display:grid]:cF00', '@supports (display:grid){.supports-\\[display\\:grid\\]\\:cF00{color:#f00}}'],
+    ['supports-[not_(display:grid)]:cF00', '@supports not (display:grid){.supports-\\[not_\\(display\\:grid\\)\\]\\:cF00{color:#f00}}'],
+    ['[@supports(display:grid)]:cF00', '@supports (display:grid){.\\[\\@supports\\(display\\:grid\\)\\]\\:cF00{color:#f00}}'],
+    ['[@media(any-hover:hover)]:cF00', '@media (any-hover:hover){.\\[\\@media\\(any-hover\\:hover\\)\\]\\:cF00{color:#f00}}'],
+    ['[@container_(width>=20rem)]:cF00', '@container (width>=20rem){.\\[\\@container_\\(width\\>\\=20rem\\)\\]\\:cF00{color:#f00}}'],
+    ['@min-[400px]:cF00', '@container (width >= 400px){.\\@min-\\[400px\\]\\:cF00{color:#f00}}'],
+    ['@max-[400px]:cF00', '@container (width < 400px){.\\@max-\\[400px\\]\\:cF00{color:#f00}}'],
+    ['@d:cF00', '@container (width >= 992px){.\\@d\\:cF00{color:#f00}}'],
+    ['@d/sidebar:cF00', '@container sidebar (width >= 992px){.\\@d\\/sidebar\\:cF00{color:#f00}}'],
+    ['dark:supports-[display:grid]:cF00', '@media (prefers-color-scheme: dark){@supports (display:grid){'
+      + '.dark\\:supports-\\[display\\:grid\\]\\:cF00{color:#f00}}}'],
+  ])('%s → %s', (token, css) => {
+    expect(compile(token).css).toBe(css);
+  });
+
+  test.each([
+    ['[@layer_x]:cF00', 'Variant "[@layer_x]:" is not supported: only @media, @supports and @container exist in the output'],
+    ['@zz:cF00', 'Variant "@zz:" is unknown'],
+    ['@mouse:cF00', 'Variant "@mouse:" is unknown'],
+  ])('%s — предупреждение', (token, message) => {
+    const {
+      css, warnings,
+    } = compile(token);
+    expect(css).toBe('');
+    expect(warnings[0].message).toContain(message);
+  });
+
+  test('selectorsCompileProvider отдельно: без mn.media', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- экземпляр провайдера нетипизирован снаружи
+    const instance: any = Object.assign(() => undefined, {
+      options: {
+        notationMode: 'tailwind-compatible',
+      },
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- то же
+    const scp: any = selectorsCompileProvider(instance);
+    expect(scp.parseClass('supports-[a:b]:cF00')[0][1]).toEqual({
+      '.supports-\\[a\\:b\\]\\:cF00': '@supports (a:b)',
+    });
+    expect(() => scp.parseClass('@d:cF00')).toThrow('Variant "@d:" is unknown');
+    expect(scp.parseClass('[@media_print]:cF00')[0][1]).toEqual({
+      '.\\[\\@media_print\\]\\:cF00': 'print',
+    });
   });
 });

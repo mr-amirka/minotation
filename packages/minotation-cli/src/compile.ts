@@ -27,7 +27,7 @@ import {
   isStringArray,
 } from 'minotation';
 import type {
-  MnInstance, MnWarning, OptionSchema,
+  MnWarning, OptionSchema,
   MnPreset,
 } from 'minotation';
 import {

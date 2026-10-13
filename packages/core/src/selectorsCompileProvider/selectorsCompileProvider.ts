@@ -200,6 +200,12 @@ const REGEXP_UNESCAPED_CLASS_CHARS = /[{}&]/g;
 /** `_` — пробел в произвольном значении Tailwind, `\\_` — само подчёркивание. */
 const REGEXP_ARBITRARY_SPACE = /\\_|_/g;
 
+/** `[@правило условие]`: `[1]` — media/supports/container, `[2]` — условие. */
+const REGEXP_AT_RULE = /^@(media|supports|container)\s*(\S.*)$/;
+
+/** Условие `@supports` с функцией — без скобок вокруг: `not (…)`, `selector(…)`, `font-tech(…)`. */
+const REGEXP_SUPPORTS_FUNCTION = /^(?:not\b|selector\(|font-(?:tech|format)\()/;
+
 /** Хвост произвольного варианта после `&` уходит к потомку: `>` или пробел вне скобок. */
 const REGEXP_ARBITRARY_CHILD = /^[^(]*[> ]/;
 
@@ -574,9 +580,12 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     }
     if (prefix[0] === '[' && prefix[prefix.length - 1] === ']') {
       const selector = arbitrary(prefix.slice(1, -1));
-      selector[0] === '@' && throwUnknownVariant(
-        comboName, prefix, 'only @media at-rules exist in the output',
-      );
+      if (selector[0] === '@') {
+        medias.push(arbitraryAtRule(
+          selector, prefix, comboName,
+        ));
+        return true;
+      }
       at = selector.indexOf('&');
       at < 0 && throwUnknownVariant(
         comboName, prefix, 'an arbitrary variant needs "&" for the element',
@@ -587,9 +596,13 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       return true;
     }
     if (name === 'supports') {
-      return throwUnknownVariant(
-        comboName, prefix, 'only @media at-rules exist in the output',
-      );
+      // Как в Tailwind: `display:grid` → `(display:grid)`; `not (…)`, `selector(…)` — как есть.
+      medias.push(registerAtRule('supports', value.indexOf(':') > 0 && value[0] !== '('
+        && !REGEXP_SUPPORTS_FUNCTION.test(value) ? '(' + value + ')' : value));
+      return true;
+    }
+    if (prefix[0] === '@') {
+      return pushContainerVariant(medias, prefix);
     }
     if (name === 'data' || name === 'aria') {
       self[1] += '[' + name + '-' + value + ']';
@@ -632,6 +645,57 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       return pushBreakpointCompare(medias, prefix);
     }
     return false;
+  }
+
+  /**
+   * Произвольное at-правило `[@media …]`, `[@supports …]`, `[@container …]` (D-057) — имя медиа
+   * для ядра. Остальные at-правила (`@layer`, `@starting-style`) — предупреждение.
+   */
+  function arbitraryAtRule(
+    rule: string, prefix: string, comboName: string,
+  ): string {
+    const matchs = REGEXP_AT_RULE.exec(rule);
+    const kind = matchs && matchs[1];
+    return !matchs ? throwUnknownVariant(
+      comboName, prefix, 'only @media, @supports and @container exist in the output',
+    ) : kind === 'media'
+      ? registerQuery((instance as any).media || {}, matchs[2])
+      : registerAtRule(kind as string, matchs[2]);
+  }
+
+  /**
+   * Контейнерный вариант Tailwind (D-057): `@min-[…]`, `@max-[…]`, `@{точка}` (ширина точки
+   * медиа, `width >= …`), `/имя` — именованный контейнер.
+   *
+   * @returns распознан ли вариант
+   */
+  function pushContainerVariant(medias: string[], prefix: string): boolean {
+    const slash = prefix.indexOf('/');
+    const base = slash < 0 ? prefix.slice(1) : prefix.slice(1, slash);
+    const named = slash < 0 ? '' : prefix.slice(slash + 1) + ' ';
+    const bracket = base.indexOf('-[');
+    const kind = bracket > 0 && base[base.length - 1] === ']' ? base.slice(0, bracket) : '';
+    const entry = kind ? undefined : ((instance as any).media || {})[base];
+    let condition: string;
+    if (kind === 'min' || kind === 'max') {
+      condition = '(width ' + (kind === 'min' ? '>=' : '<') + ' ' + arbitrary(base.slice(bracket + 2, -1)) + ')';
+    } else if (entry && entry.width !== undefined) {
+      condition = '(width >= ' + entry.width + 'px)';
+    } else {
+      return false;
+    }
+    medias.push(registerAtRule('container', named + condition));
+    return true;
+  }
+
+  /** Условие `@supports`/`@container` как имя медиа: ядро выведет вложенное at-правило. */
+  function registerAtRule(kind: string, condition: string): string {
+    const media = (instance as any).media || {};
+    const name = '@' + kind + ' ' + condition;
+    media[name] || (media[name] = {
+      [kind]: condition,
+    });
+    return name;
   }
 
   /** `min-md`/`max-md` — сравнение с точкой медиа (`width`, D-054). */

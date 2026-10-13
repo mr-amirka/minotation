@@ -255,6 +255,9 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   childSelectorMode: oneOf(
     'warn', 'silent', 'strict',
   ),
+  unknownMediaMode: oneOf(
+    'warn', 'silent', 'strict',
+  ),
   notationMode: oneOf(
     'context-qualified', 'tailwind-compatible', 'breakpoint-prefixed', 'property-value',
   ),

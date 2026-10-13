@@ -84,8 +84,10 @@ describe('точки по высоте и ошибки', () => {
     expect(warnings[0].message).toBe('Media "@bad" has both "query" and "width"/"height" — "query" is used');
   });
 
-  test('не точка и не диапазон — как раньше: имя уходит в @media как есть (известный дефект, PLAN)', () => {
+  test('не точка и не диапазон — неизвестное имя: как написано и предупреждение (unknownMediaMode, D-058)', () => {
+    const result = compile('p10@zz-', media);
     expect(compile('p10@w-xyz', media).css).toBe('@media w-xyz{.p10\\@w-xyz{padding:10px}}');
-    expect(compile('p10@zz-', media).css).toBe('@media zz-{.p10\\@zz-{padding:10px}}');
+    expect(result.css).toBe('@media zz-{.p10\\@zz-{padding:10px}}');
+    expect(result.warnings.map((w) => w.type)).toEqual(['unknown-media']);
   });
 });

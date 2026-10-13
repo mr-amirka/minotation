@@ -156,6 +156,13 @@ export interface MnMediaEntry {
   width?: number;
   /** То же по высоте (`max-height` / `min-height`). */
   height?: number;
+  /** Условие `@supports` (D-057): `'(display: grid)'` → `@supports (display: grid){…}`. */
+  supports?: string;
+  /**
+   * Условие `@container` (D-057), с именем контейнера или без: `'(width >= 448px)'`,
+   * `'sidebar (width >= 448px)'` → `@container sidebar (width >= 448px){…}`.
+   */
+  container?: string;
 }
 
 /** Кортеж медиа-выражения: [name, priority, query, selector] */
@@ -264,7 +271,9 @@ export class MnParseError extends Error {
 export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'invalid-css-value'
   | 'unregistered-state' | 'raised-specificity' | 'important' | 'hint' | 'child-selector'
   /** Класс в файлах с разными режимами синтаксиса значит разное (D-045, `notationConflictMode`). */
-  | 'notation-conflict';
+  | 'notation-conflict'
+  /** Имя медиа не описано в `mn.media` (D-058, `unknownMediaMode`). */
+  | 'unknown-media';
 
 /**
  * `'hint'` — класс, которого нет в нотации, но который похож на опечатку или на класс
@@ -410,6 +419,14 @@ export interface MnOptions {
    * @default 'warn'
    */
   childSelectorMode?: MnRaiseMode;
+  /**
+   * Имя медиа, которого нет в `mn.media` и которое не точка, не числовой шаблон и не тип
+   * медиа CSS (`p10@zz`) — D-058. `'warn'` — предупреждение, CSS как написано
+   * (`@media zz`); `'silent'` — то же без предупреждения; `'strict'` — брак сборки
+   * (`MnForbiddenTokenError`), токен CSS не даёт. `warningMode` на этот случай не влияет.
+   * @default 'warn'
+   */
+  unknownMediaMode?: MnRaiseMode;
   /**
    * Режим синтаксиса классов разметки (D-045): `'context-qualified'` (по умолчанию) или
    * `'tailwind-compatible'` (Tailwind). Строки пресетов разбираются в режиме пресета.

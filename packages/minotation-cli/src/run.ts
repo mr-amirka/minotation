@@ -132,6 +132,7 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
     specificityMode: args.specificityMode || config.specificityMode,
     importantMode: args.importantMode || config.importantMode,
     childSelectorMode: args.childSelectorMode || config.childSelectorMode,
+    unknownMediaMode: args.unknownMediaMode || config.unknownMediaMode,
     notationMode: args.notationMode || config.notationMode,
     contextWhere: args.contextWhere || config.contextWhere,
     notationConflictMode: args.notationConflictMode || config.notationConflictMode,

@@ -130,6 +130,9 @@ describe('parseArgs', () => {
       .toThrow('Option "--notation-mode" expects context-qualified, tailwind-compatible, breakpoint-prefixed or property-value, got "tailwind"');
     expect(() => parseArgs(['--child-selector-mode', 'error']))
       .toThrow('Option "--child-selector-mode" expects warn, silent or strict, got "error"');
+    expect(parseArgs(['--unknown-media-mode', 'strict']).unknownMediaMode).toBe('strict');
+    expect(() => parseArgs(['--unknown-media-mode', 'warning']))
+      .toThrow('Option "--unknown-media-mode" expects warn, silent or strict, got "warning"');
   });
 
   test('--warning-mode принимает только log, silent, error', () => {

@@ -54,6 +54,13 @@ function compileAll(tokens: string[]): string {
     presetNormalize,
     presetMain,
   ]);
+  // Описания из примера раздела «`@supports` и `@container`» HANDLERS.md (D-057).
+  mn.media.grid = {
+    supports: '(display: grid)',
+  };
+  mn.media.side = {
+    container: 'sidebar (width >= 448px)',
+  };
   const compile = mn.getCompiler('class');
   for (let i = 0; i < tokens.length; i++) {
     compile(tokens[i]);

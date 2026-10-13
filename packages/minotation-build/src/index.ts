@@ -160,6 +160,7 @@ export const CORE_OPTION_KEYS = [
   'specificityMode',
   'importantMode',
   'childSelectorMode',
+  'unknownMediaMode',
   'notationMode',
   'contextWhere',
   'onWarning',
@@ -172,6 +173,7 @@ const OWN_MODE_WARNINGS: Partial<Record<MnWarning['type'], 1>> = {
   important: 1,
   'max-depth-exceeded': 1,
   'child-selector': 1,
+  'unknown-media': 1,
 };
 
 /** Опции ядра в опциях плагина — на верхнем уровне, без вложенного `mn` (D-034). */

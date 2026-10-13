@@ -40,6 +40,7 @@ mn ./index.html -o ./page.css           # одиночный файл
 | `--specificity-mode <режим>` | токены с накруткой специфичности (`f10*2`): `warn` — предупреждение с подсказкой (по умолчанию), `silent` — промолчать, `strict` — токен не даёт CSS, код возврата 1 |
 | `--important-mode <режим>` | токены с `!important` (`f10-i`) — режимы те же |
 | `--child-selector-mode <режим>` | токены с дочерним селектором `>` (`cF00>1`) — режимы те же |
+| `--unknown-media-mode <режим>` | неизвестное имя медиа (`p10@zz`) — режимы те же (D-058) |
 | `--notation-conflict-mode <режим>` | класс в файлах с разными режимами синтаксиса значит разное: `warn` (по умолчанию) или `strict` |
 | `--context-where` | контекст селектора в `:where()`: специфичность только у класса, как в Tailwind v4 |
 | `--notation-mode <режим>` | синтаксис классов: `context-qualified` (по умолчанию, `bg-blue-500:hover@md`), `tailwind-compatible` (как Tailwind, `md:hover:bg-blue-500`) `breakpoint-prefixed` (как quantum-css, `SM_px15`) или `property-value` (как Master CSS, `bg:blue:hover@md`) |

@@ -1309,7 +1309,10 @@ coi10   →  counter-increment:10
 Имя ищется в `options.media`/`mn.media` (регистрируется через `presetMedias` или вручную).
 Если имя не найдено — см. п. 2 (может оказаться шаблоном диапазона), а если и не шаблон —
 имя используется как ЛИТЕРАЛЬНЫЙ `@media`-запрос (см. `p10@x` в таблице ниже — `x` не входит
-ни в один пресет и не подходит под шаблон диапазона, поэтому остаётся как есть).
+ни в один пресет и не подходит под шаблон диапазона, поэтому остаётся как есть). Такое имя
+неизвестно — что с ним делать, решает `unknownMediaMode` (D-058): `'warn'` (по умолчанию) —
+как написано и предупреждение, `'silent'` — как написано молча, `'strict'` — брак сборки.
+Типы медиа CSS `print`, `screen`, `all` известны без описания.
 
 ```typescript
 mn.media.dark = { query: '(prefers-color-scheme: dark)' };
@@ -1320,7 +1323,7 @@ mn.media.dark = { query: '(prefers-color-scheme: dark)' };
 
 | Токен | CSS |
 |-------|-----|
-| `p10@x` | `padding:10px` (нераспознанное имя `x` — используется как `@media x` буквально) |
+| `p10@x` | `padding:10px` (нераспознанное имя `x` — используется как `@media x` буквально, предупреждение `unknown-media`) |
 
 `presetMedias` регистрирует **точки по ширине** (D-054): `m` 992, `m2` 768, `m3` 640, `m4` 480,
 `m5` 360, `m6` 320, `m7` 312, `m8` 272; `d` 992, `d2` 1200, `d3` 1600, `d4` 1920, `d5` 2300,
@@ -1337,6 +1340,29 @@ mn.media.dark = { query: '(prefers-color-scheme: dark)' };
 Своя точка — `mn.media.tablet = { width: 834 }` (или `height`); `query` вместе с точкой —
 предупреждение. До 2026-10-13 `@d` значило «от 992px», а диапазоны были готовыми именами
 (`m4-`, `-d2`) — теперь «от» пишется `@d-`, диапазон — `@m4-m`, `@d-d2`.
+
+Признаки устройства и предпочтения в `presetMedias` (D-057; имена — как у вариантов Tailwind):
+`dark`, `light`, `mouse`, `print`, `screen`, `portrait`, `landscape`, `motion-safe`,
+`motion-reduce`, `contrast-more`, `contrast-less`, `forced-colors`, `inverted-colors`,
+`pointer-fine`, `pointer-coarse`, `any-pointer-fine`, `any-pointer-coarse`, `noscript`
+(`(scripting: none)`).
+
+#### `@supports` и `@container` (D-057)
+
+Вместо `query` у описания может быть `supports` или `container` — ядро выведет это at-правило.
+Через `&` правила вкладываются друг в друга, через `,` — отдельные правила:
+
+```typescript
+mn.media.grid = { supports: '(display: grid)' };
+mn.media.side = { container: 'sidebar (width >= 448px)' };  // имя контейнера — по желанию
+```
+
+| Токен | CSS |
+|-------|-----|
+| `m1@grid` | `@supports (display: grid){.m1\@grid{margin:1px}}` |
+| `m1@side` | `@container sidebar (width >= 448px){.m1\@side{margin:1px}}` |
+| `m1@dark&grid` | `@media (prefers-color-scheme: dark){@supports (display: grid){.m1\@dark\&grid{margin:1px}}}` |
+| `m1@grid,dark` | `@supports (display: grid){.m1\@grid\,dark{margin:1px}}` и отдельно `@media (prefers-color-scheme: dark){…}` |
 
 ### 2. Диапазон прямо в токене — `@{width}x{height}^{priority}`
 

@@ -335,7 +335,8 @@ describe('вырожденная группа вариантов в значен
     // `\|` внутри группы — литерал, а не разделитель альтернатив: группа
     // `(a\|b|md)` состоит из `a|b` и `md`, обе непустые.
     expect(compileToken('p10@(a\\|b|md)').css).toContain('@media a|b{');
-    expect(compileToken('p10@(a\\|b|md)').warnings).toHaveLength(0);
+    // Имена `a|b` и `md` не описаны — их предупреждение `unknown-media` (D-058) о другом.
+    expect(compileToken('p10@(a\\|b|md)').warnings.filter((w) => w.type !== 'unknown-media')).toHaveLength(0);
   });
 
   test('скобки после контекстного символа — это scope, а не группа', () => {

@@ -64,7 +64,27 @@ export default {
       };
     });
 
-    forEach([['mouse', '(pointer: fine) and (hover: hover)'], ['dark', '(prefers-color-scheme: dark)']], (v: string[], i: number) => {
+    // Признаки устройства и предпочтения (D-057): имена — как у вариантов Tailwind.
+    forEach([
+      ['mouse', '(pointer: fine) and (hover: hover)'],
+      ['dark', '(prefers-color-scheme: dark)'],
+      ['light', '(prefers-color-scheme: light)'],
+      ['print', 'print'],
+      ['screen', 'screen'],
+      ['portrait', '(orientation: portrait)'],
+      ['landscape', '(orientation: landscape)'],
+      ['motion-safe', '(prefers-reduced-motion: no-preference)'],
+      ['motion-reduce', '(prefers-reduced-motion: reduce)'],
+      ['contrast-more', '(prefers-contrast: more)'],
+      ['contrast-less', '(prefers-contrast: less)'],
+      ['forced-colors', '(forced-colors: active)'],
+      ['inverted-colors', '(inverted-colors: inverted)'],
+      ['pointer-fine', '(pointer: fine)'],
+      ['pointer-coarse', '(pointer: coarse)'],
+      ['any-pointer-fine', '(any-pointer: fine)'],
+      ['any-pointer-coarse', '(any-pointer: coarse)'],
+      ['noscript', '(scripting: none)'],
+    ], (v: string[], i: number) => {
       media[v[0]] = {
         query: v[1],
         priority: i,

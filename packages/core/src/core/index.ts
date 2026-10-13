@@ -48,6 +48,7 @@ import {
   joinMaps,
   joinOnly,
   reduceIn,
+  repeat,
   color,
   colorGetBackground,
   cssPropertiesStringifyProvider,
@@ -187,7 +188,24 @@ function round(value: number): number {
 }
 
 /** Случаи со своим режимом `'warn' | 'silent' | 'strict'` (D-039). */
-type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded' | 'child-selector';
+type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded' | 'child-selector'
+  | 'unknown-media';
+
+/** Типы медиа CSS: известны без описания в `mn.media` (D-058). */
+const CSS_MEDIA_TYPES: Record<string, number> = {
+  all: 1,
+  print: 1,
+  screen: 1,
+};
+
+function unknownMediaMessage(name: string, strict: boolean): string {
+  return strict
+    ? 'Media "@' + name + '" is unknown (unknownMediaMode: \'strict\'), the token gives no CSS.'
+      + ' Describe it in mn.media or allow it: unknownMediaMode: \'warn\'.'
+    : 'Media "@' + name + '" is unknown — it goes to CSS as written: "@media ' + name + '". Describe it'
+      + ' in mn.media; to hide this warning: unknownMediaMode: \'silent\'; to forbid such tokens:'
+      + ' unknownMediaMode: \'strict\'.';
+}
 
 /** Имя свойства произвольной декларации: CSS-идентификатор или переменная. */
 const REGEXP_RAW_PROPERTY = /^-{0,2}[a-zA-Z_][\w-]*$/;
@@ -214,7 +232,8 @@ function throwNoHandler(name: string, value: string): never {
  */
 function isCompileWarning(warning: MnWarning): boolean {
   return warning.type !== 'raised-specificity' && warning.type !== 'important'
-    && warning.type !== 'max-depth-exceeded' && warning.type !== 'child-selector';
+    && warning.type !== 'max-depth-exceeded' && warning.type !== 'child-selector'
+    && warning.type !== 'unknown-media';
 }
 
 /**
@@ -301,6 +320,7 @@ function minotationProvider(options?: MnOptions) {
       important: settings.importantMode || 'warn',
       'max-depth-exceeded': settings.maxDepthMode || 'warn',
       'child-selector': settings.childSelectorMode || 'warn',
+      'unknown-media': settings.unknownMediaMode || 'warn',
     };
   }
   /**
@@ -848,6 +868,7 @@ function minotationProvider(options?: MnOptions) {
     let fragment: string;
     let outputQuery: string[];
     let outputSelector: string[];
+    let outputRules: string[];
     let priorityMatch: RegExpExecArray | null;
     let mediaTemplate: [string] | [string, number | undefined];
     let name: string;
@@ -871,6 +892,7 @@ function minotationProvider(options?: MnOptions) {
       iAnd = 0;
       outputQuery = [];
       outputSelector = [];
+      outputRules = [];
       priority = mediaPriority;
       for (;iAnd < lAnd; iAnd++) {
         (fragment = partsAnd[iAnd]) && (
@@ -880,9 +902,12 @@ function minotationProvider(options?: MnOptions) {
           ) : (media = $$media[fragment]) ? (
             (query = media.query) && push(outputQuery, query),
             (selector = media.selector) && push(outputSelector, selector),
+            // `@supports`/`@container` (D-057) — вложенными правилами вокруг `@media`.
+            (query = media.supports) && push(outputRules, '@supports ' + query),
+            (query = media.container) && push(outputRules, '@container ' + query),
             isDefined(priority) || (priority = media.priority)
           ) : (
-            mediaTemplate = parseMediaTemplate(fragment),
+            mediaTemplate = parseMediaTemplate(fragment) || unknownMedia(fragment),
             (query = mediaTemplate[0]) && push(outputQuery, query),
             isDefined(priority) || (priority = mediaTemplate[1])
           )
@@ -890,7 +915,9 @@ function minotationProvider(options?: MnOptions) {
       }
 
       query = JOIN_AND(outputQuery);
-      (selector = joinOnly(outputSelector))
+      // Запись с at-правилами — отдельная: `@supports` и `@media` через запятую не объединить.
+      outputRules.length && (query = (query ? '@media ' + query + '{' : '') + outputRules.join('{'));
+      (selector = joinOnly(outputSelector)) || outputRules.length
         ? push(medias, [
           name,
           priority,
@@ -1005,7 +1032,18 @@ function minotationProvider(options?: MnOptions) {
     return ['not all', 0];
   }
 
-  function parseMediaTemplate(mediaName: string): [string] | [string, number | undefined] {
+  /**
+   * Имя не из `mn.media`, не точка и не числовой шаблон (D-058): тип медиа CSS (`print`,
+   * `screen`, `all`) — как есть; иначе — по `unknownMediaMode`: `'warn'`/`'silent'` — как
+   * написано, `'strict'` — заведомо ложное условие (и брак сборки).
+   */
+  function unknownMedia(fragment: string): [string] {
+    return CSS_MEDIA_TYPES[fragment] || !raisedToken(
+      '@' + fragment, 'unknown-media', (strict: boolean) => unknownMediaMessage(fragment, strict),
+    ) ? [fragment] : ['not all'];
+  }
+
+  function parseMediaTemplate(mediaName: string): [string] | [string, number | undefined] | undefined {
     if (mediaName === 'x') {
       return [mediaName];
     }
@@ -1047,7 +1085,7 @@ function minotationProvider(options?: MnOptions) {
         )
       );
     } catch {
-      return [mediaName];
+      return undefined;
     }
     return [JOIN_AND(queries), priority];
   }
@@ -1153,15 +1191,20 @@ function minotationProvider(options?: MnOptions) {
       isContinue || (
         output = joinOnly(mapContentByMediaName(values(context).sort(priotitySortContext), mediaName)),
         mediaQuery && mediaQuery !== 'all' && output
-          && (output = joinOnly([
-            '@media ',
-            mediaQuery,
-            '{',
-            output,
-            '}',
-          ])),
+          && (output = mediaQuery[0] === '@'
+            // Цепочка at-правил (D-057): `@media …{@supports …` — закрыть столько же скобок.
+            ? mediaQuery + '{' + output + repeat('}', mediaQuery.split('{').length)
+            : joinOnly([
+              '@media ',
+              mediaQuery,
+              '{',
+              output,
+              '}',
+            ])),
         setStyle(
-          'media.' + mediaName,
+          // Часть выражения `@safari,dark` (запись с селектором или at-правилом) — под ключом
+          // всего выражения: иначе `.safari` из `@safari,dark` затирал стили `@safari`.
+          'media.' + (mediaName === mediaExpression ? mediaName : mediaExpression + '|' + mediaName),
           output,
           isDefined(mediaPriority) ? mediaPriority : MN_DEFAULT_PRIORITY,
         )

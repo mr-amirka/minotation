@@ -87,7 +87,7 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 |--------|----------|
 | `presetStandard` | 40+ обработчиков: размеры, отступы, цвета, flex, transform |
 | `presetSynonyms` | Синонимы: `h`→`:hover`, `f`→`:focus`, `a`→`:active` |
-| `presetMedias` | Точки по ширине `m…`/`d…` (`@m4` — до 480px, `@d-` — от 992px, `@m4-d` — между), `mouse`, `dark` (D-054) |
+| `presetMedias` | Точки по ширине `m…`/`d…` (`@m4` — до 480px, `@d-` — от 992px, `@m4-d` — между), `mouse`, `dark`, `light`, `print`, `portrait`, `landscape`, `motion-safe`/`motion-reduce`, `contrast-more`/`contrast-less`, `forced-colors`, `pointer-fine`/`pointer-coarse`, `noscript` и другие (D-054, D-057) |
 | `presetNormalize` | Лёгкий сброс (box-sizing, margin, img) |
 | `presetMain` | Полный CSS-сброс (аналог normalize.css) |
 | `presetHints` | Подсказки вместо молчания: `t0` → «did you mean `st0`?», `flex` → «в minotation это `dF`», `text-center` → `taC`. Подключать первым — пресет ниже перекрывает его хендлеры. Точечно — фабрикой: `presetHints({ excludeGroups: ['bootstrap'], excludeHandlers: ['flex'] })`; группы — `typos`, `tailwind`, `bootstrap` (D-024, D-042) |
@@ -122,8 +122,11 @@ mn.variantPrefixedSynonyms({ group: '.group', peer: '.peer~' });  // метки:
 | `min-[600px]:` / `max-[600px]:` | `@media (width >= 600px)` / `(width < 600px)` |
 | `min-d:` / `max-m4:` | сравнение с шириной точки медиа (`width`, D-054) |
 | `*:` / `**:` | дети `>*` / потомки ` *` |
+| `supports-[display:grid]:` | `@supports (display:grid){…}` |
+| `[@media(any-hover:hover)]:` / `[@supports(…)]:` / `[@container_(…)]:` | соответствующее at-правило |
+| `@min-[400px]:` / `@max-[400px]:` / `@d:` / `@d/sidebar:` | `@container (width >= 400px)` / `(width < 400px)` / `(width >= 992px)` / контейнер `sidebar` |
 
-`supports-[…]:` и `[@…]:` — предупреждение: в выводе ядра из at-правил есть только `@media`.
+Другие at-правила (`[@layer …]:`, `[@starting-style]:`) — предупреждение (D-057).
 Стили детей (`*:`, `**:`, `[&>li]:`, `[&_li]:`) проходят через `childSelectorMode`, как в других режимах.
 
 `'breakpoint-prefixed'` — брейкпоинт перед классом, как в quantum-css: `SM_px15` →
@@ -192,7 +195,7 @@ mn.setPresets([presetApp]);
 const mn = minotationProvider({
   presets: [presetStandard, presetSynonyms, presetMedias],
   selectorPrefix: '#app ',         // префикс для селекторов: #app .p10{…}
-  media: { m: { query: '(max-width: 767px)' } }, // p10@m
+  media: { m: { query: '(max-width: 767px)' } }, // p10@m; ещё width/height, supports, container
   altColor: false,                 // запасное непрозрачное объявление рядом с rgba
   warningMode: 'log',              // 'log' | 'silent' | 'error' — что делать с предупреждением
   onWarning: (warning) => {},      // колбэк на каждое предупреждение, дополнительно к режиму
@@ -202,6 +205,7 @@ const mn = minotationProvider({
   specificityMode: 'warn',         // 'warn' | 'silent' | 'strict' — токены f10*2 (накрутка специфичности)
   importantMode: 'warn',           // 'warn' | 'silent' | 'strict' — токены f10-i (!important)
   childSelectorMode: 'warn',       // 'warn' | 'silent' | 'strict' — токены cF00>1 (дочерний селектор)
+  unknownMediaMode: 'warn',        // 'warn' | 'silent' | 'strict' — неизвестное имя медиа p10@zz
   notationMode: 'context-qualified', // или 'tailwind-compatible' — запись как в Tailwind: md:hover:p10
   contextWhere: false,             // true — контекст в :where(): .p10…:is(:where(.card:hover) *)
 });

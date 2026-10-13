@@ -178,6 +178,9 @@ describe('mergeSettings', () => {
     expect(merged.importantMode).toBe('silent');
     expect(mergeSettings(parseArgs(['--child-selector-mode', 'silent']), {}).childSelectorMode).toBe('silent');
     expect(mergeSettings(parseArgs([]), {
+      unknownMediaMode: 'strict',
+    }).unknownMediaMode).toBe('strict');
+    expect(mergeSettings(parseArgs([]), {
       notationMode: 'tailwind-compatible',
     }).notationMode).toBe('tailwind-compatible');
     expect(mergeSettings(parseArgs(['--context-where']), {}).contextWhere).toBe(true);

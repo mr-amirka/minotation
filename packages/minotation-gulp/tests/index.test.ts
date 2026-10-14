@@ -164,13 +164,13 @@ describe('mnGulp — реальный пайп', () => {
   });
 
   test('опции ядра доходят до компиляции', async () => {
-    write('a.html', '<div class="p10">');
+    write('a.html', '<div class="p10 cF00.5">');
 
     const files = await run('*.html', {
-      selectorPrefix: '.app ',
+      altColor: true,
     });
 
-    expect(files['mn.css']).toContain('.app .p10');
+    expect(files['mn.css']).toContain('.cF00\\.5{color:#f00;color:rgba(255,0,0,.5)}');
   });
 
   test('`exclude` исключает файлы из сканирования, но не из пайпа', async () => {

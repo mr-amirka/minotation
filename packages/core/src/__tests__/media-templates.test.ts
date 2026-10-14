@@ -1,7 +1,7 @@
 /**
  * Медиа-шаблоны прямо в токене (`@600`, `@600x800`, `@600-900`) — разбираются
  * без предварительной регистрации именованного медиа-контекста, а также
- * взаимодействие медиа-селектора с глобальным `selectorPrefix`.
+ * взаимодействие медиа-селектора с изоляцией классом области (`isolateMode`).
  */
 import {
   minotationProvider, 
@@ -146,26 +146,24 @@ describe('parseMediaExpression', () => {
   });
 });
 
-describe('selectorPrefix и медиа-селектор', () => {
-  test('глобальный префикс комбинируется с селектором медиа-контекста', () => {
-    const css = compile('p10@dark', {
-      selectorPrefix: '.app',
+describe('изоляция и медиа-селектор (D-075)', () => {
+  test('селектор медиа-контекста — предок, класс области — на самом элементе', () => {
+    expect(compile('p10@dark', {
+      isolateMode: 'class',
+      isolateClass: '_l',
       media: {
         dark: {
           selector: '.theme-dark', 
         }, 
       },
-    });
-
-    expect(css).toContain('.theme-dark');
-    expect(css).toContain('.app');
-    expect(css).toContain('padding:10px');
+    })).toContain('.theme-dark .p10\\@dark._l{padding:10px}');
   });
 
-  test('глобальный префикс без медиа-контекста', () => {
+  test('без медиа-контекста', () => {
     expect(compile('p10', {
-      selectorPrefix: '.app', 
-    })).toContain('.app');
+      isolateMode: 'where',
+      isolateClass: '_l',
+    })).toContain('.p10:where(._l){padding:10px}');
   });
 });
 

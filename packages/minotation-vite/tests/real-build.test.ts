@@ -90,7 +90,7 @@ describe('minotation-vite — реальная сборка', () => {
     const root = makeProject({
       'index.html': '<html><head></head><body><script type="module" src="/src/main.js"></script></body></html>',
       'src/main.js': "import './presets/theme.mnjs';\nexport const x = 1;\n",
-      'src/ui/deep/widget.vue': '<template><div data-cls="edgeToken p10"></div></template>',
+      'src/ui/deep/widget.vue': '<template><div data-cls="edgeToken p10 cF00.5"></div></template>',
       'src/presets/theme.mnjs': "export const preset = (mn) => { mn('edgeToken', 'cF00'); };\n",
     });
 
@@ -98,11 +98,12 @@ describe('minotation-vite — реальная сборка', () => {
       attrs: 'data-cls:class',
       extensions: ['.vue'],
       presetExtensions: ['.mnjs'],
-      selectorPrefix: '.app ',
+      altColor: true,
     });
 
     const css = builtCss(root);
-    expect(css).toContain('.app .edgeToken{color:#f00}');
+    expect(css).toContain('.edgeToken{color:#f00}');
+    expect(css).toContain('.cF00\\.5{color:#f00;color:rgba(255,0,0,.5)}');
     expect(css).toContain('padding:10px');
   });
 

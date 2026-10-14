@@ -288,9 +288,9 @@ describe('точки входа ядра', () => {
   test('mn.setOptions', () => {
     const mn = minotationProvider();
     expect(() => mn.setOptions({
-      selectorPrefx: '.app', 
+      isolateMod: 'class', 
     } as never))
-      .toThrow('[minotation] mn.setOptions: unknown option "selectorPrefx". Did you mean "selectorPrefix"?');
+      .toThrow('[minotation] mn.setOptions: unknown option "isolateMod". Did you mean "isolateMode"?');
   });
 
   test('createScanner', () => {

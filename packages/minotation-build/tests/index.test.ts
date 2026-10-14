@@ -580,13 +580,13 @@ describe('createBuildCollector — записи entry (D-030)', () => {
         },
         admin: {
           include: /admin/,
-          selectorPrefix: '.adm ', 
+          altColor: true, 
         },
         all: {},
       },
     }, '/proj');
     build.add('/proj/site/a.html', '<div class="p10">');
-    build.add('/proj/admin/b.html', '<div class="m20">');
+    build.add('/proj/admin/b.html', '<div class="m20 cF00.5">');
     const [
       site,
       admin,
@@ -594,7 +594,8 @@ describe('createBuildCollector — записи entry (D-030)', () => {
     ] = build.outputs();
     expect(site.css).toContain('padding:10px');
     expect(site.css).not.toContain('margin:20px');
-    expect(admin.css).toContain('.adm .m20{margin:20px}');
+    expect(admin.css).toContain('.m20{margin:20px}');
+    expect(admin.css).toContain('.cF00\\.5{color:#f00;color:rgba(255,0,0,.5)}');
     expect(admin.css).not.toContain('padding:10px');
     expect(all.css).toContain('padding:10px');
     expect(all.css).toContain('margin:20px');
@@ -695,13 +696,13 @@ describe('formatFileName и манифест (D-031)', () => {
 });
 
 describe('опции ядра — плоско, без mn (D-034)', () => {
-  test('selectorPrefix, altColor — на верхнем уровне', () => {
+  test('altColor — на верхнем уровне', () => {
     const collector = createTokenCollector({
       ...OPTIONS,
-      selectorPrefix: '.app ',
+      altColor: true,
     });
-    collector.add('/a.html', '<div class="p10">');
-    expect(collector.css()).toContain('.app .p10{padding:10px}');
+    collector.add('/a.html', '<div class="p10 cF00.5">');
+    expect(collector.css()).toContain('.cF00\\.5{color:#f00;color:rgba(255,0,0,.5)}');
   });
 
   test('колбэк сканера — onScannerWarning; onWarning сканеру не передаётся', () => {
@@ -926,10 +927,9 @@ describe('checkBuildOptions — проверка опций плагина (D-03
           include: 'admin',
           attrs: ['class', 'm'],
           fileName: 'admin.css',
-          selectorPrefix: '.admin ',
+          altColor: true,
         },
       },
-      selectorPrefix: '.app ',
       altColor: true,
       warningMode: 'error',
       media: {},

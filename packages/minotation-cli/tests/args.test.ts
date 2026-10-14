@@ -50,16 +50,6 @@ describe('parseArgs', () => {
       'class, className:class',
     ],
     [
-      ['-p', '.app'],
-      'prefix',
-      '.app',
-    ],
-    [
-      ['--prefix', '.app'],
-      'prefix',
-      '.app',
-    ],
-    [
       ['-c', 'my.config.js'],
       'config',
       'my.config.js',
@@ -172,7 +162,6 @@ describe('parseArgs', () => {
       '--watch',
       '--config',
       '--attrs',
-      '--prefix',
       '--alt-color',
       '--warning-mode',
       '--include',

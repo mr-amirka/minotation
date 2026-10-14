@@ -275,17 +275,17 @@ describe('minotation-webpack — пресеты, лоадеры и предуп�
   test('битый токен — в отчёт сборки; onWarning и поля верхнего уровня доходят до ядра', async () => {
     const root = makeProject({
       'src/main.js': 'export const x = 1;\n',
-      'src/page.html': '<div class="p10 w10zz"></div>',
+      'src/page.html': '<div class="p10 w10zz cF00.5"></div>',
     });
     const seen: string[] = [];
 
     const loud = await runBuild(root, new MnWebpackPlugin({
-      selectorPrefix: '.app ',
+      altColor: true,
       media: { wide: { query: '(min-width: 1200px)' } },
       onWarning: (w) => seen.push(w.token),
     }));
     expect(loud.warnings.join('\n')).toContain('[minotation] w10zz');
-    expect(loud.assets['mn.css']).toContain('.app .p10{padding:10px}');
+    expect(loud.assets['mn.css']).toContain('.cF00\\.5{color:#f00;color:rgba(255,0,0,.5)}');
     expect(seen).toEqual(['w10zz']);
 
     const quiet = await runBuild(root, new MnWebpackPlugin({ warningMode: 'silent' }));

@@ -159,14 +159,14 @@ export interface MnInstance {
   /**
    * Переконфигурирует инстанс после создания — слияние с текущими опциями
    * (частичное обновление, не замена целиком). Единственный поддерживаемый
-   * способ поменять `onError`/`onWarning`/`warningMode`/`selectorPrefix`/`altColor`
+   * способ поменять `onError`/`onWarning`/`warningMode`/`isolateMode`/`altColor`
    * на уже созданном `mn`: эти поля читаются из замыкания один раз при
    * создании и на каждый вызов `setOptions`, не на каждой компиляции.
    * Прямая мутация `mn.options` эффекта не имеет — это только снимок для
    * чтения/отладки. Введено 2026-09-23.
    *
    * @example
-   * mn.setOptions({ selectorPrefix: '.app' });
+   * mn.setOptions({ altColor: true });
    * mn.recompile;
    */
   setOptions(partialOptions: Partial<MnOptions>): void;

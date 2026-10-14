@@ -161,6 +161,9 @@ export const isBoolean: OptionCheck = (value) => (
 );
 
 /** Строка. */
+/** Имя класса CSS без экранирования: `_l`, `mn-scope`. */
+const REGEXP_CLASS_NAME = /^-?[_a-zA-Z][\w-]*$/;
+
 export const isString: OptionCheck = (value) => (
   typeof value === 'string' ? undefined : 'a string'
 );
@@ -274,7 +277,11 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   notationMode: oneOf(
     'context-qualified', 'tw4-compatible', 'breakpoint-prefixed', 'property-value',
   ),
-  selectorPrefix: isString,
+  isolateMode: oneOf(
+    'none', 'class', 'where',
+  ),
+  isolateClass: (value) => (typeof value === 'string' && REGEXP_CLASS_NAME.test(value)
+    ? undefined : 'a class name without a dot (e.g. "_l")'),
   altColor: isBoolean,
   contextWhere: isBoolean,
   mediaNesting: isBoolean,

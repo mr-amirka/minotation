@@ -92,7 +92,7 @@ const DEFAULT_EXCLUDE = /[\\/](?:node_modules|\.git|dist|build)[\\/]/;
 
 /**
  * Настройки сборки — то, что CLI собирает из аргументов и конфига. Поля ядра
- * (`selectorPrefix`, `altColor`, `warningMode`, `media`, `maxDepth`, `onWarning`,
+ * (`altColor`, `warningMode`, `media`, `maxDepth`, `onWarning`,
  * `onError`) — плоско, как в опциях плагинов и в v1 (D-034).
  */
 export interface CompileSettings extends MnCoreOptions {

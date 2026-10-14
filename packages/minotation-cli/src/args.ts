@@ -28,8 +28,6 @@ export interface CliArgs {
   config?: string;
   /** Какие атрибуты сканировать и во что разворачивать (`class, className:class`). */
   attrs?: string;
-  /** Префикс для всех селекторов. */
-  prefix?: string;
   /** Запасное непрозрачное объявление рядом с `rgba`. */
   altColor: boolean;
   /** Что делать с предупреждением: `log`, `silent`, `error` (D-035). */
@@ -126,8 +124,6 @@ const OPTIONS: Record<string, keyof CliArgs> = {
   '--config': 'config',
   '-a': 'attrs',
   '--attrs': 'attrs',
-  '-p': 'prefix',
-  '--prefix': 'prefix',
   '-m': 'metrics',
   '--metrics': 'metrics',
   '--warning-mode': 'warningMode',
@@ -254,7 +250,6 @@ Options:
   -c, --config <file>    config file (default ./mn.config.js)
   -a, --attrs <list>     attributes to scan and their target, as in v1:
                          "class, className:class" (default class)
-  -p, --prefix <string>  prefix for all selectors
       --alt-color        opaque fallback declaration next to rgba
       --warning-mode <m> warnings: log (default), silent, error (fail the build)
       --specificity-mode <m>
@@ -302,5 +297,5 @@ Options:
 Examples:
   mn ./src -o ./dist/app.css
   mn ./src --watch
-  mn ./templates --attrs "class, className:class" --prefix .app
+  mn ./templates --attrs "class, className:class" --alt-color
 `.trim();

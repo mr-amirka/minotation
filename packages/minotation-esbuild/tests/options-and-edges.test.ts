@@ -26,7 +26,7 @@ describe('minotation-esbuild — опции и граничные случаи',
     const root = makeProject({
       'src/main.js': "import './presets/theme.mnjs';\nexport const x = 1;\n",
       // глубоко вложенный файл приложения с нестандартным расширением и атрибутом
-      'src/ui/deep/widget.vue': '<template><div data-cls="edgeToken p10"></div></template>',
+      'src/ui/deep/widget.vue': '<template><div data-cls="edgeToken p10 cF00.5"></div></template>',
       // пресет с нестандартным расширением и named-экспортом (не default)
       'src/presets/theme.mnjs': "export const preset = (mn) => { mn('edgeToken', 'cF00'); };\n",
     });
@@ -42,12 +42,13 @@ describe('minotation-esbuild — опции и граничные случаи',
         presetExtensions: ['.mnjs'],
         fileName: 'styles.css',
         root,
-        selectorPrefix: '.app ',
+        altColor: true,
       })],
     });
 
     const css = readFileSync(join(outDir, 'styles.css'), 'utf-8');
-    expect(css).toContain('.app .edgeToken{color:#f00}');
+    expect(css).toContain('.edgeToken{color:#f00}');
+    expect(css).toContain('.cF00\\.5{color:#f00;color:rgba(255,0,0,.5)}');
     expect(css).toContain('padding:10px');
     // заглушка вместо реального содержимого пресета
     expect(readFileSync(join(outDir, 'main.js'), 'utf-8')).not.toContain("mn('edgeToken'");

@@ -151,7 +151,6 @@ function fail(message: string): never {
 
 /** Поля ядра, которые в опциях плагина лежат плоско, как в v1 (D-034). */
 export const CORE_OPTION_KEYS = [
-  'selectorPrefix',
   'altColor',
   'warningMode',
   'media',
@@ -479,7 +478,7 @@ export interface MnBuildOptions extends TokenCollectorOptions {
 
 /**
  * Опции одной записи `entry` — то, что у записей бывает разным; остальное
- * наследуется от опций верхнего уровня. Поля ядра (`selectorPrefix`, `warningMode`, …)
+ * наследуется от опций верхнего уровня. Поля ядра (`altColor`, `warningMode`, …)
  * — плоско, как у опций плагина (D-034).
  */
 export interface MnEntryOptions extends MnCoreOptions {

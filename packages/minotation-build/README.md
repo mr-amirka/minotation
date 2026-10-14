@@ -87,7 +87,6 @@ for (const warning of collector.takeWarnings()) {
 | `classVarSuffixes` | `string[]` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
 | `mergeFnNames` | `string[]` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | `boolean` | автоматически | разбирать JS/TS парсером (`false` — только текст) |
-| `selectorPrefix` | `string` | — | префикс всех селекторов: `'.app '` → `.app .p10{…}` |
 | `altColor` | `boolean` | `false` | запасное непрозрачное объявление рядом с `rgba` |
 | `media` | `Record<string, MnMediaEntry>` | стандартные | именованные медиа: `{ wide: { query: '(min-width: 1200px)' } }` → `p10@wide` |
 | `maxDepth`, `maxDepthMode` | `number`, `'warn' \| 'silent' \| 'strict'` | —, `'warn'` | предел глубины контекстных селекторов и режим при превышении (D-039) |
@@ -131,7 +130,7 @@ mnVite({ atrs: 'class' });
 // Error: [minotation] mnVite: unknown option "atrs". Did you mean "attrs"?
 
 mnVite({ mn: { strict: true } });
-// Error: [minotation] mnVite: unknown option "mn". Known options: selectorPrefix, altColor, …
+// Error: [minotation] mnVite: unknown option "mn". Known options: altColor, warningMode, …
 
 mnVite({ warningMode: 'strict' });
 // Error: [minotation] mnVite: option "warningMode" expects "log", "silent" or "error", got string "strict"
@@ -241,7 +240,7 @@ attrs: { class: 'class', className: 'class' }     // объект
 |-------|------------|
 | `safelist` | токены, нужные всегда, даже если в файлах не встретились; компилируются как классы |
 | `presets` | статические пресеты |
-| поля ядра | `selectorPrefix`, `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `suspectClassMode`, `handlerConflictMode`, `presetConflictMode`, `groupSuspectMode`, `groupMode`, `notationMode`, `contextWhere`, `mediaNesting`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
+| поля ядра | `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `suspectClassMode`, `handlerConflictMode`, `presetConflictMode`, `groupSuspectMode`, `groupMode`, `notationMode`, `contextWhere`, `mediaNesting`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
 
 | Метод | Что делает |
 |-------|------------|

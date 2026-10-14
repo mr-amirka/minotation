@@ -179,15 +179,14 @@ describe('compile', () => {
     expect(JSON.stringify(result.metrics)).toContain('m:p10');
   });
 
-  test('поля ядра — плоско: selectorPrefix, altColor, warningMode (D-034, D-035)', () => {
+  test('поля ядра — плоско: altColor, warningMode (D-034, D-035)', () => {
     write('a.html', '<div class="p10 cF00.5">');
     const css = compile({
       input: dir,
-      selectorPrefix: '.app ',
       altColor: true,
     }).css;
-    expect(css).toContain('.app .p10{padding:10px}');
-    expect(css).toContain('color:#f00');
+    expect(css).toContain('.p10{padding:10px}');
+    expect(css).toContain('.cF00\\.5{color:#f00;color:rgba(255,0,0,.5)}');
     write('b.html', '<div class="w10zz">');
     expect(() => compile({
       input: dir,

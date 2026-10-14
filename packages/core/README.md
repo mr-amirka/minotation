@@ -511,7 +511,8 @@ mn('gap', tw(({ parts, arbitrary, negative }) => {
 ```ts
 const mn = minotationProvider({
   presets: [presetStandard, presetSynonyms, presetMedias],
-  selectorPrefix: '#app ',         // префикс для селекторов: #app .p10{…}
+  isolateMode: 'none',             // 'none' | 'class' | 'where' — правила привязаны к классу области (D-075)
+  isolateClass: '_l',              // класс области: .p10._l{…} или .p10:where(._l){…}
   media: { m: { query: '(max-width: 767px)' } }, // p10@m; ещё width/height, supports, container
   altColor: false,                 // запасное непрозрачное объявление рядом с rgba
   warningMode: 'log',              // 'log' | 'silent' | 'error' — что делать с предупреждением
@@ -543,8 +544,8 @@ const mn = minotationProvider({
 minotationProvider({ altColor: 'off' });
 // Error: [minotation] minotationProvider: option "altColor" expects a boolean, got string "off"
 
-minotationProvider({ selectorPrefx: '#app ' });
-// Error: [minotation] minotationProvider: unknown option "selectorPrefx". Did you mean "selectorPrefix"?
+minotationProvider({ isolateMod: 'class' });
+// Error: [minotation] minotationProvider: unknown option "isolateMod". Did you mean "isolateMode"?
 ```
 
 Тот же проверяльщик экспортируется для своих точек входа: `checkOptions(options,

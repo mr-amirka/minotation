@@ -103,40 +103,43 @@ describe('опции инстанса', () => {
   test('mn.setOptions() переконфигурирует уже созданный инстанс', () => {
     const mn = makeMn();
     compile(mn, 'p10');
-    expect(cssOf(mn)).not.toContain('.app');
+    expect(cssOf(mn)).not.toContain('._l');
 
     mn.setOptions({
-      selectorPrefix: '.app', 
+      isolateMode: 'class',
+      isolateClass: '_l',
     });
     mn.recompile();
 
-    expect(cssOf(mn)).toContain('.app');
+    expect(cssOf(mn)).toContain('.p10._l{');
   });
 
   test('mn.setOptions() сливается с текущими опциями, а не заменяет их целиком', () => {
     const mn: any = minotationProvider({
-      selectorPrefix: '.app',
+      isolateMode: 'class',
+      isolateClass: '_l',
       altColor: true,
     });
     mn.setPresets([presetStandard]);
 
     mn.setOptions({
-      selectorPrefix: '.app2', 
+      isolateClass: '_m', 
     });
 
-    expect(mn.options.selectorPrefix).toBe('.app2');
+    expect(mn.options.isolateClass).toBe('_m');
     expect(mn.options.altColor).toBe(true); // не задан в partial — сохранился
   });
 
   test('прямая мутация mn.options эффекта на компиляцию не имеет — только mn.setOptions()', () => {
     const mn = makeMn();
     compile(mn, 'p10');
-    expect(cssOf(mn)).not.toContain('.app');
+    expect(cssOf(mn)).not.toContain('._l');
 
-    (mn as any).options.selectorPrefix = '.app';
+    (mn as any).options.isolateMode = 'class';
+    (mn as any).options.isolateClass = '_l';
     mn.recompile();
 
-    expect(cssOf(mn)).not.toContain('.app');
+    expect(cssOf(mn)).not.toContain('._l');
   });
 
   test('mn.options целиком заменён на undefined извне — не падает, компиляция не затронута', () => {
@@ -156,5 +159,14 @@ describe('опции инстанса', () => {
     // instance.states на именованную группу, прежде чем взять :state как есть
     expect(() => compile(mn, 'p10:hover')).not.toThrow();
     expect(cssOf(mn)).toContain(':hover');
+  });
+});
+
+describe('синоним со списком селекторов', () => {
+  test('пустая часть после запятой пропускается', () => {
+    const mn: any = minotationProvider({});
+    mn.setPresets([presetStandard]);
+    mn.synonyms('zz', '.a,');
+    expect(Object.keys(mn._synonyms.zz)).toEqual(['.a']);
   });
 });

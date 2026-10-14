@@ -117,7 +117,6 @@ mnAstro({ attrs: 'class', classVarSuffixes: ['Class', 'Cls'], safelist: ['crP ta
 | `classVarSuffixes` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
 | `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
-| `selectorPrefix` | — | префикс всех селекторов: `'.app '` → `.app .p10{…}` |
 | `altColor` | `false` | запасное непрозрачное объявление рядом с `rgba` |
 | `media` | стандартные | карта именованных медиа: `{ wide: { query: '(min-width: 1200px)' } }` → `p10@wide` |
 | `maxDepth`, `maxDepthMode` | —, `'warn'` | предел глубины контекстных селекторов (`<N`, `>N`); режим при превышении: `'warn'` — предупреждение с подсказкой, `'silent'` — молчать, `'strict'` — токен не даёт CSS, сборка падает (D-039) |

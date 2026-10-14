@@ -550,7 +550,16 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * @param comboName — одно слово из атрибута `class`
    */
   function parseClass(comboName: string): ReturnType<ParseComboNameFn> {
-    return parseComboName(comboName, '.' + escapeClass(comboName));
+    return parseComboName(comboName, '.' + escapeClass(comboName) + isolateSuffix());
+  }
+
+  /**
+   * Привязка к классу области (D-075): `.cFFF._l` или `.cFFF:where(._l)` — сразу за классом токена,
+   * до состояний и псевдоэлементов, так что правило относится к самому элементу. Считает ядро
+   * в `applyOptions` (как и прочие опции — из замыкания, не из `mn.options`).
+   */
+  function isolateSuffix(): string {
+    return (instance as any)._isolateSuffix || '';
   }
 
   /**

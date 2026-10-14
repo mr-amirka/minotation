@@ -507,7 +507,21 @@ export interface MnOptions {
    * @default false
    */
   contextWhere?: boolean;
-  selectorPrefix?: string;
+  /**
+   * Изоляция правил классов классом области (D-075, D-076): каждое правило токена привязано к
+   * самому элементу, у которого в разметке есть класс {@link MnOptions.isolateClass}.
+   * - `'none'` — без изоляции: `.cFFF{color:#fff}`;
+   * - `'class'` — составной селектор: `.cFFF._l{color:#fff}` (специфичность +1 класс);
+   * - `'where'` — без прироста специфичности: `.cFFF:where(._l){color:#fff}`.
+   *
+   * Класс в разметку пишет сборка (плагин), ядро только привязывает к нему правила. Селекторы
+   * `mn.assign`/`mn.css` не привязываются — они глобальные по смыслу. Заменяет прежний
+   * `selectorPrefix`: префикс предка задевал и вложенные компоненты.
+   * @default 'none'
+   */
+  isolateMode?: 'none' | 'class' | 'where';
+  /** Класс области для {@link MnOptions.isolateMode} — имя без точки: `'_l'`. */
+  isolateClass?: string;
   /**
    * `true` — рядом с `rgba`-значением выводить запасное непрозрачное
    * объявление на случай браузера без поддержки `rgba`:

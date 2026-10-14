@@ -29,7 +29,7 @@ import type { MnPluginHandle } from './state';
  * Опции {@link MnWebpackPlugin} — эталонный набор `minotation-build` (D-026):
  * `attrs`, `root`, `extensions`, `include`, `exclude`, `skipPartials`, `presets`,
  * `presetExtensions`, `safelist`, `classVarSuffixes`, `mergeFnNames`, `syntax`,
- * поля ядра (`selectorPrefix`, `altColor`, `warningMode`, `media`, `maxDepth`, `onWarning`,
+ * поля ядра (`altColor`, `warningMode`, `media`, `maxDepth`, `onWarning`,
  * `onError` — плоско, D-034), `entry`, `fileName`, `manifest`. Описание каждой — в
  * README `minotation-build`.
  *

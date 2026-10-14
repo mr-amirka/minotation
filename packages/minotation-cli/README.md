@@ -52,7 +52,6 @@ mn ./index.html -o ./page.css           # одиночный файл
 | `-w, --watch` | следить за изменениями и пересобирать |
 | `-c, --config <файл>` | файл конфигурации (по умолчанию `./mn.config.js`) |
 | `-a, --attrs <список>` | какие атрибуты сканировать и во что разворачивать, как в v1: `"class, className:class"`, `"class, m"` → `[m~="p10"]` (по умолчанию `class`); подробно — [`attrs`](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
-| `-p, --prefix <строка>` | префикс для всех селекторов |
 | `--alt-color` | запасное непрозрачное объявление рядом с `rgba` |
 | `--warning-mode <режим>` | что делать с предупреждением о битом токене: `log` — напечатать (по умолчанию), `silent` — промолчать, `error` — код возврата 1 |
 | `--specificity-mode <режим>` | токены с накруткой специфичности (`f10*2`): `warn` — предупреждение с подсказкой (по умолчанию), `silent` — промолчать, `strict` — токен не даёт CSS, код возврата 1 |
@@ -168,7 +167,7 @@ mn ./src -o ./app.css -m ./metrics.json
 module.exports = {
   input: './src',
   output: './dist/app.css',
-  selectorPrefix: '.app ',        // как --prefix
+  altColor: true,                 // как --alt-color
   attrs: 'class, className:class', // строка, массив или объект — как --attrs
   syntax: false,                  // только текстовый разбор (как --no-syntax)
   metrics: './metrics.json',      // то же, что -m; false — как --no-metrics
@@ -195,7 +194,7 @@ module.exports = {
   output: './dist/[name].[hash].css',
   entry: {
     site: { include: /src\/site\// },
-    admin: { include: /src\/admin\//, selectorPrefix: '.admin ' },
+    admin: { include: /src\/admin\//, altColor: true },
   },
 };
 ```
@@ -205,7 +204,7 @@ module.exports = {
 не собрать ничего. То же с опечаткой и значением не того типа:
 
 ```
-Error: [minotation] mn.config.js: unknown option "selectorPrefx". Did you mean "selectorPrefix"?
+Error: [minotation] mn.config.js: unknown option "altColour". Did you mean "altColor"?
 Error: [minotation] mn.config.js: option "metrics" expects a boolean or a string, got number 1
 ```
 
@@ -236,7 +235,7 @@ const { compile } = require('minotation-cli');
 
 const { css, files, tokens, warnings } = compile({
   input: './src',
-  selectorPrefix: '.app ',        // как --prefix
+  altColor: true,                 // как --alt-color
 });
 ```
 

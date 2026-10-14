@@ -104,7 +104,7 @@ describe('minotation-rollup — реальная сборка', () => {
   test('кастомные attr/extensions/presetExtensions/fileName/mn + вложенные директории + named-экспорт пресета', async () => {
     const root = makeProject({
       'src/main.js': "import './presets/theme.mnjs';\nexport const x = 1;\n",
-      'src/ui/deep/widget.vue': '<template><div data-cls="edgeToken p10"></div></template>',
+      'src/ui/deep/widget.vue': '<template><div data-cls="edgeToken p10 cF00.5"></div></template>',
       'src/presets/theme.mnjs': "export const preset = (mn) => { mn('edgeToken', 'cF00'); };\n",
     });
 
@@ -113,10 +113,11 @@ describe('minotation-rollup — реальная сборка', () => {
       extensions: ['.vue'],
       presetExtensions: ['.mnjs'],
       fileName: 'styles.css',
-      selectorPrefix: '.app ',
+      altColor: true,
     });
 
-    expect(assets['styles.css']).toContain('.app .edgeToken{color:#f00}');
+    expect(assets['styles.css']).toContain('.edgeToken{color:#f00}');
+    expect(assets['styles.css']).toContain('.cF00\\.5{color:#f00;color:rgba(255,0,0,.5)}');
     expect(assets['styles.css']).toContain('padding:10px');
   });
 

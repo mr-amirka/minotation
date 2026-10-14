@@ -1177,7 +1177,7 @@ export function __compileProvider(attrName: string): MnCompiler {
  * @param options.presets — массив функций-пресетов `(mn) => void`
  * @param options.media — объект медиа-запросов `{ name: { query, selector, priority } }`
  * @param options.onError — обработчик ошибок
- * @param options.selectorPrefix — префикс для всех селекторов
+ * @param options.isolateMode — изоляция правил классом области (`'none'` | `'class'` | `'where'`)
  * @param options.altColor — запасное непрозрачное объявление рядом с `rgba` (по умолчанию `false`)
  * @returns экземпляр MN
  *

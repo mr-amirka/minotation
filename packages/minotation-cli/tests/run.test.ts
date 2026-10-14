@@ -75,9 +75,9 @@ describe('loadConfig', () => {
   });
 
   test('опечатка и неверное значение в конфиге — ошибка с подсказкой (D-038)', () => {
-    const typo = write('mn.typo.cjs', 'module.exports = { selectorPrefx: ".app" };');
+    const typo = write('mn.typo.cjs', 'module.exports = { altColour: true };');
     expect(() => loadConfig(typo, report))
-      .toThrow('unknown option "selectorPrefx". Did you mean "selectorPrefix"?');
+      .toThrow('unknown option "altColour". Did you mean "altColor"?');
     const bad = write('mn.bad.cjs', 'module.exports = { metrics: 1 };');
     expect(() => loadConfig(bad, report))
       .toThrow('option "metrics" expects a boolean or a string, got number 1');
@@ -90,15 +90,15 @@ describe('loadConfig', () => {
   });
 
   test('читает настройки из файла', () => {
-    const path = write('mn.config.cjs', 'module.exports = { selectorPrefix: ".app" };');
+    const path = write('mn.config.cjs', 'module.exports = { altColor: true };');
     const config = loadConfig(path, report);
-    expect(config.selectorPrefix).toBe('.app');
+    expect(config.altColor).toBe(true);
     expect(logs.some((m) => m.includes('Config'))).toBe(true);
   });
 
   test('понимает `export default`', () => {
-    const path = write('esm.config.cjs', 'exports.default = { selectorPrefix: ".d" };');
-    expect(loadConfig(path, report).selectorPrefix).toBe('.d');
+    const path = write('esm.config.cjs', 'exports.default = { warningMode: "silent" };');
+    expect(loadConfig(path, report).warningMode).toBe('silent');
   });
 });
 
@@ -106,19 +106,18 @@ describe('mergeSettings', () => {
   test('аргументы важнее конфига', () => {
     const settings = mergeSettings(parseArgs([
       './src',
-      '-p',
-      '.cli',
+      '--warning-mode',
+      'error',
     ]), {
-      selectorPrefix: '.config',
+      warningMode: 'silent',
     });
-    // `-p` — короткая запись `selectorPrefix`.
-    expect(settings.selectorPrefix).toBe('.cli');
+    expect(settings.warningMode).toBe('error');
   });
 
   test('без аргумента берётся значение из конфига', () => {
     expect(mergeSettings(parseArgs(['./src']), {
-      selectorPrefix: '.config',
-    }).selectorPrefix).toBe('.config');
+      warningMode: 'silent',
+    }).warningMode).toBe('silent');
   });
 
   test('путь, вывод и атрибут тоже берутся из конфига', () => {

@@ -76,13 +76,13 @@ describe('minotation-next — webpack-хук', () => {
 
   test('кастомные опции доходят до MnWebpackPlugin', () => {
     const config = makeConfig();
-    callWebpackHook(config, {}, { fileName: 'custom/[name].[hash].css', selectorPrefix: 'mn-' });
+    callWebpackHook(config, {}, { fileName: 'custom/[name].[hash].css', altColor: true });
 
     const plugin = (config.plugins as any[])[0] as { options: Record<string, unknown> };
     expect(plugin.options).toEqual({
       attrs: 'class, className:class',
       fileName: 'custom/[name].[hash].css',
-      selectorPrefix: 'mn-',
+      altColor: true,
     });
   });
 });

@@ -92,9 +92,14 @@ describe('MnInstance — полный пайплайн', () => {
     expect(content).toContain(':hover');
   });
 
-  test('selectorPrefix', () => {
+  test.each([
+    ['class', '.p10._l{padding:10px}'],
+    ['where', '.p10:where(._l){padding:10px}'],
+    ['none', '.p10{padding:10px}'],
+  ])('isolateMode %s (D-075)', (isolateMode, expected) => {
     const mn = createMn({
-      selectorPrefix: '.scope',
+      isolateMode: isolateMode as 'class',
+      isolateClass: '_l',
     });
     mn('p', () => ({
       style: {
@@ -105,7 +110,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
-    expect(content).toBe('.scope .p10{padding:10px}');
+    expect(content).toBe(expected);
   });
 
   test('множитель *2', () => {
@@ -937,5 +942,54 @@ describe('hex-цвет с opacity — полный CSS пайплайн', () => 
     const result = cssNoAltColor('bg0A0A12.88');
     expect(result).toContain('rgba(10,10,18,.88)');
     expect(result).not.toContain('background:#');
+  });
+});
+
+describe('isolateMode — проверки и привязка (D-075)', () => {
+  test('режим без класса области — ошибка; класс проверяется', () => {
+    expect(() => mnProvider({
+      isolateMode: 'class',
+    })).toThrow('option "isolateMode" is \'class\' but "isolateClass" is not set');
+    expect(() => mnProvider({
+      isolateMode: 'where',
+      isolateClass: '.l',
+    })).toThrow('option "isolateClass" expects a class name without a dot (e.g. "_l")');
+    expect(() => mnProvider({
+      isolateMode: 'scope' as 'class',
+      isolateClass: '_l',
+    })).toThrow('option "isolateMode" expects');
+  });
+
+  test.each([
+    ['cF:hover', ':hover', '.cF\\:hover._l:hover{color:#fff}'],
+    ['cF<.card', 'parent', '.card .cF\\<\\.card._l{color:#fff}'],
+    ['cF>1', 'child', '.cF\\>1._l>*{color:#fff}'],
+    ['cF:after', 'pseudo-element', '.cF\\:after._l:after{color:#fff}'],
+  ])('%s (%s) — класс области на элементе токена', (token, _what, expected) => {
+    const mn = mnProvider({
+      isolateMode: 'class',
+      isolateClass: '_l',
+      warningMode: 'silent',
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')(token);
+    mn.compile();
+    expect(mn.styles$.getValue().map((s: { content: string }) => s.content).join('')).toContain(expected);
+  });
+
+  test('mn.assign и mn.css не привязываются — они глобальные', () => {
+    const mn = mnProvider({
+      isolateMode: 'class',
+      isolateClass: '_l',
+    });
+    mn.setPresets([presetStandard]);
+    mn.assign('.btn', 'p10');
+    mn.css(':root', {
+      '--x': '1',
+    });
+    mn.compile();
+    const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+    expect(css).toContain('.btn{padding:10px}');
+    expect(css).not.toContain('_l');
   });
 });

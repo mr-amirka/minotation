@@ -359,7 +359,7 @@ function isCompileWarning(warning: MnWarning): boolean {
  * см. {@link MnInstance}. Несколько экземпляров полностью независимы: своё состояние
  * (`$$essences`, `$$root`, `$$staticsEssences` и т.д.), свои пресеты, свой `styles$`.
  *
- * @param options — `presets` (загружаются сразу), `media`, `onError`, `selectorPrefix`, `altColor`
+ * @param options — `presets` (загружаются сразу), `media`, `onError`, `isolateMode`, `altColor`
  * @returns экземпляр `mn`
  *
  * @example
@@ -433,7 +433,7 @@ function minotationProvider(options?: MnOptions) {
   }
   /**
    * Пересчитывает производные из `options` значения ($$onError/$$logWarning/
-   * $$onWarning/$$selectorPrefixes/$$altColor/$$failOnWarnings) и публикует
+   * $$onWarning/$$altColor/$$failOnWarnings) и публикует
    * снимок в `mn.options`.
    *
    * ПЕРЕСМОТРЕНО 2026-09-23: раньше называлась `updateOptions` и вызывалась
@@ -451,15 +451,15 @@ function minotationProvider(options?: MnOptions) {
    */
   function applyOptions(): void {
     mn.options = extend({}, settings) as MnOptions;
-    const nextSelectorPrefix = settings.selectorPrefix || '';
     $$onError = settings.onError || noop;
     const warningMode = settings.warningMode || 'log';
     $$logWarning = warningMode === 'log' ? logWarning : noop;
     $$onWarning = settings.onWarning || noop;
-    nextSelectorPrefix === $$lastSelectorPrefix || (
-      $$lastSelectorPrefix = nextSelectorPrefix,
-      $$selectorPrefixes = keys(selectorsValidateFilter(normalizeSelectors(nextSelectorPrefix)))
-    );
+    // Изоляция (D-075): режим без класса области — не к чему привязывать правила.
+    (mn as any)._isolateSuffix = settings.isolateMode === 'class' ? '.' + settings.isolateClass
+      : settings.isolateMode === 'where' ? ':where(.' + settings.isolateClass + ')' : '';
+    (settings.isolateMode || 'none') === 'none' || settings.isolateClass || fail('minotationProvider: option "isolateMode" is \'' + settings.isolateMode + '\' but "isolateClass" is not'
+        + ' set — the scope class every rule is bound to (e.g. isolateClass: \'_l\')');
     $$altColor = settings.altColor === true;
     $$failOnWarnings = warningMode === 'error';
     $$mediaNesting = settings.mediaNesting === true;
@@ -899,7 +899,6 @@ function minotationProvider(options?: MnOptions) {
   /** Ключ компилятора с режимом → `[атрибут, режим]` (D-045 этап 3). */
   const $$compilerModes: Record<string, [string, MnNotationMode]> = {};
   const $$parseComboNameCache: Record<string, ParseComboNameFn> = {};
-  let $$lastSelectorPrefix: string | undefined | 0 = 0; // 0 — сентинел "ещё не считали", отличим от валидного undefined
   const cssPropertiesStringify: IStringifyCss = mn.propertiesStringify
     = cssPropertiesStringifyProvider();
   const emit = (mn.styles$ = observableProvider<MnStyleEntry[]>([])).emit;
@@ -935,7 +934,6 @@ function minotationProvider(options?: MnOptions) {
   // Домены имён (D-063): первые строчные буквы → записи `[префикс, функция]`.
   let $$domains: Record<string, MnDomainEntry[]> = mn.domains = {};
   let $$force: number;
-  let $$selectorPrefixes: string[];
   let $$altColor: boolean;
   let $$failOnWarnings: boolean;
   let $$raiseModes: Record<RaiseType, MnRaiseMode>;
@@ -1336,8 +1334,6 @@ function minotationProvider(options?: MnOptions) {
     const medias = parseMediaExpression(mediaExpression);
     const lMedia = medias.length;
     const updated: Record<string, number> = {};
-    const globalSelectorPrefixes = $$selectorPrefixes;
-    const lGSP = globalSelectorPrefixes.length;
     let iMedia = 0;
     let media: [string, number | undefined, string, string] | [];
     let mediaPriority: number | undefined;
@@ -1367,15 +1363,8 @@ function minotationProvider(options?: MnOptions) {
         mediaSelector,
       ] = media;
 
-      selectorPrefixes = lGSP
-        ? (
-          mediaSelector
-            ? joinArrays(
-              [mediaSelector], globalSelectorPrefixes, ' ',
-            )
-            : globalSelectorPrefixes
-        )
-        : (mediaSelector ? [mediaSelector] : 0);
+      // Селектор медиа-контекста (`@dark` → `.dark `) — предок всех правил этого контекста.
+      selectorPrefixes = mediaSelector ? [mediaSelector] : 0;
 
       // Два замыкания на итерацию — аллокация в цикле, и §18.1 велит такие
       // места проверять. Здесь она оправдана: ветвление по `selectorPrefixes`
@@ -2139,7 +2128,7 @@ function minotationProvider(options?: MnOptions) {
   /**
    * Форсирует ПОЛНЫЙ пересчёт CSS (в отличие от инкрементального {@link MnInstance.compile}) —
    * очищает состояние и заново читает ВЕСЬ кэш каждого компилятора (`$$compilers[*].cache`),
-   * а не только новые значения. Нужен, например, после смены `options` (`selectorPrefix`,
+   * а не только новые значения. Нужен, например, после смены `options` (`isolateMode`,
    * `altColor`), меняющей вывод для уже обработанных токенов.
    *
    * @returns mn (чейнинг)
@@ -2263,7 +2252,7 @@ function minotationProvider(options?: MnOptions) {
   /**
    * Переконфигурирует инстанс после создания — слияние с текущими опциями
    * (частичное обновление, не замена целиком). Единственный поддерживаемый
-   * способ поменять `onError`/`onWarning`/`warningMode`/`selectorPrefix`/`altColor`
+   * способ поменять `onError`/`onWarning`/`warningMode`/`isolateMode`/`altColor`
    * на уже созданном `mn` — эти поля читаются из замыкания и пересчитываются
    * только здесь и при создании инстанса, не на каждой компиляции (см.
    * {@link applyOptions}, пересмотрено 2026-09-23). Прямая мутация `mn.options`
@@ -2273,7 +2262,7 @@ function minotationProvider(options?: MnOptions) {
    * @returns mn (чейнинг)
    *
    * @example
-   * mn.setOptions({ selectorPrefix: '.app' });
+   * mn.setOptions({ altColor: true });
    * mn.recompile;
    */
   mn.setOptions = (partialOptions: Partial<MnOptions>): any => {

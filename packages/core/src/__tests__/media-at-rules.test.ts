@@ -5,6 +5,7 @@
 import minotationProvider from '../core/index';
 import presetStandard from '../presets/standard';
 import presetMedias from '../presets/medias';
+import presetSynonyms from '../presets/synonyms';
 import type {
   MnOptions, MnWarning,
 } from '../core/types';
@@ -173,5 +174,30 @@ describe('mediaNesting (D-070)', () => {
     expect(() => minotationProvider({
       mediaNesting: 'yes' as never,
     })).toThrow('option "mediaNesting" expects a boolean');
+  });
+});
+
+describe('приоритет ^N (D-071)', () => {
+  function styles(tokens: string) {
+    const mn = minotationProvider({
+      warningMode: 'silent',
+    });
+    mn.setPresets([
+      presetStandard,
+      presetSynonyms,
+      presetMedias,
+    ]);
+    mn.getCompiler('class')(tokens);
+    mn.compile();
+    return mn.styles$.getValue().map((s) => [s.priority, s.content]);
+  }
+
+  test('@^5 — без медиа: правило без условия, свой блок с приоритетом', () => {
+    expect(styles('cF00@^5')).toEqual([[5, '.cF00\\@\\^5{color:#f00}']]);
+  });
+
+  test(':h с приоритетом — медиа синонима встаёт перед ^N', () => {
+    expect(styles('cF00:h@d^3')).toEqual([[3, '@media (max-width: 991.98px) and (hover: hover){.cF00\\:h\\@d\\^3:hover{color:#f00}}']]);
+    expect(styles('cF00:h@^5')).toEqual([[5, '@media (hover: hover){.cF00\\:h\\@\\^5:hover{color:#f00}}']]);
   });
 });

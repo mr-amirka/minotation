@@ -1015,6 +1015,15 @@ function minotationProvider(options?: MnOptions) {
     if (priorityMatch = REGEXP_MEDIA_PRIORITY.exec(mediaExpression)) {
       mediaExpression = priorityMatch[1];
       mediaPriority = parseInt(priorityMatch[2]);
+      // `@^5` — приоритет без медиа: правило без условия, но своим блоком с этим приоритетом.
+      if (!mediaExpression) {
+        return [[
+          priorityMatch[0],
+          mediaPriority,
+          '',
+          '',
+        ]];
+      }
     }
 
     // eslint-disable-next-line

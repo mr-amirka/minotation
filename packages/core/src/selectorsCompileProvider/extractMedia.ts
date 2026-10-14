@@ -48,10 +48,17 @@ export function mediaFilterIteratee(mediaNames: string[]): string {
   });
   return mainMedia
     ? (map(splitComma(mainMedia), (m: string) => {
-      return (pushArray([m], mediaNames) as string[]).join('&');
+      // Приоритет `^N` — в конце всего выражения: медиа синонима (`:h` → `hover`) встаёт перед
+      // ним, а не после (`d^3` + `hover` → `d&hover^3`, а не `d^3&hover`).
+      const priority = REGEXP_PRIORITY_TAIL.exec(m);
+      const base = priority ? m.slice(0, priority.index) : m;
+      return (pushArray(base ? [base] : [], mediaNames) as string[]).join('&') + (priority ? priority[0] : '');
     }) as string[]).join(',')
     : mediaNames.join('&');
 }
+
+/** Приоритет в конце медиа-выражения: `^3`, `^-100`. */
+const REGEXP_PRIORITY_TAIL = /\^-?[0-9]+$/;
 
 /**
  * Извлекает медиа-часть из имени селектора.

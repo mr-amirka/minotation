@@ -47,6 +47,7 @@ import {
   readNotationDirective as readNotationDirectiveImpl,
   readPackageDirective as readPackageDirectiveImpl,
   readPackageName as readPackageNameImpl,
+  STRICTNESS_KEYS,
 } from './directives';
 import type {
   MnNotationDirective,
@@ -90,7 +91,7 @@ export type {
   LoadedConfig,
 } from './config';
 import {
-  CORE_OPTIONS_SCHEMA, checkOptions, createScanner, isBoolean, isBooleanOrString,
+  CORE_OPTIONS_SCHEMA, MnForbiddenTokenError, MnWarningError, checkOptions, createScanner, isBoolean, isBooleanOrString,
   isFunction, isPresetArray, isString, isStringArray, minotationProvider, oneOf, optionsOf, parseSettingsKey,
 } from 'minotation';
 import type {
@@ -209,17 +210,33 @@ export const CORE_OPTION_KEYS = [
   'onError',
 ] as const;
 
-/** Предупреждения со своим режимом в ядре (D-039): ядро печатает их само. */
-const OWN_MODE_WARNINGS: Partial<Record<MnWarning['type'], 1>> = {
-  'raised-specificity': 1,
-  important: 1,
-  'max-depth-exceeded': 1,
-  'child-selector': 1,
-  'unknown-media': 1,
-  'suspect-class': 1,
+/**
+ * Предупреждения токенов со своим режимом в ядре (D-039) → опция режима. Их сборка судит по файлу
+ * (D-081): токен из «строгого» файла — ошибка, тот же токен только из «мягкого» пакета — нет.
+ */
+const RAISE_OPTIONS: Partial<Record<MnWarning['type'], keyof MnNotationDirective>> = {
+  'raised-specificity': 'specificityMode',
+  important: 'importantMode',
+  'max-depth-exceeded': 'maxDepthMode',
+  'child-selector': 'childSelectorMode',
+  'unknown-media': 'unknownMediaMode',
+  'suspect-class': 'suspectClassMode',
+  'group-suspect': 'groupSuspectMode',
+};
+
+/** Предупреждения подключения пресетов — без токена: их режим проектный, ядро его уже применило. */
+const PRESET_WARNINGS: Partial<Record<MnWarning['type'], 1>> = {
   'handler-conflict': 1,
   'preset-conflict': 1,
-  'group-suspect': 1,
+};
+
+/** Вес режима: файл со «строжайшим» решает за токен. */
+const MODE_WEIGHT: Record<string, number> = {
+  silent: 0,
+  warn: 1,
+  log: 1,
+  strict: 2,
+  error: 2,
 };
 
 /** Опции ядра в опциях плагина — на верхнем уровне, без вложенного `mn` (D-034). */
@@ -336,6 +353,13 @@ function describeSettings(key: string): string {
   settings.groupMode && words.push('groupMode: ' + settings.groupMode);
   settings.contextWhere === undefined || words.push('contextWhere: ' + settings.contextWhere);
   return words.join(' + ');
+}
+
+/** Итог суда над предупреждениями: в отчёт, запрещённые токены (`strict`), ошибки (`error`). */
+type Verdict = [report: MnWarning[], forbidden: MnWarning[], failing: MnWarning[], strict: MnWarning[]];
+
+function failWith(error: Error): never {
+  throw error;
 }
 
 /** Записи области и первый (по пути) её файл — для сообщений об ошибках. */
@@ -823,14 +847,11 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   const presets = options.presets || [];
   const scopePresets = options.scopePresets || [];
   /**
-   * Предупреждения перехватываются всегда: ядро в режиме `'log'` пишет в
-   * `console`, а у сборщика свой канал вывода — поэтому ядру режим передаётся
-   * как `'silent'` (или `'error'`, чтобы сборка падала), а печатает плагин из
-   * накопленного. `'silent'` у пользователя — не копим и не отдаём. Колбэк
-   * `onWarning` вызывается всегда, дополнительно к режиму (D-035).
+   * Предупреждения перехватываются всегда: у сборщика свой канал вывода, поэтому ядро не печатает,
+   * а сборка судит каждое по строгости файлов, где встретился токен (D-081), — в отчёт, в ошибку
+   * или никуда. Колбэк `onWarning` вызывается всегда, дополнительно к режиму (D-035).
    */
   const userOnWarning = options.onWarning;
-  const warningMode = options.warningMode || 'log';
   const core = coreOptionsOf(options);
   /** Токены по файлам — ключ по файлу и снимает файл с учёта, и заменяет набор. */
   const byFile = new Map<string, Set<string>>();
@@ -840,6 +861,8 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
    */
   /** Настройки разбора файла, если отличаются от проекта (D-081): ключ `parseSettingsKey`. */
   const fileSettings = new Map<string, string>();
+  /** Строгость файла, если задана (D-081): JSON ключей `STRICTNESS_KEYS`. */
+  const fileStrictness = new Map<string, string>();
   /** Правила `scopes` потребителя поверх декларации файла (D-082); пути — от рабочего каталога. */
   const resolveScope = createScopeResolverImpl(options.scopes, process.cwd());
   const fileRequires = new Map<string, string[]>();
@@ -862,11 +885,13 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
 
   /** Режим и требования файла; изменились — кеш CSS сбрасывается. */
   function setMeta(
-    id: string, settings: string, requires: string[] | undefined,
+    id: string, settings: string, requires: string[] | undefined, strictness: string,
   ): boolean {
     const changed = (fileSettings.get(id) || '') !== settings
-      || (fileRequires.get(id) || []).join() !== (requires || []).join();
+      || (fileRequires.get(id) || []).join() !== (requires || []).join()
+      || (fileStrictness.get(id) || '') !== strictness;
     settings ? fileSettings.set(id, settings) : fileSettings.delete(id);
+    strictness ? fileStrictness.set(id, strictness) : fileStrictness.delete(id);
     requires && requires.length ? fileRequires.set(id, requires) : fileRequires.delete(id);
     changed && (cacheKey = '');
     return changed;
@@ -877,7 +902,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   ): boolean {
     const notation = resolveScope(id, own);
     const changed = setMeta(
-      id, ownSettings(notation), notation && notation.requires,
+      id, ownSettings(notation), notation && notation.requires, ownStrictness(notation),
     );
     return setTokens(id, tokens) || changed;
   }
@@ -898,6 +923,90 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     return parseSettingsKey(settings);
   }
 
+  /** Строгость файла (D-081) — JSON заданных ключей; пустая строка — как у проекта. */
+  function ownStrictness(notation: MnNotationDirective | undefined): string {
+    const out: Record<string, unknown> = {};
+    let any = false;
+    for (const key of STRICTNESS_KEYS) {
+      notation && notation[key] !== undefined && (out[key] = notation[key], any = true);
+    }
+    return any ? JSON.stringify(out) : '';
+  }
+
+  /**
+   * Режим для предупреждения токена: строжайший среди файлов, где токен встретился (D-081) — каждый
+   * файл судится своими настройками. Токен ни в одном файле — режим проекта.
+   */
+  function modeFor(
+    key: keyof MnNotationDirective, token: string, files: Map<string, string[]>,
+  ): string {
+    const project = String((options as Record<string, unknown>)[key] || (key === 'warningMode' ? 'log' : 'warn'));
+    const ids = filesOf(token, files);
+    if (!ids.length) {
+      return project;
+    }
+    let best = '';
+    let mode: string;
+    let own: Record<string, string>;
+    for (const id of ids) {
+      own = fileStrictness.has(id) ? JSON.parse(fileStrictness.get(id) as string) : {};
+      mode = own[key] || project;
+      best = best && MODE_WEIGHT[best] >= MODE_WEIGHT[mode] ? best : mode;
+    }
+    return best;
+  }
+
+  /**
+   * Файлы токена предупреждения. У неизвестного медиа токен — имя медиа (`@zz`, одно предупреждение
+   * на имя): его файлы — те, где класс с этим медиа.
+   */
+  function filesOf(token: string, files: Map<string, string[]>): string[] {
+    const own = files.get(token);
+    if (own || token[0] !== '@') {
+      return own || [];
+    }
+    const out: string[] = [];
+    for (const [name, ids] of files) {
+      name.indexOf(token) > -1 && out.push(...ids);
+    }
+    return out;
+  }
+
+  /** Токен → файлы, где он встретился (по записям `цель токен`). */
+  function filesByToken(): Map<string, string[]> {
+    const out = new Map<string, string[]>();
+    let token: string;
+    for (const [id, entries] of byFile) {
+      for (const entry of entries) {
+        token = entry.slice(entry.indexOf(' ') + 1);
+        (out.get(token) || out.set(token, []).get(token) as string[]).push(id);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Судит предупреждение по строгости файлов (D-081): `silent` — нет, `warn`/`log` — в отчёт,
+   * `strict`/`error` — в ошибку сборки.
+   */
+  function judge(
+    warning: MnWarning, files: Map<string, string[]>, verdict: Verdict,
+  ): void {
+    if (PRESET_WARNINGS[warning.type]) {
+      verdict[0].push(warning);
+      return;
+    }
+    const raise = RAISE_OPTIONS[warning.type];
+    const mode = modeFor(
+      raise || 'warningMode', warning.token, files,
+    );
+    if (MODE_WEIGHT[mode] === 2) {
+      (raise ? verdict[3] : verdict[2]).push(warning);
+    } else if (MODE_WEIGHT[mode]) {
+      verdict[0].push(warning);
+    }
+  }
+
   function setTokens(id: string, tokens: Iterable<string>): boolean {
     const next = new Set<string>(tokens);
     if (!next.size) {
@@ -914,6 +1023,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
 
   function remove(id: string): boolean {
     fileSettings.delete(id);
+    fileStrictness.delete(id);
     fileRequires.delete(id);
     if (!byFile.delete(id)) {
       return false;
@@ -1044,29 +1154,73 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
 
   /** Одна область — свой экземпляр ядра: реестр хендлеров не общий (D-078). */
   function compileScope(
-    entries: string[], all: MnPreset[], collected: MnWarning[],
+    entries: string[], all: MnPreset[], files: Map<string, string[]>, verdict: Verdict,
   ): string {
+    const raw: MnWarning[] = [];
+    // Ядро сообщает обо всём (режимы токенов — `'warn'`, без печати), судит сборка — по файлам (D-081).
     const mn = minotationProvider({
       ...core,
-      warningMode: warningMode === 'error' ? 'error' : 'silent',
+      warningMode: 'silent',
+      specificityMode: 'warn',
+      importantMode: 'warn',
+      maxDepthMode: 'warn',
+      childSelectorMode: 'warn',
+      unknownMediaMode: 'warn',
+      suspectClassMode: 'warn',
+      groupSuspectMode: 'warn',
       onWarning: (warning: MnWarning) => {
-        // `*N`, `-i` и `maxDepth` ядро печатает само по своим режимам, `warningMode`
-        // их не касается (D-039) — в общий вывод плагина они не идут.
-        warningMode === 'silent' || OWN_MODE_WARNINGS[warning.type] || collected.push(warning);
+        raw.push(warning);
         userOnWarning && userOnWarning(warning);
       },
     });
+    (mn as unknown as { _quietRaise: boolean })._quietRaise = true;
     mn.setPresets(all);
     // Каждый токен — в свой целевой атрибут (D-025). До 2026-10-05 всё шло
     // в `class`, и `m="p10"` давал `.p10` вместо `[m~="p10"]` — так в v2
     // потерялась опция `attrs` из v1.
     compileEntries(mn, resolveConflicts(
-      entries, all, collected,
+      entries, all, verdict[0],
     ));
     mn.compile();
+    for (const warning of raw) {
+      judge(
+        warning, files, verdict,
+      );
+    }
+    for (const warning of verdict[3].splice(0)) {
+      verdict[1].push(...forbiddenWording(
+        warning, entries, all,
+      ));
+    }
     return mn.styles$.getValue()
       .map((s: { content: string }) => s.content)
       .join('\n');
+  }
+
+  /**
+   * Запрещённый по файлу токен — словами ядра для `'strict'` (D-081): токен компилируется заново,
+   * один, со строгим режимом своего типа. Путь редкий — только когда что-то запрещено.
+   */
+  function forbiddenWording(
+    warning: MnWarning, entries: string[], all: MnPreset[],
+  ): MnWarning[] {
+    const option = RAISE_OPTIONS[warning.type] as string;
+    const mn = minotationProvider({
+      ...core,
+      warningMode: 'silent',
+      onWarning: undefined,
+      [option]: 'strict',
+    });
+    (mn as unknown as { _quietRaise: boolean })._quietRaise = true;
+    mn.setPresets(all);
+    compileEntries(mn, entries.filter((entry) => entry.indexOf(warning.token) > -1));
+    try {
+      mn.compile();
+    } catch (error) {
+      return (error as InstanceType<typeof MnForbiddenTokenError>).tokens.filter((item) => item.type === warning.type);
+    }
+    /* istanbul ignore next — тот же токен в тех же пресетах в строгом режиме бракуется всегда */
+    return [warning];
   }
 
   /**
@@ -1134,6 +1288,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     clear(): void {
       byFile.clear();
       fileSettings.clear();
+      fileStrictness.clear();
       fileRequires.clear();
       dynamic.clear();
       dynamicNotation.clear();
@@ -1154,7 +1309,14 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
       if (key === cacheKey) {
         return cachedCss;
       }
-      const collected: MnWarning[] = [];
+      // В отчёт, запрещённые токены, ошибки разбора — по строгости файлов (D-081).
+      const verdict: Verdict = [
+        [],
+        [],
+        [],
+        [],
+      ];
+      const files = filesByToken();
       const outputs: string[] = [];
       let scope: ScopeEntries;
       let all: MnPreset[];
@@ -1165,10 +1327,12 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
           name, scope[1], appNames,
         );
         outputs.push(compileScope(
-          Array.from(scope[0]).sort(), all, collected,
+          Array.from(scope[0]).sort(), all, files, verdict,
         ));
       }
-      warnings = collected;
+      warnings = verdict[0];
+      verdict[1].length && failWith(new MnForbiddenTokenError(verdict[1]));
+      verdict[2].length && failWith(new MnWarningError(verdict[2]));
       cachedCss = outputs.filter(Boolean).join('\n');
       cacheKey = key;
       return cachedCss;

@@ -213,7 +213,8 @@ describe('scopes — проверка опции', () => {
         match: 'a',
         attrs: 'class',
       }],
-    }, 'unknown option "scopes[0].attrs". Known options: notationMode, requires, groupMode, contextWhere, match, override'],
+    }, 'unknown option "scopes[0].attrs". Known options: notationMode, requires, groupMode, contextWhere, warningMode, specificityMode, importantMode,'
+      + ' maxDepthMode, childSelectorMode, unknownMediaMode, suspectClassMode, groupSuspectMode, match, override'],
   ])('%j', (options, message) => {
     expect(() => checkBuildOptions(options as never, 'mnVite')).toThrow(message);
   });

@@ -15,7 +15,7 @@ import {
   checkOptions, isBoolean, isStringArray, oneOf,
 } from 'minotation';
 import type {
-  MnNotationMode, OptionSchema,
+  MnNotationMode, MnRaiseMode, OptionSchema,
 } from 'minotation';
 
 /** Что файл или пакет объявляет о себе. */
@@ -28,7 +28,38 @@ export interface MnNotationDirective {
   groupMode?: 'groups' | 'css';
   /** Контекст селектора в `:where()` (D-049, D-081). */
   contextWhere?: boolean;
+  /** Строгость для своих классов (D-081): что делать с предупреждением разбора. */
+  warningMode?: 'log' | 'silent' | 'error';
+  /** Строгость: `*N` (D-039). */
+  specificityMode?: MnRaiseMode;
+  /** Строгость: `-i` (D-039). */
+  importantMode?: MnRaiseMode;
+  /** Строгость: превышение `maxDepth` (D-039). */
+  maxDepthMode?: MnRaiseMode;
+  /** Строгость: дочерний селектор `>` (D-041). */
+  childSelectorMode?: MnRaiseMode;
+  /** Строгость: неизвестное имя медиа (D-058). */
+  unknownMediaMode?: MnRaiseMode;
+  /** Строгость: класс другой системы (D-065). */
+  suspectClassMode?: MnRaiseMode;
+  /** Строгость: группа даёт битый CSS (D-077). */
+  groupSuspectMode?: MnRaiseMode;
 }
+
+/**
+ * Ключи строгости (группа C, D-081): меняют не CSS, а то, о чём сообщать и когда падать. Судятся
+ * по файлу; в правиле `scopes` потребитель важнее декларации пакета.
+ */
+export const STRICTNESS_KEYS: Array<keyof MnNotationDirective> = [
+  'warningMode',
+  'specificityMode',
+  'importantMode',
+  'maxDepthMode',
+  'childSelectorMode',
+  'unknownMediaMode',
+  'suspectClassMode',
+  'groupSuspectMode',
+];
 
 /** Ключи директивы — общие для комментария, `package.json` и правил `scopes`. */
 export const DIRECTIVE_KEYS: Array<keyof MnNotationDirective> = [
@@ -36,7 +67,12 @@ export const DIRECTIVE_KEYS: Array<keyof MnNotationDirective> = [
   'requires',
   'groupMode',
   'contextWhere',
+  ...STRICTNESS_KEYS,
 ];
+
+const raiseMode = oneOf(
+  'warn', 'silent', 'strict',
+);
 
 export const DIRECTIVE_SCHEMA: OptionSchema = {
   notationMode: oneOf(
@@ -45,6 +81,16 @@ export const DIRECTIVE_SCHEMA: OptionSchema = {
   requires: isStringArray,
   groupMode: oneOf('groups', 'css'),
   contextWhere: isBoolean,
+  warningMode: oneOf(
+    'log', 'silent', 'error',
+  ),
+  specificityMode: raiseMode,
+  importantMode: raiseMode,
+  maxDepthMode: raiseMode,
+  childSelectorMode: raiseMode,
+  unknownMediaMode: raiseMode,
+  suspectClassMode: raiseMode,
+  groupSuspectMode: raiseMode,
 };
 
 /** Директиву ищем только в начале файла: дальше она уже не «о файле», а случайный текст. */

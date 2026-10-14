@@ -182,3 +182,24 @@ describe('настройки разбора компилятора: getCompiler(
     expect(parseSettingsKey(settings)).toBe(key);
   });
 });
+
+describe('_quietRaise — служебный переключатель сборки (D-081)', () => {
+  test('режимы токенов и конфликты пресетов не печатаются, но доходят до onWarning', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const seen: string[] = [];
+    const mn = minotationProvider({
+      onWarning: (w) => seen.push(w.type),
+    });
+    (mn as unknown as { _quietRaise: boolean })._quietRaise = true;
+    mn.setPresets([presetStandard, {
+      name: 'presetOther',
+      setup: (inner: (name: string, value: string) => void) => inner('p', 'cF00'),
+    } as never]);
+    mn.getCompiler('class')('p10*2');
+    mn.compile();
+    expect(seen).toContain('raised-specificity');
+    expect(seen).toContain('handler-conflict');
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});

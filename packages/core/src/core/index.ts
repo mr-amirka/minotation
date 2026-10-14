@@ -507,7 +507,9 @@ function minotationProvider(options?: MnOptions) {
       return true;
     }
     $$warnings = $$warnings.concat([warning]);
-    logWarning(warning);
+    // `_quietRaise` — служебный переключатель сборки (D-081): она сама решает по настройкам файлов,
+    // что из этого печатать, а что считать ошибкой; в консоль ядро тогда не пишет.
+    (mn as any)._quietRaise || logWarning(warning);
     $$onWarning(warning);
     emitWarnings($$warnings);
     return false;
@@ -1817,7 +1819,7 @@ function minotationProvider(options?: MnOptions) {
       return;
     }
     $$warnings = $$warnings.concat([warning]);
-    logWarning(warning);
+    (mn as any)._quietRaise || logWarning(warning);
     $$onWarning(warning);
     emitWarnings($$warnings);
   }

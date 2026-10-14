@@ -811,7 +811,8 @@ describe('warningMode в накопителе (D-035)', () => {
 });
 
 describe('suspectClassMode в накопителе (D-065)', () => {
-  test("'warn' — warningMode 'error' сборку не роняет; 'strict' — роняет", () => {
+  test("'warn' — warningMode 'error' сборку не роняет, предупреждение — в отчёт сборки; 'strict' — роняет", () => {
+    // С D-081 режимы токенов судит сборка (по файлам): ядро не печатает, плагин выводит из отчёта.
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     const collector = createTokenCollector({
       ...OPTIONS,
@@ -819,8 +820,8 @@ describe('suspectClassMode в накопителе (D-065)', () => {
     });
     collector.add('/a.html', '<div class="fw-bold">');
     expect(() => collector.css()).not.toThrow();
-    expect(collector.takeWarnings()).toEqual([]);
-    expect(warn).toHaveBeenCalledTimes(1);
+    expect(collector.takeWarnings().map((w) => w.type)).toEqual(['suspect-class']);
+    expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
     const strict = createTokenCollector({
       ...OPTIONS,
@@ -832,7 +833,7 @@ describe('suspectClassMode в накопителе (D-065)', () => {
 });
 
 describe('unknownMediaMode в накопителе (D-058)', () => {
-  test("'warn' — своя опция: warningMode 'error' сборку не роняет, ядро печатает само", () => {
+  test("'warn' — своя опция: warningMode 'error' сборку не роняет; предупреждение — в отчёт сборки", () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     const collector = createTokenCollector({
       ...OPTIONS,
@@ -840,8 +841,8 @@ describe('unknownMediaMode в накопителе (D-058)', () => {
     });
     collector.add('/a.html', '<div class="p10@zz">');
     expect(collector.css()).toContain('@media zz{');
-    expect(collector.takeWarnings()).toEqual([]);
-    expect(warn).toHaveBeenCalledTimes(1);
+    expect(collector.takeWarnings().map((w) => w.token)).toEqual(['@zz']);
+    expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
 
@@ -856,7 +857,7 @@ describe('unknownMediaMode в накопителе (D-058)', () => {
 });
 
 describe('specificityMode / importantMode в накопителе (D-039)', () => {
-  test("'warn' — ядро печатает само, в warnings накопителя не попадает; колбэк вызван", () => {
+  test("'warn' — в отчёт сборки, warningMode 'error' не роняет; колбэк вызван", () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     const seen: string[] = [];
     const collector = createTokenCollector({
@@ -866,9 +867,9 @@ describe('specificityMode / importantMode в накопителе (D-039)', () =
     });
     collector.add('/a.html', '<div class="p10*2 m10-i">');
     expect(() => collector.css()).not.toThrow();
-    expect(collector.takeWarnings()).toEqual([]);
+    expect(collector.takeWarnings().map((w) => w.type).sort()).toEqual(['important', 'raised-specificity']);
     expect(seen.sort()).toEqual(['important', 'raised-specificity']);
-    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
 

@@ -17,7 +17,7 @@ import type {
   MnNotationMode, OptionCheck, OptionSchema,
 } from 'minotation';
 import {
-  DIRECTIVE_KEYS, DIRECTIVE_SCHEMA, readPackageName,
+  DIRECTIVE_KEYS, DIRECTIVE_SCHEMA, STRICTNESS_KEYS, readPackageName,
 } from './directives';
 import type {
   MnNotationDirective,
@@ -36,7 +36,7 @@ export type MnScopeMatch = string | RegExp | Array<string | RegExp>;
  *   { match: /\.tw\.tsx$/, notationMode: 'tw4-compatible' },
  * ]
  */
-export interface MnScopeRule {
+export interface MnScopeRule extends Omit<MnNotationDirective, 'notationMode' | 'requires' | 'groupMode' | 'contextWhere'> {
   /**
    * Имя пакета (`'@acme/ui'` — по полю `"name"` ближайшего `package.json`), путь или шаблон пути
    * от рабочего каталога (`'./src/legacy'`, `'src/**\/*.tw.tsx'`), RegExp по абсолютному пути
@@ -189,8 +189,10 @@ export function createScopeResolver(rules: MnScopeRule[] | undefined, root: stri
       ...own,
     };
     for (const key of DIRECTIVE_KEYS) {
-      // Своя декларация важнее правила; `override` — аварийно наоборот.
-      rule[key] === undefined || own && own[key] !== undefined && !rule.override
+      // Правила разбора: своя декларация важнее правила, `override` — аварийно наоборот (D-082).
+      // Строгость: правило потребителя важнее — чинить чужой пакет не в его власти (D-081).
+      rule[key] === undefined
+        || own && own[key] !== undefined && !rule.override && STRICTNESS_KEYS.indexOf(key) < 0
         || ((out as Record<string, unknown>)[key] = rule[key]);
     }
     return out;

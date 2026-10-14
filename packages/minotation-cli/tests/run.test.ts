@@ -17,6 +17,9 @@ import {
   parseArgs,
 } from '../src/args';
 import {
+  CONFIG_FILE_NAMES,
+} from 'minotation-build';
+import {
   build, loadConfig, mergeSettings, startWatch, DEFAULT_CONFIG,
 } from '../src/run';
 import type {
@@ -83,10 +86,13 @@ describe('loadConfig', () => {
       .toThrow('option "metrics" expects a boolean or a string, got number 1');
   });
 
-  test('опции плагинов, которых у CLI нет, — не опции конфига', () => {
-    const path = write('mn.plugin.cjs', 'module.exports = { fileName: "a.css" };');
-    expect(() => loadConfig(path, report))
-      .toThrow('unknown option "fileName". Known options:');
+  test('файл общий для всех инструментов: опции плагинов допустимы, CLI берёт только свои (D-081)', () => {
+    const path = write('shared.config.cjs', 'module.exports = { fileName: "a.css", inject: "link", altColor: true };');
+    expect(loadConfig(path, report)).toEqual({
+      altColor: true,
+    });
+    const bad = write('cli-bad.config.cjs', 'module.exports = { input: 1 };');
+    expect(() => loadConfig(bad, report)).toThrow('option "input" expects a string, got number 1');
   });
 
   test('читает настройки из файла', () => {
@@ -241,7 +247,7 @@ describe('mergeSettings', () => {
     const settings = mergeSettings(parseArgs([]), {
       ignore: ['./legacy.js'],
     });
-    expect(settings.ignore).toEqual(['./legacy.js', resolve(DEFAULT_CONFIG)]);
+    expect(settings.ignore).toEqual(['./legacy.js'].concat(CONFIG_FILE_NAMES.map((name) => resolve(name))));
   });
 
   test('`include` и `exclude` из строк превращаются в регулярки', () => {

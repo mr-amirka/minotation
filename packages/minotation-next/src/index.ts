@@ -18,7 +18,7 @@
 import type { NextConfig } from 'next';
 import type { Configuration } from 'webpack';
 import { isBoolean } from 'minotation';
-import { MnWebpackPlugin, checkBuildOptions } from 'minotation-webpack';
+import { MnWebpackPlugin, checkBuildOptions, withBuildConfig } from 'minotation-webpack';
 import type { MnWebpackPluginOptions } from 'minotation-webpack';
 
 /**
@@ -66,11 +66,14 @@ const PRESET_LOADER = require.resolve('minotation-webpack/dist/preset-loader');
  */
 export function withMn(
   nextConfig: NextConfig = {},
-  mnOptions: MnNextOptions = {},
+  code: MnNextOptions = {},
 ): NextConfig {
-  checkBuildOptions(mnOptions, 'withMn', {
+  const own = {
     enabled: isBoolean,
-  });
+  };
+  // Опции из `minotation.config.*` рабочего каталога, поверх — из кода (D-081).
+  const mnOptions = withBuildConfig(code, 'withMn', own);
+  checkBuildOptions(mnOptions, 'withMn', own);
   const opts = { ...DEFAULT_OPTIONS, ...mnOptions };
 
   if (!opts.enabled) return nextConfig;

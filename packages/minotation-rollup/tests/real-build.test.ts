@@ -480,3 +480,22 @@ describe('minotation-rollup — статистика употребления т
     expect((await runBuild(root, { metrics: false })).assets['mn-metrics.json']).toBeUndefined();
   });
 });
+
+describe('minotation-rollup — minotation.config.js (D-081)', () => {
+  test('опции из файла рабочего каталога, опции из кода — поверх', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/page.html': '<div class="p10 cF00.5"></div>',
+      'minotation.config.js': 'module.exports = { altColor: true, fileName: "from-file.css", inject: "link" };\n',
+    });
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      const { assets } = await runBuild(root, { fileName: 'from-code.css' });
+      expect(Object.keys(assets)).toContain('from-code.css');
+      expect(assets['from-code.css']).toContain('.cF00\\.5{color:#f00;color:rgba(255,0,0,.5)}');
+    } finally {
+      process.chdir(cwd);
+    }
+  });
+});

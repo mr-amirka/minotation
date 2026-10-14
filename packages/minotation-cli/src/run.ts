@@ -7,11 +7,8 @@
  * @module run
  */
 import {
-  existsSync, mkdirSync, realpathSync, watch, writeFileSync,
+  mkdirSync, realpathSync, watch, writeFileSync,
 } from 'node:fs';
-import {
-  createRequire,
-} from 'node:module';
 import {
   dirname, join, relative, resolve,
 } from 'node:path';
@@ -19,7 +16,7 @@ import {
   checkOptions,
 } from 'minotation';
 import {
-  formatFileName, manifestFileName, manifestOf, metricsFileName,
+  BUILD_OPTIONS_SCHEMA, CONFIG_FILE_NAMES, formatFileName, loadConfigFile, manifestFileName, manifestOf, metricsFileName,
 } from 'minotation-build';
 import type {
   CliArgs,
@@ -38,7 +35,7 @@ export interface Reporter {
 }
 
 /** Конфиг по умолчанию ищется под этим именем. */
-export const DEFAULT_CONFIG = './mn.config.js';
+export const DEFAULT_CONFIG = './minotation.config.js';
 
 /** Что сканировать и куда писать — всё, что нужно {@link build}. */
 export interface RunSettings extends CompileSettings {
@@ -60,48 +57,30 @@ export interface RunSettings extends CompileSettings {
 }
 
 /**
- * Загрузка конфига — обычный `require`, а не динамический `import`.
+ * Читает файл настроек `minotation.config.*` — общий для всех плагинов и CLI (D-081).
  *
- * `mn` собирается в CommonJS, и `import()` в таком выводе всё равно
- * превращается компилятором в `require`: две формы записи с одним поведением.
- * `require` при этом читает и `.json`, и — начиная с Node 22.12 — модули ESM.
- * На более старых Node конфиг в проекте с `"type": "module"` нужно назвать
- * `mn.config.cjs`; сообщение об ошибке это и скажет.
- */
-const requireConfig = createRequire(__filename);
-
-/**
- * Читает файл конфигурации, если он есть.
- *
- * Отсутствие файла — не ошибка: CLI полезен и без конфига, все настройки
- * задаются опциями. А вот существующий, но битый конфиг — ошибка, даже когда
- * его имя взято по умолчанию: молча продолжить с умолчаниями значит собрать не
- * то, что просили.
+ * Отсутствие файла — не ошибка: CLI полезен и без конфига, все настройки задаются опциями. А вот
+ * существующий, но битый файл — ошибка, даже когда его имя взято по умолчанию: молча продолжить с
+ * умолчаниями значит собрать не то, что просили. Файл общий: опции других инструментов в нём
+ * допустимы (`fileName`, `inject`), CLI берёт только свои.
  */
 export function loadConfig(path: string | undefined, report: Reporter): Partial<RunSettings> {
-  const full = resolve(path || DEFAULT_CONFIG);
-  if (!existsSync(full)) {
-    if (path) {
-      throw new Error('Config not found: "' + full + '"');
-    }
+  const loaded = loadConfigFile(
+    BUILD_OPTIONS_SCHEMA, process.cwd(), path && resolve(path),
+  );
+  if (!loaded) {
     return {};
   }
-  let loaded: { default?: Partial<RunSettings> } & Partial<RunSettings>;
-  try {
-    loaded = requireConfig(full);
-  } catch (ex) {
-    throw new Error('Failed to read config "' + full + '": '
-      + (ex as Error).message, {
-      cause: ex,
-    });
+  report.log('Config: ' + loaded.path);
+  const config: Record<string, unknown> = {};
+  for (const key in loaded.options) { // eslint-disable-line
+    CONFIG_SCHEMA[key] && (config[key] = loaded.options[key]);
   }
-  report.log('Config: ' + full);
-  const config = loaded.default || loaded;
-  // Опечатка в конфиге — ошибка с подсказкой, а не молча пропущенная настройка (D-038).
+  // Свои поля CLI в общей схеме не проверяются по значению — проверяем здесь (D-038).
   checkOptions(
-    config, CONFIG_SCHEMA, relative(process.cwd(), full),
+    config, CONFIG_SCHEMA, relative(process.cwd(), loaded.path),
   );
-  return config;
+  return config as Partial<RunSettings>;
 }
 
 /** Путь сканирования по умолчанию. */
@@ -153,7 +132,8 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
     exclude: args.exclude ? new RegExp(args.exclude) : config.exclude,
     // Конфиг лежит в корне проекта и подходит под расширение `.js` — без этого
     // он сканировался бы наравне с исходниками.
-    ignore: (config.ignore || []).concat(resolve(args.config || DEFAULT_CONFIG)),
+    // Файлы настроек — не разметка: и явный `--config`, и любой `minotation.config.*` рабочего каталога.
+    ignore: (config.ignore || []).concat(args.config ? [resolve(args.config)] : [], CONFIG_FILE_NAMES.map((name) => resolve(name))),
   };
 }
 

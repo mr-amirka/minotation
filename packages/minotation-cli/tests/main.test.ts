@@ -173,6 +173,6 @@ describe('публичный API пакета', () => {
     expect(typeof api.parseArgs).toBe('function');
     expect(typeof api.main).toBe('function');
     expect(api.HELP).toContain('Usage: mn');
-    expect(api.DEFAULT_CONFIG).toBe('./mn.config.js');
+    expect(api.DEFAULT_CONFIG).toBe('./minotation.config.js');
   });
 });

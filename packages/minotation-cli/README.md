@@ -50,7 +50,7 @@ mn ./index.html -o ./page.css           # одиночный файл
 |-------|------------|
 | `-o, --output <файл>` | куда писать CSS (по умолчанию `./mn.css`); шаблон с `[name]` (запись `entry`) и `[hash]` (хеш содержимого): `./dist/[name].[hash].css` |
 | `-w, --watch` | следить за изменениями и пересобирать |
-| `-c, --config <файл>` | файл конфигурации (по умолчанию `./mn.config.js`) |
+| `-c, --config <файл>` | файл настроек (по умолчанию `./minotation.config.{js,cjs,mjs,json}` — общий с плагинами, D-081) |
 | `-a, --attrs <список>` | какие атрибуты сканировать и во что разворачивать, как в v1: `"class, className:class"`, `"class, m"` → `[m~="p10"]` (по умолчанию `class`); подробно — [`attrs`](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
 | `--alt-color` | запасное непрозрачное объявление рядом с `rgba` |
 | `--warning-mode <режим>` | что делать с предупреждением о битом токене: `log` — напечатать (по умолчанию), `silent` — промолчать, `error` — код возврата 1 |
@@ -162,8 +162,11 @@ mn ./src -o ./app.css -m ./metrics.json
 
 ## Конфиг
 
+Файл `minotation.config.*` в рабочем каталоге — **общий для CLI и всех плагинов** (D-081): CLI берёт
+из него свои опции, опции других инструментов (`fileName`, `inject`) пропускает.
+
 ```js
-// mn.config.js
+// minotation.config.js
 module.exports = {
   input: './src',
   output: './dist/app.css',
@@ -204,16 +207,16 @@ module.exports = {
 не собрать ничего. То же с опечаткой и значением не того типа:
 
 ```
-Error: [minotation] mn.config.js: unknown option "altColour". Did you mean "altColor"?
-Error: [minotation] mn.config.js: option "metrics" expects a boolean or a string, got number 1
+Error: [minotation] minotation.config.js: unknown option "altColour". Did you mean "altColor"?
+Error: [minotation] minotation.config.js: option "metrics" expects a boolean or a string, got number 1
 ```
 
-Опции плагинов, которых у CLI нет (`fileName`, `root`, `extensions`,
-`classVarSuffixes`, …), — тоже ошибка: в конфиге CLI они ничего бы не сделали.
+Опции плагинов, которых у CLI нет (`fileName`, `root`, `extensions`, `inject`, …), в файле допустимы —
+он общий; CLI их не использует. Опечатка в любом ключе — ошибка.
 
 Конфиг читается обычным `require`, поэтому годятся `.js` (CommonJS), `.cjs` и
 `.json`, а начиная с Node 22.12 — и ESM. На более старых Node в проекте с
-`"type": "module"` конфиг нужно назвать `mn.config.cjs`.
+`"type": "module"` файл нужно назвать `minotation.config.cjs`.
 
 ## Коды возврата
 

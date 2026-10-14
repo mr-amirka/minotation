@@ -17,7 +17,7 @@ import {
 import type { MnInstance } from 'minotation';
 import type { MnPreset } from 'minotation';
 import {
-  checkBuildOptions, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, scanRoots,
+  checkBuildOptions, withBuildConfig, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, scanRoots,
   walkFiles,
 } from 'minotation-build';
 import type { MnBuildOptions } from 'minotation-build';
@@ -88,7 +88,9 @@ export class MnWebpackPlugin {
   /** Связь с лоадерами; заводится в `apply`, когда известен корень. */
   private handle?: MnPluginHandle;
 
-  constructor(options: MnWebpackPluginOptions = {}) {
+  constructor(code: MnWebpackPluginOptions = {}) {
+    // Опции из `minotation.config.*` рабочего каталога, поверх — из кода (D-081).
+    const options = withBuildConfig(code, 'MnWebpackPlugin');
     checkBuildOptions(options, 'MnWebpackPlugin');
     this.options = options;
   }

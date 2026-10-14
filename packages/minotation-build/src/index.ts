@@ -24,6 +24,9 @@ import {
   readFileSync, readdirSync, statSync,
 } from 'node:fs';
 import {
+  withConfigFile,
+} from './config';
+import {
   createHash,
 } from 'node:crypto';
 import {
@@ -52,6 +55,12 @@ export const readPackageDirective = readPackageDirectiveImpl;
 export const clearPackageDirectiveCache = clearPackageDirectiveCacheImpl;
 /** Режим и требования файла по старшинству: файл → пакет. */
 export const readFileNotation = readFileNotationImpl;
+export {
+  CONFIG_FILE_NAMES, TOOL_OPTION_KEYS, clearConfigFileCache, loadConfigFile, withConfigFile,
+} from './config';
+export type {
+  LoadedConfig,
+} from './config';
 import {
   CORE_OPTIONS_SCHEMA, checkOptions, createScanner, isBoolean, isBooleanOrString,
   isFunction, isPresetArray, isString, isStringArray, minotationProvider, oneOf, optionsOf,
@@ -581,6 +590,24 @@ export const BUILD_OPTIONS_SCHEMA: OptionSchema = {
   metrics: isBooleanOrString,
   notationConflictMode: oneOf('warn', 'strict'),
 };
+
+/**
+ * Опции плагина из `minotation.config.*` рабочего каталога, под ними — опции из кода (D-081).
+ *
+ * @param options — опции из кода
+ * @param tool — имя плагина (`mnVite`, `mnRollup`, …)
+ * @param own — свои опции плагина сверх общего набора
+ */
+export function withBuildConfig<T extends object>(
+  options: T, tool: string, own?: OptionSchema,
+): T {
+  return withConfigFile(
+    options, tool, BUILD_OPTIONS_SCHEMA, own ? {
+      ...BUILD_OPTIONS_SCHEMA,
+      ...own,
+    } : BUILD_OPTIONS_SCHEMA,
+  );
+}
 
 /**
  * Проверяет опции плагина: неизвестный ключ и некорректное значение — ошибка с

@@ -12,7 +12,7 @@ import type { MnInstance } from 'minotation';
 import type { MnPreset } from 'minotation';
 import { asPreset } from 'minotation-build';
 import {
-  checkBuildOptions, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, scanRoots,
+  checkBuildOptions, withBuildConfig, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, scanRoots,
   walkFiles,
 } from 'minotation-build';
 import type { MnBuildOptions } from 'minotation-build';
@@ -127,7 +127,9 @@ function evalPresetFile(id: string): MnPreset | null {
  *   plugins: [mnEsbuild({ attrs: 'class, className:class' })],
  * });
  */
-export function mnEsbuild(options: MnEsbuildOptions = {}): Plugin {
+export function mnEsbuild(code: MnEsbuildOptions = {}): Plugin {
+  // Опции из `minotation.config.*` рабочего каталога, поверх — из кода (D-081).
+  const options = withBuildConfig(code, 'mnEsbuild');
   checkBuildOptions(options, 'mnEsbuild');
   // Несколько корней скана (монорепо) — база относительных путей `include` — рабочая директория.
   const roots = scanRoots(options.root, process.cwd());

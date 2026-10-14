@@ -144,6 +144,29 @@ mnGulp({ entry: { admin: { incude: /admin/ } } });
 условно. Свой плагин поверх общего набора проверяет опции так же —
 `checkBuildOptions(options, 'myPlugin', { ownOption: isBoolean })`.
 
+## Файл настроек `minotation.config.*` (D-081)
+
+Все опции плагина можно задать не в коде, а в файле `minotation.config.{js,cjs,mjs,json}` в рабочем
+каталоге — **один файл для всех плагинов и CLI** одного проекта. Опции из кода сливаются поверх:
+
+```js
+// minotation.config.js
+module.exports = {
+  attrs: 'class, className:class',
+  scopePresets: [require('minotation').presetTw4],
+  metrics: false,
+};
+```
+```ts
+mnVite();                     // всё из файла
+mnVite({ metrics: true });    // то же, но metrics — из кода
+```
+
+- файл проверяется целиком: опечатка в ключе — ошибка с подсказкой;
+- опции других инструментов в нём допустимы (`input`/`output` у CLI, `inject` у Vite) — каждый
+  инструмент берёт общие опции и свои;
+- в watch файл перечитывается при правке.
+
 ## Режим синтаксиса файла и требования UI-библиотек (D-045)
 
 Классы разметки разбираются в режиме по старшинству: **комментарий в файле → поле

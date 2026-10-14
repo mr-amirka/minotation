@@ -9,7 +9,7 @@ import {
   oneOf,
 } from 'minotation';
 import type { MnInstance, MnWarning } from 'minotation';
-import { checkBuildOptions as checkBuildOptionsImpl, createBuildCollector, createFileFilter, metricsFileName, scanRoots, walkFiles } from 'minotation-build';
+import { checkBuildOptions as checkBuildOptionsImpl, createBuildCollector, createFileFilter, metricsFileName, scanRoots, walkFiles, withBuildConfig as withBuildConfigImpl } from 'minotation-build';
 import type { BuildCollector, FileFilter, MnBuildOptions } from 'minotation-build';
 import { asPreset } from 'minotation-build';
 import type { MnPreset } from 'minotation';
@@ -58,6 +58,9 @@ export const MN_VIRTUAL_ENTRY = 'virtual:mn/';
  * ключ и некорректное значение — ошибка с подсказкой.
  */
 export const checkBuildOptions = checkBuildOptionsImpl;
+
+/** Опции из `minotation.config.*` под опциями из кода (D-081) — для интеграций поверх Vite. */
+export const withBuildConfig = withBuildConfigImpl;
 /**
  * Адрес, под которым модули живут в графе Vite. Путь, а не `\0…`: ссылка из
  * `index.html` и запрос браузера в dev приходят именно путём, и Vite должен
@@ -158,10 +161,13 @@ function evalPresetFile(id: string): MnPreset | null {
  *   plugins: [mnVite({ attrs: 'class, className:class' })],
  * });
  */
-export function mnVite(options: MnViteOptions = {}): Plugin {
-  checkBuildOptions(options, 'mnVite', {
+export function mnVite(code: MnViteOptions = {}): Plugin {
+  const own = {
     inject: oneOf('inline', 'link', false),
-  });
+  };
+  // Опции из `minotation.config.*` рабочего каталога, поверх — из кода (D-081).
+  const options = withBuildConfig(code, 'mnVite', own);
+  checkBuildOptions(options, 'mnVite', own);
   const staticPresets = options.presets || [
     // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
     presetHints,

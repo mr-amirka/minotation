@@ -247,7 +247,7 @@ Options:
   -o, --output <file>    where to write CSS (default ./mn.css);
                          [name] = entry name, [hash] = content hash
   -w, --watch            watch for changes and rebuild
-  -c, --config <file>    config file (default ./mn.config.js)
+  -c, --config <file>    config file (default ./minotation.config.{js,cjs,mjs,json})
   -a, --attrs <list>     attributes to scan and their target, as in v1:
                          "class, className:class" (default class)
       --alt-color        opaque fallback declaration next to rgba

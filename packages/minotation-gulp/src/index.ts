@@ -31,7 +31,7 @@ import type {
 } from 'node:stream';
 import Vinyl from 'vinyl';
 import {
-  checkBuildOptions, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName,
+  checkBuildOptions, withBuildConfig, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName,
 } from 'minotation-build';
 import type {
   MnBuildOptions,
@@ -85,7 +85,9 @@ const DEFAULT_PRESETS = [
  *   .pipe(mnGulp({ fileName: 'app.css' }))
  *   .pipe(gulp.dest('dist'));
  */
-export function mnGulp(options: MnGulpOptions = {}): Transform {
+export function mnGulp(code: MnGulpOptions = {}): Transform {
+  // Опции из `minotation.config.*` рабочего каталога, поверх — из кода (D-081).
+  const options = withBuildConfig(code, 'mnGulp');
   checkBuildOptions(options, 'mnGulp');
   const manifest = manifestFileName(options.manifest);
   // Пустое расширение пропускает любой файл: что сканировать, выбрал `gulp.src`.

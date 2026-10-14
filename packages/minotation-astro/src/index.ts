@@ -1,6 +1,6 @@
 import type { AstroIntegration } from 'astro';
 import { isBoolean } from 'minotation';
-import { MN_VIRTUAL, checkBuildOptions, mnVite } from 'minotation-vite';
+import { MN_VIRTUAL, checkBuildOptions, mnVite, withBuildConfig } from 'minotation-vite';
 import type { MnViteOptions } from 'minotation-vite';
 
 /**
@@ -49,10 +49,13 @@ export const PAGE_IMPORT = `import '${MN_VIRTUAL}';`;
  *   integrations: [mnAstro({ attrs: 'class, className:class' })],
  * });
  */
-export function mnAstro(options: MnAstroOptions = {}): AstroIntegration {
-  checkBuildOptions(options, 'mnAstro', {
+export function mnAstro(code: MnAstroOptions = {}): AstroIntegration {
+  const own = {
     inject: isBoolean,
-  });
+  };
+  // Опции из `minotation.config.*` рабочего каталога, поверх — из кода (D-081).
+  const options = withBuildConfig(code, 'mnAstro', own);
+  checkBuildOptions(options, 'mnAstro', own);
   const extensions = options.extensions || ['.html', '.jsx', '.tsx', '.vue', '.svelte', '.astro'];
 
   return {

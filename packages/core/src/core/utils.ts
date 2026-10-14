@@ -310,6 +310,220 @@ export const normalizeComboNames = normalizeMapProvider<Record<string, number>>(
   return flatFlags(SPLIT_SPACE(name), namesMap);
 });
 /**
+ * Функциональные псевдоклассы и псевдоэлементы CSS: без аргумента в скобках их не бывает
+ * (D-077). Группа без `|` сразу после них — это аргумент, а не scope-грамматика:
+ * `cF:not(.a)` раньше давало `:not.a`.
+ */
+export const FUNCTIONAL_PSEUDOS: Record<string, number> = {
+  not: 1,
+  is: 1,
+  where: 1,
+  has: 1,
+  'nth-child': 1,
+  'nth-last-child': 1,
+  'nth-of-type': 1,
+  'nth-last-of-type': 1,
+  lang: 1,
+  dir: 1,
+  host: 1,
+  'host-context': 1,
+  state: 1,
+  part: 1,
+  slotted: 1,
+  highlight: 1,
+  cue: 1,
+  'cue-region': 1,
+  'view-transition-group': 1,
+  'view-transition-image-pair': 1,
+  'view-transition-old': 1,
+  'view-transition-new': 1,
+  'active-view-transition-type': 1,
+};
+
+/** Символ имени CSS (`a-z`, `A-Z`, `0-9`, `-`, `_`). */
+function isNameChar(ch: string | undefined): boolean {
+  return ch !== undefined && (ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z'
+    || ch >= '0' && ch <= '9' || ch === '-' || ch === '_');
+}
+
+/** Имя псевдокласса прямо перед позицией `at` (`:not(` → `not`) или пустая строка. */
+function pseudoBefore(
+  value: string, from: number, at: number,
+): string {
+  let i = at;
+  while (i > from && isNameChar(value[i - 1])) {
+    i--;
+  }
+  return i < at && i > from && value[i - 1] === ':' && value[i - 2] !== '\\' ? value.slice(i, at) : '';
+}
+
+/**
+ * Функциональный ли псевдокласс: по имени CSS или через синоним, который в него
+ * разворачивается (`n` → `:nth-child`).
+ */
+function isFunctionalPseudo(name: string, synonyms: Record<string, unknown>): boolean {
+  if (FUNCTIONAL_PSEUDOS[name]) {
+    return true;
+  }
+  const synonym = synonyms[name] as Record<string, unknown> | undefined;
+  const selectors = synonym ? Object.keys(synonym) : [];
+  return selectors.length === 1 && selectors[0][0] === ':'
+    && !!FUNCTIONAL_PSEUDOS[selectors[0].replace(REGEXP_LEADING_COLONS, '')];
+}
+
+const REGEXP_LEADING_COLONS = /^:+/;
+
+/** Позиция `)`, парной `(` в `at`, или `-1`; экранированные скобки пропускаются. */
+function closingParen(
+  value: string, at: number, to: number,
+): number {
+  let depth = 0;
+  let i = at;
+  for (; i < to; i++) {
+    if (value[i] === '\\') {
+      i++;
+    } else if (value[i] === '(') {
+      depth++;
+    } else if (value[i] === ')' && !--depth) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/** Есть ли `|` на верхнем уровне куска (вне вложенных скобок и экранирования). */
+function hasTopLevelBar(
+  value: string, from: number, to: number,
+): boolean {
+  let depth = 0;
+  let i = from;
+  let ch: string;
+  for (; i < to; i++) {
+    ch = value[i];
+    if (ch === '\\') {
+      i++;
+    } else if (ch === '(' || ch === '[') {
+      depth++;
+    } else if (ch === ')' || ch === ']') {
+      depth--;
+    } else if (ch === '|' && !depth) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Неэкранированные `(` и `)` — экранированными: внутри аргумента CSS скобки — это CSS. */
+function escapeParens(text: string): string {
+  const l = text.length;
+  let out = '';
+  let i = 0;
+  let ch: string;
+  for (; i < l; i++) {
+    ch = text[i];
+    if (ch === '\\') {
+      // Кусок — содержимое закрытой группы: `\` в конце невозможен (он экранировал бы `)`).
+      out += ch + text[i + 1];
+      i++;
+    } else {
+      out += ch === '(' || ch === ')' ? '\\' + ch : ch;
+    }
+  }
+  return out;
+}
+
+/**
+ * Круглые скобки записи до развёртки групп (D-077).
+ *
+ * - **a)** группа без `|` сразу после функционального псевдокласса — аргумент CSS:
+ *   `cF:not(.a)` ≡ `cF:not[.a]`, `cF:n(2n)` ≡ `cF:n[2n]`; вложенные скобки внутри аргумента —
+ *   CSS (`:not(:nth-child(2n))` → `:not[:nth-child\(2n\)]`);
+ * - **b)** группа, результат которой — заведомо битый CSS, записывается в `issues`
+ *   (`groupSuspectMode`) и остаётся как есть: `|` сразу после функционального
+ *   псевдокласса (`:is(.a|.b)` → `:is.a`) или группа без `|` после псевдокласса, чьё
+ *   содержимое приклеивается к его имени (`:h(2n)` → `:hover2n`);
+ * - **c)** `cssMode` (`groupMode: 'css'`) — групп нет: скобки после функционального
+ *   псевдокласса — аргумент, все прочие — экранированные (часть значения или селектора).
+ *
+ * Законная scope-грамматика (`p10:h(.x)` → `:hover.x`) и группы с `|` не трогаются.
+ *
+ * @param value — запись токена или селектора
+ * @param synonyms — синонимы экземпляра (`mn._synonyms`)
+ * @param cssMode — `groupMode: 'css'`
+ * @param issues — аккумулятор сообщений для `groupSuspectMode`
+ * @returns запись с переписанными скобками (та же строка, если скобок нет)
+ */
+export function rewriteGroups(
+  value: string, synonyms: Record<string, unknown>, cssMode: boolean, issues: string[],
+): string {
+  return value.indexOf('(') < 0 ? value : rewriteRange(
+    value, 0, value.length, synonyms, cssMode, issues,
+  );
+}
+
+function rewriteRange(
+  value: string, from: number, to: number, synonyms: Record<string, unknown>, cssMode: boolean,
+  issues: string[],
+): string {
+  let out = '';
+  let start = from;
+  let i = from;
+  let close: number;
+  let name: string;
+  let bar: boolean;
+  for (; i < to; i++) {
+    if (value[i] === '\\') {
+      i++;
+      continue;
+    }
+    if (value[i] !== '(') {
+      continue;
+    }
+    close = closingParen(
+      value, i, to,
+    );
+    if (close < 0) {
+      // Непарная скобка — дело `assertVariantGroups`.
+      break;
+    }
+    name = pseudoBefore(
+      value, from, i,
+    );
+    bar = hasTopLevelBar(
+      value, i + 1, close,
+    );
+    out += value.slice(start, i);
+    if (name && isFunctionalPseudo(name, synonyms) && (cssMode || !bar)) {
+      out += '[' + escapeParens(value.slice(i + 1, close)) + ']';
+    } else if (cssMode) {
+      out += '\\(' + escapeParens(value.slice(i + 1, close)) + '\\)';
+    } else {
+      name && (bar ? isFunctionalPseudo(name, synonyms) : isNameChar(value[i + 1])) && issues.push(groupSuspectMessage(
+        name, value.slice(i, close + 1), bar,
+      ));
+      out += '(' + rewriteRange(
+        value, i + 1, close, synonyms, cssMode, issues,
+      ) + ')';
+    }
+    i = close;
+    start = close + 1;
+  }
+  return out + value.slice(start, to);
+}
+
+function groupSuspectMessage(
+  name: string, group: string, bar: boolean,
+): string {
+  return bar
+    ? 'Group "' + group + '" right after ":' + name + '" glues each alternative onto it (":' + name
+      + group.slice(1, group.search(/[|)]/)) + '") — ":' + name + '" needs an argument. Write the argument in'
+      + ' square brackets (":' + name + '[…]") or put the group outside: "(:' + name + '[.a]|…)"'
+    : 'Parentheses "' + group + '" after ":' + name + '" are scope grammar: their content is glued onto ":'
+      + name + '" (":' + name + group.slice(1, -1) + '"). If it is an argument, write ":' + name + '['
+      + group.slice(1, -1) + ']"; to append to the selector, start with ".", "#", "[" or ":"';
+}
+
+/**
  * Бракует вырожденную группу вариантов — скобки без `|` внутри.
  *
  * `(a|b)` — это группа: `p10@(sm|md)` разворачивается в два медиа-контекста,
@@ -326,7 +540,8 @@ export const normalizeComboNames = normalizeMapProvider<Record<string, number>>(
  *
  * Во всех случаях в CSS уезжало правило, которое не сработает никогда, и без
  * единого предупреждения — молчаливый мусор в CSS недопустим. Рабочая запись для функции —
- * экранировать скобки (`crUrl\(a.png\)`, `'button:not\(.plain\)'`);
+ * экранировать скобки и точки (`crUrl\(a\.png\)`); после функционального псевдокласса скобки —
+ * его аргумент (`'button:not(.plain)'`, D-077);
  * проверено, что после экранирования обе формы дают корректный CSS.
  *
  * Непарные скобки бракуются по той же причине: лишний `)` в `a)b` просто
@@ -408,9 +623,9 @@ export function assertVariantGroups(
         throwVariantGroup(
           'Parentheses in "' + value + '" do not form a variant group: there is no "|" inside, '
             + 'and they would be silently removed. A variant group is written as "@(sm|md)". '
-            + 'If this is a CSS function or part of the value, escape the parentheses: '
-            + '"\\(" and "\\)". After a state the scope shorthand also works: '
-            + '"cF00:not[.a]" gives ":not(.a)"',
+            + 'If this is a CSS function or part of the value, escape the parentheses and dots: '
+            + '"crUrl\\(a\\.png\\)" — or turn groups off: groupMode: \'css\'. After a functional '
+            + 'pseudo-class parentheses are its argument: "cF00:not(.a)" gives ":not(.a)"',
           value, utility,
         );
       }

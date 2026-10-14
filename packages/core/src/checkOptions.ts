@@ -267,6 +267,10 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   presetConflictMode: oneOf(
     'warn', 'silent', 'strict',
   ),
+  groupSuspectMode: oneOf(
+    'warn', 'silent', 'strict',
+  ),
+  groupMode: oneOf('groups', 'css'),
   notationMode: oneOf(
     'context-qualified', 'tw4-compatible', 'breakpoint-prefixed', 'property-value',
   ),

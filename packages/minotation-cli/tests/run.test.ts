@@ -193,6 +193,12 @@ describe('mergeSettings', () => {
         handlerConflictMode: 'silent',
         presetConflictMode: 'strict',
       });
+    expect(mergeSettings(parseArgs(['--group-mode', 'css']), {
+      groupSuspectMode: 'silent',
+    })).toMatchObject({
+      groupMode: 'css',
+      groupSuspectMode: 'silent',
+    });
     expect(mergeSettings(parseArgs([]), {
       notationMode: 'tw4-compatible',
     }).notationMode).toBe('tw4-compatible');

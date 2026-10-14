@@ -98,6 +98,8 @@ for (const warning of collector.takeWarnings()) {
 | `suspectClassMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | класс другой CSS-системы (`fw-bold`, `sr-only`) (D-065) |
 | `handlerConflictMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | одно имя от двух пресетов (D-067) |
 | `presetConflictMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | пресеты несовместимых экосистем (D-067) |
+| `groupSuspectMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | группа скобок даёт битый CSS (D-077) |
+| `groupMode` | `'groups' \| 'css'` | `'groups'` | `'css'` — скобки как в CSS, без групп (D-077) |
 | `notationMode` | `'context-qualified' \| 'tw4-compatible' \| 'breakpoint-prefixed' \| 'property-value'` | `'context-qualified'` | режим синтаксиса классов разметки (D-045) |
 | `contextWhere` | `boolean` | `false` | контекст селектора в `:where()` — специфичность только у класса (D-049) |
 | `mediaNesting` | `boolean` | `false` | вложенные `@media` вместо `and`, как у Tailwind 4 (D-070) |
@@ -239,7 +241,7 @@ attrs: { class: 'class', className: 'class' }     // объект
 |-------|------------|
 | `safelist` | токены, нужные всегда, даже если в файлах не встретились; компилируются как классы |
 | `presets` | статические пресеты |
-| поля ядра | `selectorPrefix`, `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `suspectClassMode`, `handlerConflictMode`, `presetConflictMode`, `notationMode`, `contextWhere`, `mediaNesting`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
+| поля ядра | `selectorPrefix`, `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `suspectClassMode`, `handlerConflictMode`, `presetConflictMode`, `groupSuspectMode`, `groupMode`, `notationMode`, `contextWhere`, `mediaNesting`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
 
 | Метод | Что делает |
 |-------|------------|

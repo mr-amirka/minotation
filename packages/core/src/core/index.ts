@@ -302,7 +302,7 @@ function prefixMatches(rest: string, prefix: string): boolean {
 }
 
 type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded' | 'child-selector'
-  | 'unknown-media' | 'suspect-class' | 'handler-conflict' | 'preset-conflict';
+  | 'unknown-media' | 'suspect-class' | 'handler-conflict' | 'preset-conflict' | 'group-suspect';
 
 /** Типы медиа CSS: известны без описания в `mn.media` (D-058). */
 const CSS_MEDIA_TYPES: Record<string, number> = {
@@ -347,7 +347,8 @@ function isCompileWarning(warning: MnWarning): boolean {
   return warning.type !== 'raised-specificity' && warning.type !== 'important'
     && warning.type !== 'max-depth-exceeded' && warning.type !== 'child-selector'
     && warning.type !== 'unknown-media' && warning.type !== 'suspect-class'
-    && warning.type !== 'handler-conflict' && warning.type !== 'preset-conflict';
+    && warning.type !== 'handler-conflict' && warning.type !== 'preset-conflict'
+    && warning.type !== 'group-suspect';
 }
 
 /**
@@ -471,6 +472,7 @@ function minotationProvider(options?: MnOptions) {
       'suspect-class': settings.suspectClassMode || 'warn',
       'handler-conflict': settings.handlerConflictMode || 'warn',
       'preset-conflict': settings.presetConflictMode || 'warn',
+      'group-suspect': settings.groupSuspectMode || 'warn',
     };
   }
   /**

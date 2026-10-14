@@ -524,6 +524,8 @@ const mn = minotationProvider({
   childSelectorMode: 'warn',       // 'warn' | 'silent' | 'strict' — токены cF00>1 (дочерний селектор)
   unknownMediaMode: 'warn',        // 'warn' | 'silent' | 'strict' — неизвестное имя медиа p10@zz
   suspectClassMode: 'warn',        // 'warn' | 'silent' | 'strict' — класс другой системы fw-bold
+  groupSuspectMode: 'warn',        // 'warn' | 'silent' | 'strict' — группа даёт битый CSS: cF:is(.a|.b), cF:h(2n)
+  groupMode: 'groups',             // 'groups' | 'css' — 'css': скобки это CSS, групп (a|b) нет (D-077)
   handlerConflictMode: 'warn',     // 'warn' | 'silent' | 'strict' — одно имя от двух пресетов
   presetConflictMode: 'warn',      // 'warn' | 'silent' | 'strict' — пресеты несовместимых экосистем
   mediaNesting: false,             // true — вложенные @media вместо and (как у Tailwind 4)

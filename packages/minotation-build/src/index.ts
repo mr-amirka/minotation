@@ -164,6 +164,8 @@ export const CORE_OPTION_KEYS = [
   'suspectClassMode',
   'handlerConflictMode',
   'presetConflictMode',
+  'groupSuspectMode',
+  'groupMode',
   'notationMode',
   'contextWhere',
   'mediaNesting',
@@ -181,6 +183,7 @@ const OWN_MODE_WARNINGS: Partial<Record<MnWarning['type'], 1>> = {
   'suspect-class': 1,
   'handler-conflict': 1,
   'preset-conflict': 1,
+  'group-suspect': 1,
 };
 
 /** Опции ядра в опциях плагина — на верхнем уровне, без вложенного `mn` (D-034). */

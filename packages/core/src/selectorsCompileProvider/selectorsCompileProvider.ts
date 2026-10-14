@@ -13,6 +13,7 @@ import {
 import {
   assertMediaNames,
   assertVariantGroups,
+  rewriteGroups,
   assertTrailingSeparator,
   throwVariantGroup,
   REGEXP_MATCH_IMPORTANT,
@@ -347,6 +348,18 @@ function joinSelectorMedia(parsed: string, taken: string): string {
 /** Приоритет в конце медиа-выражения: `^3`, `^-100`. */
 const REGEXP_SELECTOR_PRIORITY = /\^-?[0-9]+$/;
 
+/**
+ * Сообщение `groupSuspectMode` (D-077): что не так с группами и как управлять режимом.
+ *
+ * @param issues — описания подозрительных групп из {@link rewriteGroups}
+ * @param strict — режим `'strict'`
+ */
+function groupSuspectMessage(issues: string[], strict: boolean): string {
+  return issues.join('. ') + (strict
+    ? '. (groupSuspectMode: \'strict\') — the token gives no CSS.'
+    : '. To hide this warning: groupSuspectMode: \'silent\'; to forbid such tokens: groupSuspectMode: \'strict\'.');
+}
+
 /** Варианты селектора: альтернативы через запятую, в каждой — развёрнутые группы `(a|b)`. */
 function expandSelectorGroups(source: string): string[] {
   const out: string[] = [];
@@ -599,7 +612,15 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       return parsePropertyValue(comboName, targetName);
     }
 
-    let name = comboName;
+    // Круглые скобки до развёртки групп (D-077): аргумент функционального псевдокласса,
+    // `groupMode: 'css'`, подозрительные группы. Селекторы переписаны раньше — в `parseSelector`.
+    const issues: string[] = [];
+    let name = $$selectorMode ? comboName : rewriteGroups(
+      comboName, $$synonyms, $$mnOptions.groupMode === 'css', issues,
+    );
+    if (issues.length && raiseGroupSuspect(comboName, issues)) {
+      return [];
+    }
     let tgt = targetName;
     let multiplier: number;
     let suffix: string;
@@ -1696,7 +1717,16 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     try {
       // Сначала — группы вариантов по всей строке (`[type=(button|reset)]`, `(button|a)::x`), как
       // разворачивал их прежний разбор селекторов; потом каждый вариант — элемент и контекст.
-      for (part of expandSelectorGroups(source)) {
+      // Скобки до развёртки групп (D-077) — как у класса, см. `rewriteGroups`.
+      const issues: string[] = [];
+      const options = (instance as any).options || {};
+      const rewritten = rewriteGroups(
+        source, (instance as any)._synonyms || {}, options.groupMode === 'css', issues,
+      );
+      if (issues.length && raiseGroupSuspect(source, issues)) {
+        return out;
+      }
+      for (part of expandSelectorGroups(rewritten)) {
         // Медиа в селекторе — где угодно (`.a(:h|.active)@m .child`), в отличие от класса: относится
         // ко всему селектору и вынимается до разбора; конец выражения — пробел или комбинатор.
         media = takeSelectorMedia(part);
@@ -1715,6 +1745,17 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       $$quietStates = false;
     }
     return out;
+  }
+
+  /**
+   * Подозрительные группы (D-077) — через режим `groupSuspectMode`.
+   *
+   * @returns `true` — режим `'strict'`: запись CSS не даёт
+   */
+  function raiseGroupSuspect(token: string, issues: string[]): boolean {
+    return !!(instance as any)._raisedToken?.(
+      token, 'group-suspect', (strict: boolean) => groupSuspectMessage(issues, strict),
+    );
   }
 
   /**

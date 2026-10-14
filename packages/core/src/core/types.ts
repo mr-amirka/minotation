@@ -284,7 +284,9 @@ export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'invalid-css-
   /** Одно имя зарегистрировано двумя пресетами (D-067, `handlerConflictMode`). */
   | 'handler-conflict'
   /** Подключены пресеты несовместимых экосистем (D-067, `presetConflictMode`). */
-  | 'preset-conflict';
+  | 'preset-conflict'
+  /** Группа скобок даёт заведомо битый CSS — `:is(.a|.b)`, `:h(2n)` (D-077, `groupSuspectMode`). */
+  | 'group-suspect';
 
 /**
  * `'hint'` — класс, которого нет в нотации, но который похож на опечатку или на класс
@@ -465,6 +467,26 @@ export interface MnOptions {
    * @default 'warn'
    */
   presetConflictMode?: MnRaiseMode;
+  /**
+   * Группа скобок, которая даёт заведомо битый CSS (D-077): `|` сразу после функционального
+   * псевдокласса (`cF:is(.a|.b)` → `:is.a`) или группа без `|` после псевдокласса, чьё
+   * содержимое приклеивается к имени (`cF:h(2n)` → `:hover2n`). `'warn'` — предупреждение, CSS
+   * как написано; `'silent'` — молча; `'strict'` — брак (`MnForbiddenTokenError`), токен CSS не
+   * даёт. Группа без `|` после функционального псевдокласса — не подозрение, а аргумент:
+   * `cF:not(.a)` ≡ `cF:not[.a]`. `warningMode` на этот случай не влияет.
+   * @default 'warn'
+   */
+  groupSuspectMode?: MnRaiseMode;
+  /**
+   * Что значат круглые скобки в записи (D-077):
+   * - `'groups'` — группы вариантов `(a|b)`, `w(|max)150`, scope-грамматика `p10:h(.x)`;
+   *   после функционального псевдокласса группа без `|` — аргумент (`cF:not(.a)`);
+   * - `'css'` — групп нет: скобки — CSS. После функционального псевдокласса — аргумент
+   *   (`cF:nth-child(2n)`), в остальных местах — часть значения или селектора
+   *   (`crUrl(a\.png)` → `url(a.png)`); `(a|b)` и `w(|max)150` недоступны.
+   * @default 'groups'
+   */
+  groupMode?: 'groups' | 'css';
   /**
    * Условия разных медиа-записей — вложенными `@media`, как у Tailwind 4 (D-070):
    * `md:hover:x` → `@media (width >= 48rem){@media (hover: hover){…}}`. По умолчанию — через

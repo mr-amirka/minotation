@@ -134,6 +134,11 @@ describe('parseArgs', () => {
     expect(parseArgs(['--suspect-class-mode', 'silent']).suspectClassMode).toBe('silent');
     expect(parseArgs(['--handler-conflict-mode', 'strict']).handlerConflictMode).toBe('strict');
     expect(parseArgs(['--preset-conflict-mode', 'silent']).presetConflictMode).toBe('silent');
+    expect(parseArgs(['--group-suspect-mode', 'strict']).groupSuspectMode).toBe('strict');
+    expect(() => parseArgs(['--group-suspect-mode', 'x']))
+      .toThrow('Option "--group-suspect-mode" expects warn, silent or strict, got "x"');
+    expect(parseArgs(['--group-mode', 'css']).groupMode).toBe('css');
+    expect(() => parseArgs(['--group-mode', 'x'])).toThrow('Option "--group-mode" expects groups or css, got "x"');
     expect(() => parseArgs(['--handler-conflict-mode', 'x']))
       .toThrow('Option "--handler-conflict-mode" expects warn, silent or strict, got "x"');
     expect(() => parseArgs(['--preset-conflict-mode', 'x']))

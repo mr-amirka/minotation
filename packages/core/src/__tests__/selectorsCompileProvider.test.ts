@@ -231,3 +231,10 @@ describe('вложенные scope в состоянии', () => {
     expect(cssOf('cF00:not[.a[.b[.c]]]')).toContain(':not(.a[.b[.c]]){color:#f00}');
   });
 });
+
+describe('parseSelector без экземпляра ядра (D-077)', () => {
+  test('опций нет — скобки функционального псевдокласса всё равно аргумент', () => {
+    const scp = selectorsCompileProvider();
+    expect(Object.keys(scp.parseSelector('li:not(.a)'))).toEqual(['li:not(.a)']);
+  });
+});

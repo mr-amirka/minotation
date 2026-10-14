@@ -83,7 +83,6 @@ describe('битые селекторы из токенов', () => {
   test.each([
     ['cF00#a,b', 'запятая в id-условии'],
     ['cF00[a,b]', 'запятая в атрибутном условии'],
-    ['cF00:not(.a,.b)', 'запятая в псевдоклассе'],
     ['p10<.a,.b', 'запятая в родительском селекторе'],
   ])('%s (%s) — правило не выпускается', (token) => {
     // Запятая в CSS — разделитель списка, поэтому такое правило цепляет совсем
@@ -362,15 +361,26 @@ describe('вырожденная группа вариантов в селект
   }
 
   test.each([
-    'button:not(.plain)',
-    'li:nth-child(2n)',
-  ])('%s → исключение при регистрации, а не битый CSS', (selector) => {
-    // Холодный путь: `mn.assign` зовётся при регистрации пресета, поэтому
-    // fail-fast с понятным сообщением лучше правила `button:not.plain`,
-    // которое молча уехало бы в вывод.
-    expect(() => assign({
+    ['button:not(.plain)', 'button:not(.plain){padding:10px}'],
+    ['li:nth-child(2n)', 'li:nth-child(2n){padding:10px}'],
+    ['li:not(:nth-child(2n))', 'li:not(:nth-child(2n)){padding:10px}'],
+  ])('%s → %s: скобки функционального псевдокласса — аргумент (D-077)', (selector, expected) => {
+    // До D-077 — исключение при регистрации (группа без `|`), ещё раньше — `button:not.plain`.
+    expect(assign({
       [selector]: 'p10',
-    })).toThrow(/do not form a variant group/);
+    })).toContain(expected);
+  });
+
+  test('селектор: подозрительная группа — по groupSuspectMode', () => {
+    const mn: any = minotationProvider({
+      warningMode: 'silent',
+      groupSuspectMode: 'strict',
+    });
+    mn.setPresets([presetStandard]);
+    mn.assign({
+      'li:is(.a|.b)': 'p10',
+    });
+    expect(() => mn.compile()).toThrow(/right after ":is"/);
   });
 
   test('экранированные скобки дают корректный CSS', () => {

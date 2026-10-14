@@ -139,7 +139,7 @@ export interface MnInstance {
 
   // Методы
   assign(map: MnAssignMap): void;
-  assign(selectors: string, comboNames: string | string[], defaultMediaName?: string): void;
+  assign(selectors: string, comboNames: string | string[]): void;
   /**
    * Правило CSS для любого селектора (D-071) — **не замена нотации**: только то, что классом не
    * выразить, — глобальные переменные (тема в `:root`) и элементы, до которых класс не дотянуться

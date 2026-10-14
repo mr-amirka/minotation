@@ -69,9 +69,8 @@ describe('mn.assign', () => {
         }, 
       }, 
     });
-    mn.assign(
-      '.btn', 'p10', 'sm',
-    );
+    // Медиа — в селекторе (D-072): третий параметр убран.
+    mn.assign('.btn@sm', 'p10');
     mn.compile();
 
     expect(cssOf(mn)).toContain('@media (max-width: 600px)');

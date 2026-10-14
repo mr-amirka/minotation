@@ -1489,7 +1489,6 @@ function minotationProvider(options?: MnOptions) {
    *
    * @param selectors — строка селекторов или объект `{ [selector]: comboNames }`
    * @param comboNames — комбо-имена (если selectors — строка)
-   * @param defaultMediaName — медиа по умолчанию (`'all'`)
    *
    * @example
    * mn.assign('*, *:before, *:after', 'bxzBB');
@@ -1555,11 +1554,9 @@ function minotationProvider(options?: MnOptions) {
     }
   }
 
-  mn.assign = (
-    selectors: string | Record<string, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
-    comboNames?: string | Record<string, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
-    defaultMediaName?: string,
-  ): any => {
+  // selectors/comboNames: произвольная вложенная форма; `any` — как у прочих форм вызова mn.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mn.assign = (selectors: string | Record<string, any>, comboNames?: string | Record<string, any>): any => {
     // comboNames: произвольная вложенная форма, см. normalizeComboNames.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function iteratee(comboNames: string | string[] | Record<string, any>, s: string | string[]): void {
@@ -1576,7 +1573,7 @@ function minotationProvider(options?: MnOptions) {
           $$staticsAssigned,
           normalizeComboNames(comboNames),
           byMedia[media],
-          defaultMediaName,
+          undefined,
           undefined,
           media,
         );

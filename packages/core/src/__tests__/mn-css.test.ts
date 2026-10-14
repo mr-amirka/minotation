@@ -140,10 +140,11 @@ describe('mn.assign: тот же разбор селектора (D-071)', () =>
       'cF00',
       'html:has(dialog[open]){color:#f00}',
     ],
+    // `>` в селекторе — ребёнок, как в CSS (в записи классов `>` — потомок).
     [
       '.menu<.page>li',
       'cF00',
-      '.page .menu li{color:#f00}',
+      '.page .menu>li{color:#f00}',
     ],
     [
       '.btn@dark',
@@ -281,5 +282,51 @@ describe('селектор: кавычки, экранирование, прио
       mn,
     } = create();
     expect(() => mn.assign('(h1|)', 'cF00')).toThrow('Empty selector among the variants of "(h1|)"');
+  });
+});
+
+describe('медиа где угодно в селекторе, комбинаторы CSS (D-071)', () => {
+  test.each([
+    ['.class1, class2(:h|.active)@m .child', [
+      [-2000, '.class1{color:#f00}'],
+      [-992, '@media (max-width: 991.98px) and (hover: hover){class2:hover .child{color:#f00}}'],
+      [-992, '@media (max-width: 991.98px){class2.active .child{color:#f00}}'],
+    ]],
+    ['.a@m^3>.b', [[3, '@media (max-width: 991.98px){.a>.b{color:#f00}}']]],
+    ['.a@m .b@dark', [[-992, '@media (max-width: 991.98px) and (prefers-color-scheme: dark){.a .b{color:#f00}}']]],
+    ['.a:h>.b', [[1, '@media (hover: hover){.a:hover>.b{color:#f00}}']]],
+    ['.a > .b + .c ~ .d', [[-2000, '.a>.b+.c~.d{color:#f00}']]],
+    ['a[href="x@y"]@m', [[-992, '@media (max-width: 991.98px){a[href="x@y"]{color:#f00}}']]],
+  ])('%s', (selector, expected) => {
+    const {
+      mn, styles, warnings,
+    } = create();
+    mn.assign(selector, 'cF00');
+    mn.compile();
+    expect(styles()).toEqual(expected);
+    expect(warnings).toEqual([]);
+  });
+});
+
+describe('селектор: экранированный @ и приоритет из синонима', () => {
+  test('экранированный @ — часть имени класса, а не медиа', () => {
+    const {
+      mn, styles,
+    } = create();
+    mn.assign('.a\\@b@m', 'cF00');
+    mn.compile();
+    expect(styles()).toEqual([[-992, '@media (max-width: 991.98px){.a\\@b{color:#f00}}']]);
+  });
+
+  test('приоритет из синонима — в конце, после медиа селектора', () => {
+    const {
+      mn, styles,
+    } = create();
+    mn.synonyms({
+      hp: ':hover@hover^5',
+    });
+    mn.assign('.x:hp@m', 'cF00');
+    mn.compile();
+    expect(styles()).toEqual([[5, '@media (max-width: 991.98px) and (hover: hover){.x:hover{color:#f00}}']]);
   });
 });

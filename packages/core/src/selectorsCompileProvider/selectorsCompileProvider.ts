@@ -237,6 +237,116 @@ function elementEnd(source: string): number {
   return l;
 }
 
+/**
+ * Части селектора: составные и комбинаторы CSS между ними, вне `[…]`, `(…)`, кавычек и
+ * экранирования. `[1, '.a:h']` — составной, `[0, '>']` — комбинатор (пробелы вокруг сжаты; просто
+ * пробел — потомок `' '`).
+ */
+function splitCompounds(source: string): Array<[number, string]> {
+  const out: Array<[number, string]> = [];
+  const l = source.length;
+  let compound = '';
+  let combinator = '';
+  let quote = '';
+  let depth = 0;
+  let i = 0;
+  let ch: string;
+  for (; i < l; i++) {
+    ch = source[i];
+    if (!quote && !depth && (SELECTOR_MEDIA_END[ch])) {
+      // Комбинатор: пробелы вокруг `>`/`+`/`~` не значат ничего, одни пробелы — потомок.
+      compound && out.push([1, compound]);
+      compound = '';
+      combinator = ch === ' ' || ch === '\t' || ch === '\n' ? combinator || ' ' : ch;
+      continue;
+    }
+    if (combinator) {
+      out.length && out.push([0, combinator]);
+      combinator = '';
+    }
+    if (ch === '\\') {
+      compound += source.slice(i, i + 2);
+      i++;
+      continue;
+    }
+    if (quote) {
+      ch === quote && (quote = '');
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === '[' || ch === '(') {
+      depth++;
+    } else if (ch === ']' || ch === ')') {
+      depth--;
+    }
+    compound += ch;
+  }
+  compound && out.push([1, compound]);
+  return out;
+}
+
+/** Конец медиа-выражения в селекторе: пробел или комбинатор. */
+const SELECTOR_MEDIA_END: Record<string, 1> = {
+  ' ': 1,
+  '\t': 1,
+  '\n': 1,
+  '>': 1,
+  '+': 1,
+  '~': 1,
+};
+
+/**
+ * Вынимает из селектора все `@медиа` вне `[…]`, кавычек и экранирования (D-071): `'.a:h@m .b'` →
+ * `['.a:h .b', 'm']`; несколько — через `&`: `'.a@m .b@dark'` → `['.a .b', 'm&dark']`.
+ */
+function takeSelectorMedia(source: string): [string, string] {
+  const medias: string[] = [];
+  const l = source.length;
+  let out = '';
+  let quote = '';
+  let depth = 0;
+  let i = 0;
+  let from: number;
+  let ch: string;
+  for (; i < l; i++) {
+    ch = source[i];
+    if (ch === '\\') {
+      out += source.slice(i, i + 2);
+      i++;
+      continue;
+    }
+    if (quote) {
+      ch === quote && (quote = '');
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === '[') {
+      depth++;
+    } else if (ch === ']') {
+      depth--;
+    } else if (ch === '@' && !depth) {
+      from = i + 1;
+      while (i + 1 < l && !SELECTOR_MEDIA_END[source[i + 1]]) {
+        i++;
+      }
+      medias.push(source.slice(from, i + 1));
+      continue;
+    }
+    out += ch;
+  }
+  return [out, medias.join('&')];
+}
+
+/** Медиа из разбора и медиа селектора — через `&`, приоритет `^N` — в конце. */
+function joinSelectorMedia(parsed: string, taken: string): string {
+  const a = REGEXP_SELECTOR_PRIORITY.exec(parsed);
+  const b = REGEXP_SELECTOR_PRIORITY.exec(taken);
+  const left = a ? parsed.slice(0, a.index) : parsed;
+  const right = b ? taken.slice(0, b.index) : taken;
+  return (left && right ? left + '&' + right : left || right) + (a ? a[0] : b ? b[0] : '');
+}
+
+/** Приоритет в конце медиа-выражения: `^3`, `^-100`. */
+const REGEXP_SELECTOR_PRIORITY = /\^-?[0-9]+$/;
+
 /** Варианты селектора: альтернативы через запятую, в каждой — развёрнутые группы `(a|b)`. */
 function expandSelectorGroups(source: string): string[] {
   const out: string[] = [];
@@ -1577,21 +1687,27 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   function parseSelector(source: string): StrMap<string> {
     const out: StrMap<string> = {};
     let part: string;
-    let at: number;
-    let alt: [StrMap<number>, AltMap];
-    let selector: string;
+    let media: [string, string];
+    let results: Array<[string, string]>;
+    let piece: [number, string];
+    let result: [string, string];
     $$selectorMode = true;
     $$quietStates = true;
     try {
       // Сначала — группы вариантов по всей строке (`[type=(button|reset)]`, `(button|a)::x`), как
       // разворачивал их прежний разбор селекторов; потом каждый вариант — элемент и контекст.
       for (part of expandSelectorGroups(source)) {
-        at = elementEnd(part);
-        for (alt of parseComboName(SELECTOR_ESSENCE + part.slice(at), part.slice(0, at).trim())) {
-          // Значение — имя медиа строкой (после `buildContext`), как видит его ядро в `__assignCore`.
-          for (selector in alt[1]) { // eslint-disable-line
-            out[selector] = (alt[1] as unknown as StrMap<string>)[selector];
-          }
+        // Медиа в селекторе — где угодно (`.a(:h|.active)@m .child`), в отличие от класса: относится
+        // ко всему селектору и вынимается до разбора; конец выражения — пробел или комбинатор.
+        media = takeSelectorMedia(part);
+        results = [['', media[1]]];
+        // Комбинаторы CSS (пробел, `>`, `+`, `~`) остаются CSS — `>` здесь ребёнок, а не потомок,
+        // как в записи классов; запись классов действует внутри каждого составного селектора.
+        for (piece of splitCompounds(media[0])) {
+          results = piece[0] ? joinCompound(results, piece[1]) : results.map((result) => [result[0] + piece[1], result[1]] as [string, string]);
+        }
+        for (result of results) {
+          out[result[0]] = result[1];
         }
       }
     } finally {
@@ -1599,6 +1715,27 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       $$quietStates = false;
     }
     return out;
+  }
+
+  /**
+   * Составной селектор (без комбинаторов) в записи классов: элемент и контекст. Каждый готовый
+   * селектор продолжается каждым вариантом составного; медиа — через `&`.
+   */
+  function joinCompound(results: Array<[string, string]>, compound: string): Array<[string, string]> {
+    const at = elementEnd(compound);
+    const next: Array<[string, string]> = [];
+    let alt: [StrMap<number>, AltMap];
+    let selector: string;
+    let result: [string, string];
+    for (alt of parseComboName(SELECTOR_ESSENCE + compound.slice(at), compound.slice(0, at))) {
+      // Значение — имя медиа строкой (после `buildContext`), как видит его ядро в `__assignCore`.
+      for (selector in alt[1]) { // eslint-disable-line
+        for (result of results) {
+          next.push([result[0] + selector, joinSelectorMedia(result[1], (alt[1] as unknown as StrMap<string>)[selector])]);
+        }
+      }
+    }
+    return next;
   }
 
   return extend(instance || (instance = parseComboName as ParseComboNameFn),

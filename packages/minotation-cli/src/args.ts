@@ -54,6 +54,8 @@ export interface CliArgs {
   notationConflictMode?: 'warn' | 'strict';
   /** Контекст селектора в `:where()` (D-049). */
   contextWhere: boolean;
+  /** Вложенные `@media` вместо `and` (D-070). */
+  mediaNesting: boolean;
   /** Не разбирать JS/TS парсером — только текстовый поиск. */
   noSyntax: boolean;
   /** Пропускать файлы-партиалы `_*` (D-027). */
@@ -90,6 +92,7 @@ const DEFAULTS: CliArgs = {
   noManifest: false,
   noMetrics: false,
   contextWhere: false,
+  mediaNesting: false,
   help: false,
   version: false,
 };
@@ -97,6 +100,7 @@ const DEFAULTS: CliArgs = {
 /** Опции без значения. */
 const FLAGS: Record<string, keyof CliArgs> = {
   '--context-where': 'contextWhere',
+  '--media-nesting': 'mediaNesting',
   '-w': 'watch',
   '--watch': 'watch',
   '--alt-color': 'altColor',
@@ -260,6 +264,7 @@ Options:
       --preset-conflict-mode <m>
                          presets of incompatible ecosystems: warn (default), silent, strict
       --context-where    wrap selector context in :where() (Tailwind v4 specificity)
+      --media-nesting    nested @media instead of "and" (Tailwind v4 output)
       --notation-mode <m>
                          notation syntax: context-qualified (default, bg-blue-500:hover@md)
                          or tw4-compatible (Tailwind-like, md:hover:bg-blue-500)

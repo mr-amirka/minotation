@@ -243,9 +243,9 @@ mn.setPresets([presetMedias, presetTw4]);
 - в `:root` — только использованные переменные темы: хендлер вернул `var(--color-blue-500)` —
   переменная один раз уходит в `:root` через `mn.assign`; каждая — своим правилом `:root{…}`;
 - брейкпоинты в rem — `(width >= 48rem)`, как у Tailwind;
-- `hover:` — внутри `@media (hover: hover)`; с медиа-вариантом условия соединяются через `and`
-  (`md:hover:` → `(width >= 48rem) and (hover: hover)`), у Tailwind — вложенные `@media`, по
-  действию то же;
+- `hover:` — внутри `@media (hover: hover)`; с медиа-вариантом условия по умолчанию соединяются
+  через `and` (`md:hover:` → `(width >= 48rem) and (hover: hover)`); с опцией `mediaNesting: true` —
+  вложенными `@media`, как у Tailwind (D-070). Для браузера одно и то же;
 - `space-x-4` — `:where(.space-x-4>:not(:last-child))`, нулевая специфичность, с
   `--tw-space-x-reverse` и `space-x-reverse`;
 - `border` — `border-style: var(--tw-border-style)`, `border-dashed` ставит переменную, поэтому
@@ -391,6 +391,7 @@ const mn = minotationProvider({
   suspectClassMode: 'warn',        // 'warn' | 'silent' | 'strict' — класс другой системы fw-bold
   handlerConflictMode: 'warn',     // 'warn' | 'silent' | 'strict' — одно имя от двух пресетов
   presetConflictMode: 'warn',      // 'warn' | 'silent' | 'strict' — пресеты несовместимых экосистем
+  mediaNesting: false,             // true — вложенные @media вместо and (как у Tailwind 4)
   notationMode: 'context-qualified', // или 'tw4-compatible' — запись как в Tailwind: md:hover:p10
   contextWhere: false,             // true — контекст в :where(): .p10…:is(:where(.card:hover) *)
 });

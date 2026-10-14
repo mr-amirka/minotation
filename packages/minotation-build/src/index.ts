@@ -166,6 +166,7 @@ export const CORE_OPTION_KEYS = [
   'presetConflictMode',
   'notationMode',
   'contextWhere',
+  'mediaNesting',
   'onWarning',
   'onError',
 ] as const;

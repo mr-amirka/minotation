@@ -229,6 +229,26 @@ function joinEssenceSelectors(prefixes: Record<string, number>, suffixes: Record
   return dst;
 }
 
+/**
+ * Вложенные `@media` по записям (D-070): у каждой записи — свои условия, без уже встреченных:
+ * `md` + `hover` → `['@media (width >= 48rem)', '@media (hover: hover)']`.
+ */
+function nestedMedia(queries: string[]): string[] {
+  const seen: Record<string, 1> = {};
+  const out: string[] = [];
+  let query: string;
+  let part: string;
+  let parts: string[];
+  for (query of queries) {
+    parts = [];
+    for (part of query.split(' and ')) {
+      seen[part] || (seen[part] = 1, parts.push(part));
+    }
+    parts.length && out.push('@media ' + parts.join(' and '));
+  }
+  return out;
+}
+
 /** Условия медиа без повторов: каждое — по частям `… and …`, порядок первого вхождения. */
 function uniqueConditions(queries: string[]): string[] {
   const seen: Record<string, 1> = {};
@@ -418,6 +438,7 @@ function minotationProvider(options?: MnOptions) {
     );
     $$altColor = settings.altColor === true;
     $$failOnWarnings = warningMode === 'error';
+    $$mediaNesting = settings.mediaNesting === true;
     $$raiseModes = {
       'raised-specificity': settings.specificityMode || 'warn',
       important: settings.importantMode || 'warn',
@@ -892,6 +913,8 @@ function minotationProvider(options?: MnOptions) {
   let $$altColor: boolean;
   let $$failOnWarnings: boolean;
   let $$raiseModes: Record<RaiseType, MnRaiseMode>;
+  /** `mediaNesting` (D-070): вложенные `@media` вместо `and`. */
+  let $$mediaNesting = false;
   /** Уже учтённые `*N`/`-i` (ключ — тип и токен): одно сообщение на токен. */
   let $$raisedTokens: Record<string, number> = {};
   /** Запрещённые в режиме `'strict'` токены текущего состояния (D-039). */
@@ -1026,7 +1049,11 @@ function minotationProvider(options?: MnOptions) {
 
       // Одинаковые условия — один раз: `p10:h@mouse` → `(pointer: fine) and (hover: hover)`, а не
       // `… and (hover: hover) and (hover: hover)` (`mouse` уже содержит условие `:h`, D-069).
-      query = JOIN_AND(uniqueConditions(outputQuery));
+      // `mediaNesting` (D-070): условия разных записей — вложенными `@media`, как у Tailwind 4,
+      // а не через `and`; условия одной записи (`mouse`) остаются вместе.
+      $$mediaNesting && outputQuery.length > 1
+        ? (outputRules = nestedMedia(outputQuery).concat(outputRules), query = '')
+        : query = JOIN_AND(uniqueConditions(outputQuery));
       // Запись с at-правилами — отдельная: `@supports` и `@media` через запятую не объединить.
       outputRules.length && (query = (query ? '@media ' + query + '{' : '') + outputRules.join('{'));
       (selector = joinOnly(outputSelector)) || outputRules.length

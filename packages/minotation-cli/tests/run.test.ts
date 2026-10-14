@@ -197,6 +197,10 @@ describe('mergeSettings', () => {
       notationMode: 'tw4-compatible',
     }).notationMode).toBe('tw4-compatible');
     expect(mergeSettings(parseArgs(['--context-where']), {}).contextWhere).toBe(true);
+    expect(mergeSettings(parseArgs(['--media-nesting']), {}).mediaNesting).toBe(true);
+    expect(mergeSettings(parseArgs([]), {
+      mediaNesting: true,
+    }).mediaNesting).toBe(true);
     expect(mergeSettings(parseArgs(['--notation-conflict-mode', 'strict']), {}).notationConflictMode).toBe('strict');
     expect(mergeSettings(parseArgs([]), {
       contextWhere: true,

@@ -132,3 +132,46 @@ describe('presetMedias — признаки устройства (D-057)', () =>
     expect(warnings).toEqual([]);
   });
 });
+
+describe('mediaNesting (D-070)', () => {
+  test.each([
+    [
+      'm1@dark&grid',
+      false,
+      ['@media (prefers-color-scheme: dark){@supports (display: grid){.m1\\@dark\\&grid{margin:1px}}}'],
+    ],
+    [
+      'p1@m4&dark',
+      true,
+      ['@media (max-width: 479.98px){@media (prefers-color-scheme: dark){.p1\\@m4\\&dark{padding:1px}}}'],
+    ],
+    [
+      'p1@m4&dark',
+      false,
+      ['@media (max-width: 479.98px) and (prefers-color-scheme: dark){.p1\\@m4\\&dark{padding:1px}}'],
+    ],
+    [
+      'p1@mouse&hover',
+      true,
+      ['@media (pointer: fine) and (hover: hover){.p1\\@mouse\\&hover{padding:1px}}'],
+    ],
+    [
+      'p1@m4&dark&grid',
+      true,
+      ['@media (max-width: 479.98px){@media (prefers-color-scheme: dark){@supports (display: grid){'
+      + '.p1\\@m4\\&dark\\&grid{padding:1px}}}}'],
+    ],
+  ])('%s, mediaNesting: %s', (
+    token, mediaNesting, css,
+  ) => {
+    expect(compile(token, {
+      mediaNesting,
+    }).css).toEqual(css);
+  });
+
+  test('неверное значение — ошибка', () => {
+    expect(() => minotationProvider({
+      mediaNesting: 'yes' as never,
+    })).toThrow('option "mediaNesting" expects a boolean');
+  });
+});

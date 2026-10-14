@@ -273,4 +273,5 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   selectorPrefix: isString,
   altColor: isBoolean,
   contextWhere: isBoolean,
+  mediaNesting: isBoolean,
 };

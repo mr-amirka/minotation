@@ -466,6 +466,13 @@ export interface MnOptions {
    */
   presetConflictMode?: MnRaiseMode;
   /**
+   * Условия разных медиа-записей — вложенными `@media`, как у Tailwind 4 (D-070):
+   * `md:hover:x` → `@media (width >= 48rem){@media (hover: hover){…}}`. По умолчанию — через
+   * `and`: `@media (width >= 48rem) and (hover: hover){…}`. Для браузера одно и то же.
+   * @default false
+   */
+  mediaNesting?: boolean;
+  /**
    * Режим синтаксиса классов разметки (D-045): `'context-qualified'` (по умолчанию) или
    * `'tw4-compatible'` (Tailwind). Строки пресетов разбираются в режиме пресета.
    * @default 'context-qualified'

@@ -18,7 +18,7 @@ import {
 } from 'node:os';
 import {
   asPreset, checkBuildOptions, createAttrsScanner, createBuildCollector, createFileFilter, createTokenCollector,
-  formatFileName, manifestFileName, manifestOf, metricsFileName, parseAttrs, walkFiles,
+  formatFileName, manifestFileName, manifestOf, metricsFileName, parseAttrs, scanRoots, walkFiles,
 } from '../src/index';
 import {
   presetStandard,
@@ -1018,5 +1018,29 @@ describe('asPreset — экспорт файла динамического пр
     })).toBeNull();
     expect(asPreset(null)).toBeNull();
     expect(asPreset(1)).toBeNull();
+  });
+});
+
+describe('scanRoots — несколько корней скана (web-games, запрос 3)', () => {
+  test.each([
+    [undefined, ['/proj/src']],
+    ['/a', ['/a']],
+    [['/a', '/b'], ['/a', '/b']],
+  ])('%p → %p', (root, expected) => {
+    expect(scanRoots(root as string | string[] | undefined, '/proj/src')).toEqual(expected);
+  });
+});
+
+describe('checkBuildOptions — root', () => {
+  test('строка и массив строк — допустимы; иное — ошибка', () => {
+    expect(() => checkBuildOptions({
+      root: '/a',
+    }, 'mnRollup')).not.toThrow();
+    expect(() => checkBuildOptions({
+      root: ['/a', '/b'],
+    }, 'mnRollup')).not.toThrow();
+    expect(() => checkBuildOptions({
+      root: ['/a', 1],
+    } as never, 'mnRollup')).toThrow('option "root" expects a string or an array of strings');
   });
 });

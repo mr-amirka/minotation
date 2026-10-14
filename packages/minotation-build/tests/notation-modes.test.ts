@@ -19,6 +19,8 @@ import type {
 } from '../src/index';
 import {
   presetStandard,
+  presetTw4,
+  presetMedias,
 } from 'minotation';
 
 /** Пресет-клон в миниатюре: синонимы в записи Tailwind. */
@@ -275,3 +277,23 @@ describe('createBuildCollector — директива доходит до зап
   });
 });
 
+
+describe('сравнение режимов не повторяет предупреждения (найдено 2026-10-14)', () => {
+  test('конфликт хендлеров при подключении — один раз, а не по разу на сравнение', () => {
+    const seen: string[] = [];
+    const collector = createTokenCollector({
+      attrs: 'class',
+      presets: [
+        presetStandard,
+        presetMedias,
+        presetTw4,
+      ],
+      presetConflictMode: 'silent',
+      onWarning: (warning) => seen.push(warning.type + ' ' + warning.message),
+    });
+    collector.add(join(dir, 'a.html'), '<b class="flex">');
+    collector.add(join(dir, 'b.tsx'), '// @minotation notationMode: tw4-compatible\n<b class="flex">');
+    collector.css();
+    expect(seen.filter((line) => line.startsWith('handler-conflict "p" is registered'))).toHaveLength(1);
+  });
+});

@@ -532,7 +532,6 @@ export const ENTRY_OPTIONS_SCHEMA: OptionSchema = {
   fileName: isString,
 };
 
-/** Допустимые опции плагина — общий набор {@link MnBuildOptions} (D-038). */
 /** Строка или массив строк (`root`). */
 const isStringOrStringArray: OptionCheck = (value) => (
   typeof value === 'string' || isStringArray(
@@ -541,6 +540,7 @@ const isStringOrStringArray: OptionCheck = (value) => (
     : 'a string or an array of strings'
 );
 
+/** Допустимые опции плагина — общий набор {@link MnBuildOptions} (D-038). */
 export const BUILD_OPTIONS_SCHEMA: OptionSchema = {
   ...ENTRY_OPTIONS_SCHEMA,
   presets: isPresetArray,
@@ -911,11 +911,25 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     return at < 0 ? projectMode : entry.slice(0, at);
   }
 
-  /** CSS одного класса в своём режиме — для сравнения при конфликте. */
+  /**
+   * CSS одного класса в своём режиме — для сравнения при конфликте. Экземпляр служебный: всё,
+   * о чём он мог бы сообщить (конфликты пресетов при подключении, режимы токенов), уже сообщил
+   * основной — иначе каждое предупреждение печаталось по разу на сравнение (найдено 2026-10-14).
+   */
   function compileAlone(entry: string, all: MnPreset[]): string {
     const mn = minotationProvider({
       ...core,
       warningMode: 'silent',
+      onWarning: undefined,
+      maxDepthMode: 'silent',
+      specificityMode: 'silent',
+      importantMode: 'silent',
+      childSelectorMode: 'silent',
+      unknownMediaMode: 'silent',
+      suspectClassMode: 'silent',
+      handlerConflictMode: 'silent',
+      presetConflictMode: 'silent',
+      groupSuspectMode: 'silent',
     });
     mn.setPresets(all);
     compileEntries(mn, [entry]);

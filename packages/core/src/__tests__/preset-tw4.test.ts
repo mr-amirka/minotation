@@ -22,6 +22,9 @@ import type {
   MnOptions, MnWarning,
 } from '../core/types';
 
+/** Правило темы: `:root{--…}` или начальные значения `*{--tw-…}`, `::before,…{--tw-…}`. */
+const REGEXP_THEME_RULE = /(?::root|\*|::before,::after,::backdrop)\{--[^}]*\}/g;
+
 function compile(tokens: string, options: MnOptions = {}) {
   const warnings: MnWarning[] = [];
   const mn = minotationProvider({
@@ -35,11 +38,11 @@ function compile(tokens: string, options: MnOptions = {}) {
   mn.getCompiler('class')(tokens);
   mn.compile();
   const all = mn.styles$.getValue().map((s) => s.content).join('');
-  const root = (/:root\{[^}]*\}/.exec(all) || [''])[0];
+  // Переменные темы (`:root{…}`) и начальные значения помощников (`*{--tw-…}`) — отдельно.
+  const theme = all.match(REGEXP_THEME_RULE) || [];
   return {
-    // Без блока темы — он проверяется отдельно.
-    css: all.replace(root, ''),
-    root,
+    css: all.replace(REGEXP_THEME_RULE, ''),
+    root: theme.join(''),
     warnings: warnings.map((w) => w.type + ': ' + w.message),
   };
 }
@@ -60,13 +63,14 @@ describe('тема', () => {
     expect(names.some((name) => TW4_THEME[name].indexOf('--theme(') > -1)).toBe(false);
   });
 
-  test(':root с переменными темы выводится один раз', () => {
-    const {
-      root,
-    } = compile('mt-4');
-    expect(root.indexOf(':root{--font-sans:')).toBe(0);
-    expect(root).toContain('--spacing:0.25rem;');
-    expect(root).toContain('--color-blue-500:oklch(62.3% 0.214 259.815)');
+  test('в :root — только использованные переменные (D-069)', () => {
+    expect(compile('mt-4 bg-blue-500').root).toBe(':root{--spacing:0.25rem}'
+      + ':root{--color-blue-500:oklch(62.3% 0.214 259.815)}');
+    expect(compile('block').root).toBe('');
+  });
+
+  test('переменная выводится один раз, сколько бы классов её ни использовало', () => {
+    expect(compile('mt-4 mb-2 p-3').root).toBe(':root{--spacing:0.25rem}');
   });
 });
 
@@ -81,7 +85,10 @@ describe('отступы', () => {
     ['p-2.5', '.p-2\\.5{padding:calc(var(--spacing) * 2.5)}'],
     ['px-[3px]', '.px-\\[3px\\]{padding-inline:3px}'],
     ['gap-x-2', '.gap-x-2{column-gap:calc(var(--spacing) * 2)}'],
-    ['space-x-4', '.space-x-4>:not(:last-child){margin-inline-end:calc(var(--spacing) * 4)}'],
+    ['space-x-4', ':where(.space-x-4>:not(:last-child)){--tw-space-x-reverse:0;margin-inline-start:calc('
+      + 'calc(var(--spacing) * 4) * var(--tw-space-x-reverse));margin-inline-end:calc(calc(var(--spacing) * 4)'
+      + ' * calc(1 - var(--tw-space-x-reverse)))}'],
+    ['space-y-reverse', ':where(.space-y-reverse>:not(:last-child)){--tw-space-y-reverse:1}'],
   ])('%s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
@@ -154,12 +161,23 @@ describe('типографика и цвета', () => {
 });
 
 describe('рамки и скругления', () => {
+  // `border` берёт стиль из переменной: `border border-dashed` — пунктир при любом порядке (D-069).
+  test.each(['border border-dashed', 'border-dashed border'])('%s — пунктир при любом порядке правил', (tokens) => {
+    const {
+      css, root,
+    } = compile(tokens);
+    expect(css).toContain('.border{border-style:var(--tw-border-style);border-width:1px}');
+    expect(css).toContain('.border-dashed{--tw-border-style:dashed;border-style:dashed}');
+    // Начальное значение — на всех элементах, с нулевой специфичностью: `.border-dashed` его перебивает.
+    expect(root).toBe('::before,::after,::backdrop{--tw-border-style:solid}*{--tw-border-style:solid}');
+  });
+
   test.each([
-    ['border', '.border{border-style:solid;border-width:1px}'],
-    ['border-2', '.border-2{border-style:solid;border-width:2px}'],
-    ['border-t-4', '.border-t-4{border-style:solid;border-top-width:4px}'],
+    ['border', '.border{border-style:var(--tw-border-style);border-width:1px}'],
+    ['border-2', '.border-2{border-style:var(--tw-border-style);border-width:2px}'],
+    ['border-t-4', '.border-t-4{border-style:var(--tw-border-style);border-top-width:4px}'],
     ['border-red-500', '.border-red-500{border-color:var(--color-red-500)}'],
-    ['border-dashed', '.border-dashed{border-style:dashed}'],
+    ['border-dashed', '.border-dashed{--tw-border-style:dashed;border-style:dashed}'],
     ['rounded', '.rounded{border-radius:0.25rem}'],
     ['rounded-lg', '.rounded-lg{border-radius:var(--radius-lg)}'],
     ['rounded-t-lg', '.rounded-t-lg{border-top-left-radius:var(--radius-lg);border-top-right-radius:var(--radius-lg)}'],
@@ -171,14 +189,16 @@ describe('рамки и скругления', () => {
 
 describe('варианты', () => {
   test.each([
-    ['hover:bg-blue-600', '.hover\\:bg-blue-600:hover{background-color:var(--color-blue-600)}'],
+    ['hover:bg-blue-600', '@media (hover: hover){.hover\\:bg-blue-600:hover{background-color:var(--color-blue-600)}}'],
     ['first:mt-0', '.first\\:mt-0:first-child{margin-top:calc(var(--spacing) * 0)}'],
     ['odd:bg-white', '.odd\\:bg-white:nth-child(odd){background-color:var(--color-white)}'],
     ['open:block', '.open\\:block[open],.open\\:block:popover-open{display:block}'],
     ['before:block', '.before\\:block::before{display:block}'],
-    ['group-hover:underline', '.group:hover .group-hover\\:underline{text-decoration-line:underline}'],
-    ['md:flex', '@media (width >= 768px){.md\\:flex{display:flex}}'],
-    ['max-md:hidden', '@media (width < 768px){.max-md\\:hidden{display:none}}'],
+    ['group-hover:underline', '@media (hover: hover){.group:hover .group-hover\\:underline{text-decoration-line:underline}}'],
+    ['md:flex', '@media (width >= 48rem){.md\\:flex{display:flex}}'],
+    ['max-md:hidden', '@media (width < 48rem){.max-md\\:hidden{display:none}}'],
+    ['md:hover:underline', '@media (width >= 48rem) and (hover: hover){.md\\:hover\\:underline:hover{'
+      + 'text-decoration-line:underline}}'],
     ['dark:bg-black', '@media (prefers-color-scheme: dark){.dark\\:bg-black{background-color:var(--color-black)}}'],
     ['mt-2!', '.mt-2\\!{margin-top:calc(var(--spacing) * 2)!important}'],
   ])('%s → %s', (token, css) => {
@@ -417,17 +437,17 @@ describe('крайние случаи: произвольные значения
     ],
     [
       'border-[3px]',
-      '.border-\\[3px\\]{border-style:solid;border-width:3px}',
+      '.border-\\[3px\\]{border-style:var(--tw-border-style);border-width:3px}',
       false,
     ],
     [
       'border-[length:var(--b)]',
-      '.border-\\[length\\:var\\(--b\\)\\]{border-style:solid;border-width:var(--b)}',
+      '.border-\\[length\\:var\\(--b\\)\\]{border-style:var(--tw-border-style);border-width:var(--b)}',
       false,
     ],
     [
       'border-x-[3px]',
-      '.border-x-\\[3px\\]{border-style:solid;border-inline-width:3px}',
+      '.border-x-\\[3px\\]{border-style:var(--tw-border-style);border-inline-width:3px}',
       false,
     ],
     [
@@ -484,6 +504,26 @@ describe('крайние случаи: произвольные значения
       'rounded-t-lg-[3px]',
       '',
       true,
+    ],
+    [
+      'space-x-reverse-2',
+      '',
+      true,
+    ],
+    [
+      'space-x-reverse-[1]',
+      '',
+      true,
+    ],
+    [
+      'space-x-reverse/2',
+      '',
+      true,
+    ],
+    [
+      '-space-x-reverse',
+      '',
+      false,
     ],
     [
       'rounded-foo',

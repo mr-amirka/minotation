@@ -155,9 +155,12 @@ export interface MnMediaEntry {
    * `@имя` — до точки (`max-width: width − 0.02px`), `@имя-` — от точки (`min-width`),
    * `@a-b` — от точки `a` до точки `b`.
    */
-  width?: number;
-  /** То же по высоте (`max-height` / `min-height`). */
-  height?: number;
+  width?: number | string;
+  /**
+   * То же по высоте (`max-height` / `min-height`). Точка — число (px) или строка с единицей
+   * `'48rem'`, `'40em'` (D-069): «до точки» в rem/em — `(height < 48rem)`, без поправки −0.02px.
+   */
+  height?: number | string;
   /** Условие `@supports` (D-057): `'(display: grid)'` → `@supports (display: grid){…}`. */
   supports?: string;
   /**

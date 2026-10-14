@@ -69,6 +69,8 @@ export default {
     // Признаки устройства и предпочтения (D-057): имена — как у вариантов Tailwind.
     forEach([
       ['mouse', '(pointer: fine) and (hover: hover)'],
+      // Основное устройство умеет наводить — для `:h` (D-069): на тачскринах hover не «залипает».
+      ['hover', '(hover: hover)'],
       ['dark', '(prefers-color-scheme: dark)'],
       ['light', '(prefers-color-scheme: light)'],
       ['print', 'print'],

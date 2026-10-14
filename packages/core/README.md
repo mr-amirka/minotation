@@ -75,7 +75,7 @@ p10-i         → padding: 10px !important  (-i = !important)
 ## Контекст
 
 ```
-cF00:h        → .cF00:hover          (состояние)
+cF00:h        → .cF00:hover          (состояние; внутри @media (hover: hover), D-069)
 cF00<.parent  → .parent .cF00        (родитель)
 cF00@m        → @media (...) {...}   (медиа)
 cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
@@ -230,7 +230,7 @@ mn.setPresets([presetMedias, presetTw4]);
 | `text-sm` / `text-sm/6` | `font-size:var(--text-sm);line-height:var(--text-sm--line-height)` / `calc(var(--spacing) * 6)` |
 | `bg-blue-500/50` | `color-mix(in oklab, var(--color-blue-500) 50%, transparent)` |
 | `border-t-4` / `rounded-t-lg` | `border-style:solid;border-top-width:4px` / оба верхних угла `var(--radius-lg)` |
-| `md:flex` / `max-md:hidden` | `@media (width >= 768px)` / `(width < 768px)` |
+| `md:flex` / `max-md:hidden` | `@media (width >= 48rem)` / `(width < 48rem)` |
 | `hover:` `first:` `odd:` `open:` `before:` `group-hover:` `peer-invalid:` | варианты |
 
 Подмножество: отступы (`m*`, `p*`, `gap*`, `space-x/y`), размеры (`w`, `h`, `size`, `min-*`, `max-*`),
@@ -239,13 +239,19 @@ mn.setPresets([presetMedias, presetTw4]);
 скругления, брейкпоинты `sm`…`2xl`, варианты-синонимы и метки `group`/`peer`. Тени, трансформации,
 переходы, анимации, фильтры — пока нет.
 
-**Отличия от Tailwind 4**, сознательные:
-- в `:root` выводится вся тема (как у Tailwind с `theme(static)`), а не только использованные
-  переменные;
-- брейкпоинты — в px (`(width >= 768px)`), у Tailwind — в rem (`48rem`); при 16px это одно и то же;
-- `hover:` без обёртки `@media (hover: hover)`;
-- `space-x-4` — `>:not(:last-child)` с `margin-inline-end`, без `--tw-space-x-reverse`;
-- `border` пишет `border-style:solid` явно — у Tailwind то же даёт `--tw-border-style` и preflight.
+**Совпадение с Tailwind 4** (D-069):
+- в `:root` — только использованные переменные темы: хендлер вернул `var(--color-blue-500)` —
+  переменная один раз уходит в `:root` через `mn.assign`; каждая — своим правилом `:root{…}`;
+- брейкпоинты в rem — `(width >= 48rem)`, как у Tailwind;
+- `hover:` — внутри `@media (hover: hover)`; с медиа-вариантом условия соединяются через `and`
+  (`md:hover:` → `(width >= 48rem) and (hover: hover)`), у Tailwind — вложенные `@media`, по
+  действию то же;
+- `space-x-4` — `:where(.space-x-4>:not(:last-child))`, нулевая специфичность, с
+  `--tw-space-x-reverse` и `space-x-reverse`;
+- `border` — `border-style: var(--tw-border-style)`, `border-dashed` ставит переменную, поэтому
+  `border border-dashed` — пунктир при любом порядке правил. Начальные значения помощников
+  `--tw-*` — правилом `*, ::before, ::after, ::backdrop`, как запасной вариант у Tailwind вместо
+  `@property`.
 
 Тема снята с `tailwindcss@4.3.3`: копия `theme.css` (MIT) лежит в `reference/tailwindcss-4.3.3/`,
 модуль `src/presets/tw4Theme.ts` генерирует `node scripts/tw4-theme.mjs`; тест сверяет SHA-256.

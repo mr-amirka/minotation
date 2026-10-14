@@ -46,7 +46,6 @@ import {
   extend,
   joinArrays,
   joinComma,
-  joinMaps,
   joinOnly,
   reduceIn,
   repeat,
@@ -188,6 +187,9 @@ function fail(message: string): never {
   throw new Error('[minotation] ' + message);
 }
 
+/** Точка медиа строкой с единицей (D-069): `'48rem'`, `'40em'`, `'768px'`. */
+const REGEXP_POINT_LENGTH = /^(\d+(?:\.\d+)?)(px|rem|em)$/;
+
 /** Число — граница медиа-диапазона (`@480-d`). */
 const REGEXP_MEDIA_NUMBER = /^[0-9]+(?:\.[0-9]+)?$/;
 
@@ -208,6 +210,38 @@ type MnDomainFn = (p: MnEssenceParams, value: string) => MnEssenceResult | 0 | n
  * её зарегистрировал (`''` — вне пресета), — для `handlerConflictMode` (D-067).
  */
 type MnDomainEntry = [string, MnDomainFn, string];
+
+/**
+ * Селекторы элемента × селекторы эссенции. Обычно селектор эссенции дописывается к элементу
+ * (`.x` + `>*` → `.x>*`); `&` в нём — сам элемент, и элемент встаёт на его место:
+ * `:where(&>:not(:last-child))` → `:where(.x>:not(:last-child))` — нулевая специфичность, как у
+ * Tailwind 4 (D-069).
+ */
+function joinEssenceSelectors(prefixes: Record<string, number>, suffixes: Record<string, number>): Record<string, number> {
+  const dst: Record<string, number> = {};
+  let prefix: string;
+  let suffix: string;
+  for (prefix in prefixes) { // eslint-disable-line
+    for (suffix in suffixes) { // eslint-disable-line
+      dst[suffix.indexOf('&') < 0 ? prefix + suffix : suffix.split('&').join(prefix)] = 1;
+    }
+  }
+  return dst;
+}
+
+/** Условия медиа без повторов: каждое — по частям `… and …`, порядок первого вхождения. */
+function uniqueConditions(queries: string[]): string[] {
+  const seen: Record<string, 1> = {};
+  const out: string[] = [];
+  let query: string;
+  let part: string;
+  for (query of queries) {
+    for (part of query.split(' and ')) {
+      seen[part] || (seen[part] = 1, out.push(part));
+    }
+  }
+  return out;
+}
 
 /** Ключ домена — первые строчные буквы имени, остальное — префикс записи (D-063). */
 const REGEXP_DOMAIN = /^([a-z]*)(.*)$/;
@@ -990,7 +1024,9 @@ function minotationProvider(options?: MnOptions) {
         );
       }
 
-      query = JOIN_AND(outputQuery);
+      // Одинаковые условия — один раз: `p10:h@mouse` → `(pointer: fine) and (hover: hover)`, а не
+      // `… and (hover: hover) and (hover: hover)` (`mouse` уже содержит условие `:h`, D-069).
+      query = JOIN_AND(uniqueConditions(outputQuery));
       // Запись с at-правилами — отдельная: `@supports` и `@media` через запятую не объединить.
       outputRules.length && (query = (query ? '@media ' + query + '{' : '') + outputRules.join('{'));
       (selector = joinOnly(outputSelector)) || outputRules.length
@@ -1045,50 +1081,92 @@ function minotationProvider(options?: MnOptions) {
     if (lower[0] !== upper[0]) {
       return mediaProblem(fragment, 'mixes width and height');
     }
-    return ['(min-' + lower[0] + ': ' + lower[1] + 'px) and (max-' + upper[0] + ': '
-      + (upper[2] ? round(upper[1] - 0.02) : upper[1]) + 'px)', -upper[1]];
+    return ['(min-' + lower[0] + ': ' + lower[1] + ') and ' + (upper[3] && !upper[4]
+      ? '(' + upper[0] + ' < ' + upper[1] + ')'
+      : '(max-' + upper[0] + ': ' + (upper[3] ? round(upper[2] - 0.02) : upper[2]) + 'px)'), -upper[2]];
   }
 
-  /** Есть ли у описания точка; `query` вместе с точкой — предупреждение, берётся `query`. */
+  /**
+   * Есть ли у описания точка; `query` вместе с точкой — предупреждение, берётся `query`.
+   * Точка — число (px) или строка с единицей (`'48rem'`, D-069); иное — предупреждение.
+   */
   function pointOf(entry: MnMediaEntry, fragment: string): boolean {
-    const has = isDefined(entry.width) || isDefined(entry.height);
+    const value = isDefined(entry.width) ? entry.width : entry.height;
+    const has = isDefined(value);
     if (has && entry.query) {
       mediaProblem(fragment, 'has both "query" and "width"/"height" — "query" is used');
+      return false;
+    }
+    if (has && !pointLength(value as number | string)) {
+      mediaProblem(fragment, 'has an invalid point ' + JSON.stringify(value) + ': expected a number (px)'
+        + ' or a string with px, rem or em');
       return false;
     }
     return has;
   }
 
+  /**
+   * Длина точки: `[CSS, px для порядка правил, в px ли]`. Число — px; строка — с единицей
+   * (`'48rem'` → 768 px для порядка: rem и em считаются от 16px).
+   */
+  function pointLength(value: number | string): [string, number, boolean] | undefined {
+    const matchs = typeof value === 'number' ? null : REGEXP_POINT_LENGTH.exec(value);
+    const amount = matchs ? parseFloat(matchs[1]) : value as number;
+    return typeof value === 'number' ? [
+      value + 'px',
+      value,
+      true,
+    ] : matchs ? [
+      value,
+      matchs[2] === 'px' ? amount : amount * 16,
+      matchs[2] === 'px',
+    ] : undefined;
+  }
+
+  /** «До точки»: px — `max-width: N−0.02px`; rem/em — `width < N`, без поправки в пикселях. */
   function upTo(entry: MnMediaEntry): [string, number] {
     const side = isDefined(entry.width) ? 'width' : 'height';
-    const value = (side === 'width' ? entry.width : entry.height) as number;
-    return ['(max-' + side + ': ' + round(value - 0.02) + 'px)', -value];
+    const length = pointLength((side === 'width' ? entry.width : entry.height) as number | string) as [
+      string, number, boolean,
+    ];
+    return [length[2] ? '(max-' + side + ': ' + round(length[1] - 0.02) + 'px)'
+      : '(' + side + ' < ' + length[0] + ')', -length[1]];
   }
 
   function fromPoint(entry: MnMediaEntry): [string, number] {
     const side = isDefined(entry.width) ? 'width' : 'height';
-    const value = (side === 'width' ? entry.width : entry.height) as number;
-    return ['(min-' + side + ': ' + value + 'px)', value];
+    const length = pointLength((side === 'width' ? entry.width : entry.height) as number | string) as [
+      string, number, boolean,
+    ];
+    return ['(min-' + side + ': ' + length[0] + ')', length[1]];
   }
 
-  /** Граница диапазона: имя с точкой → `[сторона, точка, 1]`, число → `['width', число, 0]`. */
-  function boundOf(part: string, fragment: string): [string, number, number] | undefined {
+  /**
+   * Граница диапазона: `[сторона, CSS-длина, px для порядка, точка ли, в px ли]`. Имя с точкой —
+   * её длина; число в токене (`@480-d`) — px.
+   */
+  function boundOf(part: string, fragment: string): [string, string, number, number, boolean] | undefined {
     const entry = $$media[part];
+    const side = entry && isDefined(entry.width) ? 'width' : 'height';
+    let length: [string, number, boolean];
     if (entry && pointOf(entry, fragment)) {
-      return isDefined(entry.width) ? [
-        'width',
-        entry.width as number,
+      length = pointLength((side === 'width' ? entry.width : entry.height) as number | string) as [
+        string, number, boolean,
+      ];
+      return [
+        side,
+        length[0],
+        length[1],
         1,
-      ] : [
-        'height',
-        entry.height as number,
-        1,
+        length[2],
       ];
     }
     return REGEXP_MEDIA_NUMBER.test(part) ? [
       'width',
+      part + 'px',
       parseFloat(part),
       0,
+      true,
     ] : undefined;
   }
 
@@ -1750,7 +1828,7 @@ function minotationProvider(options?: MnOptions) {
 
     contextEssence[MN_CONTEXT_ESSENCE_UPDATED] = 1;
     extend(contextEssence[MN_CONTEXT_ESSENCE_MAP],
-      selectors = joinMaps(selectors, contextEssence[MN_CONTEXT_ESSENCE_SELECTORS]));
+      selectors = joinEssenceSelectors(selectors, contextEssence[MN_CONTEXT_ESSENCE_SELECTORS]));
     /**
      * @param asMedia — дети из `media`-блока: имя ребёнка И ЕСТЬ его медиа-контекст.
      *   Без этого они рендерились с медиа РОДИТЕЛЯ (обычно пустым), то есть

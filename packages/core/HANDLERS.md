@@ -1327,8 +1327,8 @@ mn.media.dark = { query: '(prefers-color-scheme: dark)' };
 
 `presetMedias` регистрирует **точки по ширине** (D-054): `m` 992, `m2` 768, `m3` 640, `m4` 480,
 `m5` 360, `m6` 320, `m7` 312, `m8` 272; `d` 992, `d2` 1200, `d3` 1600, `d4` 1920, `d5` 2300,
-`d6` 2560 — и условия `mouse` (`(pointer: fine) and (hover: hover)` — то же, что неявно в `:h`,
-см. «Состояния и контекст») и `dark`. Запрос у точки строится по записи в токене:
+`d6` 2560 — и условия `mouse` (`(pointer: fine) and (hover: hover)`), `hover` (`(hover: hover)` —
+им обёрнут синоним `:h`, D-069) и `dark`. Запрос у точки строится по записи в токене:
 
 | Токен | CSS |
 |-------|-----|
@@ -1338,11 +1338,12 @@ mn.media.dark = { query: '(prefers-color-scheme: dark)' };
 | `p10@480-d` | `@media (min-width: 480px) and (max-width: 991.98px){.p10\@480-d{padding:10px}}` — число и точка |
 
 Своя точка — `mn.media.tablet = { width: 834 }` (или `height`); `query` вместе с точкой —
-предупреждение. До 2026-10-13 `@d` значило «от 992px», а диапазоны были готовыми именами
+предупреждение. Точка может быть и строкой с единицей — `{ width: '48rem' }` (D-069): `@md` →
+`(width < 48rem)` (без поправки −0.02px — она только для px), `@md-` → `(min-width: 48rem)`. До 2026-10-13 `@d` значило «от 992px», а диапазоны были готовыми именами
 (`m4-`, `-d2`) — теперь «от» пишется `@d-`, диапазон — `@m4-m`, `@d-d2`.
 
 Признаки устройства и предпочтения в `presetMedias` (D-057; имена — как у вариантов Tailwind):
-`dark`, `light`, `mouse`, `print`, `screen`, `portrait`, `landscape`, `motion-safe`,
+`dark`, `light`, `mouse`, `hover`, `print`, `screen`, `portrait`, `landscape`, `motion-safe`,
 `motion-reduce`, `contrast-more`, `contrast-less`, `forced-colors`, `inverted-colors`,
 `pointer-fine`, `pointer-coarse`, `any-pointer-fine`, `any-pointer-coarse`, `noscript`
 (`(scripting: none)`).
@@ -1424,7 +1425,7 @@ bgcF.12.active       → background-color when element has class "active"
 
 | Токен | CSS |
 |-------|-----|
-| `bgF.1:h` | `.bgF\.1\:h:hover{background:rgba(255,255,255,.1)}` — внутри `@media (pointer: fine) and (hover: hover)`: `:h` = `:hover@mouse`, как в v1 (восстановлено 2026-09-17) |
+| `bgF.1:h` | `.bgF\.1\:h:hover{background:rgba(255,255,255,.1)}` внутри `@media (hover: hover)`: `:h` = `:hover@hover` — на тачскринах hover после тапа не «залипает» (D-069); hover на любом устройстве — `bgF.1:hover` |
 | `cF.38.paused` | `.cF\.38\.paused.paused{color:rgba(255,255,255,.38)}` |
 | `bgcF.12.active` | `.bgcF\.12\.active.active{background-color:rgba(255,255,255,.12)}` |
 

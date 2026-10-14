@@ -202,3 +202,18 @@ describe('suspect-class (D-065, D-066)', () => {
     })).toThrow('suspectClassMode');
   });
 });
+
+describe('& в селекторе эссенции — сам элемент (D-069)', () => {
+  test(':where(&>…) — элемент внутри :where, нулевая специфичность', () => {
+    expect(compile('sx1', (mn) => {
+      mn(
+        'sx', () => ({
+          selectors: [':where\\(&>:not\\(:last-child\\)\\)', '>b'],
+          style: {
+            color: 'red',
+          },
+        }), '', 1,
+      );
+    }).css).toBe(':where(.sx1>:not(:last-child)),.sx1>b{color:red}');
+  });
+});

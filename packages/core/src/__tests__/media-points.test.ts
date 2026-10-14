@@ -91,3 +91,40 @@ describe('точки по высоте и ошибки', () => {
     expect(result.warnings.map((w) => w.type)).toEqual(['unknown-media']);
   });
 });
+
+describe('точка с единицей (D-069)', () => {
+  const media = {
+    md: {
+      width: '48rem',
+    },
+    lg: {
+      width: '64rem',
+    },
+    em: {
+      height: '30em',
+    },
+    px: {
+      width: '600px',
+    },
+    bad: {
+      width: '48 rem',
+    },
+  };
+
+  test.each([
+    ['p10@md', '@media (width < 48rem){.p10\\@md{padding:10px}}'],
+    ['p10@md-', '@media (min-width: 48rem){.p10\\@md-{padding:10px}}'],
+    ['p10@md-lg', '@media (min-width: 48rem) and (width < 64rem){.p10\\@md-lg{padding:10px}}'],
+    ['p10@480-md', '@media (min-width: 480px) and (width < 48rem){.p10\\@480-md{padding:10px}}'],
+    ['p10@md-1200', '@media (min-width: 48rem) and (max-width: 1200px){.p10\\@md-1200{padding:10px}}'],
+    ['p10@em', '@media (height < 30em){.p10\\@em{padding:10px}}'],
+    ['p10@px', '@media (max-width: 599.98px){.p10\\@px{padding:10px}}'],
+  ])('%s → %s', (token, css) => {
+    expect(compile(token, media).css).toBe(css);
+  });
+
+  test('неверная точка — предупреждение', () => {
+    expect(compile('p10@bad', media).warnings[0].message)
+      .toBe('Media "@bad" has an invalid point "48 rem": expected a number (px) or a string with px, rem or em');
+  });
+});

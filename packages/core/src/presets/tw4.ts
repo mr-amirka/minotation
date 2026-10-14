@@ -9,7 +9,7 @@
  * Холодный путь: только регистрация, разбор значений — в хендлерах при первой встрече класса.
  */
 import type {
-  MnInstance, MnHandlerResult,
+  MnInstance, MnHandler, MnHandlerResult,
 } from '../types';
 import type {
   MnPresetObject,
@@ -36,14 +36,27 @@ const REGEXP_INTEGER = /^\d+$/;
 /** Произвольное значение похоже на длину, а не на цвет: `14px`, `1.5rem`, `calc(…)`. */
 const REGEXP_LENGTH = /^(?:-?[\d.]+(?:px|rem|em|%|vw|vh|svh|dvh|lvh|ch|ex|pt|cm|mm|in|q)|0|(?:calc|clamp|min|max|var)\(.*\))$/;
 
-/** Ширины брейкпоинтов Tailwind 4 в px (`--breakpoint-sm: 40rem` и т.д. при 16px). */
-const BREAKPOINTS: Record<string, number> = {
-  sm: 640,
-  md: 768,
-  lg: 1024,
-  xl: 1280,
-  '2xl': 1536,
+/** Брейкпоинты Tailwind 4 — из темы, в rem, как у Tailwind (`--breakpoint-md: 48rem`, D-069). */
+const BREAKPOINTS = [
+  'sm',
+  'md',
+  'lg',
+  'xl',
+  '2xl',
+];
+
+/**
+ * Свойства-помощники Tailwind 4 и их начальные значения: у Tailwind — `@property … initial-value`
+ * с запасным `*, ::before, ::after, ::backdrop { … }`; здесь — второе (D-069).
+ */
+const PROPERTY_DEFAULTS: Record<string, string> = {
+  '--tw-border-style': 'solid',
+  '--tw-space-x-reverse': '0',
+  '--tw-space-y-reverse': '0',
 };
+
+/** `var(--имя)` в значении — какие переменные темы оно использует. */
+const REGEXP_VAR = /var\((--[a-z0-9-]+)/g;
 
 /** Особые цвета вне палитры. */
 const SPECIAL_COLORS: Record<string, string> = {
@@ -58,7 +71,8 @@ const SPECIAL_COLORS: Record<string, string> = {
  * альтернативы (`open` → `[open]` или `:popover-open`).
  */
 const VARIANTS: Record<string, string> = {
-  hover: ':hover',
+  // Как в Tailwind 4: hover — только при устройстве с наведением (D-069).
+  hover: ':hover@hover',
   focus: ':focus',
   'focus-visible': ':focus-visible',
   'focus-within': ':focus-within',
@@ -276,14 +290,41 @@ function setupSpacing(mn: MnInstance): void {
   );
   // `space-x-4` — промежуток между детьми: всем, кроме последнего, отступ в конце строки.
   mn(
-    'space-x', spaceHandler('marginInlineEnd'), '', 1,
+    'space-x', spaceHandler('x', 'Inline'), '', 1,
   );
   mn(
-    'space-y', spaceHandler('marginBlockEnd'), '', 1,
+    'space-y', spaceHandler('y', 'Block'), '', 1,
+  );
+  // `space-x-reverse` — промежутки с другой стороны (`flex-row-reverse`). Хендлер, а не статика:
+  // к статике при слиянии добавляется селектор самого элемента, а нужны только дети.
+  mn(
+    'space-x-reverse', spaceReverse('x'), '', 1,
+  );
+  mn(
+    'space-y-reverse', spaceReverse('y'), '', 1,
   );
 }
 
-function spaceHandler(property: string) {
+/**
+ * `:where(.space-x-4>:not(:last-child))` — `&` — сам элемент (D-069): нулевая специфичность, как у
+ * Tailwind 4, — собственный отступ ребёнка (`mx-2`) не перебивается. Скобки экранированы: в
+ * селекторах пресета скобки — группа вариантов.
+ */
+const SPACE_CHILDREN = ':where\\(&>:not\\(:last-child\\)\\)';
+
+function spaceReverse(axis: string) {
+  return tw((args) => (args.parts.length || args.arbitrary !== undefined || args.modifier !== undefined
+    || args.negative ? undefined : {
+      selectors: [SPACE_CHILDREN],
+      style: {
+        ['--tw-space-' + axis + '-reverse']: '1',
+      },
+    }));
+}
+
+/** `space-x-4`: отступы детей с поправкой `--tw-space-x-reverse`, как у Tailwind 4. */
+function spaceHandler(axis: string, side: string) {
+  const reverse = 'var(--tw-space-' + axis + '-reverse)';
   return tw((args) => {
     const value = scaleValue(args, {
       keywords: {
@@ -292,10 +333,11 @@ function spaceHandler(property: string) {
       negative: true,
     });
     return value === undefined ? undefined : {
-      // Скобки экранированы: в селекторах пресета скобки — группа вариантов.
-      selectors: ['>:not\\(:last-child\\)'],
+      selectors: [SPACE_CHILDREN],
       style: {
-        [property]: value,
+        ['--tw-space-' + axis + '-reverse']: '0',
+        ['margin' + side + 'Start']: 'calc(' + value + ' * ' + reverse + ')',
+        ['margin' + side + 'End']: 'calc(' + value + ' * calc(1 - ' + reverse + '))',
       },
     };
   });
@@ -824,16 +866,24 @@ function borderWidth(args: MnTwArgs, rest: string[]): string | undefined {
 }
 
 function setupBorders(mn: MnInstance): void {
-  keywordStatics(
-    mn, 'border-', 'borderStyle', {
-      solid: 'solid',
-      dashed: 'dashed',
-      dotted: 'dotted',
-      double: 'double',
-      hidden: 'hidden',
-      none: 'none',
-    },
-  );
+  // `border-dashed` ставит и стиль, и переменную: `border` берёт стиль из неё, поэтому
+  // `border border-dashed` — пунктир при любом порядке правил, как у Tailwind 4 (D-069).
+  let style: string;
+  for (style of [
+    'solid',
+    'dashed',
+    'dotted',
+    'double',
+    'hidden',
+    'none',
+  ]) {
+    mn('border-' + style, {
+      style: {
+        '--tw-border-style': style,
+        borderStyle: style,
+      },
+    });
+  }
   // `border`, `border-2`, `border-t-4`, `border-red-500`, `border-[3px]`. Стиль `solid` рядом с
   // шириной — то, что у Tailwind 4 даёт `--tw-border-style` (по умолчанию `solid`).
   mn(
@@ -843,7 +893,7 @@ function setupBorders(mn: MnInstance): void {
       const width = args.negative || args.modifier !== undefined ? undefined : borderWidth(args, rest);
       const color = width === undefined && !side ? colorValue(args) : undefined;
       return width !== undefined ? result({
-        borderStyle: 'solid',
+        borderStyle: 'var(--tw-border-style)',
         ...styleOf(side || ['borderWidth'], width),
       }) : color === undefined ? undefined : result({
         borderColor: color,
@@ -879,15 +929,74 @@ function setupColors(mn: MnInstance): void {
 
 function setupVariants(mn: MnInstance): void {
   let name: string;
-  for (name in BREAKPOINTS) { // eslint-disable-line
+  for (name of BREAKPOINTS) {
     mn.media[name] = {
-      width: BREAKPOINTS[name],
+      width: TW4_THEME['--breakpoint-' + name],
     };
   }
   mn.synonyms(VARIANTS);
   mn.variantPrefixedSynonyms({
     group: '.group',
     peer: '.peer~',
+  });
+}
+
+/**
+ * Переменные темы — по требованию (D-069): хендлер пресета вернул стиль с `var(--color-blue-500)` —
+ * переменная один раз уходит в `:root` через `mn.assign`, как и у Tailwind 4 в CSS попадают только
+ * использованные. Помощники `--tw-*` — так же, но на все элементы (их начальные значения).
+ * Каждая переменная — статика `tw4-имя`: значение со скобками и запятыми (`oklch(…)`, список
+ * шрифтов) не нужно записывать в нотации.
+ */
+function withThemeVars(instance: MnInstance): MnInstance {
+  const used: Record<string, 1> = {};
+  let name: string;
+  for (name in TW4_THEME) { // eslint-disable-line
+    instance('tw4-' + name.slice(2), {
+      style: {
+        [name]: TW4_THEME[name],
+      },
+    });
+  }
+  for (name in PROPERTY_DEFAULTS) { // eslint-disable-line
+    instance('tw4-' + name.slice(2), {
+      style: {
+        [name]: PROPERTY_DEFAULTS[name],
+      },
+    });
+  }
+  const use = (value: string): void => {
+    let matchs: RegExpExecArray | null;
+    let variable: string;
+    REGEXP_VAR.lastIndex = 0;
+    while ((matchs = REGEXP_VAR.exec(value))) {
+      variable = matchs[1];
+      used[variable] || !(TW4_THEME[variable] || PROPERTY_DEFAULTS[variable]) || (
+        used[variable] = 1,
+        instance.assign(TW4_THEME[variable] ? ':root' : '*,::before,::after,::backdrop', 'tw4-' + variable.slice(2))
+      );
+    }
+  };
+  const track = (handler: MnHandler): MnHandler => (p) => {
+    const essence = handler(p);
+    let property: string;
+    if (essence && essence.style) {
+      for (property in essence.style) { // eslint-disable-line
+        use(String(essence.style[property]));
+      }
+    }
+    return essence;
+  };
+  return new Proxy(instance, {
+    apply(
+      target, thisArg, args: unknown[],
+    ) {
+      return typeof args[1] === 'function'
+        ? target(
+          args[0] as string, track(args[1] as MnHandler) as never, args[2] as string, args[3] as number,
+        )
+        : target(...(args as Parameters<MnInstance>));
+    },
   });
 }
 
@@ -904,12 +1013,8 @@ export default {
   requires: ['presetMedias'],
   ecosystems: ['tw4'],
   notationMode: 'tw4-compatible',
-  setup: (mn: MnInstance) => {
-    // Тема — блок `:root` с переменными Tailwind 4 (полностью, как `theme(static)`).
-    mn('tw4theme', {
-      style: TW4_THEME,
-    });
-    mn.assign(':root', 'tw4theme');
+  setup: (instance: MnInstance) => {
+    const mn = withThemeVars(instance);
     setupSpacing(mn);
     setupSizing(mn);
     setupLayout(mn);

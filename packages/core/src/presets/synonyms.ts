@@ -14,17 +14,20 @@ export default {
   name: 'presetSynonyms',
   ecosystems: ['minotation'],
   setup: (mn: MnInstance) => {
-  // synonyms
+    // Медиа для `:h` (D-069): описана и в `presetMedias`, но синонимам нужна и без него —
+    // иначе `:h` дал бы `@media hover`.
+    mn.media.hover || (mn.media.hover = {
+      query: '(hover: hover)',
+    });
+    // synonyms
     mn.synonyms({
       a: ':active',
       c: ':checked',
       d: ':disabled',
       f: ':focus',
-      // Обычный `:hover`, без привязки к типу указателя: современные устройства
-      // обрабатывают его корректно. Кому нужно ограничить hover устройствами
-      // с указателем — media-контекст `mouse` есть в `presetMedias`, и это
-      // пишется явно: `bgF00:h@mouse`.
-      h: ':hover',
+      // Только при устройстве с наведением (D-069): на тачскринах hover после тапа «залипает».
+      // Hover на любом устройстве — полное имя `:hover`.
+      h: ':hover@hover',
       i: ':(:-webkit-input-|:-moz-|-ms-input-|:)placeholder',
       even: ':nth-child\\(2n\\)',
       odd: ':nth-child\\(2n+1\\)',

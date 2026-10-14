@@ -57,7 +57,7 @@ describe('сосед перед элементом: комбинатор в ко
   });
 
   test('состояние самого элемента и сосед: cF00:h<.peer~', () => {
-    expect(compile('cF00:h<.peer~').css).toBe('.peer~ .cF00\\:h\\<\\.peer\\~:hover{color:#f00}');
+    expect(compile('cF00:h<.peer~').css).toBe('@media (hover: hover){.peer~ .cF00\\:h\\<\\.peer\\~:hover{color:#f00}}');
   });
 
   test('медиа: cF00<.peer~@md', () => {

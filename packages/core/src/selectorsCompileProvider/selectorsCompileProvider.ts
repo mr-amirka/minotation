@@ -687,7 +687,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     if (kind === 'min' || kind === 'max') {
       condition = '(width ' + (kind === 'min' ? '>=' : '<') + ' ' + arbitrary(base.slice(bracket + 2, -1)) + ')';
     } else if (entry && entry.width !== undefined) {
-      condition = '(width >= ' + entry.width + 'px)';
+      condition = '(width >= ' + pointCss(entry.width) + ')';
     } else {
       return false;
     }
@@ -723,7 +723,12 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   ): string {
     const entry = media[name];
     const side = !entry ? '' : entry.width !== undefined ? 'width' : entry.height !== undefined ? 'height' : '';
-    return side ? registerQuery(media, '(' + side + ' ' + operator + ' ' + entry[side] + 'px)') : '';
+    return side ? registerQuery(media, '(' + side + ' ' + operator + ' ' + pointCss(entry[side]) + ')') : '';
+  }
+
+  /** Точка в CSS: число — px, строка — как записана (`'48rem'`, D-069). */
+  function pointCss(value: number | string): string {
+    return typeof value === 'number' ? value + 'px' : value;
   }
 
   /** Часть произвольного варианта до `&` — предок: `.dark_&` → `.dark`, `.a>&` → `.a` и `>`. */

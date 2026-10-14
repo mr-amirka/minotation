@@ -106,6 +106,9 @@ export interface MnEntity {
   childs?: Record<string, MnEntity>;
 }
 
+/** Объявления `mn.css` (D-071): свойство (`marginTop`, `margin-top`, `--var`) → значение как есть. */
+export type MnCssDeclarations = Record<string, string | number>;
+
 /** Запись в mn.assign() */
 export type MnAssignMap = Record<string, string>;
 
@@ -137,6 +140,14 @@ export interface MnInstance {
   // Методы
   assign(map: MnAssignMap): void;
   assign(selectors: string, comboNames: string | string[], defaultMediaName?: string): void;
+  /**
+   * Правило CSS для любого селектора (D-071) — **не замена нотации**: только то, что классом не
+   * выразить, — глобальные переменные (тема в `:root`) и элементы, до которых класс не дотянуться
+   * (`html`, `::selection`, чужая разметка). Селектор — в записи классов: элемент и контекст
+   * (`'.x(:h|.active)@d^3'`); значения — как есть; объявления одного селектора копятся в одно правило.
+   */
+  css(selector: string, declarations: MnCssDeclarations): MnInstance;
+  css(map: Record<string, MnCssDeclarations>): MnInstance;
   synonyms(map: MnSynonymsMap): void;
   // selectors: произвольная вложенная форма, см. baseSetSynonyms/normalizeSelectors в core/index.ts.
   synonyms(synonym: string, selectors: string | Record<string, any>): void; // eslint-disable-line @typescript-eslint/no-explicit-any

@@ -48,6 +48,16 @@ function compile(tokens: string, options: MnOptions = {}) {
 }
 
 describe('тема', () => {
+  test('блок темы — раньше утилит: приоритет −3000', () => {
+    const mn = minotationProvider({
+      notationMode: 'tw4-compatible',
+    });
+    mn.setPresets([presetMedias, presetTw4]);
+    mn.getCompiler('class')('mt-4');
+    mn.compile();
+    expect(mn.styles$.getValue().map((s) => [s.priority, s.content])).toEqual([[-3000, ':root{--spacing:0.25rem}'], [-2000, '.mt-4{margin-top:calc(var(--spacing) * 4)}']]);
+  });
+
   test('сверена с эталоном: версия и SHA-256 файла-источника', () => {
     const source = readFileSync(join(__dirname, '../../reference/tailwindcss-' + TW4_VERSION + '/theme.css'));
     expect(createHash('sha256').update(source).digest('hex')).toBe(TW4_THEME_SHA256);
@@ -64,8 +74,8 @@ describe('тема', () => {
   });
 
   test('в :root — только использованные переменные (D-069)', () => {
-    expect(compile('mt-4 bg-blue-500').root).toBe(':root{--spacing:0.25rem}'
-      + ':root{--color-blue-500:oklch(62.3% 0.214 259.815)}');
+    // Одним правилом в блоке темы (D-071): mn.css копит объявления одного селектора.
+    expect(compile('mt-4 bg-blue-500').root).toBe(':root{--spacing:0.25rem;--color-blue-500:oklch(62.3% 0.214 259.815)}');
     expect(compile('block').root).toBe('');
   });
 

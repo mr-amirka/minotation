@@ -587,7 +587,7 @@ const CONTEXT_START: Record<string, 1> = {
   '#': 1,
 };
 
-function throwVariantGroup(
+export function throwVariantGroup(
   message: string, value: string, utility: string,
 ): never {
   throw new MnParseError(message, {

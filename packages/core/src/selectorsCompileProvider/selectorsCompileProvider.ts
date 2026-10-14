@@ -14,6 +14,7 @@ import {
   assertMediaNames,
   assertVariantGroups,
   assertTrailingSeparator,
+  throwVariantGroup,
   REGEXP_MATCH_IMPORTANT,
   REGEXP_MATCH_NAME,
 } from '../core/utils';
@@ -198,6 +199,98 @@ function escapeClass(name: string): string {
 }
 const REGEXP_UNESCAPED_CLASS_CHARS = /[{}&]/g;
 
+/** Имя-заглушка эссенции при разборе селектора (D-071): контекст читается как у класса. */
+const SELECTOR_ESSENCE = 'x';
+
+/** Начало контекста в селекторе `mn.assign`/`mn.css`: состояние, группа, предок, ребёнок, медиа. */
+const SELECTOR_CONTEXT: Record<string, 1> = {
+  ':': 1,
+  '(': 1,
+  '<': 1,
+  '>': 1,
+  '@': 1,
+};
+
+/** Конец элемента в селекторе — первый символ контекста вне `[…]`, кавычек и экранирования. */
+function elementEnd(source: string): number {
+  const l = source.length;
+  let i = 0;
+  let ch: string;
+  let quote = '';
+  let depth = 0;
+  for (; i < l; i++) {
+    ch = source[i];
+    if (ch === '\\') {
+      i++;
+    } else if (quote) {
+      ch === quote && (quote = '');
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === '[') {
+      depth++;
+    } else if (ch === ']') {
+      depth--;
+    } else if (!depth && SELECTOR_CONTEXT[ch]) {
+      return i;
+    }
+  }
+  return l;
+}
+
+/** Варианты селектора: альтернативы через запятую, в каждой — развёрнутые группы `(a|b)`. */
+function expandSelectorGroups(source: string): string[] {
+  const out: string[] = [];
+  let part: string;
+  let alt: string;
+  for (part of splitSelectorList(source)) {
+    part = part.trim();
+    // Те же проверки структуры, что у прежнего разбора селекторов: непарная, пустая или
+    // «вырожденная» скобка (`button:not(.plain)` — нужно `\\(` или `:not[.plain]`) — ошибка при
+    // регистрации, а не битый CSS.
+    assertVariantGroups(part, 'selectors');
+    // Без экранирования-снятия (`false`): `\\(` остаётся для разбора контекста.
+    for (alt of variants(part, false)[0]) {
+      (alt = alt.trim()) || throwVariantGroup(
+        'Empty selector among the variants of "' + part + '": a rule with it would apply to nothing.'
+          + ' Remove the extra "|"', part, 'selectors',
+      );
+      assertTrailingSeparator(alt, 'selectors');
+      out.push(alt);
+    }
+  }
+  return out;
+}
+
+/** Альтернативы селектора: запятая вне скобок, кавычек и экранирования. */
+function splitSelectorList(source: string): string[] {
+  const out: string[] = [];
+  const l = source.length;
+  let from = 0;
+  let depth = 0;
+  let quote = '';
+  let i = 0;
+  let ch: string;
+  for (; i < l; i++) {
+    ch = source[i];
+    if (ch === '\\') {
+      i++;
+    } else if (quote) {
+      ch === quote && (quote = '');
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === '[' || ch === '(') {
+      depth++;
+    } else if (ch === ']' || ch === ')') {
+      depth--;
+    } else if (ch === ',' && !depth) {
+      out.push(source.slice(from, i));
+      from = i + 1;
+    }
+  }
+  out.push(source.slice(from));
+  return out;
+}
+
 /** `_` — пробел в произвольном значении Tailwind, `\\_` — само подчёркивание. */
 const REGEXP_ARBITRARY_SPACE = /\\_|_/g;
 
@@ -378,13 +471,14 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     // Опции читаются на каждый разбор: `mn.setOptions` может поменять лимит
     // между вызовами. Обновляем три поля вместо аллокации объекта с замыканием.
     const $$mnOptions = (instance as any).options || {};
-    $$depthCheck.maxDepth = $$mnOptions.maxDepth;
+    $$depthCheck.maxDepth = $$selectorMode ? undefined : $$mnOptions.maxDepth;
     $$depthCheck.token = comboName;
     $$contextWhere = !!$$mnOptions.contextWhere;
     // Режим синтаксиса (D-045): строки пресета — в режиме пресета (на время его `setup`),
     // остальное — в режиме проекта. Свой разборщик на режим (D-047); по умолчанию —
     // 'context-qualified' ниже.
-    const mode = (instance as any)._presetMode || $$markupMode || $$mnOptions.notationMode;
+    const mode = $$selectorMode ? 'context-qualified'
+      : (instance as any)._presetMode || $$markupMode || $$mnOptions.notationMode;
     if (mode === 'tw4-compatible') {
       return parseVariantPrefixed(comboName, targetName);
     }
@@ -424,7 +518,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     // `!important` (`-i`) виден только в именах эссенций — после разворота групп;
     // дочерний сегмент `>` — в суффиксе (D-041).
     for (suffix in suffixes) { // eslint-disable-line
-      if (suffix.indexOf('>') > -1 && (childs = splitChild(suffix)).length > 1
+      if (suffix.indexOf('>') > -1 && (childs = splitChild(suffix)).length > 1 && !$$selectorMode
         && (instance as any)._raisedToken?.(
           comboName, 'child-selector',
           (strict: boolean) => childSelectorMessage('>' + childs.slice(1).join('>'), strict),
@@ -461,6 +555,12 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * `:nth(2)` — штатная запись оригинала, а не опечатка.
    */
   let $$quietStates = false;
+  /**
+   * Разбор селектора `mn.assign`/`mn.css` (D-071): всегда запись классов minotation, без
+   * предупреждений, которые нужны только классам (полное имя псевдокласса, дочерний селектор,
+   * глубина) — в селекторе это обычный CSS.
+   */
+  let $$selectorMode = false;
   /** Режим синтаксиса компилятора разметки на время разбора (D-045 этап 3). */
   let $$markupMode: string | undefined;
   /** `contextWhere` текущего разбора (D-049) — читается из опций в начале `parseComboName`. */
@@ -1371,7 +1471,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       let _state: string;
       let states: string[];
       let childs: MnStateNode[] | undefined;
-      let ns: string[];
+      let ns: string[] | undefined;
       let si: number;
       let statesL: number;
       let statesI: number;
@@ -1380,7 +1480,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       let head: string | undefined;
       let matches: RegExpExecArray | null;
       let suffix: string;
-      let synonyms: AltMap;
+      let synonyms: AltMap | undefined;
       let wasEmpty: boolean;
 
       for (; scopesI < scopesL; scopesI++) {
@@ -1409,13 +1509,15 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
             suffix = '';
           }
 
-          synonyms = $$synonyms[state];
+          // После `::` — псевдоэлемент как есть: синоним с тем же именем (`before: '::before'` у
+          // клона Tailwind) иначе дал бы `:::before`.
+          synonyms = wasEmpty ? undefined : $$synonyms[state];
           if (synonyms) {
             alts = joinMapsWithFirstValue(
               alts, synonyms, 0 as any, suffix,
             );
           } else {
-            ns = $$states[state];
+            ns = wasEmpty ? undefined : $$states[state];
             if (ns && (si = ns.length)) {
               synonyms = {};
               for (; si--;) {
@@ -1460,9 +1562,49 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     }
   }
 
+  /**
+   * Селектор `mn.assign`/`mn.css` (D-071): в начале — обычный CSS-селектор (элемент), после него —
+   * контекст в записи классов: состояния и синонимы, группы, предки, медиа, приоритет `^N`.
+   * Элемент кончается на первом `:`, `(`, `<`, `>`, `@` вне `[…]` и кавычек; запятая вне скобок —
+   * альтернативы. Предупреждений, нужных только классам, нет.
+   *
+   * @param source — `'.selector(:h|.active)@d^3'`, `'html'`, `':root@dark'`, `'h1, h2'`
+   * @returns селектор CSS → имя медиа (`''` — без медиа)
+   * @example
+   * parseSelector('.menu(:h|.active)@d');
+   * // → { '.menu:hover': 'd&hover', '.menu.active': 'd' }
+   */
+  function parseSelector(source: string): StrMap<string> {
+    const out: StrMap<string> = {};
+    let part: string;
+    let at: number;
+    let alt: [StrMap<number>, AltMap];
+    let selector: string;
+    $$selectorMode = true;
+    $$quietStates = true;
+    try {
+      // Сначала — группы вариантов по всей строке (`[type=(button|reset)]`, `(button|a)::x`), как
+      // разворачивал их прежний разбор селекторов; потом каждый вариант — элемент и контекст.
+      for (part of expandSelectorGroups(source)) {
+        at = elementEnd(part);
+        for (alt of parseComboName(SELECTOR_ESSENCE + part.slice(at), part.slice(0, at).trim())) {
+          // Значение — имя медиа строкой (после `buildContext`), как видит его ядро в `__assignCore`.
+          for (selector in alt[1]) { // eslint-disable-line
+            out[selector] = (alt[1] as unknown as StrMap<string>)[selector];
+          }
+        }
+      }
+    } finally {
+      $$selectorMode = false;
+      $$quietStates = false;
+    }
+    return out;
+  }
+
   return extend(instance || (instance = parseComboName as ParseComboNameFn),
     {
       states: {} as StrMap<string[]>,
+      parseSelector,
       parseComboName,
       parseComboNameProvider,
       parseId,

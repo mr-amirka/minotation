@@ -55,6 +55,15 @@ const PROPERTY_DEFAULTS: Record<string, string> = {
   '--tw-space-y-reverse': '0',
 };
 
+/** Правило темы (D-071): `:root` в блоке с приоритетом −3000 — раньше утилит (−2000). */
+const THEME_SELECTOR = ':root@^-3000';
+
+/**
+ * Начальные значения помощников `--tw-*` — на все элементы, в том же блоке. Группа, а не запятая:
+ * через запятую — независимые селекторы, и `@^-3000` достался бы только последнему.
+ */
+const DEFAULTS_SELECTOR = '(*|::before|::after|::backdrop)@^-3000';
+
 /** `var(--имя)` в значении — какие переменные темы оно использует. */
 const REGEXP_VAR = /var\((--[a-z0-9-]+)/g;
 
@@ -942,29 +951,13 @@ function setupVariants(mn: MnInstance): void {
 }
 
 /**
- * Переменные темы — по требованию (D-069): хендлер пресета вернул стиль с `var(--color-blue-500)` —
- * переменная один раз уходит в `:root` через `mn.assign`, как и у Tailwind 4 в CSS попадают только
- * использованные. Помощники `--tw-*` — так же, но на все элементы (их начальные значения).
- * Каждая переменная — статика `tw4-имя`: значение со скобками и запятыми (`oklch(…)`, список
- * шрифтов) не нужно записывать в нотации.
+ * Переменные темы — по требованию (D-069, D-071): хендлер пресета вернул стиль с
+ * `var(--color-blue-500)` — переменная один раз уходит в `:root` через `mn.css`, как и у Tailwind 4 в
+ * CSS попадают только использованные. Все — одним правилом в блоке `^-3000`, раньше утилит.
+ * Помощники `--tw-*` — так же, но на все элементы (их начальные значения).
  */
 function withThemeVars(instance: MnInstance): MnInstance {
   const used: Record<string, 1> = {};
-  let name: string;
-  for (name in TW4_THEME) { // eslint-disable-line
-    instance('tw4-' + name.slice(2), {
-      style: {
-        [name]: TW4_THEME[name],
-      },
-    });
-  }
-  for (name in PROPERTY_DEFAULTS) { // eslint-disable-line
-    instance('tw4-' + name.slice(2), {
-      style: {
-        [name]: PROPERTY_DEFAULTS[name],
-      },
-    });
-  }
   const use = (value: string): void => {
     let matchs: RegExpExecArray | null;
     let variable: string;
@@ -973,7 +966,13 @@ function withThemeVars(instance: MnInstance): MnInstance {
       variable = matchs[1];
       used[variable] || !(TW4_THEME[variable] || PROPERTY_DEFAULTS[variable]) || (
         used[variable] = 1,
-        instance.assign(TW4_THEME[variable] ? ':root' : '*,::before,::after,::backdrop', 'tw4-' + variable.slice(2))
+        TW4_THEME[variable]
+          ? instance.css(THEME_SELECTOR, {
+            [variable]: TW4_THEME[variable],
+          })
+          : instance.css(DEFAULTS_SELECTOR, {
+            [variable]: PROPERTY_DEFAULTS[variable],
+          })
       );
     }
   };

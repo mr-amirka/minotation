@@ -24,6 +24,7 @@ import {
   MN_ESSENCE_PAIR,
   MN_RAW_PROPERTY,
   MN_NEGATIVE,
+  MN_CSS_RULE,
 } from '../selectorsCompileProvider/constants';
 import {
   checkOptions, CORE_OPTIONS_SCHEMA, describeValue, isObject as isObjectOption,
@@ -145,6 +146,7 @@ import {
   MnWarningError,
 } from './types';
 import type {
+  MnCssDeclarations,
   MnEntity,
   MnHandler,
   MnInstance,
@@ -249,6 +251,22 @@ function nestedMedia(queries: string[]): string[] {
   return out;
 }
 
+/**
+ * Медиа токена и медиа селектора через `&` (D-071); приоритет `^N` — в конце (токена — важнее).
+ * `('d', 'hover^3')` → `'d&hover^3'`; `('', 'dark')` → `'dark'`.
+ */
+function joinMedia(token?: string, selector?: string): string {
+  const a = token ? REGEXP_PRIORITY_TAIL.exec(token) : null;
+  const b = selector ? REGEXP_PRIORITY_TAIL.exec(selector) : null;
+  const left = token ? (a ? token.slice(0, a.index) : token) : '';
+  const right = selector ? (b ? selector.slice(0, b.index) : selector) : '';
+  const priority = a ? a[0] : b ? b[0] : '';
+  return (left && right ? left + '&' + right : left || right) + priority;
+}
+
+/** Приоритет в конце медиа-выражения: `^3`, `^-100`. */
+const REGEXP_PRIORITY_TAIL = /\^-?[0-9]+$/;
+
 /** Условия медиа без повторов: каждое — по частям `… and …`, порядок первого вхождения. */
 function uniqueConditions(queries: string[]): string[] {
   const seen: Record<string, 1> = {};
@@ -265,6 +283,11 @@ function uniqueConditions(queries: string[]): string[] {
 
 /** Ключ домена — первые строчные буквы имени, остальное — префикс записи (D-063). */
 const REGEXP_DOMAIN = /^([a-z]*)(.*)$/;
+
+/** Значение объявления `mn.css`: строка или число. */
+function isCssValue(value: unknown): boolean {
+  return typeof value === 'string' || typeof value === 'number';
+}
 
 /**
  * Подходит ли префикс записи к остатку имени. Префикс, кончающийся буквой, не режет слово
@@ -741,6 +764,7 @@ function minotationProvider(options?: MnOptions) {
 
   (selectorsCompileProvider as any)(mn);
   const parseComboNameProvider = (mn as any).parseComboNameProvider;
+  const parseSelectors: (source: string) => Record<string, string> = (mn as any).parseSelector;
   const __parseComboName: any = withCatchParseComboNameDecorate((mn as any).parseComboName);
 
   /** Кэширующая обёртка над `parseComboNameProvider(attrName)` — сама обёртка (try/catch) не пересоздаётся на каждый вызов {@link updateAttrByMap}/{@link updateAttrByValues}, а живёт всё время жизни инстанса, как {@link getCompiler}. */
@@ -1411,6 +1435,7 @@ function minotationProvider(options?: MnOptions) {
     selectors: Record<string, number>,
     defaultMediaName?: string,
     excludes?: Record<string, number>,
+    selectorMedia?: string,
   ): void {
     defaultMediaName = defaultMediaName || 'all';
     let name: string;
@@ -1439,7 +1464,8 @@ function minotationProvider(options?: MnOptions) {
           essencesNames = item[0];
           selectorsMedias = selectorsValidateFilter(item[1]);
           for (childSelector in selectorsMedias) { // eslint-disable-line
-            mediaName = selectorsMedias[childSelector] || defaultMediaName;
+            // Медиа токена и медиа селектора (D-071) — вместе, через `&`; иначе — по умолчанию.
+            mediaName = joinMedia(selectorsMedias[childSelector], selectorMedia) || defaultMediaName;
             childSelectors = {};
             childSelectors[childSelector] = 1;
             actx = assigned[mediaName] || (assigned[mediaName] = {});
@@ -1470,6 +1496,65 @@ function minotationProvider(options?: MnOptions) {
    * mn.assign({ html: 'lh1.15', body: 'm' });
    */
   // selectors/comboNames: произвольная вложенная форма (строка/массив/объект), см. normalizeSelectors/normalizeComboNames.
+  /** Селектор `mn.css` → имя его статики (`\u0004` + номер): объявления копятся в одну статику. */
+  const $$cssRules: Record<string, string> = {};
+  /** Имя статики `mn.css` → разобранный селектор (селектор CSS → медиа): для обновления правила. */
+  const $$cssTargets: Record<string, Record<string, string>> = {};
+
+  /**
+   * Правило CSS для селектора (D-071). Селектор — элемент и контекст в записи классов
+   * (`'.x(:h|.active)@d^3'`), разбор — тот же, что у `mn.assign`; значения — как есть.
+   * Повторный вызов с тем же селектором дописывает объявления в то же правило.
+   *
+   * @example
+   * mn.css(':root@^-100', { '--brand': '#f00' });
+   * mn.css('.selector(:h|.active)@d', { '--some-color': '#F00' });
+   */
+  mn.css = (selector: string | Record<string, MnCssDeclarations>, declarations?: MnCssDeclarations): any => {
+    isPlainObject(selector)
+      ? forIn(selector as Record<string, MnCssDeclarations>, cssRule)
+      : cssRule(declarations as MnCssDeclarations, selector as string);
+    return mn;
+  };
+
+  function cssRule(declarations: MnCssDeclarations, selector: string): void {
+    typeof selector === 'string' && selector.trim()
+      || fail('mn.css: the selector expects a non-empty string, got ' + describeValue(selector));
+    isPlainObject(declarations) && values(declarations).every(isCssValue)
+      || fail('mn.css: declarations of "' + selector + '" expect an object of strings or numbers, got '
+        + describeValue(declarations));
+    const known = $$cssRules[selector];
+    const name = known || ($$cssRules[selector] = MN_CSS_RULE + keys($$cssRules).length);
+    const parsed = $$cssTargets[name] || ($$cssTargets[name] = parseSelectors(selector));
+    let target: string;
+    let media: string;
+    let actx: Record<string, Record<string, number>>;
+    let selectors: Record<string, number>;
+    mn(name, {
+      style: declarations,
+    } as never);
+    // Объявления дописаны в статику; собранное по прежним — сбросить, чтобы правило пересобралось.
+    if (known) {
+      delete $$essences[name];
+      for (target in parsed) { // eslint-disable-line
+        // Контекст правила есть всегда: первый вызов `mn.css` уже привязал статику (и `recompile`
+        // привязывает её заново из `$$staticsAssigned`).
+        delete $$root[parsed[target] || 'all'][name];
+      }
+    }
+    // Привязка — к разобранным селекторам напрямую: имя статики не токен, разбирать его не нужно.
+    for (target in parsed) { // eslint-disable-line
+      media = parsed[target] || 'all';
+      actx = $$staticsAssigned[media] || ($$staticsAssigned[media] = {});
+      (actx[name] || (actx[name] = {}))[target] = 1;
+      selectors = {};
+      selectors[target] = 1;
+      updateEssence(
+        name, selectors, media,
+      );
+    }
+  }
+
   mn.assign = (
     selectors: string | Record<string, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
     comboNames?: string | Record<string, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -1477,13 +1562,25 @@ function minotationProvider(options?: MnOptions) {
   ): any => {
     // comboNames: произвольная вложенная форма, см. normalizeComboNames.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function iteratee(comboNames: string | string[] | Record<string, any>, s: string): void {
-      __assignCore(
-        $$staticsAssigned,
-        normalizeComboNames(comboNames),
-        normalizeSelectors(s),
-        defaultMediaName,
-      );
+    function iteratee(comboNames: string | string[] | Record<string, any>, s: string | string[]): void {
+      // Селектор — элемент и контекст в записи классов (D-071): состояния, группы, медиа, `^N`.
+      const byMedia: Record<string, Record<string, number>> = {};
+      const parsed = parseSelectors(isArray(s) ? (s as string[]).join(',') : s as string);
+      let selector: string;
+      let media: string;
+      for (selector in parsed) { // eslint-disable-line
+        (byMedia[parsed[selector]] || (byMedia[parsed[selector]] = {}))[selector] = 1;
+      }
+      for (media in byMedia) { // eslint-disable-line
+        __assignCore(
+          $$staticsAssigned,
+          normalizeComboNames(comboNames),
+          byMedia[media],
+          defaultMediaName,
+          undefined,
+          media,
+        );
+      }
     }
     isPlainObject(selectors)
       ? forIn(selectors, iteratee)

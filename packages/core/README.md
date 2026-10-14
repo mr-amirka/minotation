@@ -81,6 +81,135 @@ cF00@m        → @media (...) {...}   (медиа)
 cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 ```
 
+## Варианты и состояния без JS
+
+**Принцип.** Все токены в `className` — статические строки. Вариант или состояние — это обычный
+класс (или атрибут) на элементе, а токены, которые от него зависят, уточнены им прямо в записи.
+Классы в JS не выбираются.
+
+Каждый пример ниже проверяется тестом `src/__tests__/docs-variants.test.ts`.
+
+Почему так: сборщик берёт токены из **литералов** атрибута `class`/`className` — сканирует
+исходники, а не исполняет их. Ветви `cond ? 'a' : 'b'` и аргументы `clsx(...)` он не видит:
+сборка зелёная, а токенов в CSS нет — элемент просто не стилизуется.
+
+### Два варианта по классу
+
+```tsx
+// variant: 'splash' | 'transition'
+<div className={`dF aiC jcC (fx1|o0.5).transition (bg1D2A4D|cF).splash ${variant}`} />
+```
+```css
+.\(fx1\|o0\.5\)\.transition.transition{flex:1}
+.\(fx1\|o0\.5\)\.transition.transition{opacity:.5}
+.\(bg1D2A4D\|cF\)\.splash.splash{background:#1d2a4d}
+.\(bg1D2A4D\|cF\)\.splash.splash{color:#fff}
+```
+`${variant}` ставит на элемент класс `splash` или `transition`, а уточнённые им токены
+срабатывают только при нём. Статические части шаблонной строки сканер берёт — подстановка ему
+не мешает.
+
+### Два способа: «все, кроме» и «каждому своё»
+
+```tsx
+// А — через отрицание: всё, что не splash
+`(fx1|o0.5):not[.splash] (bg1D2A4D|cF).splash ${variant}`
+
+// Б — каждый вариант уточняет свои токены своим классом
+`(fx1|o0.5).transition (bg1D2A4D|cF).splash ${variant}`
+```
+Оба дают одно и то же для двух вариантов. **Б масштабируется**: добавили третий вариант
+`'error'` — при А он молча получит `fx1 o0.5` (он ведь «не splash»), при Б — только то, что
+уточнено классом `.error`. Предпочтительна **Б**; А — когда «все остальные» действительно
+должны выглядеть одинаково.
+
+### Логическое состояние: вкладка, переключатель, выключенная кнопка
+
+```tsx
+<button className={`c9 (c3|bb2|bsS|bc0A7).active ${isActive ? 'active' : ''}`}>Вкладка</button>
+<button className="o0.5.disabled" disabled={off} />   // класс disabled ставит компонент
+```
+```css
+.c9{color:#999}
+.\(c3\|bb2\|bsS\|bc0A7\)\.active.active{color:#333}
+… border-style:solid; border-color:#0a7; border-bottom-width:2px — так же
+.o0\.5\.disabled.disabled{opacity:.5}
+```
+Выбирается только **имя состояния** (`'active'`), а не токены: `isActive ? 'active' : ''` —
+обычная строка-класс, к нотации она не относится.
+
+### Состояние через атрибут: data-* и ARIA
+
+```tsx
+<span className="cF00[data-variant=error] c0A0[data-variant=success]" data-variant={variant} />
+<button className="fwB[aria-pressed=true]" aria-pressed={pressed} />
+<a className="cF00(.active|[aria-current=page])" aria-current={current ? 'page' : undefined} />
+```
+```css
+.cF00\[data-variant\=error\][data-variant=error]{color:#f00}
+.c0A0\[data-variant\=success\][data-variant=success]{color:#0a0}
+.fwB\[aria-pressed\=true\][aria-pressed=true]{font-weight:bold}
+.cF00\(\.active\|\[aria-current\=page\]\).active,
+.cF00\(\.active\|\[aria-current\=page\]\)[aria-current=page]{color:#f00}
+```
+Атрибут удобнее класса, когда он и так нужен (ARIA для доступности): одно состояние — один
+источник.
+
+### Три варианта и больше
+
+```tsx
+// size: 'small' | 'medium' | 'large'
+<span className={`f14 f12.small f18.large ${size}`} />
+```
+```css
+.f14{font-size:14px}
+.f12\.small.small{font-size:12px}
+.f18\.large.large{font-size:18px}
+```
+`f14` — значение по умолчанию (`medium`), варианты его перебивают: `.f12.small` специфичнее
+`.f14` (два класса против одного), поэтому порядок правил в CSS не важен.
+
+### Состояние родителя меняет детей
+
+```tsx
+<div className="card">
+  <h3 className="c3 c0A7<.card:h tdU<.card:h">Заголовок</h3>
+</div>
+```
+```css
+.c3{color:#333}
+@media (hover: hover){
+  .card:hover .c0A7\<\.card\:h{color:#0a7}
+  .card:hover .tdU\<\.card\:h{text-decoration:underline}
+}
+```
+`<.card:h` — «внутри наведённой `.card`». Так же — открытый родитель (`<.open`), выбранная
+строка таблицы (`<tr.selected`).
+
+### Группировка, медиа и наведение
+
+- `(a|b).active` — один уточнитель на несколько токенов вместо `a.active b.active`.
+- Специфичность: уточнённый токен — два класса (`.x.active`), без уточнения — один (`.x`).
+  Поэтому «база + вариант» не зависит от порядка правил.
+- С медиа и наведением: `bgE.active:h@m2` →
+  `@media (max-width: 767.98px) and (hover: hover){.bgE\.active\:h\@m2.active:hover{background:#eee}}`.
+
+### Не делайте так
+
+| Как | Что будет |
+|---|---|
+| `className={cond ? 'bgE c3' : 'cF'}` | ни одного из этих токенов в CSS; сборка зелёная |
+| `className={clsx({ fwB: active })}`, `classnames(...)` | то же: аргументы не сканируются |
+| `className={'bg' + color}`, `` `c${tone}` `` | имя токена собирается в рантайме — сканер его не видит |
+| `const th = isOpen ? 'dB' : 'dN'` | то же, в переменной |
+
+Вместо этого — статические токены, уточнённые классом или атрибутом состояния (всё выше).
+Это про **сборку** (плагины, CLI): они сканируют исходники. Рантайм (`minotation-runtime`)
+компилирует классы из DOM, и там `cond ? 'a' : 'b'` сработает — но запись с уточнением всё равно
+лучше: она одинакова для сборки и рантайма, а состояние видно в самой разметке.
+`classVarSuffixes` (`const thClass = '…'`) и `mnClass` — для **повторно используемых наборов**
+токенов, а не для вариантов: в `const btnClass = cond ? 'a' : 'b'` сканер тоже не видит ветвей.
+
 ## Пресеты
 
 | Пресет | Описание |

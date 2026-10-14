@@ -31,9 +31,22 @@ describe('extractTokens', () => {
     expect(extractTokens('<div className={`fx1 h100`}>', 'className')).toEqual(['fx1', 'h100']);
   });
 
-  test('template literal с интерполяцией — динамическая часть отбрасывается', () => {
+  test('template literal с интерполяцией — подстановка читается как выражение (D-074)', () => {
     expect(extractTokens('<div className={`fx1 ${cond ? "a" : "b"} h100`}>', 'className'))
+      .toEqual([
+        'fx1',
+        'a',
+        'b',
+        'h100',
+      ]);
+    expect(extractTokens('<div className={`fx1 ${cond} h100`}>', 'className'))
       .toEqual(['fx1', 'h100']);
+  });
+
+  test('разметка в шаблоне: подстановка внутри class="…" отбрасывается', () => {
+    // `.html` со скриптом: `` `<div class="p10 ${x}">` `` — для текстового разбора это обычный атрибут.
+    expect(extractTokens('const s = `<div class="p10 ${x} w50">`;', 'class'))
+      .toEqual(['p10', 'w50']);
   });
 
   test('несколько атрибутов в одном файле', () => {

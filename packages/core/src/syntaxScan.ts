@@ -35,8 +35,9 @@
  *    текстовым разбором уже самого литерала: для парсера это просто строка,
  *    а токены в ней настоящие.
  *
- * Интерполяции `${…}` отбрасываются, как и в текстовом сканере: динамическое
- * значение на этапе сборки неизвестно.
+ * Подстановки `${…}` читаются по тем же правилам, что и выражение атрибута (D-074):
+ * `` `p10 ${on ? 'cF' : 'c0'}` `` → `p10 cF c0`; переменная или вызов в подстановке
+ * токенов не дают — их значение на этапе сборки неизвестно.
  *
  * @module syntaxScan
  */
@@ -309,7 +310,7 @@ function pushLiteral(node: ts.Node, state: ScanState): void {
   }
 }
 
-/** Литеральные куски шаблонной строки; `${…}` отбрасываются. */
+/** Литеральные куски шаблонной строки и значения подстановок `${…}` (D-074). */
 function pushTemplate(node: ts.TemplateExpression, state: ScanState): void {
   const tokens = state[MN_SCAN_TOKENS];
   pushLiteralTokens(tokens, node.head.text);
@@ -317,6 +318,7 @@ function pushTemplate(node: ts.TemplateExpression, state: ScanState): void {
   const l = spans.length;
   let i = 0;
   for (; i < l; i++) {
+    pushExpression(spans[i].expression, state);
     pushLiteralTokens(tokens, spans[i].literal.text);
   }
 }

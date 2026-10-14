@@ -69,7 +69,11 @@ test.each([
   ['<div className={clsx({ fwB: active })} />', []],
   ['<div className={\'bg\' + color} />', []],
   ['<div className={\'p10 \' + (on ? \'cF\' : \'c0\')} />', []],
-  ['<div className={`p10 ${on ? \'cF\' : \'c0\'}`} />', ['p10']],
+  ['<div className={`p10 ${on ? \'cF\' : \'c0\'}`} />', [
+    'c0',
+    'cF',
+    'p10',
+  ]],
 ])('сканер: %s', (source, expected) => {
   const options = {
     attr: 'className',

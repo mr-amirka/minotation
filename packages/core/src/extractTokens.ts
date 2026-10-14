@@ -9,10 +9,9 @@
  *
  * 1. **Литеральная строка** (HTML/JSX): `attr="p10 w50"`, `attr='p10 w50'`.
  * 2. **JSX-выражение со строкой**: `attr={'p10 w50'}`, `attr={"p10 w50"}`.
- * 3. **Template literal**: `` attr={`p10 ${cond} w50`} `` — берутся только литеральные
- *    сегменты (между `` ` `` и `${`, между `}` и следующим `${`/`` ` ``);
- *    `${...}`-интерполяции целиком отбрасываются — динамические токены заведомо
- *    непредсказуемы на этапе сборки, не пытаемся их разрешить.
+ * 3. **Template literal**: `` attr={`p10 ${cond} w50`} `` — литеральные сегменты плюс
+ *    литералы-значения подстановок (D-074): `` `p10 ${on ? 'cF' : 'c0'}` `` → `p10 cF c0`;
+ *    переменная или вызов в подстановке токенов не дают.
  * 4. **Свойство объектного литерала** (напр. MUI `slotProps`):
  *    `{ className: 'p10 w50' }`, `{ className: "p10 w50" }` — в т.ч. вложенное,
  *    `slotProps={{ paper: { className: 'p10 w50' } }}`. Различие с формой 1 — `:`
@@ -55,9 +54,9 @@ function buildAttrRegexp(attrName: string): RegExp {
       + '|\'([^\']*)\''
       + '|\\{\\s*\'([^\']*)\'\\s*\\}'
       + '|\\{\\s*"([^"]*)"\\s*\\}'
-      + '|\\{\\s*`([^`]*)`\\s*\\}'
       // Остальное — выражение (`{v ? 'a' : 'b'}`, `className: on && 'a'`): его читает
-      // `pushValueExpression`. 6 — в фигурных скобках, 7 — без них (свойство объекта).
+      // `pushValueExpression`, шаблоны тоже (D-074: подстановки читаются).
+      // 5 — в фигурных скобках, 6 — без них (свойство объекта).
       + '|(\\{)'
       + '|()(?=[^\\s\'"{=>]))',
   'g');
@@ -103,15 +102,15 @@ export function extractTokensInto(
   regexp.lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = regexp.exec(source))) {
-    if (match[6] !== undefined || match[7] !== undefined) {
+    if (match[5] !== undefined || match[6] !== undefined) {
       regexp.lastIndex = pushValueExpression(
         tokens, source, regexp.lastIndex,
       );
       continue;
     }
-    // одна из пяти литеральных альтернатив regexp'а совпала — иначе не было бы матча
+    // одна из четырёх литеральных альтернатив regexp'а совпала — иначе не было бы матча
     pushLiteralTokens(tokens,
-      (match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5]) as string);
+      (match[1] ?? match[2] ?? match[3] ?? match[4]) as string);
   }
 }
 
@@ -371,8 +370,10 @@ function skipString(source: string, at: number): number {
 }
 
 /**
- * Шаблон, открытый в `at`: статические куски — в `out` (если передан), подстановки
- * `${…}` пропускаются целиком. Возвращает позицию за закрывающей кавычкой.
+ * Шаблон, открытый в `at`: статические куски — в `out` (если передан), подстановка
+ * `${…}` — по правилам выражения (D-074): `` `p10 ${on ? 'cF' : 'c0'}` `` → `p10 cF c0`.
+ * Подстановку, которую разбор не дочитал до `}`, — целиком пропускаем.
+ * Без `out` шаблон только пропускается. Возвращает позицию за закрывающей кавычкой.
  */
 function readTemplate(
   source: string, at: number, out: string[] | undefined,
@@ -391,11 +392,32 @@ function readTemplate(
     }
     if (source[i] === '$' && source[i + 1] === '{') {
       out && pushLiteralTokens(out, source.slice(from, i));
-      i = skipBalanced(source, i + 1) - 1;
+      i = out ? readSubstitution(
+        source, i + 1, out,
+      ) : skipBalanced(source, i + 1) - 1;
       from = i + 1;
     }
   }
   return l;
+}
+
+/**
+ * Подстановка `${…}`, `{` которой — в `at`: токены значения в `out`.
+ * Возвращает позицию закрывающей `}`.
+ */
+function readSubstitution(
+  source: string, at: number, out: string[],
+): number {
+  const mark = out.length;
+  // Разбор сам съедает пробелы за выражением: дальше сразу `}` или то, на чём он встал.
+  const i = pushValueExpression(
+    out, source, at + 1,
+  );
+  if (source[i] === '}') {
+    return i;
+  }
+  out.length = mark;
+  return skipBalanced(source, at) - 1;
 }
 
 /** Позиция за скобкой, парной открытой в `at`; строки и шаблоны внутри пропускаются. */
@@ -567,8 +589,9 @@ export function extractClassVarTokensInto(
         continue;
       }
       quote = source[i];
-      if (quote !== '\'' && quote !== '"' && quote !== '`') {
-        // `const aClass = on ? 'a' : 'b'` — значение-выражение.
+      if (quote !== '\'' && quote !== '"') {
+        // `const aClass = on ? 'a' : 'b'` — значение-выражение; шаблон — тоже
+        // через разбор: его подстановки читаются (D-074).
         from = pushValueExpression(
           out, source, i,
         );
@@ -699,7 +722,14 @@ export function extractMergeCallTokensInto(
         }
         continue;
       }
-      if (ch !== '\'' && ch !== '"' && ch !== '`') {
+      if (ch === '`') {
+        // Шаблон: статика и значение подстановок (D-074).
+        i = readTemplate(
+          source, i, out,
+        ) - 1;
+        continue;
+      }
+      if (ch !== '\'' && ch !== '"') {
         continue;
       }
       // Границы литерала запоминаем и режем одним `slice`: посимвольная склейка

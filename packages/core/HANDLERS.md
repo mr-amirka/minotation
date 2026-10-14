@@ -847,6 +847,53 @@ tn_color_0.2s_ease,transform_0.4s_linear
 До 2026-09-26 проверки не было вовсе: `tn200` давало `transition:200` (число
 без единицы), `tn10zz` — `transition:10zz`.
 
+### `an` — анимация, слоты в фиксированном порядке
+
+```
+an_{имя}_{длительность}_{плавность}_{задержка}_{повторы}_{направление}_{заполнение}_{состояние}
+```
+
+| Токен | CSS |
+|-------|-----|
+| `an_wg-appear_0.2s_ease-out_0.3s_both` | `animation:wg-appear 0.2s ease-out 0.3s both` |
+| `an_spin_1s_linear_infinite` | `animation:spin 1s linear infinite` |
+| `an_fade_200` | `animation:fade 200ms` — голое число получает `ms`, как у `tn` |
+| `an_fade_200_300_2_alternate_forwards_paused` | `animation:fade 200ms 300ms 2 alternate forwards paused` |
+| `an_none` | `animation:none` |
+| `an_a_1s,b_2s` | `animation:a 1s,b 2s` — несколько анимаций через запятую |
+
+Как у `tn`: каждый слот необязателен, порядок — обязателен (`an_1s_fade` — предупреждение с
+перечнем слотов). Первое время — длительность, второе — задержка; голое число после задержки —
+число повторов; `none` до длительности — имя, после — заполнение.
+
+**Ключевые кадры — в пресете проекта** (`mn.setKeyframes`), сама анимация — токеном:
+
+```ts
+// src/components/LoadingScreen/loadingScreen.mn.ts — подключается импортом ради побочного эффекта
+import type { MnInstance } from 'minotation';
+
+export default function presetLoadingScreen(mn: MnInstance): void {
+  mn.setKeyframes('wg-appear', {
+    from: { opacity: '0' },
+    to: { opacity: '1' },
+  });
+}
+```
+```tsx
+// LoadingScreen.tsx
+import './loadingScreen.mn';
+
+<div className="an_wg-appear_0.2s_ease-out_0.3s_both" />
+```
+```css
+@keyframes wg-appear{from{opacity:0}to{opacity:1}}
+.an_wg-appear_0\.2s_ease-out_0\.3s_both{animation:wg-appear 0.2s ease-out 0.3s both}
+```
+
+Отдельного хендлера на анимацию в пресете больше не нужно: раньше её приходилось заводить своим
+хендлером (`mn('wgAppear', () => ({ style: { animation: '…' } }))`), потому что `an` не было
+(запрос трека web-games, 2026-10-14).
+
 ---
 
 ## Фильтры

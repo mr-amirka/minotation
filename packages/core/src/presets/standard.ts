@@ -1031,6 +1031,69 @@ function transitionValue(parts: string[], raw: string): string[] {
   }
   return expanded;
 }
+/** Имя `@keyframes`: идентификатор CSS. */
+const REGEXP_KEYFRAMES_NAME = /^-?[a-zA-Z_][a-zA-Z0-9_-]*$/;
+/** Число повторов анимации: `2`, `1.5`, `infinite`. */
+const REGEXP_ITERATION_COUNT = /^(?:[0-9]*\.?[0-9]+|infinite)$/;
+const ANIMATION_DIRECTIONS = wordsSet('normal reverse alternate alternate-reverse');
+const ANIMATION_FILL_MODES = wordsSet('none forwards backwards both');
+const ANIMATION_PLAY_STATES = wordsSet('running paused');
+
+/**
+ * Одна анимация по слотам в фиксированном порядке, как у `tn` (запрос web-games, 2026-10-14):
+ * `имя длительность плавность задержка повторы направление заполнение состояние`. Любой слот
+ * можно пропустить, порядок — не убывает. Голое число в слоте времени — `ms`; голое число после
+ * задержки — число повторов. `none` до длительности — имя, после — заполнение.
+ */
+function animationValue(parts: string[], raw: string): string {
+  const l = parts.length;
+  const out: string[] = new Array(l);
+  const prefix = 'Value "' + raw + '" is invalid for "an": the order is name, duration, easing, delay,'
+    + ' iteration count, direction, fill mode, play state';
+  let i = 0;
+  let slot = 0;
+  let times = 0;
+  let part: string;
+  let at: number;
+  let time: RegExpExecArray | null;
+  for (; i < l; i++) {
+    part = parts[i];
+    if (REGEXP_SUBSTITUTION.test(part)) {
+      out[i] = part;
+      continue;
+    }
+    if (times < 2 && slot < 5 && (time = REGEXP_TIME.exec(part))) {
+      // Первое время — длительность, второе — задержка (после плавности — только задержка).
+      at = times || slot === 3 ? 4 : 2;
+      times = at === 4 ? 2 : 1;
+      out[i] = time[1] ? part : part + 'ms';
+    } else if (ENUM_KEYWORDS.transitionTimingFunction[part] || REGEXP_EASING_FUNCTION.test(part)) {
+      at = 3;
+      out[i] = part;
+    } else if (REGEXP_ITERATION_COUNT.test(part)) {
+      at = 5;
+      out[i] = part;
+    } else if (ANIMATION_DIRECTIONS[part]) {
+      at = 6;
+      out[i] = part;
+    } else if (ANIMATION_FILL_MODES[part] && (part !== 'none' || slot > 1)) {
+      at = 7;
+      out[i] = part;
+    } else if (ANIMATION_PLAY_STATES[part]) {
+      at = 8;
+      out[i] = part;
+    } else if (REGEXP_KEYFRAMES_NAME.test(part)) {
+      at = 1;
+      out[i] = part;
+    } else {
+      return throwInvalid(prefix + '; "' + part + '" fits none of them');
+    }
+    at > slot || throwInvalid(prefix + ' — "' + part + '" is out of place');
+    slot = at;
+  }
+  return out.join(' ');
+}
+
 /**
  * Склеивает части тени, дописывая единицу каждой длине.
  *
@@ -4333,6 +4396,23 @@ export default {
      * но задать РАЗНЫЕ параметры разным свойствам ими нельзя — они пишут по
      * одному значению на все сразу. Ради этого случая shorthand и остаётся.
      */
+      // `an_fade_0.2s_ease-out_0.3s_both` → `animation:fade 0.2s ease-out 0.3s both`; ключевые
+      // кадры — из пресета (`mn.setKeyframes`). Несколько анимаций — через `,`.
+      an: (p) => {
+        let s, i;
+        if (!(s = p.suffix)) {
+          return 0;
+        }
+        const list = splitTopLevel(valueNormalize(s));
+        const l = list.length;
+        const out: string[] = new Array(l);
+        for (i = 0; i < l; i++) {
+          out[i] = animationValue(list[i].trim().split(' '), s);
+        }
+        return styleWrap({
+          animation: out.join(','),
+        });
+      },
       tn: (p) => {
         let s, i;
         if (!(s = p.suffix)) {

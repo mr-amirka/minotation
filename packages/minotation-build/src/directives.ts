@@ -12,7 +12,7 @@ import {
   dirname, isAbsolute, join,
 } from 'node:path';
 import {
-  checkOptions, isStringArray, oneOf,
+  checkOptions, isBoolean, isStringArray, oneOf,
 } from 'minotation';
 import type {
   MnNotationMode, OptionSchema,
@@ -24,13 +24,27 @@ export interface MnNotationDirective {
   notationMode?: MnNotationMode;
   /** Пресеты, без которых классы файла не работают. */
   requires?: string[];
+  /** Круглые скобки: группы вариантов или CSS (D-077, D-081). */
+  groupMode?: 'groups' | 'css';
+  /** Контекст селектора в `:where()` (D-049, D-081). */
+  contextWhere?: boolean;
 }
 
-const DIRECTIVE_SCHEMA: OptionSchema = {
+/** Ключи директивы — общие для комментария, `package.json` и правил `scopes`. */
+export const DIRECTIVE_KEYS: Array<keyof MnNotationDirective> = [
+  'notationMode',
+  'requires',
+  'groupMode',
+  'contextWhere',
+];
+
+export const DIRECTIVE_SCHEMA: OptionSchema = {
   notationMode: oneOf(
     'context-qualified', 'tw4-compatible', 'breakpoint-prefixed', 'property-value',
   ),
   requires: isStringArray,
+  groupMode: oneOf('groups', 'css'),
+  contextWhere: isBoolean,
 };
 
 /** Директиву ищем только в начале файла: дальше она уже не «о файле», а случайный текст. */
@@ -76,9 +90,10 @@ export function readNotationDirective(source: string, where: string): MnNotation
     at > 0 || fail(where + ': "@minotation ' + text + '" expects "key: value"');
     key = text.slice(0, at).trim();
     value = text.slice(at + 1).trim();
+    // В комментарии всё строками: список — через запятую, флаг — `true`/`false`.
     out[key] = key === 'requires'
       ? value.split(',').map((name) => name.trim()).filter(Boolean)
-      : value;
+      : value === 'true' ? true : value === 'false' ? false : value;
   }
   checkOptions(
     out, DIRECTIVE_SCHEMA, where + ' @minotation',
@@ -193,9 +208,11 @@ export function readFileNotation(source: string, id: string): MnNotationDirectiv
   if (!own && !pkg) {
     return undefined;
   }
-  return {
-    notationMode: own && own.notationMode || pkg && pkg.notationMode,
-    requires: own && own.requires || pkg && pkg.requires,
-  };
+  // По ключу: что объявил файл — его, остальное — от пакета.
+  const out: Record<string, unknown> = {};
+  for (const key of DIRECTIVE_KEYS) {
+    out[key] = own && own[key] !== undefined ? own[key] : pkg && pkg[key];
+  }
+  return out as MnNotationDirective;
 }
 

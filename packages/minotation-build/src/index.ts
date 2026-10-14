@@ -24,10 +24,13 @@ import {
   readFileSync, readdirSync, statSync,
 } from 'node:fs';
 import {
-  withConfigFile,
+  CONFIG_FILE_NAMES as CONFIG_FILE_NAMES_IMPL, TOOL_OPTION_KEYS as TOOL_OPTION_KEYS_IMPL,
+  clearConfigFileCache as clearConfigFileCacheImpl, loadConfigFile as loadConfigFileImpl,
+  withConfigFile as withConfigFileImpl,
 } from './config';
 import {
-  createScopeResolver, isScopeRules,
+  createScopeResolver as createScopeResolverImpl, globToRegExp as globToRegExpImpl,
+  isScopeRules as isScopeRulesImpl,
 } from './scopes';
 import type {
   MnScopeRule,
@@ -64,12 +67,22 @@ export const readPackageName = readPackageNameImpl;
 export const clearPackageDirectiveCache = clearPackageDirectiveCacheImpl;
 /** Режим и требования файла по старшинству: файл → пакет. */
 export const readFileNotation = readFileNotationImpl;
-export {
-  CONFIG_FILE_NAMES, TOOL_OPTION_KEYS, clearConfigFileCache, loadConfigFile, withConfigFile,
-} from './config';
-export {
-  createScopeResolver, globToRegExp, isScopeRules,
-} from './scopes';
+/** Имена файла настроек по порядку поиска (D-081). */
+export const CONFIG_FILE_NAMES = CONFIG_FILE_NAMES_IMPL;
+/** Ключи отдельных инструментов в общем файле настроек. */
+export const TOOL_OPTION_KEYS = TOOL_OPTION_KEYS_IMPL;
+/** Сброс кеша файлов настроек. */
+export const clearConfigFileCache = clearConfigFileCacheImpl;
+/** Чтение `minotation.config.*`. */
+export const loadConfigFile = loadConfigFileImpl;
+/** Опции инструмента из файла настроек, поверх — из кода. */
+export const withConfigFile = withConfigFileImpl;
+/** Правила `scopes` поверх декларации файла (D-082). */
+export const createScopeResolver = createScopeResolverImpl;
+/** Шаблон пути → RegExp. */
+export const globToRegExp = globToRegExpImpl;
+/** Проверка опции `scopes`. */
+export const isScopeRules = isScopeRulesImpl;
 export type {
   MnScopeMatch, MnScopeRule,
 } from './scopes';
@@ -78,10 +91,10 @@ export type {
 } from './config';
 import {
   CORE_OPTIONS_SCHEMA, checkOptions, createScanner, isBoolean, isBooleanOrString,
-  isFunction, isPresetArray, isString, isStringArray, minotationProvider, oneOf, optionsOf,
+  isFunction, isPresetArray, isString, isStringArray, minotationProvider, oneOf, optionsOf, parseSettingsKey,
 } from 'minotation';
 import type {
-  MnNotationMode, MnOptions, MnPreset as MnCorePreset, MnWarning, OptionCheck, OptionSchema,
+  MnNotationMode, MnOptions, MnParseSettings, MnPreset as MnCorePreset, MnWarning, OptionCheck, OptionSchema,
   ScannerOptions,
 } from 'minotation';
 
@@ -286,19 +299,43 @@ export function createAttrsScanner(options: Omit<ScannerOptions, 'attr' | 'onWar
 export function compileEntries(mn: Pick<ReturnType<typeof minotationProvider>, 'getCompiler'>, entries: Iterable<string>): void {
   const compilers: Record<string, (value: string) => void> = {};
   let at: number;
-  let mode: number;
+  let tag: number;
   let target: string;
   let key: string;
   for (const entry of entries) {
-    // `режим\0цель токен` — запись из файла со своим режимом синтаксиса (D-045 этап 3).
-    mode = entry.indexOf('\0');
-    at = entry.indexOf(' ', mode + 1);
-    target = entry.slice(mode + 1, at);
-    key = mode < 0 ? target : entry.slice(0, at);
-    (compilers[key] || (compilers[key] = mode < 0
+    // `настройки\0цель токен` — запись из файла со своими настройками разбора (D-045 этап 3,
+    // D-081); `настройки` — ключ `parseSettingsKey`.
+    tag = entry.indexOf('\0');
+    at = entry.indexOf(' ', tag + 1);
+    target = entry.slice(tag + 1, at);
+    key = tag < 0 ? target : entry.slice(0, at);
+    (compilers[key] || (compilers[key] = tag < 0
       ? mn.getCompiler(target)
-      : mn.getCompiler(target, entry.slice(0, mode) as MnNotationMode)))(entry.slice(at + 1));
+      : mn.getCompiler(target, settingsOf(entry.slice(0, tag)))))(entry.slice(at + 1));
   }
+}
+
+/** Ключ `parseSettingsKey` (`'tw4-compatible,css,1'`) → настройки разбора. */
+function settingsOf(key: string): MnParseSettings {
+  const parts = key.split(',');
+  const out: MnParseSettings = {};
+  parts[0] && (out.notationMode = parts[0] as MnNotationMode);
+  parts[1] && (out.groupMode = parts[1] as 'groups' | 'css');
+  parts[2] && (out.contextWhere = parts[2] === '1');
+  return out;
+}
+
+/**
+ * Настройки разбора словами — для сообщений: `tw4-compatible`, `groupMode: css`. Ключ не пустой:
+ * пустой у записи без тега, и её описывает режим проекта.
+ */
+function describeSettings(key: string): string {
+  const settings = settingsOf(key);
+  const words: string[] = [];
+  settings.notationMode && words.push(settings.notationMode);
+  settings.groupMode && words.push('groupMode: ' + settings.groupMode);
+  settings.contextWhere === undefined || words.push('contextWhere: ' + settings.contextWhere);
+  return words.join(' + ');
 }
 
 /** Записи области и первый (по пути) её файл — для сообщений об ошибках. */
@@ -583,7 +620,7 @@ export const BUILD_OPTIONS_SCHEMA: OptionSchema = {
   comments: isBoolean,
   syntax: isBoolean,
   root: isStringOrStringArray,
-  scopes: isScopeRules,
+  scopes: isScopeRulesImpl,
   extensions: isStringArray,
   presetExtensions: isStringArray,
   entry: optionsOf(ENTRY_OPTIONS_SCHEMA),
@@ -602,7 +639,7 @@ export const BUILD_OPTIONS_SCHEMA: OptionSchema = {
 export function withBuildConfig<T extends object>(
   options: T, tool: string, own?: OptionSchema,
 ): T {
-  return withConfigFile(
+  return withConfigFileImpl(
     options, tool, BUILD_OPTIONS_SCHEMA, own ? {
       ...BUILD_OPTIONS_SCHEMA,
       ...own,
@@ -801,9 +838,10 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
    * Режим синтаксиса файла, если он отличается от режима проекта, и требуемые пресеты
    * (D-045 этап 3): директива `@minotation` в файле → `"minotation"` в `package.json`.
    */
-  const fileModes = new Map<string, MnNotationMode>();
+  /** Настройки разбора файла, если отличаются от проекта (D-081): ключ `parseSettingsKey`. */
+  const fileSettings = new Map<string, string>();
   /** Правила `scopes` потребителя поверх декларации файла (D-082); пути — от рабочего каталога. */
-  const resolveScope = createScopeResolver(options.scopes, process.cwd());
+  const resolveScope = createScopeResolverImpl(options.scopes, process.cwd());
   const fileRequires = new Map<string, string[]>();
   const projectMode = options.notationMode || 'context-qualified';
   const conflictMode = options.notationConflictMode || 'warn';
@@ -824,11 +862,11 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
 
   /** Режим и требования файла; изменились — кеш CSS сбрасывается. */
   function setMeta(
-    id: string, mode: MnNotationMode | undefined, requires: string[] | undefined,
+    id: string, settings: string, requires: string[] | undefined,
   ): boolean {
-    const changed = fileModes.get(id) !== mode
+    const changed = (fileSettings.get(id) || '') !== settings
       || (fileRequires.get(id) || []).join() !== (requires || []).join();
-    mode ? fileModes.set(id, mode) : fileModes.delete(id);
+    settings ? fileSettings.set(id, settings) : fileSettings.delete(id);
     requires && requires.length ? fileRequires.set(id, requires) : fileRequires.delete(id);
     changed && (cacheKey = '');
     return changed;
@@ -838,11 +876,26 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     id: string, tokens: Iterable<string>, own?: MnNotationDirective,
   ): boolean {
     const notation = resolveScope(id, own);
-    const mode = notation && notation.notationMode;
     const changed = setMeta(
-      id, mode && mode !== projectMode ? mode : undefined, notation && notation.requires,
+      id, ownSettings(notation), notation && notation.requires,
     );
     return setTokens(id, tokens) || changed;
+  }
+
+  /**
+   * Настройки разбора файла, которые отличаются от проекта, — ключом `parseSettingsKey`; совпадающие
+   * не в счёт: файл с режимом проекта компилируется общим компилятором.
+   */
+  function ownSettings(notation: MnNotationDirective | undefined): string {
+    if (!notation) {
+      return '';
+    }
+    const settings: MnParseSettings = {};
+    notation.notationMode && notation.notationMode !== projectMode && (settings.notationMode = notation.notationMode);
+    notation.groupMode && notation.groupMode !== (options.groupMode || 'groups') && (settings.groupMode = notation.groupMode);
+    notation.contextWhere === undefined || notation.contextWhere === !!options.contextWhere
+      || (settings.contextWhere = notation.contextWhere);
+    return parseSettingsKey(settings);
   }
 
   function setTokens(id: string, tokens: Iterable<string>): boolean {
@@ -860,7 +913,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   }
 
   function remove(id: string): boolean {
-    fileModes.delete(id);
+    fileSettings.delete(id);
     fileRequires.delete(id);
     if (!byFile.delete(id)) {
       return false;
@@ -881,16 +934,16 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   /** Записи по областям; область приложения есть всегда (статика пресетов, `mn.css`). */
   function collect(appNames: string[]): Map<string, ScopeEntries> {
     const scopes = new Map<string, ScopeEntries>([['', [new Set<string>(), '']]]);
-    let mode: MnNotationMode | undefined;
+    let settings: string | undefined;
     let scope: ScopeEntries;
     let key: string;
     // Файлы — по пути: при конфликте режимов выигрывает первый (детерминированно).
     for (const id of Array.from(byFile.keys()).sort()) {
-      mode = fileModes.get(id);
+      settings = fileSettings.get(id);
       key = scopeOf(fileRequires.get(id), appNames);
       scope = scopes.get(key) || scopes.set(key, [new Set<string>(), id]).get(key) as ScopeEntries;
       for (const token of byFile.get(id) as Set<string>) {
-        scope[0].add(mode ? mode + '\0' + token : token);
+        scope[0].add(settings ? settings + '\0' + token : token);
       }
     }
     return scopes;
@@ -969,7 +1022,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
       }
       keep = Math.max(outputs.findIndex(Boolean), 0);
       message = 'Class "' + token.slice(token.indexOf(' ') + 1) + '" means different things in different notation'
-        + ' modes: ' + variants.map((entry, index) => modeOf(entry) + (outputs[index] ? '' : ' (no CSS)'))
+        + ' settings: ' + variants.map((entry, index) => modeOf(entry) + (outputs[index] ? '' : ' (no CSS)'))
         .join(', ') + '. Kept: ' + modeOf(variants[keep]) + '. To fail the build instead:'
         + ' notationConflictMode: \'strict\'.';
       conflictMode === 'strict' && fail(message);
@@ -983,9 +1036,10 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     return drop.size ? entries.filter((entry) => !drop.has(entry)) : entries;
   }
 
+  /** Настройки разбора записи словами; без тега — настройки проекта (его режим). */
   function modeOf(entry: string): string {
     const at = entry.indexOf('\0');
-    return at < 0 ? projectMode : entry.slice(0, at);
+    return at < 0 ? projectMode : describeSettings(entry.slice(0, at));
   }
 
   /** Одна область — свой экземпляр ядра: реестр хендлеров не общий (D-078). */
@@ -1079,7 +1133,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     },
     clear(): void {
       byFile.clear();
-      fileModes.clear();
+      fileSettings.clear();
       fileRequires.clear();
       dynamic.clear();
       dynamicNotation.clear();

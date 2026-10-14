@@ -11,13 +11,13 @@ import {
   relative, sep,
 } from 'node:path';
 import {
-  checkOptions, isBoolean, isStringArray, oneOf,
+  checkOptions, isBoolean,
 } from 'minotation';
 import type {
   MnNotationMode, OptionCheck, OptionSchema,
 } from 'minotation';
 import {
-  readPackageName,
+  DIRECTIVE_KEYS, DIRECTIVE_SCHEMA, readPackageName,
 } from './directives';
 import type {
   MnNotationDirective,
@@ -52,10 +52,11 @@ export interface MnScopeRule {
   requires?: string[];
   /** Режим синтаксиса классов. */
   notationMode?: MnNotationMode;
+  /** Круглые скобки: группы вариантов или CSS (D-077). */
+  groupMode?: 'groups' | 'css';
+  /** Контекст селектора в `:where()` (D-049). */
+  contextWhere?: boolean;
 }
-
-/** Ключи декларации, которые правило может задать. */
-const RULE_KEYS: Array<keyof MnNotationDirective> = ['notationMode', 'requires'];
 
 const isScopeMatch: OptionCheck = (value) => {
   const items = Array.isArray(value) ? value : [value];
@@ -64,12 +65,9 @@ const isScopeMatch: OptionCheck = (value) => {
 };
 
 const RULE_SCHEMA: OptionSchema = {
+  ...DIRECTIVE_SCHEMA,
   match: isScopeMatch,
   override: isBoolean,
-  requires: isStringArray,
-  notationMode: oneOf(
-    'context-qualified', 'tw4-compatible', 'breakpoint-prefixed', 'property-value',
-  ),
 };
 
 /** Проверка опции `scopes` (D-038): массив правил, у каждого — `match`. */
@@ -190,7 +188,7 @@ export function createScopeResolver(rules: MnScopeRule[] | undefined, root: stri
     const out: MnNotationDirective = {
       ...own,
     };
-    for (const key of RULE_KEYS) {
+    for (const key of DIRECTIVE_KEYS) {
       // Своя декларация важнее правила; `override` — аварийно наоборот.
       rule[key] === undefined || own && own[key] !== undefined && !rule.override
         || ((out as Record<string, unknown>)[key] = rule[key]);

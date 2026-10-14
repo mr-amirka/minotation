@@ -211,9 +211,9 @@ describe('scopes — проверка опции', () => {
     [{
       scopes: [{
         match: 'a',
-        groupMode: 'css',
+        attrs: 'class',
       }],
-    }, 'unknown option "scopes[0].groupMode". Known options: match, override, requires, notationMode'],
+    }, 'unknown option "scopes[0].attrs". Known options: notationMode, requires, groupMode, contextWhere, match, override'],
   ])('%j', (options, message) => {
     expect(() => checkBuildOptions(options as never, 'mnVite')).toThrow(message);
   });

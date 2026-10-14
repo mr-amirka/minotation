@@ -3,6 +3,9 @@
  * `groupMode: 'css'`.
  */
 import minotationProvider from '../core/index';
+import {
+  parseSettingsKey,
+} from '../index';
 import presetStandard from '../presets/standard';
 import presetSynonyms from '../presets/synonyms';
 import presetMedias from '../presets/medias';
@@ -129,5 +132,53 @@ describe("c) groupMode: 'css' — скобки это CSS", () => {
     expect(() => minotationProvider({
       groupMod: 'css',
     } as unknown as MnOptions)).toThrow('Did you mean "groupMode"');
+  });
+});
+
+describe('настройки разбора компилятора: getCompiler(attr, settings) (D-081)', () => {
+  function cssOf(mn: ReturnType<typeof minotationProvider>): string {
+    mn.compile();
+    return mn.styles$.getValue().map((s) => s.content).join('');
+  }
+
+  test('groupMode и contextWhere компилятора важнее опций экземпляра', () => {
+    const mn = minotationProvider({
+      groupMode: 'css',
+      warningMode: 'silent',
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class', {
+      groupMode: 'groups',
+    })('w(|max)150');
+    mn.getCompiler('class', {
+      contextWhere: true,
+    })('cF00<.card');
+    mn.getCompiler('class')('crUrl(a\\.png)');
+    const css = cssOf(mn);
+    expect(css).toContain('max-width:150px');
+    expect(css).toContain(':is(:where(.card) *){color:#f00}');
+    expect(css).toContain('{cursor:url(a.png)}');
+  });
+
+  test('пустые настройки — общий компилятор экземпляра', () => {
+    const mn = minotationProvider({});
+    expect(mn.getCompiler('class', {})).toBe(mn.getCompiler('class'));
+  });
+
+  test.each([
+    [undefined, ''],
+    [{}, ''],
+    [{
+      notationMode: 'tw4-compatible' as const,
+    }, 'tw4-compatible,,'],
+    [{
+      groupMode: 'css' as const,
+      contextWhere: false,
+    }, ',css,0'],
+    [{
+      contextWhere: true,
+    }, ',,1'],
+  ])('parseSettingsKey(%j) = %p', (settings, key) => {
+    expect(parseSettingsKey(settings)).toBe(key);
   });
 });

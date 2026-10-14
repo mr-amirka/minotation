@@ -229,7 +229,7 @@ describe('notationConflictMode — один класс в разных режи�
     expect(collector.takeWarnings()).toEqual([{
       type: 'notation-conflict',
       token: 'hover:cF00',
-      message: 'Class "hover:cF00" means different things in different notation modes:'
+      message: 'Class "hover:cF00" means different things in different notation settings:'
         + ' context-qualified (no CSS), tw4-compatible. Kept: tw4-compatible.'
         + ' To fail the build instead: notationConflictMode: \'strict\'.',
     }]);
@@ -243,7 +243,7 @@ describe('notationConflictMode — один класс в разных режи�
     });
     collector.add(join(dir, 'a.html'), projectFile);
     collector.add(join(dir, 'b.tsx'), tailwindFile);
-    expect(() => collector.css()).toThrow('Class "hover:cF00" means different things in different notation modes');
+    expect(() => collector.css()).toThrow('Class "hover:cF00" means different things in different notation settings');
   });
 
   test('одинаковый CSS в обоих режимах — не конфликт', () => {
@@ -295,5 +295,81 @@ describe('сравнение режимов не повторяет предуп
     collector.add(join(dir, 'b.tsx'), '// @minotation notationMode: tw4-compatible\n<b class="flex">');
     collector.css();
     expect(seen.filter((line) => line.startsWith('handler-conflict "p" is registered'))).toHaveLength(1);
+  });
+});
+
+describe('настройки разбора по файлу: groupMode, contextWhere (D-081)', () => {
+  test('приложение без групп, пакет с группами — один экземпляр, у каждого файла свои скобки', () => {
+    mkdirSync(join(dir, 'ui'));
+    writeFileSync(join(
+      dir, 'ui', 'package.json',
+    ), JSON.stringify({
+      minotation: {
+        groupMode: 'groups',
+      },
+    }));
+    const collector = createTokenCollector({
+      attrs: 'class',
+      presets: [presetStandard],
+      groupMode: 'css',
+      warningMode: 'silent',
+    });
+    collector.add(join(dir, 'App.html'), '<div class="gtcRepeat(auto-fit,minmax(240px,1fr)) p10">');
+    collector.add(join(
+      dir, 'ui', 'Card.html',
+    ), '<div class="w(|max)150 p10">');
+    const css = collector.css();
+    expect(css).toContain('{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}');
+    expect(css).toContain('.w\\(\\|max\\)150{width:150px}');
+    // `p10` одинаков в обоих — одно правило.
+    expect(css.match(/\.p10\{/g)).toHaveLength(1);
+  });
+
+  test('contextWhere и groupMode — из комментария файла; совпадающее с проектом не в счёт', () => {
+    const collector = createTokenCollector({
+      attrs: 'class',
+      presets: [presetStandard],
+      warningMode: 'silent',
+    });
+    collector.add(join(dir, 'a.html'), '<!-- @minotation contextWhere: true; groupMode: groups --><b class="cF00<.card">');
+    collector.add(join(dir, 'b.html'), '<!-- @minotation contextWhere: false --><b class="cF00<.box">');
+    const css = collector.css();
+    // Одинаковые объявления — одним правилом: `:where`-контекст у первого файла, обычный — у второго.
+    expect(css).toContain('.cF00\\<\\.card:is(:where(.card) *),.box .cF00\\<\\.box{color:#f00}');
+  });
+
+  test('один класс с разным CSS при разных настройках — конфликт с понятными настройками', () => {
+    const collector = createTokenCollector({
+      attrs: 'class',
+      presets: [presetStandard],
+      warningMode: 'silent',
+    });
+    collector.add(join(dir, 'a.html'), '<b class="cF00<.card">');
+    collector.add(join(dir, 'b.html'), '<!-- @minotation contextWhere: true; groupMode: css --><b class="cF00<.card">');
+    collector.css();
+    expect(collector.takeWarnings()[0].message).toContain('in different notation settings: groupMode: css'
+      + ' + contextWhere: true, context-qualified.');
+  });
+
+  test('правило scopes задаёт groupMode пакету без декларации', () => {
+    mkdirSync(join(dir, 'lib'));
+    writeFileSync(join(
+      dir, 'lib', 'package.json',
+    ), JSON.stringify({
+      name: 'lib',
+    }));
+    const collector = createTokenCollector({
+      attrs: 'class',
+      presets: [presetStandard],
+      groupMode: 'css',
+      scopes: [{
+        match: 'lib',
+        groupMode: 'groups',
+      }],
+    });
+    collector.add(join(
+      dir, 'lib', 'a.html',
+    ), '<b class="w(|max)150">');
+    expect(collector.css()).toContain('max-width:150px');
   });
 });

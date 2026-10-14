@@ -133,7 +133,7 @@ import type {
   MnOptions,
   MnPreset,
   MnPresetObject,
-  MnNotationMode,
+  MnParseSettings,
   MnRaiseMode,
   MnWarning,
 } from './types';
@@ -144,6 +144,7 @@ import {
   MnForbiddenTokenError,
   MnParseError,
   MnWarningError,
+  parseSettingsKey,
 } from './types';
 import type {
   MnCssDeclarations,
@@ -730,12 +731,17 @@ function minotationProvider(options?: MnOptions) {
   }
 
   /**
-   * Компилятор атрибута. `mode` — режим синтаксиса его классов (режим файла разметки, D-045
-   * этап 3): у каждого режима свой компилятор и свой кеш. Без `mode` — режим проекта.
+   * Компилятор атрибута. `settings` — настройки разбора его классов (файл или пакет со своей
+   * декларацией, D-045 этап 3, D-081): у каждого набора свой компилятор и свой кеш. Без них —
+   * настройки экземпляра.
+   *
+   * @example
+   * mn.getCompiler('class', { notationMode: 'tw4-compatible', groupMode: 'css' })('hover:cF00');
    */
-  function getCompiler(attrName: string, mode?: MnNotationMode): MnCompiler {
-    const key = mode ? attrName + ' ' + mode : attrName;
-    mode && ($$compilerModes[key] = [attrName, mode]);
+  function getCompiler(attrName: string, settings?: MnParseSettings): MnCompiler {
+    const settingsKey = parseSettingsKey(settings);
+    const key = settingsKey ? attrName + ' ' + settingsKey : attrName;
+    settingsKey && ($$compilerModes[key] = [attrName, settings as MnParseSettings]);
     return $$compilers[key]
       || ($$compilers[key] = __compileProvider(attrName));
   }
@@ -771,7 +777,7 @@ function minotationProvider(options?: MnOptions) {
 
   /** Кэширующая обёртка над `parseComboNameProvider(attrName)` — сама обёртка (try/catch) не пересоздаётся на каждый вызов {@link updateAttrByMap}/{@link updateAttrByValues}, а живёт всё время жизни инстанса, как {@link getCompiler}. */
   function getParseComboName(attrName: string): ParseComboNameFn {
-    // Ключ компилятора с режимом — `'class tw4-compatible'` (см. getCompiler).
+    // Ключ компилятора с настройками — `'class tw4-compatible,css,'` (см. getCompiler).
     const meta = $$compilerModes[attrName];
     return $$parseComboNameCache[attrName]
       || ($$parseComboNameCache[attrName] = withCatchParseComboNameDecorate(meta
@@ -897,7 +903,7 @@ function minotationProvider(options?: MnOptions) {
   const $$data = mn.data = {} as MnData;
   const $$compilers: Record<string, MnCompiler> = $$data.compilers = {};
   /** Ключ компилятора с режимом → `[атрибут, режим]` (D-045 этап 3). */
-  const $$compilerModes: Record<string, [string, MnNotationMode]> = {};
+  const $$compilerModes: Record<string, [string, MnParseSettings]> = {};
   const $$parseComboNameCache: Record<string, ParseComboNameFn> = {};
   const cssPropertiesStringify: IStringifyCss = mn.propertiesStringify
     = cssPropertiesStringifyProvider();

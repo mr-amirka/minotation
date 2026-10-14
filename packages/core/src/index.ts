@@ -186,16 +186,20 @@ export type {
   MnPreset,
   MnPresetObject,
   MnNotationMode,
+  MnParseSettings,
 } from './core/types';
 import {
   MnParseError as MnParseErrorImpl,
   MnWarningError as MnWarningErrorImpl,
   MnForbiddenTokenError as MnForbiddenTokenErrorImpl,
+  parseSettingsKey as parseSettingsKeyImpl,
 } from './core/types';
 // Форма `export { X } from '...'` компилируется в геттер, которого не видит
 // cjs-module-lexer — ровно то, о чём предупреждает шапка этого файла. Эти два
 // символа оставались последними в старой форме (приведены 2026-09-25).
 export const MnParseError = MnParseErrorImpl;
+/** Ключ набора настроек разбора (`getCompiler(attr, settings)`, D-081). */
+export const parseSettingsKey = parseSettingsKeyImpl;
 export const MnWarningError = MnWarningErrorImpl;
 export const MnForbiddenTokenError = MnForbiddenTokenErrorImpl;
 

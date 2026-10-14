@@ -263,14 +263,16 @@ describe("'tw4-compatible' без меток и без ядра", () => {
   });
 });
 
-describe('компилятор с режимом: getCompiler(attr, mode) — режим файла разметки (D-045 этап 3)', () => {
+describe('компилятор с режимом: getCompiler(attr, { notationMode }) — режим файла разметки (D-045 этап 3)', () => {
   test('проект context-qualified, классы «файла библиотеки» — tw4-compatible', () => {
     const mn = minotationProvider({
       warningMode: 'silent',
     });
     mn.setPresets([presetStandard, presetTailwindish]);
     mn.getCompiler('class')('p10:hover');
-    mn.getCompiler('class', 'tw4-compatible')('hover:cF00');
+    mn.getCompiler('class', {
+      notationMode: 'tw4-compatible',
+    })('hover:cF00');
     mn.compile();
     const css = mn.styles$.getValue().map((s) => s.content).join(' ');
     expect(css).toContain('.p10\\:hover:hover{padding:10px}');
@@ -285,7 +287,9 @@ describe('компилятор с режимом: getCompiler(attr, mode) — р
     mn.getCompiler('class')('hover:cF00');
     mn.compile();
     expect(mn.styles$.getValue().map((s) => s.content).join(' ')).not.toContain('hover\\:cF00');
-    mn.getCompiler('class', 'tw4-compatible')('hover:cF00');
+    mn.getCompiler('class', {
+      notationMode: 'tw4-compatible',
+    })('hover:cF00');
     mn.compile();
     expect(mn.styles$.getValue().map((s) => s.content).join(' ')).toContain('.hover\\:cF00:hover{color:#f00}');
     // Полная пересборка — компилятор с режимом не теряется.

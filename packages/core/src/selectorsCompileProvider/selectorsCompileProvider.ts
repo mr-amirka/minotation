@@ -24,7 +24,12 @@ import {
 } from '../selectorNormalize';
 import {
   MnParseError,
+  parseSettingsKey,
 } from '../core/types';
+import type {
+  MnParseSettings,
+} from '../core/types';
+
 import type {
   AltMap,
   MnChain,
@@ -84,6 +89,9 @@ import {
  * не защищало точку от трактовки как self-class-границы. Найдено и исправлено 2026-08-10
  * вместе со связанным багом regex в `constants.ts` (`splitSelector`/`extractSuffix`).
  */
+/** Нет настроек файла разметки — всё из опций экземпляра. */
+const NO_SETTINGS: MnParseSettings = {};
+
 /**
  * Похоже ли имя на MN-токен, то есть стоит ли вообще придираться к его
  * структуре.
@@ -519,18 +527,22 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * @returns функция разбора значения этого атрибута
    */
   /**
-   * Разборщик значений атрибута. `mode` — режим синтаксиса классов этого компилятора
-   * (режим файла разметки, D-045 этап 3); без него — режим проекта (`options.notationMode`).
+   * Разборщик значений атрибута. `settings` — настройки разбора этого компилятора (файл или
+   * пакет со своей декларацией, D-045 этап 3, D-081); не заданное — из опций экземпляра.
    */
-  function parseComboNameProvider(attrName: string, mode?: string): ParseComboNameFn {
-    const key = mode ? attrName + ' ' + mode : attrName;
+  function parseComboNameProvider(attrName: string, settings?: MnParseSettings): ParseComboNameFn {
+    const settingsKey = parseSettingsKey(settings);
     const base = $$parsers[attrName] || ($$parsers[attrName] = parseAttrProvider(attrName));
+    if (!settingsKey) {
+      return base;
+    }
+    const key = attrName + ' ' + settingsKey;
     return $$parsers[key] || ($$parsers[key] = (comboName: string) => {
-      $$markupMode = mode;
+      $$markupSettings = settings;
       try {
         return base(comboName);
       } finally {
-        $$markupMode = undefined;
+        $$markupSettings = undefined;
       }
     });
   }
@@ -605,12 +617,14 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     const $$mnOptions = (instance as any).options || {};
     $$depthCheck.maxDepth = $$selectorMode ? undefined : $$mnOptions.maxDepth;
     $$depthCheck.token = comboName;
-    $$contextWhere = !!$$mnOptions.contextWhere;
+    // Настройки файла разметки (D-081) важнее опций экземпляра.
+    const markup = $$markupSettings || NO_SETTINGS;
+    $$contextWhere = !!(markup.contextWhere === undefined ? $$mnOptions.contextWhere : markup.contextWhere);
     // Режим синтаксиса (D-045): строки пресета — в режиме пресета (на время его `setup`),
     // остальное — в режиме проекта. Свой разборщик на режим (D-047); по умолчанию —
     // 'context-qualified' ниже.
     const mode = $$selectorMode ? 'context-qualified'
-      : (instance as any)._presetMode || $$markupMode || $$mnOptions.notationMode;
+      : (instance as any)._presetMode || markup.notationMode || $$mnOptions.notationMode;
     if (mode === 'tw4-compatible') {
       return parseVariantPrefixed(comboName, targetName);
     }
@@ -625,7 +639,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     // `groupMode: 'css'`, подозрительные группы. Селекторы переписаны раньше — в `parseSelector`.
     const issues: string[] = [];
     let name = $$selectorMode ? comboName : rewriteGroups(
-      comboName, $$synonyms, $$mnOptions.groupMode === 'css', issues,
+      comboName, $$synonyms, (markup.groupMode || $$mnOptions.groupMode) === 'css', issues,
     );
     if (issues.length && raiseGroupSuspect(comboName, issues)) {
       return [];
@@ -702,7 +716,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    */
   let $$selectorMode = false;
   /** Режим синтаксиса компилятора разметки на время разбора (D-045 этап 3). */
-  let $$markupMode: string | undefined;
+  let $$markupSettings: MnParseSettings | undefined;
   /** `contextWhere` текущего разбора (D-049) — читается из опций в начале `parseComboName`. */
   let $$contextWhere = false;
 

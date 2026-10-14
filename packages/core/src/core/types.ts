@@ -344,6 +344,28 @@ export interface MnWarning {
 export type MnNotationMode = 'context-qualified' | 'tw4-compatible' | 'breakpoint-prefixed' | 'property-value';
 
 /**
+ * Настройки разбора классов одного компилятора — файла или пакета со своей декларацией (D-081):
+ * в одном экземпляре ядра у каждого набора свой компилятор. Не заданное — из опций экземпляра.
+ */
+export interface MnParseSettings {
+  /** Режим синтаксиса классов. */
+  notationMode?: MnNotationMode;
+  /** Круглые скобки: группы вариантов или CSS (D-077). */
+  groupMode?: 'groups' | 'css';
+  /** Контекст селектора в `:where()` (D-049). */
+  contextWhere?: boolean;
+}
+
+/** Ключ набора настроек разбора: пустая строка — настройки экземпляра. */
+export function parseSettingsKey(settings: MnParseSettings | undefined): string {
+  return settings ? [
+    settings.notationMode || '',
+    settings.groupMode || '',
+    settings.contextWhere === undefined ? '' : settings.contextWhere ? '1' : '0',
+  ].join(',').replace(/^,,$/, '') : '';
+}
+
+/**
  * Пресет-объект (D-045): имя, зависимости и режим синтаксиса. Функция-пресет
  * `(mn) => void` остаётся допустимой — у неё просто нет метаданных.
  */

@@ -86,23 +86,26 @@ export function readNotationDirective(source: string, where: string): MnNotation
   return out as MnNotationDirective;
 }
 
-/** Каталог → директива ближайшего `package.json` (`null` — у пакета её нет). */
-const packageCache = new Map<string, MnNotationDirective | null>();
+/** Ближайший к файлу пакет: имя и директива `"minotation"`. */
+interface PackageInfo {
+  name?: string;
+  directive?: MnNotationDirective;
+}
+
+/** Каталог → ближайший пакет (`null` — до корня ни одного `package.json`). */
+const packageCache = new Map<string, PackageInfo | null>();
 
 /**
- * Поле `"minotation"` в `package.json` ближайшего к файлу пакета. Путь не абсолютный
- * (виртуальный модуль сборщика) — директивы нет.
- *
- * @param file — абсолютный путь файла
- * @returns директива пакета или `undefined`
+ * Ближайший к файлу `package.json` — он и определяет пакет файла, даже без поля `"minotation"`.
+ * Путь не абсолютный (виртуальный модуль сборщика) — пакета нет.
  */
-export function readPackageDirective(file: string): MnNotationDirective | undefined {
+function nearestPackage(file: string): PackageInfo | null {
   if (!isAbsolute(file)) {
-    return undefined;
+    return null;
   }
   const visited: string[] = [];
   let dir = dirname(file);
-  let found: MnNotationDirective | null | undefined;
+  let found: PackageInfo | null | undefined;
   let parent: string;
   for (;;) {
     found = packageCache.get(dir);
@@ -124,24 +127,52 @@ export function readPackageDirective(file: string): MnNotationDirective | undefi
   for (const each of visited) {
     packageCache.set(each, found);
   }
-  return found || undefined;
+  return found;
 }
 
-function parsePackage(path: string): MnNotationDirective | null {
-  let json: { minotation?: unknown } | null;
+/**
+ * Поле `"minotation"` в `package.json` ближайшего к файлу пакета. Путь не абсолютный
+ * (виртуальный модуль сборщика) — директивы нет.
+ *
+ * @param file — абсолютный путь файла
+ * @returns директива пакета или `undefined`
+ */
+export function readPackageDirective(file: string): MnNotationDirective | undefined {
+  const found = nearestPackage(file);
+  return found && found.directive || undefined;
+}
+
+/**
+ * Имя пакета файла — поле `"name"` ближайшего `package.json` (для `scopes[].match`, D-081).
+ *
+ * @param file — абсолютный путь файла
+ * @returns имя пакета или `undefined`
+ */
+export function readPackageName(file: string): string | undefined {
+  const found = nearestPackage(file);
+  return found && found.name || undefined;
+}
+
+function parsePackage(path: string): PackageInfo {
+  let json: { name?: unknown;
+    minotation?: unknown } | null;
   try {
     json = JSON.parse(readFileSync(path, 'utf8'));
   } catch {
-    return null;
+    return {};
   }
-  const field = json && json.minotation;
-  if (field === undefined) {
-    return null;
+  const out: PackageInfo = {};
+  if (!json) {
+    return out;
   }
-  checkOptions(
-    field, DIRECTIVE_SCHEMA, path + ' "minotation"',
-  );
-  return field as MnNotationDirective;
+  typeof json.name === 'string' && (out.name = json.name);
+  if (json.minotation !== undefined) {
+    checkOptions(
+      json.minotation, DIRECTIVE_SCHEMA, path + ' "minotation"',
+    );
+    out.directive = json.minotation as MnNotationDirective;
+  }
+  return out;
 }
 
 /** Сбрасывает кеш `package.json` — для тестов и смены файлов в watch. */

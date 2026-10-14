@@ -34,7 +34,7 @@ import {
   BUILD_OPTIONS_SCHEMA, CORE_OPTION_KEYS, createBuildCollector, createFileFilter, createMatcher,
 } from 'minotation-build';
 import type {
-  BuildOutput, Metrics, MnAttrs, MnCoreOptions, MnEntryOptions, MnFileMatcher,
+  BuildOutput, Metrics, MnAttrs, MnCoreOptions, MnEntryOptions, MnFileMatcher, MnScopeRule,
 } from 'minotation-build';
 
 /**
@@ -46,6 +46,8 @@ export const CONFIG_SCHEMA: OptionSchema = {
   ...pick(BUILD_OPTIONS_SCHEMA, [
     ...CORE_OPTION_KEYS,
     'presets',
+    'scopePresets',
+    'scopes',
     'attrs',
     'syntax',
     'include',
@@ -133,6 +135,10 @@ export interface CompileSettings extends MnCoreOptions {
   ignore?: string[];
   /** Пресеты; по умолчанию стандартный набор. */
   presets?: MnPreset[];
+  /** Пресеты, которые могут потребовать пакеты (D-078). */
+  scopePresets?: MnPreset[];
+  /** Правила для пакетов и путей (D-080…D-082). */
+  scopes?: MnScopeRule[];
   /** Несколько CSS из одного прохода (D-030); `--output` тогда содержит `[name]`. */
   entry?: Record<string, MnEntryOptions>;
   /** Конфликт режимов синтаксиса между файлами (D-045): `warn` или `strict`. */
@@ -256,6 +262,8 @@ export function compile(settings: CompileSettings): CompileResult {
     attrs: settings.attrs,
     syntax: settings.syntax,
     entry: settings.entry,
+    scopePresets: settings.scopePresets,
+    scopes: settings.scopes,
     notationConflictMode: settings.notationConflictMode,
     presets: settings.presets || [
       // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).

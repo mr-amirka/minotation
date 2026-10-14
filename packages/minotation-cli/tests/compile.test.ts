@@ -20,6 +20,12 @@ import {
 import {
   collectFiles, compile,
 } from '../src/compile';
+import {
+  presetTw4,
+} from 'minotation';
+import type {
+  MnPreset,
+} from 'minotation';
 
 let dir: string;
 
@@ -309,5 +315,26 @@ describe('метрики', () => {
     }).metrics.files;
 
     expect(Object.keys(files)).toEqual(['a.html']);
+  });
+});
+
+describe('scopes и scopePresets в CLI (D-078, D-081)', () => {
+  test('пакет по правилу — своя область с пресетом Tailwind', () => {
+    write('app.html', '<div class="p10">');
+    write('ui/package.json', JSON.stringify({
+      name: '@acme/ui', 
+    }));
+    write('ui/Button.html', '<b class="p-4">');
+    const css = compile({
+      input: dir,
+      scopePresets: [presetTw4 as MnPreset],
+      scopes: [{
+        match: '@acme/ui',
+        requires: ['presetTw4'],
+        notationMode: 'tw4-compatible', 
+      }],
+    }).css;
+    expect(css).toContain('.p10{padding:10px}');
+    expect(css).toContain('.p-4{padding:calc(var(--spacing) * 4)}');
   });
 });

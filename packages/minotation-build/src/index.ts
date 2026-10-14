@@ -27,6 +27,12 @@ import {
   withConfigFile,
 } from './config';
 import {
+  createScopeResolver, isScopeRules,
+} from './scopes';
+import type {
+  MnScopeRule,
+} from './scopes';
+import {
   createHash,
 } from 'node:crypto';
 import {
@@ -37,6 +43,7 @@ import {
   readFileNotation as readFileNotationImpl,
   readNotationDirective as readNotationDirectiveImpl,
   readPackageDirective as readPackageDirectiveImpl,
+  readPackageName as readPackageNameImpl,
 } from './directives';
 import type {
   MnNotationDirective,
@@ -51,6 +58,8 @@ export type {
 export const readNotationDirective = readNotationDirectiveImpl;
 /** Поле `"minotation"` ближайшего `package.json`. */
 export const readPackageDirective = readPackageDirectiveImpl;
+/** Имя пакета файла — `"name"` ближайшего `package.json` (`scopes[].match`, D-081). */
+export const readPackageName = readPackageNameImpl;
 /** Сброс кеша `package.json`. */
 export const clearPackageDirectiveCache = clearPackageDirectiveCacheImpl;
 /** Режим и требования файла по старшинству: файл → пакет. */
@@ -58,6 +67,12 @@ export const readFileNotation = readFileNotationImpl;
 export {
   CONFIG_FILE_NAMES, TOOL_OPTION_KEYS, clearConfigFileCache, loadConfigFile, withConfigFile,
 } from './config';
+export {
+  createScopeResolver, globToRegExp, isScopeRules,
+} from './scopes';
+export type {
+  MnScopeMatch, MnScopeRule,
+} from './scopes';
 export type {
   LoadedConfig,
 } from './config';
@@ -314,6 +329,15 @@ export interface TokenCollectorOptions extends Omit<ScannerOptions, 'attr' | 'on
    */
   scopePresets?: MnPreset[];
   /**
+   * Правила для пакетов и путей со стороны потребителя (D-080…D-082): что принять для файлов,
+   * которые сами ничего не объявили. Своя декларация пакета или файла важнее правила; аварийно —
+   * `override: true`.
+   *
+   * @example
+   * scopes: [{ match: '@acme/ui', requires: ['presetTw4'], notationMode: 'tw4-compatible' }]
+   */
+  scopes?: MnScopeRule[];
+  /**
    * Колбэк сканера: `syntax: true`, а пакета `typescript` нет. Отдельное имя —
    * `onWarning` занят предупреждениями компиляции (D-034).
    */
@@ -559,6 +583,7 @@ export const BUILD_OPTIONS_SCHEMA: OptionSchema = {
   comments: isBoolean,
   syntax: isBoolean,
   root: isStringOrStringArray,
+  scopes: isScopeRules,
   extensions: isStringArray,
   presetExtensions: isStringArray,
   entry: optionsOf(ENTRY_OPTIONS_SCHEMA),
@@ -777,6 +802,8 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
    * (D-045 этап 3): директива `@minotation` в файле → `"minotation"` в `package.json`.
    */
   const fileModes = new Map<string, MnNotationMode>();
+  /** Правила `scopes` потребителя поверх декларации файла (D-082); пути — от рабочего каталога. */
+  const resolveScope = createScopeResolver(options.scopes, process.cwd());
   const fileRequires = new Map<string, string[]>();
   const projectMode = options.notationMode || 'context-qualified';
   const conflictMode = options.notationConflictMode || 'warn';
@@ -808,8 +835,9 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   }
 
   function set(
-    id: string, tokens: Iterable<string>, notation?: MnNotationDirective,
+    id: string, tokens: Iterable<string>, own?: MnNotationDirective,
   ): boolean {
+    const notation = resolveScope(id, own);
     const mode = notation && notation.notationMode;
     const changed = setMeta(
       id, mode && mode !== projectMode ? mode : undefined, notation && notation.requires,
@@ -998,7 +1026,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     } catch {
       // Виртуальный модуль сборщика — читать нечего.
     }
-    return readFileNotation(source, id);
+    return resolveScope(id, readFileNotation(source, id));
   }
 
   /**

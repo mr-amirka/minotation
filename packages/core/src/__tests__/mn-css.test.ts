@@ -330,3 +330,28 @@ describe('селектор: экранированный @ и приоритет
     expect(styles()).toEqual([[5, '@media (max-width: 991.98px) and (hover: hover){.x:hover{color:#f00}}']]);
   });
 });
+
+describe('> и < внутри скобок — аргумент псевдокласса, а не сегмент записи', () => {
+  test.each([
+    ['cF00:has[>a]', '.cF00\\:has\\[\\>a\\]:has(>a){color:#f00}'],
+    ['cF00<.p:has[>i]', '.p:has(>i) .cF00\\<\\.p\\:has\\[\\>i\\]{color:#f00}'],
+    ['cF00:not[a<b]', '.cF00\\:not\\[a\\<b\\]:not(a<b){color:#f00}'],
+  ])('класс %s → %s', (token, css) => {
+    const {
+      mn, styles, warnings,
+    } = create();
+    mn.getCompiler('class')(token);
+    mn.compile();
+    expect(styles().map((s) => s[1]).join('')).toBe(css);
+    expect(warnings.filter((w) => w.type === 'child-selector')).toEqual([]);
+  });
+
+  test('селектор html:has[>a]', () => {
+    const {
+      mn, styles,
+    } = create();
+    mn.assign('html:has[>a]', 'cF00');
+    mn.compile();
+    expect(styles().map((s) => s[1]).join('')).toBe('html:has(>a){color:#f00}');
+  });
+});

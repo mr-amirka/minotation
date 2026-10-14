@@ -15,13 +15,44 @@ import {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const escSplit = escapedSplitProvider as any;
+
+/**
+ * Разделитель вне `[…]`/`(…)` и не экранированный — части с экранированием как есть, как у
+ * `escapedSplitProvider(…).base`. Внутри скобок разделитель — часть значения: `:has[>a]` — не
+ * дочерний сегмент записи, а аргумент псевдокласса (до 2026-10-14 давал `:has() a]`).
+ */
+function topLevelSplit(separator: string): (source: string) => string[] {
+  return (source: string) => {
+    const out: string[] = [];
+    const l = source.length;
+    let from = 0;
+    let depth = 0;
+    let i = 0;
+    let ch: string;
+    for (; i < l; i++) {
+      ch = source[i];
+      if (ch === '\\') {
+        i++;
+      } else if (ch === '[' || ch === '(') {
+        depth++;
+      } else if (ch === ']' || ch === ')') {
+        depth--;
+      } else if (ch === separator && !depth) {
+        out.push(source.slice(from, i));
+        from = i + 1;
+      }
+    }
+    out.push(source.slice(from));
+    return out;
+  };
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const escHalf = escapedHalfProvider as any;
 
 /** Разделяет по `<` — родительский комбинатор (`Child<Parent` → `['Child', 'Parent']`). */
-export const splitParent = escSplit(/</).base;
+export const splitParent = topLevelSplit('<');
 /** Разделяет по `>` — комбинатор прямого потомка. */
-export const splitChild = escSplit(/>/).base;
+export const splitChild = topLevelSplit('>');
 /** Разделяет по `@` — медиа-суффикс (`sel@mobile` → `['sel', 'mobile']`). */
 export const splitMedia = escSplit('@').base;
 /** Разделяет по `:` — состояния/псевдоклассы (`w50:hover` → `['w50', 'hover']`). */

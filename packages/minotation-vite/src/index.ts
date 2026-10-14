@@ -9,7 +9,7 @@ import {
   oneOf,
 } from 'minotation';
 import type { MnInstance, MnWarning } from 'minotation';
-import { checkBuildOptions as checkBuildOptionsImpl, createBuildCollector, createFileFilter, metricsFileName, walkFiles } from 'minotation-build';
+import { checkBuildOptions as checkBuildOptionsImpl, createBuildCollector, createFileFilter, metricsFileName, scanRoots, walkFiles } from 'minotation-build';
 import type { BuildCollector, FileFilter, MnBuildOptions } from 'minotation-build';
 import { asPreset } from 'minotation-build';
 import type { MnPreset } from 'minotation';
@@ -195,9 +195,9 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
     return build;
   }
 
-  /** Корень первичного скана: `root` из опций или `src/` проекта Vite. */
-  function scanRoot(): string {
-    return options.root || join(root, 'src');
+  /** Корни первичного скана: `root` из опций (строка или несколько) или `src/` проекта Vite. */
+  function scanRootList(): string[] {
+    return scanRoots(options.root, join(root, 'src'));
   }
 
   /** Логгер Vite из `configResolved` — канал вывода там, где нет PluginContext. */
@@ -225,19 +225,23 @@ export function mnVite(options: MnViteOptions = {}): Plugin {
   /** Сканирует проект и наполняет накопитель до первой компиляции. */
   function scanProject(): void {
     // С `include` расширения не ограничивают обход — решает сам матчер.
-    for (const file of walkFiles(scanRoot(), options.include ? [''] : files.extensions)) {
-      if (!files.accepts(file)) continue;
-      try {
-        collector().add(file, readFileSync(file, 'utf-8'));
-      } catch (_) { /* skip unreadable */ }
+    for (const scanRoot of scanRootList()) {
+      for (const file of walkFiles(scanRoot, options.include ? [''] : files.extensions)) {
+        if (!files.accepts(file)) continue;
+        try {
+          collector().add(file, readFileSync(file, 'utf-8'));
+        } catch (_) { /* skip unreadable */ }
+      }
     }
   }
 
-  /** Загружает динамические пресеты `*.mn.ts` из корня скана. */
+  /** Загружает динамические пресеты `*.mn.ts` из корней скана — только из них (запрос web-games 3). */
   function scanPresetFiles(): void {
-    for (const file of walkFiles(scanRoot(), files.presetExtensions)) {
-      const preset = evalPresetFile(file);
-      if (preset) collector().setPreset(file, preset);
+    for (const scanRoot of scanRootList()) {
+      for (const file of walkFiles(scanRoot, files.presetExtensions)) {
+        const preset = evalPresetFile(file);
+        if (preset) collector().setPreset(file, preset);
+      }
     }
   }
 

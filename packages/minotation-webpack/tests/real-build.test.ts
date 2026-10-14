@@ -159,6 +159,24 @@ describe('minotation-webpack — скан проекта и ассет без и
     expect(whole.assets['mn.css']).toContain('height:40px');
   });
 
+  test('несколько корней (монорепо): токены и пресеты из всех корней, чужой пресет не попадает', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/app.html': '<div class="p10 cardToken"></div>',
+      'shared/card.html': '<div class="m10"></div>',
+      'shared/card.mn.ts': "export default (mn) => { mn('cardToken', 'cF00'); };\n",
+      'other/leak.mn.ts': "export default (mn) => { mn('leak', 'c0F0'); };\n",
+      'other/leak.html': '<div class="leak w20"></div>',
+    });
+
+    const result = await runBuild(root, new MnWebpackPlugin({ root: [join(root, 'src'), join(root, 'shared')] }));
+
+    expect(result.assets['mn.css']).toContain('.p10{padding:10px}');
+    expect(result.assets['mn.css']).toContain('.m10{margin:10px}');
+    expect(result.assets['mn.css']).toContain('.cardToken{color:#f00}');
+    expect(result.assets['mn.css']).not.toContain('.leak');
+  });
+
   test('нет токенов — нет ни ассета, ни манифеста', async () => {
     const root = makeProject({ 'src/main.js': 'export const x = 1;\n' });
 

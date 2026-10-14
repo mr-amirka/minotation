@@ -22,7 +22,8 @@ export interface MnPluginHandle {
   /** Отбор файлов плагина — лоадер учитывает только подходящие. */
   files: FileFilter;
   /** Корень скана — от него CSS-модуль зависит целиком. */
-  root: string;
+  /** Корни скана — за ними следит webpack (`addContextDependency`). */
+  roots: string[];
   /** CSS-модуль загружен импортом — отдельный ассет не нужен. */
   imported: boolean;
 }

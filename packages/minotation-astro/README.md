@@ -103,7 +103,7 @@ mnAstro({ attrs: 'class', classVarSuffixes: ['Class', 'Cls'], safelist: ['crP ta
 | Опция | По умолчанию | Что делает |
 |---|---|---|
 | `attrs` | `'class'` | какие атрибуты сканировать и во что разворачивать: `'class, className:class'`; `'class, m'` → `[m~="p10"]` — [подробно](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
-| `root` | `<root Astro>/src` | корень первичного скана |
+| `root` | `<root Astro>/src` | корень первичного скана — или несколько: `[src, '../components/src']` (монорепо) |
 | `extensions` | `.html .jsx .tsx .vue .svelte .astro` | какие файлы сканировать, если не задан `include` |
 | `include` | — | какие файлы сканировать: RegExp, путь, функция или массив |
 | `exclude` | — | какие файлы пропускать; важнее `include` |

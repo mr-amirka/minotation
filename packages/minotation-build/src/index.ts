@@ -317,11 +317,12 @@ export type MnFileMatcher = RegExp | string | ((path: string) => boolean) | MnFi
  */
 export interface MnBuildOptions extends TokenCollectorOptions {
   /**
-   * Корень, от которого обходятся файлы при первичном скане (в v1 — `path`).
-   * У каждого плагина своё умолчание (vite — `<root>/src`, rollup и esbuild —
-   * рабочая директория).
+   * Корень, от которого обходятся файлы при первичном скане (в v1 — `path`), или несколько
+   * корней — монорепо с общим пакетом компонентов: `root: [gameSrc, componentsSrc]`. Токены и
+   * пресеты (`*.mn.ts`) берутся из всех корней. У каждого плагина своё умолчание
+   * (vite — `<root>/src`, rollup и esbuild — рабочая директория).
    */
-  root?: string;
+  root?: string | string[];
   /**
    * Расширения сканируемых файлов, если не задан `include`.
    * @default ['.html', '.jsx', '.tsx', '.vue', '.svelte'] (у astro ещё `.astro`)
@@ -530,6 +531,14 @@ export const ENTRY_OPTIONS_SCHEMA: OptionSchema = {
 };
 
 /** Допустимые опции плагина — общий набор {@link MnBuildOptions} (D-038). */
+/** Строка или массив строк (`root`). */
+const isStringOrStringArray: OptionCheck = (value) => (
+  typeof value === 'string' || isStringArray(
+    value, '', '',
+  ) === undefined ? undefined
+    : 'a string or an array of strings'
+);
+
 export const BUILD_OPTIONS_SCHEMA: OptionSchema = {
   ...ENTRY_OPTIONS_SCHEMA,
   presets: isPresetArray,
@@ -538,7 +547,7 @@ export const BUILD_OPTIONS_SCHEMA: OptionSchema = {
   mergeFnNames: isStringArray,
   comments: isBoolean,
   syntax: isBoolean,
-  root: isString,
+  root: isStringOrStringArray,
   extensions: isStringArray,
   presetExtensions: isStringArray,
   entry: optionsOf(ENTRY_OPTIONS_SCHEMA),
@@ -603,6 +612,11 @@ export interface FileFilter {
  * @param matcher — RegExp, путь, функция или массив из них
  * @param root — корень для путей, заданных строкой
  */
+/** Корни скана списком (запрос web-games 3, 2026-10-14): `root` — строка, массив или нет его. */
+export function scanRoots(root: string | string[] | undefined, fallback: string): string[] {
+  return root === undefined ? [fallback] : typeof root === 'string' ? [root] : root;
+}
+
 export function createMatcher(matcher: MnFileMatcher | undefined, root: string): ((path: string) => boolean) | undefined {
   if (matcher === undefined || matcher === null) {
     return undefined;

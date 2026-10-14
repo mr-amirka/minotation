@@ -359,6 +359,34 @@ describe('minotation-vite — отбор файлов из эталонного 
     expect(css).not.toContain('height:30px');
   });
 
+  test('несколько корней (монорепо): токены и пресеты — из всех корней и только из них', () => {
+    // Игра и общий пакет компонентов; пресет второй игры не должен попасть в CSS первой.
+    const repo = makeProject({
+      'games/a/src/app.html': '<div class="p10 cardShadow"></div>',
+      'components/src/card.html': '<div class="m10 cardShadow"></div>',
+      'components/src/card.mn.js': "export default (mn) => { mn('cardShadow', 'c0F0'); };\n",
+      'games/b/src/b.mn.js': "export default (mn) => { mn('leak', 'cF00'); };\n",
+      'games/b/src/b.html': '<div class="leak w20"></div>',
+    });
+    // Пресеты грузятся в `buildStart` — как его вызывает Vite перед загрузкой модулей.
+    const plugin = makePlugin(join(repo, 'games/a'), 'build', {
+      root: [join(repo, 'games/a/src'), join(repo, 'components/src')],
+    });
+    plugin.buildStart();
+    const css = transformHtml(plugin, '<html><head></head><body></body></html>').map((tag) => tag.children).join('');
+    expect(css).toContain('.p10{padding:10px}');
+    expect(css).toContain('.m10{margin:10px}');
+    expect(css).toContain('.cardShadow{');
+    expect(css).not.toContain('.leak');
+    expect(css).not.toContain('width:20px');
+  });
+
+  test('root — не строка и не массив строк: ошибка с ожидаемым', () => {
+    expect(() => mnVite({
+      root: 5 as never,
+    })).toThrow('option "root" expects a string or an array of strings, got number 5');
+  });
+
   test('root задаёт корень первичного скана вместо src/', () => {
     const root = makeProject({
       'src/a.html': '<div class="p10"></div>',

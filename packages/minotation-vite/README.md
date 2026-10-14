@@ -135,6 +135,41 @@ export function presetApp(mn: MnInstance): void {
 
 По умолчанию пресет-файлами считаются файлы с расширениями `.mn.ts`, `.mn.js`, `.mn.tsx`.
 
+## Монорепо: общий пакет компонентов
+
+Компоненты с токенами лежат в отдельном пакете, а собирает их приложение:
+
+```
+repo/
+  components/src/**.tsx        ← общие компоненты (токены в className, пресеты *.mn.ts)
+  games/my-game/
+    src/**.tsx
+    vite.config.ts             ← mnVite здесь
+```
+
+По умолчанию сканируется только `games/my-game/src`: токены общего пакета до сборочного CSS не
+доходят (модули, которые лишь проходят через Vite, собираются слишком поздно). Решение —
+**несколько корней скана**:
+
+```ts
+// games/my-game/vite.config.ts
+import path from 'node:path';
+
+mnVite({
+  attrs: 'className:class',
+  root: [
+    path.resolve(__dirname, 'src'),
+    path.resolve(__dirname, '../../components/src'),
+  ],
+});
+```
+
+- токены и пресеты `*.mn.ts` берутся из **всех** корней — и **только** из них: пресеты второй игры
+  из `games/other` в CSS этой игры не попадут;
+- `include`/`exclude` по-прежнему отбирают файлы токенов (относительные пути — от корня проекта Vite);
+- то же работает в `minotation-webpack`, `minotation-rollup`, `minotation-esbuild` (относительные
+  пути `include` при массиве корней — от рабочей директории или `context`).
+
 ## Опции
 
 Эталонный набор опций — общий для всех плагинов и CLI, описан в
@@ -144,7 +179,7 @@ export function presetApp(mn: MnInstance): void {
 | Опция | По умолчанию | Что делает |
 |---|---|---|
 | `attrs` | `'class'` | какие атрибуты сканировать и во что разворачивать: `'class, className:class'`; `'class, m'` → `[m~="p10"]` — [подробно](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
-| `root` | `<root Vite>/src` | корень первичного скана |
+| `root` | `<root Vite>/src` | корень первичного скана — или несколько (монорепо, см. ниже) |
 | `extensions` | `.html .jsx .tsx .vue .svelte` | какие файлы сканировать, если не задан `include` |
 | `include` | — | какие файлы сканировать: RegExp, путь, функция или массив |
 | `exclude` | — | какие файлы пропускать; важнее `include` |

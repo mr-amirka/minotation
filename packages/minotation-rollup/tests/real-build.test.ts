@@ -53,6 +53,27 @@ async function runBuild(root: string, options: MnRollupOptions): Promise<RunResu
 }
 
 describe('minotation-rollup — реальная сборка', () => {
+  test('несколько корней (монорепо): токены и пресеты из всех корней, чужой пресет не попадает', async () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'src/app.html': '<div class="p10 cardToken"></div>',
+      'shared/card.html': '<div class="m10"></div>',
+      'shared/card.mn.ts': "export default (mn) => { mn('cardToken', 'cF00'); };\n",
+      'other/leak.mn.ts': "export default (mn) => { mn('leak', 'c0F0'); };\n",
+      'other/leak.html': '<div class="leak w20"></div>',
+    });
+
+    const { css } = await runBuild(root, {
+      root: [join(root, 'src'), join(root, 'shared')],
+    });
+
+    expect(css).toContain('.p10{padding:10px}');
+    expect(css).toContain('.m10{margin:10px}');
+    expect(css).toContain('.cardToken{color:#f00}');
+    expect(css).not.toContain('.leak');
+    expect(css).not.toContain('width:20px');
+  });
+
   test('перехватывает side-effect импорт *.mn.ts: заглушка в бандле, пресет применён к CSS', async () => {
     const root = makeProject({
       'src/main.js': "import './theme.mn.ts';\nexport const x = 1;\n",

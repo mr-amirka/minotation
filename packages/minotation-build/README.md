@@ -73,7 +73,7 @@ for (const warning of collector.takeWarnings()) {
 | Опция | Тип | По умолчанию | Что делает |
 |---|---|---|---|
 | `attrs` | `string \| string[] \| Record<string, string>` | `'class'` | какие атрибуты сканировать и во что разворачивать — раздел ниже |
-| `root` | `string` | у плагина своё: vite — `<root>/src`, rollup/esbuild — рабочая директория | корень первичного скана (в v1 — `path`) |
+| `root` | `string \| string[]` | у плагина своё: vite — `<root>/src`, rollup/esbuild — рабочая директория | корень первичного скана (в v1 — `path`); массив — несколько корней (монорепо): токены и пресеты `*.mn.*` — из всех и только из них |
 | `extensions` | `string[]` | `.html .jsx .tsx .vue .svelte` (+ `.astro` у astro) | какие файлы сканировать, если не задан `include` |
 | `include` | `MnFileMatcher` | — | какие файлы сканировать вместо `extensions`: RegExp, путь, функция или массив |
 | `exclude` | `MnFileMatcher` | — | какие файлы пропускать; важнее `include` |

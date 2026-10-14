@@ -12,7 +12,8 @@ import type { MnInstance } from 'minotation';
 import type { MnPreset } from 'minotation';
 import { asPreset } from 'minotation-build';
 import {
-  checkBuildOptions, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, walkFiles,
+  checkBuildOptions, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, scanRoots,
+  walkFiles,
 } from 'minotation-build';
 import type { MnBuildOptions } from 'minotation-build';
 import {
@@ -103,7 +104,9 @@ function evalPresetFile(id: string): MnPreset | null {
  */
 export function mnRollup(options: MnRollupOptions = {}): Plugin {
   checkBuildOptions(options, 'mnRollup');
-  const root = options.root || process.cwd();
+  // Несколько корней скана (монорепо) — база относительных путей `include` — рабочая директория.
+  const roots = scanRoots(options.root, process.cwd());
+  const root = typeof options.root === 'string' ? options.root : process.cwd();
   const manifest = manifestFileName(options.manifest);
   // Отбор файлов — общий для всех плагинов: `extensions` или `include`,
   // затем `exclude` и `skipPartials`.
@@ -149,15 +152,19 @@ export function mnRollup(options: MnRollupOptions = {}): Plugin {
       // уже после этого хука.
       collector.clear();
 
-      for (const file of walkFiles(root, files.presetExtensions)) {
-        const preset = evalPresetFile(file);
-        if (preset) collector.setPreset(file, preset);
+      for (const scanRoot of roots) {
+        for (const file of walkFiles(scanRoot, files.presetExtensions)) {
+          const preset = evalPresetFile(file);
+          if (preset) collector.setPreset(file, preset);
+        }
       }
-      for (const file of walkFiles(root, walkExts)) {
-        if (!files.accepts(file)) continue;
-        try {
-          collector.add(file, readFileSync(file, 'utf-8'));
-        } catch (_) { /* skip unreadable */ }
+      for (const scanRoot of roots) {
+        for (const file of walkFiles(scanRoot, walkExts)) {
+          if (!files.accepts(file)) continue;
+          try {
+            collector.add(file, readFileSync(file, 'utf-8'));
+          } catch (_) { /* skip unreadable */ }
+        }
       }
     },
 

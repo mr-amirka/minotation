@@ -27,7 +27,7 @@ export interface MnCssLoaderOptions {
 const cssLoader: LoaderDefinitionFunction<MnCssLoaderOptions> = function () {
   const handle = this.getOptions().handle;
   handle.imported = true;
-  this.addContextDependency(handle.root);
+  handle.roots.forEach((root) => this.addContextDependency(root));
   const entry = new URLSearchParams(this.resourceQuery.slice(1)).get('entry') || '';
   const outputs = handle.build.outputs();
   const picked = entry ? outputs.filter((output) => output.name === entry) : outputs;

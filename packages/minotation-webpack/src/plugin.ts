@@ -17,7 +17,8 @@ import {
 import type { MnInstance } from 'minotation';
 import type { MnPreset } from 'minotation';
 import {
-  checkBuildOptions, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, walkFiles,
+  checkBuildOptions, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, scanRoots,
+  walkFiles,
 } from 'minotation-build';
 import type { MnBuildOptions } from 'minotation-build';
 import { evalPreset } from './preset-loader';
@@ -101,14 +102,16 @@ export class MnWebpackPlugin {
   apply(compiler: Compiler): void {
     const options = this.options;
     const context = compiler.context;
-    const root = options.root || (existsSync(join(context, 'src')) ? join(context, 'src') : context);
+    // Несколько корней скана (монорепо): база относительных путей `include` — `context`.
+    const roots = scanRoots(options.root, existsSync(join(context, 'src')) ? join(context, 'src') : context);
+    const root = typeof options.root === 'string' || options.root === undefined ? roots[0] : context;
     const handle: MnPluginHandle = this.handle = {
       build: createBuildCollector({
         ...options,
         presets: options.presets || DEFAULT_PRESETS,
       }, root),
       files: createFileFilter(options, root),
-      root,
+      roots,
       imported: false,
     };
     getState().plugins.set(this.id, handle);
@@ -126,11 +129,15 @@ export class MnWebpackPlugin {
     const scanAll = (): void => {
       handle.build.clear();
       const walkExts = options.include ? [''] : handle.files.extensions;
-      for (const file of walkFiles(root, handle.files.presetExtensions)) {
-        this.loadPreset(file);
+      for (const scanRoot of roots) {
+        for (const file of walkFiles(scanRoot, handle.files.presetExtensions)) {
+          this.loadPreset(file);
+        }
       }
-      for (const file of walkFiles(root, walkExts)) {
-        handle.files.accepts(file) && this.loadFile(file);
+      for (const scanRoot of roots) {
+        for (const file of walkFiles(scanRoot, walkExts)) {
+          handle.files.accepts(file) && this.loadFile(file);
+        }
       }
       scanned = true;
     };

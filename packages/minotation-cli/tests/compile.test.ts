@@ -194,11 +194,10 @@ describe('compile', () => {
     })).toThrow(/warningMode: 'error'/);
   });
 
-  test('safelist добавляет токены, которых нет в файлах', () => {
-    write('a.html', '<div class="p10">');
+  test('маркер @mn добавляет токены, которых нет в атрибутах (D-083)', () => {
+    write('a.html', '<div class="p10"><!-- @mn m20 -->');
     expect(compile({
       input: dir,
-      safelist: ['m20'],
     }).css).toContain('margin:20px');
   });
 
@@ -310,18 +309,5 @@ describe('метрики', () => {
     }).metrics.files;
 
     expect(Object.keys(files)).toEqual(['a.html']);
-  });
-
-  test('safelist в статистику не попадает — его в файлах не было', () => {
-    write('a.html', '<div class="p10"></div>');
-    const metrics = compile({
-      input: dir,
-      safelist: ['m20'],
-    }).metrics;
-
-    // В счётчики употребления safelist не попадает: в файлах его не было.
-    expect(metrics.tokens.map((t) => t.name)).toEqual(['p10']);
-    // А в общем числе токенов — да: оно про то, что уехало в CSS.
-    expect(metrics.tokensTotal).toBe(2);
   });
 });

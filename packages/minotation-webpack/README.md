@@ -116,7 +116,6 @@ module.exports = {
 
 Опции можно задать и в общем файле `minotation.config.js` рабочего каталога — он один для всех плагинов и CLI, опции из кода сливаются поверх ([minotation-build](../minotation-build/README.md#файл-настроек-minotationconfig-d-081)).
 | `presetExtensions` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты |
-| `safelist` | `[]` | токены, нужные всегда; группы через пробел |
 | `classVarSuffixes` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
 | `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |

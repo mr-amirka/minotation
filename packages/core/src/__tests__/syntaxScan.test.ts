@@ -543,6 +543,64 @@ describe('условные выражения — оба сканера', () => 
   });
 });
 
+/** Маркер `@mn` в комментарии (D-083): токены, которых сканер иначе не видит. */
+describe('маркер @mn — оба сканера', () => {
+  const CASES: Array<[string, string, string[]]> = [
+    [
+      'JSX-комментарий',
+      '<div className={someVar}>...</div> {/* @mn cF00 px10 */}',
+      ['cF00', 'px10'],
+    ],
+    [
+      'строчный комментарий',
+      'const tone = data.tone; // @mn bgF00 bg0F0',
+      ['bgF00', 'bg0F0'],
+    ],
+    [
+      'блочный, несколько строк — до конца строки',
+      '/*\n * @mn a1 b1\n * обычный текст\n */',
+      ['a1', 'b1'],
+    ],
+    [
+      'HTML-комментарий',
+      '<!-- @mn p20 --><div class="m5"></div>',
+      ['m5', 'p20'],
+    ],
+    [
+      'обычный комментарий — немой',
+      '/** Пример: <div class="p10"> */\n// className: \'cF00\'',
+      [],
+    ],
+    [
+      '@mn — отдельное слово',
+      '// @mnClass x1 y@mn x2 @mn\tx3',
+      ['x3'],
+    ],
+    [
+      'маркер в строке — не комментарий',
+      'const s = \'// @mn q1\';',
+      [],
+    ],
+  ];
+
+  test.each(CASES)('%s', (
+    _name, source, expected,
+  ) => {
+    const options = {
+      attr: 'class',
+    };
+    expect(setOf(scanTokensSyntax(source, options))).toEqual(setOf(expected));
+    expect(setOf(scanTokens(source, options))).toEqual(setOf(expected));
+  });
+
+  test('comments: false — маркер читается всё равно', () => {
+    expect(setOf(scanTokens('<div class="m5"></div> <!-- @mn p20 -->', {
+      attr: 'class',
+      comments: false,
+    }))).toEqual(['m5', 'p20']);
+  });
+});
+
 describe('паритет с текстовым сканером', () => {
   const SAMPLES: Array<[string, string]> = [
     ['атрибуты', '<div class="p10 w50"><span class={\'m5\'} /></div>'],

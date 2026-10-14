@@ -51,7 +51,6 @@ export const CONFIG_SCHEMA: OptionSchema = {
     'include',
     'exclude',
     'skipPartials',
-    'safelist',
     'entry',
     'manifest',
     'metrics',
@@ -134,8 +133,6 @@ export interface CompileSettings extends MnCoreOptions {
   ignore?: string[];
   /** Пресеты; по умолчанию стандартный набор. */
   presets?: MnPreset[];
-  /** Токены, которые нужны всегда, даже если их нет в файлах; группы через пробел. */
-  safelist?: string[];
   /** Несколько CSS из одного прохода (D-030); `--output` тогда содержит `[name]`. */
   entry?: Record<string, MnEntryOptions>;
   /** Конфликт режимов синтаксиса между файлами (D-045): `warn` или `strict`. */
@@ -258,7 +255,6 @@ export function compile(settings: CompileSettings): CompileResult {
   const build = createBuildCollector({
     attrs: settings.attrs,
     syntax: settings.syntax,
-    safelist: settings.safelist,
     entry: settings.entry,
     notationConflictMode: settings.notationConflictMode,
     presets: settings.presets || [

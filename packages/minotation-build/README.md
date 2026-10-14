@@ -84,7 +84,6 @@ for (const warning of collector.takeWarnings()) {
 | `presets` | `MnPreset[]` | стандартный набор | статические пресеты; стандартный набор начинается с `presetHints` (D-024) |
 | `scopePresets` | `MnPreset[]` | `[]` | пресеты, которые могут потребовать пакеты: пакет с чужим семейством — своя область (D-078) |
 | `presetExtensions` | `string[]` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты (`import './app.mn'`) |
-| `safelist` | `string[]` | `[]` | токены, нужные всегда; группы через пробел: `['crP taL vaT']` |
 | `classVarSuffixes` | `string[]` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
 | `mergeFnNames` | `string[]` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | `boolean` | автоматически | разбирать JS/TS парсером (`false` — только текст) |
@@ -109,7 +108,7 @@ for (const warning of collector.takeWarnings()) {
 | `onError` | `(e) => void` | — | обработчик ошибок ядра |
 | `onScannerWarning` | `(message) => void` | `console.warn` | колбэк сканера: `syntax: true`, а `typescript` нет |
 | `metrics` | `boolean \| string` | `true` | статистика употребления токенов (`mn-metrics.json`): общий список и по файлам (пути — от корня проекта); в dev не пишется (D-032) |
-| `entry` | `Record<string, MnEntryOptions>` | — | несколько CSS из одной сборки (D-030): записи переопределяют `include`, `exclude`, `skipPartials`, `attrs`, `presets`, `safelist`, поля ядра, `fileName` |
+| `entry` | `Record<string, MnEntryOptions>` | — | несколько CSS из одной сборки (D-030): записи переопределяют `include`, `exclude`, `skipPartials`, `attrs`, `presets`, поля ядра, `fileName` |
 | `fileName` | `string` | у плагина своё | имя файла с `[name]` (имя записи) и `[hash]` (хеш содержимого) — там, где файл пишет плагин |
 | `manifest` | `boolean \| string` | `true` | `mn-manifest.json` рядом с CSS: `{ "mn.css": "mn.3f9a1c2e.css" }` |
 
@@ -292,7 +291,6 @@ attrs: { class: 'class', className: 'class' }     // объект
 
 | Опция | Что делает |
 |-------|------------|
-| `safelist` | токены, нужные всегда, даже если в файлах не встретились; компилируются как классы |
 | `presets` | статические пресеты |
 | поля ядра | `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `suspectClassMode`, `handlerConflictMode`, `presetConflictMode`, `groupSuspectMode`, `groupMode`, `notationMode`, `contextWhere`, `mediaNesting`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
 
@@ -324,12 +322,11 @@ attrs: { class: 'class', className: 'class' }     // объект
 в потоке сборки, либо дублируется. `warningMode: 'silent'` уважается,
 `'error'` роняет сборку, колбэк `onWarning` вызывается дополнительно к режиму.
 
-## `createFileFilter`, `createMatcher`, `flatSafelist`
+## `createFileFilter`, `createMatcher`
 
 - `createFileFilter(options, root)` — `accepts(path)` (сканировать ли файл) и
   `isPreset(path)`; учитывает `extensions`, `include`, `exclude`, `skipPartials`.
 - `createMatcher(matcher, root)` — `MnFileMatcher` в функцию.
-- `flatSafelist(safelist)` — группы токенов через пробел в плоский список.
 
 ## `parseAttrs`, `createAttrsScanner`, `compileEntries`
 

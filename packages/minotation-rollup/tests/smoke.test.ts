@@ -30,7 +30,7 @@ describe('mnRollup — проверка опций (D-038)', () => {
   test('опечатка и неверное значение — ошибка с подсказкой', () => {
     expect(() => mnRollup({ fileNmae: 'a.css' } as never))
       .toThrow('[minotation] mnRollup: unknown option "fileNmae". Did you mean "fileName"?');
-    expect(() => mnRollup({ safelist: 'p10' } as never))
-      .toThrow('[minotation] mnRollup: option "safelist" expects an array of strings, got string "p10"');
+    expect(() => mnRollup({ attrs: 5 } as never))
+      .toThrow('[minotation] mnRollup: option "attrs" expects');
   });
 });

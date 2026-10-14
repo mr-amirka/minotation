@@ -43,7 +43,7 @@
  */
 import ts from 'typescript';
 import {
-  attrNames, extractTokensInto, pushLiteralTokens, scanTokens,
+  attrNames, extractTokensInto, pushLiteralTokens, scanTokens, stripComments,
 } from './extractTokens';
 import type {
   ScanTokensOptions,
@@ -105,6 +105,8 @@ export function scanTokensSyntax(source: string, options: SyntaxScanOptions): st
     return scanTokens(source, options);
   }
   const tokens: string[] = [];
+  // Маркеры `@mn` в комментариях (D-083) — тем же разбором, что и у текстового сканера: паритет.
+  stripComments(source, tokens);
   const attrs = attrNames(options.attr);
   const suffixes = options.classVarSuffixes === undefined
     ? ['Class']

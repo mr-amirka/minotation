@@ -126,12 +126,9 @@ describe('createTokenCollector — учёт токенов', () => {
     expect(collector.has('/a.html')).toBe(false);
   });
 
-  test('safelist попадает в CSS, даже если в файлах не встретился', () => {
-    const collector = createTokenCollector({
-      ...OPTIONS,
-      safelist: ['m20'],
-    });
-    collector.add('/a.html', '<div class="p10">');
+  test('маркер @mn — токены, которых в атрибутах нет (D-083)', () => {
+    const collector = createTokenCollector(OPTIONS);
+    collector.add('/a.html', '<div class="p10"></div><!-- @mn m20 -->');
 
     expect(collector.css()).toContain('margin:20px');
   });
@@ -552,15 +549,6 @@ describe('createFileFilter — отбор файлов, как в v1 (D-026, D-0
     expect(createFileFilter({}, ROOT).accepts('/proj/src/_header.html')).toBe(true);
   });
 
-  test('safelist — группы токенов через пробел', () => {
-    const collector = createTokenCollector({
-      ...OPTIONS,
-      safelist: ['p10  m20', ''],
-    });
-    const css = collector.css();
-    expect(css).toContain('padding:10px');
-    expect(css).toContain('margin:20px');
-  });
 });
 
 describe('createBuildCollector — записи entry (D-030)', () => {
@@ -717,11 +705,10 @@ describe('опции ядра — плоско, без mn (D-034)', () => {
 });
 
 describe('статистика употребления токенов (D-032)', () => {
-  test('общий список и по файлам; атрибут не class — в ключе; safelist — в tokensTotal', () => {
+  test('общий список и по файлам; атрибут не class — в ключе', () => {
     const build = createBuildCollector({
       ...OPTIONS,
       attrs: 'class, m',
-      safelist: ['dF'],
     }, '/proj');
     build.add('/proj/src/a.html', '<div class="p10 p10 m20" m="p10"></div>');
     build.add('/proj/src/b.html', '<div class="p10"></div>');
@@ -729,7 +716,7 @@ describe('статистика употребления токенов (D-032)',
 
     expect(build.metrics()).toEqual({
       filesScanned: 3,
-      tokensTotal: 4,
+      tokensTotal: 3,
       occurrences: 5,
       tokens: [
         {
@@ -902,7 +889,6 @@ describe('checkBuildOptions — проверка опций плагина (D-03
         class: 'class',
         className: 'class',
       },
-      safelist: ['p10'],
       presets: [presetStandard],
       include: [
         /\.html$/,
@@ -942,9 +928,9 @@ describe('checkBuildOptions — проверка опций плагина (D-03
 
   test('опечатка — подсказка ближайшего ключа', () => {
     expect(() => checkBuildOptions({
-      safeList: ['p10'], 
+      fileNmae: 'a.css', 
     }, 'mnRollup'))
-      .toThrow('[minotation] mnRollup: unknown option "safeList". Did you mean "safelist"?');
+      .toThrow('[minotation] mnRollup: unknown option "fileNmae". Did you mean "fileName"?');
   });
 
   test('старый вложенный mn — неизвестная опция', () => {

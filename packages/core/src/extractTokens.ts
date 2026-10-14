@@ -770,8 +770,15 @@ export function extractMergeCallTokensInto(
  *
  * Строковые литералы разбираются вместе с комментариями — иначе `'https://x'`
  * съел бы остаток строки как комментарий. Внутри литерала комментариев нет.
+ *
+ * Попутно собираются токены из комментариев-маркеров `@mn` (D-083), если передан `markers`:
+ * обычный комментарий остаётся немым, маркер — явное объявление токенов, которые сканер
+ * иначе не увидит (`className={someVar}`).
+ *
+ * @param source — текст файла
+ * @param markers — куда сложить токены маркеров `@mn`; без него маркеры не читаются
  */
-export function stripComments(source: string): string {
+export function stripComments(source: string, markers?: string[]): string {
   const l = source.length;
   // Куски исходника между вырезанными диапазонами. Пока массив пуст, ни одного
   // комментария не встретилось — тогда возвращается сам `source`, без склейки.
@@ -826,6 +833,9 @@ export function stripComments(source: string): string {
       i++;
       continue;
     }
+    markers && markerTokens(
+      markers, source, from, i,
+    );
     parts || (parts = []);
     parts.push(source.slice(kept, from));
     // Переводы строк сохраняются: без них склеились бы соседние строки, и
@@ -840,6 +850,36 @@ export function stripComments(source: string): string {
   }
   parts.push(source.slice(kept));
   return parts.join('');
+}
+
+/** Хвост строки маркера: закрытие комментария (звёздочка со слешем, `-->`). */
+const REGEXP_MARKER_TAIL = /\s*(?:\*\/|-->)\s*$/;
+
+/**
+ * Токены маркеров `@mn` в комментарии `[from, to)` (D-083): после `@mn` и пробела — токены до конца
+ * строки или комментария. `@mn` — отдельное слово: `@mnClass`, `x@mn` маркерами не являются.
+ *
+ * @example
+ * {/* @mn cF00 px10 *\/}      // → cF00, px10
+ * // @mn bgF00 bg0F0          // → bgF00, bg0F0
+ */
+function markerTokens(
+  out: string[], source: string, from: number, to: number,
+): void {
+  let at = source.indexOf('@mn', from);
+  let end: number;
+  let next: string;
+  while (at > -1 && at < to) {
+    next = source[at + 3];
+    if ((next === ' ' || next === '\t') && !isIdentChar(source[at - 1])) {
+      end = at + 4;
+      while (end < to && source[end] !== '\n') {
+        end++;
+      }
+      pushLiteralTokens(out, source.slice(at + 4, end).replace(REGEXP_MARKER_TAIL, ''));
+    }
+    at = source.indexOf('@mn', at + 3);
+  }
 }
 
 /** Только переводы строк из вырезанного диапазона — остальное отбрасывается. */
@@ -917,7 +957,9 @@ export function scanTokens(source: string, options: ScanTokensOptions): string[]
   // Комментарии вырезаются ДО всех трёх механизмов: токен из примера
   // разметки в комментарии либо раздувает CSS правилами, которые не к чему
   // применить, либо роняет сборку под `strict` — см. `stripComments`.
-  source = options.comments === false ? source : stripComments(source);
+  // Маркеры `@mn` читаются всегда (D-083), даже с `comments: false`.
+  const stripped = stripComments(source, tokens);
+  source = options.comments === false ? source : stripped;
   const attrs = attrNames(options.attr);
   const attrsLength = attrs.length;
   let i = 0;

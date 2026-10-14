@@ -302,12 +302,6 @@ function namesOf(list: MnPreset[]): string[] {
 export interface TokenCollectorOptions extends Omit<ScannerOptions, 'attr' | 'onWarning'>, MnCoreOptions {
   /** Какие атрибуты сканировать и во что разворачивать — {@link MnAttrs}. По умолчанию `'class'`. */
   attrs?: MnAttrs;
-  /**
-   * Токены, которые нужны всегда, даже если в файлах не встретились;
-   * компилируются как классы. Элемент может содержать несколько токенов через
-   * пробел: `['crP taL vaT']`.
-   */
-  safelist?: string[];
   /** Статические пресеты; их набор задаёт потребитель. */
   presets?: MnPreset[];
   /**
@@ -394,22 +388,6 @@ export interface MnBuildOptions extends TokenCollectorOptions {
    */
   presetExtensions?: string[];
   /**
-   * Токены, которые нужно скомпилировать всегда, даже если они не встретились
-   * в литеральном атрибуте `class="…"`.
-   *
-   * Плагин извлекает токены **статически**: из значений `class`/`className`
-   * в исходниках. Классы, собранные в переменных или выражениях
-   * (`const th = 'py12 px14'`, `clsx(...)`, вычисляемые строки), при таком
-   * разборе не видны, и соответствующий CSS в сборку не попадает. Для таких
-   * случаев — перечислить токены здесь.
-   *
-   * @default []
-   *
-   * @example
-   * mnVite({ safelist: ['py12 px14 r8', 'crP', 'taL'] })
-   */
-  safelist?: string[];
-  /**
    * Суффиксы имён переменных, значения которых считаются списком MN-токенов.
    *
    * Дополняет статическое извлечение из `class="…"`: классы, собранные в
@@ -426,7 +404,8 @@ export interface MnBuildOptions extends TokenCollectorOptions {
    * кавычках, включая шаблонные; подстановки `${…}` пропускаются, статические
    * части вокруг них — берутся. Сравнение суффикса регистрозависимое.
    *
-   * Пустой массив отключает механизм; всегда доступен запасной путь — {@link safelist}.
+   * Пустой массив отключает механизм; токены, которых сканер не видит, объявляются на месте
+   * маркером `@mn` в комментарии (D-083): `{/* @mn cF00 px10 *\/}`.
    *
    * @default ['Class']
    *
@@ -524,8 +503,6 @@ export interface MnEntryOptions extends MnCoreOptions {
   presets?: MnPreset[];
   /** Свои пресеты областей вместо общих — {@link TokenCollectorOptions.scopePresets}. */
   scopePresets?: MnPreset[];
-  /** Свой safelist вместо общего. */
-  safelist?: string[];
   /** Своё имя файла — там, где имя назначает плагин (CLI, gulp). */
   fileName?: string;
 }
@@ -560,7 +537,6 @@ export const ENTRY_OPTIONS_SCHEMA: OptionSchema = {
   exclude: isFileMatcher,
   skipPartials: isBoolean,
   attrs: isAttrs,
-  safelist: isStringArray,
   fileName: isString,
   scopePresets: isPresetArray,
 };
@@ -727,23 +703,6 @@ export function createFileFilter(options: MnBuildOptions, root: string): FileFil
   };
 }
 
-/**
- * Плоский `safelist`: элемент может содержать несколько токенов через пробел
- * (`'crP taL vaT'`) — так их удобнее держать группами.
- *
- * @param safelist — опция `safelist`
- * @returns токены по одному
- */
-export function flatSafelist(safelist: string[] | undefined): string[] {
-  const out: string[] = [];
-  for (const line of safelist || []) {
-    for (const token of line.split(/\s+/)) {
-      token && out.push(token);
-    }
-  }
-  return out;
-}
-
 /** Накопитель токенов одной сборки. */
 export interface TokenCollector {
   /**
@@ -799,7 +758,6 @@ export interface TokenCollector {
  */
 export function createTokenCollector(options: TokenCollectorOptions): TokenCollector {
   const scan = createAttrsScanner(options);
-  const safelist = flatSafelist(options.safelist).map((token) => 'class ' + token);
   const presets = options.presets || [];
   const scopePresets = options.scopePresets || [];
   /**
@@ -892,9 +850,9 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     return requires && requires.some((name) => appNames.indexOf(name) < 0) ? requires.slice().sort().join(',') : '';
   }
 
-  /** Записи по областям; область приложения есть всегда (статика пресетов, safelist). */
+  /** Записи по областям; область приложения есть всегда (статика пресетов, `mn.css`). */
   function collect(appNames: string[]): Map<string, ScopeEntries> {
-    const scopes = new Map<string, ScopeEntries>([['', [new Set<string>(safelist), '']]]);
+    const scopes = new Map<string, ScopeEntries>([['', [new Set<string>(), '']]]);
     let mode: MnNotationMode | undefined;
     let scope: ScopeEntries;
     let key: string;
@@ -1171,9 +1129,7 @@ export interface Metrics {
   /** Всего просканировано файлов. */
   filesScanned: number;
   /**
-   * Уникальных токенов — включая `safelist`, которого в файлах не было. Счётчики
-   * в {@link Metrics.tokens} считают только встреченное в файлах, поэтому числа
-   * могут расходиться.
+   * Уникальных токенов во всех файлах.
    */
   tokensTotal: number;
   /** Сколько раз токены встретились суммарно, с повторами. */
@@ -1287,7 +1243,6 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
     }
     counts.set(id, own);
   }
-  const safelist = flatSafelist(options.safelist);
   const parts = names.map((name) => {
     const own = entries[name];
     const merged: MnBuildOptions = {
@@ -1391,9 +1346,6 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
       for (const item of tokens) {
         occurrences += item.count;
         unique[item.name] = 1;
-      }
-      for (const token of safelist) {
-        unique[token] = 1;
       }
       return {
         filesScanned: counts.size,

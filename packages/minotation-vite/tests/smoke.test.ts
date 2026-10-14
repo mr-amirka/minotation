@@ -35,45 +35,24 @@ describe('minotation-vite — smoke', () => {
   });
 });
 
-describe('minotation-vite — safelist (регрессия 2026-09-22)', () => {
-  /**
-   * Плагин извлекает токены только из литеральных `class="…"`. Токены, собранные
-   * в переменных (`const th = 'py12 px14'`, частый приём в .astro/JSX), терялись —
-   * опция `safelist` добавляет их в компиляцию принудительно.
-   */
+describe('minotation-vite — маркер @mn (D-083)', () => {
   /** CSS модуля `virtual:mn.css` — так его получает Vite. */
-  function bundleCss(plugin: any): string {
+  function bundleCss(plugin: any, source: string): string {
+    plugin.transform(source, '/proj/src/App.tsx');
     return plugin.load.call({ warn: () => undefined }, plugin.resolveId('virtual:mn.css')).code;
   }
 
-  test('токены из safelist попадают в CSS без единого class="…" в проекте', () => {
-    const css = bundleCss(mnVite({ safelist: ['py12', 'crP'] }));
-    expect(css).toContain('padding-top:12px');
-    expect(css).toContain('cursor:pointer');
-  });
-
-  test('несколько токенов в одной строке разбиваются по пробелам', () => {
-    const css = bundleCss(mnVite({ safelist: ['taL  vaT'] }));
+  test('токены из маркера попадают в CSS без class="…"', () => {
+    const css = bundleCss(mnVite(), 'export const A = () => <div className={someVar} />; {/* @mn w777 taL */}');
+    expect(css).toContain('width:777px');
     expect(css).toContain('text-align:left');
-    expect(css).toContain('vertical-align:top');
-  });
-
-  test('без safelist этих правил нет', () => {
-    // `cursor:pointer` брать нельзя — его даёт presetMain (a{cursor:pointer} в @media),
-    // поэтому проверяем заведомо уникальное значение.
-    expect(bundleCss(mnVite({ safelist: ['w777'] }))).toContain('width:777px');
-    expect(bundleCss(mnVite())).not.toContain('width:777px');
-  });
-
-  test('пустые строки и лишние пробелы игнорируются', () => {
-    expect(() => bundleCss(mnVite({ safelist: ['', '   '] }))).not.toThrow();
   });
 });
 
 describe('minotation-vite — classVarSuffixes (2026-09-22)', () => {
   /**
    * Классы, собранные в переменной, статическое извлечение из `class="…"` не видит.
-   * Кроме ручного `safelist` есть конвенция имени: переменная с суффиксом (по умолчанию
+   * Кроме маркера `@mn` есть конвенция имени: переменная с суффиксом (по умолчанию
    * `Class`) трактуется как список MN-токенов.
    */
   function cssOf(source: string, options?: any): string {

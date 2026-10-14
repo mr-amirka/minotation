@@ -33,7 +33,7 @@ import { createRequire } from 'module';
 /**
  * Опции плагина {@link mnEsbuild} — эталонный набор `minotation-build` (D-026):
  * `attrs`, `root`, `extensions`, `include`, `exclude`, `skipPartials`, `presets`,
- * `presetExtensions`, `safelist`, `classVarSuffixes`, `mergeFnNames`, `syntax`,
+ * `presetExtensions`, `classVarSuffixes`, `mergeFnNames`, `syntax`,
  * `mn`, `entry`, `fileName`, `manifest`. Описание каждой — в README `minotation-build`.
  *
  * `root` по умолчанию — рабочая директория (`process.cwd()`).

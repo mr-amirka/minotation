@@ -91,10 +91,10 @@ const thClass = 'py12 px14 bb1 bsS';
 ```
 
 Набор суффиксов настраивается (`classVarSuffixes`), а для случаев, когда переименовать нельзя,
-остаётся явный `safelist`:
+токены объявляются на месте маркером `@mn` в комментарии (D-083):
 
-```js
-mnAstro({ attrs: 'class', classVarSuffixes: ['Class', 'Cls'], safelist: ['crP taL vaT'] })
+```astro
+<td class={cellClasses}></td> <!-- @mn crP taL vaT -->
 ```
 
 ## Опции
@@ -116,7 +116,6 @@ mnAstro({ attrs: 'class', classVarSuffixes: ['Class', 'Cls'], safelist: ['crP ta
 
 Опции можно задать и в общем файле `minotation.config.js` рабочего каталога — он один для всех плагинов и CLI, опции из кода сливаются поверх ([minotation-build](../minotation-build/README.md#файл-настроек-minotationconfig-d-081)).
 | `presetExtensions` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты (`import './app.mn'`) |
-| `safelist` | `[]` | токены, нужные всегда; группы через пробел |
 | `classVarSuffixes` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
 | `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |

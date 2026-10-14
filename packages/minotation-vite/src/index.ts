@@ -28,7 +28,7 @@ import { createRequire } from 'module';
 /**
  * Опции плагина {@link mnVite} — эталонный набор `minotation-build` целиком
  * (D-026): `attrs`, `root`, `extensions`, `include`, `exclude`, `skipPartials`,
- * `presets`, `presetExtensions`, `safelist`, `classVarSuffixes`, `mergeFnNames`,
+ * `presets`, `presetExtensions`, `classVarSuffixes`, `mergeFnNames`,
  * `syntax`, `mn`, `entry`. Описание каждой — в README `minotation-build`.
  *
  * `root` у vite по умолчанию — `<root конфига Vite>/src`.

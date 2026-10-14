@@ -6,6 +6,12 @@ import minotationProvider from '../core/index';
 import presetStandard from '../presets/standard';
 import presetSynonyms from '../presets/synonyms';
 import presetMedias from '../presets/medias';
+import {
+  scanTokens,
+} from '../extractTokens';
+import {
+  scanTokensSyntax,
+} from '../syntaxScan';
 
 function css(tokens: string): string[] {
   const mn = minotationProvider({
@@ -48,4 +54,26 @@ test('группа с состоянием: вкладка', () => {
     + '.\\(c3\\|bb2\\|bsS\\|bc0A7\\)\\.active.active{border-style:solid}'
     + '.\\(c3\\|bb2\\|bsS\\|bc0A7\\)\\.active.active{border-color:#0a7}'
     + '.\\(c3\\|bb2\\|bsS\\|bc0A7\\)\\.active.active{border-bottom-width:2px}');
+});
+
+/** Таблица «Не делайте так» и абзац под ней: что сканер берёт, а что — нет (оба сканера). */
+test.each([
+  ['<div className={cond ? \'bgE c3\' : \'cF\'} />', [
+    'bgE',
+    'c3',
+    'cF',
+  ]],
+  ['<div className={cond && \'fwB\'} />', ['fwB']],
+  ['<div className={x || \'c3\'} />', ['c3']],
+  ['const thClass = isOpen ? \'dB\' : \'dN\';', ['dB', 'dN']],
+  ['<div className={clsx({ fwB: active })} />', []],
+  ['<div className={\'bg\' + color} />', []],
+  ['<div className={\'p10 \' + (on ? \'cF\' : \'c0\')} />', []],
+  ['<div className={`p10 ${on ? \'cF\' : \'c0\'}`} />', ['p10']],
+])('сканер: %s', (source, expected) => {
+  const options = {
+    attr: 'className',
+  };
+  expect(Array.from(new Set(scanTokensSyntax(source, options))).sort()).toEqual(expected);
+  expect(Array.from(new Set(scanTokens(source, options))).sort()).toEqual(expected);
 });

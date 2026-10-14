@@ -290,6 +290,211 @@ describe('scanTokensSyntax — диалекты', () => {
  * комментариев». Комментариев в этих образцах нет — значит наборы обязаны
  * совпадать полностью.
  */
+/**
+ * Условные выражения (web-games, запрос 4): литералы, которые могут стать значением,
+ * берутся обоими сканерами одинаково; условие и операнды сравнения — нет.
+ */
+describe('условные выражения — оба сканера', () => {
+  const CASES: Array<[string, string, string[]]> = [
+    [
+      'тернарный',
+      '<div className={variant === \'splash\' ? \'bg1D2A4D cF\' : \'fx1 wgAppear\'} />',
+      [
+        'bg1D2A4D',
+        'cF',
+        'fx1',
+        'wgAppear',
+      ],
+    ],
+    [
+      'вложенный тернарный',
+      '<div className={a ? \'p1\' : b ? \'p2\' : \'p3\'} />',
+      [
+        'p1',
+        'p2',
+        'p3',
+      ],
+    ],
+    [
+      '&&',
+      '<div className={on && \'p10\'} />',
+      ['p10'],
+    ],
+    [
+      '||',
+      '<div className={x || \'m5\'} />',
+      ['m5'],
+    ],
+    [
+      '??',
+      '<div className={x ?? \'m6\'} />',
+      ['m6'],
+    ],
+    [
+      'скобки и приоритет',
+      '<div className={(on && \'w1\') || \'w2\'} />',
+      ['w1', 'w2'],
+    ],
+    [
+      'сравнение в цепочке &&',
+      '<div className={on && v === \'x\' && \'w3\'} />',
+      ['w3'],
+    ],
+    [
+      'отрицание в условии',
+      '<div className={!on ? \'n1\' : \'n2\'} />',
+      ['n1', 'n2'],
+    ],
+    [
+      'вызов в условии',
+      '<div className={arr.includes(\'q\') ? \'n3\' : undefined} />',
+      ['n3'],
+    ],
+    [
+      'шаблон в ветке',
+      '<div className={on ? `t1 ${x}` : \'t2\'} />',
+      ['t1', 't2'],
+    ],
+    [
+      'JSX в ветке',
+      '<div className={on ? <b /> : \'j1\'} />',
+      ['j1'],
+    ],
+    [
+      'свойство объекта',
+      'f({ className: on ? \'k1\' : \'k2\', other: \'zz\' })',
+      ['k1', 'k2'],
+    ],
+    [
+      'свойство в несколько строк',
+      'f({ className: on\n  ? \'k3\'\n  : \'k4\' })',
+      ['k3', 'k4'],
+    ],
+    [
+      'переменная с суффиксом',
+      'const rowClass = on ? \'v1\' : \'v2\';\nconst x = \'no\';',
+      ['v1', 'v2'],
+    ],
+    [
+      'переменная с аннотацией',
+      'const rowClass: string = on ? \'v3\' : \'v4\';',
+      ['v3', 'v4'],
+    ],
+    [
+      'свойство с суффиксом и сравнением',
+      'f({ rowClass: a === \'z\' ? \'v5\' : \'v6\' })',
+      ['v5', 'v6'],
+    ],
+    [
+      'обёрнутое в шаблон — только статика',
+      '<div className={`a ${on ? \'b\' : \'c\'} d`} />',
+      ['a', 'd'],
+    ],
+    [
+      'не-null утверждение TS',
+      '<div className={on! ? \'z1\' : \'z2\'} />',
+      ['z1', 'z2'],
+    ],
+    [
+      'опциональная цепочка в условии',
+      '<div className={a?.b ? \'o1\' : \'o2\'} />',
+      ['o1', 'o2'],
+    ],
+    // Ничего не сводится к литералам — токенов нет.
+    [
+      'clsx',
+      '<div className={clsx({ p10: on })} />',
+      [],
+    ],
+    [
+      'конкатенация',
+      '<div className={\'s1 \' + (on ? \'s2\' : \'s3\')} />',
+      [],
+    ],
+    [
+      'свойство',
+      '<div className={styles.a} />',
+      [],
+    ],
+    [
+      'метод строки',
+      '<div className={\'a b\'.trim()} />',
+      [],
+    ],
+    [
+      'унарный минус',
+      '<div className={-x} />',
+      [],
+    ],
+    [
+      'сравнение — не присваивание',
+      'if (el.className === \'nope\') {}',
+      [],
+    ],
+    [
+      'тип свойства',
+      'interface P { className: string | undefined }',
+      [],
+    ],
+    [
+      'функция вместо значения',
+      'const rowClass = useMemo(() => \'u1\', [])',
+      [],
+    ],
+    [
+      'стрелка с параметром-переменной',
+      'const f = (rowClass) => rowClass;',
+      [],
+    ],
+  ];
+
+  test.each(CASES)('%s', (
+    _name, source, expected,
+  ) => {
+    const options = {
+      attr: 'className',
+    };
+    expect(setOf(scanTokensSyntax(source, options))).toEqual(setOf(expected));
+    expect(setOf(scanTokens(source, options))).toEqual(setOf(expected));
+  });
+
+  test('аргумент mne — как и прежде, все литералы вызова', () => {
+    // Функции слияния берут каждый литерал аргументов (включая вложенные вызовы),
+    // поэтому строка из условия тоже попадает в набор: класс без хендлера CSS не даёт.
+    const source = '<div className={mne(props.className, v === \'splash\' ? \'bg1D2A4D cF\' : \'fx1\')} />';
+    const expected = [
+      'bg1D2A4D',
+      'cF',
+      'fx1',
+      'splash',
+    ];
+    expect(setOf(scanTokensSyntax(source, {
+      attr: 'className',
+    }))).toEqual(expected);
+    expect(setOf(scanTokens(source, {
+      attr: 'className',
+    }))).toEqual(expected);
+  });
+
+  test('битое выражение: без `:` у тернарного токенов нет', () => {
+    expect(scanTokens('<div className={on ? \'a\' } />', {
+      attr: 'className',
+    })).toEqual([]);
+  });
+
+  test('незакрытые строка, шаблон и скобки не роняют разбор', () => {
+    expect(() => scanTokens('<div className={on ? (\'a', {
+      attr: 'className',
+    })).not.toThrow();
+    expect(() => scanTokens('<div className={on ? `a ${x', {
+      attr: 'className',
+    })).not.toThrow();
+    expect(() => scanTokens('<div className={f(`a\\` ${\'b\\\'\'} \'', {
+      attr: 'className',
+    })).not.toThrow();
+  });
+});
+
 describe('паритет с текстовым сканером', () => {
   const SAMPLES: Array<[string, string]> = [
     ['атрибуты', '<div class="p10 w50"><span class={\'m5\'} /></div>'],

@@ -20,8 +20,9 @@
  *    (`[:=]`). Вложенность объекта не важна — regexp ищет `attrName` где угодно
  *    в тексте, не разбирает структуру объекта.
  *
- * Динамические значения свойства (`{ className: cond ? 'a' : 'b' }`, вычисляемые
- * выражения) — не поддерживаются, как и раньше: извлекается только буквальный текст.
+ * 5. **Выражение** (`attr={…}` и значение свойства без кавычек): литералы, которые могут
+ *    стать значением, — ветви `?:`, правая часть `&&`, обе части `||`/`??`
+ *    ({@link pushValueExpression}). Условия, сравнения, вызовы и склейка токенов не дают.
  *
  * @module extractTokens
  */
@@ -54,7 +55,11 @@ function buildAttrRegexp(attrName: string): RegExp {
       + '|\'([^\']*)\''
       + '|\\{\\s*\'([^\']*)\'\\s*\\}'
       + '|\\{\\s*"([^"]*)"\\s*\\}'
-      + '|\\{\\s*`([^`]*)`\\s*\\})',
+      + '|\\{\\s*`([^`]*)`\\s*\\}'
+      // Остальное — выражение (`{v ? 'a' : 'b'}`, `className: on && 'a'`): его читает
+      // `pushValueExpression`. 6 — в фигурных скобках, 7 — без них (свойство объекта).
+      + '|(\\{)'
+      + '|()(?=[^\\s\'"{=>]))',
   'g');
 }
 
@@ -98,7 +103,13 @@ export function extractTokensInto(
   regexp.lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = regexp.exec(source))) {
-    // одна из пяти альтернатив regexp'а всегда совпала — иначе не было бы матча
+    if (match[6] !== undefined || match[7] !== undefined) {
+      regexp.lastIndex = pushValueExpression(
+        tokens, source, regexp.lastIndex,
+      );
+      continue;
+    }
+    // одна из пяти литеральных альтернатив regexp'а совпала — иначе не было бы матча
     pushLiteralTokens(tokens,
       (match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5]) as string);
   }
@@ -115,6 +126,301 @@ function isIdentChar(ch: string): boolean {
 /** Пробел, перевод строки или табуляция. */
 function isSpaceChar(ch: string): boolean {
   return ch === ' ' || ch === '\n' || ch === '\t' || ch === '\r';
+}
+
+/**
+ * Состояние разбора выражения кортежем (§2): исходник, позиция, аккумулятор токенов.
+ *
+ * Аккумулятор общий с остальным сканером: литерал, который оказался не значением
+ * (условие, операнд сравнения), отрезается обратно по сохранённой длине — без
+ * промежуточных массивов на каждый узел.
+ */
+type ExpressionState = [source: string, at: number, out: string[]];
+
+const MN_EXPR_SOURCE = 0;
+const MN_EXPR_AT = 1;
+const MN_EXPR_OUT = 2;
+
+/** Бинарные операторы, длинные раньше коротких: `===` не должен прочитаться как `==`. */
+const BINARY_OPERATORS = [
+  '===',
+  '!==',
+  '&&',
+  '||',
+  '??',
+  '==',
+  '!=',
+  '<=',
+  '>=',
+  '<',
+  '>',
+  '+',
+  '-',
+  '*',
+  '/',
+  '%',
+  '|',
+  '&',
+  '^',
+];
+
+/**
+ * Токены выражения, которое начинается в `at`, — из каждого литерала, который может
+ * стать его значением (паритет с синтаксическим сканером, `syntaxScan.ts`).
+ *
+ * Берутся обе ветки `cond ? 'a' : 'b'` (и вложенных), правая часть `cond && 'a'`, обе
+ * части `a || 'b'` и `a ?? 'b'`, скобки, статические куски шаблона. Условие и операнды
+ * сравнения не берутся: в `v === 'splash' ? …` строка `'splash'` — не класс. Вызов,
+ * обращение к свойству, конкатенация на этапе сборки неизвестны — токенов не дают.
+ *
+ * Разбор останавливается на первом символе, которым выражение продолжиться не может
+ * (`}`, `)`, `,`, `;`, `=>`, начало следующей инструкции).
+ *
+ * @param out — аккумулятор токенов
+ * @param source — текст файла
+ * @param at — позиция начала выражения
+ * @returns позиция сразу за прочитанным выражением
+ *
+ * @example
+ * pushValueExpression(out, "v === 'splash' ? 'bg1 cF' : 'fx1' }", 0)  // out: bg1, cF, fx1
+ */
+export function pushValueExpression(
+  out: string[], source: string, at: number,
+): number {
+  const state: ExpressionState = [
+    source,
+    at,
+    out,
+  ];
+  readConditional(state);
+  return state[MN_EXPR_AT];
+}
+
+/** Пропускает пробелы и переводы строк. */
+function skipSpaces(state: ExpressionState): void {
+  const source = state[MN_EXPR_SOURCE];
+  const l = source.length;
+  let i = state[MN_EXPR_AT];
+  while (i < l && isSpaceChar(source[i])) {
+    i++;
+  }
+  state[MN_EXPR_AT] = i;
+}
+
+/** `cond ? a : b` — условие отрезается, ветки остаются; без `:` выражение битое — отрезается всё. */
+function readConditional(state: ExpressionState): void {
+  const source = state[MN_EXPR_SOURCE];
+  const out = state[MN_EXPR_OUT];
+  const mark = out.length;
+  readBinary(state, 0);
+  skipSpaces(state);
+  const i = state[MN_EXPR_AT];
+  if (source[i] !== '?' || source[i + 1] === '?' || source[i + 1] === '.') {
+    return;
+  }
+  out.length = mark;
+  state[MN_EXPR_AT] = i + 1;
+  readConditional(state);
+  skipSpaces(state);
+  if (source[state[MN_EXPR_AT]] !== ':') {
+    out.length = mark;
+    return;
+  }
+  state[MN_EXPR_AT]++;
+  readConditional(state);
+}
+
+/** Оператор в позиции `at` или пустая строка; `=>` и `=` операторами не считаются. */
+function binaryOperator(source: string, at: number): string {
+  const l = BINARY_OPERATORS.length;
+  let i = 0;
+  let operator: string;
+  for (; i < l; i++) {
+    operator = BINARY_OPERATORS[i];
+    if (source.startsWith(operator, at)) {
+      return operator;
+    }
+  }
+  return '';
+}
+
+/** Приоритет: `??`/`||` — 1, `&&` — 2, остальные (сравнения, арифметика) — 3. */
+function precedence(operator: string): number {
+  return operator === '||' || operator === '??' ? 1 : operator === '&&' ? 2 : 3;
+}
+
+/**
+ * Цепочка бинарных операторов не ниже `minPrecedence`.
+ *
+ * `a && b` — значение из `b`; `a || b`, `a ?? b` — из обеих; прочие (`===`, `+`) —
+ * вычисляемые, токены обеих частей отрезаются.
+ */
+function readBinary(state: ExpressionState, minPrecedence: number): void {
+  const source = state[MN_EXPR_SOURCE];
+  const out = state[MN_EXPR_OUT];
+  const mark = out.length;
+  let operator: string;
+  let level: number;
+  readOperand(state);
+  for (;;) {
+    skipSpaces(state);
+    operator = binaryOperator(source, state[MN_EXPR_AT]);
+    if (!operator) {
+      return;
+    }
+    level = precedence(operator);
+    if (level < minPrecedence) {
+      return;
+    }
+    state[MN_EXPR_AT] += operator.length;
+    if (operator === '&&') {
+      out.length = mark;
+      readBinary(state, level + 1);
+    } else if (level === 1) {
+      readBinary(state, level + 1);
+    } else {
+      readBinary(state, level + 1);
+      out.length = mark;
+    }
+  }
+}
+
+/**
+ * Операнд: литерал, шаблон, скобки, имя или число — плюс хвост из вызовов и обращений
+ * к свойствам. С хвостом значение вычисляемое (`'a b'.trim()`), его токены отрезаются.
+ */
+function readOperand(state: ExpressionState): void {
+  const source = state[MN_EXPR_SOURCE];
+  const out = state[MN_EXPR_OUT];
+  const mark = out.length;
+  skipSpaces(state);
+  let i = state[MN_EXPR_AT];
+  const ch = source[i];
+  if (ch === '!' || ch === '~' || ch === '+' || ch === '-') {
+    // Унарный оператор: значение — уже не строка.
+    state[MN_EXPR_AT] = i + 1;
+    readOperand(state);
+    out.length = mark;
+    return;
+  }
+  if (ch === '(') {
+    state[MN_EXPR_AT] = i + 1;
+    readConditional(state);
+    skipSpaces(state);
+    source[state[MN_EXPR_AT]] === ')' && state[MN_EXPR_AT]++;
+  } else if (ch === '\'' || ch === '"') {
+    i = skipString(source, i);
+    pushLiteralTokens(out, source.slice(state[MN_EXPR_AT] + 1, i - 1));
+    state[MN_EXPR_AT] = i;
+  } else if (ch === '`') {
+    state[MN_EXPR_AT] = readTemplate(
+      source, i, out,
+    );
+  } else if (ch !== undefined && (isIdentChar(ch) || ch === '.')) {
+    while (i < source.length && (isIdentChar(source[i]) || source[i] === '.')) {
+      i++;
+    }
+    state[MN_EXPR_AT] = i;
+  } else {
+    return;
+  }
+  readPostfix(state) && (out.length = mark);
+}
+
+/** Вызовы, индексы и обращения к свойствам после операнда; `true` — что-то было. */
+function readPostfix(state: ExpressionState): boolean {
+  const source = state[MN_EXPR_SOURCE];
+  let i = state[MN_EXPR_AT];
+  const start = i;
+  let ch: string;
+  for (;;) {
+    ch = source[i];
+    if (ch === '(' || ch === '[') {
+      i = skipBalanced(source, i);
+    } else if (ch === '.' || (ch === '?' && source[i + 1] === '.')) {
+      i += ch === '.' ? 1 : 2;
+      while (i < source.length && isIdentChar(source[i])) {
+        i++;
+      }
+    } else if (ch === '!' && source[i + 1] !== '=') {
+      // TS: `value!` — утверждение «не null».
+      i++;
+    } else {
+      break;
+    }
+  }
+  state[MN_EXPR_AT] = i;
+  return i > start;
+}
+
+/** Позиция за закрывающей кавычкой строки, открытой в `at`. */
+function skipString(source: string, at: number): number {
+  const quote = source[at];
+  const l = source.length;
+  let i = at + 1;
+  for (; i < l; i++) {
+    if (source[i] === '\\') {
+      i++;
+      continue;
+    }
+    if (source[i] === quote) {
+      return i + 1;
+    }
+  }
+  return l;
+}
+
+/**
+ * Шаблон, открытый в `at`: статические куски — в `out` (если передан), подстановки
+ * `${…}` пропускаются целиком. Возвращает позицию за закрывающей кавычкой.
+ */
+function readTemplate(
+  source: string, at: number, out: string[] | undefined,
+): number {
+  const l = source.length;
+  let i = at + 1;
+  let from = i;
+  for (; i < l; i++) {
+    if (source[i] === '\\') {
+      i++;
+      continue;
+    }
+    if (source[i] === '`') {
+      out && pushLiteralTokens(out, source.slice(from, i));
+      return i + 1;
+    }
+    if (source[i] === '$' && source[i + 1] === '{') {
+      out && pushLiteralTokens(out, source.slice(from, i));
+      i = skipBalanced(source, i + 1) - 1;
+      from = i + 1;
+    }
+  }
+  return l;
+}
+
+/** Позиция за скобкой, парной открытой в `at`; строки и шаблоны внутри пропускаются. */
+function skipBalanced(source: string, at: number): number {
+  const l = source.length;
+  let depth = 0;
+  let i = at;
+  let ch: string;
+  for (; i < l; i++) {
+    ch = source[i];
+    if (ch === '(' || ch === '[' || ch === '{') {
+      depth++;
+    } else if (ch === ')' || ch === ']' || ch === '}') {
+      if (!--depth) {
+        return i + 1;
+      }
+    } else if (ch === '\'' || ch === '"') {
+      i = skipString(source, i) - 1;
+    } else if (ch === '`') {
+      i = readTemplate(
+        source, i, undefined,
+      ) - 1;
+    }
+  }
+  return l;
 }
 
 /**
@@ -233,12 +539,18 @@ export function extractClassVarTokensInto(
         }
         quote = source[i];
         if (quote !== '\'' && quote !== '"' && quote !== '`') {
-          // Аннотация: доходим до `=`, обрываясь на `;` и переводе строки —
-          // как и прежняя регулярка (`[^=;\n]+`).
+          // Аннотация доходит до `=`, обрываясь на `;` и переводе строки —
+          // как и прежняя регулярка (`[^=;\n]+`). Не дошла (или `=` — часть
+          // `===`/`=>`) — это свойство объекта со значением-выражением:
+          // `{ aClass: on ? 'a' : 'b' }`.
+          at = i;
           while (i < l && source[i] !== '=' && source[i] !== ';' && source[i] !== '\n') {
             i++;
           }
-          if (source[i] !== '=') {
+          if (!isAssignment(source, i)) {
+            from = pushValueExpression(
+              out, source, at,
+            );
             continue;
           }
           i++;
@@ -246,7 +558,7 @@ export function extractClassVarTokensInto(
             i++;
           }
         }
-      } else if (source[i] === '=') {
+      } else if (isAssignment(source, i)) {
         i++;
         while (i < l && isSpaceChar(source[i])) {
           i++;
@@ -256,6 +568,10 @@ export function extractClassVarTokensInto(
       }
       quote = source[i];
       if (quote !== '\'' && quote !== '"' && quote !== '`') {
+        // `const aClass = on ? 'a' : 'b'` — значение-выражение.
+        from = pushValueExpression(
+          out, source, i,
+        );
         continue;
       }
       valueFrom = ++i;
@@ -272,6 +588,15 @@ export function extractClassVarTokensInto(
       from = i;
     }
   }
+}
+
+/** `=` в позиции `at` — присваивание, а не часть `==`, `===`, `!=`, `<=`, `>=` или `=>`. */
+function isAssignment(source: string, at: number): boolean {
+  const next = source[at + 1];
+  const prev = source[at - 1];
+  return source[at] === '='
+    && next !== '=' && next !== '>'
+    && prev !== '=' && prev !== '!' && prev !== '<' && prev !== '>';
 }
 
 /**

@@ -20,9 +20,12 @@
  * отдельную точку входа `minotation/syntax`: кто импортирует `minotation`, тот
  * парсер не тянет.
  *
- * ## Что собирается (ровно то же, что текстовым сканером)
+ * ## Что собирается (то же, что текстовым сканером, плюс условные выражения)
  *
- * 1. JSX-атрибут: `class="p10"`, `class={'p10'}`, `` class={`p10 ${x} w50`} ``.
+ * 1. JSX-атрибут: `class="p10"`, `class={'p10'}`, `` class={`p10 ${x} w50`} ``,
+ *    а также литералы, которые могут стать значением: `class={v ? 'a' : 'b'}`,
+ *    `class={on && 'a'}`, `class={x || 'a'}` (так же — в свойствах и переменных
+ *    из пунктов 2–3). Текстовый сканер таких выражений не видит.
  * 2. Свойство объекта с тем же именем: `{ className: 'p10' }` — в том числе
  *    вложенное (`slotProps={{ paper: { className: 'p10' } }}`).
  * 3. Переменная с суффиксом: `const rowClass = 'p10'`, `{ rowClass: 'p10' }`.
@@ -249,23 +252,59 @@ function hasSuffix(name: string, suffixes: string[]): boolean {
   return false;
 }
 
-/** Литеральное значение выражения — строка, шаблон или ничего. */
+/**
+ * Токены выражения — из каждого литерала, который может стать его значением.
+ *
+ * Значение, которое сводится к набору литералов без выполнения кода, берётся целиком:
+ * обе ветки `cond ? 'a' : 'b'` (и вложенных), правая часть `cond && 'a'`, обе части
+ * `a || 'b'` и `a ?? 'b'`, скобки. Условие не берётся: в `v === 'splash' ? …` строка
+ * `'splash'` — операнд сравнения, а не класс.
+ */
 function pushExpression(node: ts.Node | undefined, state: ScanState): void {
   if (!node) {
     return;
   }
-  const tokens = state[MN_SCAN_TOKENS];
+  switch (node.kind) {
+    case ts.SyntaxKind.ConditionalExpression:
+      pushExpression((node as ts.ConditionalExpression).whenTrue, state);
+      pushExpression((node as ts.ConditionalExpression).whenFalse, state);
+      break;
+    case ts.SyntaxKind.ParenthesizedExpression:
+      pushExpression((node as ts.ParenthesizedExpression).expression, state);
+      break;
+    case ts.SyntaxKind.BinaryExpression:
+      pushBinary(node as ts.BinaryExpression, state);
+      break;
+    default:
+      // Вычисляемое значение (вызов, переменная, конкатенация) на этапе сборки
+      // неизвестно — ровно как и у текстового сканера.
+      pushLiteral(node, state);
+      break;
+  }
+}
+
+/** `cond && 'a'` — только правая часть; `a || 'b'`, `a ?? 'b'` — обе. */
+function pushBinary(node: ts.BinaryExpression, state: ScanState): void {
+  const operator = node.operatorToken.kind;
+  if (operator === ts.SyntaxKind.AmpersandAmpersandToken) {
+    pushExpression(node.right, state);
+  } else if (operator === ts.SyntaxKind.BarBarToken || operator === ts.SyntaxKind.QuestionQuestionToken) {
+    pushExpression(node.left, state);
+    pushExpression(node.right, state);
+  }
+}
+
+/** Сам узел — строка или шаблон: его токены. */
+function pushLiteral(node: ts.Node, state: ScanState): void {
   switch (node.kind) {
     case ts.SyntaxKind.StringLiteral:
     case ts.SyntaxKind.NoSubstitutionTemplateLiteral:
-      pushLiteralTokens(tokens, (node as ts.StringLiteralLike).text);
+      pushLiteralTokens(state[MN_SCAN_TOKENS], (node as ts.StringLiteralLike).text);
       break;
     case ts.SyntaxKind.TemplateExpression:
       pushTemplate(node as ts.TemplateExpression, state);
       break;
     default:
-      // Вычисляемое значение (`cond ? a : b`, вызов, переменная) на этапе
-      // сборки неизвестно — ровно как и у текстового сканера.
       break;
   }
 }
@@ -284,7 +323,7 @@ function pushTemplate(node: ts.TemplateExpression, state: ScanState): void {
 
 /** Все строковые литералы поддерева — для аргументов функций слияния. */
 function pushEveryLiteral(node: ts.Node, state: ScanState): void {
-  pushExpression(node, state);
+  pushLiteral(node, state);
   ts.forEachChild(node, (child) => {
     pushEveryLiteral(child, state);
   });

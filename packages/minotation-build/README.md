@@ -82,6 +82,7 @@ for (const warning of collector.takeWarnings()) {
 | `exclude` | `MnFileMatcher` | — | какие файлы пропускать; важнее `include` |
 | `skipPartials` | `boolean` | `false` | пропускать файлы-партиалы `_*` (D-027) |
 | `presets` | `MnPreset[]` | стандартный набор | статические пресеты; стандартный набор начинается с `presetHints` (D-024) |
+| `scopePresets` | `MnPreset[]` | `[]` | пресеты, которые могут потребовать пакеты: пакет с чужим семейством — своя область (D-078) |
 | `presetExtensions` | `string[]` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты (`import './app.mn'`) |
 | `safelist` | `string[]` | `[]` | токены, нужные всегда; группы через пробел: `['crP taL vaT']` |
 | `classVarSuffixes` | `string[]` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
@@ -165,12 +166,42 @@ export const Button = () => <button className="px-4 hover:bg-blue-500" />;
 Директива читается из первых 2 КБ файла: `/* … */`, строка ` * …` блочного комментария,
 `<!-- … -->`, `// …`. Опечатка в ключе или значении — ошибка с подсказкой и именем файла.
 
-`requires` — пресеты, без которых классы файла не работают; не подключён — ошибка:
+`requires` — пресеты, без которых классы файла не работают; нет ни в `presets`, ни в
+`scopePresets` — ошибка:
 
 ```
 [minotation] src/ui/Button.tsx requires preset "presetTailwind", which is not connected.
   Connected presets: presetHints, presetStandard
 ```
+
+### Области семейств пресетов (D-076, D-078)
+
+Пакет, чей `requires` выходит за `presets` приложения, собирается **в своей области** — своим
+экземпляром ядра: его хендлеры не перебивают хендлеры приложения. Без этого `presetTw4`
+забирал `p`, `bg`, `w` у `presetStandard`, и `p10` приложения CSS не давал.
+
+```ts
+mnVite({
+  presets: [presetStandard, presetSynonyms, presetMedias],   // семейство приложения
+  scopePresets: [presetTw4],                                  // что могут потребовать пакеты
+});
+```
+```json
+// packages/ui/package.json
+{ "minotation": { "notationMode": "tw4-compatible", "requires": ["presetTw4"] } }
+```
+
+- пресеты области — её `requires` по имени из `presets` и `scopePresets` вместе с их
+  зависимостями (`presetTw4` требует `presetMedias` — берётся у приложения);
+- пакет, чьи требования целиком входят в `presets` приложения, — в области приложения;
+  другой `notationMode` сам по себе области не даёт;
+- **динамические пресеты** (`*.mn.ts`) действуют только в своей области — по директиве в самом
+  файле пресета или по `package.json` его пакета: пресет пакета не доходит до приложения, и
+  наоборот;
+- CSS: сначала область приложения, затем области пакетов.
+
+Без изоляции правила областей глобальные (`.flex{…}` из обеих областей — два правила);
+изоляция классом области (`isolateMode`, D-075) — следующий шаг.
 
 Один класс в файлах с разными режимами может значить разное — `notationConflictMode`:
 

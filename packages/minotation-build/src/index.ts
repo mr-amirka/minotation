@@ -21,7 +21,7 @@
  * @module minotation-build
  */
 import {
-  readdirSync, statSync,
+  readFileSync, readdirSync, statSync,
 } from 'node:fs';
 import {
   createHash,
@@ -277,6 +277,18 @@ export function compileEntries(mn: Pick<ReturnType<typeof minotationProvider>, '
   }
 }
 
+/** Записи области и первый (по пути) её файл — для сообщений об ошибках. */
+type ScopeEntries = [entries: Set<string>, firstId: string];
+
+/** Имена пресет-объектов (функции имени не имеют). */
+function namesOf(list: MnPreset[]): string[] {
+  const out: string[] = [];
+  for (const preset of list) {
+    typeof preset === 'function' || out.push(preset.name);
+  }
+  return out;
+}
+
 /** Опции {@link createTokenCollector}. */
 export interface TokenCollectorOptions extends Omit<ScannerOptions, 'attr' | 'onWarning'>, MnCoreOptions {
   /** Какие атрибуты сканировать и во что разворачивать — {@link MnAttrs}. По умолчанию `'class'`. */
@@ -289,6 +301,15 @@ export interface TokenCollectorOptions extends Omit<ScannerOptions, 'attr' | 'on
   safelist?: string[];
   /** Статические пресеты; их набор задаёт потребитель. */
   presets?: MnPreset[];
+  /**
+   * Пресеты, которые могут потребовать пакеты (D-078): пакет, чей `requires` выходит за
+   * `presets` приложения, собирается в своей области — своим экземпляром ядра с пресетами
+   * из `requires` (по имени, из `presets` и `scopePresets`, с их зависимостями).
+   *
+   * @example
+   * mnVite({ presets: [presetStandard, presetSynonyms, presetMedias], scopePresets: [presetTw4] })
+   */
+  scopePresets?: MnPreset[];
   /**
    * Колбэк сканера: `syntax: true`, а пакета `typescript` нет. Отдельное имя —
    * `onWarning` занят предупреждениями компиляции (D-034).
@@ -492,6 +513,8 @@ export interface MnEntryOptions extends MnCoreOptions {
   attrs?: MnAttrs;
   /** Свои пресеты вместо общих. */
   presets?: MnPreset[];
+  /** Свои пресеты областей вместо общих — {@link TokenCollectorOptions.scopePresets}. */
+  scopePresets?: MnPreset[];
   /** Свой safelist вместо общего. */
   safelist?: string[];
   /** Своё имя файла — там, где имя назначает плагин (CLI, gulp). */
@@ -530,6 +553,7 @@ export const ENTRY_OPTIONS_SCHEMA: OptionSchema = {
   attrs: isAttrs,
   safelist: isStringArray,
   fileName: isString,
+  scopePresets: isPresetArray,
 };
 
 /** Строка или массив строк (`root`). */
@@ -749,7 +773,8 @@ export interface TokenCollector {
 export function createTokenCollector(options: TokenCollectorOptions): TokenCollector {
   const scan = createAttrsScanner(options);
   const safelist = flatSafelist(options.safelist).map((token) => 'class ' + token);
-  const presets = options.presets;
+  const presets = options.presets || [];
+  const scopePresets = options.scopePresets || [];
   /**
    * Предупреждения перехватываются всегда: ядро в режиме `'log'` пишет в
    * `console`, а у сборщика свой канал вывода — поэтому ядру режим передаётся
@@ -772,6 +797,8 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   const conflictMode = options.notationConflictMode || 'warn';
   /** Динамические пресеты из файлов, по пути. */
   const dynamic = new Map<string, MnPreset>();
+  /** Директива файла динамического пресета: по ней пресет попадает в свою область (D-078). */
+  const dynamicNotation = new Map<string, MnNotationDirective | undefined>();
   let warnings: MnWarning[] = [];
   /** Слепок набора, на котором собран `cachedCss`; пустая строка — кеша нет. */
   let cacheKey = '';
@@ -829,36 +856,73 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     return true;
   }
 
-  function collect(): string[] {
-    const all = new Set<string>(safelist);
+  /**
+   * Область файла или пресета (D-076, D-078): `''` — приложение; иначе — его семейство пресетов,
+   * отсортированный `requires`. В область приложения попадает и пакет, чьи требования
+   * целиком входят в `presets` приложения: другой `notationMode` сам по себе области не даёт.
+   */
+  function scopeOf(requires: string[] | undefined, appNames: string[]): string {
+    return requires && requires.some((name) => appNames.indexOf(name) < 0) ? requires.slice().sort().join(',') : '';
+  }
+
+  /** Записи по областям; область приложения есть всегда (статика пресетов, safelist). */
+  function collect(appNames: string[]): Map<string, ScopeEntries> {
+    const scopes = new Map<string, ScopeEntries>([['', [new Set<string>(safelist), '']]]);
     let mode: MnNotationMode | undefined;
+    let scope: ScopeEntries;
+    let key: string;
     // Файлы — по пути: при конфликте режимов выигрывает первый (детерминированно).
     for (const id of Array.from(byFile.keys()).sort()) {
       mode = fileModes.get(id);
+      key = scopeOf(fileRequires.get(id), appNames);
+      scope = scopes.get(key) || scopes.set(key, [new Set<string>(), id]).get(key) as ScopeEntries;
       for (const token of byFile.get(id) as Set<string>) {
-        all.add(mode ? mode + '\0' + token : token);
+        scope[0].add(mode ? mode + '\0' + token : token);
       }
     }
-    // Порядок фиксирован: иначе слепок набора менялся бы от перестановки, и
-    // кеш не срабатывал бы там, где ничего не изменилось.
-    return Array.from(all).sort();
+    return scopes;
   }
 
   /**
-   * `requires` файлов и пакетов (D-045 этап 3): нужного пресета нет среди подключённых —
-   * ошибка с именем файла. Сравниваются имена пресет-объектов.
+   * Пресеты области. Приложение — `presets` и свои динамические; область пакета — его
+   * `requires` по имени из `presets` и `scopePresets` с их зависимостями, плюс динамические
+   * пресеты этой области (D-078). Нужного имени нет — ошибка с именем файла.
    */
-  function checkRequires(all: MnPreset[]): void {
-    const connected: string[] = [];
-    for (const preset of all) {
-      typeof preset === 'function' || connected.push(preset.name);
+  function presetsOf(
+    scope: string, firstId: string, appNames: string[],
+  ): MnPreset[] {
+    const own: MnPreset[] = [];
+    for (const [id, preset] of dynamic) {
+      scopeOf(dynamicNotation.get(id) && (dynamicNotation.get(id) as MnNotationDirective).requires, appNames) === scope
+        && own.push(preset);
     }
-    for (const [id, requires] of fileRequires) {
-      for (const name of requires) {
-        connected.indexOf(name) < 0 && fail(relative(process.cwd(), id) + ' requires preset "' + name
-          + '", which is not connected. Connected presets: ' + (connected.join(', ') || 'none'));
+    return scope ? familyOf(scope.split(','), firstId).concat(own) : presets.concat(own);
+  }
+
+  function familyOf(names: string[], id: string): MnPreset[] {
+    const available = presets.concat(scopePresets);
+    const out: MnPreset[] = [];
+    const seen: Record<string, 1> = {};
+    const queue = names.slice();
+    let name: string | undefined;
+    let preset: MnPreset | undefined;
+    while ((name = queue.shift()) !== undefined) {
+      if (seen[name]) {
+        continue;
       }
+      seen[name] = 1;
+      preset = available.find((item) => typeof item !== 'function' && item.name === name);
+      if (!preset) {
+        // Зависимость пресета без пары — сообщит ядро («presetX requires presetY»); имя из
+        // `requires` файла — ошибка здесь, с файлом.
+        names.indexOf(name) < 0 || fail(relative(process.cwd(), id) + ' requires preset "' + name
+          + '", which is not connected. Connected presets: ' + (namesOf(available).join(', ') || 'none'));
+        continue;
+      }
+      out.push(preset);
+      typeof preset === 'function' || queue.push(...(preset.requires || []));
     }
+    return out;
   }
 
   /**
@@ -911,6 +975,47 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     return at < 0 ? projectMode : entry.slice(0, at);
   }
 
+  /** Одна область — свой экземпляр ядра: реестр хендлеров не общий (D-078). */
+  function compileScope(
+    entries: string[], all: MnPreset[], collected: MnWarning[],
+  ): string {
+    const mn = minotationProvider({
+      ...core,
+      warningMode: warningMode === 'error' ? 'error' : 'silent',
+      onWarning: (warning: MnWarning) => {
+        // `*N`, `-i` и `maxDepth` ядро печатает само по своим режимам, `warningMode`
+        // их не касается (D-039) — в общий вывод плагина они не идут.
+        warningMode === 'silent' || OWN_MODE_WARNINGS[warning.type] || collected.push(warning);
+        userOnWarning && userOnWarning(warning);
+      },
+    });
+    mn.setPresets(all);
+    // Каждый токен — в свой целевой атрибут (D-025). До 2026-10-05 всё шло
+    // в `class`, и `m="p10"` давал `.p10` вместо `[m~="p10"]` — так в v2
+    // потерялась опция `attrs` из v1.
+    compileEntries(mn, resolveConflicts(
+      entries, all, collected,
+    ));
+    mn.compile();
+    return mn.styles$.getValue()
+      .map((s: { content: string }) => s.content)
+      .join('\n');
+  }
+
+  /**
+   * Директива файла динамического пресета: комментарий в нём → `package.json` пакета. Файла
+   * нет (виртуальный модуль) — только пакет.
+   */
+  function presetNotation(id: string): MnNotationDirective | undefined {
+    let source = '';
+    try {
+      source = readFileSync(id, 'utf8');
+    } catch {
+      // Виртуальный модуль сборщика — читать нечего.
+    }
+    return readFileNotation(source, id);
+  }
+
   /**
    * CSS одного класса в своём режиме — для сравнения при конфликте. Экземпляр служебный: всё,
    * о чём он мог бы сообщить (конфликты пресетов при подключении, режимы токенов), уже сообщил
@@ -948,9 +1053,11 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     },
     setPreset(id: string, preset: MnPreset): void {
       dynamic.set(id, preset);
+      dynamicNotation.set(id, presetNotation(id));
       cacheKey = '';
     },
     removePreset(id: string): boolean {
+      dynamicNotation.delete(id);
       if (!dynamic.delete(id)) {
         return false;
       }
@@ -962,6 +1069,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
       fileModes.clear();
       fileRequires.clear();
       dynamic.clear();
+      dynamicNotation.clear();
       cacheKey = '';
     },
     takeWarnings(): MnWarning[] {
@@ -970,37 +1078,31 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
       return out;
     },
     css(): string {
-      const tokens = collect();
-      // В слепок входят и пресеты: их набор меняет CSS не меньше токенов.
-      const key = tokens.join(' ') + '\u0000' + Array.from(dynamic.keys()).join(' ');
+      const appNames = namesOf(presets);
+      const scopes = collect(appNames);
+      const keys = Array.from(scopes.keys()).sort();
+      // В слепок входят области с их записями и пресеты: набор пресетов меняет CSS не меньше токенов.
+      const key = keys.map((scope) => scope + '\u0001' + Array.from((scopes.get(scope) as ScopeEntries)[0]).sort().join(' '))
+        .join('\u0002') + '\u0000' + Array.from(dynamic.keys()).join(' ');
       if (key === cacheKey) {
         return cachedCss;
       }
       const collected: MnWarning[] = [];
-      const mn = minotationProvider({
-        ...core,
-        warningMode: warningMode === 'error' ? 'error' : 'silent',
-        onWarning: (warning: MnWarning) => {
-          // `*N`, `-i` и `maxDepth` ядро печатает само по своим режимам, `warningMode`
-          // их не касается (D-039) — в общий вывод плагина они не идут.
-          warningMode === 'silent' || OWN_MODE_WARNINGS[warning.type] || collected.push(warning);
-          userOnWarning && userOnWarning(warning);
-        },
-      });
-      const allPresets = (presets || []).concat(Array.from(dynamic.values()));
-      checkRequires(allPresets);
-      mn.setPresets(allPresets);
-      // Каждый токен — в свой целевой атрибут (D-025). До 2026-10-05 всё шло
-      // в `class`, и `m="p10"` давал `.p10` вместо `[m~="p10"]` — так в v2
-      // потерялась опция `attrs` из v1.
-      compileEntries(mn, resolveConflicts(
-        tokens, allPresets, collected,
-      ));
-      mn.compile();
+      const outputs: string[] = [];
+      let scope: ScopeEntries;
+      let all: MnPreset[];
+      // Область приложения — первой (`''` в сортировке первая), области пакетов — за ней.
+      for (const name of keys) {
+        scope = scopes.get(name) as ScopeEntries;
+        all = presetsOf(
+          name, scope[1], appNames,
+        );
+        outputs.push(compileScope(
+          Array.from(scope[0]).sort(), all, collected,
+        ));
+      }
       warnings = collected;
-      cachedCss = mn.styles$.getValue()
-        .map((s: { content: string }) => s.content)
-        .join('\n');
+      cachedCss = outputs.filter(Boolean).join('\n');
       cacheKey = key;
       return cachedCss;
     },

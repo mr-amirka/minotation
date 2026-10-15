@@ -136,12 +136,11 @@ function result(style: Style | undefined): MnHandlerResult | undefined {
   };
 }
 
-/** `calc(var(--spacing) * 4)` → `… * -4`; дробь → `-100%`; число → `-…`; иначе `calc(… * -1)`. */
+/** `calc(var(--spacing) * 4)` → `… * -4`; число → `-…`; иначе (и дробь) — `calc(… * -1)`, как у Tailwind 4. */
 function negate(value: string): string {
   return value.indexOf('calc(var(--spacing) * ') === 0 ? value.replace('* ', '* -')
-    : / \* 100%\)$/.test(value) ? value.replace('* 100%)', '* -100%)')
-      : /^[\d.]/.test(value) ? '-' + value
-        : 'calc(' + value + ' * -1)';
+    : /^[\d.]/.test(value) ? '-' + value
+      : 'calc(' + value + ' * -1)';
 }
 
 /** Опции значения шкалы. */
@@ -173,9 +172,12 @@ function scaleValue(args: MnTwArgs, options: ScaleOptions): string | undefined {
     value = undefined;
   } else if (args.modifier !== undefined) {
     value = options.fraction && REGEXP_INTEGER.test(step) && REGEXP_INTEGER.test(args.modifier)
-      ? 'calc(' + step + '/' + args.modifier + ' * 100%)' : undefined;
+      ? 'calc(' + step + ' / ' + args.modifier + ' * 100%)' : undefined;
   } else if (options.keywords && Object.prototype.hasOwnProperty.call(options.keywords, step)) {
     value = options.keywords[step];
+  } else if (step === '0') {
+    // Ноль у Tailwind 4 — `0px`, а не `calc(var(--spacing) * 0)`.
+    value = '0px';
   } else if (REGEXP_NUMBER.test(step)) {
     value = 'calc(var(--spacing) * ' + step + ')';
   } else if (options.container && TW4_THEME['--container-' + step]) {
@@ -187,8 +189,22 @@ function scaleValue(args: MnTwArgs, options: ScaleOptions): string | undefined {
     : args.arbitrary !== undefined ? 'calc(' + value + ' * -1)' : negate(value)) : value;
 }
 
-/** Цвет Tailwind 4: палитра, особые цвета, произвольный; `/50` — `color-mix(…)`. */
-function colorValue(args: MnTwArgs): string | undefined {
+/**
+ * Цвет Tailwind 4: значение и, при прозрачности, значение для `@supports` (как у Tailwind):
+ * - цвет темы `bg-blue-500/50` — запасной `color-mix(in srgb, <литерал темы> 50%, transparent)`,
+ *   в `@supports` — `color-mix(in oklab, var(--color-blue-500) 50%, transparent)`;
+ * - `var(…)` и `currentcolor` — запасной сам цвет, в `@supports` — смесь;
+ * - литерал (`[#f00]/50`) — сразу `color-mix(in oklab, …)`, без `@supports`.
+ */
+type TwColor = [value: string, supports?: string];
+
+/** Прозрачность модификатора: `50` → `50%`, `[33%]` → `33%`. */
+function alphaOf(modifier: string): string | undefined {
+  return REGEXP_NUMBER.test(modifier) ? modifier + '%'
+    : modifier[0] === '[' && modifier[modifier.length - 1] === ']' ? modifier.slice(1, -1) : undefined;
+}
+
+function colorValue(args: MnTwArgs): TwColor | undefined {
   const key = args.parts.join('-');
   let color: string | undefined;
   if (args.negative) {
@@ -199,9 +215,38 @@ function colorValue(args: MnTwArgs): string | undefined {
   } else {
     color = SPECIAL_COLORS[key] || (TW4_THEME['--color-' + key] ? 'var(--color-' + key + ')' : undefined);
   }
-  return !color || args.modifier === undefined ? color
-    : REGEXP_NUMBER.test(args.modifier)
-      ? 'color-mix(in oklab, ' + color + ' ' + args.modifier + '%, transparent)' : undefined;
+  if (!color || args.modifier === undefined) {
+    return color ? [color] : undefined;
+  }
+  const alpha = alphaOf(args.modifier);
+  if (!alpha) {
+    return undefined;
+  }
+  const mix = 'color-mix(in oklab, ' + color + ' ' + alpha + ', transparent)';
+  const literal = args.arbitrary === undefined && TW4_THEME['--color-' + key];
+  return literal ? ['color-mix(in srgb, ' + literal + ' ' + alpha + ', transparent)', mix]
+    : /var\(|currentcolor/.test(color) ? [color, mix] : [mix];
+}
+
+/** Медиа `@supports` для смеси цветов — как у Tailwind 4. */
+const COLOR_MIX_MEDIA = 'twColorMix';
+
+/** Стиль цвета: свойства → значение; при `@supports`-значении — то же под медиа `twColorMix`. */
+function colorResult(
+  properties: string[], color: TwColor, extra?: Style,
+): MnHandlerResult {
+  const out: MnHandlerResult = {
+    style: {
+      ...extra,
+      ...styleOf(properties, color[0]),
+    },
+  };
+  color[1] === undefined || (out.media = {
+    [COLOR_MIX_MEDIA]: {
+      style: styleOf(properties, color[1]),
+    },
+  });
+  return out;
 }
 
 /** Регистрирует хендлеры шкалы: имя → свойства CSS. */
@@ -733,7 +778,8 @@ function fontSize(args: MnTwArgs): Style | undefined {
   }
   return TW4_THEME['--text-' + key] && TW4_THEME['--text-' + key].indexOf('rem') > 0 ? {
     fontSize: 'var(--text-' + key + ')',
-    lineHeight: lineHeight || 'var(--text-' + key + '--line-height)',
+    // `leading-*` задаёт `--tw-leading` — у Tailwind 4 размер шрифта её уважает.
+    lineHeight: lineHeight || 'var(--tw-leading, var(--text-' + key + '--line-height))',
   } : undefined;
 }
 
@@ -753,9 +799,7 @@ function setupTypography(mn: MnInstance): void {
     'text', tw((args) => {
       const size = fontSize(args);
       const color = size ? undefined : colorValue(args);
-      return size ? result(size) : color === undefined ? undefined : result({
-        color,
-      });
+      return size ? result(size) : color === undefined ? undefined : colorResult(['color'], color);
     }), '', 1,
   );
   mn(
@@ -764,11 +808,13 @@ function setupTypography(mn: MnInstance): void {
       return args.negative || args.modifier !== undefined ? undefined
         : args.arbitrary !== undefined && !args.parts.length
           ? result(REGEXP_INTEGER.test(args.arbitrary) || args.type === 'weight' ? {
+            '--tw-font-weight': args.arbitrary,
             fontWeight: args.arbitrary,
           } : {
             fontFamily: args.arbitrary,
           })
           : TW4_THEME['--font-weight-' + key] ? result({
+            '--tw-font-weight': 'var(--font-weight-' + key + ')',
             fontWeight: 'var(--font-weight-' + key + ')',
           }) : TW4_THEME['--font-' + key] ? result({
             fontFamily: 'var(--font-' + key + ')',
@@ -784,6 +830,7 @@ function setupTypography(mn: MnInstance): void {
             : TW4_THEME['--leading-' + key] ? 'var(--leading-' + key + ')'
               : args.parts.length === 1 && REGEXP_NUMBER.test(key) ? 'calc(var(--spacing) * ' + key + ')' : undefined;
       return value === undefined ? undefined : result({
+        '--tw-leading': value,
         lineHeight: value,
       });
     }), '', 1,
@@ -795,6 +842,7 @@ function setupTypography(mn: MnInstance): void {
         : args.arbitrary !== undefined && !args.parts.length ? args.arbitrary
           : TW4_THEME['--tracking-' + key] ? 'var(--tracking-' + key + ')' : undefined;
       return value === undefined ? undefined : result({
+        '--tw-tracking': args.negative ? negate(value) : value,
         letterSpacing: args.negative ? negate(value) : value,
       });
     }), '', 1,
@@ -900,13 +948,16 @@ function setupBorders(mn: MnInstance): void {
       const side = BORDER_SIDES[args.parts[0]];
       const rest = side ? args.parts.slice(1) : args.parts;
       const width = args.negative || args.modifier !== undefined ? undefined : borderWidth(args, rest);
-      const color = width === undefined && !side ? colorValue(args) : undefined;
+      const color = width === undefined ? colorValue({
+        ...args,
+        parts: rest,
+      }) : undefined;
+      const widths = side || ['borderWidth'];
+      // Сторона — свой стиль и свой цвет: `border-t-4` → `border-top-style`, `border-t-red-500` → `border-top-color`.
       return width !== undefined ? result({
-        borderStyle: 'var(--tw-border-style)',
-        ...styleOf(side || ['borderWidth'], width),
-      }) : color === undefined ? undefined : result({
-        borderColor: color,
-      });
+        ...styleOf(widths.map((name) => name.replace('Width', 'Style')), 'var(--tw-border-style)'),
+        ...styleOf(widths, width),
+      }) : color === undefined ? undefined : colorResult(widths.map((name) => name.replace('Width', 'Color')), color);
     }), '', 1,
   );
   // `rounded`, `rounded-lg`, `rounded-t-lg`, `rounded-full`, `rounded-[3px]`.
@@ -929,15 +980,16 @@ function setupColors(mn: MnInstance): void {
   mn(
     'bg', tw((args) => {
       const color = colorValue(args);
-      return color === undefined ? undefined : result({
-        backgroundColor: color,
-      });
+      return color === undefined ? undefined : colorResult(['backgroundColor'], color);
     }), '', 1,
   );
 }
 
 function setupVariants(mn: MnInstance): void {
   let name: string;
+  mn.media[COLOR_MIX_MEDIA] = {
+    supports: '(color: color-mix(in lab, red, red))',
+  };
   for (name of BREAKPOINTS) {
     mn.media[name] = {
       width: TW4_THEME['--breakpoint-' + name],
@@ -948,6 +1000,14 @@ function setupVariants(mn: MnInstance): void {
     group: '.group',
     peer: '.peer~',
   });
+}
+
+/** Переменные из значений стиля — в `use`. */
+function trackStyle(style: Style | undefined, use: (value: string) => void): void {
+  let property: string;
+  for (property in style) { // eslint-disable-line
+    use(String((style as Style)[property]));
+  }
 }
 
 /**
@@ -978,11 +1038,12 @@ function withThemeVars(instance: MnInstance): MnInstance {
   };
   const track = (handler: MnHandler): MnHandler => (p) => {
     const essence = handler(p);
-    let property: string;
-    if (essence && essence.style) {
-      for (property in essence.style) { // eslint-disable-line
-        use(String(essence.style[property]));
-      }
+    const media = essence ? essence.media || {} : {};
+    let name: string;
+    essence && trackStyle(essence.style as Style | undefined, use);
+    // Переменные из вариантов под медиа (`@supports` смеси цветов) — тоже в `:root`.
+    for (name in media) { // eslint-disable-line
+      trackStyle(media[name].style as Style | undefined, use);
     }
     return essence;
   };

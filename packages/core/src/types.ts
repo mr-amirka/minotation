@@ -80,6 +80,11 @@ export interface MnHandlerResult {
   exts?: string[];
   selectors?: string[];
   childs?: Record<string, MnHandlerResult>;
+  /**
+   * Стили того же токена под другими медиа: имя из `mn.media` → результат. Так одна утилита даёт
+   * запасное значение и его вариант под `@supports` (`presetTw4`: смесь цветов, как у Tailwind 4).
+   */
+  media?: Record<string, MnHandlerResult>;
 }
 
 /**

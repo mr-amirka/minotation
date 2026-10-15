@@ -113,7 +113,7 @@ describe('отступы', () => {
 
 describe('размеры и раскладка', () => {
   test.each([
-    ['w-1/2', '.w-1\\/2{width:calc(1/2 * 100%)}'],
+    ['w-1/2', '.w-1\\/2{width:calc(1 / 2 * 100%)}'],
     ['w-full', '.w-full{width:100%}'],
     ['w-md', '.w-md{width:var(--container-md)}'],
     ['h-screen', '.h-screen{height:100vh}'],
@@ -124,7 +124,7 @@ describe('размеры и раскладка', () => {
     ['hidden', '.hidden{display:none}'],
     ['absolute', '.absolute{position:absolute}'],
     ['-top-2', '.-top-2{top:calc(var(--spacing) * -2)}'],
-    ['inset-x-1/2', '.inset-x-1\\/2{inset-inline:calc(1/2 * 100%)}'],
+    ['inset-x-1/2', '.inset-x-1\\/2{inset-inline:calc(1 / 2 * 100%)}'],
     ['z-10', '.z-10{z-index:10}'],
     ['-z-10', '.-z-10{z-index:-10}'],
     ['z-auto', '.z-auto{z-index:auto}'],
@@ -134,7 +134,7 @@ describe('размеры и раскладка', () => {
     ['flex-col', '.flex-col{flex-direction:column}'],
     ['grow', '.grow{flex-grow:1}'],
     ['shrink-0', '.shrink-0{flex-shrink:0}'],
-    ['basis-1/3', '.basis-1\\/3{flex-basis:calc(1/3 * 100%)}'],
+    ['basis-1/3', '.basis-1\\/3{flex-basis:calc(1 / 3 * 100%)}'],
     ['items-center', '.items-center{align-items:center}'],
     ['justify-between', '.justify-between{justify-content:space-between}'],
     ['grid-cols-3', '.grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}'],
@@ -148,23 +148,26 @@ describe('размеры и раскладка', () => {
 
 describe('типографика и цвета', () => {
   test.each([
-    ['text-sm', '.text-sm{font-size:var(--text-sm);line-height:var(--text-sm--line-height)}'],
+    ['text-sm', '.text-sm{font-size:var(--text-sm);line-height:var(--tw-leading, var(--text-sm--line-height))}'],
     ['text-sm/6', '.text-sm\\/6{font-size:var(--text-sm);line-height:calc(var(--spacing) * 6)}'],
     ['text-[14px]', '.text-\\[14px\\]{font-size:14px}'],
     ['text-center', '.text-center{text-align:center}'],
     ['text-blue-500', '.text-blue-500{color:var(--color-blue-500)}'],
-    ['text-blue-500/50', '.text-blue-500\\/50{color:color-mix(in oklab, var(--color-blue-500) 50%, transparent)}'],
+    // Как у Tailwind 4: запасной `srgb` с литералом темы и `@supports` со смесью в `oklab`.
+    ['text-blue-500/50', '.text-blue-500\\/50{color:color-mix(in srgb, oklch(62.3% 0.214 259.815) 50%, transparent)}'
+      + '@supports (color: color-mix(in lab, red, red)){.text-blue-500\\/50{color:color-mix(in oklab, var(--color-blue-500) 50%, transparent)}}'],
     ['text-[#f00]', '.text-\\[\\#f00\\]{color:#f00}'],
     ['text-[color:var(--x)]', '.text-\\[color\\:var\\(--x\\)\\]{color:var(--x)}'],
-    ['font-bold', '.font-bold{font-weight:var(--font-weight-bold)}'],
+    ['font-bold', '.font-bold{--tw-font-weight:var(--font-weight-bold);font-weight:var(--font-weight-bold)}'],
     ['font-mono', '.font-mono{font-family:var(--font-mono)}'],
-    ['leading-tight', '.leading-tight{line-height:var(--leading-tight)}'],
-    ['leading-6', '.leading-6{line-height:calc(var(--spacing) * 6)}'],
-    ['tracking-wide', '.tracking-wide{letter-spacing:var(--tracking-wide)}'],
+    ['leading-tight', '.leading-tight{--tw-leading:var(--leading-tight);line-height:var(--leading-tight)}'],
+    ['leading-6', '.leading-6{--tw-leading:calc(var(--spacing) * 6);line-height:calc(var(--spacing) * 6)}'],
+    ['tracking-wide', '.tracking-wide{--tw-tracking:var(--tracking-wide);letter-spacing:var(--tracking-wide)}'],
     ['truncate', '.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'],
     ['bg-white', '.bg-white{background-color:var(--color-white)}'],
     ['bg-transparent', '.bg-transparent{background-color:transparent}'],
-    ['bg-blue-500/75', '.bg-blue-500\\/75{background-color:color-mix(in oklab, var(--color-blue-500) 75%, transparent)}'],
+    ['bg-blue-500/75', '.bg-blue-500\\/75{background-color:color-mix(in srgb, oklch(62.3% 0.214 259.815) 75%, transparent)}'
+      + '@supports (color: color-mix(in lab, red, red)){.bg-blue-500\\/75{background-color:color-mix(in oklab, var(--color-blue-500) 75%, transparent)}}'],
   ])('%s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
@@ -185,7 +188,7 @@ describe('рамки и скругления', () => {
   test.each([
     ['border', '.border{border-style:var(--tw-border-style);border-width:1px}'],
     ['border-2', '.border-2{border-style:var(--tw-border-style);border-width:2px}'],
-    ['border-t-4', '.border-t-4{border-style:var(--tw-border-style);border-top-width:4px}'],
+    ['border-t-4', '.border-t-4{border-top-style:var(--tw-border-style);border-top-width:4px}'],
     ['border-red-500', '.border-red-500{border-color:var(--color-red-500)}'],
     ['border-dashed', '.border-dashed{--tw-border-style:dashed;border-style:dashed}'],
     ['rounded', '.rounded{border-radius:0.25rem}'],
@@ -200,7 +203,7 @@ describe('рамки и скругления', () => {
 describe('варианты', () => {
   test.each([
     ['hover:bg-blue-600', '@media (hover: hover){.hover\\:bg-blue-600:hover{background-color:var(--color-blue-600)}}'],
-    ['first:mt-0', '.first\\:mt-0:first-child{margin-top:calc(var(--spacing) * 0)}'],
+    ['first:mt-0', '.first\\:mt-0:first-child{margin-top:0px}'],
     ['odd:bg-white', '.odd\\:bg-white:nth-child(odd){background-color:var(--color-white)}'],
     ['open:block', '.open\\:block[open],.open\\:block:popover-open{display:block}'],
     ['before:block', '.before\\:block::before{display:block}'],
@@ -222,7 +225,7 @@ describe('крайние случаи: произвольные значения
   test.each([
     [
       '-inset-x-1/2',
-      '.-inset-x-1\\/2{inset-inline:calc(1/2 * -100%)}',
+      '.-inset-x-1\\/2{inset-inline:calc(calc(1 / 2 * 100%) * -1)}',
       false,
     ],
     [
@@ -232,7 +235,7 @@ describe('крайние случаи: произвольные значения
     ],
     [
       '-tracking-[var(--t)]',
-      '.-tracking-\\[var\\(--t\\)\\]{letter-spacing:calc(var(--t) * -1)}',
+      '.-tracking-\\[var\\(--t\\)\\]{--tw-tracking:calc(var(--t) * -1);letter-spacing:calc(var(--t) * -1)}',
       false,
     ],
     [
@@ -387,12 +390,12 @@ describe('крайние случаи: произвольные значения
     ],
     [
       'font-[600]',
-      '.font-\\[600\\]{font-weight:600}',
+      '.font-\\[600\\]{--tw-font-weight:600;font-weight:600}',
       false,
     ],
     [
       'font-[weight:var(--w)]',
-      '.font-\\[weight\\:var\\(--w\\)\\]{font-weight:var(--w)}',
+      '.font-\\[weight\\:var\\(--w\\)\\]{--tw-font-weight:var(--w);font-weight:var(--w)}',
       false,
     ],
     [
@@ -412,12 +415,12 @@ describe('крайние случаи: произвольные значения
     ],
     [
       'leading-[1.3]',
-      '.leading-\\[1\\.3\\]{line-height:1.3}',
+      '.leading-\\[1\\.3\\]{--tw-leading:1.3;line-height:1.3}',
       false,
     ],
     [
       'leading-none',
-      '.leading-none{line-height:1}',
+      '.leading-none{--tw-leading:1;line-height:1}',
       false,
     ],
     [
@@ -432,12 +435,12 @@ describe('крайние случаи: произвольные значения
     ],
     [
       'tracking-[.1em]',
-      '.tracking-\\[\\.1em\\]{letter-spacing:.1em}',
+      '.tracking-\\[\\.1em\\]{--tw-tracking:.1em;letter-spacing:.1em}',
       false,
     ],
     [
       '-tracking-wide',
-      '.-tracking-wide{letter-spacing:calc(var(--tracking-wide) * -1)}',
+      '.-tracking-wide{--tw-tracking:calc(var(--tracking-wide) * -1);letter-spacing:calc(var(--tracking-wide) * -1)}',
       false,
     ],
     [
@@ -457,7 +460,7 @@ describe('крайние случаи: произвольные значения
     ],
     [
       'border-x-[3px]',
-      '.border-x-\\[3px\\]{border-style:var(--tw-border-style);border-inline-width:3px}',
+      '.border-x-\\[3px\\]{border-inline-style:var(--tw-border-style);border-inline-width:3px}',
       false,
     ],
     [
@@ -482,8 +485,8 @@ describe('крайние случаи: произвольные значения
     ],
     [
       'border-t-red-500',
-      '',
-      true,
+      '.border-t-red-500{border-top-color:var(--color-red-500)}',
+      false,
     ],
     [
       '-rounded-lg',

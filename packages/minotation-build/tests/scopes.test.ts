@@ -387,3 +387,84 @@ describe('createScopeRewriter (D-075, D-076)', () => {
     )).toThrow('class set from JS');
   });
 });
+
+describe('медиа и синонимы области — только из её пресетов (D-084)', () => {
+  const presetPkg = {
+    name: 'presetPkg',
+    requires: ['presetStandard'],
+    setup: (mn: { media: Record<string, unknown>;
+      synonyms: (map: Record<string, string>) => void }) => {
+      mn.media.tab = {
+        query: '(max-width: 500px)',
+      };
+      mn.synonyms({
+        on: ':hover',
+      });
+    },
+  } as unknown as MnPreset;
+  const presetBare = {
+    name: 'presetBare',
+    requires: ['presetStandard'],
+    setup: () => undefined,
+  } as unknown as MnPreset;
+
+  function pkg(name: string, requires: string[]): void {
+    mkdirSync(join(dir, name));
+    writeFileSync(join(
+      dir, name, 'package.json',
+    ), JSON.stringify({
+      name,
+      minotation: {
+        requires,
+      },
+    }));
+  }
+
+  test('одно имя медиа и синоним в приложении и пакете — каждый по своим пресетам, без коллизий', () => {
+    pkg('kit', ['presetPkg']);
+    const seen: string[] = [];
+    const out = createTokenCollector({
+      attrs: 'class',
+      presets: [presetStandard, presetSynonyms],
+      scopePresets: [presetPkg],
+      media: {
+        tab: {
+          query: '(max-width: 900px)',
+        },
+      },
+      onWarning: (warning) => seen.push(warning.type + ' ' + warning.token),
+    });
+    out.add(join(
+      dir, 'app', 'App.html',
+    ), '<b class="p10@tab cF00:on">');
+    out.add(join(
+      dir, 'kit', 'Card.html',
+    ), '<b class="m5@tab c0F0:on">');
+    const css = out.css();
+    expect(css).toContain('@media (max-width: 900px){.p10\\@tab{padding:10px}}');
+    expect(css).toContain('@media (max-width: 500px){.m5\\@tab{margin:5px}}');
+    expect(css).toContain('.c0F0\\:on:hover{color:#0f0}');
+    // В приложении синонима `on` нет — состояние как есть, с предупреждением.
+    expect(seen).toContain('unregistered-state cF00:on');
+  });
+
+  test('медиа, которого пресеты области не знают, — неизвестное медиа области, а не определение приложения', () => {
+    pkg('bare', ['presetBare']);
+    const out = createTokenCollector({
+      attrs: 'class',
+      presets: [presetStandard],
+      scopePresets: [presetBare],
+      media: {
+        tab: {
+          query: '(max-width: 900px)',
+        },
+      },
+    });
+    out.add(join(
+      dir, 'bare', 'Card.html',
+    ), '<b class="m5@tab">');
+    const css = out.css();
+    expect(css).not.toContain('900px');
+    expect(out.takeWarnings().map((w) => w.type + ' ' + w.token)).toEqual(['unknown-media @tab']);
+  });
+});

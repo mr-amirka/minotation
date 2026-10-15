@@ -965,6 +965,16 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   const userOnWarning = options.onWarning;
   const isolateMode = options.isolateMode || 'none';
   const core = coreOptionsOf(options);
+  /**
+   * Опции ядра области пакета — без `media` приложения (D-084): медиа и синонимы области — только из
+   * её пресетов; имя, которого они не знают, — неизвестное медиа этой области, а не чужое определение.
+   */
+  const packageCore: MnCoreOptions = {
+    ...core,
+  };
+  delete packageCore.media;
+  /** Опции ядра компилируемой сейчас области: приложения или пакета. */
+  let scopeCore = core;
   /** Токены по файлам — ключ по файлу и снимает файл с учёта, и заменяет набор. */
   const byFile = new Map<string, Set<string>>();
   /**
@@ -1271,7 +1281,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     const raw: MnWarning[] = [];
     // Ядро сообщает обо всём (режимы токенов — `'warn'`, без печати), судит сборка — по файлам (D-081).
     const mn = minotationProvider({
-      ...core,
+      ...scopeCore,
       warningMode: 'silent',
       specificityMode: 'warn',
       importantMode: 'warn',
@@ -1321,7 +1331,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   ): MnWarning[] {
     const option = RAISE_OPTIONS[warning.type] as string;
     const mn = minotationProvider({
-      ...core,
+      ...scopeCore,
       warningMode: 'silent',
       onWarning: undefined,
       [option]: 'strict',
@@ -1359,7 +1369,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
    */
   function compileAlone(entry: string, all: MnPreset[]): string {
     const mn = minotationProvider({
-      ...core,
+      ...scopeCore,
       warningMode: 'silent',
       onWarning: undefined,
       maxDepthMode: 'silent',
@@ -1442,6 +1452,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
       // Область приложения — первой (`''` в сортировке первая), области пакетов — за ней.
       for (const name of keys) {
         scope = scopes.get(name) as ScopeEntries;
+        scopeCore = name ? packageCore : core;
         all = presetsOf(
           name, scope[1], appNames,
         );

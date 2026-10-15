@@ -2047,6 +2047,8 @@ function minotationProvider(options?: MnOptions) {
     // обе половины $$statics заводятся вместе (либо из $$data.statics, либо тут же выше)
     $$staticsEssences = $$statics.essences;
     $$keyframes = $$data.keyframes || ($$data.keyframes = [{}, 0]);
+    // Кадры переживают сброс, а их отрисованный блок уходит вместе с `$$stylesMap` — перерисовать.
+    $$keyframes[1] = $$keyframes[1] || (Object.keys($$keyframes[0]).length ? 1 : 0);
     $$stylesMap = $$data.stylesMap = {};
     $$assigned = $$data.assigned = {};
     forIn($$staticsAssigned = $$statics.assigned, __assignItemCompile);

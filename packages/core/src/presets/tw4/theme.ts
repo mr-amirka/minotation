@@ -419,3 +419,11 @@ export const TW4_THEME: Record<string, string> = {
   "--default-transition-duration": "150ms",
   "--default-transition-timing-function": "cubic-bezier(0.4, 0, 0.2, 1)",
 };
+
+/** Theme `@keyframes`: name → body (`to{transform:rotate(360deg)}`), emitted on demand by `animate-*`. */
+export const TW4_KEYFRAMES: Record<string, string> = {
+  "spin": "to{transform:rotate(360deg)}",
+  "ping": "75%,100%{transform:scale(2);opacity:0}",
+  "pulse": "50%{opacity:0.5}",
+  "bounce": "0%,100%{transform:translateY(-25%);animation-timing-function:cubic-bezier(0.8,0,1,1)}50%{transform:none;animation-timing-function:cubic-bezier(0,0,0.2,1)}",
+};

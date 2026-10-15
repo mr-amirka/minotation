@@ -21,7 +21,7 @@ import type {
   MnTwArgs,
 } from '../shared/tw';
 import {
-  TW4_THEME,
+  TW4_KEYFRAMES, TW4_THEME,
 } from './theme';
 import {
   TW4_NEGATIVE_STATICS, TW4_PROPERTIES, TW4_STATICS,
@@ -1663,6 +1663,102 @@ function setupFilters(mn: MnInstance): void {
   );
 }
 
+/** Свойства перехода `transition-colors`. */
+const TRANSITION_COLORS = 'color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, '
+  + '--tw-gradient-from, --tw-gradient-via, --tw-gradient-to';
+
+/** Слова `transition-*` → `transition-property`; голое имя — набор по умолчанию. */
+const TRANSITION_PROPERTIES: Record<string, string> = {
+  '': TRANSITION_COLORS + ', opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, '
+    + 'backdrop-filter, display, content-visibility, overlay, pointer-events',
+  all: 'all',
+  colors: TRANSITION_COLORS,
+  opacity: 'opacity',
+  shadow: 'box-shadow',
+  transform: 'transform, translate, scale, rotate',
+};
+
+/** Кривые `ease-*`: `linear`, `initial` — сами слова, остальные — из темы. */
+const EASE_KEYWORDS: Record<string, string> = {
+  linear: 'linear',
+  initial: 'initial',
+};
+
+/** Время: целое → `Nms`, произвольное — как есть; минуса и модификатора нет. */
+function milliseconds(args: MnTwArgs): string | undefined {
+  return args.negative || args.modifier !== undefined ? undefined
+    : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.arbitrary)
+      : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] + 'ms' : undefined;
+}
+
+function setupTransitions(mn: MnInstance): void {
+  mn(
+    'transition', tw((args) => {
+      const key = args.parts.join('-');
+      const property = args.negative || args.modifier !== undefined ? undefined
+        : args.arbitrary !== undefined ? (key ? undefined : args.arbitrary)
+          : key === 'none' ? key : TRANSITION_PROPERTIES[key];
+      // `transition-none` — только свойство, без кривой и длительности.
+      return property === undefined ? undefined : result(key === 'none' ? {
+        transitionProperty: property,
+      } : {
+        transitionProperty: property,
+        transitionTimingFunction: 'var(--tw-ease, var(--default-transition-timing-function))',
+        transitionDuration: 'var(--tw-duration, var(--default-transition-duration))',
+      });
+    }), '', 1,
+  );
+  mn(
+    'duration', tw((args) => {
+      const time = milliseconds(args);
+      return time === undefined ? undefined : result({
+        '--tw-duration': time,
+        transitionDuration: time,
+      });
+    }), '', 1,
+  );
+  mn(
+    'delay', tw((args) => {
+      const time = milliseconds(args);
+      return time === undefined ? undefined : result({
+        transitionDelay: time,
+      });
+    }), '', 1,
+  );
+  mn(
+    'ease', tw((args) => {
+      const key = args.parts.join('-');
+      const ease = keywordValue(args, EASE_KEYWORDS) || (args.arbitrary === undefined && key && !args.negative
+        && args.modifier === undefined && TW4_THEME['--ease-' + key] ? 'var(--ease-' + key + ')' : undefined);
+      // `ease-initial` — только сброс переменной.
+      return ease === undefined ? undefined : result(key === 'initial' && args.arbitrary === undefined ? {
+        '--tw-ease': ease,
+      } : {
+        '--tw-ease': ease,
+        transitionTimingFunction: ease,
+      });
+    }), '', 1,
+  );
+  mn(
+    'animate', tw((args) => {
+      const key = args.parts.join('-');
+      const theme = args.arbitrary === undefined && key && TW4_THEME['--animate-' + key];
+      const animation = theme ? (args.negative || args.modifier !== undefined ? undefined : 'var(--animate-' + key + ')')
+        : keywordValue(args, {
+          none: 'none',
+        });
+      const frames = theme && TW4_KEYFRAMES[theme.split(' ')[0]];
+      // Кадры темы (`@keyframes spin`) — по требованию, как у Tailwind: один раз на имя.
+      animation && frames && mn.setKeyframes(
+        theme.split(' ')[0], frames, 1,
+      );
+      return animation === undefined ? undefined : result({
+        animation,
+      });
+    }), '', 1,
+  );
+}
+
 function setupVariants(mn: MnInstance): void {
   let name: string;
   mn.media[COLOR_MIX_MEDIA] = {
@@ -1769,6 +1865,7 @@ export default {
     setupTransforms(mn);
     setupGradients(mn);
     setupFilters(mn);
+    setupTransitions(mn);
     setupVariants(mn);
   },
 } as MnPresetObject;

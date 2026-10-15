@@ -60,6 +60,23 @@ describe('mn — сброс и пересчёт', () => {
     expect(cssOf(mn)).toContain('padding:10px');
   });
 
+  test('recompile() сохраняет @keyframes: блок перерисовывается, а не пропадает', () => {
+    const mn: any = makeMn();
+    mn.setKeyframes('fade', {
+      from: {
+        opacity: 0,
+      },
+      to: {
+        opacity: 1,
+      },
+    });
+    mn.getCompiler('class')('p10');
+    mn.compile();
+    mn.recompile();
+
+    expect(cssOf(mn)).toContain('@keyframes fade{from{opacity:0}to{opacity:1}}');
+  });
+
   test('deferCompile()/deferRecompile() схлопывают несколько вызовов в один проход', async () => {
     const mn: any = makeMn();
     mn.getCompiler('class')('mt4');

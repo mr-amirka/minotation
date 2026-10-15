@@ -84,6 +84,15 @@ describe('тема', () => {
   });
 });
 
+describe('кадры анимаций темы', () => {
+  test('по требованию, как у Tailwind: только использованные, по разу на имя', () => {
+    const css = compile('animate-spin hover:animate-spin animate-bounce animate-none animate-[x_1s]').css;
+    expect(css.match(/@keyframes [a-z]+/g)).toEqual(['@keyframes spin', '@keyframes bounce']);
+    expect(css).toContain('@keyframes spin{to{transform:rotate(360deg)}}');
+    expect(compile('animate-none transition').css).not.toContain('@keyframes');
+  });
+});
+
 describe('отступы', () => {
   test.each([
     ['mt-4', '.mt-4{margin-top:calc(var(--spacing) * 4)}'],

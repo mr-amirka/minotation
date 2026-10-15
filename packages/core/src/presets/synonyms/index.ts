@@ -1,0 +1,94 @@
+import {
+  MnInstance,
+} from '../../types';
+import type {
+  MnPresetObject,
+} from '../../core/types';
+
+/**
+ * @overview MinimalistNotation preset "synonyms"
+ * @author Amir Absaliamov <amir.absolutely@gmail.com>
+ */
+
+export default {
+  name: 'presetSynonyms',
+  ecosystems: ['minotation'],
+  setup: (mn: MnInstance) => {
+    // Медиа для `:h` (D-069): описана и в `presetMedias`, но синонимам нужна и без него —
+    // иначе `:h` дал бы `@media hover`.
+    mn.media.hover || (mn.media.hover = {
+      query: '(hover: hover)',
+    });
+    // synonyms
+    mn.synonyms({
+      a: ':active',
+      c: ':checked',
+      d: ':disabled',
+      f: ':focus',
+      // Только при устройстве с наведением (D-069): на тачскринах hover после тапа «залипает».
+      // Hover на любом устройстве — полное имя `:hover`.
+      h: ':hover@hover',
+      i: ':(:-webkit-input-|:-moz-|-ms-input-|:)placeholder',
+      even: ':nth-child\\(2n\\)',
+      odd: ':nth-child\\(2n+1\\)',
+      n: ':nth-child',
+      first: ':first-child',
+      last: ':last-child',
+      only: ':only-child',
+
+      // Имя состояния, которого здесь нет, всё равно попадёт в CSS — но с
+      // предупреждением `unregistered-state`: псевдокласс может быть специфичен
+      // для окружения или ещё не быть в стандарте, поэтому браковать его нельзя.
+      // Ходовые заведены ниже, чтобы предупреждение указывало на опечатки,
+      // а не на штатную запись.
+      //
+      // Ключи — строчные, как `even`/`odd`/`first`: пространство имён состояний
+      // отдельно от тегов хендлеров, коллизий с ними нет.
+
+      // фокус
+      fv: ':focus-visible',
+      fw: ':focus-within',
+
+      // ссылки и навигация
+      v: ':visited',
+      link: ':link',
+      al: ':any-link',
+      t: ':target',
+
+      // содержимое и корень
+      e: ':empty',
+      root: ':root',
+
+      // формы
+      r: ':required',
+      opt: ':optional',
+      ro: ':read-only',
+      rw: ':read-write',
+      // Полными словами: они читаются лучше любого сокращения.
+      invalid: ':invalid',
+      valid: ':valid',
+      ir: ':in-range',
+      oor: ':out-of-range',
+      ps: ':placeholder-shown',
+      ind: ':indeterminate',
+      def: ':default',
+      af: ':autofill',
+
+      // структурные
+      fot: ':first-of-type',
+      lot: ':last-of-type',
+      oot: ':only-of-type',
+      nt: ':nth-of-type',
+      nl: ':nth-last-child',
+      nlt: ':nth-last-of-type',
+
+      // Функциональные псевдоклассы: ключ намеренно совпадает с именем — это
+      // штатный синтаксис нотации (`p10:not[.a]`), предупреждать о нём не о чем.
+      // `not` НЕЛЬЗЯ занимать другим значением: сломается разбор `:not[…]`.
+      not: ':not',
+      is: ':is',
+      where: ':where',
+      has: ':has',
+    });
+  },
+} as MnPresetObject;

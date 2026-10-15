@@ -80,14 +80,14 @@ import presetTw4Default from './presets/tw4';
 import {
   TW4_THEME as TW4_THEME_IMPL,
   TW4_VERSION as TW4_VERSION_IMPL,
-} from './presets/tw4Theme';
+} from './presets/tw4/theme';
 import {
   defineScale as defineScaleImpl,
-} from './presets/scale';
+} from './presets/shared/scale';
 import {
   tw as twImpl,
   parseTwSuffix as parseTwSuffixImpl,
-} from './presets/tw';
+} from './presets/shared/tw';
 
 export const minotationProvider = minotationProviderImpl;
 export default coreDefault;
@@ -174,10 +174,10 @@ export type {
 } from './mne';
 export type {
   MnScaleOptions,
-} from './presets/scale';
+} from './presets/shared/scale';
 export type {
   MnTwArgs, MnTwHandler,
-} from './presets/tw';
+} from './presets/shared/tw';
 export type {
   OptionCheck, OptionSchema,
 } from './checkOptions';

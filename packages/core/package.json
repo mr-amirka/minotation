@@ -28,8 +28,8 @@
     }
   },
   "scripts": {
-    "build": "tsc && node scripts/build-esm.mjs",
-    "prepare": "tsc && node scripts/build-esm.mjs",
+    "build": "tsc -p tsconfig.build.json && node scripts/build-esm.mjs",
+    "prepare": "tsc -p tsconfig.build.json && node scripts/build-esm.mjs",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix --quiet",
     "test": "jest --no-coverage",

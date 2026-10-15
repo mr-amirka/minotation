@@ -6,7 +6,7 @@
  * getCompiler('class')(...)/getCompiler(...)(...)).
  *
  * "vendor-префиксы" тест убран отсюда — фича теперь отдельный пресет
- * (`presetPrefixes`, `presets/prefixes.ts`), покрыта `preset-prefixes.test.ts`
+ * (`presetPrefixes`, `presets/prefixes/index.ts`), покрыта `presets/prefixes/__tests__/prefixes.test.ts`
  * (2026-08-21).
  */
 

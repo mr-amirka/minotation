@@ -11,6 +11,7 @@ module.exports = [
       'node_modules/**',
       'coverage/**',
       'scripts/**',
+      'src/presets/*/scripts/**',
       'eslint.config.js',
     ],
   },
@@ -130,7 +131,7 @@ module.exports = [
     // §6 «Область»: микрооптимизации обязательны на горячих путях; тесты и
     // бенчмарки — холодный путь, там читаемость важнее экономии на итерации.
     files: [
-      'src/__tests__/**',
+      'src/**/__tests__/**',
       'src/__benchmarks__/**',
     ],
     rules: {
@@ -139,7 +140,7 @@ module.exports = [
   },
   {
     // CSS-селекторы как ключи объекта — требуют смешанного quote-props
-    files: ['src/presets/main.ts', 'src/presets/normalize.ts'],
+    files: ['src/presets/main/index.ts', 'src/presets/normalize/index.ts'],
     rules: {
       'quote-props': ['error', 'as-needed'],
     },
@@ -151,7 +152,7 @@ module.exports = [
     // означало бы переписать управляющий поток всего файла — не входит в задачу
     // типизации (см. PLAN.md minotation). `p`/флаговые параметры хендлеров (`nosign`,
     // `one`, `positive`) осознанно `any` — тот же контракт, что у публичного `MnHandler`.
-    files: ['src/presets/standard.ts'],
+    files: ['src/presets/standard/index.ts'],
     rules: {
       'no-cond-assign': 'off',
       'max-statements-per-line': 'off',

@@ -389,7 +389,7 @@ mn.setPresets([presetMedias, presetTw4]);
   `@property`.
 
 Тема снята с `tailwindcss@4.3.3`: копия `theme.css` (MIT) лежит в `reference/tailwindcss-4.3.3/`,
-модуль `src/presets/tw4Theme.ts` генерирует `node scripts/tw4-theme.mjs`; тест сверяет SHA-256.
+модуль `src/presets/tw4/theme.ts` генерирует `node src/presets/tw4/scripts/tw4-theme.mjs`; тест сверяет SHA-256.
 
 ### Конфликты пресетов — `handlerConflictMode`, `presetConflictMode` (D-067)
 

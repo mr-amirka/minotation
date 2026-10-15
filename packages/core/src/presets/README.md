@@ -1,5 +1,21 @@
 # Minotation Default Presets
 
+## Layout (D-085)
+
+Each preset lives in its own folder, with its tests and tools next to it:
+
+```
+src/presets/
+  standard/          index.ts, __tests__/
+  tw4/               index.ts, statics.ts, theme.ts (generated), __tests__/, scripts/
+  hints/ main/ normalize/ prefixes/   index.ts, __tests__/
+  medias/ synonyms/ runtimePrefixes/  index.ts (covered by engine and preset tests)
+  shared/            tw.ts (`tw()`), scale.ts (`defineScale`) for clone presets, __tests__/
+```
+
+Engine tests that only use a preset as a fixture stay in `src/__tests__/`. Test folders are not built into
+`dist` (`tsconfig.build.json`).
+
 
 **The MN library includes this default presets if other is not seated.**
 
@@ -33,7 +49,7 @@ See source:
 `@имя-` — от точки, `@a-b` — между точками.
 
 ```ts
-// src/presets/medias.ts (сокращённо)
+// src/presets/medias/index.ts (сокращённо)
 forIn({
   m: 992, m2: 768, m3: 640, m4: 480, m5: 360, m6: 320, m7: 312, m8: 272,
   d: 992, d2: 1200, d3: 1600, d4: 1920, d5: 2300, d6: 2560,

@@ -24,6 +24,9 @@ import {
 import {
   fileURLToPath,
 } from 'node:url';
+import {
+  execFileSync,
+} from 'node:child_process';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const target = join(root, 'src', 'presets', 'tw4Statics.ts');
@@ -130,6 +133,11 @@ ${propertiesBody}
 /** Static utilities with nested blocks — implemented by preset handlers, not by this table. */
 export const TW4_NESTED_STATICS: string[] = ${JSON.stringify(nested)};
 `);
+// Стиль проекта — тем же линтером, что и весь код: файл генерируется, но проверяется как остальные.
+execFileSync('npx', ['eslint', '--fix', target], {
+  cwd: root,
+  stdio: 'inherit',
+});
 console.log('tw4-statics: ' + Object.keys(statics).length + ' flat, ' + Object.keys(negatives).length + ' negative, '
   + nested.length + ' nested, '
   + Object.keys(properties).length + ' properties → ' + target);

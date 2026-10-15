@@ -126,9 +126,9 @@ describe('размеры и раскладка', () => {
     ['-top-2', '.-top-2{top:calc(var(--spacing) * -2)}'],
     ['inset-x-1/2', '.inset-x-1\\/2{inset-inline:calc(1 / 2 * 100%)}'],
     ['z-10', '.z-10{z-index:10}'],
-    ['-z-10', '.-z-10{z-index:-10}'],
+    ['-z-10', '.-z-10{z-index:calc(10 * -1)}'],
     ['z-auto', '.z-auto{z-index:auto}'],
-    ['order-first', '.order-first{order:calc(-infinity)}'],
+    ['order-first', '.order-first{order:-9999}'],
     ['flex', '.flex{display:flex}'],
     ['flex-1', '.flex-1{flex:1}'],
     ['flex-col', '.flex-col{flex-direction:column}'],
@@ -601,5 +601,15 @@ describe('экосистема (D-067, D-068)', () => {
 
   test('presetMedias совместим (minotation и tw4): без предупреждений', () => {
     expect(compile('mt-4').warnings).toEqual([]);
+  });
+});
+
+describe('space-* — как у Tailwind 4.3.3 (сверено scripts/tw4-conformance.mjs)', () => {
+  test.each([
+    ['space-x-0', 'margin-inline-start:0;margin-inline-end:0'],
+    ['-space-x-px', 'margin-inline-start:calc(-1px * var(--tw-space-x-reverse))'],
+    ['space-y-4', 'margin-block-start:calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse))'],
+  ])('%s', (token, part) => {
+    expect(compile(token).css).toContain(part);
   });
 });

@@ -174,6 +174,22 @@ export const GOLDEN_EXISTING = [
   'text-red-500/25',
   'border-red-500/50',
   'bg-blue-500/x',
+  '-mt-0',
+  '-mt-1',
+  'mt-1',
+  'leading-0',
+  '-z-10',
+  'order-first',
+  'order-last',
+  '-order-2',
+  'sr-only',
+  'truncate',
+  'isolate',
+  '-translate-full',
+  'translate-full',
+  'tabular-nums',
+  '-mt-[3px]',
+  '-mt-[0px]',
 ];
 
 describe('presetTw4 = Tailwind 4.3.3', () => {

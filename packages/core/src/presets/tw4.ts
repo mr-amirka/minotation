@@ -23,12 +23,13 @@ import type {
 import {
   TW4_THEME,
 } from './tw4Theme';
+import {
+  TW4_NEGATIVE_STATICS, TW4_PROPERTIES, TW4_STATICS,
+} from './tw4Statics';
 
 /** Число шкалы: `4`, `0.5`, `2.5`. */
 const REGEXP_NUMBER = /^\d+(?:\.\d+)?$/;
 
-/** Значение-слово без отрицания: `auto`, `min-content`. */
-const REGEXP_WORD = /^[a-z-]+$/;
 
 /** Целое: `3`, `12`. */
 const REGEXP_INTEGER = /^\d+$/;
@@ -45,15 +46,6 @@ const BREAKPOINTS = [
   '2xl',
 ];
 
-/**
- * Свойства-помощники Tailwind 4 и их начальные значения: у Tailwind — `@property … initial-value`
- * с запасным `*, ::before, ::after, ::backdrop { … }`; здесь — второе (D-069).
- */
-const PROPERTY_DEFAULTS: Record<string, string> = {
-  '--tw-border-style': 'solid',
-  '--tw-space-x-reverse': '0',
-  '--tw-space-y-reverse': '0',
-};
 
 /** Правило темы (D-071): `:root` в блоке с приоритетом −3000 — раньше утилит (−2000). */
 const THEME_SELECTOR = ':root@^-3000';
@@ -138,9 +130,18 @@ function result(style: Style | undefined): MnHandlerResult | undefined {
 
 /** `calc(var(--spacing) * 4)` → `… * -4`; число → `-…`; иначе (и дробь) — `calc(… * -1)`, как у Tailwind 4. */
 function negate(value: string): string {
-  return value.indexOf('calc(var(--spacing) * ') === 0 ? value.replace('* ', '* -')
-    : /^[\d.]/.test(value) ? '-' + value
-      : 'calc(' + value + ' * -1)';
+  return value === '0px' ? value
+    : value === 'var(--spacing)' ? 'calc(var(--spacing) * -1)'
+      : value.indexOf('calc(var(--spacing) * ') === 0 ? value.replace('* ', '* -')
+        : 'calc(' + value + ' * -1)';
+}
+
+/**
+ * Шаг шкалы `--spacing`, как пишет его Tailwind 4: `0` → `0px`, `1` → `var(--spacing)`, остальное —
+ * `calc(var(--spacing) * n)`.
+ */
+function spacing(step: string): string {
+  return step === '0' ? '0px' : step === '1' ? 'var(--spacing)' : 'calc(var(--spacing) * ' + step + ')';
 }
 
 /** Опции значения шкалы. */
@@ -175,18 +176,15 @@ function scaleValue(args: MnTwArgs, options: ScaleOptions): string | undefined {
       ? 'calc(' + step + ' / ' + args.modifier + ' * 100%)' : undefined;
   } else if (options.keywords && Object.prototype.hasOwnProperty.call(options.keywords, step)) {
     value = options.keywords[step];
-  } else if (step === '0') {
-    // Ноль у Tailwind 4 — `0px`, а не `calc(var(--spacing) * 0)`.
-    value = '0px';
   } else if (REGEXP_NUMBER.test(step)) {
-    value = 'calc(var(--spacing) * ' + step + ')';
+    value = spacing(step);
   } else if (options.container && TW4_THEME['--container-' + step]) {
     value = 'var(--container-' + step + ')';
   }
-  // Слово (`auto`, `full`) отрицания не имеет; числа, дроби, `calc(…)` и `[…]` — имеют.
-  // Произвольное значение Tailwind 4 отрицает через `calc(… * -1)`, как бы оно ни выглядело.
-  return value && args.negative ? (REGEXP_WORD.test(value) ? undefined
-    : args.arbitrary !== undefined ? 'calc(' + value + ' * -1)' : negate(value)) : value;
+  // Слово с минусом (`-m-auto`) сюда не доходит: его голое имя — статика из таблицы, и у Tailwind
+  // отрицательной формы нет. Произвольное значение Tailwind 4 отрицает через `calc(… * -1)`, как бы
+  // оно ни выглядело (`-mt-[0px]` → `calc(0px * -1)`).
+  return value && args.negative ? (args.arbitrary !== undefined ? 'calc(' + value + ' * -1)' : negate(value)) : value;
 }
 
 /**
@@ -269,28 +267,42 @@ function scaleHandler(properties: string[], options: ScaleOptions) {
   });
 }
 
-/** Регистрирует статику: имя → стиль. */
-function statics(mn: MnInstance, map: Record<string, Style>): void {
-  let name: string;
-  for (name in map) { // eslint-disable-line
-    mn(name, {
-      style: map[name],
-    });
+
+
+/**
+ * Статические утилиты Tailwind 4 — таблицей, сгенерированной из эталона (`scripts/tw4-statics.mjs`,
+ * D-068). Хендлер на точное имя (без значения), а не статика: так переменные темы из объявлений
+ * уходят в `:root` по требованию. Регистрируются первыми — хендлер с тем же именем ниже (`flex`,
+ * `border`) заменяет их и сам отвечает за голое имя.
+ */
+function setupStatics(mn: MnInstance): void {
+  const names = Object.keys(TW4_STATICS).concat(Object.keys(TW4_NEGATIVE_STATICS).filter((name) => !TW4_STATICS[name]));
+  for (const name of names) {
+    mn(
+      name, staticHandler(TW4_STATICS[name], TW4_NEGATIVE_STATICS[name]), '', 1,
+    );
   }
 }
 
-/** Статика «одно свойство — разные значения»: `items-center` → `align-items: center`. */
-function keywordStatics(
-  mn: MnInstance, prefix: string, property: string, values: Record<string, string>,
-): void {
-  let word: string;
-  for (word in values) { // eslint-disable-line
-    mn(prefix + word, {
-      style: {
-        [property]: values[word],
-      },
-    });
+/** Пары объявлений → стиль. */
+function styleFromPairs(declarations: Array<[string, string]>): Style {
+  const style: Style = {};
+  for (const pair of declarations) {
+    style[pair[0]] = pair[1];
   }
+  return style;
+}
+
+/**
+ * Хендлер статической утилиты: голое имя — свои объявления, с минусом — объявления отрицательной
+ * статики (`-translate-full`); со значением или модификатором — не эта утилита.
+ */
+function staticHandler(positive: Array<[string, string]> | undefined, negative: Array<[string, string]> | undefined) {
+  return tw((args) => {
+    const declarations = args.negative ? negative : positive;
+    return args.parts.length || args.arbitrary !== undefined || args.modifier !== undefined || !declarations
+      ? undefined : result(styleFromPairs(declarations));
+  });
 }
 
 function setupSpacing(mn: MnInstance): void {
@@ -386,12 +398,14 @@ function spaceHandler(axis: string, side: string) {
       },
       negative: true,
     });
-    return value === undefined ? undefined : {
+    // Как у Tailwind 4: ноль — просто `0`, отрицательный `px` — литерал `-1px`.
+    const step = value === 'calc(1px * -1)' ? '-1px' : value;
+    return step === undefined ? undefined : {
       selectors: [SPACE_CHILDREN],
       style: {
         ['--tw-space-' + axis + '-reverse']: '0',
-        ['margin' + side + 'Start']: 'calc(' + value + ' * ' + reverse + ')',
-        ['margin' + side + 'End']: 'calc(' + value + ' * calc(1 - ' + reverse + '))',
+        ['margin' + side + 'Start']: step === '0px' ? '0' : 'calc(' + step + ' * ' + reverse + ')',
+        ['margin' + side + 'End']: step === '0px' ? '0' : 'calc(' + step + ' * calc(1 - ' + reverse + '))',
       },
     };
   });
@@ -475,62 +489,6 @@ function setupSizing(mn: MnInstance): void {
 }
 
 function setupLayout(mn: MnInstance): void {
-  statics(mn, {
-    block: {
-      display: 'block',
-    },
-    'inline-block': {
-      display: 'inline-block',
-    },
-    inline: {
-      display: 'inline',
-    },
-    'inline-flex': {
-      display: 'inline-flex',
-    },
-    grid: {
-      display: 'grid',
-    },
-    'inline-grid': {
-      display: 'inline-grid',
-    },
-    hidden: {
-      display: 'none',
-    },
-    contents: {
-      display: 'contents',
-    },
-    'flow-root': {
-      display: 'flow-root',
-    },
-    'list-item': {
-      display: 'list-item',
-    },
-    table: {
-      display: 'table',
-    },
-    'table-row': {
-      display: 'table-row',
-    },
-    'table-cell': {
-      display: 'table-cell',
-    },
-    static: {
-      position: 'static',
-    },
-    fixed: {
-      position: 'fixed',
-    },
-    absolute: {
-      position: 'absolute',
-    },
-    relative: {
-      position: 'relative',
-    },
-    sticky: {
-      position: 'sticky',
-    },
-  });
   scales(
     mn, {
       inset: ['inset'],
@@ -559,8 +517,8 @@ function setupLayout(mn: MnInstance): void {
   );
   integers(
     mn, 'order', 'order', {
-      first: 'calc(-infinity)',
-      last: 'calc(infinity)',
+      first: '-9999',
+      last: '9999',
       none: '0',
     },
   );
@@ -586,38 +544,6 @@ function integers(
 }
 
 function setupFlexGrid(mn: MnInstance): void {
-  statics(mn, {
-    'flex-row': {
-      flexDirection: 'row',
-    },
-    'flex-row-reverse': {
-      flexDirection: 'row-reverse',
-    },
-    'flex-col': {
-      flexDirection: 'column',
-    },
-    'flex-col-reverse': {
-      flexDirection: 'column-reverse',
-    },
-    'flex-wrap': {
-      flexWrap: 'wrap',
-    },
-    'flex-nowrap': {
-      flexWrap: 'nowrap',
-    },
-    'flex-wrap-reverse': {
-      flexWrap: 'wrap-reverse',
-    },
-    'flex-auto': {
-      flex: 'auto',
-    },
-    'flex-initial': {
-      flex: '0 auto',
-    },
-    'flex-none': {
-      flex: 'none',
-    },
-  });
   // `flex` — display, `flex-1` — сокращение `flex`.
   mn(
     'flex', tw((args) => (!args.parts.length && args.arbitrary === undefined ? result({
@@ -646,49 +572,6 @@ function setupFlexGrid(mn: MnInstance): void {
       },
       fraction: true,
       container: true,
-    },
-  );
-  keywordStatics(
-    mn, 'items-', 'alignItems', {
-      start: 'flex-start',
-      end: 'flex-end',
-      center: 'center',
-      baseline: 'baseline',
-      stretch: 'stretch',
-    },
-  );
-  keywordStatics(
-    mn, 'justify-', 'justifyContent', {
-      start: 'flex-start',
-      end: 'flex-end',
-      center: 'center',
-      between: 'space-between',
-      around: 'space-around',
-      evenly: 'space-evenly',
-      stretch: 'stretch',
-      normal: 'normal',
-    },
-  );
-  keywordStatics(
-    mn, 'content-', 'alignContent', {
-      start: 'flex-start',
-      end: 'flex-end',
-      center: 'center',
-      between: 'space-between',
-      around: 'space-around',
-      evenly: 'space-evenly',
-      stretch: 'stretch',
-      normal: 'normal',
-    },
-  );
-  keywordStatics(
-    mn, 'self-', 'alignSelf', {
-      auto: 'auto',
-      start: 'flex-start',
-      end: 'flex-end',
-      center: 'center',
-      stretch: 'stretch',
-      baseline: 'baseline',
     },
   );
   // `grid-cols-3` → `repeat(3, minmax(0, 1fr))`.
@@ -763,7 +646,7 @@ function gridPlacement(
 function fontSize(args: MnTwArgs): Style | undefined {
   const key = args.parts.join('-');
   const lineHeight = args.modifier === undefined ? undefined
-    : REGEXP_NUMBER.test(args.modifier) ? 'calc(var(--spacing) * ' + args.modifier + ')' : undefined;
+    : REGEXP_NUMBER.test(args.modifier) ? spacing(args.modifier) : undefined;
   if (args.negative || args.modifier !== undefined && !lineHeight) {
     return undefined;
   }
@@ -784,16 +667,6 @@ function fontSize(args: MnTwArgs): Style | undefined {
 }
 
 function setupTypography(mn: MnInstance): void {
-  keywordStatics(
-    mn, 'text-', 'textAlign', {
-      left: 'left',
-      center: 'center',
-      right: 'right',
-      justify: 'justify',
-      start: 'start',
-      end: 'end',
-    },
-  );
   // `text-…` — размер шрифта или цвет; размер проверяется первым (`text-sm` — не цвет).
   mn(
     'text', tw((args) => {
@@ -828,7 +701,7 @@ function setupTypography(mn: MnInstance): void {
         : args.arbitrary !== undefined && !args.parts.length ? args.arbitrary
           : key === 'none' ? '1'
             : TW4_THEME['--leading-' + key] ? 'var(--leading-' + key + ')'
-              : args.parts.length === 1 && REGEXP_NUMBER.test(key) ? 'calc(var(--spacing) * ' + key + ')' : undefined;
+              : args.parts.length === 1 && REGEXP_NUMBER.test(key) ? spacing(key) : undefined;
       return value === undefined ? undefined : result({
         '--tw-leading': value,
         lineHeight: value,
@@ -847,43 +720,6 @@ function setupTypography(mn: MnInstance): void {
       });
     }), '', 1,
   );
-  statics(mn, {
-    uppercase: {
-      textTransform: 'uppercase',
-    },
-    lowercase: {
-      textTransform: 'lowercase',
-    },
-    capitalize: {
-      textTransform: 'capitalize',
-    },
-    'normal-case': {
-      textTransform: 'none',
-    },
-    italic: {
-      fontStyle: 'italic',
-    },
-    'not-italic': {
-      fontStyle: 'normal',
-    },
-    underline: {
-      textDecorationLine: 'underline',
-    },
-    overline: {
-      textDecorationLine: 'overline',
-    },
-    'line-through': {
-      textDecorationLine: 'line-through',
-    },
-    'no-underline': {
-      textDecorationLine: 'none',
-    },
-    truncate: {
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-    },
-  });
 }
 
 /** Стороны рамки и скругления. */
@@ -1024,14 +860,14 @@ function withThemeVars(instance: MnInstance): MnInstance {
     REGEXP_VAR.lastIndex = 0;
     while ((matchs = REGEXP_VAR.exec(value))) {
       variable = matchs[1];
-      used[variable] || !(TW4_THEME[variable] || PROPERTY_DEFAULTS[variable]) || (
+      used[variable] || !(TW4_THEME[variable] || TW4_PROPERTIES[variable]) || (
         used[variable] = 1,
         TW4_THEME[variable]
           ? instance.css(THEME_SELECTOR, {
             [variable]: TW4_THEME[variable],
           })
           : instance.css(DEFAULTS_SELECTOR, {
-            [variable]: PROPERTY_DEFAULTS[variable],
+            [variable]: TW4_PROPERTIES[variable],
           })
       );
     }
@@ -1075,6 +911,7 @@ export default {
   notationMode: 'tw4-compatible',
   setup: (instance: MnInstance) => {
     const mn = withThemeVars(instance);
+    setupStatics(mn);
     setupSpacing(mn);
     setupSizing(mn);
     setupLayout(mn);

@@ -78,13 +78,15 @@ function parse(css) {
     if (!declaration.trim() || declaration.indexOf(':') < 0) {
       return;
     }
-    // Первый кадр с классом — его селекторы; остальное (`@supports`, `&:hover`, `:where(…)`) — пометки.
+    // Первый кадр с классом — его селекторы; остальное (`@supports`, `@media`, `&:hover`, `:where(…)`) —
+    // пометки: внешние условия (`@media … { .c {…} }`) и вложенные (`.c { @media … {…} }`) равны.
     head = frames.findIndex((frame) => frame[0] === '.' || frame.startsWith(':where(.'));
     if (head < 0) {
       return;
     }
     selectors = frames[head].split(/,(?![^(]*\))/).map((part) => part.trim());
-    tags = frames.slice(head + 1).concat(frames.slice(0, head).filter((frame) => frame.startsWith('@supports')))
+    tags = frames.slice(head + 1).concat(frames.slice(0, head).filter((frame) => frame.startsWith('@supports')
+      || frame.startsWith('@media')))
       .map((frame) => normalize(frame) + '|').join('');
     for (const selector of selectors) {
       classOf = /^(?::where\()?\.((?:\\.|[^\s.:>)\\[])+)/.exec(selector);

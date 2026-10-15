@@ -4,7 +4,7 @@
  */
 import minotationProvider from '../../../core';
 import {
-  parseTwSuffix, tw,
+  mathSpaces, parseTwSuffix, tw,
 } from '../tw';
 import type {
   MnTwArgs,
@@ -166,6 +166,29 @@ describe('parseTwSuffix', () => {
     '/a/b',
   ])('%j — не форма Tailwind', (suffix) => {
     expect(parseTwSuffix(suffix, false)).toBeUndefined();
+  });
+});
+
+describe('mathSpaces — пробелы вокруг операторов в математике, как у Tailwind 4', () => {
+  test.each([
+    ['calc(100%-2rem)', 'calc(100% - 2rem)'],
+    ['min(10px,2*3px)', 'min(10px, 2 * 3px)'],
+    ['clamp(1rem,2vw+1rem,3rem)', 'clamp(1rem, 2vw + 1rem, 3rem)'],
+    ['calc(2px-(1px*2))', 'calc(2px - (1px * 2))'],
+    ['calc(2px-var(--x))', 'calc(2px - var(--x))'],
+    ['calc(var(--x-y)*2)', 'calc(var(--x-y) * 2)'],
+    ['calc(1e-3*2)', 'calc(1e-3 * 2)'],
+    ['calc(1E-3*2)', 'calc(1E-3 * 2)'],
+    ['calc(1px * -1)', 'calc(1px * -1)'],
+    ['calc(-1px*2)', 'calc(-1px * 2)'],
+    ['calc(2px -1px)', 'calc(2px - 1px)'],
+    ['calc(a  b)', 'calc(a b)'],
+    ['calc(a-b)', 'calc(a-b)'],
+    ['calc(1px+', 'calc(1px + '],
+    ['1/3', '1/3'],
+    ['1px+2px', '1px+2px'],
+  ])('%s → %s', (value, expected) => {
+    expect(mathSpaces(value)).toBe(expected);
   });
 });
 

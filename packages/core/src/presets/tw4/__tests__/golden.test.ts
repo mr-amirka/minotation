@@ -42,8 +42,8 @@ function normalize(declaration: string): string {
 }
 
 /**
- * Объявления утилиты у Tailwind. Вложенный `@supports (…) { … }` — с пометкой условия:
- * `@supports (cond)|prop:value`.
+ * Объявления утилиты у Tailwind. Вложенный `@supports (…) { … }` или `@media (…) { … }` — с пометкой
+ * условия: `@supports (cond)|prop:value`.
  */
 function twDeclarations(candidate: string): string[] {
   const css = tw.build([candidate]);
@@ -65,14 +65,20 @@ function ownSelector(selector: string, candidate: string): boolean {
   return selector === candidate || selector.startsWith(candidate + '::') || selector.startsWith(':where(.' + candidate + ' ');
 }
 
-/** Строки тела правила Tailwind → объявления, вложенные `@supports` — с пометкой. */
+/** Условие блока: `@supports (…) {` / `@media (…){` → `@supports (…)|`; иначе `undefined`. */
+function conditionOf(head: string): string | undefined {
+  const at = /^@(supports|media)\s*(.*?)\s*\{?$/.exec(head.trim());
+  return at ? '@' + at[1] + ' ' + normalize(at[2]) + '|' : undefined;
+}
+
+/** Строки тела правила Tailwind → объявления, вложенные `@supports`/`@media` — с пометкой. */
 function declarationsOf(text: string): string[] {
   const out: string[] = [];
   let condition = '';
   for (const raw of text.split('\n')) {
     const line = raw.trim();
-    if (line.startsWith('@supports')) {
-      condition = '@supports ' + normalize(line.slice(9, -1)) + '|';
+    if (line[0] === '@') {
+      condition = conditionOf(line) as string;
     } else if (line === '}') {
       condition = '';
     } else if (line) {
@@ -82,7 +88,7 @@ function declarationsOf(text: string): string[] {
   return out.sort();
 }
 
-/** Объявления того же класса у `presetTw4`; блок `@supports (…){…}` — с той же пометкой. */
+/** Объявления того же класса у `presetTw4`; блок `@supports (…){…}`/`@media (…){…}` — с той же пометкой. */
 function mnDeclarations(candidate: string): string[] {
   const mn = minotationProvider({
     notationMode: 'tw4-compatible',
@@ -95,7 +101,7 @@ function mnDeclarations(candidate: string): string[] {
   let condition: string;
   let match: RegExpExecArray | null;
   for (const style of mn.styles$.getValue().filter((s) => s.priority > -3000)) {
-    condition = style.content.startsWith('@supports') ? '@supports ' + normalize(style.content.slice(9, style.content.indexOf('{'))) + '|' : '';
+    condition = conditionOf(style.content.slice(0, style.content.indexOf('{'))) || '';
     const re = /\{([^{}]*)\}/g;
     while ((match = re.exec(style.content))) {
       out.push(...match[1].split(';').filter(Boolean).map((line) => condition + normalize(line.replace(/:\s*/, ':'))));
@@ -504,6 +510,128 @@ export const GOLDEN_EXISTING = [
   '-animate-spin',
   'animate-spin/50',
   'animate',
+  // Группа 7: логические свойства и мелкие семейства.
+  'mbs-4',
+  '-mbe-4',
+  'pbe-px',
+  'inset-bs-4',
+  '-inset-be-1/2',
+  'inset-s-4',
+  'border-bs',
+  'border-be-2',
+  'border-bs-red-500/50',
+  'border-spacing-4',
+  'border-spacing-x-2',
+  'border-spacing-[3px]',
+  '-border-spacing-2',
+  'border-spacing-1/2',
+  'block',
+  'inline',
+  'block-4',
+  'block-1/2',
+  'block-lh',
+  'block-dvw',
+  'inline-2xl',
+  'inline-dvw',
+  'inline-lh',
+  '-block-4',
+  'block/50',
+  'block-[3px]',
+  'max-inline-none',
+  'max-inline-prose',
+  'min-block-auto',
+  'max-block-none',
+  'col-3',
+  '-col-3',
+  'col-auto',
+  '-col-auto',
+  'col-[1/3]',
+  '-col-[1/3]',
+  'col-foo-[1/3]',
+  'col-3/4',
+  'col-foo',
+  'col-1-2',
+  'row-auto',
+  'underline-offset-auto',
+  '-underline-offset-auto',
+  'opacity-50',
+  'opacity-1.5',
+  'opacity-[.3]',
+  '-opacity-50',
+  'opacity-50/50',
+  'opacity-foo',
+  'zoom-50',
+  'zoom-1.5',
+  'tab-4',
+  'tab-1.5',
+  'columns-3',
+  'columns-2xl',
+  'columns-auto',
+  'columns-1.5',
+  'columns-[10rem]',
+  'font-stretch-50%',
+  'font-stretch-condensed',
+  'font-stretch-[10%]',
+  'font-stretch-50.5%',
+  'object-top-left',
+  'object-[25%_75%]',
+  'object-foo',
+  'auto-cols-fr',
+  'auto-rows-[10px]',
+  'list-disc',
+  'list-[square]',
+  'list-image-none',
+  'list-image-[url(x)]',
+  'indent-4',
+  '-indent-4',
+  'indent-px',
+  'indent-1/2',
+  'aspect-4/3',
+  'aspect-1.5/2',
+  'aspect-[4/3]',
+  'aspect-square',
+  'aspect-video',
+  'aspect-auto/2',
+  'aspect-x/2',
+  '-aspect-4/3',
+  'aspect-4/x',
+  'line-clamp-3',
+  'line-clamp-none',
+  'line-clamp-[7]',
+  '-line-clamp-none',
+  'line-clamp-none/2',
+  'line-clamp-1.5',
+  'divide-dashed',
+  'divide-none',
+  'divide-x-reverse',
+  'divide-dashed/50',
+  'outline-hidden',
+  'container',
+  'container-foo',
+  'scroll-m-4',
+  '-scroll-mt-4',
+  'scroll-mx-px',
+  'scroll-mbs-4',
+  'scroll-p-4',
+  '-scroll-p-4',
+  'scroll-pbe-[3px]',
+  'scroll-p-1/2',
+  'scroll-mt-auto',
+  // Произвольные значения: пробелы вокруг операторов в математике, как у Tailwind.
+  'w-[calc(100%-2rem)]',
+  'mt-[calc(1px+2px)]',
+  '-mt-[calc(1px+2px)]',
+  '-mt-[1/2]',
+  'w-[min(10px,2*3px)]',
+  'w-[clamp(1rem,2vw+1rem,3rem)]',
+  'w-[calc(var(--x-y)*2)]',
+  'w-[calc(1e-3*2px)]',
+  'w-[calc(2px-(1px*2))]',
+  'w-[calc(-1px*2)]',
+  'w-[calc(2px_-1px)]',
+  'w-[1px+2px]',
+  'translate-x-[calc(100%-1rem)]',
+  '-rotate-[calc(1deg+2deg)]',
   'filter-none/50',
   'filter-foo-[url(#x)]',
 ];

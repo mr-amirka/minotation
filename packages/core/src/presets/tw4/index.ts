@@ -15,7 +15,7 @@ import type {
   MnPresetObject,
 } from '../../core/types';
 import {
-  tw,
+  mathSpaces, tw,
 } from '../shared/tw';
 import type {
   MnTwArgs,
@@ -136,6 +136,11 @@ function negate(value: string): string {
         : 'calc(' + value + ' * -1)';
 }
 
+/** Отрицание через `calc(… * -1)` с пробелами вокруг операторов внутри: `-mt-[1/2]` → `calc(1 / 2 * -1)`. */
+function negateCalc(value: string): string {
+  return mathSpaces('calc(' + value + ' * -1)');
+}
+
 /**
  * Шаг шкалы `--spacing`, как пишет его Tailwind 4: `0` → `0px`, `1` → `var(--spacing)`, остальное —
  * `calc(var(--spacing) * n)`.
@@ -184,7 +189,7 @@ function scaleValue(args: MnTwArgs, options: ScaleOptions): string | undefined {
   // Слово с минусом (`-m-auto`) сюда не доходит: его голое имя — статика из таблицы, и у Tailwind
   // отрицательной формы нет. Произвольное значение Tailwind 4 отрицает через `calc(… * -1)`, как бы
   // оно ни выглядело (`-mt-[0px]` → `calc(0px * -1)`).
-  return value && args.negative ? (args.arbitrary !== undefined ? 'calc(' + value + ' * -1)' : negate(value)) : value;
+  return value && args.negative ? (args.arbitrary !== undefined ? negateCalc(value) : negate(value)) : value;
 }
 
 /**
@@ -305,6 +310,21 @@ function staticHandler(positive: Array<[string, string]> | undefined, negative: 
   });
 }
 
+/** Сторона отступа прокрутки → свойство (`*` — `Margin` или `Padding`). */
+const SCROLL_SIDES: Record<string, string> = {
+  '': 'scroll*',
+  x: 'scroll*Inline',
+  y: 'scroll*Block',
+  t: 'scroll*Top',
+  r: 'scroll*Right',
+  b: 'scroll*Bottom',
+  l: 'scroll*Left',
+  s: 'scroll*InlineStart',
+  e: 'scroll*InlineEnd',
+  bs: 'scroll*BlockStart',
+  be: 'scroll*BlockEnd',
+};
+
 function setupSpacing(mn: MnInstance): void {
   const margin = {
     m: ['margin'],
@@ -316,6 +336,8 @@ function setupSpacing(mn: MnInstance): void {
     ml: ['marginLeft'],
     ms: ['marginInlineStart'],
     me: ['marginInlineEnd'],
+    mbs: ['marginBlockStart'],
+    mbe: ['marginBlockEnd'],
   };
   scales(
     mn, margin, {
@@ -337,6 +359,8 @@ function setupSpacing(mn: MnInstance): void {
       pl: ['paddingLeft'],
       ps: ['paddingInlineStart'],
       pe: ['paddingInlineEnd'],
+      pbs: ['paddingBlockStart'],
+      pbe: ['paddingBlockEnd'],
     }, {
       keywords: {
         px: '1px',
@@ -349,6 +373,29 @@ function setupSpacing(mn: MnInstance): void {
       'gap-x': ['columnGap'],
       'gap-y': ['rowGap'],
     }, {
+      keywords: {
+        px: '1px',
+      },
+    },
+  );
+  // `scroll-mt-4`, `scroll-pbs-2`: отступы прокрутки — те же стороны, что у `m`/`p`.
+  const scrollMargin: Record<string, string[]> = {};
+  const scrollPadding: Record<string, string[]> = {};
+  let side: string;
+  for (side of ['', 'x', 'y', 't', 'r', 'b', 'l', 's', 'e', 'bs', 'be']) {
+    scrollMargin['scroll-m' + side] = [SCROLL_SIDES[side].replace('*', 'Margin')];
+    scrollPadding['scroll-p' + side] = [SCROLL_SIDES[side].replace('*', 'Padding')];
+  }
+  scales(
+    mn, scrollMargin, {
+      keywords: {
+        px: '1px',
+      },
+      negative: true,
+    },
+  );
+  scales(
+    mn, scrollPadding, {
       keywords: {
         px: '1px',
       },
@@ -486,6 +533,92 @@ function setupSizing(mn: MnInstance): void {
       fraction: true,
     },
   );
+  // Логические размеры: `inline-*` — как ширина, `block-*` — как высота. Голые `block`, `inline` —
+  // статики `display`, поэтому хендлер отвечает и за них.
+  mn(
+    'inline', logicalSize(
+      'inline', 'inlineSize', {
+        keywords: width,
+        fraction: true,
+        container: true,
+      },
+    ), '', 1,
+  );
+  mn(
+    'block', logicalSize(
+      'block', 'blockSize', {
+        keywords: height,
+        fraction: true,
+      },
+    ), '', 1,
+  );
+  scales(
+    mn, {
+      'min-inline': ['minInlineSize'],
+    }, {
+      keywords: width,
+      fraction: true,
+      container: true,
+    },
+  );
+  scales(
+    mn, {
+      'max-inline': ['maxInlineSize'],
+    }, {
+      keywords: {
+        ...width,
+        none: 'none',
+      },
+      fraction: true,
+      container: true,
+    },
+  );
+  scales(
+    mn, {
+      'min-block': ['minBlockSize'],
+    }, {
+      keywords: height,
+      fraction: true,
+    },
+  );
+  scales(
+    mn, {
+      'max-block': ['maxBlockSize'],
+    }, {
+      keywords: {
+        ...height,
+        none: 'none',
+      },
+      fraction: true,
+    },
+  );
+}
+
+/** `border-spacing`, `border-spacing-x/y`: шкала `--spacing` в переменные осей и общая сборка. */
+function borderSpacing(axes: string[]) {
+  return tw((args) => {
+    const value = scaleValue(args, {
+      keywords: {
+        px: '1px',
+      },
+    });
+    return value === undefined ? undefined : result({
+      ...styleOf(axes.map((axis) => '--tw-border-spacing-' + axis), value),
+      borderSpacing: 'var(--tw-border-spacing-x) var(--tw-border-spacing-y)',
+    });
+  });
+}
+
+/** `block-4`, `inline-full`: размер по шкале; голое имя — статика `display` того же имени. */
+function logicalSize(
+  name: string, property: string, options: ScaleOptions,
+) {
+  const display = styleFromPairs(TW4_STATICS[name]);
+  return tw((args) => {
+    const value = scaleValue(args, options);
+    const bare = !args.parts.length && args.arbitrary === undefined && args.modifier === undefined && !args.negative;
+    return bare ? result(display) : value === undefined ? undefined : result(styleOf([property], value));
+  });
 }
 
 function setupLayout(mn: MnInstance): void {
@@ -500,6 +633,10 @@ function setupLayout(mn: MnInstance): void {
       left: ['left'],
       start: ['insetInlineStart'],
       end: ['insetInlineEnd'],
+      'inset-s': ['insetInlineStart'],
+      'inset-e': ['insetInlineEnd'],
+      'inset-bs': ['insetBlockStart'],
+      'inset-be': ['insetBlockEnd'],
     }, {
       keywords: {
         auto: 'auto',
@@ -636,6 +773,20 @@ function gridPlacement(
       });
     }), '', 1,
   );
+  // `col-3`, `-col-3`, `col-auto`, `col-[1/3]` — сама линия.
+  mn(
+    axis, tw((args) => {
+      const step = args.parts[0];
+      const value = args.modifier !== undefined ? undefined
+        : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.negative ? negateCalc(args.arbitrary) : args.arbitrary)
+          : args.parts.length !== 1 ? undefined
+            : REGEXP_INTEGER.test(step) ? (args.negative ? negateCalc(step) : step)
+              : step === 'auto' && !args.negative ? step : undefined;
+      return value === undefined ? undefined : result({
+        [property]: value,
+      });
+    }), '', 1,
+  );
   integers(
     mn, axis + '-start', property + 'Start', {
       auto: 'auto',
@@ -738,6 +889,8 @@ const BORDER_SIDES: Record<string, string[]> = {
   l: ['borderLeftWidth'],
   s: ['borderInlineStartWidth'],
   e: ['borderInlineEndWidth'],
+  bs: ['borderBlockStartWidth'],
+  be: ['borderBlockEndWidth'],
 };
 
 const RADIUS_SIDES: Record<string, string[]> = {
@@ -802,6 +955,15 @@ function setupBorders(mn: MnInstance): void {
       }) : color === undefined ? undefined : colorResult(widths.map((name) => name.replace('Width', 'Color')), color);
     }), '', 1,
   );
+  mn(
+    'border-spacing', borderSpacing(['x', 'y']), '', 1,
+  );
+  mn(
+    'border-spacing-x', borderSpacing(['x']), '', 1,
+  );
+  mn(
+    'border-spacing-y', borderSpacing(['y']), '', 1,
+  );
   // `rounded`, `rounded-lg`, `rounded-t-lg`, `rounded-full`, `rounded-[3px]`.
   mn(
     'rounded', tw((args) => {
@@ -833,7 +995,7 @@ function pixels(args: MnTwArgs, negative?: boolean): string | undefined {
   const value = args.modifier !== undefined || args.negative && !negative ? undefined
     : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.arbitrary)
       : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] + 'px' : undefined;
-  return value && args.negative ? 'calc(' + value + ' * -1)' : value;
+  return value && args.negative ? negateCalc(value) : value;
 }
 
 /** Произвольное значение — длина (`[3px]`, `[length:var(--x)]`), а не цвет. */
@@ -897,7 +1059,8 @@ function setupColorUtilities(mn: MnInstance): void {
   );
   mn(
     'underline-offset', tw((args) => {
-      const offset = pixels(args, true);
+      const offset = args.parts.length === 1 && args.parts[0] === 'auto' && !args.negative && args.modifier === undefined
+        ? 'auto' : pixels(args, true);
       return offset === undefined ? undefined : result({
         textUnderlineOffset: offset,
       });
@@ -1257,7 +1420,7 @@ function unitValue(args: MnTwArgs, unit: string): string | undefined {
   const value = args.modifier !== undefined ? undefined
     : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.arbitrary)
       : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] + unit : undefined;
-  return value && args.negative ? 'calc(' + value + ' * -1)' : value;
+  return value && args.negative ? negateCalc(value) : value;
 }
 
 /** Слово из таблицы или произвольное значение; минуса нет. */
@@ -1597,7 +1760,7 @@ function filterArgument(args: MnTwArgs, fn: FilterFunction): string | undefined 
       : !args.parts.length ? fn.bare
         : fn.unit ? (args.parts.length === 1 && REGEXP_INTEGER.test(key) ? key + fn.unit : undefined)
           : TW4_THEME['--blur-' + key] ? 'var(--blur-' + key + ')' : undefined;
-  return value && args.negative ? 'calc(' + value + ' * -1)' : value;
+  return value && args.negative ? negateCalc(value) : value;
 }
 
 /**
@@ -1759,6 +1922,262 @@ function setupTransitions(mn: MnInstance): void {
   );
 }
 
+/** Точки `object-*` — как пишет их Tailwind 4 (`object-top-left` → `left top`). */
+const OBJECT_POSITIONS: Record<string, string> = {
+  center: 'center',
+  top: 'top',
+  'top-right': 'right top',
+  right: 'right',
+  'bottom-right': 'right bottom',
+  bottom: 'bottom',
+  'bottom-left': 'left bottom',
+  left: 'left',
+  'top-left': 'left top',
+};
+
+/** Ширины `font-stretch-*` словами. */
+const FONT_STRETCHES = [
+  'ultra-condensed',
+  'extra-condensed',
+  'condensed',
+  'semi-condensed',
+  'normal',
+  'semi-expanded',
+  'expanded',
+  'extra-expanded',
+  'ultra-expanded',
+];
+
+/** `line-clamp-none` — снятие обрезки. */
+const LINE_CLAMP_NONE: Style = {
+  overflow: 'visible',
+  display: 'block',
+  '-webkit-box-orient': 'horizontal',
+  '-webkit-line-clamp': 'unset',
+};
+
+/** Число по правилу `test` (с единицей `unit`), слово из таблицы или произвольное; минуса и модификатора нет. */
+function plainValue(
+  args: MnTwArgs, test: RegExp, unit: string, keywords: Record<string, string>,
+): string | undefined {
+  const key = args.parts.join('-');
+  return args.parts.length === 1 && test.test(key) && !args.negative && args.modifier === undefined ? key + unit
+    : keywordValue(args, keywords);
+}
+
+/** Хендлер {@link plainValue} для одного свойства. */
+function plainHandler(
+  property: string, test: RegExp, unit: string, keywords: Record<string, string>,
+) {
+  return tw((args) => {
+    const value = plainValue(
+      args, test, unit, keywords,
+    );
+    return value === undefined ? undefined : result({
+      [property]: value,
+    });
+  });
+}
+
+/** Ничего не подходит: числа не принимаются. */
+const REGEXP_NONE = /$^/;
+
+/** Голое имя без значения, минуса и модификатора — для вложенных статик. */
+function bareOnly(make: () => MnHandlerResult) {
+  return tw((args) => (args.parts.length || args.arbitrary !== undefined || args.modifier !== undefined || args.negative
+    ? undefined : make()));
+}
+
+/**
+ * Статики с вложенными блоками (`TW4_NESTED_STATICS`): `divide-*` — детям, `outline-hidden` — с запасным контуром
+ * в `forced-colors`, `container` — максимальная ширина по брейкпоинтам.
+ */
+function setupNestedStatics(mn: MnInstance): void {
+  const breakpoints: Record<string, MnHandlerResult> = {};
+  let name: string;
+  let query: string;
+  for (name of [
+    'solid',
+    'dashed',
+    'dotted',
+    'double',
+    'none',
+  ]) {
+    mn(
+      'divide-' + name, bareOnly(divideStyle(name)), '', 1,
+    );
+  }
+  for (name of ['x', 'y']) {
+    mn(
+      'divide-' + name + '-reverse', bareOnly(divideStyle('', '--tw-divide-' + name + '-reverse')), '', 1,
+    );
+  }
+  mn(
+    'outline-hidden', bareOnly(() => ({
+      style: {
+        '--tw-outline-style': 'none',
+        outlineStyle: 'none',
+      },
+      media: {
+        'forced-colors': {
+          style: {
+            outline: '2px solid transparent',
+            outlineOffset: '2px',
+          },
+        },
+      },
+    })), '', 1,
+  );
+  // Тот же запрос «от брейкпоинта», что даёт вариант `sm:` (медиа с ключом-запросом, как у ядра).
+  for (name of BREAKPOINTS) {
+    query = '(width >= ' + TW4_THEME['--breakpoint-' + name] + ')';
+    mn.media[query] || (mn.media[query] = {
+      query,
+    });
+    breakpoints[query] = {
+      style: {
+        maxWidth: TW4_THEME['--breakpoint-' + name],
+      },
+    };
+  }
+  mn(
+    'container', bareOnly(() => ({
+      style: {
+        width: '100%',
+      },
+      media: breakpoints,
+    })), '', 1,
+  );
+}
+
+/** Стиль рамок между детьми (`divide-dashed`) или флаг обратного порядка (`divide-x-reverse`). */
+function divideStyle(style: string, reverse?: string) {
+  return (): MnHandlerResult => ({
+    selectors: [DIVIDE_CHILDREN],
+    style: reverse ? {
+      [reverse]: '1',
+    } : {
+      '--tw-border-style': style,
+      borderStyle: style,
+    },
+  });
+}
+
+function setupMisc(mn: MnInstance): void {
+  const containers: Record<string, string> = {
+    auto: 'auto',
+  };
+  const stretches: Record<string, string> = {};
+  const autoTracks = {
+    auto: 'auto',
+    min: 'min-content',
+    max: 'max-content',
+    fr: 'minmax(0, 1fr)',
+  };
+  let name: string;
+  for (name in TW4_THEME) { // eslint-disable-line
+    name.indexOf('--container-') === 0 && (containers[name.slice(12)] = 'var(' + name + ')');
+  }
+  for (name of FONT_STRETCHES) {
+    stretches[name] = name;
+  }
+  mn(
+    'opacity', plainHandler(
+      'opacity', REGEXP_NUMBER, '%', {},
+    ), '', 1,
+  );
+  mn(
+    'zoom', plainHandler(
+      'zoom', REGEXP_INTEGER, '%', {},
+    ), '', 1,
+  );
+  mn(
+    'tab', plainHandler(
+      'tabSize', REGEXP_INTEGER, '', {},
+    ), '', 1,
+  );
+  mn(
+    'columns', plainHandler(
+      'columns', REGEXP_INTEGER, '', containers,
+    ), '', 1,
+  );
+  mn(
+    'font-stretch', plainHandler(
+      'fontStretch', REGEXP_PERCENT, '', stretches,
+    ), '', 1,
+  );
+  mn(
+    'object', plainHandler(
+      'objectPosition', REGEXP_NONE, '', OBJECT_POSITIONS,
+    ), '', 1,
+  );
+  mn(
+    'auto-cols', plainHandler(
+      'gridAutoColumns', REGEXP_NONE, '', autoTracks,
+    ), '', 1,
+  );
+  mn(
+    'auto-rows', plainHandler(
+      'gridAutoRows', REGEXP_NONE, '', autoTracks,
+    ), '', 1,
+  );
+  mn(
+    'list', plainHandler(
+      'listStyleType', REGEXP_NONE, '', {
+        disc: 'disc',
+        decimal: 'decimal',
+        none: 'none',
+      },
+    ), '', 1,
+  );
+  mn(
+    'list-image', plainHandler(
+      'listStyleImage', REGEXP_NONE, '', {
+        none: 'none',
+      },
+    ), '', 1,
+  );
+  mn(
+    'indent', scaleHandler(['textIndent'], {
+      keywords: {
+        px: '1px',
+      },
+      negative: true,
+    }), '', 1,
+  );
+  // `aspect-4/3` → `4/3`: дробь — модификатором.
+  mn(
+    'aspect', tw((args) => {
+      const key = args.parts.join('-');
+      const ratio = args.modifier !== undefined && args.arbitrary === undefined && !args.negative
+        && args.parts.length === 1 && REGEXP_NUMBER.test(key) && REGEXP_NUMBER.test(args.modifier)
+        ? key + '/' + args.modifier
+        : keywordValue(args, {
+          auto: 'auto',
+          square: '1 / 1',
+          video: 'var(--aspect-video)',
+        });
+      return ratio === undefined ? undefined : result({
+        aspectRatio: ratio,
+      });
+    }), '', 1,
+  );
+  mn(
+    'line-clamp', tw((args) => {
+      const lines = plainValue(
+        args, REGEXP_INTEGER, '', {},
+      );
+      return args.parts.length === 1 && args.parts[0] === 'none' && !args.negative && args.modifier === undefined
+        ? result(LINE_CLAMP_NONE) : lines === undefined ? undefined : result({
+          overflow: 'hidden',
+          display: '-webkit-box',
+          '-webkit-box-orient': 'vertical',
+          '-webkit-line-clamp': lines,
+        });
+    }), '', 1,
+  );
+}
+
 function setupVariants(mn: MnInstance): void {
   let name: string;
   mn.media[COLOR_MIX_MEDIA] = {
@@ -1866,6 +2285,8 @@ export default {
     setupGradients(mn);
     setupFilters(mn);
     setupTransitions(mn);
+    setupMisc(mn);
+    setupNestedStatics(mn);
     setupVariants(mn);
   },
 } as MnPresetObject;

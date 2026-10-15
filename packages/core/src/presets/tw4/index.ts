@@ -18,8 +18,11 @@ import {
   MnParseError,
 } from '../../core/types';
 import {
-  mathSpaces, tw,
+  tw,
 } from '../shared/tw';
+import {
+  mathSpaces,
+} from '../../core/mathSpaces';
 import type {
   MnTwArgs,
 } from '../shared/tw';

@@ -4,8 +4,11 @@
  */
 import minotationProvider from '../../../core';
 import {
-  mathSpaces, parseTwSuffix, tw,
+  parseTwSuffix, tw,
 } from '../tw';
+import {
+  mathSpaces,
+} from '../../../core/mathSpaces';
 import type {
   MnTwArgs,
 } from '../tw';

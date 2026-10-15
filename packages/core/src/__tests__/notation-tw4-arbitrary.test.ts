@@ -278,6 +278,17 @@ describe('at-правила: @supports, @container (D-057)', () => {
   });
 });
 
+describe('математика в произвольном значении варианта — с пробелами, как у Tailwind 4.3.3', () => {
+  test.each([
+    ['max-[calc(100%-2rem)]:cF00', '@media (width < calc(100% - 2rem)){.max-\\[calc\\(100\\%-2rem\\)\\]\\:cF00{color:#f00}}'],
+    ['supports-[width:calc(1px+2px)]:cF00', '@supports (width:calc(1px + 2px)){.supports-\\[width\\:calc\\(1px\\+2px\\)\\]\\:cF00{color:#f00}}'],
+    ['@min-[calc(10rem+1px)]:cF00', '@container (width >= calc(10rem + 1px)){.\\@min-\\[calc\\(10rem\\+1px\\)\\]\\:cF00{color:#f00}}'],
+    ['[&:nth-child(2n+1)]:cF00', '.\\[\\&\\:nth-child\\(2n\\+1\\)\\]\\:cF00:nth-child(2n+1){color:#f00}'],
+  ])('%s', (token, css) => {
+    expect(compile(token).css).toBe(css);
+  });
+});
+
 describe('переменная CSS --имя=значение в записи Tailwind', () => {
   test('ведущий -- — не минус: переменная, как в записи minotation', () => {
     const {

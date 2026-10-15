@@ -63,6 +63,9 @@ import {
 import {
   mediaCondition,
 } from '../core/mediaCondition';
+import {
+  mathSpaces,
+} from '../core/mathSpaces';
 import type {
   MnMediaOperator,
 } from '../core/mediaCondition';
@@ -1134,7 +1137,9 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
 
   /** Произвольное значение Tailwind: `_` — пробел, `\_` — подчёркивание. */
   function arbitrary(value: string): string {
-    return value.replace(REGEXP_ARBITRARY_SPACE, (match) => (match === '_' ? ' ' : '_'));
+    // В математике — пробелы вокруг операторов, как у Tailwind: `max-[calc(100%-2rem)]:` (`calc(100%-2rem)` —
+    // недействительный CSS).
+    return mathSpaces(value.replace(REGEXP_ARBITRARY_SPACE, (match) => (match === '_' ? ' ' : '_')));
   }
 
   /** `:` вне `[…]`/`(…)` и не экранированный — разделитель приставок. */

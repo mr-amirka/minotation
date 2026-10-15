@@ -195,7 +195,7 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 - Специфичность: уточнённый токен — два класса (`.x.active`), без уточнения — один (`.x`).
   Поэтому «база + вариант» не зависит от порядка правил.
 - С медиа и наведением: `bgE.active:h@m2` →
-  `@media (max-width: 767.98px) and (hover: hover){.bgE\.active\:h\@m2.active:hover{background:#eee}}`.
+  `@media (width < 768px) and (hover: hover){.bgE\.active\:h\@m2.active:hover{background:#eee}}`.
 
 ### Не делайте так
 
@@ -231,7 +231,7 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 
 ### Режим синтаксиса `notationMode` (D-045, D-046)
 
-`'context-qualified'` (по умолчанию) — запись minotation: `cF00:h@md<.group`.
+`'context-qualified'` (по умолчанию) — запись minotation: `cF00:h<.group@md` (медиа — в конце, D-088).
 `'tw4-compatible'` — варианты перед классом, как в Tailwind: `md:hover:group-hover:cF00`.
 
 ```ts
@@ -243,7 +243,7 @@ mn.variantPrefixedSynonyms({ group: '.group', peer: '.peer~' });  // метки:
 | Класс | CSS |
 |---|---|
 | `hover:cF00` | `.hover\:cF00:hover{color:#f00}` |
-| `md:cF00` | `@media (min-width: 768px){.md\:cF00{…}}` |
+| `md:cF00` | `@media (width >= 768px){.md\:cF00{…}}` |
 | `group-hover:cF00` | `.group:hover .group-hover\:cF00{…}` — `{метка}-{синоним\|медиа}`: метка из `variantPrefixedSynonyms` |
 | `group-hover/item:cF00` | `.group\/item:hover .group-hover\/item\:cF00{…}` — именованная метка (класс `group/item`) |
 | `peer-invalid:cF00` | `.peer:invalid~.peer-invalid\:cF00{…}` — сосед через `variantPrefixedSynonyms` |
@@ -279,17 +279,17 @@ mn.variantPrefixedSynonyms({ group: '.group', peer: '.peer~' });  // метки:
 | Класс | CSS |
 |---|---|
 | `p:10` | `.p\:10{padding:10px}` |
-| `c:F00:hover@md` | `@media (min-width: 1024px){.c\:F00\:hover\@md:hover{color:#f00}}` |
+| `c:F00:hover@md` | `@media (width >= 1024px){.c\:F00\:hover\@md:hover{color:#f00}}` |
 | `p:10>li:hover` / `p:10_h1` | `…>li:hover{…}` / `… h1{…}` — ребёнок / потомок |
 | `c:F00:checked+span` / `p:10~div` | соседи |
 | `p:10[open]` / `c:F00.active` | атрибут / класс самого элемента |
 | `c:F00:first` / `:nth(2)` / `:after` | `:first-child` / `:nth-child(2)` / `::after` |
 | `p:10!` | `!important` |
 | `{p:10;m:5}>li:hover@md` | группа объявлений с общим контекстом |
-| `p:10@<md` / `@>=768` / `@768&<1024` | `(max-width: 1023.98px)` / `(min-width: 768px)` / диапазон |
+| `p:10@<md` / `@>=768` / `@768&<1024` | `(width < 1024px)` / `(width >= 768px)` / диапазон |
 | `p:10@dark` / `@print` / `@landscape` / `@media(any-hover:hover)` | слова медиа и произвольный запрос |
 
-Сравнение с именем (`@<md`) берёт ширину из запроса брейкпоинта (`(min-width: 1024px)`).
+Сравнение с именем (`@<md`) берёт ширину из запроса брейкпоинта (`(width >= 1024px)`).
 
 В режимах, кроме `'context-qualified'`, действует только грамматика оригинала: конструкции
 minotation (`<`, `>`, `@`, `:`, группы) не применяются (D-049).
@@ -515,7 +515,7 @@ const mn = minotationProvider({
   presets: [presetStandard, presetSynonyms, presetMedias],
   isolateMode: 'none',             // 'none' | 'class' | 'where' — правила привязаны к классу области (D-075)
   isolateClass: '_l',              // класс области: .p10._l{…} или .p10:where(._l){…}
-  media: { m: { query: '(max-width: 767px)' } }, // p10@m; ещё width/height, supports, container
+  media: { m: { query: '(width <= 767px)' } }, // p10@m; ещё width/height, supports, container
   altColor: false,                 // запасное непрозрачное объявление рядом с rgba
   warningMode: 'log',              // 'log' | 'silent' | 'error' — что делать с предупреждением
   onWarning: (warning) => {},      // колбэк на каждое предупреждение, дополнительно к режиму
@@ -524,6 +524,7 @@ const mn = minotationProvider({
   maxDepthMode: 'warn',            // 'warn' | 'silent' | 'strict' — что делать при превышении
   maxSpecificity: 16,              // предел *N: 1…16, выше 16 задать нельзя (D-089)
   maxSpecificityMode: 'warn',      // 'warn' — сообщение, CSS до *16; 'strict' — без CSS, ошибка
+  mediaSyntax: 'range',            // (width >= 48rem); 'classic' — (min-width: 48rem) для старых браузеров (D-087)
   specificityMode: 'warn',         // 'warn' | 'silent' | 'strict' — токены f10*2 (накрутка специфичности)
   importantMode: 'warn',           // 'warn' | 'silent' | 'strict' — токены f10-i (!important)
   childSelectorMode: 'warn',       // 'warn' | 'silent' | 'strict' — токены cF00>1 (дочерний селектор)
@@ -613,13 +614,13 @@ mn.assign({
 
 | Селектор + токен | CSS |
 |---|---|
-| `'.x:h@d'` + `cF00` | `@media (max-width: 991.98px) and (hover: hover){.x:hover{color:#f00}}` |
-| `'.btn@dark'` + `cF00@m4` | `@media (max-width: 479.98px) and (prefers-color-scheme: dark){.btn{…}}` |
+| `'.x:h@d'` + `cF00` | `@media (width < 992px) and (hover: hover){.x:hover{color:#f00}}` |
+| `'.btn@dark'` + `cF00@m4` | `@media (width < 480px) and (prefers-color-scheme: dark){.btn{…}}` |
 | `'html:has[dialog[open]]'` | `html:has(dialog[open])` — скобки псевдокласса пишутся `[ ]`, как в классах |
 | `'[type=(button\|reset)]'` | `[type=button],[type=reset]` |
 | `'h1, h2@d'` | запятая — независимые селекторы: `@d` только у `h2`; общий контекст — группой `'(h1\|h2)@d'` |
 | `'.a(:h\|.active)@m .child'` | `@media … and (hover: hover){.a:hover .child{…}}` и `@media …{.a.active .child{…}}` |
-| `'.a@m^3>.b'` | `@media (max-width: 991.98px){.a>.b{…}}` с приоритетом 3 |
+| `'.a@m^3>.b'` | `@media (width < 992px){.a>.b{…}}` с приоритетом 3 |
 
 Предупреждений, которые нужны только классам (полное имя псевдокласса, дочерний селектор),
 в селекторе нет: это обычный CSS.

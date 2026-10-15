@@ -60,8 +60,8 @@ describe('mn.css', () => {
     mn.compile();
     expect(styles()).toEqual([
       [-3000, ':root{--a:1}'],
-      [3, '@media (max-width: 991.98px) and (hover: hover){.selector:hover{--some-color:#F00}}'],
-      [3, '@media (max-width: 991.98px){.selector.active{--some-color:#F00}}'],
+      [3, '@media (width < 992px) and (hover: hover){.selector:hover{--some-color:#F00}}'],
+      [3, '@media (width < 992px){.selector.active{--some-color:#F00}}'],
     ]);
   });
 
@@ -128,7 +128,7 @@ describe('mn.assign: тот же разбор селектора (D-071)', () =>
     [
       '.x:h@d',
       'cF00',
-      '@media (max-width: 991.98px) and (hover: hover){.x:hover{color:#f00}}',
+      '@media (width < 992px) and (hover: hover){.x:hover{color:#f00}}',
     ],
     [
       ':root@dark',
@@ -149,7 +149,7 @@ describe('mn.assign: тот же разбор селектора (D-071)', () =>
     [
       '.btn@dark',
       'cF00@m4',
-      '@media (max-width: 479.98px) and (prefers-color-scheme: dark){.btn{color:#f00}}',
+      '@media (width < 480px) and (prefers-color-scheme: dark){.btn{color:#f00}}',
     ],
     [
       '[type=(button|reset)]',
@@ -180,7 +180,7 @@ describe('mn.assign: тот же разбор селектора (D-071)', () =>
     mn.assign('h1, h2@d', 'cF00');
     mn.assign('(h3|h4)@d', 'c0F0');
     mn.compile();
-    expect(styles().map((s) => s[1]).join('')).toBe('h1{color:#f00}@media (max-width: 991.98px){h2{color:#f00}'
+    expect(styles().map((s) => s[1]).join('')).toBe('h1{color:#f00}@media (width < 992px){h2{color:#f00}'
       + 'h3,h4{color:#0f0}}');
   });
 });
@@ -255,7 +255,7 @@ describe('селектор: кавычки, экранирование, прио
     } = create();
     mn.assign(selector, tokens);
     mn.compile();
-    expect(styles()).toEqual([[priority, '@media (max-width: 479.98px) and (max-width: 991.98px){'
+    expect(styles()).toEqual([[priority, '@media (width < 480px) and (width < 992px){'
       + '.x{color:#f00}}']]);
   });
 
@@ -289,14 +289,14 @@ describe('медиа где угодно в селекторе, комбинат
   test.each([
     ['.class1, class2(:h|.active)@m .child', [
       [-2000, '.class1{color:#f00}'],
-      [-992, '@media (max-width: 991.98px) and (hover: hover){class2:hover .child{color:#f00}}'],
-      [-992, '@media (max-width: 991.98px){class2.active .child{color:#f00}}'],
+      [-992, '@media (width < 992px) and (hover: hover){class2:hover .child{color:#f00}}'],
+      [-992, '@media (width < 992px){class2.active .child{color:#f00}}'],
     ]],
-    ['.a@m^3>.b', [[3, '@media (max-width: 991.98px){.a>.b{color:#f00}}']]],
-    ['.a@m .b@dark', [[-992, '@media (max-width: 991.98px) and (prefers-color-scheme: dark){.a .b{color:#f00}}']]],
+    ['.a@m^3>.b', [[3, '@media (width < 992px){.a>.b{color:#f00}}']]],
+    ['.a@m .b@dark', [[-992, '@media (width < 992px) and (prefers-color-scheme: dark){.a .b{color:#f00}}']]],
     ['.a:h>.b', [[1, '@media (hover: hover){.a:hover>.b{color:#f00}}']]],
     ['.a > .b + .c ~ .d', [[-2000, '.a>.b+.c~.d{color:#f00}']]],
-    ['a[href="x@y"]@m', [[-992, '@media (max-width: 991.98px){a[href="x@y"]{color:#f00}}']]],
+    ['a[href="x@y"]@m', [[-992, '@media (width < 992px){a[href="x@y"]{color:#f00}}']]],
   ])('%s', (selector, expected) => {
     const {
       mn, styles, warnings,
@@ -315,7 +315,7 @@ describe('селектор: экранированный @ и приоритет
     } = create();
     mn.assign('.a\\@b@m', 'cF00');
     mn.compile();
-    expect(styles()).toEqual([[-992, '@media (max-width: 991.98px){.a\\@b{color:#f00}}']]);
+    expect(styles()).toEqual([[-992, '@media (width < 992px){.a\\@b{color:#f00}}']]);
   });
 
   test('приоритет из синонима — в конце, после медиа селектора', () => {
@@ -327,7 +327,7 @@ describe('селектор: экранированный @ и приоритет
     });
     mn.assign('.x:hp@m', 'cF00');
     mn.compile();
-    expect(styles()).toEqual([[5, '@media (max-width: 991.98px) and (hover: hover){.x:hover{color:#f00}}']]);
+    expect(styles()).toEqual([[5, '@media (width < 992px) and (hover: hover){.x:hover{color:#f00}}']]);
   });
 });
 

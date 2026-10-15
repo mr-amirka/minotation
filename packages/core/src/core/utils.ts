@@ -726,10 +726,10 @@ function endsInParentSegment(value: string): boolean {
 
 /**
  * Сепараторы контекста: `@`, за которым сразу идёт любой из них, означает, что
- * имени медиа нет.
+ * имени медиа нет. `:` и `/` сюда не входят: `@:side` — запрос к контейнеру по имени, `@/200` — только высота
+ * (D-088).
  */
 const CONTEXT_SEPARATORS: Record<string, 1> = {
-  ':': 1,
   '@': 1,
   '.': 1,
   '#': 1,
@@ -842,54 +842,6 @@ export function normalizeSelectorsIteratee(selectorsMap: Record<string, number>,
     flatFlags(map(map(alts, pseudoBrackets), selectorNormalize), selectorsMap);
   });
   return selectorsMap;
-}
-export function parseMediaValue(v: string | undefined): number {
-  if (!v) {
-    return 0;
-  }
-  const n = parseInt(v, 10);
-  if (isNaN(n)) {
-    throw new TypeError('parseMediaValue error');
-  }
-  return n;
-}
-/** Корректная часть числового медиа-шаблона: `760`, `760-`, `760-1200`. */
-const REGEXP_MEDIA_RANGE = /^\d+(?:-\d*)?$/;
-/** Записано цифрами и дефисами — то есть автор явно имел в виду числовой шаблон. */
-const REGEXP_MEDIA_NUMERIC = /^[-\d]+$/;
-
-/**
- * Часть медиа-шаблона выглядит числовой, но записана не по форме.
- *
- * Разбор числового шаблона («сколько частей после split('-')») принимал лишнее
- * и делал это молча:
- *
- * | Запись | Давала | Почему плохо |
- * |---|---|---|
- * | `@-760` | `max-width: 760px` | вторая запись того же, что `@760` |
- * | `@-760-1200` | `max-width: 760px` | `-1200` отброшен |
- * | `@760-1200-1500` | `(min 760) and (max 1200)` | `-1500` отброшен |
- * | `@-` | пустой запрос | правила нет, причина не названа |
- *
- * Первое — нарушение «один результат — одна запись», остальные —
- * молчаливо отброшенный хвост. Названные медиа (`sm`, `safari`) сюда
- * не попадают: в них есть буквы, и `REGEXP_MEDIA_NUMERIC` их не пропускает.
- */
-export function isBadMediaRange(mediaPart?: string): boolean {
-  return !!mediaPart
-    && REGEXP_MEDIA_NUMERIC.test(mediaPart)
-    && !REGEXP_MEDIA_RANGE.test(mediaPart);
-}
-
-export function parseMediaPart(mediaPart?: string): [number, number] | undefined {
-  if (!mediaPart) {
-    return undefined;
-  }
-  const parts = mediaPart.split('-');
-  const v = parseMediaValue(parts[0]);
-  return parts.length > 1
-    ? [v, parseMediaValue(parts[1])]
-    : [0, v];
 }
 export function handlerWrap(essenceHandler: (p: MnEssenceParams) => MnEssenceRaw | void | 0,
   paramsMatchPath: string | string[]): (p: MnEssenceParams) => MnEssenceRaw | void | 0 {

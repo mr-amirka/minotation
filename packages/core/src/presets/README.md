@@ -68,9 +68,9 @@ media.dark = { query: '(prefers-color-scheme: dark)' };
 ```
 ```css
 .ph15 { padding-left: 15px; padding-right: 15px; }
-@media (max-width: 991.98px) { .ph10\@m { padding-left: 10px; padding-right: 10px; } }
-@media (min-width: 1200px) { .w1100\@d2- { width: 1100px; } }
-@media (min-width: 480px) and (max-width: 991.98px) { .w900\@m4-d { width: 900px; } }
+@media (width < 992px) { .ph10\@m { padding-left: 10px; padding-right: 10px; } }
+@media (width >= 1200px) { .w1100\@d2- { width: 1100px; } }
+@media (width >= 480px) and (width < 992px) { .w900\@m4-d { width: 900px; } }
 ```
 
 -------------------------

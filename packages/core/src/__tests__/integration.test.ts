@@ -191,7 +191,7 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn({
       media: {
         m: {
-          query: '(max-width: 991px)',
+          query: '(width <= 991px)',
           priority: 0,
         },
       },
@@ -205,7 +205,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
-    expect(content).toContain('@media (max-width: 991px)');
+    expect(content).toContain('@media (width <= 991px)');
     expect(content).toContain('padding:10px');
   });
 
@@ -220,7 +220,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
-    expect(content).toContain('@media (max-width: 768px)');
+    expect(content).toContain('@media (width <= 768px)');
   });
 
   test('селекторное медиа (user-agent): p10@safari', () => {
@@ -386,7 +386,7 @@ describe('MnInstance — полный пайплайн', () => {
     expect(allCss).toContain('font-weight:bold');
 
     // Медиа
-    expect(allCss).toContain('@media (max-width: 991.98px)');
+    expect(allCss).toContain('@media (width < 992px)');
   });
 
   test('exts — расширение стилей', () => {

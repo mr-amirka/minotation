@@ -64,7 +64,7 @@ describe('mn.assign', () => {
     const mn = makeMn({
       media: {
         sm: {
-          query: '(max-width: 600px)',
+          query: '(width <= 600px)',
           priority: 0, 
         }, 
       }, 
@@ -73,7 +73,7 @@ describe('mn.assign', () => {
     mn.assign('.btn@sm', 'p10');
     mn.compile();
 
-    expect(cssOf(mn)).toContain('@media (max-width: 600px)');
+    expect(cssOf(mn)).toContain('@media (width <= 600px)');
   });
 });
 

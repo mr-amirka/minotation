@@ -481,6 +481,9 @@ const MN_SHADOW_COLOR = 8;
  * уже не видно. Поля остаются пустыми, а ядро подставляет реальные в
  * `__initEssence` (`core/index.ts`), где и токен, и имя хендлера известны.
  */
+/** Имена контейнера через пробел — идентификаторы CSS или переменная: `sidebar`, `side main`, `var(--c)`. */
+const REGEXP_CONTAINER_NAMES = /^(?:var\(--[\w-]+\)|(?:-?[a-zA-Z_][\w-]*)(?: -?[a-zA-Z_][\w-]*)*)$/;
+
 function throwInvalid(message?: string): never {
   throw new MnParseError(message || 'Parameter is invalid', {
     token: '',
@@ -3994,6 +3997,21 @@ export default {
             }) : 0
           ));
       },
+      // Контейнер для запросов `@…:имя` (D-088): `cnSidebar` → `container-name: sidebar`, `cnMainNav` →
+      // `main-nav`, несколько имён — через `_` (`cnSide_Main`).
+      cn: (p) => {
+        const names = p.suffix ? valueNormalize(p.suffix) : '';
+        return !names ? 0 : REGEXP_CONTAINER_NAMES.test(names) ? styleWrap({
+          containerName: names,
+        }) : throwInvalid('"' + names + '" is not a container name: expected CSS identifiers (cnSidebar, cnMainNav,'
+          + ' cnSide_Main) or a variable');
+      },
+      // `ctIS` → `container-type: inline-size`; размер по обеим осям — `ctS`.
+      ct: synonymProvider('containerType', {
+        IS: 'InlineSize',
+        S: 'Size',
+        N: 'Normal',
+      }),
       ws: synonymProvider('whiteSpace', {
         '': 'Nowrap',
         N: 'Normal',

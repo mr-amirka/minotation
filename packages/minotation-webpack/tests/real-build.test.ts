@@ -283,7 +283,7 @@ describe('minotation-webpack — пресеты, лоадеры и предуп�
 
     const loud = await runBuild(root, new MnWebpackPlugin({
       altColor: true,
-      media: { wide: { query: '(min-width: 1200px)' } },
+      media: { wide: { query: '(width >= 1200px)' } },
       onWarning: (w) => seen.push(w.token),
     }));
     expect(loud.warnings.join('\n')).toContain('[minotation] w10zz');

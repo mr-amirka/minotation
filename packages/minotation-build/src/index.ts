@@ -209,6 +209,7 @@ export const CORE_OPTION_KEYS = [
   'notationMode',
   'contextWhere',
   'mediaNesting',
+  'mediaSyntax',
   'onWarning',
   'onError',
 ] as const;

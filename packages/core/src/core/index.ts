@@ -30,6 +30,9 @@ import {
   checkOptions, CORE_OPTIONS_SCHEMA, describeValue, isObject as isObjectOption,
 } from '../checkOptions';
 import {
+  mediaCondition,
+} from './mediaCondition';
+import {
   eachApply,
   eachTry,
   forEach,
@@ -107,8 +110,6 @@ import {
   JOIN_AND,
   normalizeSelectors,
   normalizeComboNames,
-  parseMediaPart,
-  isBadMediaRange,
   handlerWrap,
   __normalize,
   mergeEssenceInto,
@@ -193,13 +194,20 @@ function fail(message: string): never {
 /** Точка медиа строкой с единицей (D-069): `'48rem'`, `'40em'`, `'768px'`. */
 const REGEXP_POINT_LENGTH = /^(\d+(?:\.\d+)?)(px|rem|em)$/;
 
-/** Число — граница медиа-диапазона (`@480-d`). */
-const REGEXP_MEDIA_NUMBER = /^[0-9]+(?:\.[0-9]+)?$/;
+/** Число — граница медиа-диапазона, с единицей или без (px): `480`, `10rem`, `30.5em`. */
+const REGEXP_MEDIA_BOUND = /^([0-9]+(?:\.[0-9]+)?)(px|rem|em)?$/;
 
-/** Округление границы до сотых: `479.98`, а не `479.97999999999996`. */
-function round(value: number): number {
-  return Math.round(value * 100) / 100;
-}
+/** Начинается с цифры или дефиса — значит, задумывался диапазон (`@760x400`, `@-760`, `@-`). */
+const REGEXP_MEDIA_NUMERIC_START = /^(?:-|[0-9])/;
+
+/** Имя контейнера — идентификатор CSS. */
+const REGEXP_CONTAINER_NAME = /^-?[a-zA-Z_][a-zA-Z0-9_-]*$/;
+
+/** Условие, которое никогда не выполняется: медиа с ошибкой — правило в CSS не попадает (D-088). */
+const MEDIA_NEVER = 'not all';
+
+/** Граница медиа-диапазона: `[сторона, CSS-длина, px для порядка, точка ли]`. */
+type MediaBound = [string, string, number, number];
 
 /** Случаи со своим режимом `'warn' | 'silent' | 'strict'` (D-039). */
 /**
@@ -464,6 +472,7 @@ function minotationProvider(options?: MnOptions) {
     $$altColor = settings.altColor === true;
     $$failOnWarnings = warningMode === 'error';
     $$mediaNesting = settings.mediaNesting === true;
+    $$mediaClassic = settings.mediaSyntax === 'classic';
     $$raiseModes = {
       'raised-specificity': settings.specificityMode || 'warn',
       important: settings.importantMode || 'warn',
@@ -950,6 +959,8 @@ function minotationProvider(options?: MnOptions) {
   let $$raiseModes: Record<RaiseType, MnRaiseMode>;
   /** `mediaNesting` (D-070): вложенные `@media` вместо `and`. */
   let $$mediaNesting = false;
+  /** `mediaSyntax: 'classic'` (D-087): условия через `min-`/`max-` вместо формы диапазона. */
+  let $$mediaClassic = false;
   /** Уже учтённые `*N`/`-i` (ключ — тип и токен): одно сообщение на токен. */
   let $$raisedTokens: Record<string, number> = {};
   /** Запрещённые в режиме `'strict'` токены текущего состояния (D-039). */
@@ -1015,7 +1026,7 @@ function minotationProvider(options?: MnOptions) {
    * `media-expr ::= media-atom ('&' media-atom)* (',' media-expr)?` — `&` объединяет
    * атомы через AND в одном `@media (...)`, `,` заводит отдельную альтернативную запись.
    * Каждый атом — либо зарегистрированное имя медиа (`$$media`, добавляется через
-   * `options.media`/`mn.media`), либо шаблон `WIDTHxHEIGHT` ({@link parseMediaTemplate})
+   * `options.media`/`mn.media`), либо диапазон `ширина/высота:контейнер` ({@link mediaRangeQuery})
    * с опциональным `^приоритет`.
    *
    * @param mediaExpression — например `'m&dark,tablet'`
@@ -1038,10 +1049,9 @@ function minotationProvider(options?: MnOptions) {
     let outputSelector: string[];
     let outputRules: string[];
     let priorityMatch: RegExpExecArray | null;
-    let mediaTemplate: [string] | [string, number | undefined];
     let name: string;
     let media: MnMediaEntry | undefined;
-    let point: [string, number] | undefined;
+    let point: [string, number | undefined, string] | undefined;
     const medias: Array<[string, number | undefined, string, string] | []> = [];
     const names: string[] = [];
     const queries: string[] = [];
@@ -1073,8 +1083,8 @@ function minotationProvider(options?: MnOptions) {
       priority = mediaPriority;
       for (;iAnd < lAnd; iAnd++) {
         (fragment = partsAnd[iAnd]) && (
-          (point = mediaPointQuery(fragment)) ? (
-            push(outputQuery, point[0]),
+          (point = mediaRangeQuery(fragment)) ? (
+            point[2] ? push(outputRules, point[2]) : push(outputQuery, point[0]),
             isDefined(priority) || (priority = point[1])
           ) : (media = $$media[fragment]) ? (
             (query = media.query) && push(outputQuery, query),
@@ -1083,12 +1093,12 @@ function minotationProvider(options?: MnOptions) {
             (query = media.supports) && push(outputRules, '@supports ' + query),
             (query = media.container) && push(outputRules, '@container ' + query),
             isDefined(priority) || (priority = media.priority)
-          ) : (
-            mediaTemplate = parseMediaTemplate(fragment) || unknownMedia(fragment),
-            (query = mediaTemplate[0]) && push(outputQuery, query),
-            isDefined(priority) || (priority = mediaTemplate[1])
-          )
+          ) : push(outputQuery, unknownMedia(fragment))
         );
+      }
+      // Ошибка в медиа (D-088): ни это правило, ни его вариант с этим условием в CSS не попадают.
+      if (outputQuery.indexOf(MEDIA_NEVER) > -1) {
+        continue;
       }
 
       // Одинаковые условия — один раз: `p10:h@mouse` → `(pointer: fine) and (hover: hover)`, а не
@@ -1124,37 +1134,157 @@ function minotationProvider(options?: MnOptions) {
   }
 
   /**
-   * Точки медиа `width`/`height` (D-054): `@имя` — до точки, `@имя-` — от точки, `@a-b` — от
-   * точки `a` до точки `b` (граница может быть и числом: `@480-d`). Не точка — `undefined`,
-   * дальше — обычное имя или числовой шаблон.
+   * Диапазон медиа в записи minotation (D-054, D-087, D-088): `ширина[/высота][:контейнер]`. Граница —
+   * точка медиа или число с единицей (`480`, `10rem`; без единицы — px): `@a` — до `a`, `@a-` — от `a`,
+   * `@a-b` — от `a` до `b`. Точка в первом слоте даёт свою сторону (ширину, а без неё — высоту), в слоте
+   * высоты — свою высоту. Число «до» включительно (`<=`), точка — нет (`<`). `:имя` — запрос к контейнеру
+   * (`@:side` — только по имени), всегда в форме диапазона.
    *
-   * @returns `[запрос, приоритет]`: «до» — `−граница` (меньшие ниже по CSS и важнее), «от» —
-   *   `+граница`
+   * @returns `[условие, приоритет, at-правило контейнера]`; `undefined` — не диапазон (обычное имя медиа);
+   *   ошибка — сообщение и условие {@link MEDIA_NEVER}
    */
-  function mediaPointQuery(fragment: string): [string, number] | undefined {
+  function mediaRangeQuery(fragment: string): [string, number | undefined, string] | undefined {
     const entry = $$media[fragment];
+    // Описанное имя без точки — обычное медиа, даже с `:` и `/` в имени (готовые запросы режимов Tailwind и
+    // Master CSS регистрируются под своим текстом: `(prefers-color-scheme: dark)`).
+    if (entry && !isDefined(entry.width) && !isDefined(entry.height)) {
+      return undefined;
+    }
+    const colon = fragment.indexOf(':');
+    const body = colon < 0 ? fragment : fragment.slice(0, colon);
+    const container = colon < 0 ? '' : fragment.slice(colon + 1);
+    const slash = body.indexOf('/');
+    const explicit = colon > -1 || slash > -1;
+    const classic = $$mediaClassic && colon < 0;
+    const conditions: string[] = [];
+    const width = slash < 0 ? body : body.slice(0, slash);
+    const height = slash < 0 ? '' : body.slice(slash + 1);
+    const first = width ? rangeOf(
+      width, '', fragment, classic, conditions,
+    ) : [undefined];
+    const second = height ? rangeOf(
+      height, 'height', fragment, classic, conditions,
+    ) : [undefined];
+    if (!explicit && first.length < 2) {
+      // Не диапазон: имя медиа — дальше; записано цифрами — битый шаблон.
+      return first[0] === 0 ? [
+        MEDIA_NEVER,
+        0,
+        '',
+      ] : REGEXP_MEDIA_NUMERIC_START.test(body) ? mediaRangeProblem(fragment) : undefined;
+    }
+    if (first[0] === 0 || second[0] === 0) {
+      return [
+        MEDIA_NEVER,
+        0,
+        '',
+      ];
+    }
+    if (width && first.length < 2 || height && second.length < 2 || explicit && !width && !height && !container) {
+      return mediaRangeProblem(fragment);
+    }
+    if (colon > -1 && !REGEXP_CONTAINER_NAME.test(container)) {
+      mediaProblem(fragment, 'names the container "' + container + '", which is not a CSS identifier. The class gives'
+        + ' no CSS.');
+      return [
+        MEDIA_NEVER,
+        0,
+        '',
+      ];
+    }
+    return [
+      container ? '' : conditions.join(' and '),
+      first.length > 1 ? first[1] : second[1],
+      container ? '@container ' + container + (conditions.length ? ' ' + conditions.join(' and ') : '') : '',
+    ];
+  }
+
+  /**
+   * Слот диапазона → условия в `conditions`. `side` — `''` для первого слота (сторона точки) или `height`.
+   *
+   * @returns `[undefined]` — не диапазон, `[0]` — ошибка (сообщение выдано), `[1, приоритет]` — готово
+   */
+  function rangeOf(
+    part: string, side: string, fragment: string, classic: boolean, conditions: string[],
+  ): [undefined] | [0] | [1, number | undefined] {
+    const whole = $$media[part] ? part : '';
+    const dash = whole ? -1 : part.indexOf('-');
+    const lowerText = dash < 0 ? '' : part.slice(0, dash);
+    const upperText = dash < 0 ? part : part.slice(dash + 1);
+    const lower = lowerText ? boundOf(
+      lowerText, side, fragment,
+    ) : undefined;
+    const upper = upperText ? boundOf(
+      upperText, side, fragment,
+    ) : undefined;
+    if (lower === 0 || upper === 0) {
+      return [0];
+    }
+    if (dash === 0 || lowerText && !lower || upperText && !upper) {
+      return [undefined];
+    }
+    if (lower && upper && lower[0] !== upper[0]) {
+      mediaProblem(fragment, 'mixes width and height. The class gives no CSS.');
+      return [0];
+    }
+    lower && conditions.push(mediaCondition(
+      lower[0], '>=', lower[1], classic,
+    ));
+    upper && conditions.push(mediaCondition(
+      upper[0], upper[3] ? '<' : '<=', upper[1], classic,
+    ));
+    // Порядок правил: «до» — по верхней границе (меньшие ниже и важнее), «от» точки — по нижней.
+    return [1, upper ? -upper[2] : (lower as MediaBound)[3] ? (lower as MediaBound)[2] : undefined];
+  }
+
+  /**
+   * Граница: `[сторона, CSS-длина, px для порядка, точка ли]`; `undefined` — не граница, `0` — ошибка
+   * (сообщение выдано): у точки нет нужной стороны или описание точки битое.
+   */
+  function boundOf(
+    part: string, side: string, fragment: string,
+  ): MediaBound | 0 | undefined {
+    const entry = $$media[part];
+    const matchs = REGEXP_MEDIA_BOUND.exec(part);
+    let value: number | string | undefined;
+    let length: [string, number, boolean] | undefined;
     if (entry) {
-      return pointOf(entry, fragment) ? upTo(entry) : undefined;
+      if (!pointOf(entry, fragment)) {
+        return undefined;
+      }
+      value = side ? (entry as Record<string, number | string | undefined>)[side]
+        : isDefined(entry.width) ? entry.width : entry.height;
+      if (!isDefined(value)) {
+        mediaProblem(fragment, 'uses the point "' + part + '" for the height, but it has no "height". The class gives'
+          + ' no CSS.');
+        return 0;
+      }
+      length = pointLength(value as number | string) as [string, number, boolean];
+      return [
+        side || (isDefined(entry.width) ? 'width' : 'height'),
+        length[0],
+        length[1],
+        1,
+      ];
     }
-    const dash = fragment.indexOf('-');
-    if (dash < 0) {
-      return undefined;
-    }
-    if (dash === fragment.length - 1) {
-      const from = $$media[fragment.slice(0, -1)];
-      return from && pointOf(from, fragment) ? fromPoint(from) : undefined;
-    }
-    const lower = boundOf(fragment.slice(0, dash), fragment);
-    const upper = boundOf(fragment.slice(dash + 1), fragment);
-    if (!lower || !upper) {
-      return undefined;
-    }
-    if (lower[0] !== upper[0]) {
-      return mediaProblem(fragment, 'mixes width and height');
-    }
-    return ['(min-' + lower[0] + ': ' + lower[1] + ') and ' + (upper[3] && !upper[4]
-      ? '(' + upper[0] + ' < ' + upper[1] + ')'
-      : '(max-' + upper[0] + ': ' + (upper[3] ? round(upper[2] - 0.02) : upper[2]) + 'px)'), -upper[2]];
+    return matchs ? [
+      side || 'width',
+      matchs[1] + (matchs[2] || 'px'),
+      matchs[2] && matchs[2] !== 'px' ? parseFloat(matchs[1]) * 16 : parseFloat(matchs[1]),
+      0,
+    ] : undefined;
+  }
+
+  /** Битый диапазон: сообщение с допустимыми формами и условие, которое никогда не выполняется. */
+  function mediaRangeProblem(fragment: string): [string, number, string] {
+    mediaProblem(fragment, 'is malformed. Allowed: "@760" (up to), "@760-" (from), "@360-1024" (range),'
+      + ' "@10rem-30rem" (units), "@m4-d" (points), "@360-1024/100-200" (width / height), "@360-:side" and'
+      + ' "@:side" (container "side"). The class gives no CSS.');
+    return [
+      MEDIA_NEVER,
+      0,
+      '',
+    ];
   }
 
   /**
@@ -1194,56 +1324,9 @@ function minotationProvider(options?: MnOptions) {
     ] : undefined;
   }
 
-  /** «До точки»: px — `max-width: N−0.02px`; rem/em — `width < N`, без поправки в пикселях. */
-  function upTo(entry: MnMediaEntry): [string, number] {
-    const side = isDefined(entry.width) ? 'width' : 'height';
-    const length = pointLength((side === 'width' ? entry.width : entry.height) as number | string) as [
-      string, number, boolean,
-    ];
-    return [length[2] ? '(max-' + side + ': ' + round(length[1] - 0.02) + 'px)'
-      : '(' + side + ' < ' + length[0] + ')', -length[1]];
-  }
-
-  function fromPoint(entry: MnMediaEntry): [string, number] {
-    const side = isDefined(entry.width) ? 'width' : 'height';
-    const length = pointLength((side === 'width' ? entry.width : entry.height) as number | string) as [
-      string, number, boolean,
-    ];
-    return ['(min-' + side + ': ' + length[0] + ')', length[1]];
-  }
-
-  /**
-   * Граница диапазона: `[сторона, CSS-длина, px для порядка, точка ли, в px ли]`. Имя с точкой —
-   * её длина; число в токене (`@480-d`) — px.
-   */
-  function boundOf(part: string, fragment: string): [string, string, number, number, boolean] | undefined {
-    const entry = $$media[part];
-    const side = entry && isDefined(entry.width) ? 'width' : 'height';
-    let length: [string, number, boolean];
-    if (entry && pointOf(entry, fragment)) {
-      length = pointLength((side === 'width' ? entry.width : entry.height) as number | string) as [
-        string, number, boolean,
-      ];
-      return [
-        side,
-        length[0],
-        length[1],
-        1,
-        length[2],
-      ];
-    }
-    return REGEXP_MEDIA_NUMBER.test(part) ? [
-      'width',
-      part + 'px',
-      parseFloat(part),
-      0,
-      true,
-    ] : undefined;
-  }
-
   /**
    * Медиа разбирается при выводе CSS, вне перехвата ошибок разбора токена: бросок уронил бы
-   * компиляцию. Поэтому — предупреждение и заведомо ложное условие: правило не действует.
+   * компиляцию. Поэтому — предупреждение и условие {@link MEDIA_NEVER}: правило в CSS не попадает.
    */
   function mediaProblem(fragment: string, problem: string): [string, number] {
     collectWarning({
@@ -1254,66 +1337,20 @@ function minotationProvider(options?: MnOptions) {
       utility: 'parseMediaExpression',
       message: 'Media "@' + fragment + '" ' + problem,
     });
-    return ['not all', 0];
+    return [MEDIA_NEVER, 0];
   }
 
   /**
    * Имя не из `mn.media`, не точка и не числовой шаблон (D-058): тип медиа CSS (`print`,
    * `screen`, `all`) — как есть; иначе — по `unknownMediaMode`: `'warn'`/`'silent'` — как
-   * написано, `'strict'` — заведомо ложное условие (и брак сборки).
+   * написано, `'strict'` — правило в CSS не попадает (и брак сборки).
    */
-  function unknownMedia(fragment: string): [string] {
+  function unknownMedia(fragment: string): string {
     return CSS_MEDIA_TYPES[fragment] || !raisedToken(
       '@' + fragment, 'unknown-media', (strict: boolean) => unknownMediaMessage(fragment, strict),
-    ) ? [fragment] : ['not all'];
+    ) ? fragment : MEDIA_NEVER;
   }
 
-  function parseMediaTemplate(mediaName: string): [string] | [string, number | undefined] | undefined {
-    if (mediaName === 'x') {
-      return [mediaName];
-    }
-    const badInput = mediaName.split('x');
-    // Проверяем ДО try ниже: тот перехватывает любой throw и трактует имя как
-    // названное медиа, поэтому исключение отсюда до пользователя не дошло бы.
-    if (isBadMediaRange(badInput[0]) || isBadMediaRange(badInput[1])) {
-      collectWarning({
-        type: 'parse-error',
-        token: '@' + mediaName,
-        handler: '',
-        arg: mediaName,
-        utility: 'parseMediaTemplate',
-        message: 'Media template "@' + mediaName + '" is malformed. Allowed: '
-          + '"@760" (max-width), "@760-" (min-width), "@760-1200" (range), '
-          + '"@760x400" (width x height). No leading dash — "@-760" gives '
-          + 'the same max-width as "@760"',
-      });
-      return [''];
-    }
-    const queries: string[] = [];
-    let mp: [number, number] | undefined;
-    let v: number;
-    let priority: number | undefined;
-    const input = mediaName.split('x');
-    try {
-      (mp = parseMediaPart(input[0])) && (
-        (v = mp[0]) && push(queries, '(min-width: ' + v + 'px)'),
-        (v = mp[1]) && (
-          priority = -v,
-          push(queries, '(max-width: ' + v + 'px)')
-        )
-      );
-      (mp = parseMediaPart(input[1])) && (
-        (v = mp[0]) && push(queries, '(min-height: ' + v + 'px)'),
-        (v = mp[1]) && (
-          isDefined(priority) || (priority = -v),
-          push(queries, '(max-height: ' + v + 'px)')
-        )
-      );
-    } catch {
-      return undefined;
-    }
-    return [JOIN_AND(queries), priority];
-  }
   /** Публичный доступ к {@link parseMediaExpression} — разбор `@`-медиа-выражения без побочных эффектов. */
   mn.parseMediaExpression = parseMediaExpression;
 

@@ -210,7 +210,7 @@ describe('вырожденная группа вариантов в значен
     ['p10@(|sm)', 'ведущая пустая альтернатива', 'ends with "@"'],
     ['p10@(sm||md)', 'пустая в середине', 'ends with "@"'],
     ['p10:(hover|)', 'в позиции состояния', 'ends with ":"'],
-    ['p10@(|sm):h', 'пустое медиа перед состоянием', 'Empty media name'],
+    ['p10@(|sm):hover', 'состояние после медиа (D-088)', 'a state after the media part'],
     ['p10@(|)', 'обе пустые', 'All alternatives'],
     ['p10@(|||)', 'несколько пустых', 'All alternatives'],
   ])('%s → брак: %s', (token, _what, reason) => {
@@ -241,13 +241,10 @@ describe('вырожденная группа вариантов в значен
 
   test.each([
     ['c00F(@sm|.active)<.parent', ['.parent .c00F', '.active']],
-    ['p10@sm:h', [':h']],
-  ])('%s — селектор после непустого медиа законен', (token, fragments) => {
-    // Порядок «медиа, потом селектор» нужен намеренно: группа варьирует ВИД
-    // контекста при общем хвосте — `c00F(@sm|.active)<.parent` даёт
-    // `c00F@sm<.parent` и `c00F.active<.parent`. Запрет «медиа последним»
-    // такую запись бы убил (вводился и был отменён 2026-10-04 — сторож от
-    // повторения).
+  ])('%s — медиа в альтернативе группы, хвост группы — после неё: законно', (token, fragments) => {
+    // Группа варьирует ВИД контекста при общем хвосте — `c00F(@sm|.active)<.parent` даёт
+    // `c00F@sm<.parent` и `c00F.active<.parent` (уточнение владельца 2026-10-04). С D-088 медиа — в конце
+    // токена или своей альтернативы группы: записанное `p10@sm<.x` — брак, эта запись — нет.
     const r = compileToken(token);
     expect(r.warnings.filter((w: { type: string }) => w.type === 'parse-error')).toEqual([]);
     for (const fragment of fragments) {
@@ -255,13 +252,23 @@ describe('вырожденная группа вариантов в значен
     }
   });
 
-  test('`p10@:h` — пустое имя медиа ловится и без группы', () => {
-    // Раньше компилировался молча в `.p10\@\:h:hover{padding:10px}`: медиа
-    // испарялось, и адаптивное правило становилось безусловным. Ловился только
-    // групповой вид (`p10@(|sm):h`) — запретом пустой альтернативы.
-    const r = compileToken('p10@:h');
+  test('`p10@:hover` — состояние после `@` ловится и без группы (D-088)', () => {
+    // До D-088 `p10@:h` молча давал безусловное правило; теперь `@:имя` — запрос к контейнеру по имени, а имя
+    // состояния там — брак с подсказкой.
+    const r = compileToken('p10@:hover');
     expect(r.css).toBe('');
-    expect(r.warnings[0].message).toContain('Empty media name');
+    expect(r.warnings[0].message).toContain('a state after the media part');
+  });
+
+  test.each([
+    'p10@sm:hover',
+    'p10@sm.active',
+    'p10@sm<.parent',
+    'p10@sm>li',
+  ])('%s — после медиа только медиа (D-088)', (token) => {
+    const r = compileToken(token);
+    expect(r.css).toBe('');
+    expect(r.warnings[0].message).toContain('after the media part');
   });
 
   test('экранированный `@` пустым медиа не считается', () => {

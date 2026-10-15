@@ -92,7 +92,8 @@ describe('unknownMediaMode (D-058)', () => {
     } = compile('p10@zz', {
       unknownMediaMode: 'strict',
     });
-    expect(css).toEqual(['@media not all{.p10\\@zz{padding:10px}}']);
+    // Правило с ошибкой в медиа в CSS не попадает вовсе (D-088), а не мёртвым блоком `@media not all`.
+    expect(css).toEqual([]);
     expect((error as Error).name).toBe('MnForbiddenTokenError');
     expect((error as Error).message).toContain('Media "@zz" is unknown (unknownMediaMode: \'strict\')');
   });
@@ -144,12 +145,12 @@ describe('mediaNesting (D-070)', () => {
     [
       'p1@m4&dark',
       true,
-      ['@media (max-width: 479.98px){@media (prefers-color-scheme: dark){.p1\\@m4\\&dark{padding:1px}}}'],
+      ['@media (width < 480px){@media (prefers-color-scheme: dark){.p1\\@m4\\&dark{padding:1px}}}'],
     ],
     [
       'p1@m4&dark',
       false,
-      ['@media (max-width: 479.98px) and (prefers-color-scheme: dark){.p1\\@m4\\&dark{padding:1px}}'],
+      ['@media (width < 480px) and (prefers-color-scheme: dark){.p1\\@m4\\&dark{padding:1px}}'],
     ],
     [
       'p1@mouse&hover',
@@ -159,7 +160,7 @@ describe('mediaNesting (D-070)', () => {
     [
       'p1@m4&dark&grid',
       true,
-      ['@media (max-width: 479.98px){@media (prefers-color-scheme: dark){@supports (display: grid){'
+      ['@media (width < 480px){@media (prefers-color-scheme: dark){@supports (display: grid){'
       + '.p1\\@m4\\&dark\\&grid{padding:1px}}}}'],
     ],
   ])('%s, mediaNesting: %s', (
@@ -197,7 +198,7 @@ describe('приоритет ^N (D-071)', () => {
   });
 
   test(':h с приоритетом — медиа синонима встаёт перед ^N', () => {
-    expect(styles('cF00:h@d^3')).toEqual([[3, '@media (max-width: 991.98px) and (hover: hover){.cF00\\:h\\@d\\^3:hover{color:#f00}}']]);
+    expect(styles('cF00:h@d^3')).toEqual([[3, '@media (width < 992px) and (hover: hover){.cF00\\:h\\@d\\^3:hover{color:#f00}}']]);
     expect(styles('cF00:h@^5')).toEqual([[5, '@media (hover: hover){.cF00\\:h\\@\\^5:hover{color:#f00}}']]);
   });
 });

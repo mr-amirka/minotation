@@ -9,6 +9,9 @@ import {
 import type {
   MnPresetObject,
 } from '../../core/types';
+import {
+  TW4_THEME,
+} from '../tw4/theme';
 
 export default {
   name: 'presetMedias',
@@ -45,6 +48,15 @@ export default {
     // (`max-width: 479.98px`), `@d-` от точки (`min-width: 992px`), `@m4-d` между точками.
     // Готовые диапазоны (`m4-`, `-d2`) убраны: пишутся синтаксисом (`@m4-m`, `@d-d2`).
     // `m` и `d` — одна точка 992px под двумя именами: `@m` = `@d` = `max-width: 991.98px`.
+    // Брейкпоинты и шкала контейнеров Tailwind 4 (D-090) — общие для всех записей: `md:` и `@md` / `@md-`,
+    // `@md:` (контейнер, 28rem). Имя, уже описанное проектом (опция `media`), не перезаписывается.
+    forIn(TW4_THEME, (value: string, name: string) => {
+      name.indexOf('--breakpoint-') === 0 && !media[name.slice(13)] && (media[name.slice(13)] = {
+        width: value,
+      });
+      name.indexOf('--container-') === 0 && (mn.containers[name.slice(12)] = value);
+    });
+
     forIn({
       m: 992,
       m2: 768,

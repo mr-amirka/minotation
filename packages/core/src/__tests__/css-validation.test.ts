@@ -109,9 +109,9 @@ describe('CSS validation', () => {
     mn.compile();
     const css = mn.styles$.getValue().map(s => s.content).join('\n');
     expect(() => postcss.parse(css)).not.toThrow();
-    expect(css).toContain('@media (max-width: 991.98px)');
-    expect(css).toContain('@media (min-width: 992px)');
-    expect(css).toContain('@media (min-width: 480px) and (max-width: 991.98px)');
+    expect(css).toContain('@media (width < 992px)');
+    expect(css).toContain('@media (width >= 992px)');
+    expect(css).toContain('@media (width >= 480px) and (width < 992px)');
   });
 
   test('полный CSS-вывод парсится postcss без ошибок (все пресеты)', () => {

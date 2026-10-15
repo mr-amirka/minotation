@@ -174,7 +174,7 @@ describe('паритет с v1: дочерние эссенции x.y', () => {
     const mn: any = minotationProvider({
       media: {
         sm: {
-          query: '(max-width:640px)', 
+          query: '(width <= 640px)', 
         }, 
       }, 
     });
@@ -182,7 +182,7 @@ describe('паритет с v1: дочерние эссенции x.y', () => {
     mn.getCompiler('class')('tbl@sm');
     mn.compile();
     const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
-    expect(css).toContain('@media (max-width:640px){.tbl\\@sm{display:table}.tbl\\@sm>*{display:table-cell;vertical-align:middle}}');
+    expect(css).toContain('@media (width <= 640px){.tbl\\@sm{display:table}.tbl\\@sm>*{display:table-cell;vertical-align:middle}}');
   });
 });
 

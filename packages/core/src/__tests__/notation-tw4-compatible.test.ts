@@ -29,7 +29,7 @@ const presetTailwindish: MnPresetObject = {
       'focus-visible': ':focus-visible',
     });
     mn.media.md = {
-      query: '(min-width: 768px)',
+      query: '(width >= 768px)',
       priority: 1,
     };
     mn.variantPrefixedSynonyms({
@@ -73,7 +73,7 @@ describe("notationMode: 'tw4-compatible'", () => {
   });
 
   test('медиа из mn.media', () => {
-    expect(compile('md:cF00').css).toContain('@media (min-width: 768px){.md\\:cF00{color:#f00}}');
+    expect(compile('md:cF00').css).toContain('@media (width >= 768px){.md\\:cF00{color:#f00}}');
   });
 
   test('имя и в синонимах, и в медиа — берётся синоним', () => {
@@ -96,7 +96,7 @@ describe("notationMode: 'tw4-compatible'", () => {
     const {
       css, 
     } = compile('md:hover:focus:cF00');
-    expect(css).toContain('@media (min-width: 768px){.md\\:hover\\:focus\\:cF00:hover:focus{color:#f00}}');
+    expect(css).toContain('@media (width >= 768px){.md\\:hover\\:focus\\:cF00:hover:focus{color:#f00}}');
   });
 
   test('{имя}-{состояние} — предок-метка: group-hover', () => {
@@ -113,7 +113,7 @@ describe("notationMode: 'tw4-compatible'", () => {
   });
 
   test('{метка}-{медиа} — предок внутри медиа', () => {
-    expect(compile('group-md:cF00').css).toContain('@media (min-width: 768px){.group .group-md\\:cF00{color:#f00}}');
+    expect(compile('group-md:cF00').css).toContain('@media (width >= 768px){.group .group-md\\:cF00{color:#f00}}');
   });
 
   test('именованная метка: group-hover/item, peer-invalid/email (D-048)', () => {
@@ -305,7 +305,7 @@ describe("notationMode: 'breakpoint-prefixed' — quantum-css (D-045 этап 4)
       notationMode: 'breakpoint-prefixed',
       media: {
         sm: {
-          query: '(min-width: 576px)',
+          query: '(width >= 576px)',
           priority: 1,
         },
         ...media,
@@ -325,7 +325,7 @@ describe("notationMode: 'breakpoint-prefixed' — quantum-css (D-045 этап 4)
   });
 
   test('SM_ — медиа sm (имя строчными)', () => {
-    expect(compileQ('SM_px15').css).toBe('@media (min-width: 576px){.SM_px15{padding-left:15px;padding-right:15px}}');
+    expect(compileQ('SM_px15').css).toBe('@media (width >= 576px){.SM_px15{padding-left:15px;padding-right:15px}}');
   });
 
   test('имя медиа как записано — важнее строчного', () => {
@@ -333,11 +333,11 @@ describe("notationMode: 'breakpoint-prefixed' — quantum-css (D-045 этап 4)
       css, 
     } = compileQ('LG_p10', {
       LG: {
-        query: '(min-width: 992px)',
+        query: '(width >= 992px)',
         priority: 2,
       },
     });
-    expect(css).toBe('@media (min-width: 992px){.LG_p10{padding:10px}}');
+    expect(css).toBe('@media (width >= 992px){.LG_p10{padding:10px}}');
   });
 
   test('неизвестный брейкпоинт — предупреждение, CSS нет', () => {

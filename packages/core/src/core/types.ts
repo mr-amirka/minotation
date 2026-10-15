@@ -536,6 +536,14 @@ export interface MnOptions {
    */
   mediaNesting?: boolean;
   /**
+   * Запись условий ширины и высоты в `@media` (D-087), во всех режимах записи классов:
+   * - `'range'` — форма диапазона: `(width >= 48rem)`, `(width < 480px)`;
+   * - `'classic'` — `min-`/`max-` для старых браузеров: `(min-width: 48rem)`, `(max-width: 479.98px)`
+   *   (строгое сравнение — со сдвигом 0.02px). Запросы к контейнерам — всегда в форме диапазона.
+   * @default 'range'
+   */
+  mediaSyntax?: 'range' | 'classic';
+  /**
    * Режим синтаксиса классов разметки (D-045): `'context-qualified'` (по умолчанию) или
    * `'tw4-compatible'` (Tailwind). Строки пресетов разбираются в режиме пресета.
    * @default 'context-qualified'

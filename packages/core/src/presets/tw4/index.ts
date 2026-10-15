@@ -2342,13 +2342,9 @@ function failAtToken(token: string): never {
 
 /**
  * Контейнерные запросы (D-086): маркер `@container` (`/имя` — `container-name`), тип `-normal`, `-size`,
- * `-[…]`; шкала `mn.containers` из темы (`@md:` — `--container-md`, 28rem). Прочее на `@` — сообщение.
+ * `-[…]`. Шкала контейнеров и брейкпоинты — общие, из `presetMedias` (D-090). Прочее на `@` — сообщение.
  */
 function setupContainers(mn: MnInstance): void {
-  let name: string;
-  for (name in TW4_THEME) { // eslint-disable-line
-    name.indexOf('--container-') === 0 && (mn.containers[name.slice(12)] = TW4_THEME[name]);
-  }
   mn(
     '@container', tw((args, p) => {
       const label = args.modifier === undefined ? undefined
@@ -2374,18 +2370,12 @@ function setupContainers(mn: MnInstance): void {
 }
 
 function setupVariants(mn: MnInstance): void {
-  let name: string;
   mn.media[COLOR_MIX_MEDIA] = {
     supports: '(color: color-mix(in lab, red, red))',
   };
   mn.media[GRADIENT_MEDIA] = {
     supports: '(background-image: linear-gradient(in lab, red, red))',
   };
-  for (name of BREAKPOINTS) {
-    mn.media[name] = {
-      width: TW4_THEME['--breakpoint-' + name],
-    };
-  }
   mn.synonyms(VARIANTS);
   mn.variantPrefixedSynonyms({
     group: '.group',

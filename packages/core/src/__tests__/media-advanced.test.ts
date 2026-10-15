@@ -30,11 +30,11 @@ function makeBase(extra) {
   const mn = mnProvider({
     media: {
       sm:     {
-        query: '(max-width:640px)',
+        query: '(width <= 640px)',
         priority: 0,
       },
       md:     {
-        query: '(max-width:768px)',
+        query: '(width <= 768px)',
         priority: 0,
       },
       safari: {
@@ -68,25 +68,25 @@ describe('§13.1 & combinator — объединение query + selector мед
   test('w900@sm&safari → @media sm { .safari .token{...} }', () => {
     const mn = makeBase();
     check(mn, 'w900@sm&safari');
-    expect(css(mn)).toBe('@media (max-width:640px){.safari .w900\\@sm\\&safari{width:900px}}');
+    expect(css(mn)).toBe('@media (width <= 640px){.safari .w900\\@sm\\&safari{width:900px}}');
   });
 
-  test('w800@sm&safari<.parent → @media sm { .safari .parent .token{...} }', () => {
+  test('w800<.parent@sm&safari → @media sm { .safari .parent .token{...} } (медиа в конце, D-088)', () => {
     const mn = makeBase();
-    check(mn, 'w800@sm&safari<.parent');
-    expect(css(mn)).toBe('@media (max-width:640px){.safari .parent .w800\\@sm\\&safari\\<\\.parent{width:800px}}');
+    check(mn, 'w800<.parent@sm&safari');
+    expect(css(mn)).toBe('@media (width <= 640px){.safari .parent .w800\\<\\.parent\\@sm\\&safari{width:800px}}');
   });
 
   test('w700@sm&md → два query объединяются через "and"', () => {
     const mn = makeBase();
     check(mn, 'w700@sm&md');
-    expect(css(mn)).toBe('@media (max-width:640px) and (max-width:768px){.w700\\@sm\\&md{width:700px}}');
+    expect(css(mn)).toBe('@media (width <= 640px) and (width <= 768px){.w700\\@sm\\&md{width:700px}}');
   });
 
   test('w700<.parent@sm&md → query "and", родительский контекст', () => {
     const mn = makeBase();
     check(mn, 'w700<.parent@sm&md');
-    expect(css(mn)).toBe('@media (max-width:640px) and (max-width:768px){.parent .w700\\<\\.parent\\@sm\\&md{width:700px}}');
+    expect(css(mn)).toBe('@media (width <= 640px) and (width <= 768px){.parent .w700\\<\\.parent\\@sm\\&md{width:700px}}');
   });
 
   test('selector-only: w900@safari → нет @media, только .safari префикс', () => {
@@ -158,7 +158,7 @@ describe('§13.2 synonym-with-media — синоним с @media в значен
     const mn = mnProvider({
       media: {
         sm:    {
-          query: '(max-width:640px)',
+          query: '(width <= 640px)',
           priority: 0,
         },
         mouse: {
@@ -176,7 +176,7 @@ describe('§13.2 synonym-with-media — синоним с @media в значен
       h: ':hover@mouse',
     });
     check(mn, 'w900:h@sm');
-    expect(css(mn)).toBe('@media (max-width:640px){.mouse .w900\\:h\\@sm:hover{width:900px}}');
+    expect(css(mn)).toBe('@media (width <= 640px){.mouse .w900\\:h\\@sm:hover{width:900px}}');
   });
 
   test('(w500|p10):h — variant group + synonym-with-media', () => {
@@ -221,16 +221,16 @@ describe('§13.3 @(sm|md) variant groups (регрессия)', () => {
     const mn = makeBase();
     check(mn, 'w900@(sm|md)');
     const result = css(mn);
-    expect(result).toContain('@media (max-width:640px){.w900\\@\\(sm\\|md\\){width:900px}}');
-    expect(result).toContain('@media (max-width:768px){.w900\\@\\(sm\\|md\\){width:900px}}');
+    expect(result).toContain('@media (width <= 640px){.w900\\@\\(sm\\|md\\){width:900px}}');
+    expect(result).toContain('@media (width <= 768px){.w900\\@\\(sm\\|md\\){width:900px}}');
   });
 
   test('(w600|p10)@(sm|md) → два блока, каждый с двумя телами', () => {
     const mn = makeBase();
     check(mn, '(w600|p10)@(sm|md)');
     const result = css(mn);
-    expect(result).toContain('@media (max-width:640px){');
-    expect(result).toContain('@media (max-width:768px){');
+    expect(result).toContain('@media (width <= 640px){');
+    expect(result).toContain('@media (width <= 768px){');
     expect(result).toContain('.\\(w600\\|p10\\)\\@\\(sm\\|md\\){width:600px}');
     expect(result).toContain('.\\(w600\\|p10\\)\\@\\(sm\\|md\\){padding:10px}');
   });
@@ -253,19 +253,19 @@ describe('§13.4 Числовые шаблоны @768, @992- (регрессия
     return mn;
   }
 
-  test('w900@768 → @media (max-width: 768px)', () => {
+  test('w900@768 → @media (width <= 768px)', () => {
     const mn = makeNum();
     check(mn, 'w900@768');
     const result = css(mn);
-    expect(result).toContain('@media (max-width: 768px)');
+    expect(result).toContain('@media (width <= 768px)');
     expect(result).toContain('width:900px');
   });
 
-  test('w900@992- → @media (min-width: 992px)', () => {
+  test('w900@992- → @media (width >= 992px)', () => {
     const mn = makeNum();
     check(mn, 'w900@992-');
     const result = css(mn);
-    expect(result).toContain('@media (min-width: 992px)');
+    expect(result).toContain('@media (width >= 992px)');
     expect(result).toContain('width:900px');
   });
 });
@@ -279,10 +279,10 @@ describe('§13.5 Комплексные комбинации — v1 parity', () 
     const mn = mnProvider({
       media: {
         m:      {
-          query: '(max-width:992px)',
+          query: '(width <= 992px)',
         },
         d:      {
-          query: '(min-width:993px)',
+          query: '(width >= 993px)',
         },
         dark:   {
           selector: '.dark',
@@ -341,19 +341,19 @@ describe('§13.5 Комплексные комбинации — v1 parity', () 
   test('§B cF@mouse&m&iphone — три-позиционный &: query + два selector', () => {
     const mn = makeComplex();
     check(mn, 'cF@mouse&m&iphone');
-    expect(css(mn)).toBe('@media (max-width:992px){.mouse.iphone .cF\\@mouse\\&m\\&iphone{color:#F}}');
+    expect(css(mn)).toBe('@media (width <= 992px){.mouse.iphone .cF\\@mouse\\&m\\&iphone{color:#F}}');
   });
 
-  test('§C cA@print&d&x100 — три-позиционный &: два query + height template', () => {
+  test('§C cA@print&d&/100 — три-позиционный &: два query + высота (D-088: `/`)', () => {
     const mn = makeComplex();
-    check(mn, 'cA@print&d&x100');
-    expect(css(mn)).toBe('@media print and (min-width:993px) and (max-height: 100px){.cA\\@print\\&d\\&x100{color:#A}}');
+    check(mn, 'cA@print&d&/100');
+    expect(css(mn)).toBe('@media print and (width >= 993px) and (height <= 100px){.cA\\@print\\&d\\&\\/100{color:#A}}');
   });
 
   test('§D w100:om — synonym-with-media (одиночный :focus@m)', () => {
     const mn = makeComplex();
     check(mn, 'w100:om');
-    expect(css(mn)).toBe('@media (max-width:992px){.w100\\:om:focus{width:100px}}');
+    expect(css(mn)).toBe('@media (width <= 992px){.w100\\:om:focus{width:100px}}');
   });
 });
 
@@ -397,7 +397,7 @@ describe('статические медиа-переопределения', () 
     const css = cssOf(mn, 'box');
 
     expect(css).toContain('.box{color:red}');
-    expect(css).toContain('@media (max-width:640px){.box{color:blue}}');
+    expect(css).toContain('@media (width <= 640px){.box{color:blue}}');
     expect(css.replace(/@media[^{]*\{[^}]*\}/g, '')).not.toContain('color:blue');
   });
 
@@ -417,7 +417,7 @@ describe('статические медиа-переопределения', () 
     const css = cssOf(mn, 'box');
 
     expect(css).toContain('.box{color:red}');
-    expect(css).toContain('@media (max-width:640px){.box{font-size:20px}}');
+    expect(css).toContain('@media (width <= 640px){.box{font-size:20px}}');
   });
 
   test('переопределение СЛИВАЕТСЯ с media-блоком эссенции, а не затирает его', () => {
@@ -442,7 +442,7 @@ describe('статические медиа-переопределения', () 
 
     const css = cssOf(mn, 'box');
 
-    expect(css).toContain('@media (max-width:640px){.box{color:blue;font-size:20px}}');
+    expect(css).toContain('@media (width <= 640px){.box{color:blue;font-size:20px}}');
   });
 
   test('при конфликте свойств побеждает переопределение', () => {
@@ -462,7 +462,7 @@ describe('статические медиа-переопределения', () 
       },
     });
 
-    expect(cssOf(mn, 'box')).toContain('@media (max-width:640px){.box{color:green}}');
+    expect(cssOf(mn, 'box')).toContain('@media (width <= 640px){.box{color:green}}');
   });
 
   test('явный медиа-суффикс токена имеет приоритет над media-блоком эссенции', () => {
@@ -484,8 +484,8 @@ describe('статические медиа-переопределения', () 
 
     const css = cssOf(mn, 'box@md');
 
-    expect(css).toContain('@media (max-width:768px){');
-    expect(css).not.toContain('@media (max-width:640px){');
+    expect(css).toContain('@media (width <= 768px){');
+    expect(css).not.toContain('@media (width <= 640px){');
   });
 
   test('обычные childs медиа-контекст родителя не меняют', () => {

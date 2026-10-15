@@ -395,7 +395,7 @@ describe('медиа и синонимы области — только из е
     setup: (mn: { media: Record<string, unknown>;
       synonyms: (map: Record<string, string>) => void }) => {
       mn.media.tab = {
-        query: '(max-width: 500px)',
+        query: '(width <= 500px)',
       };
       mn.synonyms({
         on: ':hover',
@@ -429,7 +429,7 @@ describe('медиа и синонимы области — только из е
       scopePresets: [presetPkg],
       media: {
         tab: {
-          query: '(max-width: 900px)',
+          query: '(width <= 900px)',
         },
       },
       onWarning: (warning) => seen.push(warning.type + ' ' + warning.token),
@@ -441,8 +441,8 @@ describe('медиа и синонимы области — только из е
       dir, 'kit', 'Card.html',
     ), '<b class="m5@tab c0F0:on">');
     const css = out.css();
-    expect(css).toContain('@media (max-width: 900px){.p10\\@tab{padding:10px}}');
-    expect(css).toContain('@media (max-width: 500px){.m5\\@tab{margin:5px}}');
+    expect(css).toContain('@media (width <= 900px){.p10\\@tab{padding:10px}}');
+    expect(css).toContain('@media (width <= 500px){.m5\\@tab{margin:5px}}');
     expect(css).toContain('.c0F0\\:on:hover{color:#0f0}');
     // В приложении синонима `on` нет — состояние как есть, с предупреждением.
     expect(seen).toContain('unregistered-state cF00:on');
@@ -456,7 +456,7 @@ describe('медиа и синонимы области — только из е
       scopePresets: [presetBare],
       media: {
         tab: {
-          query: '(max-width: 900px)',
+          query: '(width <= 900px)',
         },
       },
     });

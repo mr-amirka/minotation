@@ -61,7 +61,7 @@ describe('сосед перед элементом: комбинатор в ко
   });
 
   test('медиа: cF00<.peer~@md', () => {
-    expect(compile('cF00<.peer~@md').css).toBe('@media md{.peer~ .cF00\\<\\.peer\\~\\@md{color:#f00}}');
+    expect(compile('cF00<.peer~@md').css).toBe('@media (width < 48rem){.peer~ .cF00\\<\\.peer\\~\\@md{color:#f00}}');
   });
 
   test('группа вариантов: (cF00|p10)<.peer~', () => {
@@ -92,7 +92,7 @@ describe('сосед после элемента: комбинатор посл�
   });
 
   test('медиа: cF00~.b@md', () => {
-    expect(compile('cF00~.b@md').css).toBe('@media md{.cF00\\~\\.b\\@md~.b{color:#f00}}');
+    expect(compile('cF00~.b@md').css).toBe('@media (width < 48rem){.cF00\\~\\.b\\@md~.b{color:#f00}}');
   });
 
   test('сосед — не дочерний селектор: childSelectorMode его не касается', () => {

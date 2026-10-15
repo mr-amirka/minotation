@@ -198,7 +198,7 @@ describe('§5 Медиа + variants', () => {
     const mn = make({
       media: {
         sm: {
-          query: '(max-width:640px)',
+          query: '(width <= 640px)',
           priority: 0,
         },
       },
@@ -206,7 +206,7 @@ describe('§5 Медиа + variants', () => {
     mn.getCompiler('class')('(p10|m5)@sm');
     mn.compile();
     const c = css(mn);
-    expect(c).toContain('@media (max-width:640px)');
+    expect(c).toContain('@media (width <= 640px)');
     expect(c).toContain('.\\(p10\\|m5\\)\\@sm{padding:10px}');
     expect(c).toContain('.\\(p10\\|m5\\)\\@sm{margin:5px}');
   });
@@ -215,7 +215,7 @@ describe('§5 Медиа + variants', () => {
     const mn = make({
       media: {
         sm: {
-          query: '(max-width:640px)',
+          query: '(width <= 640px)',
           priority: 0,
         },
       },
@@ -223,7 +223,7 @@ describe('§5 Медиа + variants', () => {
     mn.getCompiler('class')('p(10|20)<.root@sm');
     mn.compile();
     const c = css(mn);
-    expect(c).toContain('@media (max-width:640px)');
+    expect(c).toContain('@media (width <= 640px)');
     expect(c).toContain('.root .p\\(10\\|20\\)\\<\\.root\\@sm{padding:10px}');
     expect(c).toContain('.root .p\\(10\\|20\\)\\<\\.root\\@sm{padding:20px}');
   });
@@ -232,7 +232,7 @@ describe('§5 Медиа + variants', () => {
     const mn = make({
       media: {
         sm: {
-          query: '(max-width:640px)',
+          query: '(width <= 640px)',
           priority: 0,
         },
       },

@@ -58,9 +58,14 @@ import {
   type ScopeNode,
 } from './scopeSplit2';
 import {
-  extractMedia,
   mediaFilterIteratee,
 } from './extractMedia';
+import {
+  mediaCondition,
+} from '../core/mediaCondition';
+import type {
+  MnMediaOperator,
+} from '../core/mediaCondition';
 import {
   childSelectorMessage, importantMessage, maxDepthMessage, maxSpecificityMessage, specificityMessage,
 } from './raiseMessages';
@@ -481,9 +486,112 @@ const MASTER_MEDIA: Record<string, string> = {
   'reduced-motion': '(prefers-reduced-motion: reduce)',
 };
 /** Сравнение в медиа Master CSS: `<md`, `>=1024`, `768`. */
+/**
+ * Псевдоклассы и псевдоэлементы CSS (MDN, 2026-10): `:имя` после медиа с таким именем — состояние, записанное не
+ * на своём месте (`cF00@m4:hover`), а не контейнер (D-088).
+ */
+const CSS_PSEUDO_NAMES: Record<string, 1> = {
+  'active': 1,
+  'any-link': 1,
+  'autofill': 1,
+  'blank': 1,
+  'buffering': 1,
+  'checked': 1,
+  'closed': 1,
+  'current': 1,
+  'default': 1,
+  'defined': 1,
+  'dir': 1,
+  'disabled': 1,
+  'empty': 1,
+  'enabled': 1,
+  'first': 1,
+  'first-child': 1,
+  'first-of-type': 1,
+  'focus': 1,
+  'focus-visible': 1,
+  'focus-within': 1,
+  'fullscreen': 1,
+  'future': 1,
+  'has': 1,
+  'has-slotted': 1,
+  'host': 1,
+  'host-context': 1,
+  'hover': 1,
+  'in-range': 1,
+  'indeterminate': 1,
+  'invalid': 1,
+  'is': 1,
+  'lang': 1,
+  'last-child': 1,
+  'last-of-type': 1,
+  'left': 1,
+  'link': 1,
+  'local-link': 1,
+  'modal': 1,
+  'muted': 1,
+  'not': 1,
+  'nth-child': 1,
+  'nth-col': 1,
+  'nth-last-child': 1,
+  'nth-last-col': 1,
+  'nth-last-of-type': 1,
+  'nth-of-type': 1,
+  'only-child': 1,
+  'only-of-type': 1,
+  'open': 1,
+  'optional': 1,
+  'out-of-range': 1,
+  'past': 1,
+  'paused': 1,
+  'picture-in-picture': 1,
+  'placeholder-shown': 1,
+  'playing': 1,
+  'popover-open': 1,
+  'read-only': 1,
+  'read-write': 1,
+  'required': 1,
+  'right': 1,
+  'root': 1,
+  'scope': 1,
+  'seeking': 1,
+  'stalled': 1,
+  'state': 1,
+  'target': 1,
+  'target-current': 1,
+  'target-within': 1,
+  'user-invalid': 1,
+  'user-valid': 1,
+  'valid': 1,
+  'visited': 1,
+  'volume-locked': 1,
+  'where': 1,
+  'after': 1,
+  'backdrop': 1,
+  'before': 1,
+  'file-selector-button': 1,
+  'first-letter': 1,
+  'first-line': 1,
+  'marker': 1,
+  'placeholder': 1,
+  'selection': 1,
+};
+
+/** Символ медиа-части в записи minotation (D-088): имена, числа, `-`, `,`, `&`, `^`, `/`, `:`, `.`, группы. */
+const REGEXP_MEDIA_CHAR = /[A-Za-z0-9_\-,&^/:.|()]/;
+
+/** Цифра — `.` перед ней часть числа (`@10.5rem`), а не класс. */
+const REGEXP_DIGIT_CHAR = /[0-9]/;
+
+/** Имя после `:` в медиа — проверка, не состояние ли это. */
+const REGEXP_NAME_HEAD = /^[A-Za-z0-9_-]+/;
+
+/** Множитель специфичности в конце токена: `*2`. */
+const REGEXP_TAIL_MULTIPLIER = /^\*[0-9]+$/;
+
 const REGEXP_MASTER_MEDIA_COMPARE = /^(<=|>=|<|>)?([0-9.]+|[A-Za-z][A-Za-z0-9-]*)$/;
 /** Ширина в запросе брейкпоинта. */
-const REGEXP_WIDTH = /\((?:min|max)-width:\s*([0-9.]+)px\)/;
+const REGEXP_WIDTH = /\((?:(?:min|max)-width:\s*|width\s*(?:>=|<=|<|>)\s*)([0-9.]+)px\)/;
 
 export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   let $$states: StrMap<string[]>;
@@ -620,6 +728,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     // Настройки файла разметки (D-081) важнее опций экземпляра.
     const markup = $$markupSettings || NO_SETTINGS;
     $$contextWhere = !!(markup.contextWhere === undefined ? $$mnOptions.contextWhere : markup.contextWhere);
+    $$mediaClassic = $$mnOptions.mediaSyntax === 'classic';
     // Режим синтаксиса (D-045): строки пресета — в режиме пресета (на время его `setup`),
     // остальное — в режиме проекта. Свой разборщик на режим (D-047); по умолчанию —
     // 'context-qualified' ниже.
@@ -637,6 +746,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
 
     // Круглые скобки до развёртки групп (D-077): аргумент функционального псевдокласса,
     // `groupMode: 'css'`, подозрительные группы. Селекторы переписаны раньше — в `parseSelector`.
+    $$selectorMode || assertMediaPart(comboName);
     const issues: string[] = [];
     let name = $$selectorMode ? comboName : rewriteGroups(
       comboName, $$synonyms, (markup.groupMode || $$mnOptions.groupMode) === 'css', issues,
@@ -727,6 +837,8 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   let $$markupSettings: MnParseSettings | undefined;
   /** `contextWhere` текущего разбора (D-049) — читается из опций в начале `parseComboName`. */
   let $$contextWhere = false;
+  /** `mediaSyntax: 'classic'` текущего разбора (D-087): условия ширины через `min-`/`max-`. */
+  let $$mediaClassic = false;
 
   function suffixesIteratee(
     items: Array<[StrMap<number>, AltMap]>, essences: StrMap<number>, suffix: string,
@@ -901,8 +1013,9 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       return true;
     }
     if (name === 'min' || name === 'max') {
-      medias.push(registerQuery((instance as any).media || {}, '(width ' + (name === 'min' ? '>=' : '<') + ' '
-        + value + ')'));
+      medias.push(registerQuery((instance as any).media || {}, mediaCondition(
+        'width', name === 'min' ? '>=' : '<', value, $$mediaClassic,
+      )));
       return true;
     }
     if (name && (relation = ((instance as any)._variantPrefixedSynonyms || {})[name])) {
@@ -997,7 +1110,9 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   ): string {
     const entry = media[name];
     const side = !entry ? '' : entry.width !== undefined ? 'width' : entry.height !== undefined ? 'height' : '';
-    return side ? registerQuery(media, '(' + side + ' ' + operator + ' ' + pointCss(entry[side]) + ')') : '';
+    return side ? registerQuery(media, mediaCondition(
+      side, operator as MnMediaOperator, pointCss(entry[side]), $$mediaClassic,
+    )) : '';
   }
 
   /** Точка в CSS: число — px, строка — как записана (`'48rem'`, D-069). */
@@ -1365,10 +1480,9 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       width = isNumber ? parseFloat(matchs[2]) : widthOf(
         media[matchs[2]], matchs[2], comboName,
       );
-      query = matchs[1] === '<' ? '(max-width: ' + (width - 0.02) + 'px)'
-        : matchs[1] === '<=' ? '(max-width: ' + width + 'px)'
-          : matchs[1] === '>' ? '(min-width: ' + (width + 0.02) + 'px)'
-            : '(min-width: ' + width + 'px)';
+      query = mediaCondition(
+        'width', (matchs[1] || '>=') as MnMediaOperator, width + 'px', $$mediaClassic,
+      );
       return registerQuery(media, query);
     }).join('&');
   }
@@ -1456,18 +1570,110 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     const l = parts.length;
     const chain: MnChain = [];
     let i = 0;
-    let mediaNames: string[];
+    let at: number;
+    let segment: string;
     let part: [string, string];
     for (; i < l; i++) {
-      mediaNames = [];
+      // Медиа — до конца сегмента (D-088): `/высота` и `:контейнер` — его части, а не селектор.
+      segment = parts[i];
+      at = mediaAt(segment);
       part = i
-        ? getCombinator(extractMedia(mediaNames, parts[i]), $$depthCheck)
-        : ['', extractMedia(mediaNames, parts[i])];
+        ? getCombinator(at < 0 ? segment : segment.slice(0, at), $$depthCheck)
+        : ['', at < 0 ? segment : segment.slice(0, at)];
       chain.push(parseSegment(
-        part[0], part[1], mediaNames[0],
+        part[0], part[1], at < 0 ? undefined : unslash(segment.slice(at + 1)),
       ));
     }
     return chain;
+  }
+
+  /** Позиция `@` медиа в сегменте — вне `[…]`, `(…)` и экранирования; нет — `-1`. */
+  function mediaAt(segment: string): number {
+    const l = segment.length;
+    let depth = 0;
+    let i = 0;
+    let ch: string;
+    for (; i < l; i++) {
+      ch = segment[i];
+      if (ch === '\\') {
+        i++;
+      } else if (ch === '[' || ch === '(') {
+        depth++;
+      } else if (ch === ']' || ch === ')') {
+        depth--;
+      } else if (ch === '@' && !depth) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * После `@` — только медиа (D-088): до конца токена или до конца альтернативы группы, в которой стоит
+   * `@` (`c00F(@sm|.active)<.parent` — законно). Селектор, состояние или цепочка после медиа — ошибка с
+   * подсказкой; `:имя` — контейнер, но имя состояния или синонима там — тоже ошибка: состояния — до `@`.
+   */
+  function assertMediaPart(comboName: string): void {
+    const l = comboName.length;
+    // `depth` — круглые скобки групп, `bracket` — `[…]`: `@` внутри атрибута — не медиа.
+    let depth = 0;
+    let bracket = 0;
+    let nested: number;
+    let i = 0;
+    let j: number;
+    let ch: string;
+    let name: string;
+    for (; i < l; i++) {
+      ch = comboName[i];
+      if (ch === '\\') {
+        i++;
+      } else if (ch === '[') {
+        bracket++;
+      } else if (ch === ']') {
+        bracket--;
+      } else if (ch === '(') {
+        depth++;
+      } else if (ch === ')') {
+        depth--;
+      } else if (ch === '@' && !bracket) {
+        for (j = i + 1, nested = 0; j < l; j++) {
+          ch = comboName[j];
+          if (ch === '\\') {
+            // Экранированный символ — часть имени медиа (`@a\\|b`).
+            j++;
+          } else if (ch === '(') {
+            nested++;
+          } else if (ch === ')' && nested) {
+            nested--;
+          } else if (ch === ')' || ch === '|' && !nested && depth || ch === '*' && REGEXP_TAIL_MULTIPLIER.test(comboName.slice(j))) {
+            break;
+          } else if (!REGEXP_MEDIA_CHAR.test(ch) || ch === '.' && !REGEXP_DIGIT_CHAR.test(comboName[j + 1] || '')) {
+            throwMediaPart(
+              comboName, comboName.slice(i, j + 1), 'a selector',
+            );
+          } else if (ch === ':') {
+            name = REGEXP_NAME_HEAD.exec(comboName.slice(j + 1))?.[0] || '';
+            ($$synonyms[name] || $$states[name] || CSS_PSEUDO_NAMES[name] || comboName[j + 1] === ':') && throwMediaPart(
+              comboName, comboName.slice(i, j + 1 + (name.length || 1)), 'a state',
+            );
+          }
+        }
+        i = j - 1;
+      }
+    }
+  }
+
+  function throwMediaPart(
+    comboName: string, found: string, what: string,
+  ): never {
+    throw new MnParseError('"' + comboName + '": "' + found + '" — ' + what + ' after the media part. After "@" only'
+      + ' the media part may follow (D-088): selectors, states and chains go before "@" — "cF00.active:hover<.card@md",'
+      + ' not "cF00@md.active:hover<.card". The class gives no CSS.', {
+      token: comboName,
+      handler: '',
+      arg: found,
+      utility: 'media',
+    });
   }
 
   /** Делит часть цепочки на селектор и состояния (`Parent:hover` → `Parent`, `:hover`). */

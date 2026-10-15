@@ -101,7 +101,7 @@ describe('important и вложенные части эссенции', () => {
     const mn: any = minotationProvider({
       media: {
         sm: {
-          query: '(max-width: 600px)',
+          query: '(width <= 600px)',
           priority: 0, 
         }, 
       }, 

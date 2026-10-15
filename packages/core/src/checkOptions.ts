@@ -297,4 +297,5 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   altColor: isBoolean,
   contextWhere: isBoolean,
   mediaNesting: isBoolean,
+  mediaSyntax: oneOf('range', 'classic'),
 };

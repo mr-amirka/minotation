@@ -43,7 +43,7 @@ test.each([
   ['f14 f12.small f18.large', ['.f14{font-size:14px}.f12\\.small.small{font-size:12px}.f18\\.large.large{font-size:18px}']],
   ['c3 c0A7<.card:h tdU<.card:h', ['.c3{color:#333}', '@media (hover: hover){.card:hover .c0A7\\<\\.card\\:h{color:#0a7}'
     + '.card:hover .tdU\\<\\.card\\:h{text-decoration:underline}}']],
-  ['bgE.active:h@m2', ['@media (max-width: 767.98px) and (hover: hover){.bgE\\.active\\:h\\@m2.active:hover{background:#eee}}']],
+  ['bgE.active:h@m2', ['@media (width < 768px) and (hover: hover){.bgE\\.active\\:h\\@m2.active:hover{background:#eee}}']],
 ])('%s', (tokens, expected) => {
   expect(css(tokens)).toEqual(expected);
 });

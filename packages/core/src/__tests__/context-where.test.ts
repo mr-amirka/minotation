@@ -50,7 +50,7 @@ describe("contextWhere — 'context-qualified'", () => {
   });
 
   test('медиа сохраняются', () => {
-    expect(css('cF00<.card@md')).toBe('@media md{.cF00\\<\\.card\\@md:is(:where(.card) *){color:#f00}}');
+    expect(css('cF00<.card@md')).toBe('@media (width < 48rem){.cF00\\<\\.card\\@md:is(:where(.card) *){color:#f00}}');
   });
 
   test('без флага — как раньше', () => {

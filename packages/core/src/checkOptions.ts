@@ -276,6 +276,9 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   suspectClassMode: oneOf(
     'warn', 'silent', 'strict',
   ),
+  mediaConflictMode: oneOf(
+    'warn', 'silent', 'strict',
+  ),
   handlerConflictMode: oneOf(
     'warn', 'silent', 'strict',
   ),

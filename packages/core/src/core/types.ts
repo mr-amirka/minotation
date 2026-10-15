@@ -286,6 +286,8 @@ export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'max-specific
   | 'suspect-class'
   /** Одно имя зарегистрировано двумя пресетами (D-067, `handlerConflictMode`). */
   | 'handler-conflict'
+  /** Имя из опции `media` совпало с медиа пресета (D-092, `mediaConflictMode`). */
+  | 'media-conflict'
   /** Подключены пресеты несовместимых экосистем (D-067, `presetConflictMode`). */
   | 'preset-conflict'
   /** Группа скобок даёт заведомо битый CSS — `:is(.a|.b)`, `:h(2n)` (D-077, `groupSuspectMode`). */
@@ -502,6 +504,13 @@ export interface MnOptions {
    * @default 'warn'
    */
   handlerConflictMode?: MnRaiseMode;
+  /**
+   * Имя из опции `media` совпало с медиа пресета — остаётся определение из опции (D-092): пресет даёт
+   * значения по умолчанию, опция их меняет. `'warn'` — предупреждение при подключении пресетов; `'silent'` —
+   * молча; `'strict'` — ошибка `setPresets`.
+   * @default 'warn'
+   */
+  mediaConflictMode?: MnRaiseMode;
   /**
    * Подключены пресеты, чьи списки `ecosystems` не пересекаются (D-067): `presetStandard`
    * (`minotation`) и клон Tailwind (`tailwind`). Пресет без списка нейтрален. Режимы те же.

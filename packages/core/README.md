@@ -525,6 +525,7 @@ const mn = minotationProvider({
   maxSpecificity: 16,              // предел *N: 1…16, выше 16 задать нельзя (D-089)
   maxSpecificityMode: 'warn',      // 'warn' — сообщение, CSS до *16; 'strict' — без CSS, ошибка
   mediaSyntax: 'range',            // (width >= 48rem); 'classic' — (min-width: 48rem) для старых браузеров (D-087)
+  mediaConflictMode: 'warn',       // имя из media совпало с медиа пресета: остаётся своё, 'warn' | 'silent' | 'strict' (D-092)
   specificityMode: 'warn',         // 'warn' | 'silent' | 'strict' — токены f10*2 (накрутка специфичности)
   importantMode: 'warn',           // 'warn' | 'silent' | 'strict' — токены f10-i (!important)
   childSelectorMode: 'warn',       // 'warn' | 'silent' | 'strict' — токены cF00>1 (дочерний селектор)

@@ -311,7 +311,7 @@ function prefixMatches(rest: string, prefix: string): boolean {
 }
 
 type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded' | 'max-specificity' | 'child-selector'
-  | 'unknown-media' | 'suspect-class' | 'handler-conflict' | 'preset-conflict' | 'group-suspect';
+  | 'unknown-media' | 'suspect-class' | 'handler-conflict' | 'preset-conflict' | 'media-conflict' | 'group-suspect';
 
 /** Типы медиа CSS: известны без описания в `mn.media` (D-058). */
 const CSS_MEDIA_TYPES: Record<string, number> = {
@@ -356,7 +356,7 @@ function isCompileWarning(warning: MnWarning): boolean {
   return warning.type !== 'raised-specificity' && warning.type !== 'important'
     && warning.type !== 'max-depth-exceeded' && warning.type !== 'child-selector'
     && warning.type !== 'unknown-media' && warning.type !== 'suspect-class'
-    && warning.type !== 'handler-conflict' && warning.type !== 'preset-conflict'
+    && warning.type !== 'handler-conflict' && warning.type !== 'preset-conflict' && warning.type !== 'media-conflict'
     && warning.type !== 'group-suspect';
 }
 
@@ -400,7 +400,7 @@ function minotationProvider(options?: MnOptions) {
     checkEcosystems();
     $$strictConflicts = [];
     eachTry(
-      ordered.map(asPresetFunction),
+      ordered.map(withOwnMedia),
       [mn],
       mn,
       // `eachTry` отдаёт перехваченное как `unknown`: бросить можно что
@@ -412,6 +412,27 @@ function minotationProvider(options?: MnOptions) {
     $$strictConflicts.length && fail($$strictConflicts.join('; '));
     return mn;
   }
+  /**
+   * Пресет, после которого медиа из опции `media` восстанавливаются (D-092): то же имя у пресета — его
+   * определение не действует, о совпадении сообщает `mediaConflictMode`.
+   */
+  function withOwnMedia(preset: MnPreset): (instance: MnInstance) => void {
+    const setup = asPresetFunction(preset);
+    return (instance) => {
+      let name: string;
+      setup(instance);
+      for (name in $$ownMedia) { // eslint-disable-line
+        $$media[name] === $$ownMedia[name] || (
+          $$media[name] = $$ownMedia[name],
+          raiseConfiguration(
+            'media-conflict', 'media "' + name + '" from the options overrides the one of ' + presetLabel(preset),
+            'mediaConflictMode',
+          )
+        );
+      }
+    };
+  }
+
   /**
    * Маркеры экосистем (D-067): два подключённых пресета, чьи списки `ecosystems` не пересекаются, —
    * предупреждение `presetConflictMode`. Пресет без списка нейтрален.
@@ -482,6 +503,7 @@ function minotationProvider(options?: MnOptions) {
       'unknown-media': settings.unknownMediaMode || 'warn',
       'suspect-class': settings.suspectClassMode || 'warn',
       'handler-conflict': settings.handlerConflictMode || 'warn',
+      'media-conflict': settings.mediaConflictMode || 'warn',
       'preset-conflict': settings.presetConflictMode || 'warn',
       'group-suspect': settings.groupSuspectMode || 'warn',
     };
@@ -949,6 +971,10 @@ function minotationProvider(options?: MnOptions) {
   let $$stylesMap: Record<string, MnStyleEntry> = $$data.stylesMap = {};
   let $$assigned: Record<string, Record<string, Record<string, number>>> = $$data.assigned = {};
   let $$media: Record<string, MnMediaEntry> = mn.media = settings.media || {};
+  // Медиа из опции `media` (D-092): пресет их не перезаписывает — опция меняет его значения по умолчанию.
+  const $$ownMedia: Record<string, MnMediaEntry> = {
+    ...settings.media,
+  };
   // Шкала контейнеров (D-086): пресеты заполняют, контейнерные варианты `@md:` берут ширину отсюда.
   mn.containers = {};
   // Домены имён (D-063): первые строчные буквы → записи `[префикс, функция]`.
@@ -1841,7 +1867,7 @@ function minotationProvider(options?: MnOptions) {
    * `'strict'` бросает сразу, как неподключённый `requires`.
    */
   function raiseConfiguration(
-    type: 'handler-conflict' | 'preset-conflict', message: string, option: string,
+    type: 'handler-conflict' | 'preset-conflict' | 'media-conflict', message: string, option: string,
   ): void {
     const mode = $$raiseModes[type];
     const warning: MnWarning = {

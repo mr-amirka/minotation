@@ -247,6 +247,67 @@ describe('маркер контейнера: cn, ct (D-088)', () => {
   });
 });
 
+describe('опция media важнее пресета, совпадение — mediaConflictMode (D-092)', () => {
+  function run(mode?: 'warn' | 'silent' | 'strict') {
+    const warnings: MnWarning[] = [];
+    const mn = minotationProvider({
+      warningMode: 'silent',
+      onWarning: (w) => warnings.push(w),
+      media: {
+        m: {
+          width: 700,
+        },
+        md: {
+          width: 900,
+        },
+        own: {
+          query: '(orientation: portrait)',
+        },
+      },
+      ...mode ? {
+        mediaConflictMode: mode,
+      } : {},
+    });
+    mn.setPresets([presetStandard, presetMedias]);
+    mn.getCompiler('class')('p10@m p10@md p10@own');
+    mn.compile();
+    return {
+      css: mn.styles$.getValue().map((style) => style.content).join(''),
+      warnings: warnings.map((w) => w.type + ': ' + w.message),
+    };
+  }
+
+  test('warn (по умолчанию): своё определение, предупреждение на каждое совпавшее имя', () => {
+    const {
+      css, warnings,
+    } = run();
+    expect(css).toContain('@media (width < 700px){.p10\\@m{');
+    expect(css).toContain('@media (width < 900px){.p10\\@md{');
+    expect(warnings).toEqual(['media-conflict: media "m" from the options overrides the one of presetMedias. To hide this warning:'
+        + ' mediaConflictMode: \'silent\'.', 'media-conflict: media "md" from the options overrides the one of presetMedias. To hide this warning:'
+        + ' mediaConflictMode: \'silent\'.']);
+  });
+
+  test('silent: своё определение, ни слова', () => {
+    const {
+      css, warnings,
+    } = run('silent');
+    expect(css).toContain('@media (width < 700px){.p10\\@m{');
+    expect(warnings).toEqual([]);
+  });
+
+  test('strict: ошибка подключения пресетов', () => {
+    expect(() => run('strict')).toThrow('media "m" from the options overrides the one of presetMedias'
+      + ' (mediaConflictMode: \'strict\')');
+  });
+
+  test('значение режима проверяется', () => {
+    expect(() => minotationProvider({
+      mediaConflictMode: 'loud' as never,
+    })).toThrow('option "mediaConflictMode" expects "warn", "silent" or "strict"');
+  });
+});
+
 describe('extractMedia — для синонимов', () => {
   test('пустая часть — пустая строка', () => {
     expect(extractMedia([], '')).toBe('');

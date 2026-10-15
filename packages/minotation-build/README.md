@@ -95,6 +95,7 @@ for (const warning of collector.takeWarnings()) {
 | `maxDepth`, `maxDepthMode` | `number`, `'warn' \| 'silent' \| 'strict'` | —, `'warn'` | предел глубины контекстных селекторов и режим при превышении (D-039) |
 | `maxSpecificity`, `maxSpecificityMode` | `number` (1…16), `'warn' \| 'strict'` | `16`, `'warn'` | предел множителя специфичности `*N` и режим при превышении; выше потолка 16 CSS нет ни в каком режиме (D-089) |
 | `mediaSyntax` | `'range' \| 'classic'` | `'range'` | запись условий ширины и высоты: форма диапазона или `min-`/`max-` для старых браузеров (D-087) |
+| `mediaConflictMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | имя из опции `media` совпало с медиа пресета — остаётся определение из опции; режим сообщения (D-092) |
 | `specificityMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с накруткой специфичности `f10*2` (D-039) |
 | `importantMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с `!important` (`f10-i`) (D-039) |
 | `childSelectorMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с дочерним селектором `>` (`cF00>1`) (D-041) |
@@ -382,7 +383,7 @@ attrs: { class: 'class', className: 'class' }     // объект
 | Опция | Что делает |
 |-------|------------|
 | `presets` | статические пресеты |
-| поля ядра | `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `maxSpecificity`, `maxSpecificityMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `suspectClassMode`, `handlerConflictMode`, `presetConflictMode`, `groupSuspectMode`, `groupMode`, `notationMode`, `contextWhere`, `mediaNesting`, `mediaSyntax`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
+| поля ядра | `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `maxSpecificity`, `maxSpecificityMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `suspectClassMode`, `handlerConflictMode`, `presetConflictMode`, `mediaConflictMode`, `groupSuspectMode`, `groupMode`, `notationMode`, `contextWhere`, `mediaNesting`, `mediaSyntax`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
 
 | Метод | Что делает |
 |-------|------------|

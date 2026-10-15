@@ -204,6 +204,7 @@ export const CORE_OPTION_KEYS = [
   'suspectClassMode',
   'handlerConflictMode',
   'presetConflictMode',
+  'mediaConflictMode',
   'groupSuspectMode',
   'groupMode',
   'notationMode',
@@ -233,6 +234,7 @@ const RAISE_OPTIONS: Partial<Record<MnWarning['type'], keyof MnNotationDirective
 const PRESET_WARNINGS: Partial<Record<MnWarning['type'], 1>> = {
   'handler-conflict': 1,
   'preset-conflict': 1,
+  'media-conflict': 1,
 };
 
 /** Вес режима: файл со «строжайшим» решает за токен. */

@@ -821,6 +821,191 @@ function setupColors(mn: MnInstance): void {
   );
 }
 
+
+/** Длина-«пиксели» Tailwind 4: `2` → `2px`, произвольная длина как есть; с минусом — `calc(… * -1)`. */
+function pixels(args: MnTwArgs, negative?: boolean): string | undefined {
+  const value = args.modifier !== undefined || args.negative && !negative ? undefined
+    : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.arbitrary)
+      : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] + 'px' : undefined;
+  return value && args.negative ? 'calc(' + value + ' * -1)' : value;
+}
+
+/** Произвольное значение — длина (`[3px]`, `[length:var(--x)]`), а не цвет. */
+function isLengthArg(args: MnTwArgs): boolean {
+  return args.arbitrary !== undefined && (args.type === 'length' || !args.type && REGEXP_LENGTH.test(args.arbitrary));
+}
+
+/** Хендлер «цвет — в эти свойства»; `other` — другая форма той же утилиты (ширина, толщина). */
+function colorOr(properties: string[], other?: (args: MnTwArgs) => MnHandlerResult | undefined) {
+  return tw((args) => {
+    const alternative = other && other(args);
+    if (alternative) {
+      return alternative;
+    }
+    const color = isLengthArg(args) ? undefined : colorValue(args);
+    return color && colorResult(properties, color);
+  });
+}
+
+/** Тень-кольцо Tailwind 4 — общая сумма теней. */
+const BOX_SHADOW = 'var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)';
+
+/** `:where(.divide-x>:not(:last-child))` — как у `space-*`: дети, кроме последнего. */
+const DIVIDE_CHILDREN = SPACE_CHILDREN;
+
+/** `divide-x`, `divide-y-2`: рамки между детьми с поправкой `--tw-divide-*-reverse`. */
+function divideWidth(axis: 'x' | 'y', args: MnTwArgs): MnHandlerResult | undefined {
+  const width = args.modifier !== undefined || args.negative ? undefined
+    : args.arbitrary !== undefined ? (args.parts.length || !isLengthArg(args) ? undefined : args.arbitrary)
+      : !args.parts.length ? '1px' : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] + 'px' : undefined;
+  const reverse = 'var(--tw-divide-' + axis + '-reverse)';
+  const start = axis === 'x' ? 'borderInlineStart' : 'borderTop';
+  const end = axis === 'x' ? 'borderInlineEnd' : 'borderBottom';
+  return width === undefined ? undefined : {
+    selectors: [DIVIDE_CHILDREN],
+    style: {
+      ['--tw-divide-' + axis + '-reverse']: '0',
+      ...(axis === 'x' ? {
+        borderInlineStyle: 'var(--tw-border-style)',
+      } : {
+        borderBottomStyle: 'var(--tw-border-style)',
+        borderTopStyle: 'var(--tw-border-style)',
+      }),
+      [start + 'Width']: 'calc(' + width + ' * ' + reverse + ')',
+      [end + 'Width']: 'calc(' + width + ' * calc(1 - ' + reverse + '))',
+    },
+  };
+}
+
+/** Цвета и толщины: декор, обводка, заливка, кольца, разделители, полоса прокрутки (Tailwind 4). */
+function setupColorUtilities(mn: MnInstance): void {
+  mn(
+    'decoration', colorOr(['textDecorationColor'], (args) => {
+      const width = isLengthArg(args) || args.arbitrary === undefined ? pixels(args) : undefined;
+      return width === undefined ? undefined : result({
+        textDecorationThickness: width,
+      });
+    }), '', 1,
+  );
+  mn(
+    'underline-offset', tw((args) => {
+      const offset = pixels(args, true);
+      return offset === undefined ? undefined : result({
+        textUnderlineOffset: offset,
+      });
+    }), '', 1,
+  );
+  mn(
+    'outline', colorOr(['outlineColor'], (args) => {
+      const width = !args.parts.length && args.arbitrary === undefined && args.modifier === undefined && !args.negative
+        ? '1px' : isLengthArg(args) || args.arbitrary === undefined ? pixels(args) : undefined;
+      return width === undefined ? undefined : result({
+        outlineStyle: 'var(--tw-outline-style)',
+        outlineWidth: width,
+      });
+    }), '', 1,
+  );
+  mn(
+    'outline-offset', tw((args) => {
+      const offset = pixels(args, true);
+      return offset === undefined ? undefined : result({
+        outlineOffset: offset,
+      });
+    }), '', 1,
+  );
+  mn(
+    'fill', colorOr(['fill']), '', 1,
+  );
+  mn(
+    'stroke', colorOr(['stroke'], (args) => {
+      const width = args.modifier !== undefined || args.negative ? undefined
+        : isLengthArg(args) ? args.arbitrary
+          : args.arbitrary === undefined && args.parts.length === 1 && REGEXP_NUMBER.test(args.parts[0]) ? args.parts[0] : undefined;
+      return width === undefined ? undefined : result({
+        strokeWidth: width,
+      });
+    }), '', 1,
+  );
+  mn(
+    'accent', colorOr(['accentColor']), '', 1,
+  );
+  mn(
+    'caret', colorOr(['caretColor']), '', 1,
+  );
+  mn(
+    'placeholder', tw((args) => {
+      const color = colorValue(args);
+      return color && {
+        ...colorResult(['color'], color),
+        selectors: ['&::placeholder'],
+      };
+    }), '', 1,
+  );
+  mn(
+    'divide', tw((args) => {
+      const axis = args.parts[0] === 'x' || args.parts[0] === 'y' ? args.parts[0] : undefined;
+      if (axis) {
+        return divideWidth(axis, {
+          ...args,
+          parts: args.parts.slice(1),
+        });
+      }
+      const color = isLengthArg(args) ? undefined : colorValue(args);
+      return color && {
+        ...colorResult(['borderColor'], color),
+        selectors: [DIVIDE_CHILDREN],
+      };
+    }), '', 1,
+  );
+  mn(
+    'ring', colorOr(['--tw-ring-color'], (args) => {
+      const width = !args.parts.length && args.arbitrary === undefined && args.modifier === undefined && !args.negative
+        ? '1px' : isLengthArg(args) || args.arbitrary === undefined ? pixels(args) : undefined;
+      return width === undefined ? undefined : result({
+        '--tw-ring-shadow': 'var(--tw-ring-inset,) 0 0 0 calc(' + width + ' + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor)',
+        boxShadow: BOX_SHADOW,
+      });
+    }), '', 1,
+  );
+  mn(
+    'ring-offset', colorOr(['--tw-ring-offset-color'], (args) => {
+      const width = isLengthArg(args) || args.arbitrary === undefined ? pixels(args) : undefined;
+      return width === undefined ? undefined : result({
+        '--tw-ring-offset-width': width,
+        '--tw-ring-offset-shadow': 'var(--tw-ring-inset,) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color)',
+      });
+    }), '', 1,
+  );
+  mn(
+    'inset-ring', colorOr(['--tw-inset-ring-color'], (args) => {
+      const width = !args.parts.length && args.arbitrary === undefined && args.modifier === undefined && !args.negative
+        ? '1px' : isLengthArg(args) || args.arbitrary === undefined ? pixels(args) : undefined;
+      return width === undefined ? undefined : result({
+        '--tw-inset-ring-shadow': 'inset 0 0 0 ' + width + ' var(--tw-inset-ring-color, currentcolor)',
+        boxShadow: BOX_SHADOW,
+      });
+    }), '', 1,
+  );
+  let part: string;
+  for (part of ['thumb', 'track']) {
+    mn(
+      'scrollbar-' + part, scrollbarColor(part), '', 1,
+    );
+  }
+}
+
+/** `scrollbar-thumb-red-500` → `--tw-scrollbar-thumb` и `scrollbar-color` из обеих переменных. */
+function scrollbarColor(part: string) {
+  return tw((args) => {
+    const color = colorValue(args);
+    return color && colorResult(
+      ['--tw-scrollbar-' + part], color, {
+        scrollbarColor: 'var(--tw-scrollbar-thumb) var(--tw-scrollbar-track)',
+      },
+    );
+  });
+}
+
 function setupVariants(mn: MnInstance): void {
   let name: string;
   mn.media[COLOR_MIX_MEDIA] = {
@@ -919,6 +1104,7 @@ export default {
     setupTypography(mn);
     setupBorders(mn);
     setupColors(mn);
+    setupColorUtilities(mn);
     setupVariants(mn);
   },
 } as MnPresetObject;

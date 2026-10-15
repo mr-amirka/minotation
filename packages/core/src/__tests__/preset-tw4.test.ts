@@ -573,7 +573,8 @@ describe('класс не разобран', () => {
   });
 
   test('класса, которого нет в подмножестве, — нет и записи: молча', () => {
-    expect(compile('ring-2')).toMatchObject({
+    // Не класс Tailwind вовсе: пресет со временем покроет все классы эталона.
+    expect(compile('qq-2')).toMatchObject({
       css: '',
       warnings: [],
     });

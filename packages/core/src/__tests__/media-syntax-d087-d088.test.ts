@@ -214,9 +214,10 @@ test('экранированный символ в варианте группы
 
 describe('маркер контейнера: cn, ct (D-088)', () => {
   test.each([
-    ['cnSidebar', '.cnSidebar{container-name:sidebar}'],
-    ['cnMainNav', '.cnMainNav{container-name:main-nav}'],
-    ['cnSide_Main', '.cnSide_Main{container-name:side main}'],
+    // Имена — как записаны, как и в запросе `@…:имя` (D-091).
+    ['cnMainNav', '.cnMainNav{container-name:MainNav}'],
+    ['cn_main-nav', '.cn_main-nav{container-name:main-nav}'],
+    ['cn_side_main', '.cn_side_main{container-name:side main}'],
     ['ctIS', '.ctIS{container-type:inline-size}'],
     ['ctS', '.ctS{container-type:size}'],
     ['ctN', '.ctN{container-type:normal}'],
@@ -225,7 +226,7 @@ describe('маркер контейнера: cn, ct (D-088)', () => {
   });
 
   test('пример владельца: контейнер только у активного родителя', () => {
-    expect(compile('cnSidebar.active w100@:sidebar').css).toBe('.cnSidebar\\.active.active{container-name:sidebar}'
+    expect(compile('cn_sidebar.active w100@:sidebar').css).toBe('.cn_sidebar\\.active.active{container-name:sidebar}'
       + '@container sidebar{.w100\\@\\:sidebar{width:100px}}');
   });
 

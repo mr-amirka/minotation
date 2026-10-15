@@ -1459,20 +1459,23 @@ a-b    →  от a до b
 | `w100@m4-:side` | `@container side (width >= 480px)` |
 | `w100@:side` | `@container side` — только по имени: правило действует внутри контейнера `side` |
 
-Запросы к контейнерам — всегда в форме диапазона. Маркер контейнера на родителе — `cn…` (`container-name`) и,
+Запросы к контейнерам — всегда в форме диапазона. Имя контейнера пишется как есть — и в маркере, и в запросе
+(D-091): `cn_main-nav` и `@…:main-nav`; имя со строчной буквы — через `_`. Маркер контейнера на родителе — `cn…`
+(`container-name`) и,
 если запрос по размеру, `ct…` (`container-type`); запросу только по имени `container-type` не нужен:
 
 | Токен | CSS |
 |-------|-----|
-| `cnSidebar` | `container-name:sidebar` |
-| `cnMainNav` | `container-name:main-nav` |
-| `cnSide_Main` | `container-name:side main` |
+| `cn_sidebar` | `container-name:sidebar` |
+| `cn_main-nav` | `container-name:main-nav` |
+| `cnMainNav` | `container-name:MainNav` |
+| `cn_side_main` | `container-name:side main` |
 | `ctIS` | `container-type:inline-size` |
 | `ctS` | `container-type:size` |
 | `ctN` | `container-type:normal` |
 
 ```html
-<aside class="cnSidebar.active ctIS active">   <!-- контейнер — только у активной панели -->
+<aside class="cn_sidebar.active ctIS active">  <!-- контейнер — только у активной панели -->
   <div class="w100@:sidebar">…</div>            <!-- @container sidebar{…} -->
   <div class="dF@360-:sidebar">…</div>          <!-- @container sidebar (width >= 360px){…} -->
 </aside>

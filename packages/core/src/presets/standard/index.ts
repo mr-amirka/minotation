@@ -484,6 +484,12 @@ const MN_SHADOW_COLOR = 8;
 /** Имена контейнера через пробел — идентификаторы CSS или переменная: `sidebar`, `side main`, `var(--c)`. */
 const REGEXP_CONTAINER_NAMES = /^(?:var\(--[\w-]+\)|(?:-?[a-zA-Z_][\w-]*)(?: -?[a-zA-Z_][\w-]*)*)$/;
 
+/** Имена контейнера из суффикса — как записаны (D-091): ведущий `_` снят, `_` — пробел, `--c` — `var(--c)`. */
+function containerNames(suffix: string): string {
+  const raw = suffix[0] === '_' ? suffix.slice(1) : suffix;
+  return raw.indexOf('--') === 0 ? 'var(' + raw + ')' : raw.split('_').join(' ');
+}
+
 function throwInvalid(message?: string): never {
   throw new MnParseError(message || 'Parameter is invalid', {
     token: '',
@@ -3997,14 +4003,15 @@ export default {
             }) : 0
           ));
       },
-      // Контейнер для запросов `@…:имя` (D-088): `cnSidebar` → `container-name: sidebar`, `cnMainNav` →
-      // `main-nav`, несколько имён — через `_` (`cnSide_Main`).
+      // Контейнер для запросов `@…:имя` (D-088): имя — как записано, как и в запросе (D-091): `cnMainNav` →
+      // `container-name: MainNav`, `cn_main-nav` → `main-nav`, несколько — через `_` (`cn_side_main`), `cn--c` —
+      // переменная.
       cn: (p) => {
-        const names = p.suffix ? valueNormalize(p.suffix) : '';
+        const names = p.suffix ? containerNames(p.suffix) : '';
         return !names ? 0 : REGEXP_CONTAINER_NAMES.test(names) ? styleWrap({
           containerName: names,
-        }) : throwInvalid('"' + names + '" is not a container name: expected CSS identifiers (cnSidebar, cnMainNav,'
-          + ' cnSide_Main) or a variable');
+        }) : throwInvalid('"' + names + '" is not a container name: expected CSS identifiers written as they are'
+          + ' (cnSidebar, cn_main-nav, cn_side_main) or a variable');
       },
       // `ctIS` → `container-type: inline-size`; размер по обеим осям — `ctS`.
       ct: synonymProvider('containerType', {

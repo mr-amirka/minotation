@@ -9,6 +9,8 @@ import { join } from 'path';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { mnRollup, type MnRollupOptions } from '../src/index';
+import { scopeClassName } from 'minotation-build';
+import { presetTw4 } from 'minotation';
 
 /** Создаёт временный проект: ключ — относительный путь файла, значение — содержимое. */
 function makeProject(files: Record<string, string>): string {
@@ -497,5 +499,25 @@ describe('minotation-rollup — minotation.config.js (D-081)', () => {
     } finally {
       process.chdir(cwd);
     }
+  });
+});
+
+describe('minotation-rollup — изоляция областей пакетов (D-075, D-076)', () => {
+  test('модуль пакета с чужим семейством — с классом области в коде бандла, правила — с ним', async () => {
+    const root = makeProject({
+      'src/main.js': "import { card } from '../ui/card.js';\nexport const x = card;\n",
+      'ui/package.json': JSON.stringify({ name: '@acme/ui', minotation: { requires: ['presetTw4'], notationMode: 'tw4-compatible' } }),
+      'ui/card.js': "export const card = { className: 'p-4' };\n",
+    });
+    const cls = scopeClassName('presetTw4');
+    const { code, css } = await runBuild(root, {
+      root: [join(root, 'src'), join(root, 'ui')],
+      extensions: ['.js'],
+      attrs: 'class, className:class',
+      scopePresets: [presetTw4],
+      isolateMode: 'class',
+    });
+    expect(code).toContain("className: '" + cls + " p-4'");
+    expect(css).toContain('.p-4.' + cls + '{');
   });
 });

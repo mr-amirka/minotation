@@ -286,7 +286,9 @@ export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'invalid-css-
   /** Подключены пресеты несовместимых экосистем (D-067, `presetConflictMode`). */
   | 'preset-conflict'
   /** Группа скобок даёт заведомо битый CSS — `:is(.a|.b)`, `:h(2n)` (D-077, `groupSuspectMode`). */
-  | 'group-suspect';
+  | 'group-suspect'
+  /** Класс задан из JS в файле изолированной области — класса области не получит (D-076, `unreachableClassMode`). */
+  | 'unreachable-class';
 
 /**
  * `'hint'` — класс, которого нет в нотации, но который похож на опечатку или на класс

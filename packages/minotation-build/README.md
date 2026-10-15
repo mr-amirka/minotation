@@ -83,6 +83,8 @@ for (const warning of collector.takeWarnings()) {
 | `skipPartials` | `boolean` | `false` | пропускать файлы-партиалы `_*` (D-027) |
 | `presets` | `MnPreset[]` | стандартный набор | статические пресеты; стандартный набор начинается с `presetHints` (D-024) |
 | `scopePresets` | `MnPreset[]` | `[]` | пресеты, которые могут потребовать пакеты: пакет с чужим семейством — своя область (D-078) |
+| `isolateMode` | `'none' \| 'class' \| 'where'` | `'none'` | изоляция областей пакетов: класс области в их разметку и правила (D-075…D-077) |
+| `unreachableClassMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | класс задан из JS в файле изолированной области (D-076) |
 | `scopes` | `MnScopeRule[]` | `[]` | правила для пакетов и путей без своей декларации: `{ match, requires, notationMode, override }` (D-080…D-082) |
 | `presetExtensions` | `string[]` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты (`import './app.mn'`) |
 | `classVarSuffixes` | `string[]` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
@@ -275,8 +277,37 @@ module.exports = {
 - правило `scopes` потребителя для строгости **важнее** декларации пакета: так заглушают шумный пакет;
 - предупреждения режимов токенов теперь выводит плагин (как и остальные), ядро в консоль их не пишет.
 
-Без изоляции правила областей глобальные (`.flex{…}` из обеих областей — два правила);
-изоляция классом области (`isolateMode`, D-075) — следующий шаг.
+### Изоляция областей пакетов — `isolateMode` (D-075…D-077)
+
+Без изоляции правила областей глобальные (`.flex{…}` из обеих областей — два правила). С изоляцией
+у области пакета свой короткий класс (`_` + хеш семейства пресетов: `_4`, при совпадении — длиннее),
+сборка пишет его в **каждый атрибут класса** файлов пакета, а правила области привязаны к нему:
+
+```ts
+mnVite({ scopePresets: [presetTw4], isolateMode: 'class' });
+```
+```tsx
+// node_modules/@acme/ui/Button.tsx (requires: presetTw4)   →  после сборки
+<button className="p-4 flex" />                              <button className="_4 p-4 flex" />
+<b className={on ? 'a' : 'b'} />                             <b className={"_4 " + ((on ? 'a' : 'b') || "")} />
+```
+```css
+.p-4._4{padding:calc(var(--spacing) * 4)}          /* isolateMode: 'class' — +1 к специфичности */
+.p-4:where(._4){padding:calc(var(--spacing) * 4)}  /* isolateMode: 'where' — базовая специфичность */
+```
+
+- область приложения не изолируется никогда (D-076); `'none'` — по умолчанию;
+- класс приходит и в компоненты другой области через `className` — каждый токен стилизуется своей
+  областью (research 14 §8.3);
+- переписывают Vite и Rollup (`transform`), webpack (токен-лоадер), esbuild (`onLoad`, JS-семейство),
+  gulp (содержимое файла в пайпе), CLI (`--isolate-out`); JS/TS — по синтаксическому дереву,
+  `.html`/`.vue`/`.svelte`/`.astro` — текстом; привязка `:class` Vue не трогается;
+- класс, заданный из JS (`el.className = …`, `classList.add(…)`, `setAttribute('class', …)`), класса
+  области не получит — `unreachableClassMode: 'warn' | 'silent' | 'strict'` (по умолчанию `'warn'`,
+  с файлом и строкой);
+- пакеты из `node_modules`, которые Vite в dev отдаёт предсобранными (`optimizeDeps`), через `transform`
+  не проходят — для них нужен `optimizeDeps.exclude`.
+
 
 Один класс в файлах с разными режимами может значить разное — `notationConflictMode`:
 

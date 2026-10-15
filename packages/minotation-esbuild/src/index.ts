@@ -1,4 +1,4 @@
-import type { Plugin, PluginBuild } from 'esbuild';
+import type { Loader, Plugin, PluginBuild } from 'esbuild';
 import type { MnWarning } from 'minotation';
 import {
   presetHints,
@@ -12,7 +12,7 @@ import type { MnInstance } from 'minotation';
 import type { MnPreset } from 'minotation';
 import { asPreset } from 'minotation-build';
 import {
-  checkBuildOptions, withBuildConfig, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, scanRoots,
+  checkBuildOptions, withBuildConfig, createBuildCollector, createScopeRewriter, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, scanRoots,
   walkFiles,
 } from 'minotation-build';
 import type { MnBuildOptions } from 'minotation-build';
@@ -26,6 +26,7 @@ import {
 import {
   join,
   dirname,
+  extname,
 } from 'path';
 import { transformSync } from 'esbuild';
 import { createRequire } from 'module';
@@ -48,6 +49,18 @@ export interface MnEsbuildOptions extends MnBuildOptions {}
 /** Модуль со всем CSS; `virtual:mn/<запись>.css` — одна запись `entry`. */
 export const MN_VIRTUAL = 'virtual:mn.css';
 const REGEXP_MN_VIRTUAL = /^virtual:mn(?:\/([^/]+))?\.css$/;
+
+/** Загрузчик esbuild по расширению — для переписанных файлов изолированной области (D-075). */
+const LOADERS: Record<string, Loader> = {
+  '.js': 'js',
+  '.mjs': 'js',
+  '.cjs': 'js',
+  '.jsx': 'jsx',
+  '.ts': 'ts',
+  '.mts': 'ts',
+  '.cts': 'ts',
+  '.tsx': 'tsx',
+};
 
 
 /**
@@ -131,6 +144,7 @@ export function mnEsbuild(code: MnEsbuildOptions = {}): Plugin {
   // Опции из `minotation.config.*` рабочего каталога, поверх — из кода (D-081).
   const options = withBuildConfig(code, 'mnEsbuild');
   checkBuildOptions(options, 'mnEsbuild');
+  const rewriteScope = createScopeRewriter(options);
   // Несколько корней скана (монорепо) — база относительных путей `include` — рабочая директория.
   const roots = scanRoots(options.root, process.cwd());
   const root = typeof options.root === 'string' ? options.root : process.cwd();
@@ -232,10 +246,24 @@ export function mnEsbuild(code: MnEsbuildOptions = {}): Plugin {
 
       build.onLoad({ filter: /./ }, args => {
         if (!files.accepts(args.path)) return undefined;
+        let source: string;
         try {
-          collector.add(args.path, readFileSync(args.path, 'utf-8'));
-        } catch (_) { /* skip unreadable */ }
-        return undefined; // не подменяем контент — пусть грузит штатный loader
+          source = readFileSync(args.path, 'utf-8');
+        } catch (_) {
+          return undefined; // skip unreadable
+        }
+        collector.add(args.path, source);
+        // Файл изолированной области пакета — класс области в разметку (D-075, D-076). Только
+        // JS-семейство: остальное (`.vue`, `.svelte`) грузят их плагины, подменять их нельзя.
+        const loader = LOADERS[extname(args.path)];
+        const scoped = loader && rewriteScope(collector, args.path, source);
+        if (!scoped) return undefined; // не подменяем контент — пусть грузит штатный loader
+        return {
+          contents: scoped.code === undefined ? source : scoped.code,
+          loader,
+          resolveDir: dirname(args.path),
+          warnings: scoped.warnings.map((text) => ({ text })),
+        };
       });
 
       build.onEnd((result) => {

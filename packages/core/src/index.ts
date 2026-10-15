@@ -40,6 +40,13 @@ import {
   isSyntaxScannable as isSyntaxScannableImpl,
 } from './scanner';
 import {
+  addScopeClassText as addScopeClassTextImpl,
+  createScopeClassWriter as createScopeClassWriterImpl,
+} from './scopeClass';
+export type {
+  ScopeClassResult, ScopeClassWriter, ScopeClassWriterOptions,
+} from './scopeClass';
+import {
   checkOptions as checkOptionsImpl,
   checkKnownValues as checkKnownValuesImpl,
   describeValue as describeValueImpl,
@@ -110,6 +117,10 @@ export const scanTokens = scanTokensImpl;
  * по отдельности.
  */
 export const createScanner = createScannerImpl;
+/** Писатель класса области в разметку (D-075, D-076): разбором для JS/TS, текстом для остального. */
+export const createScopeClassWriter = createScopeClassWriterImpl;
+/** Класс области в разметку текстом. */
+export const addScopeClassText = addScopeClassTextImpl;
 
 /** Годится ли файл для синтаксического разбора — проверка без загрузки парсера. */
 export const isSyntaxScannable = isSyntaxScannableImpl;

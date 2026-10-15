@@ -91,7 +91,8 @@ export type {
   LoadedConfig,
 } from './config';
 import {
-  CORE_OPTIONS_SCHEMA, MnForbiddenTokenError, MnWarningError, checkOptions, createScanner, isBoolean, isBooleanOrString,
+  CORE_OPTIONS_SCHEMA, MnForbiddenTokenError, MnWarningError, checkOptions, createScanner, createScopeClassWriter, isBoolean,
+  isBooleanOrString,
   isFunction, isPresetArray, isString, isStringArray, minotationProvider, oneOf, optionsOf, parseSettingsKey,
 } from 'minotation';
 import type {
@@ -362,6 +363,81 @@ function failWith(error: Error): never {
   throw error;
 }
 
+/** Итог переписывания файла под класс области: новый код (если изменился) и предупреждения. */
+export interface ScopeRewrite {
+  /** Код с классом области; `undefined` — менять нечего. */
+  code?: string;
+  /** Недостижимые классы (`unreachableClassMode: 'warn'`) — с файлом и строкой. */
+  warnings: string[];
+}
+
+/**
+ * Переписывание файлов изолированных областей (D-075, D-076): класс области — в каждый атрибут
+ * класса. Плагин зовёт его после `add`: класс берётся у накопителя (`scopeClassOf`).
+ *
+ * @param options — опции плагина: `attrs` (какие атрибуты — классы), `syntax`, `unreachableClassMode`
+ * @returns `(накопитель, файл, исходник) → ScopeRewrite` или `undefined`, если файл не изолируется
+ *
+ * @example
+ * const rewrite = createScopeRewriter(options);
+ * collector.add(id, source);
+ * const result = rewrite(collector, id, source);   // { code: '<b className="_l p-4" />', warnings: [] }
+ */
+export function createScopeRewriter(options: Pick<MnBuildOptions, 'attrs' | 'syntax' | 'unreachableClassMode'>): (collector: Pick<TokenCollector, 'scopeClassOf'>, id: string, source: string) => ScopeRewrite | undefined {
+  const attrs = parseAttrs(options.attrs);
+  const writer = createScopeClassWriter({
+    attr: Object.keys(attrs).filter((name) => attrs[name] === 'class'),
+    syntax: options.syntax,
+  });
+  const mode = options.unreachableClassMode || 'warn';
+  return (
+    collector, id, source,
+  ) => {
+    const className = collector.scopeClassOf(id);
+    if (!className) {
+      return undefined;
+    }
+    const result = writer(
+      source, id, className,
+    );
+    const warnings = mode === 'silent' ? [] : result.unreachable.map((item) => relative(process.cwd(), id) + ':'
+      + item[0] + ': class set from JS ("' + item[1] + '") — the element gets no scope class "' + className
+      + '", the scope\'s rules don\'t reach it. Set the class in markup, or unreachableClassMode: \'silent\'.');
+    mode === 'strict' && warnings.length && fail(warnings.join('\n'));
+    return {
+      code: result.code === source ? undefined : result.code,
+      warnings,
+    };
+  };
+}
+
+/** Семейство → класс области; класс → семейство (D-076). Общие на процесс: записи `entry` согласны. */
+const scopeClassByFamily = new Map<string, string>();
+const familyByScopeClass = new Map<string, string>();
+
+/**
+ * Класс области семейства пресетов (D-076): `_` и хеш семейства в base36 — от одного символа, длиннее
+ * только при совпадении с классом другого семейства. Выданный класс не меняется.
+ *
+ * @param family — ключ семейства (отсортированный `requires`)
+ * @example scopeClassName('presetTw4') // → '_k' (пример)
+ */
+export function scopeClassName(family: string): string {
+  const known = scopeClassByFamily.get(family);
+  if (known) {
+    return known;
+  }
+  const hash = BigInt('0x' + createHash('sha256').update(family).digest('hex')).toString(36);
+  let length = 1;
+  let name = '_' + hash.slice(0, length);
+  while (familyByScopeClass.has(name)) {
+    name = '_' + hash.slice(0, ++length);
+  }
+  scopeClassByFamily.set(family, name);
+  familyByScopeClass.set(name, family);
+  return name;
+}
+
 /** Записи области и первый (по пути) её файл — для сообщений об ошибках. */
 type ScopeEntries = [entries: Set<string>, firstId: string];
 
@@ -398,6 +474,21 @@ export interface TokenCollectorOptions extends Omit<ScannerOptions, 'attr' | 'on
    * scopes: [{ match: '@acme/ui', requires: ['presetTw4'], notationMode: 'tw4-compatible' }]
    */
   scopes?: MnScopeRule[];
+  /**
+   * Изоляция областей пакетов (D-075…D-077): `'class'` — `.p-4._l{…}`, `'where'` — `.p-4:where(._l){…}`,
+   * `'none'` — без изоляции. Область приложения не изолируется никогда; класс области (`_l`) сборка
+   * назначает сама и пишет его в разметку файлов пакета.
+   * @default 'none'
+   */
+  isolateMode?: 'none' | 'class' | 'where';
+  /**
+   * Класс задан из JS в файле изолированной области (`el.className = …`, `classList.add(…)`,
+   * `setAttribute('class', …)`) — элемент класса области не получит, правила области к нему не
+   * применятся (D-076). `'warn'` — предупреждение с файлом и строкой; `'silent'` — молча;
+   * `'strict'` — ошибка сборки.
+   * @default 'warn'
+   */
+  unreachableClassMode?: 'warn' | 'silent' | 'strict';
   /**
    * Колбэк сканера: `syntax: true`, а пакета `typescript` нет. Отдельное имя —
    * `onWarning` занят предупреждениями компиляции (D-034).
@@ -615,9 +706,21 @@ const isAttrs: OptionCheck = (
   return ok ? undefined : 'a string, an array of strings or an object of strings';
 };
 
+/**
+ * Опции ядра в опциях плагина — без `isolateClass`: класс области сборка назначает сама (D-076);
+ * `isolateMode` у плагина — изоляция областей пакетов.
+ */
+const WITHOUT_ISOLATE_CLASS: OptionSchema = (() => {
+  const out: OptionSchema = {
+    ...CORE_OPTIONS_SCHEMA,
+  };
+  delete out.isolateClass;
+  return out;
+})();
+
 /** Допустимые опции записи `entry` (D-038). */
 export const ENTRY_OPTIONS_SCHEMA: OptionSchema = {
-  ...CORE_OPTIONS_SCHEMA,
+  ...WITHOUT_ISOLATE_CLASS,
   include: isFileMatcher,
   exclude: isFileMatcher,
   skipPartials: isBoolean,
@@ -644,6 +747,9 @@ export const BUILD_OPTIONS_SCHEMA: OptionSchema = {
   comments: isBoolean,
   syntax: isBoolean,
   root: isStringOrStringArray,
+  unreachableClassMode: oneOf(
+    'warn', 'silent', 'strict',
+  ),
   scopes: isScopeRulesImpl,
   extensions: isStringArray,
   presetExtensions: isStringArray,
@@ -816,6 +922,11 @@ export interface TokenCollector {
   /** Есть ли у файла учтённые токены. */
   has(id: string): boolean;
   /**
+   * Класс области файла (D-076), если его область изолируется (`isolateMode` не `'none'`, семейство
+   * пресетов не приложения); иначе `undefined`. Файл должен быть уже учтён (`add`/`set`).
+   */
+  scopeClassOf(id: string): string | undefined;
+  /**
    * Готовый CSS из всех учтённых токенов и пресетов.
    *
    * Результат кешируется по слепку набора: повторный вызов без изменений
@@ -852,6 +963,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
    * или никуда. Колбэк `onWarning` вызывается всегда, дополнительно к режиму (D-035).
    */
   const userOnWarning = options.onWarning;
+  const isolateMode = options.isolateMode || 'none';
   const core = coreOptionsOf(options);
   /** Токены по файлам — ключ по файлу и снимает файл с учёта, и заменяет набор. */
   const byFile = new Map<string, Set<string>>();
@@ -1154,7 +1266,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
 
   /** Одна область — свой экземпляр ядра: реестр хендлеров не общий (D-078). */
   function compileScope(
-    entries: string[], all: MnPreset[], files: Map<string, string[]>, verdict: Verdict,
+    entries: string[], all: MnPreset[], files: Map<string, string[]>, verdict: Verdict, isolateClass?: string,
   ): string {
     const raw: MnWarning[] = [];
     // Ядро сообщает обо всём (режимы токенов — `'warn'`, без печати), судит сборка — по файлам (D-081).
@@ -1168,6 +1280,9 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
       unknownMediaMode: 'warn',
       suspectClassMode: 'warn',
       groupSuspectMode: 'warn',
+      // Область пакета — привязана к своему классу (D-075); приложение — без изоляции (D-076).
+      isolateMode: isolateClass ? isolateMode : 'none',
+      isolateClass,
       onWarning: (warning: MnWarning) => {
         raw.push(warning);
         userOnWarning && userOnWarning(warning);
@@ -1272,6 +1387,10 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     has(id: string): boolean {
       return byFile.has(id);
     },
+    scopeClassOf(id: string): string | undefined {
+      const family = isolateMode === 'none' ? '' : scopeOf(fileRequires.get(id), namesOf(presets));
+      return family ? scopeClassName(family) : undefined;
+    },
     setPreset(id: string, preset: MnPreset): void {
       dynamic.set(id, preset);
       dynamicNotation.set(id, presetNotation(id));
@@ -1327,7 +1446,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
           name, scope[1], appNames,
         );
         outputs.push(compileScope(
-          Array.from(scope[0]).sort(), all, files, verdict,
+          Array.from(scope[0]).sort(), all, files, verdict, name && isolateMode !== 'none' ? scopeClassName(name) : undefined,
         ));
       }
       warnings = verdict[0];
@@ -1442,6 +1561,8 @@ export interface BuildCollector {
   set(id: string, entries: Iterable<string>, notation?: MnNotationDirective): boolean;
   remove(id: string): boolean;
   has(id: string): boolean;
+  /** Класс области файла — {@link TokenCollector.scopeClassOf}; по первой записи, где файл учтён. */
+  scopeClassOf(id: string): string | undefined;
   setPreset(id: string, preset: MnPreset): void;
   removePreset(id: string): boolean;
   clear(): void;
@@ -1554,6 +1675,10 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
     },
     has(id: string): boolean {
       return parts.some((part) => part.collector.has(id));
+    },
+    scopeClassOf(id: string): string | undefined {
+      const part = parts.find((item) => item.collector.has(id));
+      return part && part.collector.scopeClassOf(id);
     },
     setPreset(id: string, preset: MnPreset): void {
       for (const part of parts) {

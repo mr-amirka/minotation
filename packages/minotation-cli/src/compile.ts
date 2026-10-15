@@ -31,10 +31,10 @@ import type {
   MnPreset,
 } from 'minotation';
 import {
-  BUILD_OPTIONS_SCHEMA, CORE_OPTION_KEYS, createBuildCollector, createFileFilter, createMatcher,
+  BUILD_OPTIONS_SCHEMA, CORE_OPTION_KEYS, createBuildCollector, createFileFilter, createMatcher, createScopeRewriter,
 } from 'minotation-build';
 import type {
-  BuildOutput, Metrics, MnAttrs, MnCoreOptions, MnEntryOptions, MnFileMatcher, MnScopeRule,
+  BuildOutput, Metrics, MnAttrs, MnCoreOptions, MnEntryOptions, MnFileMatcher, MnScopeRule, ScopeRewrite,
 } from 'minotation-build';
 
 /**
@@ -48,6 +48,8 @@ export const CONFIG_SCHEMA: OptionSchema = {
     'presets',
     'scopePresets',
     'scopes',
+    'isolateMode',
+    'unreachableClassMode',
     'attrs',
     'syntax',
     'include',
@@ -61,7 +63,20 @@ export const CONFIG_SCHEMA: OptionSchema = {
   input: isString,
   output: isString,
   ignore: isStringArray,
+  isolateOut: isString,
+  isolateCopy: (value) => (typeof value === 'boolean' || isCopyMatcher(value)
+    ? undefined : 'true, false, a path or glob, a RegExp, a function or an array of them'),
 };
+
+/** Шаблон копирования `isolateCopy`: путь или glob, RegExp, функция — или массив из них. */
+function isCopyMatcher(value: unknown): boolean {
+  return typeof value === 'string' || value instanceof RegExp || typeof value === 'function'
+    || Array.isArray(value) && value.length > 0 && value.every(isCopyMatcher);
+}
+
+function fail(message: string): never {
+  throw new Error('[minotation] ' + message);
+}
 
 /** Подмножество схемы по списку ключей. */
 function pick(schema: OptionSchema, keys: readonly string[]): OptionSchema {
@@ -139,6 +154,21 @@ export interface CompileSettings extends MnCoreOptions {
   scopePresets?: MnPreset[];
   /** Правила для пакетов и путей (D-080…D-082). */
   scopes?: MnScopeRule[];
+  /** Изоляция областей пакетов (D-075…D-077). */
+  isolateMode?: 'none' | 'class' | 'where';
+  /** Класс задан из JS в файле изолированной области (D-076). */
+  unreachableClassMode?: 'warn' | 'silent' | 'strict';
+  /**
+   * Каталог для исходников с классом области (D-079): дерево `input` повторяется в нём; оригиналы
+   * не трогаются. Нужен `isolateMode` не `'none'`.
+   */
+  isolateOut?: string;
+  /**
+   * Какие неизменённые файлы копировать в `isolateOut` (D-081): `true` — все (по умолчанию),
+   * `false` — только изменённые, путь/glob/RegExp/функция — по шаблону.
+   * @default true
+   */
+  isolateCopy?: boolean | MnFileMatcher;
   /** Несколько CSS из одного прохода (D-030); `--output` тогда содержит `[name]`. */
   entry?: Record<string, MnEntryOptions>;
   /** Конфликт режимов синтаксиса между файлами (D-045): `warn` или `strict`. */
@@ -159,6 +189,8 @@ export interface CompileResult {
   warnings: MnWarning[];
   /** Статистика употребления токенов (D-032) — общий отчёт `minotation-build`. */
   metrics: Metrics;
+  /** Файлы изолированных областей с классом области: путь → код (D-079). */
+  rewritten: Record<string, string>;
 }
 
 /**
@@ -264,6 +296,8 @@ export function compile(settings: CompileSettings): CompileResult {
     entry: settings.entry,
     scopePresets: settings.scopePresets,
     scopes: settings.scopes,
+    isolateMode: settings.isolateMode,
+    unreachableClassMode: settings.unreachableClassMode,
     notationConflictMode: settings.notationConflictMode,
     presets: settings.presets || [
       // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
@@ -276,10 +310,34 @@ export function compile(settings: CompileSettings): CompileResult {
     ],
     ...coreOf(settings),
   }, resolve(settings.input));
+  settings.isolateOut && (settings.isolateMode || 'none') === 'none'
+    && fail('compile: "isolateOut" needs "isolateMode" \'class\' or \'where\' — without isolation there is nothing to rewrite');
   const l = files.length;
+  const sources: string[] = [];
   let i = 0;
   for (; i < l; i++) {
-    build.add(files[i], readFileSync(files[i], 'utf8'));
+    build.add(files[i], sources[i] = readFileSync(files[i], 'utf8'));
+  }
+  // Файлы изолированных областей — с классом области в разметке (D-075, D-076, D-079).
+  const rewrite = createScopeRewriter(settings);
+  const rewritten: Record<string, string> = {};
+  const unreachable: MnWarning[] = [];
+  let scoped: ScopeRewrite | undefined;
+  for (i = 0; i < l; i++) {
+    scoped = rewrite(
+      build, files[i], sources[i],
+    );
+    if (!scoped) {
+      continue;
+    }
+    scoped.code === undefined || (rewritten[files[i]] = scoped.code);
+    for (const message of scoped.warnings) {
+      unreachable.push({
+        type: 'unreachable-class',
+        token: '',
+        message,
+      });
+    }
   }
   const outputs = build.outputs();
   const metrics = build.metrics();
@@ -288,8 +346,9 @@ export function compile(settings: CompileSettings): CompileResult {
     outputs,
     files: l,
     tokens: metrics.tokensTotal,
-    warnings: build.takeWarnings(),
+    warnings: build.takeWarnings().concat(unreachable),
     metrics,
+    rewritten,
   };
 }
 

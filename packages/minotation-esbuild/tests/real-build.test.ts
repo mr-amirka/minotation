@@ -9,6 +9,8 @@ import { join } from 'path';
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { mnEsbuild } from '../src/index';
+import { scopeClassName } from 'minotation-build';
+import { presetTw4 } from 'minotation';
 
 const FIXTURES_DIR = join(__dirname, 'fixtures');
 
@@ -59,5 +61,37 @@ describe('minotation-esbuild — реальная сборка', () => {
     const css = readFileSync(join(outDir, 'mn.css'), 'utf-8');
     expect(css).toContain('.mnEsbuildFixtureToken{color:#f00}');
     expect(css).toContain('padding:10px');
+  });
+});
+
+describe('mnEsbuild — изоляция областей пакетов (D-075, D-076)', () => {
+  test('модуль пакета — с классом области в бандле; правила области — с ним', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'mn-esbuild-iso-'));
+    const put = (rel: string, text: string) => {
+      mkdirSync(join(root, rel, '..'), { recursive: true });
+      writeFileSync(join(root, rel), text);
+    };
+    put('src/main.js', "import { card } from '../ui/card.jsx';\nexport const x = card;\n");
+    put('ui/package.json', JSON.stringify({ name: '@acme/ui', minotation: { requires: ['presetTw4'], notationMode: 'tw4-compatible' } }));
+    put('ui/card.jsx', 'export const card = <b className="p-4" />;\n');
+    const outdir = join(root, 'out');
+    const result = await build({
+      entryPoints: [join(root, 'src/main.js')],
+      bundle: true,
+      write: true,
+      outdir,
+      jsx: 'preserve',
+      plugins: [mnEsbuild({
+        root: [join(root, 'src'), join(root, 'ui')],
+        attrs: 'class, className:class',
+        scopePresets: [presetTw4],
+        isolateMode: 'class',
+        fileName: 'mn.css',
+      })],
+    });
+    const cls = scopeClassName('presetTw4');
+    expect(readFileSync(join(outdir, 'main.js'), 'utf8')).toContain('className="' + cls + ' p-4"');
+    expect(readFileSync(join(outdir, 'mn.css'), 'utf8')).toContain('.p-4.' + cls + '{');
+    expect(result.warnings).toEqual([]);
   });
 });

@@ -13,7 +13,7 @@
  * сам перед сборкой, так что токены серверных компонентов видит и клиентский
  * проход, где собирается CSS.
  */
-import type { BuildCollector, FileFilter } from 'minotation-build';
+import type { BuildCollector, FileFilter, ScopeRewrite } from 'minotation-build';
 
 /** То, что лоадерам нужно от плагина. */
 export interface MnPluginHandle {
@@ -26,6 +26,8 @@ export interface MnPluginHandle {
   roots: string[];
   /** CSS-модуль загружен импортом — отдельный ассет не нужен. */
   imported: boolean;
+  /** Класс области в разметку файла изолированной области (D-075, D-076). */
+  rewrite: (id: string, source: string) => ScopeRewrite | undefined;
 }
 
 /** Общий стейт процесса. */

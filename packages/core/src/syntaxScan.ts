@@ -48,6 +48,12 @@ import {
 import type {
   ScanTokensOptions,
 } from './extractTokens';
+import {
+  applyEdits, isWrapped, wrapExpression,
+} from './scopeClass';
+import type {
+  SourceEdit,
+} from './scopeClass';
 
 /** Опции {@link scanTokensSyntax}. */
 export interface SyntaxScanOptions extends ScanTokensOptions {
@@ -484,4 +490,82 @@ function newlinesOf(
     source[i] === '\n' && (out += '\n');
   }
   return out;
+}
+
+/**
+ * Класс области по синтаксическому дереву (D-075): JSX-атрибуты и свойства объектов с именами из
+ * `attr`. Литерал — класс вставляется в его начало; выражение — оборачивается
+ * (`"_l " + ((expr) || "")`). Битый файл — `undefined`: писатель перейдёт к текстовому способу.
+ *
+ * @param source — исходник
+ * @param options — имена атрибутов, класс области, имя файла (диалект)
+ * @returns переписанный исходник или `undefined`
+ */
+export function addScopeClassSyntax(source: string, options: {
+  attr: string[];
+  className: string;
+  fileName: string;
+}): string | undefined {
+  const file = ts.createSourceFile(
+    options.fileName, source, ts.ScriptTarget.Latest, false, scriptKindOf(options.fileName),
+  );
+  if ((file as unknown as { parseDiagnostics?: unknown[] }).parseDiagnostics?.length) {
+    return undefined;
+  }
+  const edits: SourceEdit[] = [];
+  visitScopeClass(
+    file, file, options, edits,
+  );
+  return applyEdits(source, edits);
+}
+
+function visitScopeClass(
+  node: ts.Node, file: ts.SourceFile, options: { attr: string[];
+    className: string }, edits: SourceEdit[],
+): void {
+  let value: ts.Node | undefined;
+  if (node.kind === ts.SyntaxKind.JsxAttribute && options.attr.indexOf(nameOf((node as ts.JsxAttribute).name)) > -1) {
+    value = (node as ts.JsxAttribute).initializer;
+    value && value.kind === ts.SyntaxKind.JsxExpression && (value = (value as ts.JsxExpression).expression);
+  } else if (node.kind === ts.SyntaxKind.PropertyAssignment
+    && options.attr.indexOf(nameOf((node as ts.PropertyAssignment).name)) > -1) {
+    value = (node as ts.PropertyAssignment).initializer;
+  }
+  if (value) {
+    scopeClassEdit(
+      value, file, options.className, edits,
+    );
+    // Внутри значения класса другого атрибута класса нет — обход дальше не идёт.
+    return;
+  }
+  ts.forEachChild(node, (child) => {
+    visitScopeClass(
+      child, file, options, edits,
+    );
+  });
+}
+
+/** Литерал — вставка в начало (если класса там ещё нет); выражение — обёртка. */
+function scopeClassEdit(
+  value: ts.Node, file: ts.SourceFile, className: string, edits: SourceEdit[],
+): void {
+  const start = value.getStart(file);
+  const kind = value.kind;
+  if (kind === ts.SyntaxKind.StringLiteral || kind === ts.SyntaxKind.NoSubstitutionTemplateLiteral
+    || kind === ts.SyntaxKind.TemplateExpression) {
+    const text = kind === ts.SyntaxKind.TemplateExpression
+      ? (value as ts.TemplateExpression).head.text : (value as ts.StringLiteralLike).text;
+    (text === className || text.startsWith(className + ' ')) || edits.push([
+      start + 1,
+      start + 1,
+      className + ' ',
+    ]);
+    return;
+  }
+  // Уже обёрнуто прошлым проходом — не трогаем.
+  isWrapped(file.text.slice(start, value.end), className) || edits.push([
+    start,
+    value.end,
+    wrapExpression(file.text.slice(start, value.end), className),
+  ]);
 }

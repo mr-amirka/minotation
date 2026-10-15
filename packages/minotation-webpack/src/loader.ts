@@ -8,18 +8,27 @@
  */
 import type { LoaderDefinitionFunction } from 'webpack';
 import { getState } from './state';
+import type { MnPluginHandle } from './state';
 
 /**
  * Webpack-лоадер Minimalist Notation: исходник уходит каждому плагину сборки,
- * чей отбор файлов его принимает; сам модуль возвращается без изменений.
+ * чей отбор файлов его принимает. Модуль возвращается без изменений — кроме файлов
+ * изолированной области пакета: в их разметку дописывается класс области (D-075, D-076).
  * Набор токенов файла ЗАМЕНЯЕТСЯ целиком — токен, убранный при правке, из CSS
  * уходит.
  */
 const loader: LoaderDefinitionFunction = function (source) {
+  let code = source as string;
+  let scoped: ReturnType<MnPluginHandle['rewrite']>;
   for (const plugin of getState().plugins.values()) {
-    plugin.files.accepts(this.resourcePath) && plugin.build.add(this.resourcePath, source as string);
+    if (!plugin.files.accepts(this.resourcePath)) continue;
+    plugin.build.add(this.resourcePath, code);
+    scoped = plugin.rewrite(this.resourcePath, code);
+    if (!scoped) continue;
+    for (const message of scoped.warnings) this.emitWarning(new Error(message));
+    code = scoped.code === undefined ? code : scoped.code;
   }
-  return source;
+  return code;
 };
 
 export default loader;

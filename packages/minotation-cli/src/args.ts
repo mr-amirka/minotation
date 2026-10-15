@@ -18,6 +18,16 @@
  * бы. Сами умолчания подставляет {@link mergeSettings}.
  */
 export interface CliArgs {
+  /** Изоляция областей пакетов: `none`, `class`, `where` (D-075). */
+  isolateMode?: 'none' | 'class' | 'where';
+  /** Класс задан из JS в файле изолированной области: `warn`, `silent`, `strict` (D-076). */
+  unreachableClassMode?: 'warn' | 'silent' | 'strict';
+  /** Каталог для исходников с классом области (D-079). */
+  isolateOut?: string;
+  /** Шаблон неизменённых файлов для копирования в `isolateOut` (glob или путь, D-081). */
+  isolateCopy?: string;
+  /** Не копировать неизменённые файлы в `isolateOut`. */
+  noIsolateCopy?: boolean;
   /** Что сканировать: путь к файлу или директории. */
   input?: string;
   /** Куда писать CSS. */
@@ -110,6 +120,7 @@ const FLAGS: Record<string, keyof CliArgs> = {
   '--skip-partials': 'skipPartials',
   '--no-manifest': 'noManifest',
   '--no-metrics': 'noMetrics',
+  '--no-isolate-copy': 'noIsolateCopy',
   '-h': 'help',
   '--help': 'help',
   '-v': 'version',
@@ -127,6 +138,10 @@ const OPTIONS: Record<string, keyof CliArgs> = {
   '-m': 'metrics',
   '--metrics': 'metrics',
   '--warning-mode': 'warningMode',
+  '--isolate-mode': 'isolateMode',
+  '--unreachable-class-mode': 'unreachableClassMode',
+  '--isolate-out': 'isolateOut',
+  '--isolate-copy': 'isolateCopy',
   '--specificity-mode': 'specificityMode',
   '--important-mode': 'importantMode',
   '--child-selector-mode': 'childSelectorMode',
@@ -182,6 +197,11 @@ export function parseArgs(argv: string[]): CliArgs {
     positional++ && raise('Path given twice: "' + args.input + '" and "' + arg + '"');
     args.input = arg;
   }
+  args.isolateMode === undefined || args.isolateMode === 'none' || args.isolateMode === 'class'
+    || args.isolateMode === 'where'
+    || raise('Option "--isolate-mode" expects none, class or where, got "' + args.isolateMode + '"');
+  args.unreachableClassMode === undefined || RAISE_MODES[args.unreachableClassMode]
+    || raise('Option "--unreachable-class-mode" expects warn, silent or strict, got "' + args.unreachableClassMode + '"');
   args.warningMode === undefined || WARNING_MODES[args.warningMode]
     || raise('Option "--warning-mode" expects log, silent or error, got "' + args.warningMode + '"');
   args.specificityMode === undefined || RAISE_MODES[args.specificityMode]
@@ -287,6 +307,16 @@ Options:
       --skip-partials    skip partial files whose name starts with _
       --no-manifest      do not write mn-manifest.json next to the CSS
       --no-metrics       do not write token usage statistics
+      --isolate-mode <m> isolate package scopes: none (default), class (.p-4._l),
+                         where (.p-4:where(._l)) — the scope class goes into their markup
+      --isolate-out <dir>
+                         write the sources with the scope class there (the input tree is
+                         mirrored; originals are not touched)
+      --isolate-copy <glob>
+                         copy only matching unmodified files to --isolate-out (default: all)
+      --no-isolate-copy  copy only modified files to --isolate-out
+      --unreachable-class-mode <m>
+                         class set from JS in an isolated file: warn (default), silent, strict
   -m, --metrics <file>   where to write token usage statistics
                          (default mn-metrics.json next to the CSS)
       --include <regexp> which files to scan

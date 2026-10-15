@@ -25,6 +25,12 @@ import {
 import type {
   MnGulpOptions,
 } from '../src/index';
+import {
+  scopeClassName,
+} from 'minotation-build';
+import {
+  presetTw4,
+} from 'minotation';
 
 let dir: string;
 /**
@@ -364,5 +370,25 @@ describe('mnGulp — проверка опций (D-038)', () => {
       }, 
     } as never))
       .toThrow('[minotation] mnGulp: unknown option "entry.admin.incude". Did you mean "entry.admin.include"?');
+  });
+});
+
+describe('изоляция областей пакетов (D-075, D-076)', () => {
+  test('файл пакета с чужим семейством уходит дальше по пайпу с классом области', async () => {
+    write('package.json', JSON.stringify({
+      name: '@acme/ui',
+      minotation: {
+        requires: ['presetTw4'],
+        notationMode: 'tw4-compatible',
+      },
+    }));
+    write('card.html', '<div class="p-4"></div>');
+    const cls = scopeClassName('presetTw4');
+    const files = await run('*.html', {
+      scopePresets: [presetTw4],
+      isolateMode: 'class',
+    });
+    expect(files['card.html']).toBe('<div class="' + cls + ' p-4"></div>');
+    expect(files['mn.css']).toContain('.p-4.' + cls + '{');
   });
 });

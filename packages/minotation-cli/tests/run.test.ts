@@ -17,13 +17,22 @@ import {
   parseArgs,
 } from '../src/args';
 import {
-  CONFIG_FILE_NAMES,
+  CONFIG_FILE_NAMES, scopeClassName,
 } from 'minotation-build';
+import {
+  presetTw4,
+} from 'minotation';
+import type {
+  MnPreset,
+} from 'minotation';
+import type {
+  CompileResult,
+} from '../src/compile';
 import {
   build, loadConfig, mergeSettings, startWatch, DEFAULT_CONFIG,
 } from '../src/run';
 import type {
-  Reporter,
+  Reporter, RunSettings,
 } from '../src/run';
 
 let dir: string;
@@ -577,4 +586,163 @@ describe('startWatch', () => {
       }
     }, WATCH_TIMEOUT,
   );
+});
+
+describe('изоляция: --isolate-out, --isolate-copy (D-079, D-081)', () => {
+  function project(): string {
+    write('app/App.html', '<div class="p10"></div>');
+    write('ui/package.json', JSON.stringify({
+      name: '@acme/ui',
+      minotation: {
+        requires: ['presetTw4'],
+        notationMode: 'tw4-compatible',
+      },
+    }));
+    write('ui/Button.tsx', 'export const B = () => <b className="p-4" />;\n');
+    write('ui/readme.md', '# ui');
+    return join(dir, 'isolated');
+  }
+
+  function isolate(extra: Partial<RunSettings>): CompileResult {
+    return build({
+      input: dir,
+      output: join(
+        dir, 'dist', 'app.css',
+      ),
+      attrs: 'class, className:class',
+      scopePresets: [presetTw4 as MnPreset],
+      isolateMode: 'class',
+      isolateOut: join(dir, 'isolated'),
+      ...extra,
+    }, report);
+  }
+
+  test('файлы пакета — с классом области, остальное копируется, оригиналы не тронуты', () => {
+    const out = project();
+    const cls = scopeClassName('presetTw4');
+    isolate({});
+    expect(readFileSync(join(
+      out, 'ui', 'Button.tsx',
+    ), 'utf8')).toContain('className="' + cls + ' p-4"');
+    expect(readFileSync(join(
+      out, 'app', 'App.html',
+    ), 'utf8')).toBe('<div class="p10"></div>');
+    expect(readFileSync(join(
+      out, 'ui', 'readme.md',
+    ), 'utf8')).toBe('# ui');
+    expect(readFileSync(join(
+      dir, 'ui', 'Button.tsx',
+    ), 'utf8')).toContain('className="p-4"');
+    expect(readFileSync(join(
+      dir, 'dist', 'app.css',
+    ), 'utf8')).toContain('.p-4.' + cls + '{');
+    expect(logs.some((m) => m.includes('Isolated sources: 1 rewritten'))).toBe(true);
+  });
+
+  test('--no-isolate-copy — только изменённые; шаблон — по шаблону', () => {
+    const out = project();
+    isolate({
+      isolateCopy: false,
+    });
+    expect(existsSync(join(
+      out, 'ui', 'Button.tsx',
+    ))).toBe(true);
+    expect(existsSync(join(
+      out, 'app', 'App.html',
+    ))).toBe(false);
+    rmSync(out, {
+      recursive: true,
+    });
+    isolate({
+      isolateCopy: ['**/*.html', /readme/],
+    });
+    expect(existsSync(join(
+      out, 'app', 'App.html',
+    ))).toBe(true);
+    expect(existsSync(join(
+      out, 'ui', 'readme.md',
+    ))).toBe(true);
+    expect(existsSync(join(
+      out, 'ui', 'package.json',
+    ))).toBe(false);
+  });
+
+  test('isolateCopy — путь; вход — один файл; неверное значение и isolateOut без isolateMode — ошибки', () => {
+    const out = project();
+    isolate({
+      isolateCopy: 'ui/readme.md',
+    });
+    expect(existsSync(join(
+      out, 'ui', 'readme.md',
+    ))).toBe(true);
+    expect(existsSync(join(
+      out, 'app', 'App.html',
+    ))).toBe(false);
+    const single = join(dir, 'single');
+    build({
+      input: join(
+        dir, 'ui', 'Button.tsx',
+      ),
+      output: join(
+        dir, 'dist', 's.css',
+      ),
+      attrs: 'class, className:class',
+      scopePresets: [presetTw4 as MnPreset],
+      isolateMode: 'class',
+      isolateOut: single,
+      isolateCopy: false,
+    }, report);
+    expect(readFileSync(join(single, 'Button.tsx'), 'utf8')).toContain(scopeClassName('presetTw4') + ' p-4');
+    expect(() => isolate({
+      isolateCopy: 5 as never,
+    })).toThrow('option "isolateCopy" expects true, false, a path or glob, a RegExp, a function or an array of them');
+    expect(() => build({
+      input: dir,
+      output: join(
+        dir, 'dist', 'x.css',
+      ),
+      isolateOut: single,
+    }, report)).toThrow('"isolateOut" needs "isolateMode"');
+  });
+
+  test('повторный запуск не копирует каталог вывода внутрь себя', () => {
+    const out = project();
+    isolate({});
+    isolate({});
+    expect(existsSync(join(out, 'isolated'))).toBe(false);
+  });
+
+  test('класс из JS — предупреждение; isolateOut без isolateMode — ошибка', () => {
+    project();
+    write('ui/Toggle.ts', 'el.classList.add(\'p-4\');\nexport const t = <b className="p-4" />;\n');
+    isolate({});
+    expect(errors.some((m) => m.includes('ui/Toggle.ts:1: class set from JS'))).toBe(true);
+    expect(() => isolate({
+      isolateMode: 'none',
+    })).toThrow('"isolateOut" needs "isolateMode"');
+  });
+
+  test('флаги CLI', () => {
+    const settings = mergeSettings(parseArgs([
+      '--isolate-mode',
+      'where',
+      '--isolate-out',
+      './x',
+      '--isolate-copy',
+      '**/*.html',
+      '--unreachable-class-mode',
+      'strict',
+    ]), {});
+    expect(settings).toMatchObject({
+      isolateMode: 'where',
+      isolateOut: './x',
+      isolateCopy: '**/*.html',
+      unreachableClassMode: 'strict',
+    });
+    expect(mergeSettings(parseArgs(['--no-isolate-copy']), {
+      isolateCopy: true,
+    }).isolateCopy).toBe(false);
+    expect(() => parseArgs(['--isolate-mode', 'x'])).toThrow('Option "--isolate-mode" expects none, class or where, got "x"');
+    expect(() => parseArgs(['--unreachable-class-mode', 'x'])).toThrow('Option "--unreachable-class-mode" expects warn, silent or strict');
+  });
 });

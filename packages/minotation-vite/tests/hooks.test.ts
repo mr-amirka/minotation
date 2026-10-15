@@ -8,6 +8,8 @@ import { join } from 'path';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { mnVite, type MnViteOptions } from '../src/index';
+import { scopeClassName } from 'minotation-build';
+import { presetTw4 } from 'minotation';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -395,5 +397,29 @@ describe('minotation-vite — отбор файлов из эталонного 
     const css = cssOf(root, { root: join(root, 'templates') });
     expect(css).toContain('.m10{margin:10px}');
     expect(css).not.toContain('padding:10px');
+  });
+});
+
+describe('изоляция областей пакетов: класс области в разметку (D-075, D-076)', () => {
+  test('файл пакета с чужим семейством переписывается, файл приложения — нет; класс из JS — предупреждение', () => {
+    const root = makeProject({
+      'src/App.tsx': 'export const A = () => <b className="p10" />;\n',
+      'ui/package.json': JSON.stringify({ name: '@acme/ui', minotation: { requires: ['presetTw4'], notationMode: 'tw4-compatible' } }),
+    });
+    const plugin = makePlugin(root, 'build', {
+      attrs: 'class, className:class',
+      scopePresets: [presetTw4],
+      isolateMode: 'class',
+    });
+    const warnings: string[] = [];
+    const ctx = { warn: (message: string) => warnings.push(message) };
+    const cls = scopeClassName('presetTw4');
+    const button = plugin.transform.call(ctx, 'export const B = () => <b className="p-4" />;\nel.classList.add("x");\n', join(root, 'ui', 'Button.tsx'));
+    expect(button.code).toContain('className="' + cls + ' p-4"');
+    expect(warnings[0]).toContain('class set from JS');
+    expect(plugin.transform.call(ctx, 'export const A = () => <b className="p10" />;\n', join(root, 'src', 'App.tsx'))).toBeNull();
+    const css = plugin.load.call({ warn: () => undefined }, plugin.resolveId('virtual:mn.css')).code;
+    expect(css).toContain('.p-4.' + cls + '{');
+    rmSync(root, { recursive: true, force: true });
   });
 });

@@ -9,7 +9,7 @@ import {
   oneOf,
 } from 'minotation';
 import type { MnInstance, MnWarning } from 'minotation';
-import { checkBuildOptions as checkBuildOptionsImpl, createBuildCollector, createFileFilter, metricsFileName, scanRoots, walkFiles, withBuildConfig as withBuildConfigImpl } from 'minotation-build';
+import { checkBuildOptions as checkBuildOptionsImpl, createBuildCollector, createFileFilter, createScopeRewriter, metricsFileName, scanRoots, walkFiles, withBuildConfig as withBuildConfigImpl } from 'minotation-build';
 import type { BuildCollector, FileFilter, MnBuildOptions } from 'minotation-build';
 import { asPreset } from 'minotation-build';
 import type { MnPreset } from 'minotation';
@@ -168,6 +168,7 @@ export function mnVite(code: MnViteOptions = {}): Plugin {
   // Опции из `minotation.config.*` рабочего каталога, поверх — из кода (D-081).
   const options = withBuildConfig(code, 'mnVite', own);
   checkBuildOptions(options, 'mnVite', own);
+  const rewriteScope = createScopeRewriter(options);
   const staticPresets = options.presets || [
     // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
     presetHints,
@@ -318,7 +319,11 @@ export function mnVite(code: MnViteOptions = {}): Plugin {
     transform(source: string, id: string) {
       if (!files.accepts(id)) return null;
       collector().add(id, source);
-      return null;
+      // Файл изолированной области пакета — класс области в его разметку (D-075, D-076).
+      const scoped = rewriteScope(collector(), id, source);
+      if (!scoped) return null;
+      for (const message of scoped.warnings) this.warn(message);
+      return scoped.code === undefined ? null : { code: scoped.code, map: null };
     },
 
     transformIndexHtml: {

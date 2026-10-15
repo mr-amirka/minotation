@@ -12,6 +12,8 @@ import { join, resolve } from 'path';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { MnWebpackPlugin, loader, presetLoader } from '../src/index';
+import { scopeClassName } from 'minotation-build';
+import { presetTw4 } from 'minotation';
 import { getState } from '../src/state';
 
 jest.setTimeout(60_000);
@@ -409,5 +411,30 @@ describe('minotation-webpack — статистика употребления �
     const result = await runBuild(root, new MnWebpackPlugin(), { experiments: { css: true } });
 
     expect(JSON.parse(result.assets['mn-metrics.json']).tokens).toEqual([{ name: 'p10', count: 2 }]);
+  });
+});
+
+describe('minotation-webpack — изоляция областей пакетов (D-075, D-076)', () => {
+  test('токен-лоадер возвращает модуль пакета с классом области; класс из JS — предупреждение', () => {
+    const root = makeProject({
+      'src/main.js': 'export const x = 1;\n',
+      'ui/package.json': JSON.stringify({ name: '@acme/ui', minotation: { requires: ['presetTw4'], notationMode: 'tw4-compatible' } }),
+    });
+    const plugin = new MnWebpackPlugin({
+      attrs: 'class, className:class',
+      scopePresets: [presetTw4],
+      isolateMode: 'class',
+    });
+    plugin.apply(webpack(configOf(root, plugin)) as any);
+    const warnings: string[] = [];
+    const cls = scopeClassName('presetTw4');
+    const code = (loader as any).call({
+      resourcePath: join(root, 'ui', 'Card.tsx'),
+      emitWarning: (error: Error) => warnings.push(error.message),
+    }, 'export const C = <b className="p-4" />;\nel.className = "x";\n');
+    expect(code).toContain('className="' + cls + ' p-4"');
+    expect(warnings.some((message) => message.includes('class set from JS'))).toBe(true);
+    const app = 'export const A = <b className="p10" />;\n';
+    expect((loader as any).call({ resourcePath: join(root, 'src', 'App.tsx'), emitWarning: () => undefined }, app)).toBe(app);
   });
 });

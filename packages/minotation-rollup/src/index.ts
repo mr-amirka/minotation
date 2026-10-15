@@ -12,7 +12,7 @@ import type { MnInstance } from 'minotation';
 import type { MnPreset } from 'minotation';
 import { asPreset } from 'minotation-build';
 import {
-  checkBuildOptions, withBuildConfig, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, scanRoots,
+  checkBuildOptions, withBuildConfig, createBuildCollector, createScopeRewriter, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, scanRoots,
   walkFiles,
 } from 'minotation-build';
 import type { MnBuildOptions } from 'minotation-build';
@@ -106,6 +106,7 @@ export function mnRollup(code: MnRollupOptions = {}): Plugin {
   // Опции из `minotation.config.*` рабочего каталога, поверх — из кода (D-081).
   const options = withBuildConfig(code, 'mnRollup');
   checkBuildOptions(options, 'mnRollup');
+  const rewriteScope = createScopeRewriter(options);
   // Несколько корней скана (монорепо) — база относительных путей `include` — рабочая директория.
   const roots = scanRoots(options.root, process.cwd());
   const root = typeof options.root === 'string' ? options.root : process.cwd();
@@ -180,7 +181,11 @@ export function mnRollup(code: MnRollupOptions = {}): Plugin {
     transform(source: string, id: string) {
       if (!files.accepts(id)) return null;
       collector.add(id, source);
-      return null;
+      // Файл изолированной области пакета — класс области в его разметку (D-075, D-076).
+      const scoped = rewriteScope(collector, id, source);
+      if (!scoped) return null;
+      for (const message of scoped.warnings) this.warn(message);
+      return scoped.code === undefined ? null : { code: scoped.code, map: null };
     },
 
     /**

@@ -17,7 +17,7 @@ import {
 import type { MnInstance } from 'minotation';
 import type { MnPreset } from 'minotation';
 import {
-  checkBuildOptions, withBuildConfig, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, scanRoots,
+  checkBuildOptions, withBuildConfig, createBuildCollector, createScopeRewriter, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName, scanRoots,
   walkFiles,
 } from 'minotation-build';
 import type { MnBuildOptions } from 'minotation-build';
@@ -115,7 +115,9 @@ export class MnWebpackPlugin {
       files: createFileFilter(options, root),
       roots,
       imported: false,
+      rewrite: (id: string, source: string) => rewriteScope(handle.build, id, source),
     };
+    const rewriteScope = createScopeRewriter(options);
     getState().plugins.set(this.id, handle);
 
     compiler.options.module.rules.push({

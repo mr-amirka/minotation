@@ -12,7 +12,8 @@ import {
   tmpdir,
 } from 'node:os';
 import {
-  checkBuildOptions, clearPackageDirectiveCache, createBuildCollector, createTokenCollector,
+  checkBuildOptions, clearPackageDirectiveCache, createBuildCollector, createScopeRewriter, createTokenCollector,
+  scopeClassName,
 } from '../src/index';
 import type {
   MnPreset,
@@ -252,5 +253,137 @@ describe('scopePresets — опция плагина', () => {
       dir, 'ui', 'Button.html',
     ), '<button class="flex">');
     expect(build.outputs()[0].css).toContain('.flex{display:flex}');
+  });
+});
+
+describe('изоляция областей пакетов (D-075…D-077)', () => {
+  test('класс области: от одного символа, стабилен, при совпадении — длиннее', () => {
+    const first = scopeClassName('family-a');
+    expect(first).toMatch(/^_[0-9a-z]$/);
+    expect(scopeClassName('family-a')).toBe(first);
+    // Семейство с тем же первым символом хеша получает имя длиннее.
+    const twin = Array.from({
+      length: 2000,
+    }, (_, i) => 'twin-' + i).find((name) => scopeClassName(name).slice(0, 2) === first && scopeClassName(name) !== first);
+    expect(twin && scopeClassName(twin).length).toBeGreaterThan(2);
+  });
+
+  test.each([['class', (cls: string) => '.p-4.' + cls + '{padding:calc(var(--spacing) * 4)}'], ['where', (cls: string) => '.p-4:where(.' + cls + '){padding:calc(var(--spacing) * 4)}']])("isolateMode '%s': правила пакета привязаны к классу области, приложения — нет", (mode, rule) => {
+    const out = createTokenCollector({
+      attrs: 'class',
+      presets: APP,
+      scopePresets: [presetTw4],
+      isolateMode: mode as 'class',
+    });
+    out.add(join(
+      dir, 'app', 'App.html',
+    ), '<div class="p10">');
+    out.add(join(
+      dir, 'ui', 'Button.html',
+    ), '<button class="p-4">');
+    const cls = out.scopeClassOf(join(
+      dir, 'ui', 'Button.html',
+    )) as string;
+    expect(cls).toBe(scopeClassName('presetTw4'));
+    expect(out.scopeClassOf(join(
+      dir, 'app', 'App.html',
+    ))).toBeUndefined();
+    const css = out.css();
+    expect(css).toContain('.p10{padding:10px}');
+    expect(css).toContain(rule(cls));
+  });
+
+  test("isolateMode 'none' (по умолчанию) — класса нет", () => {
+    const out = createTokenCollector({
+      attrs: 'class',
+      presets: APP,
+      scopePresets: [presetTw4],
+    });
+    out.add(join(
+      dir, 'ui', 'Button.html',
+    ), '<button class="p-4">');
+    expect(out.scopeClassOf(join(
+      dir, 'ui', 'Button.html',
+    ))).toBeUndefined();
+    expect(out.css()).toContain('.p-4{');
+  });
+
+  test('записи entry — тот же класс; isolateClass плагину не задают', () => {
+    const build = createBuildCollector({
+      attrs: 'class',
+      presets: APP,
+      scopePresets: [presetTw4],
+      isolateMode: 'class',
+    }, dir);
+    const file = join(
+      dir, 'ui', 'Button.html',
+    );
+    build.add(file, '<button class="p-4">');
+    expect(build.scopeClassOf(file)).toBe(scopeClassName('presetTw4'));
+    expect(build.scopeClassOf(join(dir, 'nope.html'))).toBeUndefined();
+    expect(() => checkBuildOptions({
+      isolateClass: '_x',
+    } as never, 'mnVite')).toThrow('unknown option "isolateClass"');
+  });
+});
+
+describe('createScopeRewriter (D-075, D-076)', () => {
+  function collector() {
+    const out = createTokenCollector({
+      attrs: 'class',
+      presets: APP,
+      scopePresets: [presetTw4],
+      isolateMode: 'class',
+    });
+    return out;
+  }
+  const ui = () => join(
+    dir, 'ui', 'Card.html',
+  );
+
+  test('файл пакета — код с классом; файл приложения — undefined; менять нечего — без кода', () => {
+    const out = collector();
+    const rewrite = createScopeRewriter({});
+    out.add(ui(), '<b class="p-4">');
+    out.add(join(
+      dir, 'app', 'App.html',
+    ), '<b class="p10">');
+    const cls = scopeClassName('presetTw4');
+    expect(rewrite(
+      out, ui(), '<b class="p-4">',
+    )).toEqual({
+      code: '<b class="' + cls + ' p-4">',
+      warnings: [],
+    });
+    expect(rewrite(
+      out, join(
+        dir, 'app', 'App.html',
+      ), '<b class="p10">',
+    )).toBeUndefined();
+    expect(rewrite(
+      out, ui(), '<b id="x">',
+    )).toEqual({
+      code: undefined,
+      warnings: [],
+    });
+  });
+
+  test("unreachableClassMode: 'warn' — с файлом и строкой; 'silent' — молча; 'strict' — ошибка", () => {
+    const out = collector();
+    out.add(ui(), '<b class="p-4">');
+    const source = '<b class="p-4">\n<script>el.classList.add("x")</script>';
+    expect(createScopeRewriter({})(
+      out, ui(), source,
+    )?.warnings[0]).toMatch(/ui\/Card\.html:2: class set from JS/);
+    expect(createScopeRewriter({
+      unreachableClassMode: 'silent',
+    })(
+      out, ui(), source,
+    )?.warnings).toEqual([]);
+    expect(() => createScopeRewriter({
+      unreachableClassMode: 'strict',
+    })(
+      out, ui(), source,
+    )).toThrow('class set from JS');
   });
 });

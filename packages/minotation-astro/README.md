@@ -114,6 +114,8 @@ const thClass = 'py12 px14 bb1 bsS';
 | `presets` | стандартный набор | статические пресеты; в стандартном наборе первым — `presetHints` (подсказки о `t0`, `flex`, `text-center`, D-024); точечно — `presetHints({ excludeGroups, excludeHandlers })` в своём списке (D-042); свой список заменяет набор целиком |
 | `scopePresets` | `[]` | пресеты, которые могут потребовать пакеты (`requires`); пакет с чужим семейством собирается в своей области ([minotation-build](../minotation-build/README.md#области-семейств-пресетов-d-076-d-078), D-078) |
 | `scopes` | `[]` | правила для пакетов и путей без своей декларации — `{ match: '@acme/ui' \| 'src/**' \| /re/, requires, notationMode }`; своя декларация пакета важнее, аварийно — `override: true` (D-082) |
+| `isolateMode` | `'none'` | изоляция областей пакетов: `'class'` — `.p-4._4`, `'where'` — `.p-4:where(._4)`; класс области сборка пишет в разметку файлов пакета ([minotation-build](../minotation-build/README.md#изоляция-областей-пакетов--isolatemode-d-075d-077)) |
+| `unreachableClassMode` | `'warn'` | класс задан из JS в файле изолированной области — элемент класса области не получит |
 
 Опции можно задать и в общем файле `minotation.config.js` рабочего каталога — он один для всех плагинов и CLI, опции из кода сливаются поверх ([minotation-build](../minotation-build/README.md#файл-настроек-minotationconfig-d-081)).
 | `presetExtensions` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты (`import './app.mn'`) |

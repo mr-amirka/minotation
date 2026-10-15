@@ -31,7 +31,7 @@ import type {
 } from 'node:stream';
 import Vinyl from 'vinyl';
 import {
-  checkBuildOptions, withBuildConfig, createBuildCollector, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName,
+  checkBuildOptions, withBuildConfig, createBuildCollector, createScopeRewriter, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName,
 } from 'minotation-build';
 import type {
   MnBuildOptions,
@@ -89,6 +89,7 @@ export function mnGulp(code: MnGulpOptions = {}): Transform {
   // Опции из `minotation.config.*` рабочего каталога, поверх — из кода (D-081).
   const options = withBuildConfig(code, 'mnGulp');
   checkBuildOptions(options, 'mnGulp');
+  const rewriteScope = createScopeRewriter(options);
   const manifest = manifestFileName(options.manifest);
   // Пустое расширение пропускает любой файл: что сканировать, выбрал `gulp.src`.
   const files = createFileFilter({
@@ -121,7 +122,19 @@ export function mnGulp(code: MnGulpOptions = {}): Transform {
         seenBase = true;
         base = file.base;
       }
-      collector.add(file.path, (file.contents as Buffer).toString('utf8'));
+      const source = (file.contents as Buffer).toString('utf8');
+      collector.add(file.path, source);
+      // Файл изолированной области пакета — класс области в разметку, дальше по пайпу (D-075, D-076).
+      const scoped = rewriteScope(
+        collector, file.path, source,
+      );
+      if (scoped) {
+        // У gulp нет своего канала предупреждений — `console.warn` и есть штатный вывод задачи.
+        for (const message of scoped.warnings) {
+          console.warn('[minotation] ' + message);
+        }
+        scoped.code === undefined || (file.contents = Buffer.from(scoped.code, 'utf8'));
+      }
       done(null, file);
     },
 

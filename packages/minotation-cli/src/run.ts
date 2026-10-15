@@ -7,16 +7,17 @@
  * @module run
  */
 import {
-  mkdirSync, realpathSync, watch, writeFileSync,
+  copyFileSync, mkdirSync, realpathSync, statSync, watch, writeFileSync,
 } from 'node:fs';
 import {
-  dirname, join, relative, resolve,
+  dirname, join, relative, resolve, sep,
 } from 'node:path';
 import {
   checkOptions,
 } from 'minotation';
 import {
-  BUILD_OPTIONS_SCHEMA, CONFIG_FILE_NAMES, formatFileName, loadConfigFile, manifestFileName, manifestOf, metricsFileName,
+  BUILD_OPTIONS_SCHEMA, CONFIG_FILE_NAMES, createMatcher, formatFileName, globToRegExp, loadConfigFile, manifestFileName,
+  manifestOf, metricsFileName, walkFiles,
 } from 'minotation-build';
 import type {
   CliArgs,
@@ -120,6 +121,11 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
     mediaNesting: args.mediaNesting || config.mediaNesting,
     notationConflictMode: args.notationConflictMode || config.notationConflictMode,
     skipPartials: args.skipPartials || config.skipPartials,
+    isolateMode: args.isolateMode || config.isolateMode,
+    unreachableClassMode: args.unreachableClassMode || config.unreachableClassMode,
+    isolateOut: args.isolateOut || config.isolateOut,
+    // `--no-isolate-copy` — только изменённые; `--isolate-copy <glob>` — по шаблону; иначе — конфиг.
+    isolateCopy: args.noIsolateCopy ? false : args.isolateCopy !== undefined ? args.isolateCopy : config.isolateCopy,
     // `--no-manifest` выключает; без него решает конфиг (по умолчанию — писать).
     manifest: args.noManifest ? false : config.manifest,
     // `--no-syntax` выключает разбор; без него решает конфиг, а его умолчание
@@ -135,6 +141,57 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
     // Файлы настроек — не разметка: и явный `--config`, и любой `minotation.config.*` рабочего каталога.
     ignore: (config.ignore || []).concat(args.config ? [resolve(args.config)] : [], CONFIG_FILE_NAMES.map((name) => resolve(name))),
   };
+}
+
+/**
+ * Исходники с классом области — в `isolateOut` (D-079): дерево `input` повторяется, оригиналы не
+ * трогаются. Изменённые файлы пишутся всегда, неизменённые — по `isolateCopy` (D-081).
+ */
+function writeIsolated(
+  settings: RunSettings, rewritten: Record<string, string>, report: Reporter,
+): void {
+  const input = resolve(settings.input);
+  const root = statSync(input).isDirectory() ? input : dirname(input);
+  const out = resolve(settings.isolateOut as string);
+  const copy = copyMatcher(settings.isolateCopy, root);
+  let written = 0;
+  let copied = 0;
+  let target: string;
+  let code: string | undefined;
+  for (const file of walkFiles(root, [''])) {
+    code = rewritten[file];
+    // Каталог вывода внутри `input` — его не обходим, иначе следующий запуск копировал бы копию.
+    if (file.startsWith(out + sep) || code === undefined && !copy(file)) {
+      continue;
+    }
+    target = join(out, relative(root, file));
+    mkdirSync(dirname(target), {
+      recursive: true,
+    });
+    code === undefined ? copyFileSync(file, target) : writeFileSync(
+      target, code, 'utf8',
+    );
+    code === undefined ? copied++ : written++;
+  }
+  report.log('Isolated sources: ' + written + ' rewritten, ' + copied + ' copied → ' + out);
+}
+
+/** `isolateCopy` → проверка файла: все, ни одного, по шаблону (glob, путь, RegExp, функция, массив). */
+function copyMatcher(value: RunSettings['isolateCopy'], root: string): (path: string) => boolean {
+  if (value === undefined || value === true) {
+    return () => true;
+  }
+  if (value === false) {
+    return () => false;
+  }
+  const tests = (Array.isArray(value) ? value : [value]).map((item) => {
+    if (typeof item === 'string' && /[*?{]/.test(item)) {
+      const pattern = globToRegExp(item);
+      return (path: string) => pattern.test(relative(root, path).split(sep).join('/'));
+    }
+    return createMatcher(item, root) as (path: string) => boolean;
+  });
+  return (path) => tests.some((test) => test(path));
 }
 
 /** Компилирует и пишет результат; возвращает итог для отчёта. */
@@ -167,6 +224,9 @@ export function build(settings: RunSettings, report: Reporter): CompileResult {
     // `message` у предупреждения обязателен — запасного поля здесь не нужно.
     report.error('Warning: ' + result.warnings[i].message);
   }
+  settings.isolateOut && writeIsolated(
+    settings, result.rewritten, report,
+  );
   report.log(result.files + ' files, ' + result.tokens + ' tokens → '
     + (Object.values(files).join(', ') || 'no CSS'));
   const manifest = manifestFileName(settings.manifest);

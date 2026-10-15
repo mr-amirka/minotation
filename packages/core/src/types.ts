@@ -190,4 +190,9 @@ export interface MnInstance {
   ) => MnInstance;
   propertiesStringify: IStringifyCss;
   media: Record<string, MnMediaEntry>;
+  /**
+   * Шкала контейнеров (D-086): имя → ширина (`'28rem'`, число — px). Её заполняют пресеты; контейнерный
+   * вариант `@md:` в режиме `'tw4-compatible'` берёт ширину отсюда, а без записи — у точки медиа `md`.
+   */
+  containers: Record<string, string | number>;
 }

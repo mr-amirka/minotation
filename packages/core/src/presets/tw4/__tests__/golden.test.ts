@@ -657,6 +657,15 @@ export const GOLDEN_EXISTING = [
   '-mask-conic-90',
   'mask-conic-from-red-500',
   'mask-conic-to-50%',
+  // Контейнеры (D-086): маркер; варианты — в tw4.test.ts.
+  '@container',
+  '@container/main',
+  '@container-normal',
+  '@container-normal/main',
+  '@container-size',
+  '@container/[x]',
+  '@container-[size]',
+  '@container-(--x)',
   // Произвольные значения: пробелы вокруг операторов в математике, как у Tailwind.
   'w-[calc(100%-2rem)]',
   'mt-[calc(1px+2px)]',

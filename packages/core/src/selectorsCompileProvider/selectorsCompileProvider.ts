@@ -927,8 +927,9 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   }
 
   /**
-   * Контейнерный вариант Tailwind (D-057): `@min-[…]`, `@max-[…]`, `@{точка}` (ширина точки
-   * медиа, `width >= …`), `/имя` — именованный контейнер.
+   * Контейнерный вариант Tailwind (D-057, D-086): `@min-[…]`, `@max-[…]`, `@{размер}` и `@min-{размер}`
+   * (`width >= …`), `@max-{размер}` (`width < …`), `/имя` — именованный контейнер. Ширина размера — из шкалы
+   * контейнеров `mn.containers` (`presetTw4`: `@md` — 28rem, как у Tailwind), без записи — у точки медиа.
    *
    * @returns распознан ли вариант
    */
@@ -937,18 +938,27 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     const base = slash < 0 ? prefix.slice(1) : prefix.slice(1, slash);
     const named = slash < 0 ? '' : prefix.slice(slash + 1) + ' ';
     const bracket = base.indexOf('-[');
+    const compare = base.slice(0, 4) === 'min-' || base.slice(0, 4) === 'max-' ? base.slice(0, 3) : '';
     const kind = bracket > 0 && base[base.length - 1] === ']' ? base.slice(0, bracket) : '';
-    const entry = kind ? undefined : ((instance as any).media || {})[base];
+    const size = kind ? '' : compare ? base.slice(4) : base;
+    const width = kind ? undefined : containerWidth(size);
     let condition: string;
     if (kind === 'min' || kind === 'max') {
       condition = '(width ' + (kind === 'min' ? '>=' : '<') + ' ' + arbitrary(base.slice(bracket + 2, -1)) + ')';
-    } else if (entry && entry.width !== undefined) {
-      condition = '(width >= ' + pointCss(entry.width) + ')';
+    } else if (width !== undefined) {
+      condition = '(width ' + (compare === 'max' ? '<' : '>=') + ' ' + pointCss(width) + ')';
     } else {
       return false;
     }
     medias.push(registerAtRule('container', named + condition));
     return true;
+  }
+
+  /** Ширина размера контейнера: шкала `mn.containers`, иначе точка медиа (`width`). */
+  function containerWidth(size: string): string | number | undefined {
+    const containers = (instance as any).containers || {};
+    const entry = ((instance as any).media || {})[size];
+    return containers[size] !== undefined ? containers[size] : entry ? entry.width : undefined;
   }
 
   /** Условие `@supports`/`@container` как имя медиа: ядро выведет вложенное at-правило. */

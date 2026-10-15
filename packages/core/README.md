@@ -262,6 +262,7 @@ mn.variantPrefixedSynonyms({ group: '.group', peer: '.peer~' });  // метки:
 | `supports-[display:grid]:` | `@supports (display:grid){…}` |
 | `[@media(any-hover:hover)]:` / `[@supports(…)]:` / `[@container_(…)]:` | соответствующее at-правило |
 | `@min-[400px]:` / `@max-[400px]:` / `@d:` / `@d/sidebar:` | `@container (width >= 400px)` / `(width < 400px)` / `(width >= 992px)` / контейнер `sidebar` |
+| `@md:` / `@min-md:` / `@max-md:` | размер — из шкалы контейнеров `mn.containers` (D-086; `presetTw4`: `@md` — 28rem, как у Tailwind), без записи — ширина точки медиа; `@max-` — `(width < …)` |
 
 Другие at-правила (`[@layer …]:`, `[@starting-style]:`) — предупреждение (D-057).
 Стили детей (`*:`, `**:`, `[&>li]:`, `[&_li]:`) проходят через `childSelectorMode`, как в других режимах.
@@ -367,12 +368,13 @@ mn.setPresets([presetMedias, presetTw4]);
 | `border-t-4` / `rounded-t-lg` | `border-style:solid;border-top-width:4px` / оба верхних угла `var(--radius-lg)` |
 | `md:flex` / `max-md:hidden` | `@media (width >= 48rem)` / `(width < 48rem)` |
 | `hover:` `first:` `odd:` `open:` `before:` `group-hover:` `peer-invalid:` | варианты |
+| `@container` / `@md:flex` / `@max-md:flex` | `container-type:inline-size` / `@container (width >= 28rem)` / `(width < 28rem)` (D-086) |
+| `shadow-lg/50` / `rotate-45` / `bg-linear-to-r from-red-500` / `blur-sm` / `animate-spin` | тени, трансформации, градиенты, фильтры, анимации (с `@keyframes` по требованию) |
 
-Подмножество: отступы (`m*`, `p*`, `gap*`, `space-x/y`), размеры (`w`, `h`, `size`, `min-*`, `max-*`),
-`display`, позиционирование (`inset`, `top`…, `z`, `order`), flex/grid, типографика (`text-*`,
-`font-*`, `leading`, `tracking`, регистр, `truncate`), цвета `text-`/`bg-`/`border-` с `/N`, рамки,
-скругления, брейкпоинты `sm`…`2xl`, варианты-синонимы и метки `group`/`peer`. Тени, трансформации,
-переходы, анимации, фильтры — пока нет.
+**Все утилиты Tailwind 4.3.3**: сверка по всему списку классов Tailwind (23 286) — совпадают все, объявление
+в объявление, вместе с `@supports` и `@media` (`node src/presets/tw4/scripts/tw4-conformance.mjs` после
+`pnpm build`); произвольные значения, модификаторы и края — тест `src/presets/tw4/__tests__/golden.test.ts`
+против настоящего Tailwind. Статические утилиты и тема — генерируются из `tailwindcss@4.3.3`.
 
 **Совпадение с Tailwind 4** (D-069):
 - в `:root` — только использованные переменные темы: хендлер вернул `var(--color-blue-500)` —

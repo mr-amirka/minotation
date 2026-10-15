@@ -93,6 +93,35 @@ describe('кадры анимаций темы', () => {
   });
 });
 
+describe('контейнерные запросы (D-086) — как у Tailwind 4.3.3', () => {
+  test.each([
+    ['@md:flex', '@container (width >= 28rem){.\\@md\\:flex{display:flex}}'],
+    ['@min-md:flex', '@container (width >= 28rem){.\\@min-md\\:flex{display:flex}}'],
+    ['@max-md:flex', '@container (width < 28rem){.\\@max-md\\:flex{display:flex}}'],
+    ['@3xs:flex', '@container (width >= 16rem){.\\@3xs\\:flex{display:flex}}'],
+    ['@sm/main:flex', '@container main (width >= 24rem){.\\@sm\\/main\\:flex{display:flex}}'],
+    ['@max-sm/main:flex', '@container main (width < 24rem){.\\@max-sm\\/main\\:flex{display:flex}}'],
+    ['@min-[400px]/main:flex', '@container main (width >= 400px){.\\@min-\\[400px\\]\\/main\\:flex{display:flex}}'],
+  ])('%s — шкала контейнеров, не брейкпоинты', (token, css) => {
+    expect(compile(token).css).toBe(css);
+  });
+
+  test('брейкпоинт окна — по-прежнему своя шкала: md: — 48rem', () => {
+    expect(compile('md:flex').css).toBe('@media (width >= 48rem){.md\\:flex{display:flex}}');
+  });
+
+  test.each([
+    '@foo',
+    '@md',
+    '@container-x',
+    '-@container',
+  ])('%s — не контейнер: сообщение вместо тишины', (token) => {
+    expect(compile(token).warnings).toEqual(['parse-error: "' + token + '": in tw4-compatible mode a class starting with "@" '
+      + 'is a container — @container, @container/name, @container-normal, @container-size; a container variant needs ":" '
+      + '(@md:flex). The class gives no CSS.']);
+  });
+});
+
 describe('отступы', () => {
   test.each([
     ['mt-4', '.mt-4{margin-top:calc(var(--spacing) * 4)}'],

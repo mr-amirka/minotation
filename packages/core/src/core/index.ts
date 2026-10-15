@@ -939,6 +939,8 @@ function minotationProvider(options?: MnOptions) {
   let $$stylesMap: Record<string, MnStyleEntry> = $$data.stylesMap = {};
   let $$assigned: Record<string, Record<string, Record<string, number>>> = $$data.assigned = {};
   let $$media: Record<string, MnMediaEntry> = mn.media = settings.media || {};
+  // Шкала контейнеров (D-086): пресеты заполняют, контейнерные варианты `@md:` берут ширину отсюда.
+  mn.containers = {};
   // Домены имён (D-063): первые строчные буквы → записи `[префикс, функция]`.
   let $$domains: Record<string, MnDomainEntry[]> = mn.domains = {};
   let $$force: number;

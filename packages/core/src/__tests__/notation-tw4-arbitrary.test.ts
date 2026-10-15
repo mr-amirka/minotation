@@ -12,6 +12,9 @@ import type {
 import {
   selectorsCompileProvider,
 } from '../selectorsCompileProvider';
+import type {
+  MnInstance,
+} from '../types';
 
 function compile(tokens: string, options: MnOptions = {}) {
   const warnings: MnWarning[] = [];
@@ -216,6 +219,9 @@ describe('at-правила: @supports, @container (D-057)', () => {
     ['@max-[400px]:cF00', '@container (width < 400px){.\\@max-\\[400px\\]\\:cF00{color:#f00}}'],
     ['@d:cF00', '@container (width >= 992px){.\\@d\\:cF00{color:#f00}}'],
     ['@d/sidebar:cF00', '@container sidebar (width >= 992px){.\\@d\\/sidebar\\:cF00{color:#f00}}'],
+    // Без шкалы контейнеров (D-086) — ширина точки медиа; `@max-` — «меньше», `@min-` — как без него.
+    ['@max-d:cF00', '@container (width < 992px){.\\@max-d\\:cF00{color:#f00}}'],
+    ['@min-d:cF00', '@container (width >= 992px){.\\@min-d\\:cF00{color:#f00}}'],
     ['dark:supports-[display:grid]:cF00', '@media (prefers-color-scheme: dark){@supports (display:grid){'
       + '.dark\\:supports-\\[display\\:grid\\]\\:cF00{color:#f00}}}'],
   ])('%s → %s', (token, css) => {
@@ -226,12 +232,31 @@ describe('at-правила: @supports, @container (D-057)', () => {
     ['[@layer_x]:cF00', 'Variant "[@layer_x]:" is not supported: only @media, @supports and @container exist in the output'],
     ['@zz:cF00', 'Variant "@zz:" is unknown'],
     ['@mouse:cF00', 'Variant "@mouse:" is unknown'],
+    ['@max-zz:cF00', 'Variant "@max-zz:" is unknown'],
   ])('%s — предупреждение', (token, message) => {
     const {
       css, warnings,
     } = compile(token);
     expect(css).toBe('');
     expect(warnings[0].message).toContain(message);
+  });
+
+  test('шкала контейнеров пресета (D-086) важнее точки медиа того же имени', () => {
+    const mn = minotationProvider({
+      notationMode: 'tw4-compatible',
+      warningMode: 'silent',
+    });
+    mn.setPresets([
+      presetStandard,
+      presetMedias,
+      (instance: MnInstance) => {
+        instance.containers.d = '30rem';
+        instance.containers.box = 200;
+      },
+    ]);
+    mn.getCompiler('class')('@d:cF00 @max-box:cF00');
+    mn.compile();
+    expect(mn.styles$.getValue().map((style) => style.content).join('')).toBe('@container (width >= 30rem){.\\@d\\:cF00{color:#f00}}@container (width < 200px){.\\@max-box\\:cF00{color:#f00}}');
   });
 
   test('selectorsCompileProvider отдельно: без mn.media', () => {

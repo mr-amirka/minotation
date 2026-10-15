@@ -15,6 +15,9 @@ import type {
   MnPresetObject,
 } from '../../core/types';
 import {
+  MnParseError,
+} from '../../core/types';
+import {
   mathSpaces, tw,
 } from '../shared/tw';
 import type {
@@ -2319,6 +2322,57 @@ function setupMasks(mn: MnInstance): void {
   );
 }
 
+/** Типы `@container-*`: голое имя — `inline-size`. */
+const CONTAINER_TYPES: Record<string, string> = {
+  '': 'inline-size',
+  normal: 'normal',
+  size: 'size',
+};
+
+/** `@…` без утилиты — сообщение вместо тишины (D-086): в этом режиме `@` начинает только `@container`. */
+function failAtToken(token: string): never {
+  throw new MnParseError('"' + token + '": in tw4-compatible mode a class starting with "@" is a container — '
+    + '@container, @container/name, @container-normal, @container-size; a container variant needs ":" '
+    + '(@md:flex). The class gives no CSS.', {
+    token,
+    handler: '@',
+    arg: token.slice(1),
+  });
+}
+
+/**
+ * Контейнерные запросы (D-086): маркер `@container` (`/имя` — `container-name`), тип `-normal`, `-size`,
+ * `-[…]`; шкала `mn.containers` из темы (`@md:` — `--container-md`, 28rem). Прочее на `@` — сообщение.
+ */
+function setupContainers(mn: MnInstance): void {
+  let name: string;
+  for (name in TW4_THEME) { // eslint-disable-line
+    name.indexOf('--container-') === 0 && (mn.containers[name.slice(12)] = TW4_THEME[name]);
+  }
+  mn(
+    '@container', tw((args, p) => {
+      const label = args.modifier === undefined ? undefined
+        : args.modifier[0] === '[' ? args.modifier.slice(1, -1) : args.modifier;
+      const type = args.negative ? undefined : keywordValue({
+        ...args,
+        modifier: undefined,
+      }, CONTAINER_TYPES);
+      if (type === undefined) {
+        return failAtToken((args.negative ? '-' : '') + '@container' + p.suffix);
+      }
+      return result(label ? {
+        containerType: type,
+        containerName: label,
+      } : {
+        containerType: type,
+      });
+    }), '', 1,
+  );
+  mn(
+    '@', (p) => failAtToken('@' + p.suffix), '', 1,
+  );
+}
+
 function setupVariants(mn: MnInstance): void {
   let name: string;
   mn.media[COLOR_MIX_MEDIA] = {
@@ -2429,6 +2483,7 @@ export default {
     setupMisc(mn);
     setupNestedStatics(mn);
     setupMasks(mn);
+    setupContainers(mn);
     setupVariants(mn);
   },
 } as MnPresetObject;

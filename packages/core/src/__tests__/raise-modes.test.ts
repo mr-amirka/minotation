@@ -15,7 +15,7 @@ import {
   selectorsCompileProvider,
 } from '../selectorsCompileProvider';
 import {
-  childSelectorMessage, importantMessage, maxDepthMessage, specificityMessage,
+  childSelectorMessage, importantMessage, maxDepthMessage, maxSpecificityMessage, specificityMessage,
 } from '../selectorsCompileProvider/raiseMessages';
 
 // Экземпляр ядра нетипизирован снаружи (`checkByAttrs`, `recompile`), как в core-api.test.ts.
@@ -202,6 +202,73 @@ describe('warningMode на эти режимы не влияет', () => {
   });
 });
 
+describe('maxSpecificity — предел *N, потолок 16 (D-089)', () => {
+  const silent = {
+    specificityMode: 'silent' as const,
+  };
+
+  test('по умолчанию предел 16: *16 — CSS без сообщения о пределе', () => {
+    const {
+      css, warnings,
+    } = run('p10*16', silent);
+    expect(css).toBe('.p10\\*16'.repeat(16) + '{padding:10px}');
+    expect(warnings).toEqual([]);
+  });
+
+  test('warn: выше предела, но не выше 16 — сообщение, CSS есть', () => {
+    const {
+      css, warnings,
+    } = run('p10*5', {
+      ...silent,
+      maxSpecificity: 3,
+    });
+    expect(css).toBe('.p10\\*5'.repeat(5) + '{padding:10px}');
+    expect(warnings).toEqual([{
+      type: 'max-specificity',
+      token: 'p10*5',
+      message: maxSpecificityMessage(
+        5, 3, 16, false,
+      ),
+    }]);
+    expect(warnings[0].message).toBe('Specificity multiplier *5 exceeds maxSpecificity 3, the CSS is still output'
+      + ' (the ceiling is 16). To forbid such tokens: maxSpecificityMode: \'strict\'.');
+  });
+
+  test('warn: выше потолка 16 — сообщение, CSS нет', () => {
+    const {
+      css, warnings, error,
+    } = run('p10*200 m5', silent);
+    expect(css).toBe('.m5{margin:5px}');
+    expect(warnings.map((w) => w.message)).toEqual(['Specificity multiplier *200 exceeds maxSpecificity 16 and the'
+      + ' ceiling 16, the token gives no CSS. To forbid such tokens: maxSpecificityMode: \'strict\'.']);
+    expect(error).toBeUndefined();
+  });
+
+  test('strict: выше предела — CSS нет, compile бросает ошибку с инструкцией', () => {
+    const {
+      css, error,
+    } = run('p10*3 m5', {
+      ...silent,
+      maxSpecificity: 2,
+      maxSpecificityMode: 'strict',
+    });
+    expect(css).toBe('.m5{margin:5px}');
+    expect(error).toBeInstanceOf(MnForbiddenTokenError);
+    expect((error as Error).message).toContain(maxSpecificityMessage(
+      3, 2, 16, true,
+    ));
+  });
+
+  test('предел — целое от 1 до 16: выше задать нельзя', () => {
+    expect(() => minotationProvider({
+      maxSpecificity: 17,
+    })).toThrow('option "maxSpecificity" expects an integer from 1 to 16, got number 17');
+    expect(() => minotationProvider({
+      maxSpecificityMode: 'silent' as never,
+    })).toThrow('option "maxSpecificityMode" expects "warn" or "strict"');
+  });
+});
+
 describe('selectorsCompileProvider без ядра', () => {
   test('*N, -i и превышение глубины ни на что не влияют', () => {
     const instance: any = Object.assign(() => undefined, {
@@ -211,6 +278,8 @@ describe('selectorsCompileProvider без ядра', () => {
     });
     const scp: any = selectorsCompileProvider(instance);
     expect(scp.parseClass('f10-i*2<3.a').length).toBeGreaterThan(0);
+    // Потолок 16 (D-089) — и без ядра: выше него CSS нет.
+    expect(scp.parseClass('f10*17')).toEqual([]);
   });
 });
 

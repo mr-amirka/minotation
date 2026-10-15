@@ -93,6 +93,7 @@ for (const warning of collector.takeWarnings()) {
 | `altColor` | `boolean` | `false` | запасное непрозрачное объявление рядом с `rgba` |
 | `media` | `Record<string, MnMediaEntry>` | стандартные | именованные медиа: `{ wide: { query: '(min-width: 1200px)' } }` → `p10@wide` |
 | `maxDepth`, `maxDepthMode` | `number`, `'warn' \| 'silent' \| 'strict'` | —, `'warn'` | предел глубины контекстных селекторов и режим при превышении (D-039) |
+| `maxSpecificity`, `maxSpecificityMode` | `number` (1…16), `'warn' \| 'strict'` | `16`, `'warn'` | предел множителя специфичности `*N` и режим при превышении; выше потолка 16 CSS нет ни в каком режиме (D-089) |
 | `specificityMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с накруткой специфичности `f10*2` (D-039) |
 | `importantMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с `!important` (`f10-i`) (D-039) |
 | `childSelectorMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с дочерним селектором `>` (`cF00>1`) (D-041) |
@@ -106,7 +107,7 @@ for (const warning of collector.takeWarnings()) {
 | `contextWhere` | `boolean` | `false` | контекст селектора в `:where()` — специфичность только у класса (D-049) |
 | `mediaNesting` | `boolean` | `false` | вложенные `@media` вместо `and`, как у Tailwind 4 (D-070) |
 | `notationConflictMode` | `'warn' \| 'strict'` | `'warn'` | класс в файлах с разными режимами синтаксиса значит разное — предупреждение или ошибка (D-045) |
-| `warningMode` | `'log' \| 'silent' \| 'error'` | `'log'` | что делать с предупреждением компиляции: в лог сборки, молчать, уронить сборку (D-035); `maxDepthMode`, `specificityMode`, `importantMode`, `unknownMediaMode`, `suspectClassMode`, `childSelectorMode` не затрагивает (D-039, D-041) |
+| `warningMode` | `'log' \| 'silent' \| 'error'` | `'log'` | что делать с предупреждением компиляции: в лог сборки, молчать, уронить сборку (D-035); `maxDepthMode`, `maxSpecificityMode`, `specificityMode`, `importantMode`, `unknownMediaMode`, `suspectClassMode`, `childSelectorMode` не затрагивает (D-039, D-041) |
 | `onWarning` | `(warning) => void` | — | колбэк на каждое предупреждение — дополнительно к `warningMode` |
 | `onError` | `(e) => void` | — | обработчик ошибок ядра |
 | `onScannerWarning` | `(message) => void` | `console.warn` | колбэк сканера: `syntax: true`, а `typescript` нет |
@@ -265,7 +266,7 @@ module.exports = {
 
 ### Строгость по файлу (D-081)
 
-`warningMode` и режимы токенов (`specificityMode`, `importantMode`, `maxDepthMode`, `childSelectorMode`,
+`warningMode` и режимы токенов (`specificityMode`, `importantMode`, `maxDepthMode`, `maxSpecificityMode`, `childSelectorMode`,
 `unknownMediaMode`, `suspectClassMode`, `groupSuspectMode`) файл или пакет задаёт **для себя** — в
 комментарии `@minotation`, в `package.json` или правилом `scopes`. Каждый файл судится своими
 настройками: строгие правила приложения не применяются к пакету, который их не придерживается —
@@ -380,7 +381,7 @@ attrs: { class: 'class', className: 'class' }     // объект
 | Опция | Что делает |
 |-------|------------|
 | `presets` | статические пресеты |
-| поля ядра | `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `suspectClassMode`, `handlerConflictMode`, `presetConflictMode`, `groupSuspectMode`, `groupMode`, `notationMode`, `contextWhere`, `mediaNesting`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
+| поля ядра | `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `maxSpecificity`, `maxSpecificityMode`, `maxSpecificityMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `suspectClassMode`, `handlerConflictMode`, `presetConflictMode`, `groupSuspectMode`, `groupMode`, `notationMode`, `contextWhere`, `mediaNesting`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
 
 | Метод | Что делает |
 |-------|------------|

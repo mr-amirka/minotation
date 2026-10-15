@@ -522,6 +522,8 @@ const mn = minotationProvider({
   onError: (error) => {},          // ошибки ядра
   maxDepth: 10,                    // предел глубины контекстных селекторов (<N, >N)
   maxDepthMode: 'warn',            // 'warn' | 'silent' | 'strict' — что делать при превышении
+  maxSpecificity: 16,              // предел *N: 1…16, выше 16 задать нельзя (D-089)
+  maxSpecificityMode: 'warn',      // 'warn' — сообщение, CSS до *16; 'strict' — без CSS, ошибка
   specificityMode: 'warn',         // 'warn' | 'silent' | 'strict' — токены f10*2 (накрутка специфичности)
   importantMode: 'warn',           // 'warn' | 'silent' | 'strict' — токены f10-i (!important)
   childSelectorMode: 'warn',       // 'warn' | 'silent' | 'strict' — токены cF00>1 (дочерний селектор)

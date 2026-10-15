@@ -185,6 +185,7 @@ module.exports = {
   specificityMode: 'strict',      // как --specificity-mode strict: f10*2 — ошибка
   importantMode: 'silent',        // как --important-mode silent
   maxDepth: 3,                    // предел глубины <N/>N; maxDepthMode — как specificityMode
+  maxSpecificity: 4,              // предел *N (1…16, D-089); maxSpecificityMode: 'warn' | 'strict'
   media: { wide: { query: '(min-width: 1200px)' } },
   skipPartials: true,             // как --skip-partials
   manifest: './dist/css.json',    // свой путь манифеста; false — как --no-manifest

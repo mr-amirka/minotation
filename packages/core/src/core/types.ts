@@ -199,6 +199,9 @@ export interface MnData {
  * пользователю: токен, вызвавший `MnParseError`, просто не даёт CSS-правила в
  * этом цикле компиляции.md`.
  */
+/** Системный потолок множителя специфичности `*N` (D-089): `maxSpecificity` выше не задать. */
+export const MN_MAX_SPECIFICITY = 16;
+
 /**
  * Метка {@link MnParseError}, общая для всех копий ядра в процессе.
  *
@@ -273,7 +276,7 @@ export class MnParseError extends Error {
  * (D-039). Управляются своими опциями ({@link MnOptions.specificityMode},
  * {@link MnOptions.importantMode}), `warningMode` на них не влияет.
  */
-export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'invalid-css-value'
+export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'max-specificity' | 'invalid-css-value'
   | 'unregistered-state' | 'raised-specificity' | 'important' | 'hint' | 'child-selector'
   /** Класс в файлах с разными режимами синтаксиса значит разное (D-045, `notationConflictMode`). */
   | 'notation-conflict'
@@ -434,6 +437,20 @@ export interface MnOptions {
    * @default 'warn'
    */
   maxDepthMode?: MnRaiseMode;
+  /**
+   * Предел множителя специфичности `*N` (D-089): от 1 до 16 — системного потолка, выше задать нельзя.
+   * @default 16
+   */
+  maxSpecificity?: number;
+  /**
+   * Что делать, когда `*N` больше {@link MnOptions.maxSpecificity} (D-089):
+   * - `'warn'` — предупреждение с подсказкой; CSS есть, пока N не больше 16, выше 16 — нет;
+   * - `'strict'` — токен не даёт CSS, `compile` бросает {@link MnForbiddenTokenError}.
+   *
+   * Отдельно от {@link MnOptions.specificityMode}: тот решает, допустим ли `*N` вообще.
+   * @default 'warn'
+   */
+  maxSpecificityMode?: 'warn' | 'strict';
   /**
    * Токены с множителем `*N` (`f10*2` → `.f10\*2.f10\*2`) — накрутка специфичности
    * (D-039). Перебивать стили компонента весом селектора — признак того, что

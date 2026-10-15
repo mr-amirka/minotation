@@ -302,7 +302,7 @@ function prefixMatches(rest: string, prefix: string): boolean {
     && (last >= 'a' && last <= 'z' || last >= 'A' && last <= 'Z'));
 }
 
-type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded' | 'child-selector'
+type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded' | 'max-specificity' | 'child-selector'
   | 'unknown-media' | 'suspect-class' | 'handler-conflict' | 'preset-conflict' | 'group-suspect';
 
 /** Типы медиа CSS: известны без описания в `mn.media` (D-058). */
@@ -468,6 +468,7 @@ function minotationProvider(options?: MnOptions) {
       'raised-specificity': settings.specificityMode || 'warn',
       important: settings.importantMode || 'warn',
       'max-depth-exceeded': settings.maxDepthMode || 'warn',
+      'max-specificity': settings.maxSpecificityMode || 'warn',
       'child-selector': settings.childSelectorMode || 'warn',
       'unknown-media': settings.unknownMediaMode || 'warn',
       'suspect-class': settings.suspectClassMode || 'warn',

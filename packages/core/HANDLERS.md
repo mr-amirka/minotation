@@ -2099,6 +2099,16 @@ mnAstro({ attrs: 'class', warningMode: 'error' })
 mnAstro({ specificityMode: 'strict', importantMode: 'silent' });
 ```
 
+**Предел `*N` — `maxSpecificity`, `maxSpecificityMode` (D-089).** Множитель не больше `maxSpecificity` (1…16, по
+умолчанию 16; выше 16 опцию не задать). Сверх предела — `max-specificity`:
+
+| Режим | `p10*5` при `maxSpecificity: 3` | `p10*200` |
+|---|---|---|
+| `'warn'` (по умолчанию) | предупреждение, CSS есть | предупреждение, CSS нет — выше потолка 16 |
+| `'strict'` | CSS нет, `MnForbiddenTokenError` | CSS нет, `MnForbiddenTokenError` |
+
+`specificityMode` (выше) решает, допустим ли `*N` вообще; `maxSpecificity` — насколько.
+
 ```
 [minotation] f10*2: Specificity is raised ("*2") — this may mean that component styles override
   each other. To hide this warning: specificityMode: 'silent'; to forbid such tokens: specificityMode: 'strict'.

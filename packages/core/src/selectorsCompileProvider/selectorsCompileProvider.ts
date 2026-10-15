@@ -23,7 +23,7 @@ import {
   selectorNormalize,
 } from '../selectorNormalize';
 import {
-  MnParseError,
+  MN_MAX_SPECIFICITY, MnParseError,
   parseSettingsKey,
 } from '../core/types';
 import type {
@@ -62,7 +62,7 @@ import {
   mediaFilterIteratee,
 } from './extractMedia';
 import {
-  childSelectorMessage, importantMessage, maxDepthMessage, specificityMessage,
+  childSelectorMessage, importantMessage, maxDepthMessage, maxSpecificityMessage, specificityMessage,
 } from './raiseMessages';
 import {
   getCombinator,
@@ -659,6 +659,14 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
         if ((instance as any)._raisedToken?.(
           comboName, 'raised-specificity', (strict: boolean) => specificityMessage('*' + multiplier, strict),
         )) {
+          return [];
+        }
+        // Предел `*N` (D-089): выше `maxSpecificity` — сообщение; выше потолка 16 CSS нет ни в каком режиме.
+        if (multiplier > ($$mnOptions.maxSpecificity || MN_MAX_SPECIFICITY) && ((instance as any)._raisedToken?.(
+          comboName, 'max-specificity', (strict: boolean) => maxSpecificityMessage(
+            multiplier, $$mnOptions.maxSpecificity || MN_MAX_SPECIFICITY, MN_MAX_SPECIFICITY, strict,
+          ),
+        ) || multiplier > MN_MAX_SPECIFICITY)) {
           return [];
         }
         tgt = repeat(tgt, multiplier);

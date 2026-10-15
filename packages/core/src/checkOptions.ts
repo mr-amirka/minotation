@@ -6,6 +6,10 @@
  * Холодный путь: вызывается один раз при создании (провайдер, плагин, конфиг).
  */
 
+import {
+  MN_MAX_SPECIFICITY,
+} from './core/types';
+
 /**
  * Проверка значения одной опции: `undefined` — значение подходит, строка —
  * что ожидалось («a boolean», `"log", "silent" or "error"`). `where` и `path`
@@ -178,6 +182,12 @@ export const isCount: OptionCheck = (value) => (
   typeof value === 'number' && value >= 0 && value % 1 === 0 ? undefined : 'a non-negative integer'
 );
 
+/** Целое от `min` до `max` включительно. */
+export function integerFrom(min: number, max: number): OptionCheck {
+  return (value) => (typeof value === 'number' && value % 1 === 0 && value >= min && value <= max
+    ? undefined : 'an integer from ' + min + ' to ' + max);
+}
+
 /** Обычный объект. */
 export const isObject: OptionCheck = (value) => (
   isPlainObject(value) ? undefined : 'an object'
@@ -249,6 +259,8 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   maxDepthMode: oneOf(
     'warn', 'silent', 'strict',
   ),
+  maxSpecificity: integerFrom(1, MN_MAX_SPECIFICITY),
+  maxSpecificityMode: oneOf('warn', 'strict'),
   specificityMode: oneOf(
     'warn', 'silent', 'strict',
   ),

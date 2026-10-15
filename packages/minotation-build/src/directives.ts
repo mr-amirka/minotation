@@ -36,6 +36,8 @@ export interface MnNotationDirective {
   importantMode?: MnRaiseMode;
   /** Строгость: превышение `maxDepth` (D-039). */
   maxDepthMode?: MnRaiseMode;
+  /** Строгость: `*N` больше `maxSpecificity` (D-089). */
+  maxSpecificityMode?: 'warn' | 'strict';
   /** Строгость: дочерний селектор `>` (D-041). */
   childSelectorMode?: MnRaiseMode;
   /** Строгость: неизвестное имя медиа (D-058). */
@@ -55,6 +57,7 @@ export const STRICTNESS_KEYS: Array<keyof MnNotationDirective> = [
   'specificityMode',
   'importantMode',
   'maxDepthMode',
+  'maxSpecificityMode',
   'childSelectorMode',
   'unknownMediaMode',
   'suspectClassMode',
@@ -87,6 +90,7 @@ export const DIRECTIVE_SCHEMA: OptionSchema = {
   specificityMode: raiseMode,
   importantMode: raiseMode,
   maxDepthMode: raiseMode,
+  maxSpecificityMode: oneOf('warn', 'strict'),
   childSelectorMode: raiseMode,
   unknownMediaMode: raiseMode,
   suspectClassMode: raiseMode,

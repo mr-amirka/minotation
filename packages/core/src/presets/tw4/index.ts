@@ -1542,6 +1542,127 @@ function setupGradients(mn: MnInstance): void {
   );
 }
 
+/** Сборка фильтров фона — `backdrop-filter` Tailwind 4. */
+const BACKDROP_FILTER = 'var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) '
+  + 'var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) '
+  + 'var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,)';
+
+/** Описание функции фильтра. */
+interface FilterFunction {
+  /** Единица целого значения: `%`, `deg`; у `blur` — нет (размеры темы). */
+  unit?: string;
+  /** Значение голого имени: `grayscale` → `100%`, `blur` → `8px`. */
+  bare?: string;
+  /** Принимает минус (`-hue-rotate-15`). */
+  negative?: boolean;
+}
+
+/** Функции фильтра Tailwind 4: имя утилиты → описание; имя функции CSS — то же. */
+const FILTER_FUNCTIONS: Record<string, FilterFunction> = {
+  blur: {
+    bare: '8px',
+  },
+  brightness: {
+    unit: '%',
+  },
+  contrast: {
+    unit: '%',
+  },
+  grayscale: {
+    unit: '%',
+    bare: '100%',
+  },
+  'hue-rotate': {
+    unit: 'deg',
+    negative: true,
+  },
+  invert: {
+    unit: '%',
+    bare: '100%',
+  },
+  saturate: {
+    unit: '%',
+  },
+  sepia: {
+    unit: '%',
+    bare: '100%',
+  },
+};
+
+/** Аргумент функции фильтра: голое имя, целое с единицей, размер темы `blur`, `none` или произвольное. */
+function filterArgument(args: MnTwArgs, fn: FilterFunction): string | undefined {
+  const key = args.parts.join('-');
+  const value = args.modifier !== undefined || args.negative && !fn.negative ? undefined
+    : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.arbitrary)
+      : !args.parts.length ? fn.bare
+        : fn.unit ? (args.parts.length === 1 && REGEXP_INTEGER.test(key) ? key + fn.unit : undefined)
+          : TW4_THEME['--blur-' + key] ? 'var(--blur-' + key + ')' : undefined;
+  return value && args.negative ? 'calc(' + value + ' * -1)' : value;
+}
+
+/**
+ * Хендлер функции фильтра: `blur-sm` → `--tw-blur: blur(var(--blur-sm))` и общая сборка; у `backdrop-*` — те же
+ * значения в `--tw-backdrop-*` и `backdrop-filter` с префиксом `-webkit-`.
+ */
+function filterHandler(
+  name: string, fn: FilterFunction, backdrop: boolean,
+) {
+  const variable = '--tw-' + (backdrop ? 'backdrop-' : '') + name;
+  return tw((args) => {
+    const none = name === 'blur' && args.parts.length === 1 && args.parts[0] === 'none' && args.arbitrary === undefined;
+    const value = none ? undefined : filterArgument(args, fn);
+    if (!none && value === undefined || none && (args.negative || args.modifier !== undefined)) {
+      return undefined;
+    }
+    return result({
+      [variable]: none ? ' ' : name + '(' + value + ')',
+      ...backdrop ? styleOf(['-webkit-backdrop-filter', 'backdropFilter'], BACKDROP_FILTER) : {
+        filter: FILTER,
+      },
+    });
+  });
+}
+
+/** `filter`, `backdrop-filter`: голое имя — сборка, `none`, произвольное — само значение. */
+function filterRootHandler(properties: string[], value: string) {
+  return tw((args) => {
+    const key = args.parts.join('-');
+    const own = args.negative || args.modifier !== undefined ? undefined
+      : args.arbitrary !== undefined ? (key ? undefined : args.arbitrary)
+        : key === 'none' ? key : key ? undefined : value;
+    return own === undefined ? undefined : result(styleOf(properties, own));
+  });
+}
+
+function setupFilters(mn: MnInstance): void {
+  let name: string;
+  for (name in FILTER_FUNCTIONS) { // eslint-disable-line
+    mn(
+      name, filterHandler(
+        name, FILTER_FUNCTIONS[name], false,
+      ), '', 1,
+    );
+    mn(
+      'backdrop-' + name, filterHandler(
+        name, FILTER_FUNCTIONS[name], true,
+      ), '', 1,
+    );
+  }
+  mn(
+    'backdrop-opacity', filterHandler(
+      'opacity', {
+        unit: '%',
+      }, true,
+    ), '', 1,
+  );
+  mn(
+    'filter', filterRootHandler(['filter'], FILTER), '', 1,
+  );
+  mn(
+    'backdrop-filter', filterRootHandler(['-webkit-backdrop-filter', 'backdropFilter'], BACKDROP_FILTER), '', 1,
+  );
+}
+
 function setupVariants(mn: MnInstance): void {
   let name: string;
   mn.media[COLOR_MIX_MEDIA] = {
@@ -1647,6 +1768,7 @@ export default {
     setupShadows(mn);
     setupTransforms(mn);
     setupGradients(mn);
+    setupFilters(mn);
     setupVariants(mn);
   },
 } as MnPresetObject;

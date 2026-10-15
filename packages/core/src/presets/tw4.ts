@@ -842,7 +842,9 @@ function colorOr(properties: string[], other?: (args: MnTwArgs) => MnHandlerResu
     if (alternative) {
       return alternative;
     }
-    const color = isLengthArg(args) ? undefined : colorValue(args);
+    // Тип произвольного значения Tailwind 4 выясняет, только когда у утилиты есть выбор (цвет или
+    // толщина); у утилиты одного вида значение идёт как есть (`fill-[3px]` → `fill: 3px`).
+    const color = other && isLengthArg(args) ? undefined : colorValue(args);
     return color && colorResult(properties, color);
   });
 }
@@ -856,7 +858,7 @@ const DIVIDE_CHILDREN = SPACE_CHILDREN;
 /** `divide-x`, `divide-y-2`: рамки между детьми с поправкой `--tw-divide-*-reverse`. */
 function divideWidth(axis: 'x' | 'y', args: MnTwArgs): MnHandlerResult | undefined {
   const width = args.modifier !== undefined || args.negative ? undefined
-    : args.arbitrary !== undefined ? (args.parts.length || !isLengthArg(args) ? undefined : args.arbitrary)
+    : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.arbitrary)
       : !args.parts.length ? '1px' : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] + 'px' : undefined;
   const reverse = 'var(--tw-divide-' + axis + '-reverse)';
   const start = axis === 'x' ? 'borderInlineStart' : 'borderTop';
@@ -918,9 +920,10 @@ function setupColorUtilities(mn: MnInstance): void {
   );
   mn(
     'stroke', colorOr(['stroke'], (args) => {
-      const width = args.modifier !== undefined || args.negative ? undefined
+      // Как у Tailwind 4: ширина — целое; модификатор у ширины не значит ничего и пропускается.
+      const width = args.negative ? undefined
         : isLengthArg(args) ? args.arbitrary
-          : args.arbitrary === undefined && args.parts.length === 1 && REGEXP_NUMBER.test(args.parts[0]) ? args.parts[0] : undefined;
+          : args.arbitrary === undefined && args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] : undefined;
       return width === undefined ? undefined : result({
         strokeWidth: width,
       });
@@ -950,7 +953,7 @@ function setupColorUtilities(mn: MnInstance): void {
           parts: args.parts.slice(1),
         });
       }
-      const color = isLengthArg(args) ? undefined : colorValue(args);
+      const color = colorValue(args);
       return color && {
         ...colorResult(['borderColor'], color),
         selectors: [DIVIDE_CHILDREN],
@@ -1004,6 +1007,216 @@ function scrollbarColor(part: string) {
       },
     );
   });
+}
+
+
+/** Цепочка фильтров Tailwind 4 — `filter` из переменных отдельных фильтров. */
+const FILTER = 'var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,)'
+  + ' var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,)';
+
+/** Токен тени — не цвет: длина, число, `inset`. */
+const REGEXP_SHADOW_PART = /^(?:inset|-?[\d.]+[a-z%]*)$/;
+
+/** Произвольное значение похоже на цвет, а не на тень: `#f00`, `rgb(…)`, `var(--c)`, `red`. */
+const REGEXP_COLOR_LIKE = /^(?:#|rgb|hsl|oklch|oklab|lab|lch|color|var\()|^[a-z]+$/;
+
+/** Деление по разделителю вне скобок. */
+function splitTop(value: string, separator: string): string[] {
+  const out: string[] = [];
+  const l = value.length;
+  let depth = 0;
+  let from = 0;
+  let i = 0;
+  let ch: string;
+  for (; i < l; i++) {
+    ch = value[i];
+    depth += ch === '(' ? 1 : ch === ')' ? -1 : 0;
+    if (ch === separator && !depth) {
+      out.push(value.slice(from, i));
+      from = i + 1;
+    }
+  }
+  out.push(value.slice(from));
+  return out;
+}
+
+/** Номер токена-цвета в тени — последний, что не длина и не `inset`; нет — `-1`. */
+function colorIndex(tokens: string[]): number {
+  let i = tokens.length - 1;
+  while (i >= 0 && REGEXP_SHADOW_PART.test(tokens[i])) {
+    i--;
+  }
+  return i;
+}
+
+/**
+ * Тени, по одной на элемент списка, с цветом через переменную, как у Tailwind 4: `0 1px rgb(0 0 0 / 0.05)` →
+ * `0 1px var(--tw-shadow-color, rgb(0 0 0 / 0.05))`; с прозрачностью — `oklab(from <цвет> l a b / 50%)`.
+ */
+function shadowParts(
+  value: string, colorVar: string, alpha?: string,
+): string[] {
+  return splitTop(value, ',').map((part) => {
+    const tokens = splitTop(part.trim(), ' ').filter(Boolean);
+    const i = colorIndex(tokens);
+    i < 0 || (tokens[i] = 'var(' + colorVar + ', ' + (alpha ? 'oklab(from ' + tokens[i] + ' l a b / ' + alpha + ')' : tokens[i]) + ')');
+    return tokens.join(' ');
+  });
+}
+
+/**
+ * Цвет тени с переменной прозрачностью (`--tw-shadow-alpha`), как у Tailwind 4: запасной цвет и
+ * `@supports`-смесь `color-mix(in oklab, <цвет> var(--tw-shadow-alpha), transparent)`.
+ */
+function shadowColor(args: MnTwArgs, alphaVar: string): TwColor | undefined {
+  const base = colorValue({
+    ...args,
+    modifier: undefined,
+  });
+  const alpha = args.modifier === undefined ? undefined : alphaOf(args.modifier);
+  if (!base || args.modifier !== undefined && !alpha) {
+    return undefined;
+  }
+  const color = base[0];
+  if (color === 'inherit') {
+    return alpha ? undefined : [color];
+  }
+  const literal = args.arbitrary === undefined && TW4_THEME['--color-' + args.parts.join('-')] || color;
+  const mix = (value: string) => 'color-mix(in oklab, ' + value + ' var(' + alphaVar + '), transparent)';
+  return alpha ? ['color-mix(in srgb, ' + literal + ' ' + alpha + ', transparent)', mix('color-mix(in oklab, ' + color + ' ' + alpha + ', transparent)')]
+    : [literal, mix(color)];
+}
+
+/** Ключ размера для произвольной тени `[…]` — не имя темы. */
+const ARBITRARY = '[]';
+
+/** Описание семейства теней. */
+interface ShadowFamily {
+  /** Префикс переменных темы размеров: `--shadow-`. */
+  theme: string;
+  /** Переменные цвета и прозрачности: `--tw-shadow-color`, `--tw-shadow-alpha`. */
+  colorVar: string;
+  alphaVar: string;
+  /** Размеры вне темы: голое имя, `inner`. */
+  sizes: Record<string, string>;
+  /** Стиль размера: части тени с цветом в переменной, прозрачность, ключ темы (`''` — голое имя, `ARBITRARY` — `[…]`). */
+  size: (parts: string[], alpha: string | undefined, key: string) => Style;
+  /** `*-none`. */
+  none: Style;
+  /** Добавка к стилю цвета: `drop-shadow` — `--tw-drop-shadow`. */
+  colorExtra?: Style;
+}
+
+/** Хендлер семейства теней: размер темы (`/50` — прозрачность), `none`, произвольная тень или цвет. */
+function shadowHandler(family: ShadowFamily) {
+  return tw((args) => {
+    const key = args.parts.join('-');
+    // Непонятная прозрачность у размера (`shadow-md/x`) Tailwind 4 пропускает — тень без неё.
+    const alpha = args.modifier === undefined ? undefined : alphaOf(args.modifier);
+    const value = args.negative ? undefined
+      : args.arbitrary !== undefined ? (args.parts.length || args.type === 'color' || REGEXP_COLOR_LIKE.test(args.arbitrary)
+        ? undefined : args.arbitrary)
+        : family.sizes[key] || TW4_THEME[family.theme + key];
+    if (args.arbitrary === undefined && key === 'none') {
+      return args.modifier === undefined && !args.negative ? result(family.none) : undefined;
+    }
+    if (value !== undefined) {
+      return result({
+        ...alpha ? {
+          [family.alphaVar]: alpha,
+        } : {},
+        ...family.size(
+          shadowParts(
+            value, family.colorVar, alpha,
+          ), alpha, args.arbitrary === undefined ? key : ARBITRARY,
+        ),
+      });
+    }
+    const color = args.negative ? undefined : shadowColor(args, family.alphaVar);
+    return color && colorResult(
+      [family.colorVar], color, family.colorExtra,
+    );
+  });
+}
+
+function setupShadows(mn: MnInstance): void {
+  mn(
+    'shadow', shadowHandler({
+      theme: '--shadow-',
+      colorVar: '--tw-shadow-color',
+      alphaVar: '--tw-shadow-alpha',
+      sizes: {
+        '': TW4_THEME['--shadow-sm'],
+        inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
+      },
+      size: (parts) => ({
+        '--tw-shadow': parts.join(', '),
+        boxShadow: BOX_SHADOW,
+      }),
+      none: {
+        '--tw-shadow': '0 0 #0000',
+        boxShadow: BOX_SHADOW,
+      },
+    }), '', 1,
+  );
+  mn(
+    'inset-shadow', shadowHandler({
+      theme: '--inset-shadow-',
+      colorVar: '--tw-inset-shadow-color',
+      alphaVar: '--tw-inset-shadow-alpha',
+      sizes: {},
+      size: (parts) => ({
+        '--tw-inset-shadow': parts.map((part) => (part.indexOf('inset') === 0 ? part : 'inset ' + part)).join(', '),
+        boxShadow: BOX_SHADOW,
+      }),
+      none: {
+        '--tw-inset-shadow': 'inset 0 0 #0000',
+        boxShadow: BOX_SHADOW,
+      },
+    }), '', 1,
+  );
+  mn(
+    'text-shadow', shadowHandler({
+      theme: '--text-shadow-',
+      colorVar: '--tw-text-shadow-color',
+      alphaVar: '--tw-text-shadow-alpha',
+      sizes: {},
+      size: (parts) => ({
+        textShadow: parts.join(', '),
+      }),
+      none: {
+        textShadow: 'none',
+      },
+    }), '', 1,
+  );
+  mn(
+    'drop-shadow', shadowHandler({
+      theme: '--drop-shadow-',
+      colorVar: '--tw-drop-shadow-color',
+      alphaVar: '--tw-drop-shadow-alpha',
+      sizes: {
+        '': '0 1px 2px rgb(0 0 0 / 0.1), 0 1px 1px rgb(0 0 0 / 0.06)',
+      },
+      // Размер темы — `drop-shadow(var(--drop-shadow-sm))`; голое имя — сама тень; с прозрачностью и
+      // произвольный — через `--tw-drop-shadow-size`.
+      size: (
+        parts, alpha, key,
+      ) => ({
+        '--tw-drop-shadow-size': parts.map((part) => 'drop-shadow(' + part + ')').join(' '),
+        '--tw-drop-shadow': alpha || key === ARBITRARY ? 'var(--tw-drop-shadow-size)'
+          : key ? 'drop-shadow(var(--drop-shadow-' + key + '))'
+            : 'drop-shadow(0 1px 2px rgb(0 0 0 / 0.1)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.06))',
+        filter: FILTER,
+      }),
+      none: {
+        '--tw-drop-shadow': ' ',
+        filter: FILTER,
+      },
+      colorExtra: {
+        '--tw-drop-shadow': 'var(--tw-drop-shadow-size)',
+      },
+    }), '', 1,
+  );
 }
 
 function setupVariants(mn: MnInstance): void {
@@ -1105,6 +1318,7 @@ export default {
     setupBorders(mn);
     setupColors(mn);
     setupColorUtilities(mn);
+    setupShadows(mn);
     setupVariants(mn);
   },
 } as MnPresetObject;

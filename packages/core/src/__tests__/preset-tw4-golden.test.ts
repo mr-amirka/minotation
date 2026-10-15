@@ -50,14 +50,19 @@ function twDeclarations(candidate: string): string[] {
   const start = css.indexOf('@layer utilities {');
   const body = start < 0 ? '' : css.slice(start);
   // `build` накапливает классы между вызовами — правило ищется по своему селектору.
-  const re = /\n {2}\.([^\n{]+?) \{\n([\s\S]*?)\n {2}\}/g;
+  const re = /\n {2}(?:\.|(?=:where\(\.))([^\n{]+?) \{\n([\s\S]*?)\n {2}\}/g;
   let rule: RegExpExecArray | null;
   while ((rule = re.exec(body))) {
-    if (rule[1].replace(/\\/g, '') === candidate) {
+    if (ownSelector(rule[1].replace(/\\/g, ''), candidate)) {
       return declarationsOf(rule[2]);
     }
   }
   return [];
+}
+
+/** Селектор — правило класса: `.c`, `.c::placeholder`, `:where(.c > …)` (дети). */
+function ownSelector(selector: string, candidate: string): boolean {
+  return selector === candidate || selector.startsWith(candidate + '::') || selector.startsWith(':where(.' + candidate + ' ');
 }
 
 /** Строки тела правила Tailwind → объявления, вложенные `@supports` — с пометкой. */
@@ -190,6 +195,104 @@ export const GOLDEN_EXISTING = [
   'tabular-nums',
   '-mt-[3px]',
   '-mt-[0px]',
+  // Цвета-утилиты и толщины (группа 1).
+  'decoration-red-500',
+  'decoration-red-500/50',
+  'decoration-2',
+  'decoration-[3px]',
+  'decoration-[#f00]',
+  'underline-offset-2',
+  '-underline-offset-2',
+  'underline-offset-[3px]',
+  'outline',
+  'outline-2',
+  'outline-[3px]',
+  'outline-red-500',
+  'outline-offset-2',
+  '-outline-offset-[3px]',
+  'fill-red-500',
+  'stroke-red-500',
+  'stroke-2',
+  'stroke-[3px]',
+  'stroke-1.5',
+  'accent-red-500',
+  'caret-red-500/50',
+  'placeholder-red-500',
+  'divide-x',
+  'divide-y-2',
+  'divide-x-[3px]',
+  'divide-red-500',
+  'ring',
+  'ring-2',
+  'ring-[3px]',
+  'ring-red-500',
+  'ring-offset-2',
+  'ring-offset-[3px]',
+  'ring-offset-red-500',
+  'inset-ring',
+  'inset-ring-2',
+  'inset-ring-red-500',
+  'scrollbar-thumb-red-500',
+  'scrollbar-track-red-500/50',
+  // Тени (группа 2).
+  'shadow',
+  'shadow-md',
+  'shadow-md/50',
+  'shadow-inner',
+  'shadow-none',
+  'shadow-[0_0_2px_red]',
+  'shadow-red-500',
+  'shadow-red-500/50',
+  'shadow-[#f00]',
+  'shadow-[#f00]/50',
+  'shadow-inherit',
+  'shadow-current',
+  'shadow-transparent',
+  'inset-shadow-sm',
+  'inset-shadow-sm/50',
+  'inset-shadow-none',
+  'inset-shadow-[0_0_2px_red]',
+  'inset-shadow-red-500',
+  'text-shadow-sm',
+  'text-shadow-lg/50',
+  'text-shadow-none',
+  'text-shadow-[0_0_2px_red]',
+  'text-shadow-red-500/50',
+  'drop-shadow',
+  'drop-shadow-xl',
+  'drop-shadow-sm/50',
+  'drop-shadow-none',
+  'drop-shadow-[0_0_2px_red]',
+  'drop-shadow-red-500',
+  // Не классы Tailwind — ни у кого нет CSS.
+  'shadow-md/x',
+  '-shadow-md',
+  'ring-red-500/x',
+  'shadow-none/50',
+  'shadow-inherit/50',
+  '-shadow-red-500',
+  'stroke-2/5',
+  '-decoration-2',
+  'decoration-2/5',
+  // Края групп 1–2: неверные значения, произвольный цвет там, где ждут длину, цвет в начале тени.
+  'underline-offset-foo-[3px]',
+  'fill-[3px]',
+  'divide-x/5',
+  '-divide-x',
+  'divide-x-[#f00]',
+  'divide-x-foo',
+  'underline-offset-foo',
+  'outline-[#f00]',
+  'outline-offset-foo',
+  '-stroke-2',
+  'divide-[3px]',
+  'ring-[#f00]',
+  'ring-offset-[#f00]',
+  'inset-ring-[#f00]',
+  'shadow-[red_0_0_2px]',
+  'shadow-red-500/x',
+  '-decoration-[3px]',
+  'divide-x-foo-[3px]',
 ];
 
 describe('presetTw4 = Tailwind 4.3.3', () => {

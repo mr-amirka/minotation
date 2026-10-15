@@ -382,7 +382,19 @@ function setupSpacing(mn: MnInstance): void {
   const scrollMargin: Record<string, string[]> = {};
   const scrollPadding: Record<string, string[]> = {};
   let side: string;
-  for (side of ['', 'x', 'y', 't', 'r', 'b', 'l', 's', 'e', 'bs', 'be']) {
+  for (side of [
+    '',
+    'x',
+    'y',
+    't',
+    'r',
+    'b',
+    'l',
+    's',
+    'e',
+    'bs',
+    'be',
+  ]) {
     scrollMargin['scroll-m' + side] = [SCROLL_SIDES[side].replace('*', 'Margin')];
     scrollPadding['scroll-p' + side] = [SCROLL_SIDES[side].replace('*', 'Padding')];
   }
@@ -2178,6 +2190,135 @@ function setupMisc(mn: MnInstance): void {
   );
 }
 
+/** Общая часть всех масок Tailwind 4: три слоя, пересечение. */
+const MASK_BASE: Style = {
+  maskImage: 'var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic)',
+  maskComposite: 'intersect',
+};
+
+/** Стороны масок-краёв: `mask-x-*` — правая и левая, `mask-y-*` — верх и низ. */
+const MASK_EDGES: Record<string, string[]> = {
+  t: ['top'],
+  r: ['right'],
+  b: ['bottom'],
+  l: ['left'],
+  x: ['right', 'left'],
+  y: ['top', 'bottom'],
+};
+
+/** Точки форм `mask-linear/radial/conic-from/to-*`: переменная точек и сама форма. */
+const MASK_SHAPE_STOPS: Record<string, Style> = {
+  linear: {
+    '--tw-mask-linear-stops': 'var(--tw-mask-linear-position), var(--tw-mask-linear-from-color) '
+      + 'var(--tw-mask-linear-from-position), var(--tw-mask-linear-to-color) var(--tw-mask-linear-to-position)',
+    '--tw-mask-linear': 'linear-gradient(var(--tw-mask-linear-stops))',
+  },
+  radial: {
+    '--tw-mask-radial-stops': 'var(--tw-mask-radial-shape) var(--tw-mask-radial-size) at var(--tw-mask-radial-position), '
+      + 'var(--tw-mask-radial-from-color) var(--tw-mask-radial-from-position), var(--tw-mask-radial-to-color) '
+      + 'var(--tw-mask-radial-to-position)',
+    '--tw-mask-radial': 'radial-gradient(var(--tw-mask-radial-stops))',
+  },
+  conic: {
+    '--tw-mask-conic-stops': 'from var(--tw-mask-conic-position), var(--tw-mask-conic-from-color) '
+      + 'var(--tw-mask-conic-from-position), var(--tw-mask-conic-to-color) var(--tw-mask-conic-to-position)',
+    '--tw-mask-conic': 'conic-gradient(var(--tw-mask-conic-stops))',
+  },
+};
+
+/** Стиль края маски: `--tw-mask-top: linear-gradient(to top, …)` и сборка краёв. */
+function maskEdgeStyle(sides: string[]): Style {
+  const style: Style = {
+    '--tw-mask-linear': 'var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top)',
+  };
+  let side: string;
+  for (side of sides) {
+    style['--tw-mask-' + side] = 'linear-gradient(to ' + side + ', var(--tw-mask-' + side + '-from-color) var(--tw-mask-' + side
+      + '-from-position), var(--tw-mask-' + side + '-to-color) var(--tw-mask-' + side + '-to-position))';
+  }
+  return style;
+}
+
+/**
+ * Хендлер точки маски `from`/`to`: позиция (`50%`, шаг `--spacing`, произвольная длина, `(--x)`) или цвет
+ * (палитра с прозрачностью, произвольный цвет) — в переменные `--tw-mask-<имя>-<точка>-*` каждого имени.
+ */
+function maskStopHandler(
+  names: string[], stop: string, shape: Style,
+) {
+  return tw((args) => {
+    const key = args.parts.join('-');
+    const arbitrary = args.arbitrary;
+    const colorArbitrary = arbitrary !== undefined && (args.type === 'color'
+      || !args.type && arbitrary.indexOf('var(') !== 0 && REGEXP_COLOR_LIKE.test(arbitrary));
+    const position = args.negative || args.modifier !== undefined || colorArbitrary ? undefined
+      : arbitrary !== undefined ? (key ? undefined : arbitrary)
+        : args.parts.length !== 1 ? undefined
+          : REGEXP_PERCENT.test(key) ? key : REGEXP_NUMBER.test(key) ? spacing(key) : undefined;
+    const color = position === undefined && (arbitrary === undefined || colorArbitrary) ? colorValue(args) : undefined;
+    const suffix = '-' + stop + '-' + (position === undefined ? 'color' : 'position');
+    if (position === undefined && color === undefined) {
+      return undefined;
+    }
+    return colorResult(
+      names.map((name) => '--tw-mask-' + name + suffix), color || [position as string], {
+        ...MASK_BASE,
+        ...shape,
+      },
+    );
+  });
+}
+
+/** Угол шага, как пишет Tailwind 4: `0` → `0deg` (и с минусом), `1` → `1deg`/`-1deg`, иначе `calc(1deg * ±n)`. */
+function maskAngle(step: string, negative: boolean): string {
+  return step === '0' ? '0deg' : step === '1' ? (negative ? '-1deg' : '1deg')
+    : 'calc(1deg * ' + (negative ? '-' : '') + step + ')';
+}
+
+/** `mask-linear-45`, `-mask-conic-90`, `mask-linear-[3deg]`: угол формы. */
+function maskAngleHandler(shape: 'linear' | 'conic') {
+  return tw((args) => {
+    const key = args.parts.join('-');
+    const angle = args.modifier !== undefined ? undefined
+      : args.arbitrary !== undefined ? (key ? undefined : args.negative ? negateCalc(args.arbitrary) : args.arbitrary)
+        : args.parts.length === 1 && REGEXP_INTEGER.test(key) ? maskAngle(key, args.negative) : undefined;
+    return angle === undefined ? undefined : result({
+      ...MASK_BASE,
+      ['--tw-mask-' + shape]: shape + '-gradient(var(--tw-mask-' + shape + '-stops, var(--tw-mask-' + shape + '-position)))',
+      ['--tw-mask-' + shape + '-position']: angle,
+    });
+  });
+}
+
+function setupMasks(mn: MnInstance): void {
+  let name: string;
+  let stop: string;
+  for (name in MASK_EDGES) { // eslint-disable-line
+    for (stop of ['from', 'to']) {
+      mn(
+        'mask-' + name + '-' + stop, maskStopHandler(
+          MASK_EDGES[name], stop, maskEdgeStyle(MASK_EDGES[name]),
+        ), '', 1,
+      );
+    }
+  }
+  for (name in MASK_SHAPE_STOPS) { // eslint-disable-line
+    for (stop of ['from', 'to']) {
+      mn(
+        'mask-' + name + '-' + stop, maskStopHandler(
+          [name], stop, MASK_SHAPE_STOPS[name],
+        ), '', 1,
+      );
+    }
+  }
+  mn(
+    'mask-linear', maskAngleHandler('linear'), '', 1,
+  );
+  mn(
+    'mask-conic', maskAngleHandler('conic'), '', 1,
+  );
+}
+
 function setupVariants(mn: MnInstance): void {
   let name: string;
   mn.media[COLOR_MIX_MEDIA] = {
@@ -2287,6 +2428,7 @@ export default {
     setupTransitions(mn);
     setupMisc(mn);
     setupNestedStatics(mn);
+    setupMasks(mn);
     setupVariants(mn);
   },
 } as MnPresetObject;

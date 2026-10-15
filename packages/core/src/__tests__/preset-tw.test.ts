@@ -72,6 +72,15 @@ describe('parseTwSuffix', () => {
       },
     ],
     [
+      '/50',
+      false,
+      {
+        parts: [],
+        modifier: '50',
+        negative: false,
+      },
+    ],
+    [
       '-[37px]',
       true,
       {
@@ -153,6 +162,8 @@ describe('parseTwSuffix', () => {
     '-a/',
     '-[1px]x',
     '-x--[1px]',
+    '/',
+    '/a/b',
   ])('%j — не форма Tailwind', (suffix) => {
     expect(parseTwSuffix(suffix, false)).toBeUndefined();
   });

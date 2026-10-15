@@ -43,7 +43,7 @@ const REGEXP_ARBITRARY_SPACE = /\\_|_/g;
  * Разбирает остаток класса после имени хендлера: части через `-`, произвольное значение в
  * `[…]` или `(…)`, модификатор после `/`.
  *
- * @param suffix — остаток после имени: `-x-2`, `-blue-500/50`, `-[37px]`, `''`
+ * @param suffix — остаток после имени: `-x-2`, `-blue-500/50`, `-[37px]`, `/50`, `''`
  * @param negative — был ли ведущий `-`
  * @returns структура для хендлера или `undefined`, если остаток не в форме Tailwind
  */
@@ -54,6 +54,11 @@ export function parseTwSuffix(suffix: string, negative: boolean): MnTwArgs | und
   };
   if (!suffix) {
     return args;
+  }
+  // Голое имя с модификатором: `shadow/50`, `bg-radial/oklch`.
+  if (suffix[0] === '/') {
+    args.modifier = suffix.slice(1);
+    return args.modifier && args.modifier.indexOf('/') < 0 ? args : undefined;
   }
   if (suffix[0] !== '-') {
     return undefined;

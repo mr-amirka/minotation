@@ -546,14 +546,19 @@ function integers(
 function setupFlexGrid(mn: MnInstance): void {
   // `flex` — display, `flex-1` — сокращение `flex`.
   mn(
-    'flex', tw((args) => (!args.parts.length && args.arbitrary === undefined ? result({
-      display: 'flex',
-    }) : args.arbitrary !== undefined ? result({
-      flex: args.arbitrary,
-    }) : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) && args.modifier === undefined
-      ? result({
-        flex: args.parts[0],
-      }) : undefined)), '', 1,
+    'flex', tw((args) => {
+      const step = args.parts[0];
+      // Модификатор — только у дроби: `flex-1/2` → `calc(1/2 * 100%)`.
+      const value = args.arbitrary !== undefined ? (args.modifier === undefined ? args.arbitrary : undefined)
+        : args.parts.length !== 1 || !REGEXP_INTEGER.test(step) ? undefined
+          : args.modifier === undefined ? step
+            : REGEXP_INTEGER.test(args.modifier) ? 'calc(' + step + '/' + args.modifier + ' * 100%)' : undefined;
+      return !args.parts.length && args.arbitrary === undefined ? (args.modifier === undefined ? result({
+        display: 'flex',
+      }) : undefined) : value === undefined ? undefined : result({
+        flex: value,
+      });
+    }), '', 1,
   );
   mn(
     'grow', flexFactor('flexGrow'), '', 1,
@@ -592,9 +597,10 @@ function setupFlexGrid(mn: MnInstance): void {
 /** `grow`, `grow-0`, `grow-[2]` — множитель flex. */
 function flexFactor(property: string) {
   return tw((args) => {
-    const value = !args.parts.length && args.arbitrary === undefined ? '1'
-      : args.arbitrary !== undefined ? args.arbitrary
-        : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] : undefined;
+    const value = args.modifier !== undefined ? undefined
+      : !args.parts.length && args.arbitrary === undefined ? '1'
+        : args.arbitrary !== undefined ? args.arbitrary
+          : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] : undefined;
     return value === undefined ? undefined : result({
       [property]: value,
     });
@@ -1197,13 +1203,13 @@ function setupShadows(mn: MnInstance): void {
       sizes: {
         '': '0 1px 2px rgb(0 0 0 / 0.1), 0 1px 1px rgb(0 0 0 / 0.06)',
       },
-      // Размер темы — `drop-shadow(var(--drop-shadow-sm))`; голое имя — сама тень; с прозрачностью и
-      // произвольный — через `--tw-drop-shadow-size`.
+      // Размер темы — `drop-shadow(var(--drop-shadow-sm))`; голое имя — сама тень (и с прозрачностью:
+      // `drop-shadow/50`); размер темы с прозрачностью и произвольный — через `--tw-drop-shadow-size`.
       size: (
         parts, alpha, key,
       ) => ({
         '--tw-drop-shadow-size': parts.map((part) => 'drop-shadow(' + part + ')').join(' '),
-        '--tw-drop-shadow': alpha || key === ARBITRARY ? 'var(--tw-drop-shadow-size)'
+        '--tw-drop-shadow': alpha && key || key === ARBITRARY ? 'var(--tw-drop-shadow-size)'
           : key ? 'drop-shadow(var(--drop-shadow-' + key + '))'
             : 'drop-shadow(0 1px 2px rgb(0 0 0 / 0.1)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.06))',
         filter: FILTER,
@@ -1219,10 +1225,330 @@ function setupShadows(mn: MnInstance): void {
   );
 }
 
+/** Сборка 3D-поворотов и наклонов — `transform` Tailwind 4. */
+const TRANSFORM = 'var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)';
+
+/** Сборка сдвига: по двум осям, по трём — у `translate-z`. */
+const TRANSLATE_XY = 'var(--tw-translate-x) var(--tw-translate-y)';
+const TRANSLATE_XYZ = TRANSLATE_XY + ' var(--tw-translate-z)';
+
+/** Сборка масштаба: по двум осям, по трём — у `scale-z`. */
+const SCALE_XY = 'var(--tw-scale-x) var(--tw-scale-y)';
+const SCALE_XYZ = SCALE_XY + ' var(--tw-scale-z)';
+
+/** Точки `origin-*` и `perspective-origin-*` — как пишет их Tailwind 4. */
+const ORIGINS: Record<string, string> = {
+  center: 'center',
+  top: 'top',
+  'top-right': '100% 0',
+  right: '100%',
+  'bottom-right': '100% 100%',
+  bottom: 'bottom',
+  'bottom-left': '0 100%',
+  left: '0',
+  'top-left': '0 0',
+};
+
+/**
+ * Значение поворота, наклона, масштаба: целое → с единицей (`45` → `45deg`, `50` → `50%`), произвольное —
+ * как есть; минус — `calc(… * -1)`. Дробей, модификатора и слов нет.
+ */
+function unitValue(args: MnTwArgs, unit: string): string | undefined {
+  const value = args.modifier !== undefined ? undefined
+    : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.arbitrary)
+      : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] + unit : undefined;
+  return value && args.negative ? 'calc(' + value + ' * -1)' : value;
+}
+
+/** Слово из таблицы или произвольное значение; минуса нет. */
+function keywordValue(args: MnTwArgs, keywords: Record<string, string>): string | undefined {
+  const key = args.parts.join('-');
+  return args.negative || args.modifier !== undefined ? undefined
+    : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.arbitrary)
+      : Object.prototype.hasOwnProperty.call(keywords, key) ? keywords[key] : undefined;
+}
+
+/** `translate`, `translate-x/y/z`: шкала `--spacing`, дроби (кроме `z`), произвольное; `full`, `px` — статики. */
+function translateHandler(axes: string[], value: string) {
+  return tw((args) => {
+    const shift = scaleValue(args, {
+      fraction: axes[0] !== 'z',
+      negative: true,
+    });
+    return shift === undefined ? undefined : result({
+      ...styleOf(axes.map((axis) => '--tw-translate-' + axis), shift),
+      translate: value,
+    });
+  });
+}
+
+/** `scale`, `scale-x/y/z`: голое имя с произвольным — сразу `scale`, иначе через переменные осей. */
+function scaleTransformHandler(axes: string[], value: string) {
+  return tw((args) => {
+    const factor = unitValue(args, '%');
+    return factor === undefined ? undefined : result(axes.length === 3 && args.arbitrary !== undefined ? {
+      scale: factor,
+    } : {
+      ...styleOf(axes.map((axis) => '--tw-scale-' + axis), factor),
+      scale: value,
+    });
+  });
+}
+
+/** `rotate-x/y/z`, `skew`, `skew-x/y`: функции в переменных осей и общий `transform`. */
+function transformHandler(prefix: string, axes: string[]) {
+  return tw((args) => {
+    const angle = unitValue(args, 'deg');
+    const style: Style = {};
+    if (angle === undefined) {
+      return undefined;
+    }
+    for (const axis of axes) {
+      style['--tw-' + prefix + '-' + axis] = prefix + axis.toUpperCase() + '(' + angle + ')';
+    }
+    style.transform = TRANSFORM;
+    return result(style);
+  });
+}
+
+/** Хендлер слова или произвольного значения: `origin-top-left`, `perspective-near`. */
+function keywordHandler(property: string, keywords: Record<string, string>) {
+  return tw((args) => {
+    const value = keywordValue(args, keywords);
+    return value === undefined ? undefined : result({
+      [property]: value,
+    });
+  });
+}
+
+function setupTransforms(mn: MnInstance): void {
+  const perspectives: Record<string, string> = {
+    none: 'none',
+  };
+  let name: string;
+  for (name of [
+    'dramatic',
+    'near',
+    'normal',
+    'midrange',
+    'distant',
+  ]) {
+    perspectives[name] = 'var(--perspective-' + name + ')';
+  }
+  mn(
+    'translate', translateHandler(['x', 'y'], TRANSLATE_XY), '', 1,
+  );
+  mn(
+    'translate-x', translateHandler(['x'], TRANSLATE_XY), '', 1,
+  );
+  mn(
+    'translate-y', translateHandler(['y'], TRANSLATE_XY), '', 1,
+  );
+  mn(
+    'translate-z', translateHandler(['z'], TRANSLATE_XYZ), '', 1,
+  );
+  mn(
+    'scale', scaleTransformHandler([
+      'x',
+      'y',
+      'z',
+    ], SCALE_XY), '', 1,
+  );
+  mn(
+    'scale-x', scaleTransformHandler(['x'], SCALE_XY), '', 1,
+  );
+  mn(
+    'scale-y', scaleTransformHandler(['y'], SCALE_XY), '', 1,
+  );
+  mn(
+    'scale-z', scaleTransformHandler(['z'], SCALE_XYZ), '', 1,
+  );
+  mn(
+    'rotate', tw((args) => {
+      const angle = unitValue(args, 'deg');
+      return angle === undefined ? undefined : result({
+        rotate: angle,
+      });
+    }), '', 1,
+  );
+  mn(
+    'rotate-x', transformHandler('rotate', ['x']), '', 1,
+  );
+  mn(
+    'rotate-y', transformHandler('rotate', ['y']), '', 1,
+  );
+  mn(
+    'rotate-z', transformHandler('rotate', ['z']), '', 1,
+  );
+  mn(
+    'skew', transformHandler('skew', ['x', 'y']), '', 1,
+  );
+  mn(
+    'skew-x', transformHandler('skew', ['x']), '', 1,
+  );
+  mn(
+    'skew-y', transformHandler('skew', ['y']), '', 1,
+  );
+  mn(
+    'origin', keywordHandler('transformOrigin', ORIGINS), '', 1,
+  );
+  mn(
+    'perspective-origin', keywordHandler('perspectiveOrigin', ORIGINS), '', 1,
+  );
+  mn(
+    'perspective', keywordHandler('perspective', perspectives), '', 1,
+  );
+  mn(
+    'transform', keywordHandler('transform', {
+      '': TRANSFORM,
+    }), '', 1,
+  );
+}
+
+/** Медиа `@supports` для пространства интерполяции линейного градиента — как у Tailwind 4. */
+const GRADIENT_MEDIA = 'twGradientInterpolation';
+
+/** Опорные точки градиента без `via`. */
+const GRADIENT_STOPS = 'var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) '
+  + 'var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position))';
+
+/** Опорные точки градиента с `via`. */
+const GRADIENT_VIA_STOPS = 'var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), '
+  + 'var(--tw-gradient-via) var(--tw-gradient-via-position), var(--tw-gradient-to) var(--tw-gradient-to-position)';
+
+/** `bg-linear-to-tr` → `to top right`. */
+const GRADIENT_SIDES: Record<string, string> = {
+  t: 'top',
+  r: 'right',
+  b: 'bottom',
+  l: 'left',
+};
+
+/** Модификаторы оттенка: `/longer` → `in oklch longer hue`. */
+const HUE_INTERPOLATIONS = [
+  'longer',
+  'shorter',
+  'increasing',
+  'decreasing',
+];
+
+/** Целый процент — позиция точки: `from-10%`. */
+const REGEXP_PERCENT = /^\d+%$/;
+
+/** Пространство интерполяции по модификатору: нет — `in oklab`, `/hsl` — `in hsl`, `/[in_hsl]` — как есть. */
+function interpolation(modifier: string | undefined): string {
+  return modifier === undefined ? 'in oklab'
+    : modifier[0] === '[' ? modifier.slice(1, -1).replace(/_/g, ' ')
+      : HUE_INTERPOLATIONS.indexOf(modifier) >= 0 ? 'in oklch ' + modifier + ' hue' : 'in ' + modifier;
+}
+
+/** Направление линейного градиента: `to-tr` → `to top right`, `45` → `45deg` (минус — `calc`). */
+function linearPosition(args: MnTwArgs): string | undefined {
+  const parts = args.parts;
+  const side = parts.length === 2 && parts[0] === 'to' && parts[1].length <= 2 ? parts[1] : undefined;
+  if (side) {
+    return args.negative || !GRADIENT_SIDES[side[0]] || side[1] && !GRADIENT_SIDES[side[1]] ? undefined
+      : 'to ' + GRADIENT_SIDES[side[0]] + (side[1] ? ' ' + GRADIENT_SIDES[side[1]] : '');
+  }
+  return parts.length === 1 && REGEXP_INTEGER.test(parts[0])
+    ? (args.negative ? 'calc(' + parts[0] + 'deg * -1)' : parts[0] + 'deg') : undefined;
+}
+
+/** `bg-linear`, `bg-radial`, `bg-conic`: произвольное — запасным значением в `var(--tw-gradient-stops, …)`. */
+function gradientHandler(kind: 'linear' | 'radial' | 'conic') {
+  return tw((args) => {
+    const image = kind + '-gradient(var(--tw-gradient-stops';
+    let position: string | undefined;
+    if (args.arbitrary !== undefined) {
+      return args.parts.length || args.negative || args.modifier !== undefined ? undefined : result({
+        '--tw-gradient-position': args.arbitrary,
+        backgroundImage: image + ',' + args.arbitrary + '))',
+      });
+    }
+    if (kind === 'linear') {
+      position = linearPosition(args);
+      return position === undefined ? undefined : {
+        style: {
+          '--tw-gradient-position': position,
+          backgroundImage: image + '))',
+        },
+        media: {
+          [GRADIENT_MEDIA]: {
+            style: {
+              '--tw-gradient-position': position + ' ' + interpolation(args.modifier),
+            },
+          },
+        },
+      };
+    }
+    // У радиального — только голое имя; у конического — ещё угол начала.
+    position = !args.parts.length ? (args.negative ? undefined : '')
+      : kind === 'conic' && args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0])
+        ? 'from ' + (args.negative ? 'calc(' + args.parts[0] + 'deg * -1)' : args.parts[0] + 'deg') + ' ' : undefined;
+    return position === undefined ? undefined : result({
+      '--tw-gradient-position': position + interpolation(args.modifier),
+      backgroundImage: image + '))',
+    });
+  });
+}
+
+/** Произвольное значение — позиция точки (`[10px]`, `[length:var(--x)]`), а не цвет; `var()` без типа — цвет. */
+function isPositionArg(args: MnTwArgs): boolean {
+  return args.arbitrary !== undefined && (args.type === 'length' || args.type === 'percentage'
+    || !args.type && args.arbitrary.indexOf('var(') !== 0 && REGEXP_LENGTH.test(args.arbitrary));
+}
+
+/** `from`, `via`, `to`: цвет точки или её позиция (`from-10%`, `from-[10px]`). */
+function gradientStopHandler(stop: 'from' | 'via' | 'to') {
+  return tw((args) => {
+    const position = args.negative || args.modifier !== undefined ? undefined
+      : isPositionArg(args) ? (args.parts.length ? undefined : args.arbitrary)
+        : args.parts.length === 1 && REGEXP_PERCENT.test(args.parts[0]) ? args.parts[0] : undefined;
+    const color = position === undefined && !isPositionArg(args) ? colorValue(args) : undefined;
+    if (position !== undefined) {
+      return result({
+        ['--tw-gradient-' + stop + '-position']: position,
+      });
+    }
+    return color && colorResult(
+      ['--tw-gradient-' + stop], color, stop === 'via' ? {
+        '--tw-gradient-via-stops': GRADIENT_VIA_STOPS,
+        '--tw-gradient-stops': 'var(--tw-gradient-via-stops)',
+      } : {
+        '--tw-gradient-stops': GRADIENT_STOPS,
+      },
+    );
+  });
+}
+
+function setupGradients(mn: MnInstance): void {
+  mn(
+    'bg-linear', gradientHandler('linear'), '', 1,
+  );
+  mn(
+    'bg-radial', gradientHandler('radial'), '', 1,
+  );
+  mn(
+    'bg-conic', gradientHandler('conic'), '', 1,
+  );
+  mn(
+    'from', gradientStopHandler('from'), '', 1,
+  );
+  mn(
+    'via', gradientStopHandler('via'), '', 1,
+  );
+  mn(
+    'to', gradientStopHandler('to'), '', 1,
+  );
+}
+
 function setupVariants(mn: MnInstance): void {
   let name: string;
   mn.media[COLOR_MIX_MEDIA] = {
     supports: '(color: color-mix(in lab, red, red))',
+  };
+  mn.media[GRADIENT_MEDIA] = {
+    supports: '(background-image: linear-gradient(in lab, red, red))',
   };
   for (name of BREAKPOINTS) {
     mn.media[name] = {
@@ -1319,6 +1645,8 @@ export default {
     setupColors(mn);
     setupColorUtilities(mn);
     setupShadows(mn);
+    setupTransforms(mn);
+    setupGradients(mn);
     setupVariants(mn);
   },
 } as MnPresetObject;

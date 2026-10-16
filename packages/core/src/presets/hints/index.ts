@@ -173,10 +173,48 @@ const TYPOS: Record<string, string> = {
   minw: 'wmin',
   maxh: 'hmax',
   maxw: 'wmax',
+  // `pointer-events` — тег `e`: `peN` → `eN` (D-093, запрос web-games).
+  pe: 'e',
+};
+
+/**
+ * Опечатки, у которых меняется и запись значения: `[тег, приставка суффикса, которую снять, полное слово →
+ * краткое]`. `apN` → `apcNone` (`apc` берёт слова целиком), `pointerEventsNone` → `eN` (D-093, запрос web-games).
+ */
+const VALUE_TYPOS: Record<string, [string, string, Record<string, string>]> = {
+  ap: [
+    'apc',
+    '',
+    {
+      N: 'None',
+      A: 'Auto',
+    },
+  ],
+  appearance: [
+    'apc',
+    '',
+    {},
+  ],
+  pointer: [
+    'e',
+    'Events',
+    {
+      Auto: 'A',
+      None: 'N',
+      Visible: 'V',
+      VisiblePainted: 'VP',
+      VisibleFill: 'VF',
+      VisibleStroke: 'VS',
+      Painted: 'P',
+      Fill: 'F',
+      Stroke: 'S',
+      All: 'AL',
+    },
+  ],
 };
 
 /** Все обработчики — для проверки `excludeHandlers`. */
-const HANDLERS = Object.keys(EQUIVALENTS).concat(Object.keys(TYPOS));
+const HANDLERS = Object.keys(EQUIVALENTS).concat(Object.keys(TYPOS), Object.keys(VALUE_TYPOS));
 
 /** Опции фабрики {@link presetHints} (D-042). */
 export interface PresetHintsOptions {
@@ -246,6 +284,15 @@ function typoHandler(name: string): (p: MnEssenceParams) => void {
   return (p) => hint(['typos'], '"' + name + p.suffix + '" gives no CSS — did you mean "' + tag + p.suffix + '"?');
 }
 
+/** Хендлер-ловушка для опечатки, у которой меняется и значение: `apN` → `apcNone`. */
+function valueTypoHandler(name: string): (p: MnEssenceParams) => void {
+  const entry = VALUE_TYPOS[name];
+  return (p) => {
+    const rest = p.suffix.indexOf(entry[1]) === 0 ? p.suffix.slice(entry[1].length) : p.suffix;
+    hint(['typos'], '"' + name + p.suffix + '" gives no CSS — did you mean "' + entry[0] + (entry[2][rest] || rest) + '"?');
+  };
+}
+
 /** Регистрирует ловушку: `skip` — без разбора значения; kebab-суффикс ядро отдаёт любому хендлеру (D-062). */
 function register(
   mn: MnInstance, name: string, handler: (p: MnEssenceParams) => void,
@@ -277,6 +324,11 @@ function apply(mn: MnInstance, options: PresetHintsOptions): void {
   for (name in TYPOS) { // eslint-disable-line
     skip[name] || register(
       mn, name, typoHandler(name),
+    );
+  }
+  for (name in VALUE_TYPOS) { // eslint-disable-line
+    skip[name] || register(
+      mn, name, valueTypoHandler(name),
     );
   }
 }
@@ -326,6 +378,7 @@ export default presetHints;
 export const HINTS = {
   equivalents: EQUIVALENTS,
   typos: TYPOS,
+  valueTypos: VALUE_TYPOS,
   groups: GROUPS,
   handlers: HANDLERS,
 };

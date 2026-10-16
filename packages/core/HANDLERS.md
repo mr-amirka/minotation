@@ -1952,6 +1952,15 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 | `ecH` | `empty-cells:hide` |
 | `cpsT` | `caption-side:top` |
 
+### Взаимодействие
+
+| Токен | CSS |
+|-------|-----|
+| `eN` | `pointer-events:none` |
+| `eA` | `pointer-events:auto` |
+| `eAL` | `pointer-events:all` |
+| `apcNone` | `appearance:none` |
+
 ### Фон и маска
 
 | Токен | CSS |

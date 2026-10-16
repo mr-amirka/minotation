@@ -78,7 +78,14 @@ describe('presetHints — подсказки', () => {
     ['minw10', 'wmin10'],
     ['maxh50%', 'hmax50%'],
     ['maxw50%', 'wmax50%'],
-  ])('мин./макс. размер %s → подсказка %s (D-093, запрос web-games)', (token, right) => {
+    ['peN', 'eN'],
+    ['pointerEventsNone', 'eN'],
+    ['pointerEventsAll', 'eAL'],
+    ['apN', 'apcNone'],
+    ['appearanceNone', 'apcNone'],
+    ['apButton', 'apcButton'],
+    ['pointerNone', 'eN'],
+  ])('%s → подсказка %s (D-093, запросы web-games)', (token, right) => {
     const {
       css, warnings,
     } = run(token);
@@ -195,11 +202,20 @@ describe('presetHints — таблицы', () => {
     }
   });
 
+  test.each([
+    ['ap', 'apcNone'],
+    ['appearance', 'apcNone'],
+    ['pointer', 'eN'],
+  ])('опечатка со значением "%s": исправление %s компилируется', (typo, right) => {
+    expect(Object.keys(HINTS.valueTypos)).toContain(typo);
+    expect(hasOwnRule(run(right).css, right)).toBe(true);
+  });
+
   test.each(Object.keys(HINTS.typos))('опечатка "%s": исправление компилируется', (typo) => {
     const {
       css, 
-    } = run(HINTS.typos[typo] + '0');
-    expect(hasOwnRule(css, HINTS.typos[typo] + '0')).toBe(true);
+    } = run(HINTS.typos[typo] + (HINTS.typos[typo] === 'e' ? 'N' : '0'));
+    expect(hasOwnRule(css, HINTS.typos[typo] + (HINTS.typos[typo] === 'e' ? 'N' : '0'))).toBe(true);
   });
 });
 

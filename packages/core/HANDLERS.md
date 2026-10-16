@@ -591,13 +591,13 @@ Text-align — тег `ta` + буква (`taC`/`taR`/`taL`/`taJ`/`taE`/`taS`), �
 | `tdU` | `text-decoration:underline` (значения из карты `TD_SYNONYMS`: `N`one, `U`nderline, `O`verline, `L`ineThrough) |
 | `tdlL` | `text-decoration-line:line-through` (та же карта `TD_SYNONYMS`, отдельное свойство) |
 | `tdc--accent` | `text-decoration-color:var(--accent)` |
-| `tdstDotted` | `text-decoration-style:dotted` — добавлено 2026-09-22 |
-| `tdsNone` | `text-decoration-skip:none` |
-| `tdsiAuto` | `text-decoration-skip-ink:auto` |
+| `tdstDT` | `text-decoration-style:dotted` — добавлено 2026-09-22 |
+| `tdsN` | `text-decoration-skip:none` |
+| `tdsiA` | `text-decoration-skip-ink:auto` |
 | `tdt2px` | `text-decoration-thickness:2px` |
 | `tuo2px` | `text-underline-offset:2px` — добавлено 2026-09-22 |
 | `tupFromFont` | `text-underline-position:from-font` — добавлено 2026-09-22 |
-| `temNone` | `text-emphasis:none` (значение — суффикс целиком, passthrough; без суффикса хендлер не срабатывает) |
+| `temN` | `text-emphasis:none` (значение — суффикс целиком, passthrough; без суффикса хендлер не срабатывает) |
 | `temcF00` | `text-emphasis-color:#f00` |
 | `tempOver` | `text-emphasis-position:over` |
 | `tems_Filled_Dot` | `text-emphasis-style:Filled Dot` — ведущий `_` даёт пробелы вместо дефисов (без него `temsFilledDot` даст ошибочное `filled-dot`) |
@@ -1202,9 +1202,9 @@ mn.assign({ 'button:not(.plain)': 'p10' })    → button:not(.plain){padding:10p
 
 | Тег | Слоты | Примеры |
 |-----|-------|---------|
-| `fx` | `рост сжатие база` | `fx1`, `fx_1_1`, `fx_1_1_auto`, `fx_1_1_0%`, `fxNone`, `fxAuto`, `fxContent` |
-| `col` | `число-колонок ширина` | `col3`, `col_3_30em`, `colAuto` |
-| `tem` | `стиль цвет` | `temFilled`, `tem_filled_dot`, `temNone` |
+| `fx` | `рост сжатие база` | `fx1`, `fx_1_1`, `fx_1_1_auto`, `fx_1_1_0%`, `fxN`, `fxA`, `fxContent` |
+| `col` | `число-колонок ширина` | `col3`, `col_3_30em`, `colA` |
+| `tem` | `стиль цвет` | `temFilled`, `tem_filled_dot`, `temN` |
 | `coi`, `cor` | пары `имя значение` | `coi_n_2`, `cor_n_0`, `coiNone` |
 
 До 2026-09-27 все пять были permissive pass-through — значение кебабилось и
@@ -1229,7 +1229,7 @@ coi10   →  counter-increment:10
 
 | Токен | CSS |
 |-------|-----|
-| `gNone` | `grid:none` |
+| `gN` | `grid:none` |
 | `g_1fr_/_1fr` | `grid:1fr / 1fr` — строки / столбцы |
 | `g_"a"_1fr` | `grid:"a" 1fr` — область и размер |
 | `gt_"a_b"_1fr_/_auto` | `grid-template:"a b" 1fr / auto` |
@@ -1250,7 +1250,7 @@ coi10   →  counter-increment:10
 |-------|-----|
 | `gtc1fr_1fr` | `grid-template-columns:1fr 1fr` |
 | `gtc50%` | `grid-template-columns:50%` |
-| `gtcNone`, `gtcAuto`, `gtcMinContent`, `gtcSubgrid` | соответствующее слово |
+| `gtcN`, `gtcAuto`, `gtcMinContent`, `gtcSubgrid` | соответствующее слово |
 | `gtc_repeat\(3,1fr\)` | `repeat(3,1fr)` |
 | `gtr_minmax\(100px,1fr\)` | `minmax(100px,1fr)` |
 | `gtc_\[a\]_1fr` | `[a] 1fr` — имя линии, скобки экранируются |
@@ -1276,7 +1276,7 @@ coi10   →  counter-increment:10
 | Токен | CSS |
 |-------|-----|
 | `gtc1fr_auto` | `grid-template-columns:1fr auto` |
-| `gtcNone` / `gtcAuto` / `gtcSubgrid` | `grid-template-columns:none` / `auto` / `subgrid` |
+| `gtcN` / `gtcAuto` / `gtcSubgrid` | `grid-template-columns:none` / `auto` / `subgrid` |
 | `gtcAF240` | `grid-template-columns:repeat(auto-fit, minmax(240px, 1fr))` |
 | `gtcAF240_300` | `grid-template-columns:repeat(auto-fit, minmax(240px, 300px))` |
 | `gtcAF15em` | `grid-template-columns:repeat(auto-fit, minmax(15em, 1fr))` |
@@ -1305,7 +1305,7 @@ coi10   →  counter-increment:10
 |-------|-----|
 | `ov` | `overflow:hidden` |
 | `ovyA` | `-webkit-overflow-scrolling:touch;overflow-y:auto` |
-| `contrast` | `image-rendering:optimize-contrast;image-rendering:-webkit-optimize-contrast` |
+| `irOptimizeContrast` | `image-rendering:optimize-contrast;image-rendering:-webkit-optimize-contrast` (бывший `contrast`, D-094) |
 | `ratio3x2` | `padding-top:66.67%` + `>*{position:absolute;top:0;right:0;bottom:0;left:0}` (было `66.66%` до фикса `toFixed`, RESEARCH/05, 2026-09-23) |
 
 ---
@@ -1337,7 +1337,7 @@ coi10   →  counter-increment:10
 
 **Несколько слов** берут `tems`, `temp`, `tds`, `tup`, `gaf` — через `_`:
 `temsFilled_Dot`, `gafRow_Dense`, `tempOver_Right`. Остальные принимают ровно
-одно, `irAuto_Pixelated` бракуется.
+одно, `irA_Pixelated` бракуется.
 
 **Записи, которые camelCase иначе ломает**, распознаются отдельно: `tsPreserve3d`
 и `tsPreserve3D` (цифра не даёт дефиса), `irMozCrispEdges` (ведущий дефис
@@ -1734,7 +1734,7 @@ const mn = minotationProvider({ presets: [presetStandard, presetPrefixes] });
 
 ```
 fxdC   → .fxdC{-webkit-flex-direction:column;-moz-flex-direction:column;flex-direction:column}
-apcNone → .apcNone{-webkit-appearance:none;appearance:none}   (без -moz-appearance)
+apcN → .apcN{-webkit-appearance:none;appearance:none}   (без -moz-appearance)
 ov     → .ov{overflow:hidden}   (вне списка — без префиксов)
 ```
 
@@ -1956,10 +1956,10 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 
 | Токен | CSS |
 |-------|-----|
-| `eN` | `pointer-events:none` |
-| `eA` | `pointer-events:auto` |
-| `eAL` | `pointer-events:all` |
-| `apcNone` | `appearance:none` |
+| `peN` | `pointer-events:none` |
+| `peA` | `pointer-events:auto` |
+| `peAL` | `pointer-events:all` |
+| `apcN` | `appearance:none` |
 
 ### Фон и маска
 

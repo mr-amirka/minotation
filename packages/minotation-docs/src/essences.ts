@@ -183,7 +183,6 @@ export const ESSENCES: MnDocEntry[] = [
   // --- Misc ---
   { name: 'ov', props: 'overflow', examples: ['ov'] },
   { name: 'ovy', props: 'overflow-y, -webkit-overflow-scrolling', keywords: ['overflow', 'scroll'], examples: ['ovyAuto'] },
-  { name: 'contrast', props: 'image-rendering', description: 'фиксированный алиас, без аргумента', examples: ['contrast'] },
   {
     name: 'ratio', props: 'padding-top (+ дочерний position:absolute)', keywords: ['aspect', 'ratio', 'соотношение сторон'],
     examples: ['ratio3x2'],
@@ -258,7 +257,7 @@ export const ESSENCES: MnDocEntry[] = [
   // --- Прочее ---
   { name: 'o', props: 'opacity', description: 'значение 0-100 → 0-1', examples: ['o100'] },
   { name: 'tsa', props: 'text-size-adjust', examples: ['tsa0'] },
-  { name: 'apc', props: 'appearance', examples: ['apcNone'] },
+  { name: 'apc', props: 'appearance', examples: ['apcN'] },
   { name: 'ovx', props: 'overflow-x', examples: ['ovxHidden'] },
   { name: 'ovs', props: 'overflow-style', examples: ['ovsAuto'] },
   { name: 'ovsc', props: '-webkit-overflow-scrolling', examples: ['ovscTouch'] },
@@ -266,7 +265,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'rsz', props: 'resize', examples: ['rszBoth'] },
 
   // --- Grid ---
-  { name: 'g', props: 'grid', examples: ['gNone'] },
+  { name: 'g', props: 'grid', examples: ['gN'] },
   { name: 'gt', props: 'grid-template', examples: ['gt100px_1fr'] },
   { name: 'gtc', props: 'grid-template-columns', examples: ['gtc100px_1fr'] },
   { name: 'gtr', props: 'grid-template-rows', examples: ['gtr100px_1fr'] },
@@ -289,7 +288,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'td', props: 'text-decoration', examples: ['tdUnderline'] },
   { name: 'tdl', props: 'text-decoration-line', examples: ['tdlUnderline'] },
   { name: 'tds', props: 'text-decoration-skip', examples: ['tdsInk'] },
-  { name: 'tdsi', props: 'text-decoration-skip-ink', examples: ['tdsiAuto'] },
+  { name: 'tdsi', props: 'text-decoration-skip-ink', examples: ['tdsiA'] },
   { name: 'tdt', props: 'text-decoration-thickness', examples: ['tdt3px'] },
   { name: 'ti', props: 'text-indent', examples: ['ti40px'] },
   { name: 'tov', props: 'text-overflow', examples: ['tovEllipsis'] },
@@ -300,7 +299,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'wos', props: 'word-spacing', examples: ['wos1rem'] },
   { name: 'q', props: 'quotes', examples: ['qNone'] },
   { name: 'va', props: 'vertical-align', keywords: ['vertical', 'align'], examples: ['vaBaseline'] },
-  { name: 'e', props: 'pointer-events', examples: ['eNone'] },
+  { name: 'pe', props: 'pointer-events', examples: ['peN'] },
   { name: 'wm', props: 'writing-mode', keywords: ['writing', 'mode'], examples: ['wm'] },
   { name: 'v', props: 'visibility', examples: ['vHidden'] },
   { name: 'ts', props: 'transform-style', keywords: ['transform', 'style'], examples: ['tsFlat'] },

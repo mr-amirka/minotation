@@ -187,7 +187,7 @@ describe('единица по умолчанию у свойств-длин', ()
     ['fxb', 'flex-basis:0'],
     // Ключевые слова и переменные не трогаем.
     ['tiInherit', 'text-indent:inherit'],
-    ['fxbAuto', 'flex-basis:auto'],
+    ['fxbA', 'flex-basis:auto'],
     ['ti--v', 'text-indent:var(--v)'],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
@@ -285,7 +285,7 @@ describe('сокращённые записи значений', () => {
     ['tdBL', 'text-decoration:blink'],
     ['tdW', 'text-decoration:wavy'],
     ['usAL', 'user-select:all'],
-    ['eAL', 'pointer-events:all'],
+    ['peAL', 'pointer-events:all'],
     ['vaS', 'vertical-align:sub'],
     ['fvTN', 'font-variant:tabular-nums'],
     ['fsmS', 'font-smooth:small'],
@@ -491,7 +491,7 @@ describe('auto-repeat: gtcAF240 вместо gtcRepeat\\(auto-fit,minmax\\(240px
   });
 
   test.each([
-    ['gtcNone', 'grid-template-columns:none'],
+    ['gtcN', 'grid-template-columns:none'],
     ['gtcAuto', 'grid-template-columns:auto'],
     ['gtc1fr_auto', 'grid-template-columns:1fr auto'],
     ['gtcSubgrid', 'grid-template-columns:subgrid'],
@@ -603,10 +603,10 @@ describe('голое слово у свойства-длины', () => {
   test.each([
     ['ti10', 'text-indent:10px'],
     ['wosNormal', 'word-spacing:normal'],
-    ['fxbAuto', 'flex-basis:auto'],
+    ['fxbA', 'flex-basis:auto'],
     ['fxbFitContent', 'flex-basis:fit-content'],
     ['tdtFromFont', 'text-decoration-thickness:from-font'],
-    ['tuoAuto', 'text-underline-offset:auto'],
+    ['tuoA', 'text-underline-offset:auto'],
   ])('%s → %s — ключевое слово своего свойства', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
@@ -615,7 +615,7 @@ describe('голое слово у свойства-длины', () => {
     expect(cssOf(token)).toBe(expected);
   });
 
-  test.each([['apcNone', 'appearance:none'], ['irPixelated', 'image-rendering:pixelated']])('%s → %s — не-длины в том же блоке не задеты', (token, expected) => {
+  test.each([['apcN', 'appearance:none'], ['irPixelated', 'image-rendering:pixelated']])('%s → %s — не-длины в том же блоке не задеты', (token, expected) => {
     // У них значения произвольны и словарём не перечислимы.
     expect(cssOf(token)).toBe(expected);
   });

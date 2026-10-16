@@ -192,7 +192,7 @@ export default {
       /**
      * Remove the inner padding in Chrome and Safari on macOS.
      */
-      '[type=search]::-webkit-search-decoration': 'apcNone',
+      '[type=search]::-webkit-search-decoration': 'apcN',
 
       /**
      * 1. Correct the inability to style clickable types in iOS and Safari.

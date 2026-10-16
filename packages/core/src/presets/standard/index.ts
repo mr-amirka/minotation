@@ -720,6 +720,101 @@ function wordsSet(words: string): Record<string, 1> {
  * формы теряется тем более. Без замены единственное содержательное значение
  * `transform-style` пришлось бы писать сырым режимом — `ts_preserve-3d`.
  */
+/**
+ * Краткие записи слов у хендлеров общей таблицы (D-094): `fxN` → `flex:none`, `arA` → `aspect-ratio:auto`, как
+ * `dN` у `display`. Полное слово при краткой записи бракуется с подсказкой — одно значение, одна запись.
+ */
+/** Краткая запись у `border-image`: `biN`. */
+const BORDER_IMAGE_ABBREVIATIONS: Record<string, string> = {
+  N: 'none',
+};
+
+const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
+  appearance: {
+    N: 'none',
+    A: 'auto',
+  },
+  flex: {
+    N: 'none',
+    A: 'auto',
+  },
+  flexBasis: {
+    A: 'auto',
+  },
+  grid: {
+    N: 'none',
+  },
+  gridTemplate: {
+    N: 'none',
+  },
+  gridTemplateColumns: {
+    N: 'none',
+  },
+  gridTemplateRows: {
+    N: 'none',
+  },
+  gridAutoColumns: {
+    A: 'auto',
+  },
+  gridAutoRows: {
+    A: 'auto',
+  },
+  aspectRatio: {
+    A: 'auto',
+  },
+  columns: {
+    A: 'auto',
+  },
+  textDecorationSkip: {
+    N: 'none',
+  },
+  textDecorationSkipInk: {
+    N: 'none',
+    A: 'auto',
+  },
+  textDecorationThickness: {
+    A: 'auto',
+  },
+  textDecorationStyle: {
+    S: 'solid',
+    D: 'double',
+    DT: 'dotted',
+    DS: 'dashed',
+    W: 'wavy',
+  },
+  textUnderlineOffset: {
+    A: 'auto',
+  },
+  textUnderlinePosition: {
+    A: 'auto',
+  },
+  textEmphasis: {
+    N: 'none',
+  },
+  textEmphasisStyle: {
+    N: 'none',
+  },
+  textEmphasisPosition: {
+    A: 'auto',
+  },
+  imageRendering: {
+    A: 'auto',
+  },
+};
+
+/**
+ * Старая запись после переименования (D-094): сообщение с новой, CSS нет. Убирается через один выпуск — задача в
+ * PLAN; это сообщение, а не вторая реализация.
+ */
+function throwRenamed(token: string, replacement: string): never {
+  throw new MnParseError('"' + token + '" was renamed: write "' + replacement + '" (D-094). The old spelling gives'
+    + ' no CSS and is removed in the next release.', {
+    token,
+    handler: '',
+    arg: '',
+  });
+}
+
 const ENUM_KEYWORDS: Record<string, Record<string, 1 | string>> = {
   appearance: wordsSet('none auto searchfield textarea checkbox radio menulist'
     + ' listbox meter progress-bar button textfield menulist-button'),
@@ -815,12 +910,35 @@ function availableHint(items: string[]): string {
  * (`1`): записи со строкой — это алиасы, которые заменяются на каноническое, и
  * в подсказке они дали бы дубли (`optimizeSpeed` и `optimizespeed`).
  */
-function enumHint(words: Record<string, 1 | string>, essenceName: string): string {
+function enumHint(
+  words: Record<string, 1 | string>, essenceName: string, abbreviations?: Record<string, string>,
+): string {
   const items: string[] = [];
+  const short: Record<string, string> = {};
+  let abbr: string;
+  for (abbr in abbreviations) { // eslint-disable-line
+    short[(abbreviations as Record<string, string>)[abbr]] = abbr;
+  }
+  // Слово с краткой записью предлагается краткой (D-094): `apN (none)`, а не `apNone`.
   for (const word of Object.keys(words)) {
-    words[word] === 1 && items.push(essenceName + notationWord(word));
+    words[word] === 1 && items.push(short[word] ? essenceName + short[word] + ' (' + word + ')' : essenceName + notationWord(word));
   }
   return availableHint(items);
+}
+
+/**
+ * Полное слово, у которого есть краткая запись (D-094), бракуется с подсказкой: `fxNone` → «Write "fxN"». Иное
+ * значение возвращается как есть.
+ */
+function assertNotLongForm(
+  value: string, abbreviations: Record<string, string>, essenceName: string, raw: string,
+): string {
+  let abbr: string;
+  for (abbr in abbreviations) { // eslint-disable-line
+    abbreviations[abbr] === value && throwInvalid('Write "' + essenceName + abbr + '" instead of "' + essenceName
+      + raw + '" — same value');
+  }
+  return value;
 }
 
 function assertEnumValue(
@@ -829,6 +947,7 @@ function assertEnumValue(
   multi: 1 | 0 | undefined,
   essenceName: string,
   raw: string,
+  abbreviations?: Record<string, string>,
 ): string {
   // Подстановка и любая функция проходят: их содержимое здесь разбирать нечем,
   // а по спецификации `var()` валиден у любого свойства. CSS-wide keywords
@@ -843,7 +962,9 @@ function assertEnumValue(
   (i < 2 || multi) || throwInvalid(prefix + 'expected a single value');
   while (i--) {
     canon = words[parts[i].toLowerCase()];
-    canon || throwInvalid(prefix + 'the set of values is closed' + enumHint(words, essenceName));
+    canon || throwInvalid(prefix + 'the set of values is closed' + enumHint(
+      words, essenceName, abbreviations,
+    ));
     canon === 1 || (parts[i] = canon as string);
   }
   return parts.join(' ');
@@ -2771,10 +2892,13 @@ export default {
       );
       mn('bi' + suffix, (p) => {
         let s;
-        if (!(s = p.suffix)) {
+        if (!(s = p.suffix) || s === 'N') {
           return styleWrap(biSidesSet('none'), priority + 1);
         }
-        const value = valueNormalize(s);
+        // `biNone` → «Write "biN"» (D-094), как у остальных слов с краткой записью.
+        const value = assertNotLongForm(
+          valueNormalize(s), BORDER_IMAGE_ABBREVIATIONS, 'bi' + suffix, s,
+        );
         return styleWrap(biSidesSet(borderImageValue(
           value.split(' '), s, 'bi' + suffix,
         )), priority + 1);
@@ -4204,7 +4328,7 @@ export default {
         // `A` занято `auto`, поэтому `all` — `AL`.
         AL: 'All',
       }),
-      e: synonymProvider('pointerEvents', {
+      pe: synonymProvider('pointerEvents', {
         A: 'Auto',
         N: 'None',
         V: 'Visible',
@@ -4675,7 +4799,7 @@ export default {
       const valuePattern = VALUE_PATTERNS[propName];
       const slots = SLOT_VALIDATORS[propName];
       mn(essenceName, (p) => {
-        let s, repeated;
+        let s, repeated, abbreviations;
         let style: Record<string, any>;
         style = {};
         if (!(s = p.suffix)) {
@@ -4688,7 +4812,14 @@ export default {
           style[propName] = repeated;
           return styleWrap(style, stylePriority);
         }
-        s = valueNormalize(s);
+        abbreviations = VALUE_ABBREVIATIONS[propName];
+        if (abbreviations) {
+          s = abbreviations[s] || assertNotLongForm(
+            valueNormalize(s), abbreviations, essenceName, p.suffix,
+          );
+        } else {
+          s = valueNormalize(s);
+        }
         // У свойства-длины голое слово почти всегда ошибка: `tiA` давало
         // `text-indent:a`, `wosN` — `word-spacing:n`. Список слов задан на
         // свойство; у остальных хендлеров блока значения произвольны
@@ -4722,14 +4853,15 @@ export default {
             + essenceName + '": expected a unitless number');
         } else if (enumWords) {
           s = assertEnumValue(
-            s, enumWords, ENUM_MULTI[propName], essenceName, p.suffix,
+            s, enumWords, ENUM_MULTI[propName], essenceName, p.suffix, abbreviations,
           );
         }
         style[propName] = lengthy
           ? assertLengthValue(
             defaultUnitNormalize(s), essenceName, p.suffix, lengthy,
           )
-          : s;
+          // `optimize-contrast` нужен и с префиксом WebKit (бывший `contrast`, D-094).
+          : s === 'optimize-contrast' ? [s, '-webkit-' + s] : s;
         return styleWrap(style, stylePriority);
       });
     });
@@ -4764,10 +4896,12 @@ export default {
       // eslint-disable-next-line
   }, '^((((\\d+):w)x((\\d+):h))|(\\d+):oh)?(([-+]):sa([0-9\\.]+):addv([a-z%]+):addu?):add?|(.*):other', 1);
 
-    mn({
-      contrast: styleWrap({
-        imageRendering: ['optimize-contrast', '-webkit-optimize-contrast'],
-      }),
-    });
+    // Переименовано (D-094): `e` → `pe` (pointer-events).
+    mn('e', (p) => throwRenamed('e' + p.suffix, 'pe' + p.suffix));
+    // Переименовано (D-094): `contrast` → `irOptimizeContrast`.
+    mn('contrast', (p) => throwRenamed('contrast' + p.suffix, 'irOptimizeContrast'));
   },
 } as MnPresetObject;
+
+/** Для тестов: краткие записи слов по свойствам (D-094). */
+export const STANDARD_VALUE_ABBREVIATIONS = VALUE_ABBREVIATIONS;

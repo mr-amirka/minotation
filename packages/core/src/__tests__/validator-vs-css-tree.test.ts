@@ -33,7 +33,9 @@
 import {
   minotationProvider,
 } from '../core/index';
-import presetStandard from '../presets/standard';
+import presetStandard, {
+  STANDARD_VALUE_ABBREVIATIONS,
+} from '../presets/standard';
 import {
   lexer,
 } from 'css-tree';
@@ -519,9 +521,15 @@ describe('списки закрытых перечислений совпада�
     // операцией к той, что делает хендлер.
     const list = words.split(' ');
     const missing: string[] = [];
+    // Слово с краткой записью пишется краткой (D-094): `apcN`, а не `apcNone`.
+    const abbreviations = STANDARD_VALUE_ABBREVIATIONS[prop.replace(/-([a-z])/g, (_m, c) => c.toUpperCase())] || {};
+    const short: Record<string, string> = {};
+    for (const abbr of Object.keys(abbreviations)) {
+      short[abbreviations[abbr]] = abbr;
+    }
     for (let i = 0; i < list.length; i++) {
       const camel = list[i].replace(/^-/, '').replace(/-([a-z0-9])/g, (_m, c) => c.toUpperCase());
-      const token = tag + camel[0].toUpperCase() + camel.slice(1);
+      const token = tag + (short[list[i]] || camel[0].toUpperCase() + camel.slice(1));
       if (compileToken(token).indexOf(prop + ':' + list[i]) < 0) {
         missing.push(token + ' → ' + prop + ':' + list[i]);
       }

@@ -173,30 +173,28 @@ const TYPOS: Record<string, string> = {
   minw: 'wmin',
   maxh: 'hmax',
   maxw: 'wmax',
-  // `pointer-events` — тег `e`: `peN` → `eN` (D-093, запрос web-games).
-  pe: 'e',
 };
 
 /**
  * Опечатки, у которых меняется и запись значения: `[тег, приставка суффикса, которую снять, полное слово →
- * краткое]`. `apN` → `apcNone` (`apc` берёт слова целиком), `pointerEventsNone` → `eN` (D-093, запрос web-games).
+ * краткое]`. `apN` → `apcN`, `appearanceNone` → `apcN`, `pointerEventsNone` → `peN` (D-093, D-094).
  */
 const VALUE_TYPOS: Record<string, [string, string, Record<string, string>]> = {
   ap: [
     'apc',
     '',
-    {
-      N: 'None',
-      A: 'Auto',
-    },
+    {},
   ],
   appearance: [
     'apc',
     '',
-    {},
+    {
+      None: 'N',
+      Auto: 'A',
+    },
   ],
   pointer: [
-    'e',
+    'pe',
     'Events',
     {
       Auto: 'A',
@@ -284,7 +282,7 @@ function typoHandler(name: string): (p: MnEssenceParams) => void {
   return (p) => hint(['typos'], '"' + name + p.suffix + '" gives no CSS — did you mean "' + tag + p.suffix + '"?');
 }
 
-/** Хендлер-ловушка для опечатки, у которой меняется и значение: `apN` → `apcNone`. */
+/** Хендлер-ловушка для опечатки, у которой меняется и значение: `appearanceNone` → `apcN`. */
 function valueTypoHandler(name: string): (p: MnEssenceParams) => void {
   const entry = VALUE_TYPOS[name];
   return (p) => {

@@ -511,14 +511,14 @@ describe('свойства с закрытым перечнем значений
   const OK: Array<[string, string]> = [
     ['irPixelated', 'image-rendering:pixelated'],
     ['irCrispEdges', 'image-rendering:crisp-edges'],
-    ['apcNone', 'appearance:none'],
+    ['apcN', 'appearance:none'],
     ['apcMenulistButton', 'appearance:menulist-button'],
     ['ttfEaseInOut', 'transition-timing-function:ease-in-out'],
     ['ttfStepEnd', 'transition-timing-function:step-end'],
     ['gafRow', 'grid-auto-flow:row'],
     ['tdsEdges', 'text-decoration-skip:edges'],
     ['tdsiAll', 'text-decoration-skip-ink:all'],
-    ['tdstWavy', 'text-decoration-style:wavy'],
+    ['tdstW', 'text-decoration-style:wavy'],
     ['tupFromFont', 'text-underline-position:from-font'],
     ['tsFlat', 'transform-style:flat'],
     ['mbmPlusLighter', 'mix-blend-mode:plus-lighter'],
@@ -573,10 +573,10 @@ describe('свойства с закрытым перечнем значений
   });
 
   test.each([
-    ['irAuto_Pixelated', 'image-rendering'],
-    ['apcNone_Auto', 'appearance'],
+    ['irA_Pixelated', 'image-rendering'],
+    ['apcN_Auto', 'appearance'],
     ['mbmNormal_Multiply', 'mix-blend-mode'],
-    ['tdstSolid_Wavy', 'text-decoration-style'],
+    ['tdstS_Wavy', 'text-decoration-style'],
   ])('%s бракуется — %s берёт одно слово', (token, prop) => {
     expect(lexer.matchProperty(prop, 'auto pixelated').matched).toBeFalsy();
     expect(compile([token]).css).toBe('');
@@ -715,7 +715,7 @@ describe('свойства, которые берут безразмерное �
     ['zmNormal', 'zoom:normal'],
     ['zmReset', 'zoom:reset'],
     ['ar1.5', 'aspect-ratio:1.5'],
-    ['arAuto', 'aspect-ratio:auto'],
+    ['arA', 'aspect-ratio:auto'],
     ['ar16/9', 'aspect-ratio:16/9'],
   ])('%s → %s', (token, expected) => {
     const [prop, value] = expected.split(':');
@@ -1235,15 +1235,15 @@ describe('составные значения по слотам: fx, col, tem, c
     ['fx_1_1', 'flex:1 1'],
     ['fx_1_1_auto', 'flex:1 1 auto'],
     ['fx_1_1_0%', 'flex:1 1 0%'],
-    ['fxNone', 'flex:none'],
-    ['fxAuto', 'flex:auto'],
+    ['fxN', 'flex:none'],
+    ['fxA', 'flex:auto'],
     ['fxContent', 'flex:content'],
     ['col3', 'columns:3'],
     ['col_3_30em', 'columns:3 30em'],
-    ['colAuto', 'columns:auto'],
+    ['colA', 'columns:auto'],
     ['temFilled', 'text-emphasis:filled'],
     ['tem_filled_dot', 'text-emphasis:filled dot'],
-    ['temNone', 'text-emphasis:none'],
+    ['temN', 'text-emphasis:none'],
     ['coi_n_2', 'counter-increment:n 2'],
     ['coiNone', 'counter-increment:none'],
     ['cor_n_0', 'counter-reset:n 0'],
@@ -1258,10 +1258,8 @@ describe('составные значения по слотам: fx, col, tem, c
   });
 
   test.each([
-    ['fxN', 'flex:n'],
     ['fxZzz', 'flex:zzz'],
     ['fx10zz', 'flex:10zz'],
-    ['colA', 'columns:a'],
     ['col10zz', 'columns:10zz'],
     ['temZzz', 'text-emphasis:zzz'],
     ['tem10', 'text-emphasis:10'],
@@ -1300,7 +1298,7 @@ describe('дорожки и позиции сетки', () => {
   const TRACKS: Array<[string, string]> = [
     ['gtc1fr_1fr', 'grid-template-columns:1fr 1fr'],
     ['gtc50%', 'grid-template-columns:50%'],
-    ['gtcNone', 'grid-template-columns:none'],
+    ['gtcN', 'grid-template-columns:none'],
     ['gtcAuto', 'grid-template-columns:auto'],
     ['gtcMinContent', 'grid-template-columns:min-content'],
     ['gtcSubgrid', 'grid-template-columns:subgrid'],
@@ -1308,7 +1306,7 @@ describe('дорожки и позиции сетки', () => {
     ['gtr_minmax\\(100px,1fr\\)', 'grid-template-rows:minmax(100px,1fr)'],
     ['gtc_\\[a\\]_1fr', 'grid-template-columns:[a] 1fr'],
     ['gac1fr', 'grid-auto-columns:1fr'],
-    ['garAuto', 'grid-auto-rows:auto'],
+    ['garA', 'grid-auto-rows:auto'],
   ];
 
   test.each(TRACKS)('%s → %s', (token, expected) => {
@@ -1532,7 +1530,7 @@ describe('фон и маска: только цвет, градиент или �
 describe('border-image: источник, слайсы, ширина после «/»', () => {
   test.each([
     ['bi', 'border-image:none'],
-    ['biNone', 'border-image:none'],
+    ['biN', 'border-image:none'],
     ['bi_url\\(a\\.png\\)_30', 'border-image:url(a.png) 30'],
     ['bi_url\\(a\\.png\\)_30_/_1px', 'border-image:url(a.png) 30 / 1px'],
     ['biStretch', 'border-image:stretch'],
@@ -1561,7 +1559,7 @@ describe('border-image: источник, слайсы, ширина после 
 
 describe('grid и grid-template', () => {
   const OK: Array<[string, string]> = [
-    ['gNone', 'grid:none'],
+    ['gN', 'grid:none'],
     ['g_1fr_/_1fr', 'grid:1fr / 1fr'],
     ['g_"a"_1fr', 'grid:"a" 1fr'],
     ['g_auto-flow_1fr_/_1fr', 'grid:auto-flow 1fr / 1fr'],

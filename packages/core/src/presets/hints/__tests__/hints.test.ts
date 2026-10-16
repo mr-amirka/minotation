@@ -78,13 +78,12 @@ describe('presetHints — подсказки', () => {
     ['minw10', 'wmin10'],
     ['maxh50%', 'hmax50%'],
     ['maxw50%', 'wmax50%'],
-    ['peN', 'eN'],
-    ['pointerEventsNone', 'eN'],
-    ['pointerEventsAll', 'eAL'],
-    ['apN', 'apcNone'],
-    ['appearanceNone', 'apcNone'],
+    ['pointerEventsNone', 'peN'],
+    ['pointerEventsAll', 'peAL'],
+    ['apN', 'apcN'],
+    ['appearanceNone', 'apcN'],
     ['apButton', 'apcButton'],
-    ['pointerNone', 'eN'],
+    ['pointerNone', 'peN'],
   ])('%s → подсказка %s (D-093, запросы web-games)', (token, right) => {
     const {
       css, warnings,
@@ -203,9 +202,9 @@ describe('presetHints — таблицы', () => {
   });
 
   test.each([
-    ['ap', 'apcNone'],
-    ['appearance', 'apcNone'],
-    ['pointer', 'eN'],
+    ['ap', 'apcN'],
+    ['appearance', 'apcN'],
+    ['pointer', 'peN'],
   ])('опечатка со значением "%s": исправление %s компилируется', (typo, right) => {
     expect(Object.keys(HINTS.valueTypos)).toContain(typo);
     expect(hasOwnRule(run(right).css, right)).toBe(true);

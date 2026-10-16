@@ -32,7 +32,7 @@ describe('presetPrefixes', () => {
   });
 
   test('appearance — только -webkit- (нет -moz-appearance в v1)', () => {
-    const result = css('apcNone', true);
+    const result = css('apcN', true);
     expect(result).toContain('-webkit-appearance:none');
     expect(result).not.toContain('-moz-appearance');
     expect(result).toContain('appearance:none');

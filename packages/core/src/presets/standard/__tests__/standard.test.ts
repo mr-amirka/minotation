@@ -619,15 +619,15 @@ describe('Standard preset — предсказуемость значений', 
 // ================================================================
 describe('Standard preset — свойства, добавленные при аудите покрытия', () => {
   test.each([
-    ['tdstDotted', 'text-decoration-style:dotted'],
-    ['tdstWavy', 'text-decoration-style:wavy'],
-    ['tdstSolid', 'text-decoration-style:solid'],
+    ['tdstDT', 'text-decoration-style:dotted'],
+    ['tdstW', 'text-decoration-style:wavy'],
+    ['tdstS', 'text-decoration-style:solid'],
   ])('%s → %s', (token, expected) => {
     expect(css(token)).toContain(expected);
   });
   test.each([
     ['tuo2px', 'text-underline-offset:2px'],
-    ['tuoAuto', 'text-underline-offset:auto'],
+    ['tuoA', 'text-underline-offset:auto'],
   ])('%s → %s', (token, expected) => {
     expect(css(token)).toContain(expected);
   });

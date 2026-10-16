@@ -166,6 +166,13 @@ const EQUIVALENTS: Record<string, Record<string, [string, HintGroup[]]>> = {
 const TYPOS: Record<string, string> = {
   t: 'st',
   l: 'sl',
+  // Мин./макс. размеры — по аналогии с `mt`, `mb` или с CSS (`min-height`), D-093.
+  mh: 'hmin',
+  mw: 'wmin',
+  minh: 'hmin',
+  minw: 'wmin',
+  maxh: 'hmax',
+  maxw: 'wmax',
 };
 
 /** Все обработчики — для проверки `excludeHandlers`. */

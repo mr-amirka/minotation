@@ -225,7 +225,7 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 | `presetMedias` | Точки по ширине `m…`/`d…` (`@m4` — до 480px, `@d-` — от 992px, `@m4-d` — между), `mouse`, `dark`, `light`, `print`, `portrait`, `landscape`, `motion-safe`/`motion-reduce`, `contrast-more`/`contrast-less`, `forced-colors`, `pointer-fine`/`pointer-coarse`, `noscript` и другие (D-054, D-057) |
 | `presetNormalize` | Лёгкий сброс (box-sizing, margin, img) |
 | `presetMain` | Полный CSS-сброс (аналог normalize.css) |
-| `presetHints` | Подсказки вместо молчания: `t0` → «did you mean `st0`?», `flex` → «в minotation это `dF`», `text-center` → `taC`. Подключать первым — пресет ниже перекрывает его хендлеры. Точечно — фабрикой: `presetHints({ excludeGroups: ['bootstrap'], excludeHandlers: ['flex'] })`; группы — `typos`, `tailwind`, `bootstrap` (D-024, D-042) |
+| `presetHints` | Подсказки вместо молчания: `t0` → «did you mean `st0`?», `mh100vh` → «did you mean `hmin100vh`?» (D-093), `flex` → «в minotation это `dF`», `text-center` → `taC`. Подключать первым — пресет ниже перекрывает его хендлеры. Точечно — фабрикой: `presetHints({ excludeGroups: ['bootstrap'], excludeHandlers: ['flex'] })`; группы — `typos`, `tailwind`, `bootstrap` (D-024, D-042) |
 | `presetPrefixes` | Опциональные `-webkit-`/`-moz-` дубли для заданного списка свойств (`transform`, `flexDirection`, `appearance`, …) |
 | `presetTw4` | Клон Tailwind 4 (подмножество) — **вместо** `presetStandard`, запись `'tw4-compatible'`, тема Tailwind 4.3.3 (D-068). См. «Клон Tailwind 4» ниже |
 

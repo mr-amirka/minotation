@@ -71,6 +71,25 @@ describe('presetHints — подсказки', () => {
     })]);
   });
 
+  test.each([
+    ['mh100vh', 'hmin100vh'],
+    ['mw320', 'wmin320'],
+    ['minh40', 'hmin40'],
+    ['minw10', 'wmin10'],
+    ['maxh50%', 'hmax50%'],
+    ['maxw50%', 'wmax50%'],
+  ])('мин./макс. размер %s → подсказка %s (D-093, запрос web-games)', (token, right) => {
+    const {
+      css, warnings,
+    } = run(token);
+    expect(hasOwnRule(css, token)).toBe(false);
+    expect(warnings).toEqual([expect.objectContaining({
+      type: 'hint',
+      token,
+      message: 'presetHints[typos]: "' + token + '" gives no CSS — did you mean "' + right + '"?',
+    })]);
+  });
+
   test('класс другой системы — эквивалент в нотации, kebab тоже', () => {
     const {
       warnings, 

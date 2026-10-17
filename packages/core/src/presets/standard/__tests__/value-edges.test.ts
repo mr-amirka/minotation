@@ -615,7 +615,7 @@ describe('голое слово у свойства-длины', () => {
     expect(cssOf(token)).toBe(expected);
   });
 
-  test.each([['apcN', 'appearance:none'], ['irPixelated', 'image-rendering:pixelated']])('%s → %s — не-длины в том же блоке не задеты', (token, expected) => {
+  test.each([['apN', 'appearance:none'], ['irPixelated', 'image-rendering:pixelated']])('%s → %s — не-длины в том же блоке не задеты', (token, expected) => {
     // У них значения произвольны и словарём не перечислимы.
     expect(cssOf(token)).toBe(expected);
   });

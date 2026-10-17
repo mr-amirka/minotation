@@ -724,6 +724,12 @@ function wordsSet(words: string): Record<string, 1> {
  * Краткие записи слов у хендлеров общей таблицы (D-094): `fxN` → `flex:none`, `arA` → `aspect-ratio:auto`, как
  * `dN` у `display`. Полное слово при краткой записи бракуется с подсказкой — одно значение, одна запись.
  */
+/** Старое `apcNone` → новое `apN` (D-094): полное слово — сразу краткой записью. */
+const APPEARANCE_RENAMED: Record<string, string> = {
+  None: 'N',
+  Auto: 'A',
+};
+
 /** Краткая запись у `border-image`: `biN`. */
 const BORDER_IMAGE_ABBREVIATIONS: Record<string, string> = {
   N: 'none',
@@ -1906,9 +1912,106 @@ function throwSuspect(p: MnEssenceParams): never {
  * принимали и давали неверный CSS (`fw-bold` → `font-weight:100`). Паттерн разбора
  * (`mn(name, handler, pattern)`) оборачивается здесь же, чтобы проверка шла раньше него.
  */
+/** Подсказка в ошибке хендлера: значение подходит другому свойству (D-094). */
+type CrossHint = [test: (suffix: string) => boolean, tag: string, property: string];
+
+/** Значения курсора, которые не цвет: `cP` — не `#P`, а, видимо, `crP`. */
+const CURSOR_WORDS: Record<string, 1> = {
+  P: 1,
+  T: 1,
+  M: 1,
+  N: 1,
+  W: 1,
+  G: 1,
+  GG: 1,
+  NA: 1,
+  HA: 1,
+  HE: 1,
+  PR: 1,
+};
+
+/** Значения позиции: `pA` — не отступ, а `posA`. */
+const POSITION_WORDS: Record<string, 1> = {
+  A: 1,
+  R: 1,
+  F: 1,
+  S: 1,
+};
+
+/** Значения `float`: `fL` — не размер шрифта, а `flL`. */
+const FLOAT_WORDS: Record<string, 1> = {
+  L: 1,
+  R: 1,
+  N: 1,
+  IS: 1,
+  IE: 1,
+};
+
+/** Значения `box-sizing`: `bsBB` — не стиль рамки, а `bxzBB`. */
+const BOX_SIZING_WORDS: Record<string, 1> = {
+  BB: 1,
+  CB: 1,
+};
+
+/**
+ * Частые промахи по имени (замер угадываемости, D-094): угаданное имя занято другим свойством, и для него значение
+ * неверно — к ошибке добавляется «did you mean». Проверка значения — до вызова хендлера, дешёвая; сам хендлер
+ * вызывается как всегда.
+ */
+const CROSS_HINTS: Record<string, CrossHint> = {
+  fs: [
+    (suffix) => suffix[0] >= '0' && suffix[0] <= '9',
+    'f',
+    'font-size',
+  ],
+  td: [
+    (suffix) => suffix[suffix.length - 1] === 's' && suffix[0] >= '0' && suffix[0] <= '9',
+    'dn',
+    'transition-duration',
+  ],
+  bs: [
+    (suffix) => !!BOX_SIZING_WORDS[suffix],
+    'bxz',
+    'box-sizing',
+  ],
+  c: [
+    (suffix) => !!CURSOR_WORDS[suffix],
+    'cr',
+    'cursor',
+  ],
+  p: [
+    (suffix) => !!POSITION_WORDS[suffix],
+    'pos',
+    'position',
+  ],
+  f: [
+    (suffix) => !!FLOAT_WORDS[suffix],
+    'fl',
+    'float',
+  ],
+};
+
+/** Вызов хендлера; его ошибка разбора получает подсказку `did you mean "flL" (float)?`. */
+function withCrossHint(
+  handler: MnHandler, p: MnEssenceParams, hint: CrossHint,
+): ReturnType<MnHandler> {
+  try {
+    return handler(p);
+  } catch (ex) {
+    // Эти хендлеры бракуют только разбором (`throwInvalid`, `throwSuspect`) — ошибка всегда `MnParseError`.
+    throw new MnParseError((ex as MnParseError).message + ' — did you mean "' + hint[1] + p.suffix + '" ('
+      + hint[2] + ')?', (ex as MnParseError).context);
+  }
+}
+
 function withSuspectCheck(instance: MnInstance): MnInstance {
-  const guard = (handler: MnHandler): MnHandler => (p) => (REGEXP_SUSPECT_VALUE.test(p.suffix)
-    ? throwSuspect(p) : handler(p));
+  const guard = (handler: MnHandler, name: string): MnHandler => {
+    const hint = CROSS_HINTS[name];
+    const checked: MnHandler = (p) => (REGEXP_SUSPECT_VALUE.test(p.suffix) ? throwSuspect(p) : handler(p));
+    return hint ? (p) => (hint[0](p.suffix) ? withCrossHint(
+      checked, p, hint,
+    ) : checked(p)) : checked;
+  };
   return new Proxy(instance, {
     apply(
       target, thisArg, args: unknown[],
@@ -1923,14 +2026,14 @@ function withSuspectCheck(instance: MnInstance): MnInstance {
           ? target(
             first, guard(pattern
               ? handlerWrap(essence as MnHandler as never, pattern) as MnHandler
-              : essence as MnHandler) as never, '', args[3] as number,
+              : essence as MnHandler, first) as never, '', args[3] as number,
           )
           : target(...(args as Parameters<MnInstance>));
       }
       // Форма-карта `mn({ fw: handler, cfx: { … } })`: хендлеры в ней — те же хендлеры.
       for (name in first as Record<string, unknown>) { // eslint-disable-line
         map[name] = typeof (first as Record<string, unknown>)[name] === 'function'
-          ? guard((first as Record<string, MnHandler>)[name])
+          ? guard((first as Record<string, MnHandler>)[name], name)
           : (first as Record<string, unknown>)[name];
       }
       return target(map as never);
@@ -3165,21 +3268,15 @@ export default {
       });
     });
 
+    // Переименовано (D-094): `lt`/`rt`/`jt` → `flL`/`flR`/`flN`, `apc` → `ap`.
     forIn({
-      float: {
-        lt: 'left',
-        jt: 'none',
-        rt: 'right',
-      },
-    }, (valsMap, propName) => {
-      forIn(valsMap, (value, pfx) => {
-        mn(pfx, (p) => {
-          return p.suffix ? 0 : styleWrap({
-            [propName]: value,
-          });
-        });
-      });
+      lt: 'flL',
+      rt: 'flR',
+      jt: 'flN',
+    }, (replacement: string, name: string) => {
+      mn(name, (p) => (p.suffix ? 0 : throwRenamed(name, replacement)));
     });
+    mn('apc', (p) => throwRenamed('apc' + p.suffix, 'ap' + (APPEARANCE_RENAMED[p.suffix] || p.suffix)));
 
     mn(
       'x', (p) => {
@@ -3779,6 +3876,14 @@ export default {
 
       maskbg: backgroundProvider('maskImage'),
 
+      // `float` (D-094): `flL`, `flR`, `flN`, логические `flIS`, `flIE`.
+      fl: synonymProvider('float', {
+        L: 'Left',
+        R: 'Right',
+        N: 'None',
+        IS: 'InlineStart',
+        IE: 'InlineEnd',
+      }),
       cl: synonymProvider('clear', {
         '': 'Both',
         B: 'Both',
@@ -4692,7 +4797,7 @@ export default {
           normal: 1,
         },
       ],
-      apc: ['appearance'],
+      ap: ['appearance'],
 
       ti: [
         'textIndent',

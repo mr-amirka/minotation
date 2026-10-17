@@ -80,9 +80,11 @@ describe('presetHints — подсказки', () => {
     ['maxw50%', 'wmax50%'],
     ['pointerEventsNone', 'peN'],
     ['pointerEventsAll', 'peAL'],
-    ['apN', 'apcN'],
-    ['appearanceNone', 'apcN'],
-    ['apButton', 'apcButton'],
+    ['aN', 'apN'],
+    ['appearanceNone', 'apN'],
+    ['appearanceButton', 'apButton'],
+    ['zi10', 'z10'],
+    ['toE', 'tovE'],
     ['pointerNone', 'peN'],
   ])('%s → подсказка %s (D-093, запросы web-games)', (token, right) => {
     const {
@@ -171,6 +173,12 @@ describe('presetHints — подсказки', () => {
   });
 });
 
+/** Значение, с которым исправление опечатки компилируется: `ap0` — не значение, `apN` — да. */
+const TYPO_VALUES: Record<string, string> = {
+  ap: 'N',
+  tov: 'E',
+};
+
 describe('presetHints — таблицы', () => {
   const names = Object.keys(HINTS.equivalents).concat(Object.keys(HINTS.typos));
 
@@ -201,11 +209,7 @@ describe('presetHints — таблицы', () => {
     }
   });
 
-  test.each([
-    ['ap', 'apcN'],
-    ['appearance', 'apcN'],
-    ['pointer', 'peN'],
-  ])('опечатка со значением "%s": исправление %s компилируется', (typo, right) => {
+  test.each([['appearance', 'apN'], ['pointer', 'peN']])('опечатка со значением "%s": исправление %s компилируется', (typo, right) => {
     expect(Object.keys(HINTS.valueTypos)).toContain(typo);
     expect(hasOwnRule(run(right).css, right)).toBe(true);
   });
@@ -213,8 +217,8 @@ describe('presetHints — таблицы', () => {
   test.each(Object.keys(HINTS.typos))('опечатка "%s": исправление компилируется', (typo) => {
     const {
       css, 
-    } = run(HINTS.typos[typo] + (HINTS.typos[typo] === 'e' ? 'N' : '0'));
-    expect(hasOwnRule(css, HINTS.typos[typo] + (HINTS.typos[typo] === 'e' ? 'N' : '0'))).toBe(true);
+    } = run(HINTS.typos[typo] + (TYPO_VALUES[HINTS.typos[typo]] || '0'));
+    expect(hasOwnRule(css, HINTS.typos[typo] + (TYPO_VALUES[HINTS.typos[typo]] || '0'))).toBe(true);
   });
 });
 

@@ -173,20 +173,19 @@ const TYPOS: Record<string, string> = {
   minw: 'wmin',
   maxh: 'hmax',
   maxw: 'wmax',
+  // Частые промахи замера угадываемости (D-094): имена свободны, своё — короче.
+  zi: 'z',
+  to: 'tov',
+  a: 'ap',
 };
 
 /**
  * Опечатки, у которых меняется и запись значения: `[тег, приставка суффикса, которую снять, полное слово →
- * краткое]`. `apN` → `apcN`, `appearanceNone` → `apcN`, `pointerEventsNone` → `peN` (D-093, D-094).
+ * краткое]`. `appearanceNone` → `apN`, `pointerEventsNone` → `peN` (D-093, D-094).
  */
 const VALUE_TYPOS: Record<string, [string, string, Record<string, string>]> = {
-  ap: [
-    'apc',
-    '',
-    {},
-  ],
   appearance: [
-    'apc',
+    'ap',
     '',
     {
       None: 'N',
@@ -282,7 +281,7 @@ function typoHandler(name: string): (p: MnEssenceParams) => void {
   return (p) => hint(['typos'], '"' + name + p.suffix + '" gives no CSS — did you mean "' + tag + p.suffix + '"?');
 }
 
-/** Хендлер-ловушка для опечатки, у которой меняется и значение: `appearanceNone` → `apcN`. */
+/** Хендлер-ловушка для опечатки, у которой меняется и значение: `appearanceNone` → `apN`. */
 function valueTypoHandler(name: string): (p: MnEssenceParams) => void {
   const entry = VALUE_TYPOS[name];
   return (p) => {

@@ -135,7 +135,7 @@ export default {
       /**
      * Correct the inability to style clickable types in iOS and Safari.
      */
-      'button, [type=(button|reset|submit)]': 'apcButton',
+      'button, [type=(button|reset|submit)]': 'apButton',
 
       /**
      * Remove the inner border and padding in Firefox.
@@ -187,18 +187,18 @@ export default {
      * 1. Correct the odd appearance in Chrome and Safari.
      * 2. Correct the outline style in Safari.
      */
-      '[type=search]': 'apcTextfield olo-2',
+      '[type=search]': 'apTextfield olo-2',
 
       /**
      * Remove the inner padding in Chrome and Safari on macOS.
      */
-      '[type=search]::-webkit-search-decoration': 'apcN',
+      '[type=search]::-webkit-search-decoration': 'apN',
 
       /**
      * 1. Correct the inability to style clickable types in iOS and Safari.
      * 2. Change font properties to `inherit` in Safari.
      */
-      '::-webkit-file-upload-button': 'apcButton fontInherit',
+      '::-webkit-file-upload-button': 'apButton fontInherit',
 
 
       /* Interactive

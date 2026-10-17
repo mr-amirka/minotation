@@ -511,8 +511,8 @@ describe('свойства с закрытым перечнем значений
   const OK: Array<[string, string]> = [
     ['irPixelated', 'image-rendering:pixelated'],
     ['irCrispEdges', 'image-rendering:crisp-edges'],
-    ['apcN', 'appearance:none'],
-    ['apcMenulistButton', 'appearance:menulist-button'],
+    ['apN', 'appearance:none'],
+    ['apMenulistButton', 'appearance:menulist-button'],
     ['ttfEaseInOut', 'transition-timing-function:ease-in-out'],
     ['ttfStepEnd', 'transition-timing-function:step-end'],
     ['gafRow', 'grid-auto-flow:row'],
@@ -537,8 +537,8 @@ describe('свойства с закрытым перечнем значений
     'irZzz',
     'ir10',
     'ir10px',
-    'apcZzz',
-    'apcF00',
+    'apZzz',
+    'apF00',
     'ttfZzz',
     'gafZzz',
     'tdsZzz',
@@ -574,7 +574,7 @@ describe('свойства с закрытым перечнем значений
 
   test.each([
     ['irA_Pixelated', 'image-rendering'],
-    ['apcN_Auto', 'appearance'],
+    ['apN_Auto', 'appearance'],
     ['mbmNormal_Multiply', 'mix-blend-mode'],
     ['tdstS_Wavy', 'text-decoration-style'],
   ])('%s бракуется — %s берёт одно слово', (token, prop) => {
@@ -609,7 +609,7 @@ describe('свойства с закрытым перечнем значений
 
   test('CSS-wide keywords проходят везде', () => {
     expect(compile(['irInherit']).css).toContain('image-rendering:inherit');
-    expect(compile(['apcUnset']).css).toContain('appearance:unset');
+    expect(compile(['apUnset']).css).toContain('appearance:unset');
   });
 });
 

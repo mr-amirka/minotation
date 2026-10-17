@@ -207,9 +207,7 @@ export const ESSENCES: MnDocEntry[] = [
   // --- Float / clear ---
   { name: 'cl', props: 'clear', examples: ['cl', 'clLeft'] },
   { name: 'cfx', props: 'clear', description: 'clearfix: :before/:after{content, clear:both, display:table}', keywords: ['clearfix'], examples: ['cfx'] },
-  { name: 'lt', props: 'float', description: '(float) left', examples: ['lt'] },
-  { name: 'rt', props: 'float', description: '(float) right', examples: ['rt'] },
-  { name: 'jt', props: 'float', description: '(float) none — "justify"', examples: ['jt'] },
+  { name: 'fl', props: 'float', examples: ['flL', 'flR', 'flN'] },
 
   // --- Переходы (доп.) ---
   { name: 'delay', props: 'transition-delay', keywords: ['transition', 'delay'], examples: ['delay150'] },
@@ -257,7 +255,7 @@ export const ESSENCES: MnDocEntry[] = [
   // --- Прочее ---
   { name: 'o', props: 'opacity', description: 'значение 0-100 → 0-1', examples: ['o100'] },
   { name: 'tsa', props: 'text-size-adjust', examples: ['tsa0'] },
-  { name: 'apc', props: 'appearance', examples: ['apcN'] },
+  { name: 'ap', props: 'appearance', examples: ['apN'] },
   { name: 'ovx', props: 'overflow-x', examples: ['ovxHidden'] },
   { name: 'ovs', props: 'overflow-style', examples: ['ovsAuto'] },
   { name: 'ovsc', props: '-webkit-overflow-scrolling', examples: ['ovscTouch'] },

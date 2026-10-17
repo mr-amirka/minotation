@@ -604,7 +604,7 @@ Text-align — тег `ta` + буква (`taC`/`taR`/`taL`/`taJ`/`taE`/`taS`), �
 
 `td`/`tdl` — **не пишите произвольное значение**, только буквы из `TD_SYNONYMS` (`N`/`U`/`O`/`L`);
 остальные хендлеры этой группы (`tdc`, `tds…`, `tem…`) — обычный camelCase/snakeCase passthrough
-без карты синонимов, как `apc`/`bga`/`ff`.
+без карты синонимов, как `ap`/`bga`/`ff`.
 
 ---
 
@@ -1314,13 +1314,13 @@ coi10   →  counter-increment:10
 
 У части свойств набор значений закрыт спецификацией. Такие хендлеры принимают
 только слова из своего списка; всё остальное бракуется с предупреждением —
-`irZzz`, `apcF00`, `ttfJumpNone` в CSS не попадают. До 2026-09-26 проходило
+`irZzz`, `apF00`, `ttfJumpNone` в CSS не попадают. До 2026-09-26 проходило
 любое слово: `irF00` давал `image-rendering:f00`.
 
 | Тег | Свойство | Значения |
 |-----|----------|----------|
 | `ir` | `image-rendering` | `auto` `crisp-edges` `pixelated` `smooth` `optimize-contrast` `optimizeSpeed` `optimizeQuality` + вендорные |
-| `apc` | `appearance` | `none` `auto` `button` `textfield` `menulist-button` `checkbox` `radio` `listbox` `menulist` `meter` `progress-bar` `searchfield` `textarea` |
+| `ap` | `appearance` | `none` `auto` `button` `textfield` `menulist-button` `checkbox` `radio` `listbox` `menulist` `meter` `progress-bar` `searchfield` `textarea` |
 | `ttf` | `transition-timing-function` | `linear` `ease` `ease-in` `ease-out` `ease-in-out` `step-start` `step-end` |
 | `gaf` | `grid-auto-flow` | `row` `column` `dense` |
 | `tds` | `text-decoration-skip` | `none` `objects` `spaces` `leading-spaces` `trailing-spaces` `edges` `box-decoration` |
@@ -1734,7 +1734,7 @@ const mn = minotationProvider({ presets: [presetStandard, presetPrefixes] });
 
 ```
 fxdC   → .fxdC{-webkit-flex-direction:column;-moz-flex-direction:column;flex-direction:column}
-apcN → .apcN{-webkit-appearance:none;appearance:none}   (без -moz-appearance)
+apN → .apN{-webkit-appearance:none;appearance:none}   (без -moz-appearance)
 ov     → .ov{overflow:hidden}   (вне списка — без префиксов)
 ```
 
@@ -1850,7 +1850,7 @@ mnVite({
 | Знак | `p-5`, `w-5`, `r-5` — эти свойства отрицательных не принимают |
 | Процент | `b10%`, `olw10%`, `wos10%` |
 | Количество значений | `olw10_20`, `ti10_20`, `gr10_20` |
-| Слово из списка свойства | `irZzz`, `apcF00`, `fwZzz`, `pA` |
+| Слово из списка свойства | `irZzz`, `apF00`, `fwZzz`, `pA` |
 | Число там, где перечень закрыт | `pos10`, `ov1.5`, `d10px` |
 | Форма составного значения | `fx_1_1_1_1`, `col_30em_3`, `g_1fr_1fr` |
 
@@ -1959,7 +1959,7 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 | `peN` | `pointer-events:none` |
 | `peA` | `pointer-events:auto` |
 | `peAL` | `pointer-events:all` |
-| `apcN` | `appearance:none` |
+| `apN` | `appearance:none` |
 
 ### Фон и маска
 
@@ -1998,9 +1998,9 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 
 | Токен | CSS |
 |-------|-----|
-| `lt` | `float:left` |
-| `jt` | `float:none` |
-| `rt` | `float:right` |
+| `flL` | `float:left` (бывший `lt`, D-094) |
+| `flN` | `float:none` (бывший `jt`) |
+| `flR` | `float:right` (бывший `rt`) |
 
 Имена короткие и аргумента не принимают: `jtN`, `jtLeft` и подобное правила не
 дают вовсе. Неочевидно здесь другое: `lt` и `rt` совпадают с суффиксами углов
@@ -2038,7 +2038,7 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 `jcSpaceBetween`. Полная форма у этих значений **бракуется** — иначе одно и
 то же попадало бы в CSS двумя правилами.
 
-Там, где краткой записи нет, работает полная: `irPixelated`, `apcMenulistButton`,
+Там, где краткой записи нет, работает полная: `irPixelated`, `apMenulistButton`,
 `ttfEaseInOut`. Многословные значения пишутся camelCase и кебабятся сами —
 справочник аббревиатур для них не нужен.
 

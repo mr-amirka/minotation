@@ -435,7 +435,7 @@ describe('списки закрытых перечислений совпада�
         + ' optimizeQuality -moz-crisp-edges -o-crisp-edges -webkit-optimize-contrast',
     ],
     [
-      'apc',
+      'ap',
       'appearance',
       'none auto searchfield textarea checkbox radio menulist listbox meter'
         + ' progress-bar button textfield menulist-button',
@@ -521,7 +521,7 @@ describe('списки закрытых перечислений совпада�
     // операцией к той, что делает хендлер.
     const list = words.split(' ');
     const missing: string[] = [];
-    // Слово с краткой записью пишется краткой (D-094): `apcN`, а не `apcNone`.
+    // Слово с краткой записью пишется краткой (D-094): `apN`, а не `apNone`.
     const abbreviations = STANDARD_VALUE_ABBREVIATIONS[prop.replace(/-([a-z])/g, (_m, c) => c.toUpperCase())] || {};
     const short: Record<string, string> = {};
     for (const abbr of Object.keys(abbreviations)) {

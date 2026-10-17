@@ -308,6 +308,86 @@ describe('опция media важнее пресета, совпадение —
   });
 });
 
+describe('D-094: переименования и подсказки на частые промахи', () => {
+  test.each([
+    ['eN', 'peN'],
+    ['apcN', 'apN'],
+    ['apcNone', 'apN'],
+    ['apcButton', 'apButton'],
+    ['lt', 'flL'],
+    ['rt', 'flR'],
+    ['jt', 'flN'],
+    ['contrast', 'irOptimizeContrast'],
+  ])('%s — переименовано: «write "%s"», CSS нет', (token, replacement) => {
+    const {
+      css, warnings,
+    } = compile(token);
+    expect(css).toBe('');
+    expect(warnings.join(' ')).toContain('"' + token + '" was renamed: write "' + replacement + '"');
+  });
+
+  test('ltX — у бывшей статики значения нет: просто без CSS', () => {
+    expect(compile('ltX').css).toBe('');
+  });
+
+  test.each([
+    [
+      'fs14',
+      'f14',
+      'font-size',
+    ],
+    [
+      'td300ms',
+      'dn300ms',
+      'transition-duration',
+    ],
+    [
+      'bsBB',
+      'bxzBB',
+      'box-sizing',
+    ],
+    [
+      'cP',
+      'crP',
+      'cursor',
+    ],
+    [
+      'pA',
+      'posA',
+      'position',
+    ],
+    [
+      'fL',
+      'flL',
+      'float',
+    ],
+  ])('%s — в ошибке подсказка «did you mean "%s" (%s)»', (
+    token, right, property,
+  ) => {
+    const {
+      css, warnings,
+    } = compile(token);
+    expect(css).toBe('');
+    expect(warnings.join(' ')).toContain('did you mean "' + right + '" (' + property + ')?');
+    expect(compile(right).css).not.toBe('');
+  });
+
+  test.each([
+    'fsI',
+    'c0',
+    'p10',
+    'f14',
+    'bsS',
+    'td_underline',
+  ])('%s — обычный токен не задет', (token) => {
+    expect(compile(token).warnings.join(' ')).not.toContain('did you mean');
+  });
+
+  test('ошибка не разбора — не трогается', () => {
+    expect(compile('cP').warnings.length).toBe(1);
+  });
+});
+
 describe('extractMedia — для синонимов', () => {
   test('пустая часть — пустая строка', () => {
     expect(extractMedia([], '')).toBe('');

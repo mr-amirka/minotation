@@ -85,6 +85,9 @@ describe('presetHints — подсказки', () => {
     ['appearanceButton', 'apButton'],
     ['zi10', 'z10'],
     ['toE', 'tovE'],
+    ['colsA', 'colA'],
+    ['cuP', 'crP'],
+    ['bxsBB', 'bxzBB'],
     ['pointerNone', 'peN'],
   ])('%s → подсказка %s (D-093, запросы web-games)', (token, right) => {
     const {
@@ -177,6 +180,9 @@ describe('presetHints — подсказки', () => {
 const TYPO_VALUES: Record<string, string> = {
   ap: 'N',
   tov: 'E',
+  col: 'A',
+  cr: 'P',
+  bxz: 'BB',
 };
 
 describe('presetHints — таблицы', () => {

@@ -177,6 +177,9 @@ const TYPOS: Record<string, string> = {
   zi: 'z',
   to: 'tov',
   a: 'ap',
+  cols: 'col',
+  cu: 'cr',
+  bxs: 'bxz',
 };
 
 /**

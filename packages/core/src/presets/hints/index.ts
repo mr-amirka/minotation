@@ -18,10 +18,13 @@ import {
   MnParseError,
 } from '../../core/types';
 import type {
-  MnEssenceParams, MnPresetObject,
+  MnEssenceParams,
+  MnPresetObject,
 } from '../../core/types';
 import {
-  checkKnownValues, checkOptions, isStringArray,
+  checkKnownValues,
+  checkOptions,
+  isStringArray,
 } from '../../checkOptions';
 
 /** Имя пресета — в начале каждой подсказки: по нему видно, что отключать. */
@@ -39,7 +42,10 @@ const GROUPS: HintGroup[] = [
 
 const TW: HintGroup[] = ['tailwind'];
 const BS: HintGroup[] = ['bootstrap'];
-const TW_BS: HintGroup[] = ['bootstrap', 'tailwind'];
+const TW_BS: HintGroup[] = [
+  'bootstrap',
+  'tailwind',
+];
 
 /**
  * Эквиваленты: имя → (суффикс токена → [токен minotation, группы]). Пустой суффикс —
@@ -50,112 +56,277 @@ const TW_BS: HintGroup[] = ['bootstrap', 'tailwind'];
 const EQUIVALENTS: Record<string, Record<string, [string, HintGroup[]]>> = {
   // Display.
   flex: {
-    '': ['dF', TW],
-    '-col': ['fxdC', TW],
-    '-column': ['fxdC', BS],
-    '-row': ['fxdR', TW_BS],
-    '-wrap': ['fxwW', TW_BS],
+    '': [
+      'dF',
+      TW,
+    ],
+    '-col': [
+      'fxdC',
+      TW,
+    ],
+    '-column': [
+      'fxdC',
+      BS,
+    ],
+    '-row': [
+      'fxdR',
+      TW_BS,
+    ],
+    '-wrap': [
+      'fxwW',
+      TW_BS,
+    ],
   },
   inline: {
-    '': ['dI', TW],
-    '-block': ['dIB', TW],
-    '-flex': ['dIF', TW],
+    '': [
+      'dI',
+      TW,
+    ],
+    '-block': [
+      'dIB',
+      TW,
+    ],
+    '-flex': [
+      'dIF',
+      TW,
+    ],
   },
   hidden: {
-    '': ['dN', TW],
+    '': [
+      'dN',
+      TW,
+    ],
   },
   block: {
-    '': ['dB', TW],
+    '': [
+      'dB',
+      TW,
+    ],
   },
   grid: {
-    '': ['dG', TW],
+    '': [
+      'dG',
+      TW,
+    ],
   },
   // Позиционирование: Tailwind — словом, Bootstrap — `position-*`.
   relative: {
-    '': ['posR', TW],
+    '': [
+      'posR',
+      TW,
+    ],
   },
   absolute: {
-    '': ['posA', TW],
+    '': [
+      'posA',
+      TW,
+    ],
   },
   position: {
-    '-relative': ['posR', BS],
-    '-absolute': ['posA', BS],
-    '-fixed': ['posF', BS],
-    '-static': ['posS', BS],
+    '-relative': [
+      'posR',
+      BS,
+    ],
+    '-absolute': [
+      'posA',
+      BS,
+    ],
+    '-fixed': [
+      'posF',
+      BS,
+    ],
+    '-static': [
+      'posS',
+      BS,
+    ],
   },
   top: {
-    '-0': ['st0', TW_BS],
+    '-0': [
+      'st0',
+      TW_BS,
+    ],
   },
   left: {
-    '-0': ['sl0', TW],
+    '-0': [
+      'sl0',
+      TW,
+    ],
   },
   // Текст.
   italic: {
-    '': ['fsI', TW],
+    '': [
+      'fsI',
+      TW,
+    ],
   },
   underline: {
-    '': ['tdU', TW],
+    '': [
+      'tdU',
+      TW,
+    ],
   },
   uppercase: {
-    '': ['ttU', TW],
+    '': [
+      'ttU',
+      TW,
+    ],
   },
   lowercase: {
-    '': ['ttL', TW],
+    '': [
+      'ttL',
+      TW,
+    ],
   },
   capitalize: {
-    '': ['ttC', TW],
+    '': [
+      'ttC',
+      TW,
+    ],
   },
   truncate: {
-    '': ['ovH tovE wsNW', TW],
+    '': [
+      'ovH tovE wsNW',
+      TW,
+    ],
   },
   text: {
-    '-center': ['taC', TW_BS],
-    '-left': ['taL', TW],
-    '-right': ['taR', TW],
-    '-justify': ['taJ', TW],
-    '-uppercase': ['ttU', BS],
-    '-lowercase': ['ttL', BS],
-    '-capitalize': ['ttC', BS],
+    '-center': [
+      'taC',
+      TW_BS,
+    ],
+    '-left': [
+      'taL',
+      TW,
+    ],
+    '-right': [
+      'taR',
+      TW,
+    ],
+    '-justify': [
+      'taJ',
+      TW,
+    ],
+    '-uppercase': [
+      'ttU',
+      BS,
+    ],
+    '-lowercase': [
+      'ttL',
+      BS,
+    ],
+    '-capitalize': [
+      'ttC',
+      BS,
+    ],
   },
   // Flex-выравнивание: Tailwind — `items-*`/`justify-*`, Bootstrap — `align-items-*`/`justify-content-*`.
   items: {
-    '-center': ['aiC', TW],
-    '-start': ['aiS', TW],
-    '-end': ['aiE', TW],
-    '-baseline': ['aiB', TW],
+    '-center': [
+      'aiC',
+      TW,
+    ],
+    '-start': [
+      'aiS',
+      TW,
+    ],
+    '-end': [
+      'aiE',
+      TW,
+    ],
+    '-baseline': [
+      'aiB',
+      TW,
+    ],
   },
   align: {
-    '-items-center': ['aiC', BS],
-    '-items-start': ['aiS', BS],
-    '-items-end': ['aiE', BS],
-    '-items-baseline': ['aiB', BS],
+    '-items-center': [
+      'aiC',
+      BS,
+    ],
+    '-items-start': [
+      'aiS',
+      BS,
+    ],
+    '-items-end': [
+      'aiE',
+      BS,
+    ],
+    '-items-baseline': [
+      'aiB',
+      BS,
+    ],
   },
   justify: {
-    '-center': ['jcC', TW],
-    '-between': ['jcSB', TW],
-    '-around': ['jcSA', TW],
-    '-start': ['jcS', TW],
-    '-end': ['jcE', TW],
-    '-content-center': ['jcC', BS],
-    '-content-between': ['jcSB', BS],
-    '-content-around': ['jcSA', BS],
-    '-content-start': ['jcS', BS],
-    '-content-end': ['jcE', BS],
+    '-center': [
+      'jcC',
+      TW,
+    ],
+    '-between': [
+      'jcSB',
+      TW,
+    ],
+    '-around': [
+      'jcSA',
+      TW,
+    ],
+    '-start': [
+      'jcS',
+      TW,
+    ],
+    '-end': [
+      'jcE',
+      TW,
+    ],
+    '-content-center': [
+      'jcC',
+      BS,
+    ],
+    '-content-between': [
+      'jcSB',
+      BS,
+    ],
+    '-content-around': [
+      'jcSA',
+      BS,
+    ],
+    '-content-start': [
+      'jcS',
+      BS,
+    ],
+    '-content-end': [
+      'jcE',
+      BS,
+    ],
   },
   grow: {
-    '': ['fxg1', TW],
+    '': [
+      'fxg1',
+      TW,
+    ],
   },
   shrink: {
-    '-0': ['fxs0', TW],
+    '-0': [
+      'fxs0',
+      TW,
+    ],
   },
   invisible: {
-    '': ['vH', TW_BS],
+    '': [
+      'vH',
+      TW_BS,
+    ],
   },
   visible: {
-    '': ['vV', TW_BS],
+    '': [
+      'vV',
+      TW_BS,
+    ],
   },
   rounded: {
-    '': ['r4', TW_BS],
+    '': [
+      'r4',
+      TW_BS,
+    ],
   },
 };
 

@@ -103,8 +103,10 @@ function collectPairs(): Pair[] {
   const names = Array.from(new Set(collectHandlerNames()));
   const seen = new Set<string>();
   const pairs: Pair[] = [];
-  for (let i = 0; i < names.length; i++) {
-    for (let j = 0; j < ARG_FORMS.length; j++) {
+  const namesLength = names.length;
+  for (let i = 0; i < namesLength; i++) {
+    const argFormsLength = ARG_FORMS.length;
+    for (let j = 0; j < argFormsLength; j++) {
       const mn: any = minotationProvider({
         warningMode: 'silent',
       });
@@ -115,9 +117,11 @@ function collectPairs(): Pair[] {
         content: string;
       }) => s.content).join('');
       const bodies = css.match(/\{[^}]*\}/g) || [];
-      for (let b = 0; b < bodies.length; b++) {
+      const bodiesLength = bodies.length;
+      for (let b = 0; b < bodiesLength; b++) {
         const decls = bodies[b].slice(1, -1).split(';');
-        for (let d = 0; d < decls.length; d++) {
+        const declsLength = decls.length;
+        for (let d = 0; d < declsLength; d++) {
           const at = decls[d].indexOf(':');
           if (at < 0) {
             continue;
@@ -207,7 +211,8 @@ describe('вывод ядра против официальной граммат
     // Исключения — legacy-алиасы, которых нет в `mdn-data`, хотя браузеры их
     // принимают: `grid-gap` и родственные, `word-wrap`.
     const wrong: string[] = [];
-    for (let i = 0; i < PAIRS.length; i++) {
+    const pairsLength = PAIRS.length;
+    for (let i = 0; i < pairsLength; i++) {
       const pair = PAIRS[i];
       if (LEGACY_ALIASES[pair.prop] || referenceVerdict(pair) !== false) {
         continue;
@@ -221,12 +226,25 @@ describe('вывод ядра против официальной граммат
     // Точечные сторожа: каждая строка — реальный баг, найденный пользователем,
     // когда КОРРЕКТНЫЙ CSS молча отбраковывался.
     const cases: Array<[string, string]> = [
-      ['bgF00-00F', 'background:linear-gradient(180deg,#f00 0%,#00f 100%)'],
-      ['ggcN', 'grid-column-gap:normal'],
-      ['p10_20', 'padding:10px 20px'],
-      ['w100%-20px', 'width:calc(100% - 20px)'],
+      [
+        'bgF00-00F',
+        'background:linear-gradient(180deg,#f00 0%,#00f 100%)',
+      ],
+      [
+        'ggcN',
+        'grid-column-gap:normal',
+      ],
+      [
+        'p10_20',
+        'padding:10px 20px',
+      ],
+      [
+        'w100%-20px',
+        'width:calc(100% - 20px)',
+      ],
     ];
-    for (let i = 0; i < cases.length; i++) {
+    const casesLength = cases.length;
+    for (let i = 0; i < casesLength; i++) {
       expect(cssOfToken(cases[i][0])).toContain(cases[i][1]);
     }
   });
@@ -394,9 +412,18 @@ describe('ключевые слова семейств совпадают с г�
   });
 
   test.each([
-    ['pInherit', 'padding:inherit'],
-    ['cInherit', 'color:inherit'],
-    ['mUnset', 'margin:unset'],
+    [
+      'pInherit',
+      'padding:inherit',
+    ],
+    [
+      'cInherit',
+      'color:inherit',
+    ],
+    [
+      'mUnset',
+      'margin:unset',
+    ],
   ])('%s → %s — CSS-wide keywords проходят везде', (token, expected) => {
     expect(cssOf(token)).toContain(expected);
   });
@@ -504,7 +531,8 @@ describe('списки закрытых перечислений совпада�
         continue;
       }
       let paired = false;
-      for (let j = 0; j < list.length && !paired; j++) {
+      const listLength = list.length;
+      for (let j = 0; j < listLength && !paired; j++) {
         paired = j !== i
           && !!lexer.matchProperty(prop, list[j] + ' ' + list[i]).matched;
       }
@@ -527,7 +555,8 @@ describe('списки закрытых перечислений совпада�
     for (const abbr of Object.keys(abbreviations)) {
       short[abbreviations[abbr]] = abbr;
     }
-    for (let i = 0; i < list.length; i++) {
+    const listLength = list.length;
+    for (let i = 0; i < listLength; i++) {
       const camel = list[i].replace(/^-/, '').replace(/-([a-z0-9])/g, (_m, c) => c.toUpperCase());
       const token = tag + (short[list[i]] || camel[0].toUpperCase() + camel.slice(1));
       if (compileToken(token).indexOf(prop + ':' + list[i]) < 0) {

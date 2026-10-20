@@ -5,7 +5,11 @@
  * процессом, а всё, что можно сломать, — здесь.
  */
 import {
-  mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync,
+  mkdtempSync,
+  writeFileSync,
+  readFileSync,
+  rmSync,
+  existsSync,
 } from 'node:fs';
 import {
   join,
@@ -118,7 +122,10 @@ describe('main', () => {
   });
 
   test('нечитаемый конфиг обрывает работу', () => {
-    expect(() => main(['-c', join(dir, 'нет.js')], report))
+    expect(() => main([
+      '-c',
+      join(dir, 'нет.js'),
+    ], report))
       .toThrow('Config not found');
   });
 

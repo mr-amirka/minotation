@@ -12,11 +12,17 @@ import {
 
 describe('extractTokens', () => {
   test('литеральная строка в двойных кавычках', () => {
-    expect(extractTokens('<div class="p10 w50">', 'class')).toEqual(['p10', 'w50']);
+    expect(extractTokens('<div class="p10 w50">', 'class')).toEqual([
+      'p10',
+      'w50',
+    ]);
   });
 
   test('литеральная строка в одинарных кавычках', () => {
-    expect(extractTokens("<div class='p10 w50'>", 'class')).toEqual(['p10', 'w50']);
+    expect(extractTokens("<div class='p10 w50'>", 'class')).toEqual([
+      'p10',
+      'w50',
+    ]);
   });
 
   test('JSX-выражение со строкой в одинарных кавычках', () => {
@@ -24,11 +30,17 @@ describe('extractTokens', () => {
   });
 
   test('JSX-выражение со строкой в двойных кавычках', () => {
-    expect(extractTokens('<div className={"m5 p10"}>', 'className')).toEqual(['m5', 'p10']);
+    expect(extractTokens('<div className={"m5 p10"}>', 'className')).toEqual([
+      'm5',
+      'p10',
+    ]);
   });
 
   test('template literal без интерполяции', () => {
-    expect(extractTokens('<div className={`fx1 h100`}>', 'className')).toEqual(['fx1', 'h100']);
+    expect(extractTokens('<div className={`fx1 h100`}>', 'className')).toEqual([
+      'fx1',
+      'h100',
+    ]);
   });
 
   test('template literal с интерполяцией — подстановка читается как выражение (D-074)', () => {
@@ -40,13 +52,19 @@ describe('extractTokens', () => {
         'h100',
       ]);
     expect(extractTokens('<div className={`fx1 ${cond} h100`}>', 'className'))
-      .toEqual(['fx1', 'h100']);
+      .toEqual([
+        'fx1',
+        'h100',
+      ]);
   });
 
   test('разметка в шаблоне: подстановка внутри class="…" отбрасывается', () => {
     // `.html` со скриптом: `` `<div class="p10 ${x}">` `` — для текстового разбора это обычный атрибут.
     expect(extractTokens('const s = `<div class="p10 ${x} w50">`;', 'class'))
-      .toEqual(['p10', 'w50']);
+      .toEqual([
+        'p10',
+        'w50',
+      ]);
   });
 
   test('несколько атрибутов в одном файле', () => {
@@ -68,7 +86,10 @@ describe('extractTokens', () => {
   });
 
   test('лишние пробелы внутри значения схлопываются, пустые токены отфильтрованы', () => {
-    expect(extractTokens('<div class="  p10   w50  ">', 'class')).toEqual(['p10', 'w50']);
+    expect(extractTokens('<div class="  p10   w50  ">', 'class')).toEqual([
+      'p10',
+      'w50',
+    ]);
   });
 
   test('пустая строка-значение — пустой массив', () => {
@@ -76,11 +97,17 @@ describe('extractTokens', () => {
   });
 
   test('свойство объектного литерала (двойные кавычки)', () => {
-    expect(extractTokens('{ className: "p10 w50" }', 'className')).toEqual(['p10', 'w50']);
+    expect(extractTokens('{ className: "p10 w50" }', 'className')).toEqual([
+      'p10',
+      'w50',
+    ]);
   });
 
   test('свойство объектного литерала (одинарные кавычки)', () => {
-    expect(extractTokens("{ className: 'p10 w50' }", 'className')).toEqual(['p10', 'w50']);
+    expect(extractTokens("{ className: 'p10 w50' }", 'className')).toEqual([
+      'p10',
+      'w50',
+    ]);
   });
 
   test('вложенное свойство объектного литерала (MUI slotProps)', () => {
@@ -120,11 +147,17 @@ describe('extractClassVarTokens', () => {
   }
 
   test('присваивание переменной', () => {
-    expect(tokensOf("const thClass = 'py12 px14';")).toEqual(['py12', 'px14']);
+    expect(tokensOf("const thClass = 'py12 px14';")).toEqual([
+      'py12',
+      'px14',
+    ]);
   });
 
   test('свойство объекта', () => {
-    expect(tokensOf("{ rowClass: 'p10 m5' }")).toEqual(['p10', 'm5']);
+    expect(tokensOf("{ rowClass: 'p10 m5' }")).toEqual([
+      'p10',
+      'm5',
+    ]);
   });
 
   test('аннотация типа между именем и значением', () => {
@@ -132,7 +165,10 @@ describe('extractClassVarTokens', () => {
   });
 
   test('шаблонная строка: подстановка отбрасывается, статика берётся', () => {
-    expect(tokensOf('const aClass = `p10 ${x} m5`;')).toEqual(['p10', 'm5']);
+    expect(tokensOf('const aClass = `p10 ${x} m5`;')).toEqual([
+      'p10',
+      'm5',
+    ]);
   });
 
   test('суффикс должен быть концом имени — `thClassy` не подходит', () => {
@@ -152,7 +188,10 @@ describe('extractClassVarTokens', () => {
   });
 
   test('несколько объявлений в файле', () => {
-    expect(tokensOf("const aClass = 'p10';\nconst bClass = 'm5';")).toEqual(['p10', 'm5']);
+    expect(tokensOf("const aClass = 'p10';\nconst bClass = 'm5';")).toEqual([
+      'p10',
+      'm5',
+    ]);
   });
 });
 
@@ -163,11 +202,17 @@ describe('extractMergeCallTokens', () => {
    * в CSS — сборка проходила зелёной, а стилей не было. Живой случай: компоненты
    * `PageHeader`, `TextA`, `StatA` проекта affiliate потеряли `pb6`, `bg--ink`, `c--bg`.
    */
-  const NAMES = ['mne', 'mnClass'];
+  const NAMES = [
+    'mne',
+    'mnClass',
+  ];
 
   test('литералы из аргументов', () => {
     expect(extractMergeCallTokens("mne('pt26 pb6', props.class)", NAMES))
-      .toEqual(['pt26', 'pb6']);
+      .toEqual([
+        'pt26',
+        'pb6',
+      ]);
   });
 
   test('переменные-аргументы игнорируются, литералы рядом берутся', () => {
@@ -180,17 +225,26 @@ describe('extractMergeCallTokens', () => {
 
   test('вложенный вызов — литералы с любой глубины', () => {
     expect(extractMergeCallTokens("mne(base, cond ? 'w321' : mne(x, 'h321'))", NAMES))
-      .toEqual(['w321', 'h321']);
+      .toEqual([
+        'w321',
+        'h321',
+      ]);
   });
 
   test('объект и массив внутри аргументов не обрывают разбор', () => {
     expect(extractMergeCallTokens("mne(base, { a: 'p1' }, ['m2'])", NAMES))
-      .toEqual(['p1', 'm2']);
+      .toEqual([
+        'p1',
+        'm2',
+      ]);
   });
 
   test('подстановка ${…} пропускается', () => {
     expect(extractMergeCallTokens('mne(`w456 ${x} h456`)', NAMES))
-      .toEqual(['w456', 'h456']);
+      .toEqual([
+        'w456',
+        'h456',
+      ]);
   });
 
   test('экранированная кавычка не завершает литерал', () => {
@@ -205,7 +259,7 @@ describe('extractMergeCallTokens', () => {
   });
 
   test('имя без скобки вызовом не считается', () => {
-    expect(extractMergeCallTokens("const f = mne;", NAMES)).toEqual([]);
+    expect(extractMergeCallTokens('const f = mne;', NAMES)).toEqual([]);
   });
 
   test('пробелы и перевод строки перед скобкой допустимы', () => {
@@ -213,7 +267,10 @@ describe('extractMergeCallTokens', () => {
   });
 
   test('несколько вызовов в файле', () => {
-    expect(extractMergeCallTokens("mne('p10');\nmne('m5');", NAMES)).toEqual(['p10', 'm5']);
+    expect(extractMergeCallTokens("mne('p10');\nmne('m5');", NAMES)).toEqual([
+      'p10',
+      'm5',
+    ]);
   });
 
   test('пустой список имён отключает механизм', () => {
@@ -239,7 +296,7 @@ describe('scanTokens — единая точка сбора', () => {
 
   test('своё имя атрибута', () => {
     expect(scanTokens('<div className="p10">', {
-      attr: 'className', 
+      attr: 'className',
     })).toEqual(['p10']);
   });
 
@@ -247,13 +304,13 @@ describe('scanTokens — единая точка сбора', () => {
     const source = "const aClass = 'p10'; mne(x, 'w50');";
     expect(scanTokens(source, {
       classVarSuffixes: [],
-      mergeFnNames: [], 
+      mergeFnNames: [],
     })).toEqual([]);
     expect(scanTokens(source, {
-      mergeFnNames: [], 
+      mergeFnNames: [],
     })).toEqual(['p10']);
     expect(scanTokens(source, {
-      classVarSuffixes: [], 
+      classVarSuffixes: [],
     })).toEqual(['w50']);
   });
 
@@ -280,12 +337,18 @@ describe('вызов переменной с суффиксом — функци
     [
       'строка',
       "thClass('w150 p10')",
-      ['w150', 'p10'],
+      [
+        'w150',
+        'p10',
+      ],
     ],
     [
       'несколько аргументов',
       "rowClass(cond && 'bg--ink', 'p10')",
-      ['bg--ink', 'p10'],
+      [
+        'bg--ink',
+        'p10',
+      ],
     ],
   ])('%s', (
     _name, source, expected,
@@ -294,9 +357,18 @@ describe('вызов переменной с суффиксом — функци
   });
 
   test.each([
-    ['метод объекта', "el.toggleClass('active')"],
-    ['суффикс не в конце имени', "thClassy('p10')"],
-    ['ровно суффикс — не имя переменной', "Class('p10')"],
+    [
+      'метод объекта',
+      "el.toggleClass('active')",
+    ],
+    [
+      'суффикс не в конце имени',
+      "thClassy('p10')",
+    ],
+    [
+      'ровно суффикс — не имя переменной',
+      "Class('p10')",
+    ],
   ])('%s — не разбирается', (_name, source) => {
     expect(scanTokens(source, {})).toEqual([]);
   });
@@ -331,8 +403,14 @@ describe('attr — несколько имён (2026-10-05)', () => {
 
   test('массив имён — токены всех атрибутов', () => {
     expect(scanTokens(source, {
-      attr: ['class', 'className'],
-    })).toEqual(['p10', 'm10']);
+      attr: [
+        'class',
+        'className',
+      ],
+    })).toEqual([
+      'p10',
+      'm10',
+    ]);
   });
 
   test('одно имя — как раньше', () => {
@@ -365,9 +443,18 @@ describe('кеш регулярок extractTokens (2026-09-25)', () => {
    */
   test('повторные вызовы с тем же атрибутом дают тот же результат', () => {
     const source = '<div class="p10 w50">';
-    expect(extractTokens(source, 'class')).toEqual(['p10', 'w50']);
-    expect(extractTokens(source, 'class')).toEqual(['p10', 'w50']);
-    expect(extractTokens(source, 'class')).toEqual(['p10', 'w50']);
+    expect(extractTokens(source, 'class')).toEqual([
+      'p10',
+      'w50',
+    ]);
+    expect(extractTokens(source, 'class')).toEqual([
+      'p10',
+      'w50',
+    ]);
+    expect(extractTokens(source, 'class')).toEqual([
+      'p10',
+      'w50',
+    ]);
   });
 
   test('разные атрибуты не мешают друг другу', () => {
@@ -387,7 +474,7 @@ describe('scanTokens — отключение механизмов (регрес
    */
   test('classVarSuffixes: [] отключает разбор переменных', () => {
     expect(scanTokens("const thClass = 'w777';", {
-      classVarSuffixes: [], 
+      classVarSuffixes: [],
     })).toEqual([]);
   });
 
@@ -397,7 +484,7 @@ describe('scanTokens — отключение механизмов (регрес
 
   test('mergeFnNames: [] отключает разбор вызовов', () => {
     expect(scanTokens("mne(x, 'w777')", {
-      mergeFnNames: [], 
+      mergeFnNames: [],
     })).toEqual([]);
   });
 });
@@ -410,9 +497,18 @@ describe('кеш регулярок extractTokens (2026-09-25)', () => {
    */
   test('повторные вызовы с тем же атрибутом дают тот же результат', () => {
     const source = '<div class="p10 w50">';
-    expect(extractTokens(source, 'class')).toEqual(['p10', 'w50']);
-    expect(extractTokens(source, 'class')).toEqual(['p10', 'w50']);
-    expect(extractTokens(source, 'class')).toEqual(['p10', 'w50']);
+    expect(extractTokens(source, 'class')).toEqual([
+      'p10',
+      'w50',
+    ]);
+    expect(extractTokens(source, 'class')).toEqual([
+      'p10',
+      'w50',
+    ]);
+    expect(extractTokens(source, 'class')).toEqual([
+      'p10',
+      'w50',
+    ]);
   });
 
   test('разные атрибуты не мешают друг другу', () => {
@@ -456,7 +552,10 @@ describe('extractClassVarTokens — края ручного разбора (2026
   });
 
   test('оборванный литерал без закрывающей кавычки', () => {
-    expect(tokensOf("const aClass = 'p10 w50")).toEqual(['p10', 'w50']);
+    expect(tokensOf("const aClass = 'p10 w50")).toEqual([
+      'p10',
+      'w50',
+    ]);
   });
 
   test('пустой литерал', () => {
@@ -495,12 +594,21 @@ describe('extractClassVarTokens — края ручного разбора (2026
     // Перевод строки между именем и `=` разбор не прерывает: прерывает он только
     // затянувшуюся аннотацию типа (ветка с `:`).
     expect(tokensOf("const aClass\r\n  = 'p10';")).toEqual(['p10']);
-    expect(tokensOf("const aClass =\t'p10 \r\n m5';")).toEqual(['p10', 'm5']);
+    expect(tokensOf("const aClass =\t'p10 \r\n m5';")).toEqual([
+      'p10',
+      'm5',
+    ]);
   });
 
   test('несколько суффиксов, оба находятся', () => {
-    expect(extractClassVarTokens("const aClass = 'p10'; const bCls = 'm5';", ['Class', 'Cls']))
-      .toEqual(['p10', 'm5']);
+    expect(extractClassVarTokens("const aClass = 'p10'; const bCls = 'm5';", [
+      'Class',
+      'Cls',
+    ]))
+      .toEqual([
+        'p10',
+        'm5',
+      ]);
   });
 });
 
@@ -533,6 +641,9 @@ describe('extractMergeCallTokens — края разбора вызова (2026-
 
   test('вызов внутри строки другого вызова не теряется', () => {
     expect(extractMergeCallTokens("mne('p10'); other(); mne('m5')", NAMES))
-      .toEqual(['p10', 'm5']);
+      .toEqual([
+        'p10',
+        'm5',
+      ]);
   });
 });

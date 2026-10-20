@@ -4,7 +4,10 @@
  * важнее декларации пакета.
  */
 import {
-  mkdirSync, mkdtempSync, rmSync, writeFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
 } from 'node:fs';
 import {
   join,
@@ -13,7 +16,8 @@ import {
   tmpdir,
 } from 'node:os';
 import {
-  clearPackageDirectiveCache, createTokenCollector,
+  clearPackageDirectiveCache,
+  createTokenCollector,
 } from '../src/index';
 import type {
   TokenCollectorOptions,
@@ -94,10 +98,12 @@ describe('режимы токенов по файлу', () => {
       childSelectorMode: 'strict',
     });
     const out = collector({
-      scopes: [{
-        match: 'ui',
-        childSelectorMode: 'silent',
-      }],
+      scopes: [
+        {
+          match: 'ui',
+          childSelectorMode: 'silent',
+        },
+      ],
     });
     out.add(join(
       dir, 'ui', 'List.html',
@@ -124,9 +130,12 @@ describe('режимы токенов по файлу', () => {
   test('токен не из файлов (mn.assign в пресете) — режим проекта', () => {
     const out = collector({
       unknownMediaMode: 'strict',
-      presets: [presetStandard, ((mn: { assign: (selector: string, tokens: string) => void }) => {
-        mn.assign('.x', 'p10@zz');
-      }) as never],
+      presets: [
+        presetStandard,
+        ((mn: { assign: (selector: string, tokens: string) => void }) => {
+          mn.assign('.x', 'p10@zz');
+        }) as never,
+      ],
     });
     out.add(join(dir, 'a.html'), '<b class="p10">');
     expect(() => out.css()).toThrow("unknownMediaMode: 'strict'");
@@ -135,9 +144,12 @@ describe('режимы токенов по файлу', () => {
   test('не медиа и не из файлов — тоже режим проекта', () => {
     const out = collector({
       importantMode: 'strict',
-      presets: [presetStandard, ((mn: { assign: (selector: string, tokens: string) => void }) => {
-        mn.assign('.x', 'm10-i');
-      }) as never],
+      presets: [
+        presetStandard,
+        ((mn: { assign: (selector: string, tokens: string) => void }) => {
+          mn.assign('.x', 'm10-i');
+        }) as never,
+      ],
     });
     out.add(join(dir, 'a.html'), '<b class="p10">');
     expect(() => out.css()).toThrow("importantMode: 'strict'");

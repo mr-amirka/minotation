@@ -44,13 +44,25 @@ function compile(token: string) {
 describe('сосед перед элементом: комбинатор в конце сегмента предка', () => {
   // Эталон — вывод v1 (minimalist-notation), сверено 2026-10-12.
   test.each([
-    ['cF00<.peer+', '.peer+ .cF00\\<\\.peer\\+{color:#f00}'],
-    ['c00F<.peer~', '.peer~ .c00F\\<\\.peer\\~{color:#00f}'],
-    ['cF00<.peer:f~', '.peer:focus~ .cF00\\<\\.peer\\:f\\~{color:#f00}'],
-    ['cF00<.x~.y+', '.x~.y+ .cF00\\<\\.x\\~\\.y\\+{color:#f00}'],
+    [
+      'cF00<.peer+',
+      '.peer+ .cF00\\<\\.peer\\+{color:#f00}',
+    ],
+    [
+      'c00F<.peer~',
+      '.peer~ .c00F\\<\\.peer\\~{color:#00f}',
+    ],
+    [
+      'cF00<.peer:f~',
+      '.peer:focus~ .cF00\\<\\.peer\\:f\\~{color:#f00}',
+    ],
+    [
+      'cF00<.x~.y+',
+      '.x~.y+ .cF00\\<\\.x\\~\\.y\\+{color:#f00}',
+    ],
   ])('%s → %s', (token, css) => {
     const {
-      css: out, warnings, 
+      css: out, warnings,
     } = compile(token);
     expect(out).toBe(css);
     expect(warnings).toEqual([]);
@@ -66,7 +78,7 @@ describe('сосед перед элементом: комбинатор в ко
 
   test('группа вариантов: (cF00|p10)<.peer~', () => {
     const {
-      css, 
+      css,
     } = compile('(cF00|p10)<.peer~');
     expect(css).toContain('.peer~ .\\(cF00\\|p10\\)\\<\\.peer\\~{color:#f00}');
     expect(css).toContain('.peer~ .\\(cF00\\|p10\\)\\<\\.peer\\~{padding:10px}');
@@ -83,10 +95,22 @@ describe('сосед перед элементом: комбинатор в ко
 
 describe('сосед после элемента: комбинатор после класса', () => {
   test.each([
-    ['c0F0+.peer', '.c0F0\\+\\.peer+.peer{color:#0f0}'],
-    ['cF00~.peer', '.cF00\\~\\.peer~.peer{color:#f00}'],
-    ['cF00+*', '.cF00\\+\\*+*{color:#f00}'],
-    ['cF00~*', '.cF00\\~\\*~*{color:#f00}'],
+    [
+      'c0F0+.peer',
+      '.c0F0\\+\\.peer+.peer{color:#0f0}',
+    ],
+    [
+      'cF00~.peer',
+      '.cF00\\~\\.peer~.peer{color:#f00}',
+    ],
+    [
+      'cF00+*',
+      '.cF00\\+\\*+*{color:#f00}',
+    ],
+    [
+      'cF00~*',
+      '.cF00\\~\\*~*{color:#f00}',
+    ],
   ])('%s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
@@ -110,9 +134,18 @@ describe('сосед после элемента: комбинатор посл�
 describe('сосед после ребёнка: >N+…', () => {
   // Было `>+.b` — битый CSS (и в v1); цель перед комбинатором — «любой прямой ребёнок».
   test.each([
-    ['cF00>1+.b', '.cF00\\>1\\+\\.b>*+.b{color:#f00}'],
-    ['cF00>1~*', '.cF00\\>1\\~\\*>*~*{color:#f00}'],
-    ['cF00>2+.b', '.cF00\\>2\\+\\.b>*>*+.b{color:#f00}'],
+    [
+      'cF00>1+.b',
+      '.cF00\\>1\\+\\.b>*+.b{color:#f00}',
+    ],
+    [
+      'cF00>1~*',
+      '.cF00\\>1\\~\\*>*~*{color:#f00}',
+    ],
+    [
+      'cF00>2+.b',
+      '.cF00\\>2\\+\\.b>*>*+.b{color:#f00}',
+    ],
   ])('%s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
@@ -126,7 +159,7 @@ describe('висячий комбинатор без предка — по-пр�
     'p10>1+',
   ])('%s — parse-error, CSS нет', (token) => {
     const {
-      css, warnings, 
+      css, warnings,
     } = compile(token);
     expect(css).toBe('');
     expect(warnings.map((w) => w.type)).toEqual(['parse-error']);
@@ -137,7 +170,7 @@ describe('висячий комбинатор без предка — по-пр�
 describe('экранированный < — не предок', () => {
   test('p10\\<.a~ — висячий ~ без настоящего предка остаётся браком', () => {
     const {
-      css, warnings, 
+      css, warnings,
     } = compile('p10\\<.a~');
     expect(css).toBe('');
     expect(warnings.map((w) => w.type)).toEqual(['parse-error']);

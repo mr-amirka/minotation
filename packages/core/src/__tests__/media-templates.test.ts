@@ -4,11 +4,11 @@
  * взаимодействие медиа-селектора с изоляцией классом области (`isolateMode`).
  */
 import {
-  minotationProvider, 
+  minotationProvider,
 } from '../core/index';
 import presetStandard from '../presets/standard';
 import type {
-  MnWarning, 
+  MnWarning,
 } from '../core/types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -136,9 +136,9 @@ describe('parseMediaExpression', () => {
     const mn: any = minotationProvider({
       media: {
         sm: {
-          query: '(width <= 600px)', 
-        }, 
-      }, 
+          query: '(width <= 600px)',
+        },
+      },
     });
     const parsed = mn.parseMediaExpression('sm');
 
@@ -154,8 +154,8 @@ describe('изоляция и медиа-селектор (D-075)', () => {
       isolateClass: '_l',
       media: {
         dark: {
-          selector: '.theme-dark', 
-        }, 
+          selector: '.theme-dark',
+        },
       },
     })).toContain('.theme-dark .p10\\@dark._l{padding:10px}');
   });
@@ -175,12 +175,30 @@ describe('изоляция и медиа-селектор (D-075)', () => {
  */
 describe('числовой медиа-шаблон: законные формы не задеты', () => {
   test.each([
-    ['p10@760', '(width <= 760px)'],
-    ['p10@760-', '(width >= 760px)'],
-    ['p10@760-1200', '(width >= 760px)'],
-    ['p10@760/400', '(height <= 400px)'],
-    ['p10@/600', '(height <= 600px)'],
-    ['p10@/10-60', '(height >= 10px)'],
+    [
+      'p10@760',
+      '(width <= 760px)',
+    ],
+    [
+      'p10@760-',
+      '(width >= 760px)',
+    ],
+    [
+      'p10@760-1200',
+      '(width >= 760px)',
+    ],
+    [
+      'p10@760/400',
+      '(height <= 400px)',
+    ],
+    [
+      'p10@/600',
+      '(height <= 600px)',
+    ],
+    [
+      'p10@/10-60',
+      '(height >= 10px)',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(compile(token)).toContain(expected);
   });

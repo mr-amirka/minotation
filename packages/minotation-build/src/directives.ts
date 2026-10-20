@@ -6,16 +6,24 @@
  * Холодный путь: директива читается один раз на файл, `package.json` — один раз на каталог.
  */
 import {
-  existsSync, readFileSync,
+  existsSync,
+  readFileSync,
 } from 'node:fs';
 import {
-  dirname, isAbsolute, join,
+  dirname,
+  isAbsolute,
+  join,
 } from 'node:path';
 import {
-  checkOptions, isBoolean, isStringArray, oneOf,
+  checkOptions,
+  isBoolean,
+  isStringArray,
+  oneOf,
 } from 'minotation';
 import type {
-  MnNotationMode, MnRaiseMode, OptionSchema,
+  MnNotationMode,
+  MnRaiseMode,
+  OptionSchema,
 } from 'minotation';
 
 /** Что файл или пакет объявляет о себе. */

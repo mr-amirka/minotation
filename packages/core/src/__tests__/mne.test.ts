@@ -5,7 +5,10 @@
  * специфичности — перекрытый токен просто не попадает в атрибут.
  */
 import {
-  mne, mnClass, mnKey, mnMap,
+  mne,
+  mnClass,
+  mnKey,
+  mnMap,
 } from '../mne';
 import {
   REGEXP_SELECTOR_EXCEPTIONS,
@@ -214,15 +217,42 @@ describe('mne — чужие классы проходят насквозь', ()
 
 describe('mnKey', () => {
   test.each([
-    ['f20', 'f'],
-    ['f24@sm', 'f@sm'],
-    ['cF00:hover', 'c:hover'],
-    ['p10<.parent', 'p<.parent'],
-    ['p10-i', 'p-i'],
-    ['bgC', 'bg'],
-    ['dB', 'd'],
-    ['text-center', 'text-center'],
-    ['someClass', 'some'],
+    [
+      'f20',
+      'f',
+    ],
+    [
+      'f24@sm',
+      'f@sm',
+    ],
+    [
+      'cF00:hover',
+      'c:hover',
+    ],
+    [
+      'p10<.parent',
+      'p<.parent',
+    ],
+    [
+      'p10-i',
+      'p-i',
+    ],
+    [
+      'bgC',
+      'bg',
+    ],
+    [
+      'dB',
+      'd',
+    ],
+    [
+      'text-center',
+      'text-center',
+    ],
+    [
+      'someClass',
+      'some',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(mnKey(token)).toBe(expected);
   });

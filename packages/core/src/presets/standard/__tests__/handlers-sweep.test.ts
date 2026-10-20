@@ -9,7 +9,7 @@
  * через Proxy, поэтому новый хендлер автоматически попадает под проверку.
  */
 import {
-  minotationProvider, 
+  minotationProvider,
 } from '../../../core';
 import presetStandard from '..';
 import presetSynonyms from '../../synonyms';
@@ -75,7 +75,8 @@ function compileAll(tokens: string[]): string {
     presetMedias,
   ]);
   const compile = mn.getCompiler('class');
-  for (let i = 0; i < tokens.length; i++) {
+  const tokensLength = tokens.length;
+  for (let i = 0; i < tokensLength; i++) {
     compile(tokens[i]);
   }
   mn.compile();

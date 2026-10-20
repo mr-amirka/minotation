@@ -27,7 +27,10 @@ function create() {
   return {
     mn,
     warnings,
-    styles: () => mn.styles$.getValue().map((s) => [s.priority, s.content]),
+    styles: () => mn.styles$.getValue().map((s) => [
+      s.priority,
+      s.content,
+    ]),
   };
 }
 
@@ -44,7 +47,12 @@ describe('mn.css', () => {
       marginTop: 0,
     });
     mn.compile();
-    expect(styles()).toEqual([[-2000, ':root{--spacing:0.25rem;--c:oklch(62.3% 0.214 259.815);margin-top:0}']]);
+    expect(styles()).toEqual([
+      [
+        -2000,
+        ':root{--spacing:0.25rem;--c:oklch(62.3% 0.214 259.815);margin-top:0}',
+      ],
+    ]);
   });
 
   test('селектор в записи классов: группа, синоним, медиа, приоритет ^N — свой блок', () => {
@@ -59,9 +67,18 @@ describe('mn.css', () => {
     });
     mn.compile();
     expect(styles()).toEqual([
-      [-3000, ':root{--a:1}'],
-      [3, '@media (width < 992px) and (hover: hover){.selector:hover{--some-color:#F00}}'],
-      [3, '@media (width < 992px){.selector.active{--some-color:#F00}}'],
+      [
+        -3000,
+        ':root{--a:1}',
+      ],
+      [
+        3,
+        '@media (width < 992px) and (hover: hover){.selector:hover{--some-color:#F00}}',
+      ],
+      [
+        3,
+        '@media (width < 992px){.selector.active{--some-color:#F00}}',
+      ],
     ]);
   });
 
@@ -78,7 +95,12 @@ describe('mn.css', () => {
       },
     });
     mn.compile();
-    expect(styles()).toEqual([[-2000, 'html{scrollbar-gutter:stable}::selection{background:yellow}']]);
+    expect(styles()).toEqual([
+      [
+        -2000,
+        'html{scrollbar-gutter:stable}::selection{background:yellow}',
+      ],
+    ]);
   });
 
   test('из хендлера при компиляции и после неё — правило обновляется, и после recompile тоже', () => {
@@ -99,22 +121,47 @@ describe('mn.css', () => {
     );
     mn.getCompiler('class')('lazy');
     mn.compile();
-    expect(styles()).toEqual([[-2000, ':root{--lazy:1px}.lazy{margin:var(--lazy)}']]);
+    expect(styles()).toEqual([
+      [
+        -2000,
+        ':root{--lazy:1px}.lazy{margin:var(--lazy)}',
+      ],
+    ]);
     mn.css(':root', {
       '--late': '2px',
     });
     mn.compile();
-    expect(styles()).toEqual([[-2000, '.lazy{margin:var(--lazy)}:root{--lazy:1px;--late:2px}']]);
+    expect(styles()).toEqual([
+      [
+        -2000,
+        '.lazy{margin:var(--lazy)}:root{--lazy:1px;--late:2px}',
+      ],
+    ]);
     mn.recompile();
     expect(styles()[0][1]).toContain(':root{--lazy:1px;--late:2px}');
   });
 
   test.each([
-    [[''], 'mn.css: the selector expects a non-empty string, got string ""'],
-    [['.x', 'color:red'], 'mn.css: declarations of ".x" expect an object of strings or numbers, got string "color:red"'],
-    [['.x', {
-      color: {},
-    }], 'mn.css: declarations of ".x" expect an object of strings or numbers, got object'],
+    [
+      [''],
+      'mn.css: the selector expects a non-empty string, got string ""',
+    ],
+    [
+      [
+        '.x',
+        'color:red',
+      ],
+      'mn.css: declarations of ".x" expect an object of strings or numbers, got string "color:red"',
+    ],
+    [
+      [
+        '.x',
+        {
+          color: {},
+        },
+      ],
+      'mn.css: declarations of ".x" expect an object of strings or numbers, got object',
+    ],
   ])('%j — ошибка', (args, message) => {
     const {
       mn,
@@ -255,8 +302,13 @@ describe('селектор: кавычки, экранирование, прио
     } = create();
     mn.assign(selector, tokens);
     mn.compile();
-    expect(styles()).toEqual([[priority, '@media (width < 480px) and (width < 992px){'
-      + '.x{color:#f00}}']]);
+    expect(styles()).toEqual([
+      [
+        priority,
+        '@media (width < 480px) and (width < 992px){'
+      + '.x{color:#f00}}',
+      ],
+    ]);
   });
 
   test('скобка в кавычках значения атрибута — как и прежде, её нужно экранировать', () => {
@@ -287,16 +339,68 @@ describe('селектор: кавычки, экранирование, прио
 
 describe('медиа где угодно в селекторе, комбинаторы CSS (D-071)', () => {
   test.each([
-    ['.class1, class2(:h|.active)@m .child', [
-      [-2000, '.class1{color:#f00}'],
-      [-992, '@media (width < 992px) and (hover: hover){class2:hover .child{color:#f00}}'],
-      [-992, '@media (width < 992px){class2.active .child{color:#f00}}'],
-    ]],
-    ['.a@m^3>.b', [[3, '@media (width < 992px){.a>.b{color:#f00}}']]],
-    ['.a@m .b@dark', [[-992, '@media (width < 992px) and (prefers-color-scheme: dark){.a .b{color:#f00}}']]],
-    ['.a:h>.b', [[1, '@media (hover: hover){.a:hover>.b{color:#f00}}']]],
-    ['.a > .b + .c ~ .d', [[-2000, '.a>.b+.c~.d{color:#f00}']]],
-    ['a[href="x@y"]@m', [[-992, '@media (width < 992px){a[href="x@y"]{color:#f00}}']]],
+    [
+      '.class1, class2(:h|.active)@m .child',
+      [
+        [
+          -2000,
+          '.class1{color:#f00}',
+        ],
+        [
+          -992,
+          '@media (width < 992px) and (hover: hover){class2:hover .child{color:#f00}}',
+        ],
+        [
+          -992,
+          '@media (width < 992px){class2.active .child{color:#f00}}',
+        ],
+      ],
+    ],
+    [
+      '.a@m^3>.b',
+      [
+        [
+          3,
+          '@media (width < 992px){.a>.b{color:#f00}}',
+        ],
+      ],
+    ],
+    [
+      '.a@m .b@dark',
+      [
+        [
+          -992,
+          '@media (width < 992px) and (prefers-color-scheme: dark){.a .b{color:#f00}}',
+        ],
+      ],
+    ],
+    [
+      '.a:h>.b',
+      [
+        [
+          1,
+          '@media (hover: hover){.a:hover>.b{color:#f00}}',
+        ],
+      ],
+    ],
+    [
+      '.a > .b + .c ~ .d',
+      [
+        [
+          -2000,
+          '.a>.b+.c~.d{color:#f00}',
+        ],
+      ],
+    ],
+    [
+      'a[href="x@y"]@m',
+      [
+        [
+          -992,
+          '@media (width < 992px){a[href="x@y"]{color:#f00}}',
+        ],
+      ],
+    ],
   ])('%s', (selector, expected) => {
     const {
       mn, styles, warnings,
@@ -315,7 +419,12 @@ describe('селектор: экранированный @ и приоритет
     } = create();
     mn.assign('.a\\@b@m', 'cF00');
     mn.compile();
-    expect(styles()).toEqual([[-992, '@media (width < 992px){.a\\@b{color:#f00}}']]);
+    expect(styles()).toEqual([
+      [
+        -992,
+        '@media (width < 992px){.a\\@b{color:#f00}}',
+      ],
+    ]);
   });
 
   test('приоритет из синонима — в конце, после медиа селектора', () => {
@@ -327,15 +436,29 @@ describe('селектор: экранированный @ и приоритет
     });
     mn.assign('.x:hp@m', 'cF00');
     mn.compile();
-    expect(styles()).toEqual([[5, '@media (width < 992px) and (hover: hover){.x:hover{color:#f00}}']]);
+    expect(styles()).toEqual([
+      [
+        5,
+        '@media (width < 992px) and (hover: hover){.x:hover{color:#f00}}',
+      ],
+    ]);
   });
 });
 
 describe('> и < внутри скобок — аргумент псевдокласса, а не сегмент записи', () => {
   test.each([
-    ['cF00:has[>a]', '.cF00\\:has\\[\\>a\\]:has(>a){color:#f00}'],
-    ['cF00<.p:has[>i]', '.p:has(>i) .cF00\\<\\.p\\:has\\[\\>i\\]{color:#f00}'],
-    ['cF00:not[a<b]', '.cF00\\:not\\[a\\<b\\]:not(a<b){color:#f00}'],
+    [
+      'cF00:has[>a]',
+      '.cF00\\:has\\[\\>a\\]:has(>a){color:#f00}',
+    ],
+    [
+      'cF00<.p:has[>i]',
+      '.p:has(>i) .cF00\\<\\.p\\:has\\[\\>i\\]{color:#f00}',
+    ],
+    [
+      'cF00:not[a<b]',
+      '.cF00\\:not\\[a\\<b\\]:not(a<b){color:#f00}',
+    ],
   ])('класс %s → %s', (token, css) => {
     const {
       mn, styles, warnings,

@@ -28,10 +28,10 @@
  * Запуск: npx tsx src/__benchmarks__/onepass.bench.ts
  */
 import {
-  scanTokens, 
+  scanTokens,
 } from '../extractTokens';
 import {
-  pushLiteralTokens, 
+  pushLiteralTokens,
 } from '../extractTokens';
 
 const FILES = 300;
@@ -365,7 +365,7 @@ function scanTokensInto(
 const three = bench('три прохода (рабочая реализация)', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokens(sources[i], {
-      attr: 'class', 
+      attr: 'class',
     });
   }
 });
@@ -373,18 +373,24 @@ const one = bench('один проход, charCodeAt        ', () => {
   for (let i = 0; i < FILES; i++) {
     const out: string[] = [];
     scanTokensInto(
-      out, sources[i], 'class', ['Class'], ['mne', 'mnClass'],
+      out, sources[i], 'class', ['Class'], [
+        'mne',
+        'mnClass',
+      ],
     );
   }
 });
 console.log(`один проход против трёх: ${((1 - one / three) * 100).toFixed(1)}%`);
 
 const a = scanTokens(sources[0], {
-  attr: 'class', 
+  attr: 'class',
 }).slice().sort().join(' ');
 const outB: string[] = [];
 scanTokensInto(
-  outB, sources[0], 'class', ['Class'], ['mne', 'mnClass'],
+  outB, sources[0], 'class', ['Class'], [
+    'mne',
+    'mnClass',
+  ],
 );
 console.log(a === outB.slice().sort().join(' ')
   ? 'результаты совпадают'

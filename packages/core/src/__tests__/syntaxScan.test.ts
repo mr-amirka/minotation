@@ -10,10 +10,13 @@ import {
   scanTokens,
 } from '../extractTokens';
 import {
-  scanTokensSfc, scanTokensSyntax,
+  scanTokensSfc,
+  scanTokensSyntax,
 } from '../syntaxScan';
 import {
-  createScanner, isSyntaxScannable, syntaxKindOf,
+  createScanner,
+  isSyntaxScannable,
+  syntaxKindOf,
 } from '../scanner';
 
 /** Набор без повторов и в стабильном порядке — сравнивать удобно именно его. */
@@ -26,7 +29,10 @@ describe('scanTokensSyntax — что собирается', () => {
     [
       'JSX-атрибут строкой',
       '<div class="p10 w50" />',
-      ['p10', 'w50'],
+      [
+        'p10',
+        'w50',
+      ],
     ],
     [
       'JSX-атрибут выражением',
@@ -36,7 +42,10 @@ describe('scanTokensSyntax — что собирается', () => {
     [
       'JSX-атрибут шаблоном',
       '<div class={`fx1 ${x} h100`} />',
-      ['fx1', 'h100'],
+      [
+        'fx1',
+        'h100',
+      ],
     ],
     [
       'свойство объекта',
@@ -46,12 +55,18 @@ describe('scanTokensSyntax — что собирается', () => {
     [
       'вложенное свойство',
       'f({ paper: { class: \'w320 dF\' } });',
-      ['w320', 'dF'],
+      [
+        'w320',
+        'dF',
+      ],
     ],
     [
       'переменная с суффиксом',
       'const rowClass = \'p10 m5\';',
-      ['p10', 'm5'],
+      [
+        'p10',
+        'm5',
+      ],
     ],
     [
       'переменная с аннотацией',
@@ -66,7 +81,10 @@ describe('scanTokensSyntax — что собирается', () => {
     [
       'вызов слияния',
       'mne(base, \'p10 m5\')',
-      ['p10', 'm5'],
+      [
+        'p10',
+        'm5',
+      ],
     ],
     [
       'вложенный вызов',
@@ -90,7 +108,10 @@ describe('scanTokensSyntax — что собирается', () => {
     const source = 'html`<div class="p10">${x}<span class="m5">`';
     expect(setOf(scanTokensSyntax(source, {
       attr: 'class',
-    }))).toEqual(['m5', 'p10']);
+    }))).toEqual([
+      'm5',
+      'p10',
+    ]);
   });
 
   test('чужой метод с тем же именем не считается функцией слияния', () => {
@@ -105,7 +126,10 @@ describe('scanTokensSyntax — что собирается', () => {
     expect(setOf(scanTokensSyntax(source, {
       attr: 'className',
       classVarSuffixes: ['Cls'],
-    }))).toEqual(['m5', 'p10']);
+    }))).toEqual([
+      'm5',
+      'p10',
+    ]);
   });
 
   test('пустые списки отключают механизмы', () => {
@@ -121,7 +145,10 @@ describe('scanTokensSyntax — что собирается', () => {
     const source = '<div class="p10" />;\n<Box className="m10" />;\n'
       + 'f({ className: \'w20\' });\nconst s = \'<i class="h5">\';';
     expect(setOf(scanTokensSyntax(source, {
-      attr: ['class', 'className'],
+      attr: [
+        'class',
+        'className',
+      ],
     }))).toEqual([
       'h5',
       'm10',
@@ -191,10 +218,22 @@ describe('scanTokensSyntax — что собирается', () => {
 
 describe('scanTokensSyntax — чего НЕ видно парсеру', () => {
   test.each([
-    ['строчный комментарий', '// пример: class="p10 w50"\n<div class="m5" />'],
-    ['блочный комментарий', '/* <div class="p10 w50"> */\n<div class="m5" />'],
-    ['JSDoc с разметкой', '/**\n * <div class="p10 w50">\n */\n<div class="m5" />'],
-    ['JSX-комментарий', '<>{/* <div class="p10 w50" /> */}<div class="m5" /></>'],
+    [
+      'строчный комментарий',
+      '// пример: class="p10 w50"\n<div class="m5" />',
+    ],
+    [
+      'блочный комментарий',
+      '/* <div class="p10 w50"> */\n<div class="m5" />',
+    ],
+    [
+      'JSDoc с разметкой',
+      '/**\n * <div class="p10 w50">\n */\n<div class="m5" />',
+    ],
+    [
+      'JSX-комментарий',
+      '<>{/* <div class="p10 w50" /> */}<div class="m5" /></>',
+    ],
   ])('%s', (_name, source) => {
     expect(scanTokensSyntax(source, {
       attr: 'class',
@@ -265,20 +304,59 @@ describe('scanTokensSyntax — диалекты', () => {
   });
 
   test.each([
-    ['a.ts', true],
-    ['a.tsx', true],
-    ['a.js', true],
-    ['a.jsx', true],
-    ['a.mjs', true],
-    ['a.cjs', true],
-    ['a.mts', true],
-    ['a.cts', true],
+    [
+      'a.ts',
+      true,
+    ],
+    [
+      'a.tsx',
+      true,
+    ],
+    [
+      'a.js',
+      true,
+    ],
+    [
+      'a.jsx',
+      true,
+    ],
+    [
+      'a.mjs',
+      true,
+    ],
+    [
+      'a.cjs',
+      true,
+    ],
+    [
+      'a.mts',
+      true,
+    ],
+    [
+      'a.cts',
+      true,
+    ],
     // SFC тоже разбираются — по блокам, см. `scanTokensSfc`.
-    ['a.vue', true],
-    ['a.svelte', true],
-    ['a.astro', true],
-    ['a.html', false],
-    ['noext', false],
+    [
+      'a.vue',
+      true,
+    ],
+    [
+      'a.svelte',
+      true,
+    ],
+    [
+      'a.astro',
+      true,
+    ],
+    [
+      'a.html',
+      false,
+    ],
+    [
+      'noext',
+      false,
+    ],
   ])('isSyntaxScannable(%p) === %p', (fileName, expected) => {
     expect(isSyntaxScannable(fileName)).toBe(expected);
   });
@@ -333,7 +411,10 @@ describe('условные выражения — оба сканера', () => 
     [
       'скобки и приоритет',
       '<div className={(on && \'w1\') || \'w2\'} />',
-      ['w1', 'w2'],
+      [
+        'w1',
+        'w2',
+      ],
     ],
     [
       'сравнение в цепочке &&',
@@ -343,7 +424,10 @@ describe('условные выражения — оба сканера', () => 
     [
       'отрицание в условии',
       '<div className={!on ? \'n1\' : \'n2\'} />',
-      ['n1', 'n2'],
+      [
+        'n1',
+        'n2',
+      ],
     ],
     [
       'вызов в условии',
@@ -353,7 +437,10 @@ describe('условные выражения — оба сканера', () => 
     [
       'шаблон в ветке',
       '<div className={on ? `t1 ${x}` : \'t2\'} />',
-      ['t1', 't2'],
+      [
+        't1',
+        't2',
+      ],
     ],
     [
       'JSX в ветке',
@@ -363,27 +450,42 @@ describe('условные выражения — оба сканера', () => 
     [
       'свойство объекта',
       'f({ className: on ? \'k1\' : \'k2\', other: \'zz\' })',
-      ['k1', 'k2'],
+      [
+        'k1',
+        'k2',
+      ],
     ],
     [
       'свойство в несколько строк',
       'f({ className: on\n  ? \'k3\'\n  : \'k4\' })',
-      ['k3', 'k4'],
+      [
+        'k3',
+        'k4',
+      ],
     ],
     [
       'переменная с суффиксом',
       'const rowClass = on ? \'v1\' : \'v2\';\nconst x = \'no\';',
-      ['v1', 'v2'],
+      [
+        'v1',
+        'v2',
+      ],
     ],
     [
       'переменная с аннотацией',
       'const rowClass: string = on ? \'v3\' : \'v4\';',
-      ['v3', 'v4'],
+      [
+        'v3',
+        'v4',
+      ],
     ],
     [
       'свойство с суффиксом и сравнением',
       'f({ rowClass: a === \'z\' ? \'v5\' : \'v6\' })',
-      ['v5', 'v6'],
+      [
+        'v5',
+        'v6',
+      ],
     ],
     [
       'подстановка в шаблоне (D-074)',
@@ -436,17 +538,26 @@ describe('условные выражения — оба сканера', () => 
     [
       'подстановка, которую разбор не дочитал, пропускается',
       '<div className={`a ${on ? \'b\' : \'c\', z} d`} />',
-      ['a', 'd'],
+      [
+        'a',
+        'd',
+      ],
     ],
     [
       'не-null утверждение TS',
       '<div className={on! ? \'z1\' : \'z2\'} />',
-      ['z1', 'z2'],
+      [
+        'z1',
+        'z2',
+      ],
     ],
     [
       'опциональная цепочка в условии',
       '<div className={a?.b ? \'o1\' : \'o2\'} />',
-      ['o1', 'o2'],
+      [
+        'o1',
+        'o2',
+      ],
     ],
     // Ничего не сводится к литералам — токенов нет.
     [
@@ -549,22 +660,34 @@ describe('маркер @mn — оба сканера', () => {
     [
       'JSX-комментарий',
       '<div className={someVar}>...</div> {/* @mn cF00 px10 */}',
-      ['cF00', 'px10'],
+      [
+        'cF00',
+        'px10',
+      ],
     ],
     [
       'строчный комментарий',
       'const tone = data.tone; // @mn bgF00 bg0F0',
-      ['bgF00', 'bg0F0'],
+      [
+        'bgF00',
+        'bg0F0',
+      ],
     ],
     [
       'блочный, несколько строк — до конца строки',
       '/*\n * @mn a1 b1\n * обычный текст\n */',
-      ['a1', 'b1'],
+      [
+        'a1',
+        'b1',
+      ],
     ],
     [
       'HTML-комментарий',
       '<!-- @mn p20 --><div class="m5"></div>',
-      ['m5', 'p20'],
+      [
+        'm5',
+        'p20',
+      ],
     ],
     [
       'обычный комментарий — немой',
@@ -597,22 +720,54 @@ describe('маркер @mn — оба сканера', () => {
     expect(setOf(scanTokens('<div class="m5"></div> <!-- @mn p20 -->', {
       attr: 'class',
       comments: false,
-    }))).toEqual(['m5', 'p20']);
+    }))).toEqual([
+      'm5',
+      'p20',
+    ]);
   });
 });
 
 describe('паритет с текстовым сканером', () => {
   const SAMPLES: Array<[string, string]> = [
-    ['атрибуты', '<div class="p10 w50"><span class={\'m5\'} /></div>'],
-    ['шаблон в атрибуте', '<div class={`fx1 ${x} h100`} />'],
-    ['переменные', 'const rowClass = \'p10\';\nconst thClass: string = \'m5\';'],
-    ['свойство объекта', 'f({ paper: { class: \'w320 dF\' } });'],
-    ['вызовы слияния', 'mne(thClass, \'fvTN\');\nmnClass(\'p10\', x);'],
-    ['вложенные вызовы', 'mne(a, cond ? b : mne(c, \'p10 m5\'))'],
-    ['class и className', '<div class="p10" />;\n<Box className="m10" />;'],
-    ['вызов функции из mnClass', '<th class={thClass(`w(|max)150`)} />;\nrowClass(\'p10\');'],
-    ['разметка в строке', 'const s = \'<div class="p10">\';'],
-    ['всё вместе', `
+    [
+      'атрибуты',
+      '<div class="p10 w50"><span class={\'m5\'} /></div>',
+    ],
+    [
+      'шаблон в атрибуте',
+      '<div class={`fx1 ${x} h100`} />',
+    ],
+    [
+      'переменные',
+      'const rowClass = \'p10\';\nconst thClass: string = \'m5\';',
+    ],
+    [
+      'свойство объекта',
+      'f({ paper: { class: \'w320 dF\' } });',
+    ],
+    [
+      'вызовы слияния',
+      'mne(thClass, \'fvTN\');\nmnClass(\'p10\', x);',
+    ],
+    [
+      'вложенные вызовы',
+      'mne(a, cond ? b : mne(c, \'p10 m5\'))',
+    ],
+    [
+      'class и className',
+      '<div class="p10" />;\n<Box className="m10" />;',
+    ],
+    [
+      'вызов функции из mnClass',
+      '<th class={thClass(`w(|max)150`)} />;\nrowClass(\'p10\');',
+    ],
+    [
+      'разметка в строке',
+      'const s = \'<div class="p10">\';',
+    ],
+    [
+      'всё вместе',
+      `
       import { mne } from 'minotation/mne';
       const chipClass = 'py7 px12 r b1 bsS';
       export default function Row({ active }) {
@@ -624,7 +779,8 @@ describe('паритет с текстовым сканером', () => {
           </tr>
         );
       }
-    `],
+    `,
+    ],
   ];
 
   test.each(SAMPLES)('%s', (_name, source) => {
@@ -637,7 +793,10 @@ describe('паритет с текстовым сканером', () => {
 
   test.each(SAMPLES)('%s — attr: [class, className]', (_name, source) => {
     const options = {
-      attr: ['class', 'className'],
+      attr: [
+        'class',
+        'className',
+      ],
     };
     expect(setOf(scanTokensSyntax(source, options)))
       .toEqual(setOf(scanTokens(source, options)));
@@ -656,7 +815,10 @@ describe('паритет с текстовым сканером', () => {
     expect(setOf(scanTokens(source, {
       attr: 'class',
       comments: false,
-    }))).toEqual(['m5', 'p10']);
+    }))).toEqual([
+      'm5',
+      'p10',
+    ]);
   });
 });
 
@@ -683,7 +845,10 @@ describe('createScanner', () => {
     expect(scan(SOURCE, '/src/App.tsx')).toEqual(['m5']);
     // Текстовому сканеру тот же файл даёт лишний токен из комментария:
     // кавычка внутри `/"/` сбивает вырезание комментариев.
-    expect(scan(SOURCE)).toEqual(['p10', 'm5']);
+    expect(scan(SOURCE)).toEqual([
+      'p10',
+      'm5',
+    ]);
   });
 
   test('`syntax: false` — всегда текст, даже для .tsx', () => {
@@ -736,7 +901,10 @@ describe('createScanner', () => {
       const scan = fresh.createScanner({
         attr: 'class',
       });
-      expect(scan(SOURCE, '/src/App.tsx')).toEqual(['p10', 'm5']);
+      expect(scan(SOURCE, '/src/App.tsx')).toEqual([
+        'p10',
+        'm5',
+      ]);
     } finally {
       warnSpy.mockRestore();
       jest.dontMock('../syntaxScan');
@@ -763,7 +931,10 @@ describe('createScanner', () => {
     });
 
     // Без парсера остаётся текстовый разбор — с его ложным токеном.
-    const textual = ['p10', 'm5'];
+    const textual = [
+      'p10',
+      'm5',
+    ];
     expect(scan(SOURCE, '/src/App.tsx')).toEqual(textual);
     expect(scan(SOURCE, '/src/Other.tsx')).toEqual(textual);
 
@@ -839,7 +1010,10 @@ describe('scanTokensSfc — Vue, Svelte, Astro', () => {
       '<div class="p20"></div>',
     ].join('\n');
 
-    expect(setOf(scanTokensSfc(source, OPTIONS))).toEqual(['m30', 'p20']);
+    expect(setOf(scanTokensSfc(source, OPTIONS))).toEqual([
+      'm30',
+      'p20',
+    ]);
   });
 
   test('Astro: фронтматтер `---` разбирается как скрипт', () => {
@@ -852,7 +1026,10 @@ describe('scanTokensSfc — Vue, Svelte, Astro', () => {
       '<div class="p30"></div>',
     ].join('\n');
 
-    expect(setOf(scanTokensSfc(source, OPTIONS))).toEqual(['m40', 'p30']);
+    expect(setOf(scanTokensSfc(source, OPTIONS))).toEqual([
+      'm40',
+      'p30',
+    ]);
   });
 
   test('Astro: несколько блоков — фронтматтер и <script>', () => {
@@ -909,21 +1086,54 @@ describe('scanTokensSfc — Vue, Svelte, Astro', () => {
     const source = '<script lang="ts">\n// class="p99"\nconst aClass = "m20";\n</script>\n'
       + '<div class="p10"></div>';
 
-    expect(setOf(scan(source, 'App.vue'))).toEqual(['m20', 'p10']);
-    expect(setOf(scan(source, 'App.svelte'))).toEqual(['m20', 'p10']);
-    expect(setOf(scan(source, 'Page.astro'))).toEqual(['m20', 'p10']);
+    expect(setOf(scan(source, 'App.vue'))).toEqual([
+      'm20',
+      'p10',
+    ]);
+    expect(setOf(scan(source, 'App.svelte'))).toEqual([
+      'm20',
+      'p10',
+    ]);
+    expect(setOf(scan(source, 'Page.astro'))).toEqual([
+      'm20',
+      'p10',
+    ]);
   });
 
   test.each([
-    ['App.vue', 2],
-    ['App.svelte', 2],
-    ['Page.astro', 2],
-    ['App.tsx', 1],
-    ['App.ts', 1],
-    ['index.html', 0],
-    ['style.css', 0],
+    [
+      'App.vue',
+      2,
+    ],
+    [
+      'App.svelte',
+      2,
+    ],
+    [
+      'Page.astro',
+      2,
+    ],
+    [
+      'App.tsx',
+      1,
+    ],
+    [
+      'App.ts',
+      1,
+    ],
+    [
+      'index.html',
+      0,
+    ],
+    [
+      'style.css',
+      0,
+    ],
     // Скриптовый блок Vue приходит от сборщика отдельным id.
-    ['App.vue?vue&type=script&lang.ts', 1],
+    [
+      'App.vue?vue&type=script&lang.ts',
+      1,
+    ],
   ])('syntaxKindOf(%p) === %p', (fileName, expected) => {
     expect(syntaxKindOf(fileName)).toBe(expected);
   });

@@ -21,7 +21,7 @@ import {
   REGEXP_DEPTH,
 } from './constants';
 import {
-  MnParseError, 
+  MnParseError,
 } from '../core/types';
 
 /**
@@ -132,7 +132,10 @@ export function getCombinator(
         name, token,
       );
     }
-    return [' ', name];
+    return [
+      ' ',
+      name,
+    ];
   }
   // Основание явно: без него `parseInt` формально зависит от формы строки.
   const depth = parseInt(depthMatchs[1], 10);
@@ -175,5 +178,8 @@ export function getCombinator(
       }
     }
   }
-  return [getCombinatorByDepth(depth), selector];
+  return [
+    getCombinatorByDepth(depth),
+    selector,
+  ];
 }

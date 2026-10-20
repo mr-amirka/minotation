@@ -27,8 +27,10 @@
  * позиции файла. Пятикратное замедление за счёт кода, который ничего не делал.
  */
 import {
-  extractTokens, scanTokens,
-  extractClassVarTokens, extractMergeCallTokens,
+  extractTokens,
+  scanTokens,
+  extractClassVarTokens,
+  extractMergeCallTokens,
   stripComments,
 } from '../extractTokens';
 
@@ -116,7 +118,7 @@ console.log(`выигрыш: ${((1 - after / before) * 100).toFixed(1)}%\n`);
 bench('scanTokens — три прохода          ', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokens(sources[i], {
-      attr: 'class', 
+      attr: 'class',
     });
   }
 });
@@ -149,7 +151,10 @@ bench('  только extractClassVarTokens        ', () => {
 });
 bench('  только extractMergeCallTokens       ', () => {
   for (let i = 0; i < FILES; i++) {
-    extractMergeCallTokens(sources[i], ['mne', 'mnClass']);
+    extractMergeCallTokens(sources[i], [
+      'mne',
+      'mnClass',
+    ]);
   }
 });
 bench('  только extractMergeCallTokens (1 имя)', () => {

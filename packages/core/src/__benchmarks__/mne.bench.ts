@@ -25,7 +25,8 @@
  * Запуск: npx tsx src/__benchmarks__/mne.bench.ts
  */
 import {
-  mne, mnClass, 
+  mne,
+  mnClass,
 } from '../mne';
 
 const ITERATIONS = 200_000;

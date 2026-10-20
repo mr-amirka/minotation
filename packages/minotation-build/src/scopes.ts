@@ -8,16 +8,23 @@
  * Холодный путь: правила компилируются один раз на накопитель, проверка — один раз на файл.
  */
 import {
-  relative, sep,
+  relative,
+  sep,
 } from 'node:path';
 import {
-  checkOptions, isBoolean,
+  checkOptions,
+  isBoolean,
 } from 'minotation';
 import type {
-  MnNotationMode, OptionCheck, OptionSchema,
+  MnNotationMode,
+  OptionCheck,
+  OptionSchema,
 } from 'minotation';
 import {
-  DIRECTIVE_KEYS, DIRECTIVE_SCHEMA, STRICTNESS_KEYS, readPackageName,
+  DIRECTIVE_KEYS,
+  DIRECTIVE_SCHEMA,
+  STRICTNESS_KEYS,
+  readPackageName,
 } from './directives';
 import type {
   MnNotationDirective,
@@ -117,8 +124,9 @@ export function globToRegExp(pattern: string): RegExp {
     ch = source[i];
     if (ch === '*' && source[i + 1] === '*') {
       // `**/` — ноль и больше каталогов; `**` в конце — что угодно.
-      out += source[i + 2] === '/' ? '(?:.*/)?' : '.*';
-      i += source[i + 2] === '/' ? 2 : 1;
+      const anyDirectories = source[i + 2] === '/';
+      out += anyDirectories ? '(?:.*/)?' : '.*';
+      i += anyDirectories ? 2 : 1;
     } else if (ch === '*') {
       out += '[^/]*';
     } else if (ch === '?') {
@@ -174,7 +182,10 @@ type CompiledRule = [test: (id: string) => boolean, rule: MnScopeRule];
 export function createScopeResolver(rules: MnScopeRule[] | undefined, root: string): (id: string, own: MnNotationDirective | undefined) => MnNotationDirective | undefined {
   const compiled: CompiledRule[] = (rules || []).map((rule) => {
     const parts = (Array.isArray(rule.match) ? rule.match : [rule.match]).map((part) => partMatcher(part, root));
-    return [(id: string) => parts.some((test) => test(id)), rule];
+    return [
+      (id: string) => parts.some((test) => test(id)),
+      rule,
+    ];
   });
   if (!compiled.length) {
     return (_id, own) => own;

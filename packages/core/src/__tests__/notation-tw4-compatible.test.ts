@@ -8,7 +8,9 @@ import minotationProvider from '../core/index';
 import presetStandard from '../presets/standard';
 import presetMedias from '../presets/medias';
 import type {
-  MnOptions, MnPresetObject, MnWarning,
+  MnOptions,
+  MnPresetObject,
+  MnWarning,
 } from '../core/types';
 import type {
   MnInstance,
@@ -81,7 +83,10 @@ describe("notationMode: 'tw4-compatible'", () => {
       warningMode: 'silent',
       notationMode: 'tw4-compatible',
     });
-    mn.setPresets([presetStandard, presetTailwindish]);
+    mn.setPresets([
+      presetStandard,
+      presetTailwindish,
+    ]);
     mn.media.hover = {
       query: '(hover: hover)',
     };
@@ -94,7 +99,7 @@ describe("notationMode: 'tw4-compatible'", () => {
 
   test('несколько состояний и медиа складываются', () => {
     const {
-      css, 
+      css,
     } = compile('md:hover:focus:cF00');
     expect(css).toContain('@media (width >= 768px){.md\\:hover\\:focus\\:cF00:hover:focus{color:#f00}}');
   });
@@ -105,11 +110,14 @@ describe("notationMode: 'tw4-compatible'", () => {
 
   test('незарегистрированная метка — неизвестный вариант, как в Tailwind (D-048)', () => {
     const {
-      css, warnings, 
+      css, warnings,
     } = compile('vasya-hover:cF00 grop-hover:cF00');
     expect(css).not.toContain('vasya');
     expect(css).not.toContain('grop');
-    expect(warnings.map((w) => w.token)).toEqual(['vasya-hover:cF00', 'grop-hover:cF00']);
+    expect(warnings.map((w) => w.token)).toEqual([
+      'vasya-hover:cF00',
+      'grop-hover:cF00',
+    ]);
   });
 
   test('{метка}-{медиа} — предок внутри медиа', () => {
@@ -118,7 +126,7 @@ describe("notationMode: 'tw4-compatible'", () => {
 
   test('именованная метка: group-hover/item, peer-invalid/email (D-048)', () => {
     const {
-      css, 
+      css,
     } = compile('group-hover/item:cF00 peer-invalid/email:c0F0');
     expect(css).toContain('.group\\/item:hover .group-hover\\/item\\:cF00{color:#f00}');
     expect(css).toContain('.peer\\/email:invalid~.peer-invalid\\/email\\:c0F0{color:#0f0}');
@@ -135,7 +143,7 @@ describe("notationMode: 'tw4-compatible'", () => {
 
   test('! — !important (importantMode: warn по умолчанию — предупреждение)', () => {
     const {
-      css, warnings, 
+      css, warnings,
     } = compile('!p10');
     expect(css).toContain('.\\!p10{padding:10px!important}');
     expect(warnings.map((w) => w.type)).toEqual(['important']);
@@ -154,16 +162,18 @@ describe("notationMode: 'tw4-compatible'", () => {
 
   test('неизвестная приставка — предупреждение, CSS нет', () => {
     const {
-      css, warnings, 
+      css, warnings,
     } = compile('wat:cF00');
     expect(css).not.toContain('wat');
-    expect(warnings).toEqual([expect.objectContaining({
-      type: 'parse-error',
-      token: 'wat:cF00',
-      message: 'Variant "wat:" is unknown — it is neither a synonym nor a media name, and'
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        type: 'parse-error',
+        token: 'wat:cF00',
+        message: 'Variant "wat:" is unknown — it is neither a synonym nor a media name, and'
         + ' "{label}-{synonym|media}" does not match a label registered with'
         + ' mn.variantPrefixedSynonyms. The class gives no CSS.',
-    })]);
+      }),
+    ]);
   });
 
   test('класс без приставок — как есть', () => {
@@ -173,7 +183,7 @@ describe("notationMode: 'tw4-compatible'", () => {
   test('строки пресета — в режиме пресета, разметка — в режиме проекта', () => {
     // Проект — по умолчанию 'context-qualified'; .btn у пресета задан как 'hover:c0F0'.
     const {
-      css, 
+      css,
     } = compile('p10:hover', {
       notationMode: 'context-qualified',
     });
@@ -183,7 +193,7 @@ describe("notationMode: 'tw4-compatible'", () => {
 
   test('в режиме проекта context-qualified запись Tailwind — чужой класс', () => {
     const {
-      css, 
+      css,
     } = compile('hover:cF00', {
       notationMode: 'context-qualified',
     });
@@ -206,7 +216,10 @@ describe('mn.variantPrefixedSynonyms — проверка', () => {
       warningMode: 'silent',
       notationMode: 'tw4-compatible',
     });
-    mn.setPresets([presetStandard, presetTailwindish]);
+    mn.setPresets([
+      presetStandard,
+      presetTailwindish,
+    ]);
     mn.variantPrefixedSynonyms({
       next: '.n+',
       box: '.box>',
@@ -268,7 +281,10 @@ describe('компилятор с режимом: getCompiler(attr, { notationMo
     const mn = minotationProvider({
       warningMode: 'silent',
     });
-    mn.setPresets([presetStandard, presetTailwindish]);
+    mn.setPresets([
+      presetStandard,
+      presetTailwindish,
+    ]);
     mn.getCompiler('class')('p10:hover');
     mn.getCompiler('class', {
       notationMode: 'tw4-compatible',
@@ -283,7 +299,10 @@ describe('компилятор с режимом: getCompiler(attr, { notationMo
     const mn = minotationProvider({
       warningMode: 'silent',
     });
-    mn.setPresets([presetStandard, presetTailwindish]);
+    mn.setPresets([
+      presetStandard,
+      presetTailwindish,
+    ]);
     mn.getCompiler('class')('hover:cF00');
     mn.compile();
     expect(mn.styles$.getValue().map((s) => s.content).join(' ')).not.toContain('hover\\:cF00');
@@ -330,7 +349,7 @@ describe("notationMode: 'breakpoint-prefixed' — quantum-css (D-045 этап 4)
 
   test('имя медиа как записано — важнее строчного', () => {
     const {
-      css, 
+      css,
     } = compileQ('LG_p10', {
       LG: {
         query: '(width >= 992px)',
@@ -342,19 +361,21 @@ describe("notationMode: 'breakpoint-prefixed' — quantum-css (D-045 этап 4)
 
   test('неизвестный брейкпоинт — предупреждение, CSS нет', () => {
     const {
-      css, warnings, 
+      css, warnings,
     } = compileQ('XL_p10');
     expect(css).toBe('');
-    expect(warnings).toEqual([expect.objectContaining({
-      type: 'parse-error',
-      token: 'XL_p10',
-      message: 'Breakpoint "XL_" is unknown — "XL" and "xl" are not media names. The class gives no CSS.',
-    })]);
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        type: 'parse-error',
+        token: 'XL_p10',
+        message: 'Breakpoint "XL_" is unknown — "XL" and "xl" are not media names. The class gives no CSS.',
+      }),
+    ]);
   });
 
   test('конструкции minotation не применяются: @, <, :', () => {
     const {
-      css, 
+      css,
     } = compileQ('p10@sm p10:h p10<.a');
     expect(css).toBe('');
   });

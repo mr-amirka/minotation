@@ -16,7 +16,10 @@ import type {
 
 export default {
   name: 'presetMain',
-  requires: ['presetStandard', 'presetMedias'],
+  requires: [
+    'presetStandard',
+    'presetMedias',
+  ],
   setup: (mn: MnInstance) => {
     mn.assign({
       '*, *:before, *:after': 'bxzBB',

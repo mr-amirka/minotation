@@ -3,8 +3,18 @@
  * значение — ошибка с подсказкой.
  */
 import {
-  checkOptions, describeValue, isBoolean, isBooleanOrString, isCount, isFunction,
-  isFunctionArray, isObject, isString, isStringArray, oneOf, optionsOf,
+  checkOptions,
+  describeValue,
+  isBoolean,
+  isBooleanOrString,
+  isCount,
+  isFunction,
+  isFunctionArray,
+  isObject,
+  isString,
+  isStringArray,
+  oneOf,
+  optionsOf,
 } from '../checkOptions';
 import minotationProvider from '../core/index';
 import {
@@ -23,7 +33,7 @@ describe('checkOptions — ключи', () => {
   test('неизвестный ключ, похожий на допустимый — «did you mean»', () => {
     expect(() => checkOptions(
       {
-        atrs: 'class', 
+        atrs: 'class',
       }, schema, 'mnVite',
     ))
       .toThrow('[minotation] mnVite: unknown option "atrs". Did you mean "attrs"?');
@@ -32,7 +42,7 @@ describe('checkOptions — ключи', () => {
   test('регистр не мешает подсказке', () => {
     expect(() => checkOptions(
       {
-        AltColor: true, 
+        AltColor: true,
       }, schema, 'mnVite',
     ))
       .toThrow('Did you mean "altColor"?');
@@ -42,8 +52,8 @@ describe('checkOptions — ключи', () => {
     expect(() => checkOptions(
       {
         mn: {
-          strict: true, 
-        }, 
+          strict: true,
+        },
       }, schema, 'mnVite',
     ))
       .toThrow('[minotation] mnVite: unknown option "mn". Known options: attrs, altColor, entry');
@@ -52,7 +62,7 @@ describe('checkOptions — ключи', () => {
   test('ключ из прототипа объекта — не опция', () => {
     expect(() => checkOptions(
       {
-        toString: 'x', 
+        toString: 'x',
       }, schema, 'mnVite',
     ))
       .toThrow('unknown option "toString"');
@@ -64,7 +74,7 @@ describe('checkOptions — ключи', () => {
     )).not.toThrow();
     expect(() => checkOptions(
       {
-        attrs: undefined, 
+        attrs: undefined,
       }, schema, 'mnVite',
     )).not.toThrow();
     expect(() => checkOptions(
@@ -88,7 +98,7 @@ describe('checkOptions — значения', () => {
   test('ошибка называет опцию, ожидание и полученное', () => {
     expect(() => checkOptions(
       {
-        altColor: 'off', 
+        altColor: 'off',
       }, schema, 'minotationProvider',
     ))
       .toThrow('[minotation] minotationProvider: option "altColor" expects a boolean, got string "off"');
@@ -99,9 +109,9 @@ describe('checkOptions — значения', () => {
       {
         entry: {
           admin: {
-            fileNmae: 'a.css', 
-          }, 
-        }, 
+            fileNmae: 'a.css',
+          },
+        },
       }, schema, 'mnGulp',
     ))
       .toThrow('[minotation] mnGulp: unknown option "entry.admin.fileNmae". Did you mean "entry.admin.fileName"?');
@@ -109,23 +119,23 @@ describe('checkOptions — значения', () => {
       {
         entry: {
           admin: {
-            fileName: 1, 
-          }, 
-        }, 
+            fileName: 1,
+          },
+        },
       }, schema, 'mnGulp',
     ))
       .toThrow('option "entry.admin.fileName" expects a string, got number 1');
     expect(() => checkOptions(
       {
         entry: {
-          admin: 'a.css', 
-        }, 
+          admin: 'a.css',
+        },
       }, schema, 'mnGulp',
     ))
       .toThrow('option "entry.admin" expects an object, got string "a.css"');
     expect(() => checkOptions(
       {
-        entry: [], 
+        entry: [],
       }, schema, 'mnGulp',
     ))
       .toThrow('option "entry" expects an object, got array');
@@ -133,9 +143,9 @@ describe('checkOptions — значения', () => {
       {
         entry: {
           admin: {
-            fileName: 'a.css', 
-          }, 
-        }, 
+            fileName: 'a.css',
+          },
+        },
       }, schema, 'mnGulp',
     ))
       .not.toThrow();
@@ -251,15 +261,42 @@ describe('checkOptions — значения', () => {
   });
 
   test.each([
-    [null, 'null'],
-    [[1], 'array'],
-    [/x/i, 'RegExp /x/i'],
-    ['p10', 'string "p10"'],
-    [5, 'number 5'],
-    [false, 'boolean false'],
-    [() => 0, 'function'],
-    [{}, 'object'],
-    [undefined, 'undefined'],
+    [
+      null,
+      'null',
+    ],
+    [
+      [1],
+      'array',
+    ],
+    [
+      /x/i,
+      'RegExp /x/i',
+    ],
+    [
+      'p10',
+      'string "p10"',
+    ],
+    [
+      5,
+      'number 5',
+    ],
+    [
+      false,
+      'boolean false',
+    ],
+    [
+      () => 0,
+      'function',
+    ],
+    [
+      {},
+      'object',
+    ],
+    [
+      undefined,
+      'undefined',
+    ],
   ])('describeValue(%p) → %p', (value, text) => {
     expect(describeValue(value)).toBe(text);
   });
@@ -268,16 +305,16 @@ describe('checkOptions — значения', () => {
 describe('точки входа ядра', () => {
   test('minotationProvider', () => {
     expect(() => minotationProvider({
-      warningMode: 'strict', 
+      warningMode: 'strict',
     } as never))
       .toThrow('[minotation] minotationProvider: option "warningMode" expects "log", "silent" or "error", got string "strict"');
     expect(() => minotationProvider({
-      strict: true, 
+      strict: true,
     } as never))
       .toThrow('[minotation] minotationProvider: unknown option "strict". Known options: presets,');
     expect(() => minotationProvider({
       maxDepthMode: 'strict',
-      maxDepth: 3, 
+      maxDepth: 3,
     })).not.toThrow();
     // Прежний 'block' — теперь 'strict' (D-039).
     expect(() => minotationProvider({
@@ -288,26 +325,29 @@ describe('точки входа ядра', () => {
   test('mn.setOptions', () => {
     const mn = minotationProvider();
     expect(() => mn.setOptions({
-      isolateMod: 'class', 
+      isolateMod: 'class',
     } as never))
       .toThrow('[minotation] mn.setOptions: unknown option "isolateMod". Did you mean "isolateMode"?');
   });
 
   test('createScanner', () => {
     expect(() => createScanner({
-      attrs: 'class', 
+      attrs: 'class',
     } as never))
       .toThrow('[minotation] createScanner: unknown option "attrs". Did you mean "attr"?');
     expect(() => createScanner({
-      attr: 1, 
+      attr: 1,
     } as never))
       .toThrow('option "attr" expects a string or an array of strings, got number 1');
     expect(() => createScanner({
-      attr: ['class', 'className'],
-      syntax: false, 
+      attr: [
+        'class',
+        'className',
+      ],
+      syntax: false,
     })).not.toThrow();
     expect(() => createScanner({
-      attr: 'class', 
+      attr: 'class',
     })).not.toThrow();
   });
 });

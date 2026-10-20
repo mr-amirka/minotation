@@ -16,7 +16,8 @@ import {
   scanTokens,
 } from '../extractTokens';
 import {
-  scanTokensSfc, scanTokensSyntax,
+  scanTokensSfc,
+  scanTokensSyntax,
 } from '../syntaxScan';
 
 const FILES = 300;

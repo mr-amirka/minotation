@@ -16,10 +16,13 @@ import presetMedias from '../../medias';
 import presetStandard from '../../standard';
 import presetTw4 from '..';
 import {
-  TW4_THEME, TW4_THEME_SHA256, TW4_VERSION,
+  TW4_THEME,
+  TW4_THEME_SHA256,
+  TW4_VERSION,
 } from '../theme';
 import type {
-  MnOptions, MnWarning,
+  MnOptions,
+  MnWarning,
 } from '../../../core/types';
 
 /** Правило темы: `:root{--…}` или начальные значения `*{--tw-…}`, `::before,…{--tw-…}`. */
@@ -34,7 +37,10 @@ function compile(tokens: string, options: MnOptions = {}) {
     onWarning: (w) => warnings.push(w),
     ...options,
   });
-  mn.setPresets([presetMedias, presetTw4]);
+  mn.setPresets([
+    presetMedias,
+    presetTw4,
+  ]);
   mn.getCompiler('class')(tokens);
   mn.compile();
   const all = mn.styles$.getValue().map((s) => s.content).join('');
@@ -52,10 +58,25 @@ describe('тема', () => {
     const mn = minotationProvider({
       notationMode: 'tw4-compatible',
     });
-    mn.setPresets([presetMedias, presetTw4]);
+    mn.setPresets([
+      presetMedias,
+      presetTw4,
+    ]);
     mn.getCompiler('class')('mt-4');
     mn.compile();
-    expect(mn.styles$.getValue().map((s) => [s.priority, s.content])).toEqual([[-3000, ':root{--spacing:0.25rem}'], [-2000, '.mt-4{margin-top:calc(var(--spacing) * 4)}']]);
+    expect(mn.styles$.getValue().map((s) => [
+      s.priority,
+      s.content,
+    ])).toEqual([
+      [
+        -3000,
+        ':root{--spacing:0.25rem}',
+      ],
+      [
+        -2000,
+        '.mt-4{margin-top:calc(var(--spacing) * 4)}',
+      ],
+    ]);
   });
 
   test('сверена с эталоном: версия и SHA-256 файла-источника', () => {
@@ -87,7 +108,10 @@ describe('тема', () => {
 describe('кадры анимаций темы', () => {
   test('по требованию, как у Tailwind: только использованные, по разу на имя', () => {
     const css = compile('animate-spin hover:animate-spin animate-bounce animate-none animate-[x_1s]').css;
-    expect(css.match(/@keyframes [a-z]+/g)).toEqual(['@keyframes spin', '@keyframes bounce']);
+    expect(css.match(/@keyframes [a-z]+/g)).toEqual([
+      '@keyframes spin',
+      '@keyframes bounce',
+    ]);
     expect(css).toContain('@keyframes spin{to{transform:rotate(360deg)}}');
     expect(compile('animate-none transition').css).not.toContain('@keyframes');
   });
@@ -95,13 +119,34 @@ describe('кадры анимаций темы', () => {
 
 describe('контейнерные запросы (D-086) — как у Tailwind 4.3.3', () => {
   test.each([
-    ['@md:flex', '@container (width >= 28rem){.\\@md\\:flex{display:flex}}'],
-    ['@min-md:flex', '@container (width >= 28rem){.\\@min-md\\:flex{display:flex}}'],
-    ['@max-md:flex', '@container (width < 28rem){.\\@max-md\\:flex{display:flex}}'],
-    ['@3xs:flex', '@container (width >= 16rem){.\\@3xs\\:flex{display:flex}}'],
-    ['@sm/main:flex', '@container main (width >= 24rem){.\\@sm\\/main\\:flex{display:flex}}'],
-    ['@max-sm/main:flex', '@container main (width < 24rem){.\\@max-sm\\/main\\:flex{display:flex}}'],
-    ['@min-[400px]/main:flex', '@container main (width >= 400px){.\\@min-\\[400px\\]\\/main\\:flex{display:flex}}'],
+    [
+      '@md:flex',
+      '@container (width >= 28rem){.\\@md\\:flex{display:flex}}',
+    ],
+    [
+      '@min-md:flex',
+      '@container (width >= 28rem){.\\@min-md\\:flex{display:flex}}',
+    ],
+    [
+      '@max-md:flex',
+      '@container (width < 28rem){.\\@max-md\\:flex{display:flex}}',
+    ],
+    [
+      '@3xs:flex',
+      '@container (width >= 16rem){.\\@3xs\\:flex{display:flex}}',
+    ],
+    [
+      '@sm/main:flex',
+      '@container main (width >= 24rem){.\\@sm\\/main\\:flex{display:flex}}',
+    ],
+    [
+      '@max-sm/main:flex',
+      '@container main (width < 24rem){.\\@max-sm\\/main\\:flex{display:flex}}',
+    ],
+    [
+      '@min-[400px]/main:flex',
+      '@container main (width >= 400px){.\\@min-\\[400px\\]\\/main\\:flex{display:flex}}',
+    ],
   ])('%s — шкала контейнеров, не брейкпоинты', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
@@ -116,32 +161,70 @@ describe('контейнерные запросы (D-086) — как у Tailwind
     '@container-x',
     '-@container',
   ])('%s — не контейнер: сообщение вместо тишины', (token) => {
-    expect(compile(token).warnings).toEqual(['parse-error: "' + token + '": in tw4-compatible mode a class starting with "@" '
+    expect(compile(token).warnings).toEqual([
+      'parse-error: "' + token + '": in tw4-compatible mode a class starting with "@" '
       + 'is a container — @container, @container/name, @container-normal, @container-size; a container variant needs ":" '
-      + '(@md:flex). The class gives no CSS.']);
+      + '(@md:flex). The class gives no CSS.',
+    ]);
   });
 });
 
 describe('отступы', () => {
   test.each([
-    ['mt-4', '.mt-4{margin-top:calc(var(--spacing) * 4)}'],
-    ['-mt-4', '.-mt-4{margin-top:calc(var(--spacing) * -4)}'],
-    ['mx-auto', '.mx-auto{margin-inline:auto}'],
-    ['m-px', '.m-px{margin:1px}'],
-    ['-m-px', '.-m-px{margin:-1px}'],
-    ['-mt-[3px]', '.-mt-\\[3px\\]{margin-top:calc(3px * -1)}'],
-    ['p-2.5', '.p-2\\.5{padding:calc(var(--spacing) * 2.5)}'],
-    ['px-[3px]', '.px-\\[3px\\]{padding-inline:3px}'],
-    ['gap-x-2', '.gap-x-2{column-gap:calc(var(--spacing) * 2)}'],
-    ['space-x-4', ':where(.space-x-4>:not(:last-child)){--tw-space-x-reverse:0;margin-inline-start:calc('
+    [
+      'mt-4',
+      '.mt-4{margin-top:calc(var(--spacing) * 4)}',
+    ],
+    [
+      '-mt-4',
+      '.-mt-4{margin-top:calc(var(--spacing) * -4)}',
+    ],
+    [
+      'mx-auto',
+      '.mx-auto{margin-inline:auto}',
+    ],
+    [
+      'm-px',
+      '.m-px{margin:1px}',
+    ],
+    [
+      '-m-px',
+      '.-m-px{margin:-1px}',
+    ],
+    [
+      '-mt-[3px]',
+      '.-mt-\\[3px\\]{margin-top:calc(3px * -1)}',
+    ],
+    [
+      'p-2.5',
+      '.p-2\\.5{padding:calc(var(--spacing) * 2.5)}',
+    ],
+    [
+      'px-[3px]',
+      '.px-\\[3px\\]{padding-inline:3px}',
+    ],
+    [
+      'gap-x-2',
+      '.gap-x-2{column-gap:calc(var(--spacing) * 2)}',
+    ],
+    [
+      'space-x-4',
+      ':where(.space-x-4>:not(:last-child)){--tw-space-x-reverse:0;margin-inline-start:calc('
       + 'calc(var(--spacing) * 4) * var(--tw-space-x-reverse));margin-inline-end:calc(calc(var(--spacing) * 4)'
-      + ' * calc(1 - var(--tw-space-x-reverse)))}'],
-    ['space-y-reverse', ':where(.space-y-reverse>:not(:last-child)){--tw-space-y-reverse:1}'],
+      + ' * calc(1 - var(--tw-space-x-reverse)))}',
+    ],
+    [
+      'space-y-reverse',
+      ':where(.space-y-reverse>:not(:last-child)){--tw-space-y-reverse:1}',
+    ],
   ])('%s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
 
-  test.each(['-p-4', '-mx-auto'])('%s — отрицания нет: CSS нет, молча (D-064)', (token) => {
+  test.each([
+    '-p-4',
+    '-mx-auto',
+  ])('%s — отрицания нет: CSS нет, молча (D-064)', (token) => {
     expect(compile(token)).toMatchObject({
       css: '',
       warnings: [],
@@ -151,34 +234,118 @@ describe('отступы', () => {
 
 describe('размеры и раскладка', () => {
   test.each([
-    ['w-1/2', '.w-1\\/2{width:calc(1 / 2 * 100%)}'],
-    ['w-full', '.w-full{width:100%}'],
-    ['w-md', '.w-md{width:var(--container-md)}'],
-    ['h-screen', '.h-screen{height:100vh}'],
-    ['size-8', '.size-8{width:calc(var(--spacing) * 8);height:calc(var(--spacing) * 8)}'],
-    ['max-w-prose', '.max-w-prose{max-width:65ch}'],
-    ['max-w-[40rem]', '.max-w-\\[40rem\\]{max-width:40rem}'],
-    ['inline-block', '.inline-block{display:inline-block}'],
-    ['hidden', '.hidden{display:none}'],
-    ['absolute', '.absolute{position:absolute}'],
-    ['-top-2', '.-top-2{top:calc(var(--spacing) * -2)}'],
-    ['inset-x-1/2', '.inset-x-1\\/2{inset-inline:calc(1 / 2 * 100%)}'],
-    ['z-10', '.z-10{z-index:10}'],
-    ['-z-10', '.-z-10{z-index:calc(10 * -1)}'],
-    ['z-auto', '.z-auto{z-index:auto}'],
-    ['order-first', '.order-first{order:-9999}'],
-    ['flex', '.flex{display:flex}'],
-    ['flex-1', '.flex-1{flex:1}'],
-    ['flex-col', '.flex-col{flex-direction:column}'],
-    ['grow', '.grow{flex-grow:1}'],
-    ['shrink-0', '.shrink-0{flex-shrink:0}'],
-    ['basis-1/3', '.basis-1\\/3{flex-basis:calc(1 / 3 * 100%)}'],
-    ['items-center', '.items-center{align-items:center}'],
-    ['justify-between', '.justify-between{justify-content:space-between}'],
-    ['grid-cols-3', '.grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}'],
-    ['col-span-2', '.col-span-2{grid-column:span 2 / span 2}'],
-    ['col-span-full', '.col-span-full{grid-column:1 / -1}'],
-    ['row-start-2', '.row-start-2{grid-row-start:2}'],
+    [
+      'w-1/2',
+      '.w-1\\/2{width:calc(1 / 2 * 100%)}',
+    ],
+    [
+      'w-full',
+      '.w-full{width:100%}',
+    ],
+    [
+      'w-md',
+      '.w-md{width:var(--container-md)}',
+    ],
+    [
+      'h-screen',
+      '.h-screen{height:100vh}',
+    ],
+    [
+      'size-8',
+      '.size-8{width:calc(var(--spacing) * 8);height:calc(var(--spacing) * 8)}',
+    ],
+    [
+      'max-w-prose',
+      '.max-w-prose{max-width:65ch}',
+    ],
+    [
+      'max-w-[40rem]',
+      '.max-w-\\[40rem\\]{max-width:40rem}',
+    ],
+    [
+      'inline-block',
+      '.inline-block{display:inline-block}',
+    ],
+    [
+      'hidden',
+      '.hidden{display:none}',
+    ],
+    [
+      'absolute',
+      '.absolute{position:absolute}',
+    ],
+    [
+      '-top-2',
+      '.-top-2{top:calc(var(--spacing) * -2)}',
+    ],
+    [
+      'inset-x-1/2',
+      '.inset-x-1\\/2{inset-inline:calc(1 / 2 * 100%)}',
+    ],
+    [
+      'z-10',
+      '.z-10{z-index:10}',
+    ],
+    [
+      '-z-10',
+      '.-z-10{z-index:calc(10 * -1)}',
+    ],
+    [
+      'z-auto',
+      '.z-auto{z-index:auto}',
+    ],
+    [
+      'order-first',
+      '.order-first{order:-9999}',
+    ],
+    [
+      'flex',
+      '.flex{display:flex}',
+    ],
+    [
+      'flex-1',
+      '.flex-1{flex:1}',
+    ],
+    [
+      'flex-col',
+      '.flex-col{flex-direction:column}',
+    ],
+    [
+      'grow',
+      '.grow{flex-grow:1}',
+    ],
+    [
+      'shrink-0',
+      '.shrink-0{flex-shrink:0}',
+    ],
+    [
+      'basis-1/3',
+      '.basis-1\\/3{flex-basis:calc(1 / 3 * 100%)}',
+    ],
+    [
+      'items-center',
+      '.items-center{align-items:center}',
+    ],
+    [
+      'justify-between',
+      '.justify-between{justify-content:space-between}',
+    ],
+    [
+      'grid-cols-3',
+      '.grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}',
+    ],
+    [
+      'col-span-2',
+      '.col-span-2{grid-column:span 2 / span 2}',
+    ],
+    [
+      'col-span-full',
+      '.col-span-full{grid-column:1 / -1}',
+    ],
+    [
+      'row-start-2',
+      '.row-start-2{grid-row-start:2}',
+    ],
   ])('%s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
@@ -186,26 +353,77 @@ describe('размеры и раскладка', () => {
 
 describe('типографика и цвета', () => {
   test.each([
-    ['text-sm', '.text-sm{font-size:var(--text-sm);line-height:var(--tw-leading, var(--text-sm--line-height))}'],
-    ['text-sm/6', '.text-sm\\/6{font-size:var(--text-sm);line-height:calc(var(--spacing) * 6)}'],
-    ['text-[14px]', '.text-\\[14px\\]{font-size:14px}'],
-    ['text-center', '.text-center{text-align:center}'],
-    ['text-blue-500', '.text-blue-500{color:var(--color-blue-500)}'],
+    [
+      'text-sm',
+      '.text-sm{font-size:var(--text-sm);line-height:var(--tw-leading, var(--text-sm--line-height))}',
+    ],
+    [
+      'text-sm/6',
+      '.text-sm\\/6{font-size:var(--text-sm);line-height:calc(var(--spacing) * 6)}',
+    ],
+    [
+      'text-[14px]',
+      '.text-\\[14px\\]{font-size:14px}',
+    ],
+    [
+      'text-center',
+      '.text-center{text-align:center}',
+    ],
+    [
+      'text-blue-500',
+      '.text-blue-500{color:var(--color-blue-500)}',
+    ],
     // Как у Tailwind 4: запасной `srgb` с литералом темы и `@supports` со смесью в `oklab`.
-    ['text-blue-500/50', '.text-blue-500\\/50{color:color-mix(in srgb, oklch(62.3% 0.214 259.815) 50%, transparent)}'
-      + '@supports (color: color-mix(in lab, red, red)){.text-blue-500\\/50{color:color-mix(in oklab, var(--color-blue-500) 50%, transparent)}}'],
-    ['text-[#f00]', '.text-\\[\\#f00\\]{color:#f00}'],
-    ['text-[color:var(--x)]', '.text-\\[color\\:var\\(--x\\)\\]{color:var(--x)}'],
-    ['font-bold', '.font-bold{--tw-font-weight:var(--font-weight-bold);font-weight:var(--font-weight-bold)}'],
-    ['font-mono', '.font-mono{font-family:var(--font-mono)}'],
-    ['leading-tight', '.leading-tight{--tw-leading:var(--leading-tight);line-height:var(--leading-tight)}'],
-    ['leading-6', '.leading-6{--tw-leading:calc(var(--spacing) * 6);line-height:calc(var(--spacing) * 6)}'],
-    ['tracking-wide', '.tracking-wide{--tw-tracking:var(--tracking-wide);letter-spacing:var(--tracking-wide)}'],
-    ['truncate', '.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'],
-    ['bg-white', '.bg-white{background-color:var(--color-white)}'],
-    ['bg-transparent', '.bg-transparent{background-color:transparent}'],
-    ['bg-blue-500/75', '.bg-blue-500\\/75{background-color:color-mix(in srgb, oklch(62.3% 0.214 259.815) 75%, transparent)}'
-      + '@supports (color: color-mix(in lab, red, red)){.bg-blue-500\\/75{background-color:color-mix(in oklab, var(--color-blue-500) 75%, transparent)}}'],
+    [
+      'text-blue-500/50',
+      '.text-blue-500\\/50{color:color-mix(in srgb, oklch(62.3% 0.214 259.815) 50%, transparent)}'
+      + '@supports (color: color-mix(in lab, red, red)){.text-blue-500\\/50{color:color-mix(in oklab, var(--color-blue-500) 50%, transparent)}}',
+    ],
+    [
+      'text-[#f00]',
+      '.text-\\[\\#f00\\]{color:#f00}',
+    ],
+    [
+      'text-[color:var(--x)]',
+      '.text-\\[color\\:var\\(--x\\)\\]{color:var(--x)}',
+    ],
+    [
+      'font-bold',
+      '.font-bold{--tw-font-weight:var(--font-weight-bold);font-weight:var(--font-weight-bold)}',
+    ],
+    [
+      'font-mono',
+      '.font-mono{font-family:var(--font-mono)}',
+    ],
+    [
+      'leading-tight',
+      '.leading-tight{--tw-leading:var(--leading-tight);line-height:var(--leading-tight)}',
+    ],
+    [
+      'leading-6',
+      '.leading-6{--tw-leading:calc(var(--spacing) * 6);line-height:calc(var(--spacing) * 6)}',
+    ],
+    [
+      'tracking-wide',
+      '.tracking-wide{--tw-tracking:var(--tracking-wide);letter-spacing:var(--tracking-wide)}',
+    ],
+    [
+      'truncate',
+      '.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    ],
+    [
+      'bg-white',
+      '.bg-white{background-color:var(--color-white)}',
+    ],
+    [
+      'bg-transparent',
+      '.bg-transparent{background-color:transparent}',
+    ],
+    [
+      'bg-blue-500/75',
+      '.bg-blue-500\\/75{background-color:color-mix(in srgb, oklch(62.3% 0.214 259.815) 75%, transparent)}'
+      + '@supports (color: color-mix(in lab, red, red)){.bg-blue-500\\/75{background-color:color-mix(in oklab, var(--color-blue-500) 75%, transparent)}}',
+    ],
   ])('%s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
@@ -213,7 +431,10 @@ describe('типографика и цвета', () => {
 
 describe('рамки и скругления', () => {
   // `border` берёт стиль из переменной: `border border-dashed` — пунктир при любом порядке (D-069).
-  test.each(['border border-dashed', 'border-dashed border'])('%s — пунктир при любом порядке правил', (tokens) => {
+  test.each([
+    'border border-dashed',
+    'border-dashed border',
+  ])('%s — пунктир при любом порядке правил', (tokens) => {
     const {
       css, root,
     } = compile(tokens);
@@ -224,15 +445,42 @@ describe('рамки и скругления', () => {
   });
 
   test.each([
-    ['border', '.border{border-style:var(--tw-border-style);border-width:1px}'],
-    ['border-2', '.border-2{border-style:var(--tw-border-style);border-width:2px}'],
-    ['border-t-4', '.border-t-4{border-top-style:var(--tw-border-style);border-top-width:4px}'],
-    ['border-red-500', '.border-red-500{border-color:var(--color-red-500)}'],
-    ['border-dashed', '.border-dashed{--tw-border-style:dashed;border-style:dashed}'],
-    ['rounded', '.rounded{border-radius:0.25rem}'],
-    ['rounded-lg', '.rounded-lg{border-radius:var(--radius-lg)}'],
-    ['rounded-t-lg', '.rounded-t-lg{border-top-left-radius:var(--radius-lg);border-top-right-radius:var(--radius-lg)}'],
-    ['rounded-full', '.rounded-full{border-radius:calc(infinity * 1px)}'],
+    [
+      'border',
+      '.border{border-style:var(--tw-border-style);border-width:1px}',
+    ],
+    [
+      'border-2',
+      '.border-2{border-style:var(--tw-border-style);border-width:2px}',
+    ],
+    [
+      'border-t-4',
+      '.border-t-4{border-top-style:var(--tw-border-style);border-top-width:4px}',
+    ],
+    [
+      'border-red-500',
+      '.border-red-500{border-color:var(--color-red-500)}',
+    ],
+    [
+      'border-dashed',
+      '.border-dashed{--tw-border-style:dashed;border-style:dashed}',
+    ],
+    [
+      'rounded',
+      '.rounded{border-radius:0.25rem}',
+    ],
+    [
+      'rounded-lg',
+      '.rounded-lg{border-radius:var(--radius-lg)}',
+    ],
+    [
+      'rounded-t-lg',
+      '.rounded-t-lg{border-top-left-radius:var(--radius-lg);border-top-right-radius:var(--radius-lg)}',
+    ],
+    [
+      'rounded-full',
+      '.rounded-full{border-radius:calc(infinity * 1px)}',
+    ],
   ])('%s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
@@ -240,18 +488,51 @@ describe('рамки и скругления', () => {
 
 describe('варианты', () => {
   test.each([
-    ['hover:bg-blue-600', '@media (hover: hover){.hover\\:bg-blue-600:hover{background-color:var(--color-blue-600)}}'],
-    ['first:mt-0', '.first\\:mt-0:first-child{margin-top:0px}'],
-    ['odd:bg-white', '.odd\\:bg-white:nth-child(odd){background-color:var(--color-white)}'],
-    ['open:block', '.open\\:block[open],.open\\:block:popover-open{display:block}'],
-    ['before:block', '.before\\:block::before{display:block}'],
-    ['group-hover:underline', '@media (hover: hover){.group:hover .group-hover\\:underline{text-decoration-line:underline}}'],
-    ['md:flex', '@media (width >= 48rem){.md\\:flex{display:flex}}'],
-    ['max-md:hidden', '@media (width < 48rem){.max-md\\:hidden{display:none}}'],
-    ['md:hover:underline', '@media (width >= 48rem) and (hover: hover){.md\\:hover\\:underline:hover{'
-      + 'text-decoration-line:underline}}'],
-    ['dark:bg-black', '@media (prefers-color-scheme: dark){.dark\\:bg-black{background-color:var(--color-black)}}'],
-    ['mt-2!', '.mt-2\\!{margin-top:calc(var(--spacing) * 2)!important}'],
+    [
+      'hover:bg-blue-600',
+      '@media (hover: hover){.hover\\:bg-blue-600:hover{background-color:var(--color-blue-600)}}',
+    ],
+    [
+      'first:mt-0',
+      '.first\\:mt-0:first-child{margin-top:0px}',
+    ],
+    [
+      'odd:bg-white',
+      '.odd\\:bg-white:nth-child(odd){background-color:var(--color-white)}',
+    ],
+    [
+      'open:block',
+      '.open\\:block[open],.open\\:block:popover-open{display:block}',
+    ],
+    [
+      'before:block',
+      '.before\\:block::before{display:block}',
+    ],
+    [
+      'group-hover:underline',
+      '@media (hover: hover){.group:hover .group-hover\\:underline{text-decoration-line:underline}}',
+    ],
+    [
+      'md:flex',
+      '@media (width >= 48rem){.md\\:flex{display:flex}}',
+    ],
+    [
+      'max-md:hidden',
+      '@media (width < 48rem){.max-md\\:hidden{display:none}}',
+    ],
+    [
+      'md:hover:underline',
+      '@media (width >= 48rem) and (hover: hover){.md\\:hover\\:underline:hover{'
+      + 'text-decoration-line:underline}}',
+    ],
+    [
+      'dark:bg-black',
+      '@media (prefers-color-scheme: dark){.dark\\:bg-black{background-color:var(--color-black)}}',
+    ],
+    [
+      'mt-2!',
+      '.mt-2\\!{margin-top:calc(var(--spacing) * 2)!important}',
+    ],
   ])('%s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
@@ -606,7 +887,16 @@ describe('крайние случаи: произвольные значения
 });
 
 describe('класс не разобран', () => {
-  test.each([['text-foo', 'parse-error: "text-foo" produced no CSS: handler "text" needs a value here'], ['w-foo', 'parse-error: "w-foo" produced no CSS: handler "w" needs a value here']])('%s — запись есть, значение не разобрано: предупреждение (D-063)', (token, message) => {
+  test.each([
+    [
+      'text-foo',
+      'parse-error: "text-foo" produced no CSS: handler "text" needs a value here',
+    ],
+    [
+      'w-foo',
+      'parse-error: "w-foo" produced no CSS: handler "w" needs a value here',
+    ],
+  ])('%s — запись есть, значение не разобрано: предупреждение (D-063)', (token, message) => {
     expect(compile(token).warnings).toEqual([message]);
   });
 
@@ -645,9 +935,18 @@ describe('экосистема (D-067, D-068)', () => {
 
 describe('space-* — как у Tailwind 4.3.3 (сверено scripts/tw4-conformance.mjs)', () => {
   test.each([
-    ['space-x-0', 'margin-inline-start:0;margin-inline-end:0'],
-    ['-space-x-px', 'margin-inline-start:calc(-1px * var(--tw-space-x-reverse))'],
-    ['space-y-4', 'margin-block-start:calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse))'],
+    [
+      'space-x-0',
+      'margin-inline-start:0;margin-inline-end:0',
+    ],
+    [
+      '-space-x-px',
+      'margin-inline-start:calc(-1px * var(--tw-space-x-reverse))',
+    ],
+    [
+      'space-y-4',
+      'margin-block-start:calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse))',
+    ],
   ])('%s', (token, part) => {
     expect(compile(token).css).toContain(part);
   });

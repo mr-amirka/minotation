@@ -8,7 +8,11 @@
  * каждый проверял своё, и разница между ними была не видна.
  */
 import {
-  mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
 } from 'node:fs';
 import {
   join,
@@ -17,8 +21,19 @@ import {
   tmpdir,
 } from 'node:os';
 import {
-  asPreset, checkBuildOptions, createAttrsScanner, createBuildCollector, createFileFilter, createTokenCollector,
-  formatFileName, manifestFileName, manifestOf, metricsFileName, parseAttrs, scanRoots, walkFiles,
+  asPreset,
+  checkBuildOptions,
+  createAttrsScanner,
+  createBuildCollector,
+  createFileFilter,
+  createTokenCollector,
+  formatFileName,
+  manifestFileName,
+  manifestOf,
+  metricsFileName,
+  parseAttrs,
+  scanRoots,
+  walkFiles,
 } from '../src/index';
 import {
   presetStandard,
@@ -75,8 +90,14 @@ describe('createTokenCollector — учёт токенов', () => {
   test('`set` принимает готовые токены — для webpack, где сканирует лоадер', () => {
     const collector = createTokenCollector(OPTIONS);
 
-    expect(collector.set('/a.html', ['p10', 'm20'])).toBe(true);
-    expect(collector.set('/a.html', ['p10', 'm20'])).toBe(false);
+    expect(collector.set('/a.html', [
+      'p10',
+      'm20',
+    ])).toBe(true);
+    expect(collector.set('/a.html', [
+      'p10',
+      'm20',
+    ])).toBe(false);
     expect(collector.css()).toContain('padding:10px');
 
     // Пустой список снимает файл с учёта, как и пустой исходник.
@@ -137,7 +158,10 @@ describe('createTokenCollector — учёт токенов', () => {
     // `affiliate`: страницы `.astro` пишут `class`, React-компоненты — `className`.
     const collector = createTokenCollector({
       ...OPTIONS,
-      attrs: ['class', 'className:class'],
+      attrs: [
+        'class',
+        'className:class',
+      ],
     });
     collector.add('/Page.astro', '<div class="p10"></div>');
     collector.add('/Card.tsx', 'export const Card = () => <Box className="m10" />;');
@@ -345,7 +369,13 @@ describe('walkFiles', () => {
     write('nested/b.tsx');
     write('nested/c.css');
 
-    expect(walkFiles(dir, ['.html', '.tsx']).sort()).toEqual([join(dir, 'a.html'), join(dir, 'nested/b.tsx')].sort());
+    expect(walkFiles(dir, [
+      '.html',
+      '.tsx',
+    ]).sort()).toEqual([
+      join(dir, 'a.html'),
+      join(dir, 'nested/b.tsx'),
+    ].sort());
   });
 
   test('скрытые директории и node_modules пропускаются', () => {
@@ -384,7 +414,7 @@ describe('attrs — карта «сканируемый → целевой ат�
       'class, className:class',
       {
         class: 'class',
-        className: 'class', 
+        className: 'class',
       },
     ],
     [
@@ -393,33 +423,36 @@ describe('attrs — карта «сканируемый → целевой ат�
       {
         class: 'class',
         m: 'm',
-        'm-n': 'm-n', 
+        'm-n': 'm-n',
       },
     ],
     [
       'массив',
-      ['class', 'className:class'],
+      [
+        'class',
+        'className:class',
+      ],
       {
         class: 'class',
-        className: 'class', 
+        className: 'class',
       },
     ],
     [
       'объект',
       {
         className: 'class',
-        class: 'class', 
+        class: 'class',
       },
       {
         className: 'class',
-        class: 'class', 
+        class: 'class',
       },
     ],
     [
       'по умолчанию',
       undefined,
       {
-        class: 'class', 
+        class: 'class',
       },
     ],
   ])('%s', (
@@ -429,11 +462,20 @@ describe('attrs — карта «сканируемый → целевой ат�
   });
 
   test.each([
-    ['пустая строка', ''],
-    ['пустой массив', []],
-    ['объект без строковых значений', {
-      class: '', 
-    }],
+    [
+      'пустая строка',
+      '',
+    ],
+    [
+      'пустой массив',
+      [],
+    ],
+    [
+      'объект без строковых значений',
+      {
+        class: '',
+      },
+    ],
   ])('%s — ошибка, а не сборка без единого токена', (_name, attrs) => {
     expect(() => parseAttrs(attrs as never)).toThrow('attrs is empty');
   });
@@ -441,7 +483,10 @@ describe('attrs — карта «сканируемый → целевой ат�
   test('пример владельца: attrs [class, className] — className в свой атрибут', () => {
     const collector = createTokenCollector({
       ...OPTIONS,
-      attrs: ['class', 'className'],
+      attrs: [
+        'class',
+        'className',
+      ],
     });
     collector.add('/a.html', '<div class="ws" className="ws">...</div>');
 
@@ -479,7 +524,10 @@ describe('attrs — карта «сканируемый → целевой ат�
 
   test('переменные *Class и вызовы mne идут в class, а не в каждую цель', () => {
     const scan = createAttrsScanner({
-      attrs: ['m', 'class'],
+      attrs: [
+        'm',
+        'class',
+      ],
     });
     expect(scan("const aClass = 'p10'; mne(x, 'w20'); <i m=\"h30\" />", '/a.tsx').sort())
       .toEqual([
@@ -494,7 +542,10 @@ describe('attrs — карта «сканируемый → целевой ат�
       attrs: 'm',
     });
     expect(scan("const aClass = 'p10'; <i m=\"h30\" />", '/a.tsx').sort())
-      .toEqual(['m h30', 'm p10']);
+      .toEqual([
+        'm h30',
+        'm p10',
+      ]);
   });
 
 });
@@ -511,14 +562,32 @@ describe('createFileFilter — отбор файлов, как в v1 (D-026, D-0
   });
 
   test.each([
-    ['RegExp', /\.tpl$/],
-    ['функция', (path: string) => path.endsWith('.tpl')],
-    ['путь от корня', './src/a.tpl'],
-    ['абсолютный путь', '/proj/src/a.tpl'],
-    ['массив', [/\.php$/, 'src/a.tpl']],
+    [
+      'RegExp',
+      /\.tpl$/,
+    ],
+    [
+      'функция',
+      (path: string) => path.endsWith('.tpl'),
+    ],
+    [
+      'путь от корня',
+      './src/a.tpl',
+    ],
+    [
+      'абсолютный путь',
+      '/proj/src/a.tpl',
+    ],
+    [
+      'массив',
+      [
+        /\.php$/,
+        'src/a.tpl',
+      ],
+    ],
   ])('include: %s', (_name, include) => {
     const filter = createFileFilter({
-      include: include as never, 
+      include: include as never,
     }, ROOT);
     expect(filter.accepts('/proj/src/a.tpl')).toBe(true);
     expect(filter.accepts('/proj/src/a.html')).toBe(false);
@@ -526,7 +595,7 @@ describe('createFileFilter — отбор файлов, как в v1 (D-026, D-0
 
   test('RegExp с флагом g не теряет совпадения между файлами', () => {
     const filter = createFileFilter({
-      include: /\.tpl$/g, 
+      include: /\.tpl$/g,
     }, ROOT);
     expect(filter.accepts('/proj/a.tpl')).toBe(true);
     expect(filter.accepts('/proj/b.tpl')).toBe(true);
@@ -534,7 +603,7 @@ describe('createFileFilter — отбор файлов, как в v1 (D-026, D-0
 
   test('exclude важнее include и extensions', () => {
     const filter = createFileFilter({
-      exclude: /vendor/, 
+      exclude: /vendor/,
     }, ROOT);
     expect(filter.accepts('/proj/vendor/a.html')).toBe(false);
     expect(filter.accepts('/proj/src/a.html')).toBe(true);
@@ -542,7 +611,7 @@ describe('createFileFilter — отбор файлов, как в v1 (D-026, D-0
 
   test('skipPartials — только по имени файла, не по каталогу', () => {
     const filter = createFileFilter({
-      skipPartials: true, 
+      skipPartials: true,
     }, ROOT);
     expect(filter.accepts('/proj/src/_header.html')).toBe(false);
     expect(filter.accepts('/proj/_layouts/page.html')).toBe(true);
@@ -564,11 +633,11 @@ describe('createBuildCollector — записи entry (D-030)', () => {
       ...OPTIONS,
       entry: {
         site: {
-          include: /site/, 
+          include: /site/,
         },
         admin: {
           include: /admin/,
-          altColor: true, 
+          altColor: true,
         },
         all: {},
       },
@@ -596,8 +665,8 @@ describe('createBuildCollector — записи entry (D-030)', () => {
         a: {},
         b: {},
         c: {
-          attrs: 'm', 
-        }, 
+          attrs: 'm',
+        },
       },
     }, '/proj');
     build.add('/proj/x.html', '<div class="p10" m="w20">');
@@ -618,8 +687,8 @@ describe('createBuildCollector — записи entry (D-030)', () => {
       entry: {
         a: {},
         b: {
-          include: /never/, 
-        }, 
+          include: /never/,
+        },
       },
     }, '/proj');
     expect(build.set('/proj/a.html', ['class p10'])).toBe(true);
@@ -640,7 +709,7 @@ describe('createBuildCollector — записи entry (D-030)', () => {
       ...OPTIONS,
       entry: {
         a: {},
-        b: {}, 
+        b: {},
       },
     }, '/proj');
     build.add('/proj/a.html', '<div class="w10qq">');
@@ -650,7 +719,7 @@ describe('createBuildCollector — записи entry (D-030)', () => {
 
   test('пустой entry — ошибка', () => {
     expect(() => createBuildCollector({
-      entry: {}, 
+      entry: {},
     }, '/proj')).toThrow('entry is empty');
   });
 });
@@ -672,9 +741,9 @@ describe('formatFileName и манифест (D-031)', () => {
 
   test('манифест: логическое имя → фактическое', () => {
     expect(manifestOf({
-      mn: 'mn.3f9a1c2e.css', 
+      mn: 'mn.3f9a1c2e.css',
     })).toEqual({
-      'mn.css': 'mn.3f9a1c2e.css', 
+      'mn.css': 'mn.3f9a1c2e.css',
     });
     expect(manifestFileName(undefined)).toBe('mn-manifest.json');
     expect(manifestFileName(true)).toBe('mn-manifest.json');
@@ -721,36 +790,38 @@ describe('статистика употребления токенов (D-032)',
       tokens: [
         {
           name: 'p10',
-          count: 3, 
+          count: 3,
         },
         {
           name: 'm20',
-          count: 1, 
+          count: 1,
         },
         {
           name: 'm:p10',
-          count: 1, 
+          count: 1,
         },
       ],
       files: {
         'src/a.html': [
           {
             name: 'p10',
-            count: 2, 
+            count: 2,
           },
           {
             name: 'm20',
-            count: 1, 
+            count: 1,
           },
           {
             name: 'm:p10',
-            count: 1, 
+            count: 1,
           },
         ],
-        'src/b.html': [{
-          name: 'p10',
-          count: 1, 
-        }],
+        'src/b.html': [
+          {
+            name: 'p10',
+            count: 1,
+          },
+        ],
       },
     });
   });
@@ -758,14 +829,20 @@ describe('статистика употребления токенов (D-032)',
   test('снятый с учёта файл и clear — из статистики уходят; set считается тоже', () => {
     const build = createBuildCollector(OPTIONS, '/proj');
     build.add('/proj/a.html', '<div class="p10">');
-    build.set('/proj/b.html', ['class m20', 'class m20']);
-    expect(build.metrics().tokens).toEqual([{
-      name: 'm20',
-      count: 2, 
-    }, {
-      name: 'p10',
-      count: 1, 
-    }]);
+    build.set('/proj/b.html', [
+      'class m20',
+      'class m20',
+    ]);
+    expect(build.metrics().tokens).toEqual([
+      {
+        name: 'm20',
+        count: 2,
+      },
+      {
+        name: 'p10',
+        count: 1,
+      },
+    ]);
     build.remove('/proj/a.html');
     expect(build.metrics().filesScanned).toBe(1);
     build.clear();
@@ -867,8 +944,14 @@ describe('specificityMode / importantMode в накопителе (D-039)', () =
     });
     collector.add('/a.html', '<div class="p10*2 m10-i">');
     expect(() => collector.css()).not.toThrow();
-    expect(collector.takeWarnings().map((w) => w.type).sort()).toEqual(['important', 'raised-specificity']);
-    expect(seen.sort()).toEqual(['important', 'raised-specificity']);
+    expect(collector.takeWarnings().map((w) => w.type).sort()).toEqual([
+      'important',
+      'raised-specificity',
+    ]);
+    expect(seen.sort()).toEqual([
+      'important',
+      'raised-specificity',
+    ]);
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
@@ -912,7 +995,10 @@ describe('checkBuildOptions — проверка опций плагина (D-03
       entry: {
         admin: {
           include: 'admin',
-          attrs: ['class', 'm'],
+          attrs: [
+            'class',
+            'm',
+          ],
           fileName: 'admin.css',
           altColor: true,
         },
@@ -929,7 +1015,7 @@ describe('checkBuildOptions — проверка опций плагина (D-03
 
   test('опечатка — подсказка ближайшего ключа', () => {
     expect(() => checkBuildOptions({
-      fileNmae: 'a.css', 
+      fileNmae: 'a.css',
     }, 'mnRollup'))
       .toThrow('[minotation] mnRollup: unknown option "fileNmae". Did you mean "fileName"?');
   });
@@ -937,20 +1023,20 @@ describe('checkBuildOptions — проверка опций плагина (D-03
   test('старый вложенный mn — неизвестная опция', () => {
     expect(() => checkBuildOptions({
       mn: {
-        strict: true, 
-      }, 
+        strict: true,
+      },
     }, 'mnAstro'))
       .toThrow('[minotation] mnAstro: unknown option "mn". Known options:');
   });
 
   test('свои опции плагина дополняют общий набор', () => {
     expect(() => checkBuildOptions({
-      inject: 'link', 
+      inject: 'link',
     }, 'mnRollup'))
       .toThrow('unknown option "inject"');
     expect(() => checkBuildOptions(
       {
-        inject: 'link', 
+        inject: 'link',
       }, 'mnVite', {
         inject: (value) => (value === 'link' ? undefined : '"link"'),
       },
@@ -959,33 +1045,36 @@ describe('checkBuildOptions — проверка опций плагина (D-03
 
   test('некорректные значения: attrs, include, entry', () => {
     expect(() => checkBuildOptions({
-      attrs: 1, 
+      attrs: 1,
     }, 'mnGulp'))
       .toThrow('option "attrs" expects a string, an array of strings or an object of strings, got number 1');
     expect(() => checkBuildOptions({
       attrs: {
-        className: 1, 
-      }, 
+        className: 1,
+      },
     }, 'mnGulp'))
       .toThrow('option "attrs" expects a string, an array of strings or an object of strings, got object');
     expect(() => checkBuildOptions({
-      include: [/a/, 1], 
+      include: [
+        /a/,
+        1,
+      ],
     }, 'mnGulp'))
       .toThrow('option "include" expects a RegExp, a string, a function or an array of them, got array');
     expect(() => checkBuildOptions({
-      include: null, 
+      include: null,
     }, 'mnGulp'))
       .toThrow('got null');
     expect(() => checkBuildOptions({
       entry: {
         admin: {
-          output: 'a.css', 
-        }, 
-      }, 
+          output: 'a.css',
+        },
+      },
     }, 'mnGulp'))
       .toThrow('unknown option "entry.admin.output". Known options:');
     expect(() => checkBuildOptions({
-      manifest: 1, 
+      manifest: 1,
     }, 'mnGulp'))
       .toThrow('option "manifest" expects a boolean or a string, got number 1');
   });
@@ -1010,9 +1099,24 @@ describe('asPreset — экспорт файла динамического пр
 
 describe('scanRoots — несколько корней скана (web-games, запрос 3)', () => {
   test.each([
-    [undefined, ['/proj/src']],
-    ['/a', ['/a']],
-    [['/a', '/b'], ['/a', '/b']],
+    [
+      undefined,
+      ['/proj/src'],
+    ],
+    [
+      '/a',
+      ['/a'],
+    ],
+    [
+      [
+        '/a',
+        '/b',
+      ],
+      [
+        '/a',
+        '/b',
+      ],
+    ],
   ])('%p → %p', (root, expected) => {
     expect(scanRoots(root as string | string[] | undefined, '/proj/src')).toEqual(expected);
   });
@@ -1024,10 +1128,16 @@ describe('checkBuildOptions — root', () => {
       root: '/a',
     }, 'mnRollup')).not.toThrow();
     expect(() => checkBuildOptions({
-      root: ['/a', '/b'],
+      root: [
+        '/a',
+        '/b',
+      ],
     }, 'mnRollup')).not.toThrow();
     expect(() => checkBuildOptions({
-      root: ['/a', 1],
+      root: [
+        '/a',
+        1,
+      ],
     } as never, 'mnRollup')).toThrow('option "root" expects a string or an array of strings');
   });
 });

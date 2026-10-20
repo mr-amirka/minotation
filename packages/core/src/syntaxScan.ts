@@ -43,13 +43,19 @@
  */
 import ts from 'typescript';
 import {
-  attrNames, extractTokensInto, pushLiteralTokens, scanTokens, stripComments,
+  attrNames,
+  extractTokensInto,
+  pushLiteralTokens,
+  scanTokens,
+  stripComments,
 } from './extractTokens';
 import type {
   ScanTokensOptions,
 } from './extractTokens';
 import {
-  applyEdits, isWrapped, wrapExpression,
+  applyEdits,
+  isWrapped,
+  wrapExpression,
 } from './scopeClass';
 import type {
   SourceEdit,
@@ -118,7 +124,10 @@ export function scanTokensSyntax(source: string, options: SyntaxScanOptions): st
     ? ['Class']
     : options.classVarSuffixes;
   const mergeFnNames = options.mergeFnNames === undefined
-    ? ['mne', 'mnClass']
+    ? [
+      'mne',
+      'mnClass',
+    ]
     : options.mergeFnNames;
   // Маркер разметки внутри строки: без него пришлось бы гонять текстовый
   // разбор по каждому литералу файла, а `class=` есть в единицах из них.
@@ -551,9 +560,10 @@ function scopeClassEdit(
 ): void {
   const start = value.getStart(file);
   const kind = value.kind;
+  const template = kind === ts.SyntaxKind.TemplateExpression;
   if (kind === ts.SyntaxKind.StringLiteral || kind === ts.SyntaxKind.NoSubstitutionTemplateLiteral
-    || kind === ts.SyntaxKind.TemplateExpression) {
-    const text = kind === ts.SyntaxKind.TemplateExpression
+    || template) {
+    const text = template
       ? (value as ts.TemplateExpression).head.text : (value as ts.StringLiteralLike).text;
     (text === className || text.startsWith(className + ' ')) || edits.push([
       start + 1,

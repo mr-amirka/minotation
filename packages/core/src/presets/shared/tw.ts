@@ -10,7 +10,8 @@ import {
   mathSpaces,
 } from '../../core/mathSpaces';
 import type {
-  MnHandler, MnHandlerResult,
+  MnHandler,
+  MnHandlerResult,
 } from '../../types';
 
 /** Разобранный остаток класса для хендлера в {@link tw}. */

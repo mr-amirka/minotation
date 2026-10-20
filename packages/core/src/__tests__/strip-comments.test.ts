@@ -17,17 +17,44 @@ import {
 
 describe('комментарии не дают токенов', () => {
   test.each([
-    ['// пример: class="p10 w50"\n<div class="m5">', 'строчный'],
-    ['/* class="p10 w50" */<div class="m5">', 'блочный'],
-    ['{/* class="p10 w50" */}<div class="m5"/>', 'JSX'],
-    ['<!-- class="p10 w50" --><div class="m5">', 'HTML и Astro'],
-    ['/* многострочный\n   class="p10 w50"\n*/<div class="m5">', 'многострочный'],
-    ['/** JSDoc с примером class="p10 w50" */\n<div class="m5">', 'JSDoc'],
+    [
+      '// пример: class="p10 w50"\n<div class="m5">',
+      'строчный',
+    ],
+    [
+      '/* class="p10 w50" */<div class="m5">',
+      'блочный',
+    ],
+    [
+      '{/* class="p10 w50" */}<div class="m5"/>',
+      'JSX',
+    ],
+    [
+      '<!-- class="p10 w50" --><div class="m5">',
+      'HTML и Astro',
+    ],
+    [
+      '/* многострочный\n   class="p10 w50"\n*/<div class="m5">',
+      'многострочный',
+    ],
+    [
+      '/** JSDoc с примером class="p10 w50" */\n<div class="m5">',
+      'JSDoc',
+    ],
   ])('%s — %s', (source) => {
     expect(scanTokens(source, {})).toEqual(['m5']);
   });
 
-  test.each([["const u = 'https://example.com/x'; <div class=\"m5\">", 'URL внутри строки'], ['const s = "// class=\\"p10\\""; <div class="m5">', 'комментарий внутри строки']])('%s — %s не считается комментарием', (source) => {
+  test.each([
+    [
+      "const u = 'https://example.com/x'; <div class=\"m5\">",
+      'URL внутри строки',
+    ],
+    [
+      'const s = "// class=\\"p10\\""; <div class="m5">',
+      'комментарий внутри строки',
+    ],
+  ])('%s — %s не считается комментарием', (source) => {
     // Иначе `//` в URL съел бы остаток строки вместе с разметкой.
     expect(scanTokens(source, {})).toEqual(['m5']);
   });
@@ -37,7 +64,10 @@ describe('комментарии не дают токенов', () => {
     // в комментарии: вырезать её нечего.
     const source = 'const s = `// class="p10"`; <div class="m5">';
     expect(stripComments(source)).toBe(source);
-    expect(scanTokens(source, {})).toEqual(['p10', 'm5']);
+    expect(scanTokens(source, {})).toEqual([
+      'p10',
+      'm5',
+    ]);
   });
 
   test('токены из настоящей разметки не задеты', () => {
@@ -70,7 +100,10 @@ describe('комментарии не дают токенов', () => {
     const source = '// class="p10"\n<div class="m5">';
     expect(scanTokens(source, {
       comments: false,
-    })).toEqual(['p10', 'm5']);
+    })).toEqual([
+      'p10',
+      'm5',
+    ]);
   });
 
   test('незакрытый комментарий съедает остаток файла', () => {

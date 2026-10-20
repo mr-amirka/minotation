@@ -16,7 +16,10 @@ import {
 export default {
   name: 'presetMedias',
   // Точки работают и в записи Tailwind (`d:` — от точки, D-060), признаки — везде (D-067).
-  ecosystems: ['minotation', 'tw4'],
+  ecosystems: [
+    'minotation',
+    'tw4',
+  ],
   setup: (mn: MnInstance) => {
     const {
       media,
@@ -80,26 +83,83 @@ export default {
 
     // Признаки устройства и предпочтения (D-057): имена — как у вариантов Tailwind.
     forEach([
-      ['mouse', '(pointer: fine) and (hover: hover)'],
+      [
+        'mouse',
+        '(pointer: fine) and (hover: hover)',
+      ],
       // Основное устройство умеет наводить — для `:h` (D-069): на тачскринах hover не «залипает».
-      ['hover', '(hover: hover)'],
-      ['dark', '(prefers-color-scheme: dark)'],
-      ['light', '(prefers-color-scheme: light)'],
-      ['print', 'print'],
-      ['screen', 'screen'],
-      ['portrait', '(orientation: portrait)'],
-      ['landscape', '(orientation: landscape)'],
-      ['motion-safe', '(prefers-reduced-motion: no-preference)'],
-      ['motion-reduce', '(prefers-reduced-motion: reduce)'],
-      ['contrast-more', '(prefers-contrast: more)'],
-      ['contrast-less', '(prefers-contrast: less)'],
-      ['forced-colors', '(forced-colors: active)'],
-      ['inverted-colors', '(inverted-colors: inverted)'],
-      ['pointer-fine', '(pointer: fine)'],
-      ['pointer-coarse', '(pointer: coarse)'],
-      ['any-pointer-fine', '(any-pointer: fine)'],
-      ['any-pointer-coarse', '(any-pointer: coarse)'],
-      ['noscript', '(scripting: none)'],
+      [
+        'hover',
+        '(hover: hover)',
+      ],
+      [
+        'dark',
+        '(prefers-color-scheme: dark)',
+      ],
+      [
+        'light',
+        '(prefers-color-scheme: light)',
+      ],
+      [
+        'print',
+        'print',
+      ],
+      [
+        'screen',
+        'screen',
+      ],
+      [
+        'portrait',
+        '(orientation: portrait)',
+      ],
+      [
+        'landscape',
+        '(orientation: landscape)',
+      ],
+      [
+        'motion-safe',
+        '(prefers-reduced-motion: no-preference)',
+      ],
+      [
+        'motion-reduce',
+        '(prefers-reduced-motion: reduce)',
+      ],
+      [
+        'contrast-more',
+        '(prefers-contrast: more)',
+      ],
+      [
+        'contrast-less',
+        '(prefers-contrast: less)',
+      ],
+      [
+        'forced-colors',
+        '(forced-colors: active)',
+      ],
+      [
+        'inverted-colors',
+        '(inverted-colors: inverted)',
+      ],
+      [
+        'pointer-fine',
+        '(pointer: fine)',
+      ],
+      [
+        'pointer-coarse',
+        '(pointer: coarse)',
+      ],
+      [
+        'any-pointer-fine',
+        '(any-pointer: fine)',
+      ],
+      [
+        'any-pointer-coarse',
+        '(any-pointer: coarse)',
+      ],
+      [
+        'noscript',
+        '(scripting: none)',
+      ],
     ], (v: string[], i: number) => {
       media[v[0]] = {
         query: v[1],

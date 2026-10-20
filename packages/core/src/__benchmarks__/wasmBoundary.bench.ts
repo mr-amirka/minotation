@@ -30,7 +30,8 @@
  * что даёт итоговые 1,06× — ниже порога.
  */
 import {
-  extractTokens, scanTokens,
+  extractTokens,
+  scanTokens,
 } from '../extractTokens';
 
 const FILES = 300;
@@ -109,7 +110,8 @@ const decoder = new TextDecoder();
 const found = extractTokens(sources[0], 'class');
 const encoded = found.map((token) => encoder.encode(token));
 let offset = 0;
-for (let i = 0; i < encoded.length; i++) {
+const encodedLength = encoded.length;
+for (let i = 0; i < encodedLength; i++) {
   view.set(encoded[i], offset);
   offset += encoded[i].length;
 }
@@ -117,7 +119,8 @@ for (let i = 0; i < encoded.length; i++) {
 const decodeOut = bench('граница: чтение через TextDecoder   ', () => {
   for (let i = 0; i < FILES; i++) {
     let at = 0;
-    for (let j = 0; j < encoded.length; j++) {
+    const encodedLength = encoded.length;
+    for (let j = 0; j < encodedLength; j++) {
       decoder.decode(view.subarray(at, at + encoded[j].length));
       at += encoded[j].length;
     }
@@ -131,7 +134,8 @@ const decodeOut = bench('граница: чтение через TextDecoder   '
 const positions = new Int32Array(
   memory.buffer, 1 << 20, 4096,
 );
-for (let i = 0; i < found.length; i++) {
+const foundLength = found.length;
+for (let i = 0; i < foundLength; i++) {
   positions[i * 2] = i * 10;
   positions[i * 2 + 1] = found[i].length;
 }
@@ -140,7 +144,8 @@ const sliceOut = bench('граница: нарезка подстрок (slice) 
   for (let i = 0; i < FILES; i++) {
     const source = sources[i];
     const out: string[] = new Array(found.length);
-    for (let j = 0; j < found.length; j++) {
+    const foundLength = found.length;
+    for (let j = 0; j < foundLength; j++) {
       const at = positions[j * 2];
       out[j] = source.slice(at, at + positions[j * 2 + 1]);
     }

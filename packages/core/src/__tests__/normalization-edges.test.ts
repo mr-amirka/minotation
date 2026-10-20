@@ -4,10 +4,10 @@
  * и слияние `exts`/`childs` при повторном объявлении эссенции.
  */
 import {
-  minotationProvider, 
+  minotationProvider,
 } from '../core/index';
 import {
-  spaceNormalize, 
+  spaceNormalize,
 } from '../core/utils';
 import presetStandard from '../presets/standard';
 
@@ -56,14 +56,14 @@ describe('важность и примеси', () => {
     const mn: any = minotationProvider();
     mn('typo', () => ({
       style: {
-        fontSize: '14px', 
-      }, 
+        fontSize: '14px',
+      },
     }));
     mn('card', () => ({
       style: {
-        padding: '8px', 
+        padding: '8px',
       },
-      include: 'typo', 
+      include: 'typo',
     }));
 
     const css = compile(mn, 'card-i');
@@ -77,7 +77,13 @@ describe('mn.assign — вложенные формы аргументов', () 
   test('списки селекторов и токенов', () => {
     const mn: any = minotationProvider();
     mn.setPresets([presetStandard]);
-    mn.assign(['.a', '.b'], ['p10', 'mt4']);
+    mn.assign([
+      '.a',
+      '.b',
+    ], [
+      'p10',
+      'mt4',
+    ]);
     mn.compile();
 
     const css = cssOf(mn);
@@ -93,8 +99,8 @@ describe('mn.assign — вложенные формы аргументов', () 
     mn.assign({
       '.c': {
         p10: 1,
-        mt4: 1, 
-      }, 
+        mt4: 1,
+      },
     });
     mn.compile();
 
@@ -111,26 +117,26 @@ describe('слияние эссенций', () => {
     mn.setPresets([presetStandard]);
     mn('widget', () => ({
       style: {
-        color: 'red', 
+        color: 'red',
       },
       childs: {
         ' span': {
           style: {
-            display: 'block', 
-          }, 
-        }, 
+            display: 'block',
+          },
+        },
       },
     }));
     mn('widget', () => ({
       style: {
-        margin: '1px', 
+        margin: '1px',
       },
       childs: {
         ' em': {
           style: {
-            fontStyle: 'italic', 
-          }, 
-        }, 
+            fontStyle: 'italic',
+          },
+        },
       },
     }));
 
@@ -171,13 +177,13 @@ describe('слияние повторных объявлений', () => {
     const mn: any = minotationProvider();
     mn('widgetalt', () => ({
       style: {
-        color: 'red', 
-      }, 
+        color: 'red',
+      },
     }));
     mn('widgetalt', () => ({
       style: {
-        display: 'block', 
-      }, 
+        display: 'block',
+      },
     }));
 
     const css = compile(mn, 'widgetalt');
@@ -190,14 +196,14 @@ describe('слияние повторных объявлений', () => {
     const mn: any = minotationProvider();
     mn('typoalt', () => ({
       style: {
-        fontSize: '14px', 
-      }, 
+        fontSize: '14px',
+      },
     }));
     mn('cardalt', () => ({
       style: {
-        padding: '8px', 
+        padding: '8px',
       },
-      include: 'typoalt-i', 
+      include: 'typoalt-i',
     }));
 
     const css = compile(mn, 'cardalt-i');

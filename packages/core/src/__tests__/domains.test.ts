@@ -8,7 +8,8 @@ import {
   __normalize,
 } from '../core/utils';
 import type {
-  MnOptions, MnWarning,
+  MnOptions,
+  MnWarning,
 } from '../core/types';
 import type {
   MnInstance,
@@ -68,7 +69,10 @@ describe('устройство доменов', () => {
       });
     });
     const domains = (mn as unknown as { domains: Record<string, Array<[string, unknown]>> }).domains;
-    expect(domains.min.map((entry) => entry[0])).toEqual(['-w-full', '-w']);
+    expect(domains.min.map((entry) => entry[0])).toEqual([
+      '-w-full',
+      '-w',
+    ]);
     expect(domains.m.map((entry) => entry[0])).toEqual(['A']);
     expect(typeof domains.min[0][1]).toBe('function');
   });
@@ -94,7 +98,16 @@ describe('устройство доменов', () => {
 });
 
 describe('поиск (D-063)', () => {
-  test.each([['min-w-full', '.min-w-full{min-width:100%}'], ['min-w-4', '.min-w-4{min-width:16px}']])('%s → %s', (token, css) => {
+  test.each([
+    [
+      'min-w-full',
+      '.min-w-full{min-width:100%}',
+    ],
+    [
+      'min-w-4',
+      '.min-w-4{min-width:16px}',
+    ],
+  ])('%s → %s', (token, css) => {
     expect(compile(token, minWidth).css).toBe(css);
   });
 
@@ -125,7 +138,7 @@ describe('поиск (D-063)', () => {
     }).css).toBe('.text-muted{content:"muted"}.text-x{content:"x"}');
   });
 
-  test("статика не берёт минус Tailwind: -min-w-full уступает хендлеру -w, тот минус не принял — молча", () => {
+  test('статика не берёт минус Tailwind: -min-w-full уступает хендлеру -w, тот минус не принял — молча', () => {
     expect(compile(
       '-min-w-full', minWidth, {
         notationMode: 'tw4-compatible',
@@ -159,9 +172,11 @@ describe('suspect-class (D-065, D-066)', () => {
       },
     );
     expect(css).toBe('.fw7{font-weight:700}');
-    expect(warnings).toEqual(['suspect-class: "fw-bold": "-bold" is not a value of "fw" — this looks like a class of another CSS'
+    expect(warnings).toEqual([
+      'suspect-class: "fw-bold": "-bold" is not a value of "fw" — this looks like a class of another CSS'
         + ' framework, it gives no CSS. To hide this warning: suspectClassMode: \'silent\'; to forbid such'
-        + ' classes: suspectClassMode: \'strict\'.']);
+        + ' classes: suspectClassMode: \'strict\'.',
+    ]);
     expect(error).toBeUndefined();
   });
 
@@ -208,7 +223,10 @@ describe('& в селекторе эссенции — сам элемент (D-
     expect(compile('sx1', (mn) => {
       mn(
         'sx', () => ({
-          selectors: [':where\\(&>:not\\(:last-child\\)\\)', '>b'],
+          selectors: [
+            ':where\\(&>:not\\(:last-child\\)\\)',
+            '>b',
+          ],
           style: {
             color: 'red',
           },

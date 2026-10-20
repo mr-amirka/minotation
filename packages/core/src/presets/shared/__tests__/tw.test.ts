@@ -4,7 +4,8 @@
  */
 import minotationProvider from '../../../core';
 import {
-  parseTwSuffix, tw,
+  parseTwSuffix,
+  tw,
 } from '../tw';
 import {
   mathSpaces,
@@ -52,7 +53,10 @@ describe('parseTwSuffix', () => {
       '-x-2',
       false,
       {
-        parts: ['x', '2'],
+        parts: [
+          'x',
+          '2',
+        ],
         negative: false,
       },
     ],
@@ -60,7 +64,10 @@ describe('parseTwSuffix', () => {
       '-blue-500/50',
       false,
       {
-        parts: ['blue', '500'],
+        parts: [
+          'blue',
+          '500',
+        ],
         modifier: '50',
         negative: false,
       },
@@ -174,22 +181,70 @@ describe('parseTwSuffix', () => {
 
 describe('mathSpaces — пробелы вокруг операторов в математике, как у Tailwind 4', () => {
   test.each([
-    ['calc(100%-2rem)', 'calc(100% - 2rem)'],
-    ['min(10px,2*3px)', 'min(10px, 2 * 3px)'],
-    ['clamp(1rem,2vw+1rem,3rem)', 'clamp(1rem, 2vw + 1rem, 3rem)'],
-    ['calc(2px-(1px*2))', 'calc(2px - (1px * 2))'],
-    ['calc(2px-var(--x))', 'calc(2px - var(--x))'],
-    ['calc(var(--x-y)*2)', 'calc(var(--x-y) * 2)'],
-    ['calc(1e-3*2)', 'calc(1e-3 * 2)'],
-    ['calc(1E-3*2)', 'calc(1E-3 * 2)'],
-    ['calc(1px * -1)', 'calc(1px * -1)'],
-    ['calc(-1px*2)', 'calc(-1px * 2)'],
-    ['calc(2px -1px)', 'calc(2px - 1px)'],
-    ['calc(a  b)', 'calc(a b)'],
-    ['calc(a-b)', 'calc(a-b)'],
-    ['calc(1px+', 'calc(1px + '],
-    ['1/3', '1/3'],
-    ['1px+2px', '1px+2px'],
+    [
+      'calc(100%-2rem)',
+      'calc(100% - 2rem)',
+    ],
+    [
+      'min(10px,2*3px)',
+      'min(10px, 2 * 3px)',
+    ],
+    [
+      'clamp(1rem,2vw+1rem,3rem)',
+      'clamp(1rem, 2vw + 1rem, 3rem)',
+    ],
+    [
+      'calc(2px-(1px*2))',
+      'calc(2px - (1px * 2))',
+    ],
+    [
+      'calc(2px-var(--x))',
+      'calc(2px - var(--x))',
+    ],
+    [
+      'calc(var(--x-y)*2)',
+      'calc(var(--x-y) * 2)',
+    ],
+    [
+      'calc(1e-3*2)',
+      'calc(1e-3 * 2)',
+    ],
+    [
+      'calc(1E-3*2)',
+      'calc(1E-3 * 2)',
+    ],
+    [
+      'calc(1px * -1)',
+      'calc(1px * -1)',
+    ],
+    [
+      'calc(-1px*2)',
+      'calc(-1px * 2)',
+    ],
+    [
+      'calc(2px -1px)',
+      'calc(2px - 1px)',
+    ],
+    [
+      'calc(a  b)',
+      'calc(a b)',
+    ],
+    [
+      'calc(a-b)',
+      'calc(a-b)',
+    ],
+    [
+      'calc(1px+',
+      'calc(1px + ',
+    ],
+    [
+      '1/3',
+      '1/3',
+    ],
+    [
+      '1px+2px',
+      '1px+2px',
+    ],
   ])('%s → %s', (value, expected) => {
     expect(mathSpaces(value)).toBe(expected);
   });
@@ -219,9 +274,18 @@ describe('tw() — обёртка без флагов (D-061, D-064)', () => {
   });
 
   test.each([
-    ['gap-2', '.gap-2{gap:0.5rem}'],
-    ['gap-x-4', '.gap-x-4{column-gap:1rem}'],
-    ['gap-y-[3px]', '.gap-y-\\[3px\\]{row-gap:3px}'],
+    [
+      'gap-2',
+      '.gap-2{gap:0.5rem}',
+    ],
+    [
+      'gap-x-4',
+      '.gap-x-4{column-gap:1rem}',
+    ],
+    [
+      'gap-y-[3px]',
+      '.gap-y-\\[3px\\]{row-gap:3px}',
+    ],
   ])('%s → %s', (token, css) => {
     expect(compile(token, gap).css).toBe(css);
   });
@@ -295,15 +359,42 @@ describe('defineScale: имена с дефисом — домены (D-063)', (
   }
 
   test.each([
-    ['w-4', '.w-4{width:1rem}'],
-    ['min-w-4', '.min-w-4{min-width:1rem}'],
-    ['max-w-[37px]', '.max-w-\\[37px\\]{max-width:37px}'],
-    ['min-w-full', '.min-w-full{min-width:100%}'],
-    ['gap-2', '.gap-2{gap:0.5rem}'],
-    ['gap-x-4', '.gap-x-4{column-gap:1rem}'],
-    ['-gap-x-4', '.-gap-x-4{column-gap:-1rem}'],
-    ['-gap-x-px', '.-gap-x-px{column-gap:-1px}'],
-    ['-translate-x-2', '.-translate-x-2{translate:-0.5rem}'],
+    [
+      'w-4',
+      '.w-4{width:1rem}',
+    ],
+    [
+      'min-w-4',
+      '.min-w-4{min-width:1rem}',
+    ],
+    [
+      'max-w-[37px]',
+      '.max-w-\\[37px\\]{max-width:37px}',
+    ],
+    [
+      'min-w-full',
+      '.min-w-full{min-width:100%}',
+    ],
+    [
+      'gap-2',
+      '.gap-2{gap:0.5rem}',
+    ],
+    [
+      'gap-x-4',
+      '.gap-x-4{column-gap:1rem}',
+    ],
+    [
+      '-gap-x-4',
+      '.-gap-x-4{column-gap:-1rem}',
+    ],
+    [
+      '-gap-x-px',
+      '.-gap-x-px{column-gap:-1px}',
+    ],
+    [
+      '-translate-x-2',
+      '.-translate-x-2{translate:-0.5rem}',
+    ],
   ])('%s → %s', (token, css) => {
     expect(compile(token, sizes).css).toBe(css);
   });
@@ -322,9 +413,18 @@ describe('defineScale: имена с дефисом — домены (D-063)', (
   });
 
   test.each([
-    ['min-w-foo', '"min-w-foo": step "foo" is not a number'],
-    ['min-w-4x', '"min-w-4x": step "4x" is not a number'],
-    ['-gap-x-auto', '"gap-x-auto": "auto" has no negative value'],
+    [
+      'min-w-foo',
+      '"min-w-foo": step "foo" is not a number',
+    ],
+    [
+      'min-w-4x',
+      '"min-w-4x": step "4x" is not a number',
+    ],
+    [
+      '-gap-x-auto',
+      '"gap-x-auto": "auto" has no negative value',
+    ],
   ])('%s — запись нашлась, значение не разобрано: предупреждение (D-063, ответ 1)', (token, message) => {
     expect(compile(token, sizes).warnings).toEqual([message]);
   });

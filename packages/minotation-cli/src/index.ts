@@ -7,19 +7,26 @@
  * @module minotation-cli
  */
 export {
-  compile, collectFiles,
+  compile,
+  collectFiles,
 } from './compile';
 export type {
-  CompileSettings, CompileResult,
+  CompileSettings,
+  CompileResult,
 } from './compile';
 export {
-  parseArgs, HELP,
+  parseArgs,
+  HELP,
 } from './args';
 export type {
   CliArgs,
 } from './args';
 export {
-  build, loadConfig, mergeSettings, startWatch, DEFAULT_CONFIG,
+  build,
+  loadConfig,
+  mergeSettings,
+  startWatch,
+  DEFAULT_CONFIG,
 } from './run';
 export type {
   RunSettings,

@@ -6,7 +6,7 @@
  * Кавычек в файле на порядки меньше, чем символов.
  */
 import {
-  scanTokens, 
+  scanTokens,
 } from '../extractTokens';
 
 const FILES = 300;
@@ -67,7 +67,8 @@ function scanByQuotes(
     const quote = source.charCodeAt(m.index);
     // Тело литерала.
     let end = m.index + 1;
-    for (; end < source.length; end++) {
+    const sourceLength = source.length;
+    for (; end < sourceLength; end++) {
       const c = source.charCodeAt(end);
       if (c === 92) {
         end++;
@@ -141,23 +142,29 @@ function scanByQuotes(
 const three = bench('три прохода (текущая реализация)', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokens(sources[i], {
-      attr: 'class', 
+      attr: 'class',
     });
   }
 });
 const quotes = bench('от кавычки назад                ', () => {
   for (let i = 0; i < FILES; i++) {
     scanByQuotes(
-      sources[i], 'class', 'Class', ['mne', 'mnClass'],
+      sources[i], 'class', 'Class', [
+        'mne',
+        'mnClass',
+      ],
     );
   }
 });
 console.log(`разница: ${((1 - quotes / three) * 100).toFixed(1)}%`);
 
 const a = scanTokens(sources[0], {
-  attr: 'class', 
+  attr: 'class',
 }).slice().sort().join(' ');
 const b = scanByQuotes(
-  sources[0], 'class', 'Class', ['mne', 'mnClass'],
+  sources[0], 'class', 'Class', [
+    'mne',
+    'mnClass',
+  ],
 ).slice().sort().join(' ');
 console.log(a === b ? 'результаты совпадают' : `РАСХОЖДЕНИЕ:\n  три: ${a}\n  кав: ${b}`);

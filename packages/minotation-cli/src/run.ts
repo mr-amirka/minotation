@@ -7,26 +7,48 @@
  * @module run
  */
 import {
-  copyFileSync, mkdirSync, realpathSync, statSync, watch, writeFileSync,
+  createTimeout,
+} from 'fundamentool';
+import {
+  copyFileSync,
+  mkdirSync,
+  realpathSync,
+  statSync,
+  watch,
+  writeFileSync,
 } from 'node:fs';
 import {
-  dirname, join, relative, resolve, sep,
+  dirname,
+  join,
+  relative,
+  resolve,
+  sep,
 } from 'node:path';
 import {
   checkOptions,
 } from 'minotation';
 import {
-  BUILD_OPTIONS_SCHEMA, CONFIG_FILE_NAMES, createMatcher, formatFileName, globToRegExp, loadConfigFile, manifestFileName,
-  manifestOf, metricsFileName, walkFiles,
+  BUILD_OPTIONS_SCHEMA,
+  CONFIG_FILE_NAMES,
+  createMatcher,
+  formatFileName,
+  globToRegExp,
+  loadConfigFile,
+  manifestFileName,
+  manifestOf,
+  metricsFileName,
+  walkFiles,
 } from 'minotation-build';
 import type {
   CliArgs,
 } from './args';
 import {
-  CONFIG_SCHEMA, compile,
+  CONFIG_SCHEMA,
+  compile,
 } from './compile';
 import type {
-  CompileSettings, CompileResult,
+  CompileSettings,
+  CompileResult,
 } from './compile';
 
 /** Куда писать сообщения — подменяется в тестах. */
@@ -287,7 +309,7 @@ function failOutput(output: string): never {
  * @returns функция остановки наблюдения
  */
 export function startWatch(settings: RunSettings, report: Reporter): () => void {
-  let timer: NodeJS.Timeout | undefined;
+  let cancelBuild: (() => void) | undefined;
   // Наблюдаем за РЕАЛЬНЫМ путём: на macOS `/var` — симлинк на `/private/var`,
   // и `fs.watch` с `recursive` по неразрешённому пути о новых файлах не
   // сообщает вовсе. Молча: watch работает, событий просто нет.
@@ -298,8 +320,8 @@ export function startWatch(settings: RunSettings, report: Reporter): () => void 
     }, () => {
     // Сборщики пишут файл несколькими событиями подряд; ждём паузу, иначе
     // пересборка запускается по три раза на одно сохранение.
-      timer && clearTimeout(timer);
-      timer = setTimeout(() => {
+      cancelBuild && cancelBuild();
+      cancelBuild = createTimeout(() => {
         try {
           build(settings, report);
         } catch (ex) {
@@ -310,7 +332,7 @@ export function startWatch(settings: RunSettings, report: Reporter): () => void 
   );
   report.log('Watching ' + target);
   return () => {
-    timer && clearTimeout(timer);
+    cancelBuild && cancelBuild();
     watcher.close();
   };
 }

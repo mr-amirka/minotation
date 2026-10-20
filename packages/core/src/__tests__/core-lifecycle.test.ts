@@ -3,12 +3,14 @@
  * @keyframes, произвольные CSS-правила и поведение при ошибке внутри хендлера.
  */
 import {
-  minotationProvider, 
+  minotationProvider,
 } from '../core/index';
 import presetStandard from '../presets/standard';
 import presetPrefixes from '../presets/prefixes';
 import {
-  MnParseError, MnWarningError, type MnWarning,
+  MnParseError,
+  MnWarningError,
+  type MnWarning,
 } from '../core/types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -94,11 +96,11 @@ describe('mn — keyframes и произвольный CSS', () => {
     const mn: any = makeMn();
     mn.setKeyframes('fadeIn', {
       '0%': {
-        opacity: 0, 
+        opacity: 0,
       },
       '100%': {
-        opacity: 1, 
-      }, 
+        opacity: 1,
+      },
     });
     mn.setKeyframes('spin', 'from{transform:rotate(0)}to{transform:rotate(360deg)}');
     mn.compile();
@@ -114,7 +116,10 @@ describe('mn — keyframes и произвольный CSS', () => {
     const mn: any = minotationProvider({
       warningMode: 'silent',
     });
-    mn.setPresets([presetStandard, presetPrefixes]);
+    mn.setPresets([
+      presetStandard,
+      presetPrefixes,
+    ]);
     mn.setKeyframes('fadeIn', 'from{opacity:0}to{opacity:1}');
     mn.compile();
 
@@ -141,7 +146,7 @@ describe('mn — keyframes и произвольный CSS', () => {
     const mn: any = makeMn();
     mn.setKeyframes('slide', {
       '0%': 'left:0',
-      '100%': 'left:100px', 
+      '100%': 'left:100px',
     });
     mn.compile();
 
@@ -162,9 +167,12 @@ describe('mn — ошибки при загрузке пресета', () => {
 
     // Загрузка не должна прерываться: один сломанный пресет не повод терять
     // остальные.
-    expect(() => mn.setPresets([() => {
-      throw new Error('пресет сломался');
-    }, presetStandard])).not.toThrow();
+    expect(() => mn.setPresets([
+      () => {
+        throw new Error('пресет сломался');
+      },
+      presetStandard,
+    ])).not.toThrow();
 
     expect(errors.map((e) => e.message)).toContain('пресет сломался');
   });
@@ -176,10 +184,12 @@ describe('mn — ошибки при загрузке пресета', () => {
     const mn: any = minotationProvider();
     mn.error$.on((e: Error) => errors.push(e));
 
-    mn.setPresets([() => {
+    mn.setPresets([
+      () => {
       // eslint-disable-next-line no-throw-literal
-      throw 'строка вместо ошибки';
-    }]);
+        throw 'строка вместо ошибки';
+      },
+    ]);
 
     expect(errors.length).toBe(1);
     expect(errors[0]).toBeInstanceOf(Error);
@@ -191,18 +201,21 @@ describe('mn — ошибки внутри хендлера', () => {
   test('MnParseError из хендлера превращается в warning, токен не даёт CSS', () => {
     const warnings: MnWarning[] = [];
     const mn: any = minotationProvider({
-      onWarning: (w: MnWarning) => warnings.push(w), 
+      onWarning: (w: MnWarning) => warnings.push(w),
     });
-    mn.setPresets([presetStandard, (instance: any) => {
-      instance('boom', (p: any) => {
-        throw new MnParseError('тестовая ошибка разбора', {
-          token: p.name + p.suffix,
-          handler: p.name,
-          arg: p.suffix,
-          utility: 'test',
+    mn.setPresets([
+      presetStandard,
+      (instance: any) => {
+        instance('boom', (p: any) => {
+          throw new MnParseError('тестовая ошибка разбора', {
+            token: p.name + p.suffix,
+            handler: p.name,
+            arg: p.suffix,
+            utility: 'test',
+          });
         });
-      });
-    }]);
+      },
+    ]);
 
     mn.checkByAttrs('boom1', 'class');
     mn.compile();
@@ -215,11 +228,14 @@ describe('mn — ошибки внутри хендлера', () => {
     const mn: any = minotationProvider();
     const errors: unknown[] = [];
     mn.error$.on((e: unknown) => errors.push(e));
-    mn.setPresets([presetStandard, (instance: any) => {
-      instance('kaboom', () => {
-        throw new Error('поломка хендлера'); 
-      });
-    }]);
+    mn.setPresets([
+      presetStandard,
+      (instance: any) => {
+        instance('kaboom', () => {
+          throw new Error('поломка хендлера');
+        });
+      },
+    ]);
 
     mn.checkByAttrs('kaboom1 p10', 'class');
     mn.compile();
@@ -261,13 +277,16 @@ describe('mn — warningMode: error', () => {
     const mn: any = minotationProvider({
       warningMode: 'error',
     });
-    mn.setPresets([presetStandard, (instance: any) => {
-      instance('badcss', () => ({
-        style: {
-          color: 'undefined',
-        },
-      }));
-    }]);
+    mn.setPresets([
+      presetStandard,
+      (instance: any) => {
+        instance('badcss', () => ({
+          style: {
+            color: 'undefined',
+          },
+        }));
+      },
+    ]);
     mn.checkByAttrs('badcss1', 'class');
 
     expect(() => mn.compile()).toThrow(MnWarningError);
@@ -352,11 +371,14 @@ describe('битый аргумент хендлера → warnings$, а не er
       warningMode: 'silent',
     });
     mn.error$.on((e: unknown) => errors.push(e));
-    mn.setPresets([presetStandard, (instance: any) => {
-      instance('kaboom', () => {
-        throw new TypeError('сбой пресета');
-      });
-    }]);
+    mn.setPresets([
+      presetStandard,
+      (instance: any) => {
+        instance('kaboom', () => {
+          throw new TypeError('сбой пресета');
+        });
+      },
+    ]);
     mn.checkByAttrs('kaboom1', 'class');
     mn.compile();
 

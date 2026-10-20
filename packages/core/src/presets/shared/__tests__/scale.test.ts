@@ -11,7 +11,8 @@ import type {
   MnScaleOptions,
 } from '../scale';
 import type {
-  MnNotationMode, MnWarning,
+  MnNotationMode,
+  MnWarning,
 } from '../../../core/types';
 import type {
   MnInstance,
@@ -24,7 +25,10 @@ const TAILWIND: MnScaleOptions = {
   sides: {
     '': [''],
     t: ['top'],
-    x: ['left', 'right'],
+    x: [
+      'left',
+      'right',
+    ],
   },
   scale: (step) => step * 0.25 + 'rem',
   keywords: {
@@ -44,9 +48,11 @@ function compile(
     notationMode,
     onWarning: (w) => warnings.push(w),
   });
-  mn.setPresets([(instance: MnInstance) => {
-    defineScale(instance, options);
-  }]);
+  mn.setPresets([
+    (instance: MnInstance) => {
+      defineScale(instance, options);
+    },
+  ]);
   mn.getCompiler('class')(tokens);
   mn.compile();
   return {
@@ -57,15 +63,42 @@ function compile(
 
 describe('шкала-функция (Tailwind)', () => {
   test.each([
-    ['mt-4', '.mt-4{margin-top:1rem}'],
-    ['m-1', '.m-1{margin:0.25rem}'],
-    ['mx-2.5', '.mx-2\\.5{margin-left:0.625rem;margin-right:0.625rem}'],
-    ['mx-auto', '.mx-auto{margin-left:auto;margin-right:auto}'],
-    ['mt-px', '.mt-px{margin-top:1px}'],
-    ['-mt-4', '.-mt-4{margin-top:-1rem}'],
-    ['-mx-2', '.-mx-2{margin-left:-0.5rem;margin-right:-0.5rem}'],
-    ['-mt-px', '.-mt-px{margin-top:-1px}'],
-    ['-mt-0', '.-mt-0{margin-top:-0rem}'],
+    [
+      'mt-4',
+      '.mt-4{margin-top:1rem}',
+    ],
+    [
+      'm-1',
+      '.m-1{margin:0.25rem}',
+    ],
+    [
+      'mx-2.5',
+      '.mx-2\\.5{margin-left:0.625rem;margin-right:0.625rem}',
+    ],
+    [
+      'mx-auto',
+      '.mx-auto{margin-left:auto;margin-right:auto}',
+    ],
+    [
+      'mt-px',
+      '.mt-px{margin-top:1px}',
+    ],
+    [
+      '-mt-4',
+      '.-mt-4{margin-top:-1rem}',
+    ],
+    [
+      '-mx-2',
+      '.-mx-2{margin-left:-0.5rem;margin-right:-0.5rem}',
+    ],
+    [
+      '-mt-px',
+      '.-mt-px{margin-top:-1px}',
+    ],
+    [
+      '-mt-0',
+      '.-mt-0{margin-top:-0rem}',
+    ],
   ])('%s → %s', (token, css) => {
     // Ведущий минус — запись Tailwind (D-064), поэтому режим `'tw4-compatible'`.
     expect(compile(
@@ -84,10 +117,22 @@ describe('шкала-функция (Tailwind)', () => {
   });
 
   test.each([
-    ['mt-[37px]', '.mt-\\[37px\\]{margin-top:37px}'],
-    ['mx-[calc(1rem_+_2px)]', '.mx-\\[calc\\(1rem_\\+_2px\\)\\]{margin-left:calc(1rem + 2px);margin-right:calc(1rem + 2px)}'],
-    ['-mt-[var(--gap)]', '.-mt-\\[var\\(--gap\\)\\]{margin-top:calc(var(--gap) * -1)}'],
-    ['mt-[a\\_b]', '.mt-\\[a\\\\_b\\]{margin-top:a_b}'],
+    [
+      'mt-[37px]',
+      '.mt-\\[37px\\]{margin-top:37px}',
+    ],
+    [
+      'mx-[calc(1rem_+_2px)]',
+      '.mx-\\[calc\\(1rem_\\+_2px\\)\\]{margin-left:calc(1rem + 2px);margin-right:calc(1rem + 2px)}',
+    ],
+    [
+      '-mt-[var(--gap)]',
+      '.-mt-\\[var\\(--gap\\)\\]{margin-top:calc(var(--gap) * -1)}',
+    ],
+    [
+      'mt-[a\\_b]',
+      '.mt-\\[a\\\\_b\\]{margin-top:a_b}',
+    ],
   ])("произвольное значение в 'tw4-compatible': %s", (token, css) => {
     expect(compile(
       token, TAILWIND, 'tw4-compatible',
@@ -95,9 +140,18 @@ describe('шкала-функция (Tailwind)', () => {
   });
 
   test.each([
-    ['mt-', '"mt-": expects a step of the scale'],
-    ['mt-4x', '"mt-4x": step "4x" is not a number'],
-    ['mt-[]', '"mt-[]": step "[]" is not a number'],
+    [
+      'mt-',
+      '"mt-": expects a step of the scale',
+    ],
+    [
+      'mt-4x',
+      '"mt-4x": step "4x" is not a number',
+    ],
+    [
+      'mt-[]',
+      '"mt-[]": step "[]" is not a number',
+    ],
   ])('%s — предупреждение', (token, message) => {
     const result = compile(
       token, TAILWIND, 'tw4-compatible',
@@ -133,9 +187,18 @@ describe('шкала-карта (Bootstrap) и разделитель', () => {
   };
 
   test.each([
-    ['pt-3', '.pt-3{padding-top:1rem}'],
-    ['pt-0', '.pt-0{padding-top:0}'],
-    ['pt-v', '.pt-v{padding-top:var(--gap)}'],
+    [
+      'pt-3',
+      '.pt-3{padding-top:1rem}',
+    ],
+    [
+      'pt-0',
+      '.pt-0{padding-top:0}',
+    ],
+    [
+      'pt-v',
+      '.pt-v{padding-top:var(--gap)}',
+    ],
   ])('%s → %s', (token, css) => {
     expect(compile(token, BOOTSTRAP).css).toBe(css);
   });
@@ -204,44 +267,68 @@ describe('ведущий - у обычных хендлеров не меняе�
 
 describe('проверка опций (D-038)', () => {
   test.each([
-    [{
-      ...TAILWIND,
-      negativ: true,
-    }, 'unknown option "negativ". Did you mean "negative"?'],
-    [{
-      ...TAILWIND,
-      scale: 4,
-    }, 'option "scale" expects a function (step) => value or an object of strings, got number 4'],
-    [{
-      ...TAILWIND,
-      scale: {
-        1: 4,
+    [
+      {
+        ...TAILWIND,
+        negativ: true,
       },
-    }, 'option "scale" expects a function (step) => value or an object of strings'],
-    [{
-      ...TAILWIND,
-      properties: {
-        m: 1,
+      'unknown option "negativ". Did you mean "negative"?',
+    ],
+    [
+      {
+        ...TAILWIND,
+        scale: 4,
       },
-    }, 'option "properties" expects an object of strings'],
-    [{
-      ...TAILWIND,
-      sides: {
-        t: 'top',
+      'option "scale" expects a function (step) => value or an object of strings, got number 4',
+    ],
+    [
+      {
+        ...TAILWIND,
+        scale: {
+          1: 4,
+        },
       },
-    }, 'option "sides" expects an object of non-empty string arrays'],
-    [{
-      ...TAILWIND,
-      sides: {
-        t: [],
+      'option "scale" expects a function (step) => value or an object of strings',
+    ],
+    [
+      {
+        ...TAILWIND,
+        properties: {
+          m: 1,
+        },
       },
-    }, 'option "sides" expects an object of non-empty string arrays'],
-    [{
-      scale: TAILWIND.scale,
-    }, 'option "properties" is required'],
-    [{
-      properties: TAILWIND.properties,
-    }, 'option "scale" is required'],
+      'option "properties" expects an object of strings',
+    ],
+    [
+      {
+        ...TAILWIND,
+        sides: {
+          t: 'top',
+        },
+      },
+      'option "sides" expects an object of non-empty string arrays',
+    ],
+    [
+      {
+        ...TAILWIND,
+        sides: {
+          t: [],
+        },
+      },
+      'option "sides" expects an object of non-empty string arrays',
+    ],
+    [
+      {
+        scale: TAILWIND.scale,
+      },
+      'option "properties" is required',
+    ],
+    [
+      {
+        properties: TAILWIND.properties,
+      },
+      'option "scale" is required',
+    ],
   ])('%j — ошибка', (options, message) => {
     const mn = minotationProvider();
     expect(() => defineScale(mn, options as never)).toThrow(message);

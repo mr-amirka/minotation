@@ -42,9 +42,18 @@ function compile(token: string): { css: string;
 
 describe('хендлер без стиля — предупреждение (D-021)', () => {
   test.each([
-    ['fx', 'fx'],
-    ['fx>1', 'fx'],
-    ['ta', 'ta'],
+    [
+      'fx',
+      'fx',
+    ],
+    [
+      'fx>1',
+      'fx',
+    ],
+    [
+      'ta',
+      'ta',
+    ],
   ])('%s → parse-error', (token, handler) => {
     const {
       css, warnings,
@@ -57,9 +66,18 @@ describe('хендлер без стиля — предупреждение (D-0
   });
 
   test.each([
-    ['fx1>1', '.fx1\\>1>*{flex:1}'],
-    ['w', '.w{width:100%}'],
-    ['p', '.p{padding:0}'],
+    [
+      'fx1>1',
+      '.fx1\\>1>*{flex:1}',
+    ],
+    [
+      'w',
+      '.w{width:100%}',
+    ],
+    [
+      'p',
+      '.p{padding:0}',
+    ],
   ])('%s — значение по умолчанию есть, предупреждения нет', (token, expected) => {
     const {
       css, warnings,

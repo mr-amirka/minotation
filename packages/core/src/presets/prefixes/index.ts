@@ -27,7 +27,10 @@ export default {
     const {
       prefixedAttrs,
     } = propertiesStringify;
-    flags([WEBKIT, MOZ], propertiesStringify.prefixes);
+    flags([
+      WEBKIT,
+      MOZ,
+    ], propertiesStringify.prefixes);
 
     extend(prefixedAttrs, {
       appearance: flags([WEBKIT]),

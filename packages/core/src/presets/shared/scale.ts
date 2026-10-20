@@ -15,7 +15,10 @@ import type {
   MnEssenceParams,
 } from '../../core/types';
 import {
-  checkOptions, isBoolean, isObject, isString,
+  checkOptions,
+  isBoolean,
+  isObject,
+  isString,
 } from '../../checkOptions';
 import type {
   OptionCheck,

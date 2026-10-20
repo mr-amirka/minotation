@@ -4,7 +4,7 @@
  * какие они есть в реализации (грамматика —).
  */
 import {
-  minotationProvider, 
+  minotationProvider,
 } from '../core/index';
 import presetStandard from '../presets/standard';
 import presetSynonyms from '../presets/synonyms';
@@ -13,7 +13,10 @@ import presetSynonyms from '../presets/synonyms';
 
 function compile(token: string): string {
   const mn: any = minotationProvider();
-  mn.setPresets([presetStandard, presetSynonyms]);
+  mn.setPresets([
+    presetStandard,
+    presetSynonyms,
+  ]);
   mn.getCompiler('class')(token);
   mn.compile();
   return mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
@@ -74,10 +77,16 @@ describe('вложенные scope-выражения в состояниях', 
 describe('instance.states — именованные группы состояний', () => {
   test('группа раскрывается в несколько селекторов', () => {
     const mn: any = minotationProvider();
-    mn.setPresets([presetStandard, presetSynonyms]);
+    mn.setPresets([
+      presetStandard,
+      presetSynonyms,
+    ]);
     // точка расширения для потребителя: пакет её сам не заполняет
     mn.states = {
-      interactive: [':hover', ':focus'], 
+      interactive: [
+        ':hover',
+        ':focus',
+      ],
     };
     mn.getCompiler('class')('p10:interactive');
     mn.compile();
@@ -89,9 +98,12 @@ describe('instance.states — именованные группы состоян
 
   test('состояние не из группы остаётся литеральным псевдоклассом', () => {
     const mn: any = minotationProvider();
-    mn.setPresets([presetStandard, presetSynonyms]);
+    mn.setPresets([
+      presetStandard,
+      presetSynonyms,
+    ]);
     mn.states = {
-      interactive: [':hover'], 
+      interactive: [':hover'],
     };
     mn.getCompiler('class')('p10:checked');
     mn.compile();
@@ -108,7 +120,10 @@ describe('[attr=val] — атрибут-селектор как суффикс �
 
   test('bc--ink[aria-pressed=true] и c--bg[aria-pressed=true] — независимые правила с общим условием', () => {
     const mn: any = minotationProvider();
-    mn.setPresets([presetStandard, presetSynonyms]);
+    mn.setPresets([
+      presetStandard,
+      presetSynonyms,
+    ]);
     mn.getCompiler('class')('bc--ink[aria-pressed=true]');
     mn.getCompiler('class')('c--bg[aria-pressed=true]');
     mn.compile();
@@ -167,15 +182,42 @@ describe('вырожденные контекстные селекторы: пр
   }
 
   test.each([
-    ['p10<', 'пустой родительский сегмент'],
-    ['p10>', 'пустой дочерний сегмент'],
-    ['p10<<', 'два пустых сегмента подряд'],
-    ['p10<0', 'глубина 0 — склеивание классов'],
-    ['p10>0', 'глубина 0 в дочернем направлении'],
-    ['p10<1', 'глубина без селектора'],
-    ['p10<2', 'глубина 2 без селектора'],
-    ['p10<-1', 'отрицательная глубина — инверсия направления'],
-    ['p10<.a<1', 'безымянный уровень в середине цепочки'],
+    [
+      'p10<',
+      'пустой родительский сегмент',
+    ],
+    [
+      'p10>',
+      'пустой дочерний сегмент',
+    ],
+    [
+      'p10<<',
+      'два пустых сегмента подряд',
+    ],
+    [
+      'p10<0',
+      'глубина 0 — склеивание классов',
+    ],
+    [
+      'p10>0',
+      'глубина 0 в дочернем направлении',
+    ],
+    [
+      'p10<1',
+      'глубина без селектора',
+    ],
+    [
+      'p10<2',
+      'глубина 2 без селектора',
+    ],
+    [
+      'p10<-1',
+      'отрицательная глубина — инверсия направления',
+    ],
+    [
+      'p10<.a<1',
+      'безымянный уровень в середине цепочки',
+    ],
   ])('%s (%s) — CSS не создаётся, есть parse-error', (token) => {
     const {
       css, warnings,
@@ -187,15 +229,36 @@ describe('вырожденные контекстные селекторы: пр
 
   test.each([
     // Сторожа: законные формы контекста не задеты.
-    ['p10<.a', '.a .p10\\<\\.a{padding:10px}'],
-    ['p10<1.a', '.a>.p10\\<1\\.a{padding:10px}'],
-    ['p10>.c', '.p10\\>\\.c .c{padding:10px}'],
+    [
+      'p10<.a',
+      '.a .p10\\<\\.a{padding:10px}',
+    ],
+    [
+      'p10<1.a',
+      '.a>.p10\\<1\\.a{padding:10px}',
+    ],
+    [
+      'p10>.c',
+      '.p10\\>\\.c .c{padding:10px}',
+    ],
     // `>N` без селектора законен — «каждому потомку на глубине N». Запрет §14.3
     // спеки только для `<N`: там правило цеплялось бы к любому предку.
-    ['p10>1', '.p10\\>1>*{padding:10px}'],
-    ['p10>2', '.p10\\>2>*>*{padding:10px}'],
-    ['p10<.a>1', '.a .p10\\<\\.a\\>1>*{padding:10px}'],
-    ['p10', '.p10{padding:10px}'],
+    [
+      'p10>1',
+      '.p10\\>1>*{padding:10px}',
+    ],
+    [
+      'p10>2',
+      '.p10\\>2>*>*{padding:10px}',
+    ],
+    [
+      'p10<.a>1',
+      '.a .p10\\<\\.a\\>1>*{padding:10px}',
+    ],
+    [
+      'p10',
+      '.p10{padding:10px}',
+    ],
   ])('%s компилируется как раньше', (token, expected) => {
     const {
       css, warnings,
@@ -226,7 +289,10 @@ describe('синонимы состояний', () => {
     const mn: any = minotationProvider({
       onWarning: (w: any) => warnings.push(w),
     });
-    mn.setPresets([presetStandard, presetSynonyms]);
+    mn.setPresets([
+      presetStandard,
+      presetSynonyms,
+    ]);
     mn.getCompiler('class')(token);
     mn.compile();
     return {
@@ -236,32 +302,110 @@ describe('синонимы состояний', () => {
   }
 
   test.each([
-    ['p10:fv', ':focus-visible'],
-    ['p10:fw', ':focus-within'],
-    ['p10:v', ':visited'],
-    ['p10:link', ':link'],
-    ['p10:al', ':any-link'],
-    ['p10:t', ':target'],
-    ['p10:e', ':empty'],
-    ['p10:root', ':root'],
-    ['p10:r', ':required'],
-    ['p10:opt', ':optional'],
-    ['p10:ro', ':read-only'],
-    ['p10:rw', ':read-write'],
-    ['p10:invalid', ':invalid'],
-    ['p10:valid', ':valid'],
-    ['p10:ir', ':in-range'],
-    ['p10:oor', ':out-of-range'],
-    ['p10:ps', ':placeholder-shown'],
-    ['p10:ind', ':indeterminate'],
-    ['p10:def', ':default'],
-    ['p10:af', ':autofill'],
-    ['p10:fot', ':first-of-type'],
-    ['p10:lot', ':last-of-type'],
-    ['p10:oot', ':only-of-type'],
-    ['p10:nt', ':nth-of-type'],
-    ['p10:nl', ':nth-last-child'],
-    ['p10:nlt', ':nth-last-of-type'],
+    [
+      'p10:fv',
+      ':focus-visible',
+    ],
+    [
+      'p10:fw',
+      ':focus-within',
+    ],
+    [
+      'p10:v',
+      ':visited',
+    ],
+    [
+      'p10:link',
+      ':link',
+    ],
+    [
+      'p10:al',
+      ':any-link',
+    ],
+    [
+      'p10:t',
+      ':target',
+    ],
+    [
+      'p10:e',
+      ':empty',
+    ],
+    [
+      'p10:root',
+      ':root',
+    ],
+    [
+      'p10:r',
+      ':required',
+    ],
+    [
+      'p10:opt',
+      ':optional',
+    ],
+    [
+      'p10:ro',
+      ':read-only',
+    ],
+    [
+      'p10:rw',
+      ':read-write',
+    ],
+    [
+      'p10:invalid',
+      ':invalid',
+    ],
+    [
+      'p10:valid',
+      ':valid',
+    ],
+    [
+      'p10:ir',
+      ':in-range',
+    ],
+    [
+      'p10:oor',
+      ':out-of-range',
+    ],
+    [
+      'p10:ps',
+      ':placeholder-shown',
+    ],
+    [
+      'p10:ind',
+      ':indeterminate',
+    ],
+    [
+      'p10:def',
+      ':default',
+    ],
+    [
+      'p10:af',
+      ':autofill',
+    ],
+    [
+      'p10:fot',
+      ':first-of-type',
+    ],
+    [
+      'p10:lot',
+      ':last-of-type',
+    ],
+    [
+      'p10:oot',
+      ':only-of-type',
+    ],
+    [
+      'p10:nt',
+      ':nth-of-type',
+    ],
+    [
+      'p10:nl',
+      ':nth-last-child',
+    ],
+    [
+      'p10:nlt',
+      ':nth-last-of-type',
+    ],
   ])('%s → %s, без предупреждения', (token, expected) => {
     const r = compileWith(token);
 
@@ -270,10 +414,22 @@ describe('синонимы состояний', () => {
   });
 
   test.each([
-    ['p10:not[.a]', ':not(.a)'],
-    ['p10:is[.a]', ':is(.a)'],
-    ['p10:where[.a]', ':where(.a)'],
-    ['p10:has[.a]', ':has(.a)'],
+    [
+      'p10:not[.a]',
+      ':not(.a)',
+    ],
+    [
+      'p10:is[.a]',
+      ':is(.a)',
+    ],
+    [
+      'p10:where[.a]',
+      ':where(.a)',
+    ],
+    [
+      'p10:has[.a]',
+      ':has(.a)',
+    ],
   ])('%s → %s — функциональные псевдоклассы не предупреждают', (token, expected) => {
     // Ключ совпадает с именем намеренно: это штатный синтаксис нотации.
     const r = compileWith(token);

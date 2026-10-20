@@ -9,13 +9,13 @@
  * - `bxsh10in` (inset) работал — неточна была документация.
  */
 import {
-  minotationProvider, 
+  minotationProvider,
 } from '../core/index';
 import presetStandard from '../presets/standard';
 import presetSynonyms from '../presets/synonyms';
 import presetMedias from '../presets/medias';
 import type {
-  MnWarning, 
+  MnWarning,
 } from '../core/types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -36,20 +36,35 @@ function compile(tokens: string[]): { css: string;
   mn.compile();
   return {
     css: mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n'),
-    warnings, 
+    warnings,
   };
 }
 
 describe('паритет с v1: custom properties', () => {
   test.each([
-    ['--v=10px', '.--v\\=10px{--v:10px}'],
-    ['w--v', '.w--v{width:var(--v)}'],
-    ['w---width', '.w---width{width:env(--width)}'],
-    ['w--v,10px', '.w--v\\,10px{width:var(--v,10px)}'],
-    ['h--v+5', '.h--v\\+5{height:var(--v+5)}'],
+    [
+      '--v=10px',
+      '.--v\\=10px{--v:10px}',
+    ],
+    [
+      'w--v',
+      '.w--v{width:var(--v)}',
+    ],
+    [
+      'w---width',
+      '.w---width{width:env(--width)}',
+    ],
+    [
+      'w--v,10px',
+      '.w--v\\,10px{width:var(--v,10px)}',
+    ],
+    [
+      'h--v+5',
+      '.h--v\\+5{height:var(--v+5)}',
+    ],
   ])('%s → %s', (token, expected) => {
     const {
-      css, warnings, 
+      css, warnings,
     } = compile([token]);
     expect(css).toContain(expected);
     expect(warnings).toEqual([]);
@@ -57,7 +72,7 @@ describe('паритет с v1: custom properties', () => {
 
   test('объявление и подстановки в одном атрибуте', () => {
     const {
-      css, 
+      css,
     } = compile([
       'bxsh10in',
       'w--v',
@@ -84,7 +99,7 @@ describe('паритет с v1: box-shadow inset', () => {
     // теней бракует токен целиком.
     // Рабочая форма — строчный `in`, проверена тестом выше.
     const {
-      css, warnings, 
+      css, warnings,
     } = compile(['bxsh10In']);
 
     expect(css).not.toContain('box-shadow');
@@ -94,21 +109,57 @@ describe('паритет с v1: box-shadow inset', () => {
 
 describe('паритет с v1: shorthand с несколькими значениями', () => {
   test.each([
-    ['p10_20', 'padding:10px 20px'],
-    ['p10_20_30', 'padding:10px 20px 30px'],
-    ['p1_2_3_4', 'padding:1px 2px 3px 4px'],
-    ['p1_2_3_4-i', 'padding:1px 2px 3px 4px!important'],
-    ['m0_auto', 'margin:0 auto'],
-    ['m-10_20', 'margin:-10px 20px'],
-    ['p10%_20', 'padding:10% 20px'],
-    ['p10_20-5', 'padding:10px calc(20px - 5px)'],
-    ['b1_2', 'border-width:1px 2px'],
-    ['r4_8', 'border-radius:4px 8px'],
-    ['r4_8_12_16', 'border-radius:4px 8px 12px 16px'],
-    ['r10-5', 'border-radius:calc(10px - 5px)'],
+    [
+      'p10_20',
+      'padding:10px 20px',
+    ],
+    [
+      'p10_20_30',
+      'padding:10px 20px 30px',
+    ],
+    [
+      'p1_2_3_4',
+      'padding:1px 2px 3px 4px',
+    ],
+    [
+      'p1_2_3_4-i',
+      'padding:1px 2px 3px 4px!important',
+    ],
+    [
+      'm0_auto',
+      'margin:0 auto',
+    ],
+    [
+      'm-10_20',
+      'margin:-10px 20px',
+    ],
+    [
+      'p10%_20',
+      'padding:10% 20px',
+    ],
+    [
+      'p10_20-5',
+      'padding:10px calc(20px - 5px)',
+    ],
+    [
+      'b1_2',
+      'border-width:1px 2px',
+    ],
+    [
+      'r4_8',
+      'border-radius:4px 8px',
+    ],
+    [
+      'r4_8_12_16',
+      'border-radius:4px 8px 12px 16px',
+    ],
+    [
+      'r10-5',
+      'border-radius:calc(10px - 5px)',
+    ],
   ])('%s → %s', (token, expected) => {
     const {
-      css, warnings, 
+      css, warnings,
     } = compile([token]);
     expect(css).toContain(expected);
     expect(warnings).toEqual([]);
@@ -139,12 +190,30 @@ describe('паритет с v1: shorthand с несколькими значен
   });
 
   test.each([
-    ['m-5', 'margin:-5px'],
-    ['mt-5', 'margin-top:-5px'],
-    ['s-5', 'top:-5px'],
-    ['ti-5', 'text-indent:-5px'],
-    ['lts-5', 'letter-spacing:-5px'],
-    ['z-5', 'z-index:-5'],
+    [
+      'm-5',
+      'margin:-5px',
+    ],
+    [
+      'mt-5',
+      'margin-top:-5px',
+    ],
+    [
+      's-5',
+      'top:-5px',
+    ],
+    [
+      'ti-5',
+      'text-indent:-5px',
+    ],
+    [
+      'lts-5',
+      'letter-spacing:-5px',
+    ],
+    [
+      'z-5',
+      'z-index:-5',
+    ],
   ])('%s → %s — там, где минус осмыслен, он работает', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
@@ -160,7 +229,7 @@ describe('паритет с v1: shorthand с несколькими значен
 describe('паритет с v1: дочерние эссенции x.y', () => {
   test('tbl тянет tbl.cell на потомков', () => {
     const {
-      css, 
+      css,
     } = compile(['tbl']);
     expect(css).toContain('.tbl{display:table}');
     expect(css).toContain('.tbl>*{display:table-cell;vertical-align:middle}');
@@ -174,9 +243,9 @@ describe('паритет с v1: дочерние эссенции x.y', () => {
     const mn: any = minotationProvider({
       media: {
         sm: {
-          query: '(width <= 640px)', 
-        }, 
-      }, 
+          query: '(width <= 640px)',
+        },
+      },
     });
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')('tbl@sm');
@@ -228,7 +297,10 @@ describe(':h — :hover только при устройстве с наведе
     const mn: any = minotationProvider({
       warningMode: 'silent',
     });
-    mn.setPresets([presetStandard, presetSynonyms]);
+    mn.setPresets([
+      presetStandard,
+      presetSynonyms,
+    ]);
     mn.getCompiler('class')('p10:h');
     mn.compile();
     expect(mn.styles$.getValue().map((s: { content: string }) => s.content).join(''))
@@ -253,14 +325,14 @@ describe('паритет с v1: ветки, изначально ошибочн�
     // вызовом base(childs, 0); первые два уровня этого не покрывают. Не `:not(…)`: после
     // функционального псевдокласса скобки — аргумент (D-077), а не scope-грамматика.
     const {
-      css, 
+      css,
     } = compile(['p10:hover(.a(.b(.c)))']);
     expect(css).toContain(':hover.a.b.c{padding:10px}');
   });
 
   test('var(--v,10) без явной единицы — подставляется defaultUnit у fallback-значения', () => {
     const {
-      css, 
+      css,
     } = compile(['w--v,10']);
     expect(css).toContain('.w--v\\,10{width:var(--v,10px)}');
   });
@@ -274,22 +346,22 @@ describe('паритет с v1: ветки, изначально ошибочн�
       childs: {
         ' span': {
           style: {
-            color: 'red', 
-          }, 
-        }, 
-      }, 
+            color: 'red',
+          },
+        },
+      },
     }));
     mn('hostpart', () => ({
       style: {
-        padding: '1px', 
+        padding: '1px',
       },
       include: 'mixinpart',
       childs: {
         ' span': {
           style: {
-            display: 'block', 
-          }, 
-        }, 
+            display: 'block',
+          },
+        },
       },
     }));
     mn.getCompiler('class')('hostpart');
@@ -306,7 +378,7 @@ describe('паритет с v1: ветки, изначально ошибочн�
 describe('паритет с v1: отрицательный знаменатель дроби бракуется (2026-09-23)', () => {
   test('w1/-2 — v1 отбраковывает, v2 обязан тоже (регрессия найдена при попытке "упростить" floatNormalize)', () => {
     const {
-      css, 
+      css,
     } = compile(['w1/-2']);
     expect(css).toBe('');
   });

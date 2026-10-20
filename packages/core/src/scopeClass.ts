@@ -75,10 +75,11 @@ export function createScopeClassWriter(options: ScopeClassWriterOptions): ScopeC
   return (
     source, fileName, className,
   ) => {
-    if (!syntax && syntaxKindOf(fileName) === 1) {
+    const typescriptLike = syntaxKindOf(fileName) === 1;
+    if (!syntax && typescriptLike) {
       syntax = loadSyntaxWriter() || 1;
     }
-    const code = syntax !== 0 && syntax !== 1 && syntaxKindOf(fileName) === 1 && syntax(source, {
+    const code = syntax !== 0 && syntax !== 1 && typescriptLike && syntax(source, {
       attr: options.attr,
       className,
       fileName,
@@ -232,7 +233,10 @@ function unreachableClasses(source: string): Array<[line: number, text: string]>
   let match: RegExpExecArray | null;
   REGEXP_UNREACHABLE.lastIndex = 0;
   while ((match = REGEXP_UNREACHABLE.exec(code))) {
-    out.push([code.slice(0, match.index).split('\n').length, match[0].replace(/\s+/g, '')]);
+    out.push([
+      code.slice(0, match.index).split('\n').length,
+      match[0].replace(/\s+/g, ''),
+    ]);
   }
   return out;
 }

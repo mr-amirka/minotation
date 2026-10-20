@@ -82,7 +82,10 @@ const SIDES_MAP = {
   l: [LEFT],
   r: [RIGHT],
 
-  y: [TOP, BOTTOM],
+  y: [
+    TOP,
+    BOTTOM,
+  ],
   yl: [
     TOP,
     BOTTOM,
@@ -94,7 +97,10 @@ const SIDES_MAP = {
     RIGHT,
   ],
 
-  x: [LEFT, RIGHT],
+  x: [
+    LEFT,
+    RIGHT,
+  ],
   xt: [
     LEFT,
     RIGHT,
@@ -106,10 +112,22 @@ const SIDES_MAP = {
     BOTTOM,
   ],
 
-  lt: [TOP, LEFT],
-  rt: [TOP, RIGHT],
-  lb: [BOTTOM, LEFT],
-  rb: [BOTTOM, RIGHT],
+  lt: [
+    TOP,
+    LEFT,
+  ],
+  rt: [
+    TOP,
+    RIGHT,
+  ],
+  lb: [
+    BOTTOM,
+    LEFT,
+  ],
+  rb: [
+    BOTTOM,
+    RIGHT,
+  ],
 };
 /**
  * Словесные значения цвета — только те, что кодом не выразить, и каждое
@@ -293,27 +311,33 @@ const POSITION_PRIORITIES: Record<string, number> = {
 };
 
 const SHADOW_HANDLERS: Record<string, [string, (x: any, y: any, value: any, r: any, color: any) => any[]]> = {
-  bxsh: ['boxShadow', function(
-    x, y, value, r, color,
-  ) {
-    return [
-      x,
-      y,
-      value,
-      r,
-      color,
-    ];
-  }],
-  tsh: ['textShadow', function(
-    x, y, value, r, color,
-  ) {
-    return [
-      x,
-      y,
-      value,
-      color,
-    ];
-  }],
+  bxsh: [
+    'boxShadow',
+    function(
+      x, y, value, r, color,
+    ) {
+      return [
+        x,
+        y,
+        value,
+        r,
+        color,
+      ];
+    },
+  ],
+  tsh: [
+    'textShadow',
+    function(
+      x, y, value, r, color,
+    ) {
+      return [
+        x,
+        y,
+        value,
+        color,
+      ];
+    },
+  ],
 };
 const FILTER_MAP: Record<string, Array<string | number>> = {
   blur: [
@@ -2307,7 +2331,10 @@ export default {
               + validateUnit(p.addu || defaultUnit)),
         ) : val;
       }
-      return [output.join(' '), l - 1];
+      return [
+        output.join(' '),
+        l - 1,
+      ];
     }
 
     function toKebabCase(v: string): string {
@@ -2585,13 +2612,15 @@ export default {
       // Полностью непрозрачная альфа ничего не добавляет: `cFF` = `cF`,
       // `cF00F` = `cF00`, `c0A0A12F` = `c0A0A12`. Альфа — последний символ при
       // длине 2/4/7 и последние два при 8.
-      if ((l === 2 || l === 4 || l === 7) && hex[l - 1].toLowerCase() === 'f') {
+      const rgba8 = l === 8;
+      const rgba4 = l === 4;
+      if ((l === 2 || rgba4 || l === 7) && hex[l - 1].toLowerCase() === 'f') {
         return hex.slice(0, l - 1);
       }
-      if (l === 8 && hex.slice(6).toLowerCase() === 'ff') {
+      if (rgba8 && hex.slice(6).toLowerCase() === 'ff') {
         return hex.slice(0, 6);
       }
-      if (l === 6 || l === 8) {
+      if (l === 6 || rgba8) {
         for (i = 0; i < l; i += 2) {
           if (hex[i].toLowerCase() !== hex[i + 1].toLowerCase()) {
             return;
@@ -2604,7 +2633,7 @@ export default {
         return halved;
       }
       // `AAA` → `A`, `AAAB` → `AB`: первые три задают цвет, четвёртый — альфа.
-      if ((l === 3 || l === 4)
+      if ((l === 3 || rgba4)
     && hex[0].toLowerCase() === hex[1].toLowerCase()
     && hex[1].toLowerCase() === hex[2].toLowerCase()) {
         return hex[0] + hex.slice(3);
@@ -2616,10 +2645,22 @@ export default {
    * 7 = RRGGBB+альфа, 8 = RRGGBB+AA.
    */
     const HEX_ALPHA_FORM: Record<number, [number, number]> = {
-      2: [1, 15],
-      4: [1, 15],
-      7: [1, 15],
-      8: [2, 255],
+      2: [
+        1,
+        15,
+      ],
+      4: [
+        1,
+        15,
+      ],
+      7: [
+        1,
+        15,
+      ],
+      8: [
+        2,
+        255,
+      ],
     };
     /**
    * Каноничная запись альфа-канала, если текущая не такова.
@@ -2821,7 +2862,7 @@ export default {
 
     forIn(mapIn(SIDES_MAP, (sides) => reduce(
       sides, (dst, key) => {
-        dst[key] = 1; return dst; 
+        dst[key] = 1; return dst;
       }, {},
     )), (sides, suffix) => {
       const priority = suffix ? (4 - size(sides)) : 0;
@@ -2832,7 +2873,7 @@ export default {
       function sidesSetter(handle: (side: string) => string): (v: any) => Record<string, any> {
         const propsMap: Record<string, number> = {};
         forIn(sides, (_val, propSide) => {
-          propsMap[handle(propSide)] = 1; 
+          propsMap[handle(propSide)] = 1;
         });
         return (v: any) => {
         /* istanbul ignore next — защита фабрики, а не живая ветка: единственный
@@ -3010,7 +3051,10 @@ export default {
 
 
     forIn({
-      sq: ['width', 'height'],
+      sq: [
+        'width',
+        'height',
+      ],
       w: ['width'],
       h: ['height'],
     }, (props, essencePrefix) => {
@@ -3190,16 +3234,31 @@ export default {
       c: ['color'],
       stroke: ['stroke'],
       fill: ['fill'],
-      olc: ['outlineColor', 1],
-      bgc: ['backgroundColor', 1],
-      temc: ['textEmphasisColor', 1],
-      tdc: ['textDecorationColor', 1],
+      olc: [
+        'outlineColor',
+        1,
+      ],
+      bgc: [
+        'backgroundColor',
+        1,
+      ],
+      temc: [
+        'textEmphasisColor',
+        1,
+      ],
+      tdc: [
+        'textDecorationColor',
+        1,
+      ],
       // WebkitTapHighlightColor — вендорное свойство без нестандартного аналога
       // (camelCase с ведущей заглавной буквы camelToKebabCase превращает в
       // '-webkit-tap-highlight-color', см. fundamentool). Добавлено 2026-09-23
       // взамен ручного mn.css({html:{'-webkit-tap-highlight-color':'#000'}})
       // в presets/main/index.ts — единственного оставшегося в проекте вызова mn.css.
-      thc: ['WebkitTapHighlightColor', 1],
+      thc: [
+        'WebkitTapHighlightColor',
+        1,
+      ],
     }, (options: any[], pfx: string) => {
       const propName = options[0];
       const priority = options[1] || 0;
@@ -3338,7 +3397,10 @@ export default {
       });
     });
 
-    forIn(SHADOW_HANDLERS, ([propName, handler], pfx) => {
+    forIn(SHADOW_HANDLERS, ([
+      propName,
+      handler,
+    ], pfx) => {
     /**
      * Собирает ОДНУ тень из её разобранного суффикса.
      *
@@ -3530,7 +3592,10 @@ export default {
         },
       ],
     }, (options: any[], pfx: string) => {
-      const [propName, defaultValue] = options;
+      const [
+        propName,
+        defaultValue,
+      ] = options;
       const priority = options[2] || 0;
       const one = options[3];
       const synonyms = options[4] || {};
@@ -3621,7 +3686,10 @@ export default {
         exts: ['posS'],
         childs: {
           pale: {
-            selectors: [':before', ':after'],
+            selectors: [
+              ':before',
+              ':after',
+            ],
             style: {
               content: '" "',
               clear: 'both',
@@ -3695,7 +3763,7 @@ export default {
         let v, num;
         return p.camel || p.negative ? 0 : (
           (v = cssVarValue(p.suffix || '')) ? styleWrap({
-            opacity: v, 
+            opacity: v,
             // `p.num` — группа регулярки, то есть строка. Раньше здесь шла
             // арифметика прямо по ней (`num * 0.01`) и работала на неявном
             // приведении; `+num` делает то же самое, но видимо.
@@ -4355,8 +4423,8 @@ export default {
         'quotes', {
           A: 'Auto',
           N: 'None',
-          RU: `'\\00AB'_'\\00BB'_'\\201E'_'\\201C'`,
-          EN: `'\\201C'_'\\201D'_'\\2018'_'\\2019'`,
+          RU: '\'\\00AB\'_\'\\00BB\'_\'\\201E\'_\'\\201C\'',
+          EN: '\'\\201C\'_\'\\201D\'_\'\\2018\'_\'\\2019\'',
         }, 1, 0 as any, 0 as any, 1,
       ),
       ols: synonymProvider(
@@ -4415,9 +4483,18 @@ export default {
           C: 'Circle',
         }, 1,
       ),
-      pgbb: synonymProvider(['pageBreakBefore', 'breakBefore'], BREAK_AFTER_SYNONYMS),
-      pgba: synonymProvider(['pageBreakAfter', 'breakAfter'], BREAK_AFTER_SYNONYMS),
-      pgbi: synonymProvider(['pageBreakInside', 'breakInside'], {
+      pgbb: synonymProvider([
+        'pageBreakBefore',
+        'breakBefore',
+      ], BREAK_AFTER_SYNONYMS),
+      pgba: synonymProvider([
+        'pageBreakAfter',
+        'breakAfter',
+      ], BREAK_AFTER_SYNONYMS),
+      pgbi: synonymProvider([
+        'pageBreakInside',
+        'breakInside',
+      ], {
         A: 'Auto',
         AV: 'Avoid',
         AVP: 'AvoidPage',
@@ -4805,13 +4882,22 @@ export default {
         LENGTH_PERCENT | LENGTH_SIGN,
       ],
 
-      tp: ['transitionProperty', 1],
-      ttf: ['transitionTimingFunction', 1],
+      tp: [
+        'transitionProperty',
+        1,
+      ],
+      ttf: [
+        'transitionTimingFunction',
+        1,
+      ],
 
 
 
       g: ['grid'],
-      gt: ['gridTemplate', 1],
+      gt: [
+        'gridTemplate',
+        1,
+      ],
       gtc: [
         'gridTemplateColumns',
         2,
@@ -4824,12 +4910,27 @@ export default {
         0,
         1,
       ],
-      gac: ['gridAutoColumns', 1],
-      gar: ['gridAutoRows', 1],
-      gaf: ['gridAutoFlow', 1],
+      gac: [
+        'gridAutoColumns',
+        1,
+      ],
+      gar: [
+        'gridAutoRows',
+        1,
+      ],
+      gaf: [
+        'gridAutoFlow',
+        1,
+      ],
 
-      gr: ['gridRow', 1],
-      gc: ['gridColumn', 1],
+      gr: [
+        'gridRow',
+        1,
+      ],
+      gc: [
+        'gridColumn',
+        1,
+      ],
 
       fx: ['flex'],
       fxb: [
@@ -4845,13 +4946,28 @@ export default {
           'fit-content': 1,
         },
       ],
-      fxf: ['flexFlow', 1],
-      fxg: ['flexGrow', 1],
-      fxs: ['flexShrink', 1],
+      fxf: [
+        'flexFlow',
+        1,
+      ],
+      fxg: [
+        'flexGrow',
+        1,
+      ],
+      fxs: [
+        'flexShrink',
+        1,
+      ],
 
       or: ['order'],
-      tds: ['textDecorationSkip', 1],
-      tdsi: ['textDecorationSkipInk', 2],
+      tds: [
+        'textDecorationSkip',
+        1,
+      ],
+      tdsi: [
+        'textDecorationSkipInk',
+        2,
+      ],
       tdt: [
         'textDecorationThickness',
         1,
@@ -4862,7 +4978,10 @@ export default {
           'from-font': 1,
         },
       ],
-      tdst: ['textDecorationStyle', 2],
+      tdst: [
+        'textDecorationStyle',
+        2,
+      ],
       tuo: [
         'textUnderlineOffset',
         2,
@@ -4872,7 +4991,10 @@ export default {
           auto: 1,
         },
       ],
-      tup: ['textUnderlinePosition', 2],
+      tup: [
+        'textUnderlinePosition',
+        2,
+      ],
 
       ts: ['transformStyle'],
       mbm: ['mixBlendMode'],
@@ -4884,8 +5006,14 @@ export default {
       // bdrs: ['borderRadius'],
       zm: ['zoom'],
       tem: ['textEmphasis'],
-      temp: ['textEmphasisPosition', 1],
-      tems: ['textEmphasisStyle', 1],
+      temp: [
+        'textEmphasisPosition',
+        1,
+      ],
+      tems: [
+        'textEmphasisStyle',
+        1,
+      ],
       ir: ['imageRendering'],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }, (options: any[], essenceName: string) => {
@@ -4966,7 +5094,10 @@ export default {
             defaultUnitNormalize(s), essenceName, p.suffix, lengthy,
           )
           // `optimize-contrast` нужен и с префиксом WebKit (бывший `contrast`, D-094).
-          : s === 'optimize-contrast' ? [s, '-webkit-' + s] : s;
+          : s === 'optimize-contrast' ? [
+            s,
+            '-webkit-' + s,
+          ] : s;
         return styleWrap(style, stylePriority);
       });
     });
@@ -4994,7 +5125,10 @@ export default {
           childs: {
             overlay: {
               selectors: ['>*'],
-              exts: ['abs' + p.ni, 's' + p.ni],
+              exts: [
+                'abs' + p.ni,
+                's' + p.ni,
+              ],
             },
           },
         };

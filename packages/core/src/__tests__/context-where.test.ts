@@ -29,22 +29,70 @@ function css(token: string, options: MnOptions = {}): string {
 
 describe("contextWhere — 'context-qualified'", () => {
   test.each([
-    ['cF00', '.cF00{color:#f00}'],
-    ['cF00:h', '@media (hover: hover){.cF00\\:h:hover{color:#f00}}'],
-    ['cF00.active', '.cF00\\.active.active{color:#f00}'],
-    ['cF00<.card:h', '@media (hover: hover){.cF00\\<\\.card\\:h:is(:where(.card:hover) *){color:#f00}}'],
-    ['cF00<.peer:f~', '.cF00\\<\\.peer\\:f\\~:is(:where(.peer:focus)~*){color:#f00}'],
-    ['cF00<.a+', '.cF00\\<\\.a\\+:is(:where(.a)+*){color:#f00}'],
-    ['cF00<1.box', '.cF00\\<1\\.box:is(:where(.box)>*){color:#f00}'],
-    ['cF00<2.box', '.cF00\\<2\\.box:is(:where(.box)>*>*){color:#f00}'],
-    ['cF00<.a<.b', '.cF00\\<\\.a\\<\\.b:is(:where(.b .a) *){color:#f00}'],
-    ['cF00>.child', ':where(.cF00\\>\\.child) .child{color:#f00}'],
-    ['cF00>1', ':where(.cF00\\>1)>*{color:#f00}'],
-    ['cF00>.a>.b', ':where(.cF00\\>\\.a\\>\\.b .a) .b{color:#f00}'],
-    ['cF00+.b', ':where(.cF00\\+\\.b)+.b{color:#f00}'],
-    ['cF00~*', ':where(.cF00\\~\\*)~*{color:#f00}'],
-    ['cF00+.b:h', '@media (hover: hover){:where(.cF00\\+\\.b\\:h)+.b:hover{color:#f00}}'],
-    ['cF00[x~=a]', '.cF00\\[x\\~\\=a\\][x~=a]{color:#f00}'],
+    [
+      'cF00',
+      '.cF00{color:#f00}',
+    ],
+    [
+      'cF00:h',
+      '@media (hover: hover){.cF00\\:h:hover{color:#f00}}',
+    ],
+    [
+      'cF00.active',
+      '.cF00\\.active.active{color:#f00}',
+    ],
+    [
+      'cF00<.card:h',
+      '@media (hover: hover){.cF00\\<\\.card\\:h:is(:where(.card:hover) *){color:#f00}}',
+    ],
+    [
+      'cF00<.peer:f~',
+      '.cF00\\<\\.peer\\:f\\~:is(:where(.peer:focus)~*){color:#f00}',
+    ],
+    [
+      'cF00<.a+',
+      '.cF00\\<\\.a\\+:is(:where(.a)+*){color:#f00}',
+    ],
+    [
+      'cF00<1.box',
+      '.cF00\\<1\\.box:is(:where(.box)>*){color:#f00}',
+    ],
+    [
+      'cF00<2.box',
+      '.cF00\\<2\\.box:is(:where(.box)>*>*){color:#f00}',
+    ],
+    [
+      'cF00<.a<.b',
+      '.cF00\\<\\.a\\<\\.b:is(:where(.b .a) *){color:#f00}',
+    ],
+    [
+      'cF00>.child',
+      ':where(.cF00\\>\\.child) .child{color:#f00}',
+    ],
+    [
+      'cF00>1',
+      ':where(.cF00\\>1)>*{color:#f00}',
+    ],
+    [
+      'cF00>.a>.b',
+      ':where(.cF00\\>\\.a\\>\\.b .a) .b{color:#f00}',
+    ],
+    [
+      'cF00+.b',
+      ':where(.cF00\\+\\.b)+.b{color:#f00}',
+    ],
+    [
+      'cF00~*',
+      ':where(.cF00\\~\\*)~*{color:#f00}',
+    ],
+    [
+      'cF00+.b:h',
+      '@media (hover: hover){:where(.cF00\\+\\.b\\:h)+.b:hover{color:#f00}}',
+    ],
+    [
+      'cF00[x~=a]',
+      '.cF00\\[x\\~\\=a\\][x~=a]{color:#f00}',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(css(token)).toBe(expected);
   });

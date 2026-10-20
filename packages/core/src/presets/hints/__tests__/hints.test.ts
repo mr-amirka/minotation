@@ -11,7 +11,9 @@ import presetHints, {
   HINTS,
 } from '..';
 import type {
-  MnOptions, MnPreset, MnWarning,
+  MnOptions,
+  MnPreset,
+  MnWarning,
 } from '../../../core/types';
 import type {
   MnInstance,
@@ -26,7 +28,10 @@ const STANDARD: MnPreset[] = [
 
 /** Компилирует токены; возвращает собственные правила токенов и предупреждения. */
 function run(
-  tokens: string, presets = [presetHints, ...STANDARD], options: MnOptions = {},
+  tokens: string, presets = [
+    presetHints,
+    ...STANDARD,
+  ], options: MnOptions = {},
 ) {
   const warnings: MnWarning[] = [];
   const mn = minotationProvider({
@@ -57,53 +62,109 @@ function hasOwnRule(css: string, token: string): boolean {
 describe('presetHints — подсказки', () => {
   test('опечатка t0 → st0, l10 → sl10; CSS нет', () => {
     const {
-      css, warnings, 
+      css, warnings,
     } = run('t0 l10');
     expect(hasOwnRule(css, 't0')).toBe(false);
-    expect(warnings).toEqual([expect.objectContaining({
-      type: 'hint',
-      token: 't0',
-      message: 'presetHints[typos]: "t0" gives no CSS — did you mean "st0"?',
-    }), expect.objectContaining({
-      type: 'hint',
-      token: 'l10',
-      message: 'presetHints[typos]: "l10" gives no CSS — did you mean "sl10"?',
-    })]);
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        type: 'hint',
+        token: 't0',
+        message: 'presetHints[typos]: "t0" gives no CSS — did you mean "st0"?',
+      }),
+      expect.objectContaining({
+        type: 'hint',
+        token: 'l10',
+        message: 'presetHints[typos]: "l10" gives no CSS — did you mean "sl10"?',
+      }),
+    ]);
   });
 
   test.each([
-    ['mh100vh', 'hmin100vh'],
-    ['mw320', 'wmin320'],
-    ['minh40', 'hmin40'],
-    ['minw10', 'wmin10'],
-    ['maxh50%', 'hmax50%'],
-    ['maxw50%', 'wmax50%'],
-    ['pointerEventsNone', 'peN'],
-    ['pointerEventsAll', 'peAL'],
-    ['aN', 'apN'],
-    ['appearanceNone', 'apN'],
-    ['appearanceButton', 'apButton'],
-    ['zi10', 'z10'],
-    ['toE', 'tovE'],
-    ['colsA', 'colA'],
-    ['cuP', 'crP'],
-    ['bxsBB', 'bxzBB'],
-    ['pointerNone', 'peN'],
+    [
+      'mh100vh',
+      'hmin100vh',
+    ],
+    [
+      'mw320',
+      'wmin320',
+    ],
+    [
+      'minh40',
+      'hmin40',
+    ],
+    [
+      'minw10',
+      'wmin10',
+    ],
+    [
+      'maxh50%',
+      'hmax50%',
+    ],
+    [
+      'maxw50%',
+      'wmax50%',
+    ],
+    [
+      'pointerEventsNone',
+      'peN',
+    ],
+    [
+      'pointerEventsAll',
+      'peAL',
+    ],
+    [
+      'aN',
+      'apN',
+    ],
+    [
+      'appearanceNone',
+      'apN',
+    ],
+    [
+      'appearanceButton',
+      'apButton',
+    ],
+    [
+      'zi10',
+      'z10',
+    ],
+    [
+      'toE',
+      'tovE',
+    ],
+    [
+      'colsA',
+      'colA',
+    ],
+    [
+      'cuP',
+      'crP',
+    ],
+    [
+      'bxsBB',
+      'bxzBB',
+    ],
+    [
+      'pointerNone',
+      'peN',
+    ],
   ])('%s → подсказка %s (D-093, запросы web-games)', (token, right) => {
     const {
       css, warnings,
     } = run(token);
     expect(hasOwnRule(css, token)).toBe(false);
-    expect(warnings).toEqual([expect.objectContaining({
-      type: 'hint',
-      token,
-      message: 'presetHints[typos]: "' + token + '" gives no CSS — did you mean "' + right + '"?',
-    })]);
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        type: 'hint',
+        token,
+        message: 'presetHints[typos]: "' + token + '" gives no CSS — did you mean "' + right + '"?',
+      }),
+    ]);
   });
 
   test('класс другой системы — эквивалент в нотации, kebab тоже', () => {
     const {
-      warnings, 
+      warnings,
     } = run('flex text-center justify-content-between');
     expect(warnings.map((w) => w.message)).toEqual([
       'presetHints[tailwind]: "flex" gives no CSS — in minotation it is "dF"',
@@ -114,15 +175,17 @@ describe('presetHints — подсказки', () => {
 
   test('класс без известного эквивалента — общая подсказка', () => {
     const {
-      warnings, 
+      warnings,
     } = run('text-muted');
-    expect(warnings.map((w) => w.message)).toEqual(['presetHints[bootstrap, tailwind]: "text-muted" gives no CSS — it looks like a class of another CSS framework,'
-        + ' and minotation has no such token']);
+    expect(warnings.map((w) => w.message)).toEqual([
+      'presetHints[bootstrap, tailwind]: "text-muted" gives no CSS — it looks like a class of another CSS framework,'
+        + ' and minotation has no such token',
+    ]);
   });
 
   test('без пресета — по-прежнему молча', () => {
     const {
-      warnings, 
+      warnings,
     } = run('t0 flex text-center', STANDARD);
     expect(warnings).toEqual([]);
   });
@@ -160,14 +223,20 @@ describe('presetHints — подсказки', () => {
     const {
       warnings,
     } = run('mt-auto sr-only');
-    expect(warnings.map((w) => w.token)).toEqual(['mt-auto', 'sr-only']);
+    expect(warnings.map((w) => w.token)).toEqual([
+      'mt-auto',
+      'sr-only',
+    ]);
   });
 
   test('подсказка подчиняется warningMode: error роняет сборку', () => {
     const {
-      error, 
+      error,
     } = run(
-      't0', [presetHints, ...STANDARD], {
+      't0', [
+        presetHints,
+        ...STANDARD,
+      ], {
         warningMode: 'error',
       },
     );
@@ -191,7 +260,7 @@ describe('presetHints — таблицы', () => {
   test.each(names)('имя "%s" не занято стандартными пресетами', (name) => {
     // Иначе пресет подсказок перекрыл бы его или был бы перекрыт — подсказка мертва.
     const {
-      css, 
+      css,
     } = run(name, STANDARD);
     expect(hasOwnRule(css, name)).toBe(false);
   });
@@ -201,13 +270,16 @@ describe('presetHints — таблицы', () => {
   let suffix: string;
   for (name in HINTS.equivalents) { // eslint-disable-line
     for (suffix in HINTS.equivalents[name]) { // eslint-disable-line
-      equivalents.push([name + suffix, HINTS.equivalents[name][suffix][0]]);
+      equivalents.push([
+        name + suffix,
+        HINTS.equivalents[name][suffix][0],
+      ]);
     }
   }
 
   test.each(equivalents)('"%s" → "%s": эквивалент компилируется', (_, equivalent) => {
     const {
-      css, warnings, 
+      css, warnings,
     } = run(equivalent);
     expect(warnings).toEqual([]);
     for (const token of equivalent.split(' ')) {
@@ -215,14 +287,23 @@ describe('presetHints — таблицы', () => {
     }
   });
 
-  test.each([['appearance', 'apN'], ['pointer', 'peN']])('опечатка со значением "%s": исправление %s компилируется', (typo, right) => {
+  test.each([
+    [
+      'appearance',
+      'apN',
+    ],
+    [
+      'pointer',
+      'peN',
+    ],
+  ])('опечатка со значением "%s": исправление %s компилируется', (typo, right) => {
     expect(Object.keys(HINTS.valueTypos)).toContain(typo);
     expect(hasOwnRule(run(right).css, right)).toBe(true);
   });
 
   test.each(Object.keys(HINTS.typos))('опечатка "%s": исправление компилируется', (typo) => {
     const {
-      css, 
+      css,
     } = run(HINTS.typos[typo] + (TYPO_VALUES[HINTS.typos[typo]] || '0'));
     expect(hasOwnRule(css, HINTS.typos[typo] + (TYPO_VALUES[HINTS.typos[typo]] || '0'))).toBe(true);
   });
@@ -231,37 +312,55 @@ describe('presetHints — таблицы', () => {
 describe('presetHints — фабрика: исключения групп и обработчиков (D-042)', () => {
   test('excludeGroups: подсказка молчит, если исключена хоть одна её группа', () => {
     const {
-      warnings, css, 
-    } = run('text-center flex justify-content-between t0', [presetHints({
-      excludeGroups: ['bootstrap'],
-    }), ...STANDARD]);
+      warnings, css,
+    } = run('text-center flex justify-content-between t0', [
+      presetHints({
+        excludeGroups: ['bootstrap'],
+      }),
+      ...STANDARD,
+    ]);
     // text-center — и Bootstrap, и Tailwind: Bootstrap подключён, значит класс работает.
-    expect(warnings.map((w) => w.token)).toEqual(['flex', 't0']);
+    expect(warnings.map((w) => w.token)).toEqual([
+      'flex',
+      't0',
+    ]);
     expect(hasOwnRule(css, 'text-center')).toBe(false);
   });
 
   test('excludeGroups: typos — ловушки опечаток не регистрируются', () => {
     const {
-      warnings, 
-    } = run('t0 l0 flex', [presetHints({
-      excludeGroups: ['typos'],
-    }), ...STANDARD]);
+      warnings,
+    } = run('t0 l0 flex', [
+      presetHints({
+        excludeGroups: ['typos'],
+      }),
+      ...STANDARD,
+    ]);
     expect(warnings.map((w) => w.token)).toEqual(['flex']);
   });
 
   test('excludeHandlers: обработчик не регистрируется', () => {
     const {
-      warnings, 
-    } = run('flex text-center t0', [presetHints({
-      excludeHandlers: ['text', 't'],
-    }), ...STANDARD]);
+      warnings,
+    } = run('flex text-center t0', [
+      presetHints({
+        excludeHandlers: [
+          'text',
+          't',
+        ],
+      }),
+      ...STANDARD,
+    ]);
     expect(warnings.map((w) => w.token)).toEqual(['flex']);
   });
 
   test('фабрика без опций — как пресет', () => {
     const {
-      warnings, 
-    } = run('flex', [presetHints({}), ...STANDARD]);
+      warnings,
+    } = run('flex', [
+      presetHints({}),
+      ...STANDARD,
+    ]);
     expect(warnings.map((w) => w.token)).toEqual(['flex']);
   });
 

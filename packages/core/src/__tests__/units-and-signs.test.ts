@@ -27,7 +27,8 @@ function compile(tokens: string[]): { css: string;
   });
   mn.setPresets([presetStandard]);
   const c = mn.getCompiler('class');
-  for (let i = 0; i < tokens.length; i++) {
+  const tokensLength = tokens.length;
+  for (let i = 0; i < tokensLength; i++) {
     c(tokens[i]);
   }
   mn.compile();
@@ -121,18 +122,39 @@ describe('единицы длины', () => {
   });
 
   test.each([
-    ['ti10s', 'время'],
-    ['ti10deg', 'угол'],
-    ['ti10fr', 'доля grid-дорожки'],
+    [
+      'ti10s',
+      'время',
+    ],
+    [
+      'ti10deg',
+      'угол',
+    ],
+    [
+      'ti10fr',
+      'доля grid-дорожки',
+    ],
   ])('%s — единица не того типа (%s) бракуется', (token) => {
     expect(compile([token]).css).toBe('');
   });
 
   test.each([
-    ['tiF00', 'text-indent:f00'],
-    ['ti1/2', 'text-indent:1/2'],
-    ['ti10-5', 'text-indent:10-5'],
-    ['ti100%-20px', 'text-indent:100%-20px'],
+    [
+      'tiF00',
+      'text-indent:f00',
+    ],
+    [
+      'ti1/2',
+      'text-indent:1/2',
+    ],
+    [
+      'ti10-5',
+      'text-indent:10-5',
+    ],
+    [
+      'ti100%-20px',
+      'text-indent:100%-20px',
+    ],
   ])('%s больше не даёт "%s"', (token) => {
     // Общий блок свободных значений кебабил суффикс и отдавал как есть;
     // свойства нет в таблице валидатора ядра, поэтому проходило молча.
@@ -146,11 +168,26 @@ describe('единицы длины', () => {
 
 describe('единица в тенях идёт во все длины записи', () => {
   test.each([
-    ['bxsh10', 'box-shadow:0px 0px 10px 0px #000'],
-    ['bxsh1.5em', 'box-shadow:0em 0em 1.5em 0em #000'],
-    ['bxsh10rem', 'box-shadow:0rem 0rem 10rem 0rem #000'],
-    ['bxsh10dvh', 'box-shadow:0dvh 0dvh 10dvh 0dvh #000'],
-    ['tsh10em', 'text-shadow:0em 0em 10em #000'],
+    [
+      'bxsh10',
+      'box-shadow:0px 0px 10px 0px #000',
+    ],
+    [
+      'bxsh1.5em',
+      'box-shadow:0em 0em 1.5em 0em #000',
+    ],
+    [
+      'bxsh10rem',
+      'box-shadow:0rem 0rem 10rem 0rem #000',
+    ],
+    [
+      'bxsh10dvh',
+      'box-shadow:0dvh 0dvh 10dvh 0dvh #000',
+    ],
+    [
+      'tsh10em',
+      'text-shadow:0em 0em 10em #000',
+    ],
   ])('%s → %s', (token, expected) => {
     // Склейка была жёстко `px`, и всё кроме него молча терялось. Мимо
     // валидатора ядра это проходило: `box-shadow` не в его таблице.
@@ -158,9 +195,18 @@ describe('единица в тенях идёт во все длины запи�
   });
 
   test.each([
-    ['bxsh19r3c43F', 'box-shadow:0px 0px 19px 3px #43f'],
-    ['bxsh10x2y4', 'box-shadow:2px 4px 10px 0px #000'],
-    ['bxsh10emc43F', 'box-shadow:0em 0em 10em 0em #43f'],
+    [
+      'bxsh19r3c43F',
+      'box-shadow:0px 0px 19px 3px #43f',
+    ],
+    [
+      'bxsh10x2y4',
+      'box-shadow:2px 4px 10px 0px #000',
+    ],
+    [
+      'bxsh10emc43F',
+      'box-shadow:0em 0em 10em 0em #43f',
+    ],
   ])('%s → %s — модификаторы не путаются с единицей', (token, expected) => {
     // Единицу нельзя брать из `p.unit`: разбор значения в ядре считает
     // единицей любой буквенный хвост после числа, и туда попадает начало
@@ -189,15 +235,42 @@ describe('единица в тенях идёт во все длины запи�
 
 describe('поворот измеряется углом', () => {
   test.each([
-    ['rx', 'rotateX(180deg)'],
-    ['rx45', 'rotateX(45deg)'],
-    ['rx-45', 'rotateX(-45deg)'],
-    ['rx45deg', 'rotateX(45deg)'],
-    ['rx0.5turn', 'rotateX(0.5turn)'],
-    ['rx1rad', 'rotateX(1rad)'],
-    ['rx100grad', 'rotateX(100grad)'],
-    ['ry90', 'rotateY(90deg)'],
-    ['rz180', 'rotateZ(180deg)'],
+    [
+      'rx',
+      'rotateX(180deg)',
+    ],
+    [
+      'rx45',
+      'rotateX(45deg)',
+    ],
+    [
+      'rx-45',
+      'rotateX(-45deg)',
+    ],
+    [
+      'rx45deg',
+      'rotateX(45deg)',
+    ],
+    [
+      'rx0.5turn',
+      'rotateX(0.5turn)',
+    ],
+    [
+      'rx1rad',
+      'rotateX(1rad)',
+    ],
+    [
+      'rx100grad',
+      'rotateX(100grad)',
+    ],
+    [
+      'ry90',
+      'rotateY(90deg)',
+    ],
+    [
+      'rz180',
+      'rotateZ(180deg)',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain('transform:' + expected);
   });
@@ -221,9 +294,18 @@ describe('поворот измеряется углом', () => {
   });
 
   test.each([
-    ['x10y20rz45', 'translate(10px,20px) rotateZ(45deg)'],
-    ['x10y20rz45deg', 'translate(10px,20px) rotateZ(45deg)'],
-    ['x10y20rz0.5turn', 'translate(10px,20px) rotateZ(0.5turn)'],
+    [
+      'x10y20rz45',
+      'translate(10px,20px) rotateZ(45deg)',
+    ],
+    [
+      'x10y20rz45deg',
+      'translate(10px,20px) rotateZ(45deg)',
+    ],
+    [
+      'x10y20rz0.5turn',
+      'translate(10px,20px) rotateZ(0.5turn)',
+    ],
   ])('%s → %s — в составной форме единица берётся из своего хвоста', (token, expected) => {
     // У составного суффикса `p.unit` заполняет ещё и generic-разбор ядра:
     // у `x10y20rz45` туда попадал `y` от `y20`, давая `rotateZ(45y)`.
@@ -239,15 +321,42 @@ describe('процент и количество значений — по св�
   // Свойства делятся по этим двум признакам по-разному, поэтому одного флага
   // «это длина» мало. Каждая строка сверяется с арбитром.
   const PERCENT_OK: Array<[string, string]> = [
-    ['p10%', 'padding'],
-    ['m10%', 'margin'],
-    ['r10%', 'border-radius'],
-    ['f10%', 'font-size'],
-    ['w10%', 'width'],
-    ['ti10%', 'text-indent'],
-    ['tdt10%', 'text-decoration-thickness'],
-    ['fxb10%', 'flex-basis'],
-    ['sw10%', 'stroke-width'],
+    [
+      'p10%',
+      'padding',
+    ],
+    [
+      'm10%',
+      'margin',
+    ],
+    [
+      'r10%',
+      'border-radius',
+    ],
+    [
+      'f10%',
+      'font-size',
+    ],
+    [
+      'w10%',
+      'width',
+    ],
+    [
+      'ti10%',
+      'text-indent',
+    ],
+    [
+      'tdt10%',
+      'text-decoration-thickness',
+    ],
+    [
+      'fxb10%',
+      'flex-basis',
+    ],
+    [
+      'sw10%',
+      'stroke-width',
+    ],
   ];
 
   test.each(PERCENT_OK)('%s — у %s процент валиден', (token, prop) => {
@@ -256,11 +365,26 @@ describe('процент и количество значений — по св�
   });
 
   const PERCENT_BAD: Array<[string, string]> = [
-    ['b10%', 'border-width'],
-    ['bt10%', 'border-top-width'],
-    ['olw10%', 'outline-width'],
-    ['wos10%', 'word-spacing'],
-    ['bsp10%', 'border-spacing'],
+    [
+      'b10%',
+      'border-width',
+    ],
+    [
+      'bt10%',
+      'border-top-width',
+    ],
+    [
+      'olw10%',
+      'outline-width',
+    ],
+    [
+      'wos10%',
+      'word-spacing',
+    ],
+    [
+      'bsp10%',
+      'border-spacing',
+    ],
   ];
 
   test.each(PERCENT_BAD)('%s бракуется — у %s процента нет', (token, prop) => {
@@ -275,12 +399,30 @@ describe('процент и количество значений — по св�
   });
 
   const MULTI_OK: Array<[string, string]> = [
-    ['p10_20', 'padding:10px 20px'],
-    ['m10_20', 'margin:10px 20px'],
-    ['b10_20', 'border-width:10px 20px'],
-    ['b1_2_3_4', 'border-width:1px 2px 3px 4px'],
-    ['bsp10_20', 'border-spacing:10px 20px'],
-    ['gg10_20', 'grid-gap:10px 20px'],
+    [
+      'p10_20',
+      'padding:10px 20px',
+    ],
+    [
+      'm10_20',
+      'margin:10px 20px',
+    ],
+    [
+      'b10_20',
+      'border-width:10px 20px',
+    ],
+    [
+      'b1_2_3_4',
+      'border-width:1px 2px 3px 4px',
+    ],
+    [
+      'bsp10_20',
+      'border-spacing:10px 20px',
+    ],
+    [
+      'gg10_20',
+      'grid-gap:10px 20px',
+    ],
   ];
 
   test.each(MULTI_OK)('%s → %s — свойство берёт несколько значений', (token, expected) => {
@@ -288,14 +430,38 @@ describe('процент и количество значений — по св�
   });
 
   const MULTI_BAD: Array<[string, string]> = [
-    ['bt10_20', 'border-top-width'],
-    ['olw10_20', 'outline-width'],
-    ['ti10_20', 'text-indent'],
-    ['tdt10_20', 'text-decoration-thickness'],
-    ['tuo10_20', 'text-underline-offset'],
-    ['fxb10_20', 'flex-basis'],
-    ['ggc10_20', 'grid-column-gap'],
-    ['sw10_20', 'stroke-width'],
+    [
+      'bt10_20',
+      'border-top-width',
+    ],
+    [
+      'olw10_20',
+      'outline-width',
+    ],
+    [
+      'ti10_20',
+      'text-indent',
+    ],
+    [
+      'tdt10_20',
+      'text-decoration-thickness',
+    ],
+    [
+      'tuo10_20',
+      'text-underline-offset',
+    ],
+    [
+      'fxb10_20',
+      'flex-basis',
+    ],
+    [
+      'ggc10_20',
+      'grid-column-gap',
+    ],
+    [
+      'sw10_20',
+      'stroke-width',
+    ],
   ];
 
   test.each(MULTI_BAD)('%s бракуется — %s берёт одно значение', (token, prop) => {
@@ -309,24 +475,78 @@ describe('одиночные свойства-длины со своим раз�
   // `camel ? toKebabCase(camel) : num + (p.unit || 'px')` — ни слово, ни
   // единица не проверялись, а валидатор ядра ни одного из свойств не знал.
   test.each([
-    ['olo', 'outline-offset:0'],
-    ['olo2', 'outline-offset:2px'],
-    ['olo-2', 'outline-offset:-2px'],
-    ['olo--v', 'outline-offset:var(--v)'],
-    ['oloInherit', 'outline-offset:inherit'],
-    ['lts2', 'letter-spacing:2px'],
-    ['lts0.06em', 'letter-spacing:0.06em'],
-    ['lts-0.02em', 'letter-spacing:-0.02em'],
-    ['lts10%', 'letter-spacing:10%'],
-    ['ltsN', 'letter-spacing:normal'],
-    ['ltsNormal', 'letter-spacing:normal'],
-    ['lts--v', 'letter-spacing:var(--v)'],
-    ['tsa', 'text-size-adjust:100%'],
-    ['tsaA', 'text-size-adjust:auto'],
-    ['tsaN', 'text-size-adjust:none'],
-    ['fsa0.5', 'font-size-adjust:0.5'],
-    ['fsaN', 'font-size-adjust:none'],
-    ['fsaFromFont', 'font-size-adjust:from-font'],
+    [
+      'olo',
+      'outline-offset:0',
+    ],
+    [
+      'olo2',
+      'outline-offset:2px',
+    ],
+    [
+      'olo-2',
+      'outline-offset:-2px',
+    ],
+    [
+      'olo--v',
+      'outline-offset:var(--v)',
+    ],
+    [
+      'oloInherit',
+      'outline-offset:inherit',
+    ],
+    [
+      'lts2',
+      'letter-spacing:2px',
+    ],
+    [
+      'lts0.06em',
+      'letter-spacing:0.06em',
+    ],
+    [
+      'lts-0.02em',
+      'letter-spacing:-0.02em',
+    ],
+    [
+      'lts10%',
+      'letter-spacing:10%',
+    ],
+    [
+      'ltsN',
+      'letter-spacing:normal',
+    ],
+    [
+      'ltsNormal',
+      'letter-spacing:normal',
+    ],
+    [
+      'lts--v',
+      'letter-spacing:var(--v)',
+    ],
+    [
+      'tsa',
+      'text-size-adjust:100%',
+    ],
+    [
+      'tsaA',
+      'text-size-adjust:auto',
+    ],
+    [
+      'tsaN',
+      'text-size-adjust:none',
+    ],
+    [
+      'fsa0.5',
+      'font-size-adjust:0.5',
+    ],
+    [
+      'fsaN',
+      'font-size-adjust:none',
+    ],
+    [
+      'fsaFromFont',
+      'font-size-adjust:from-font',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
@@ -362,12 +582,30 @@ describe('одиночные свойства-длины со своим раз�
 
 describe('line-height, z-index, font-weight', () => {
   test.each([
-    ['lh', 'line-height:1'],
-    ['lh1.5', 'line-height:1.5'],
-    ['lh10px', 'line-height:10px'],
-    ['lh150%', 'line-height:150%'],
-    ['lh1.2em', 'line-height:1.2em'],
-    ['lh0', 'line-height:0'],
+    [
+      'lh',
+      'line-height:1',
+    ],
+    [
+      'lh1.5',
+      'line-height:1.5',
+    ],
+    [
+      'lh10px',
+      'line-height:10px',
+    ],
+    [
+      'lh150%',
+      'line-height:150%',
+    ],
+    [
+      'lh1.2em',
+      'line-height:1.2em',
+    ],
+    [
+      'lh0',
+      'line-height:0',
+    ],
   ])('%s → %s — безразмерная форма сохраняется', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
@@ -382,28 +620,67 @@ describe('line-height, z-index, font-weight', () => {
   });
 
   test.each([
-    ['z', 'z-index:1'],
-    ['z1', 'z-index:1'],
-    ['z-5', 'z-index:-5'],
-    ['z0', 'z-index:0'],
+    [
+      'z',
+      'z-index:1',
+    ],
+    [
+      'z1',
+      'z-index:1',
+    ],
+    [
+      'z-5',
+      'z-index:-5',
+    ],
+    [
+      'z0',
+      'z-index:0',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
 
-  test.each(['z1.5', 'z10.5'])('%s бракуется — z-index задаётся целым', (token) => {
+  test.each([
+    'z1.5',
+    'z10.5',
+  ])('%s бракуется — z-index задаётся целым', (token) => {
     expect(lexer.matchProperty('z-index', '1.5').matched).toBeFalsy();
     expect(compile([token]).css).toBe('');
   });
 
   test.each([
-    ['fwN', 'font-weight:normal'],
-    ['fwB', 'font-weight:bold'],
-    ['fwBR', 'font-weight:bolder'],
-    ['fwLR', 'font-weight:lighter'],
-    ['fwBold', 'font-weight:bold'],
-    ['fwBolder', 'font-weight:bolder'],
-    ['fw6', 'font-weight:600'],
-    ['fw600', 'font-weight:600'],
+    [
+      'fwN',
+      'font-weight:normal',
+    ],
+    [
+      'fwB',
+      'font-weight:bold',
+    ],
+    [
+      'fwBR',
+      'font-weight:bolder',
+    ],
+    [
+      'fwLR',
+      'font-weight:lighter',
+    ],
+    [
+      'fwBold',
+      'font-weight:bold',
+    ],
+    [
+      'fwBolder',
+      'font-weight:bolder',
+    ],
+    [
+      'fw6',
+      'font-weight:600',
+    ],
+    [
+      'fw600',
+      'font-weight:600',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
@@ -464,14 +741,38 @@ describe('знак значения', () => {
   });
 
   const NEGATIVE_BAD: Array<[string, string]> = [
-    ['p-5', 'padding'],
-    ['pt-5', 'padding-top'],
-    ['w-5', 'width'],
-    ['h-5', 'height'],
-    ['wmin-5', 'min-width'],
-    ['sq-5', 'width'],
-    ['f-5', 'font-size'],
-    ['r-5', 'border-radius'],
+    [
+      'p-5',
+      'padding',
+    ],
+    [
+      'pt-5',
+      'padding-top',
+    ],
+    [
+      'w-5',
+      'width',
+    ],
+    [
+      'h-5',
+      'height',
+    ],
+    [
+      'wmin-5',
+      'min-width',
+    ],
+    [
+      'sq-5',
+      'width',
+    ],
+    [
+      'f-5',
+      'font-size',
+    ],
+    [
+      'r-5',
+      'border-radius',
+    ],
   ];
 
   test.each(NEGATIVE_BAD)('%s бракуется: у %s минус недопустим', (token, prop) => {
@@ -509,25 +810,73 @@ describe('свойства с закрытым перечнем значений
   // Такие свойства принимали ЛЮБОЕ слово, и валидатор ядра ни одно из них не
   // знал (permissive pass-through), поэтому мусор уходил в CSS молча.
   const OK: Array<[string, string]> = [
-    ['irPixelated', 'image-rendering:pixelated'],
-    ['irCrispEdges', 'image-rendering:crisp-edges'],
-    ['apN', 'appearance:none'],
-    ['apMenulistButton', 'appearance:menulist-button'],
-    ['ttfEaseInOut', 'transition-timing-function:ease-in-out'],
-    ['ttfStepEnd', 'transition-timing-function:step-end'],
-    ['gafRow', 'grid-auto-flow:row'],
-    ['tdsEdges', 'text-decoration-skip:edges'],
-    ['tdsiAll', 'text-decoration-skip-ink:all'],
-    ['tdstW', 'text-decoration-style:wavy'],
-    ['tupFromFont', 'text-underline-position:from-font'],
-    ['tsFlat', 'transform-style:flat'],
-    ['mbmPlusLighter', 'mix-blend-mode:plus-lighter'],
-    ['temsSesame', 'text-emphasis-style:sesame'],
-    ['tempOver', 'text-emphasis-position:over'],
+    [
+      'irPixelated',
+      'image-rendering:pixelated',
+    ],
+    [
+      'irCrispEdges',
+      'image-rendering:crisp-edges',
+    ],
+    [
+      'apN',
+      'appearance:none',
+    ],
+    [
+      'apMenulistButton',
+      'appearance:menulist-button',
+    ],
+    [
+      'ttfEaseInOut',
+      'transition-timing-function:ease-in-out',
+    ],
+    [
+      'ttfStepEnd',
+      'transition-timing-function:step-end',
+    ],
+    [
+      'gafRow',
+      'grid-auto-flow:row',
+    ],
+    [
+      'tdsEdges',
+      'text-decoration-skip:edges',
+    ],
+    [
+      'tdsiAll',
+      'text-decoration-skip-ink:all',
+    ],
+    [
+      'tdstW',
+      'text-decoration-style:wavy',
+    ],
+    [
+      'tupFromFont',
+      'text-underline-position:from-font',
+    ],
+    [
+      'tsFlat',
+      'transform-style:flat',
+    ],
+    [
+      'mbmPlusLighter',
+      'mix-blend-mode:plus-lighter',
+    ],
+    [
+      'temsSesame',
+      'text-emphasis-style:sesame',
+    ],
+    [
+      'tempOver',
+      'text-emphasis-position:over',
+    ],
   ];
 
   test.each(OK)('%s → %s', (token, expected) => {
-    const [prop, value] = expected.split(':');
+    const [
+      prop,
+      value,
+    ] = expected.split(':');
     expect(lexer.matchProperty(prop, value).matched).toBeTruthy();
     expect(compile([token]).css).toContain(expected);
   });
@@ -560,12 +909,30 @@ describe('свойства с закрытым перечнем значений
   });
 
   test.each([
-    ['tems_Filled_Dot', 'text-emphasis-style:Filled Dot'],
-    ['tems_filled_dot', 'text-emphasis-style:filled dot'],
-    ['tempOver_Right', 'text-emphasis-position:over right'],
-    ['tdsObjects_Spaces', 'text-decoration-skip:objects spaces'],
-    ['gafRow_Dense', 'grid-auto-flow:row dense'],
-    ['tupUnder_Left', 'text-underline-position:under left'],
+    [
+      'tems_Filled_Dot',
+      'text-emphasis-style:Filled Dot',
+    ],
+    [
+      'tems_filled_dot',
+      'text-emphasis-style:filled dot',
+    ],
+    [
+      'tempOver_Right',
+      'text-emphasis-position:over right',
+    ],
+    [
+      'tdsObjects_Spaces',
+      'text-decoration-skip:objects spaces',
+    ],
+    [
+      'gafRow_Dense',
+      'grid-auto-flow:row dense',
+    ],
+    [
+      'tupUnder_Left',
+      'text-underline-position:under left',
+    ],
   ])('%s → %s — свойство берёт несколько слов', (token, expected) => {
     // Регистр не важен: ключевые слова в CSS регистронезависимы, а сырой режим
     // (`tems_Filled_Dot`) оставляет их как написано.
@@ -573,10 +940,22 @@ describe('свойства с закрытым перечнем значений
   });
 
   test.each([
-    ['irA_Pixelated', 'image-rendering'],
-    ['apN_Auto', 'appearance'],
-    ['mbmNormal_Multiply', 'mix-blend-mode'],
-    ['tdstS_Wavy', 'text-decoration-style'],
+    [
+      'irA_Pixelated',
+      'image-rendering',
+    ],
+    [
+      'apN_Auto',
+      'appearance',
+    ],
+    [
+      'mbmNormal_Multiply',
+      'mix-blend-mode',
+    ],
+    [
+      'tdstS_Wavy',
+      'text-decoration-style',
+    ],
   ])('%s бракуется — %s берёт одно слово', (token, prop) => {
     expect(lexer.matchProperty(prop, 'auto pixelated').matched).toBeFalsy();
     expect(compile([token]).css).toBe('');
@@ -588,17 +967,38 @@ describe('свойства с закрытым перечнем значений
   });
 
   test.each([
-    ['tsPreserve3d', 'transform-style:preserve-3d'],
-    ['tsPreserve3D', 'transform-style:preserve-3d'],
-    ['irOptimizeSpeed', 'image-rendering:optimizeSpeed'],
-    ['irOptimizeQuality', 'image-rendering:optimizeQuality'],
-    ['irMozCrispEdges', 'image-rendering:-moz-crisp-edges'],
-    ['irWebkitOptimizeContrast', 'image-rendering:-webkit-optimize-contrast'],
+    [
+      'tsPreserve3d',
+      'transform-style:preserve-3d',
+    ],
+    [
+      'tsPreserve3D',
+      'transform-style:preserve-3d',
+    ],
+    [
+      'irOptimizeSpeed',
+      'image-rendering:optimizeSpeed',
+    ],
+    [
+      'irOptimizeQuality',
+      'image-rendering:optimizeQuality',
+    ],
+    [
+      'irMozCrispEdges',
+      'image-rendering:-moz-crisp-edges',
+    ],
+    [
+      'irWebkitOptimizeContrast',
+      'image-rendering:-webkit-optimize-contrast',
+    ],
   ])('%s → %s — запись, которую camelCase иначе ломает', (token, expected) => {
     // Цифра не даёт дефиса (`preserve3d` вместо `preserve-3d`), ведущий дефис
     // вендорной формы теряется, а `optimizeSpeed` записан camelCase в самой
     // спецификации — это legacy из SVG.
-    const [prop, value] = expected.split(':');
+    const [
+      prop,
+      value,
+    ] = expected.split(':');
     expect(lexer.matchProperty(prop, value).matched).toBeTruthy();
     expect(compile([token]).css).toContain(expected);
   });
@@ -619,58 +1019,148 @@ describe('у свойства с перечнем число недопусти�
   // грамматикой показала, что из 38 свойств этого пути числа законны ровно у
   // двух, плюс у позиции фона.
   test.each([
-    ['pos10', 'position'],
-    ['ov10', 'overflow'],
-    ['ovx1.5', 'overflow-x'],
-    ['d10px', 'display'],
-    ['of10', 'object-fit'],
-    ['wb10', 'word-break'],
-    ['us10', 'user-select'],
-    ['vis10', 'visibility'],
+    [
+      'pos10',
+      'position',
+    ],
+    [
+      'ov10',
+      'overflow',
+    ],
+    [
+      'ovx1.5',
+      'overflow-x',
+    ],
+    [
+      'd10px',
+      'display',
+    ],
+    [
+      'of10',
+      'object-fit',
+    ],
+    [
+      'wb10',
+      'word-break',
+    ],
+    [
+      'us10',
+      'user-select',
+    ],
+    [
+      'vis10',
+      'visibility',
+    ],
   ])('%s бракуется — %s чисел не принимает', (token, prop) => {
     expect(lexer.matchProperty(prop, '10').matched).toBeFalsy();
     expect(compile([token]).css).toBe('');
   });
 
   test.each([
-    ['bgpx50%', 'background-position-x:50%'],
-    ['bgpy10px', 'background-position-y:10px'],
-    ['va-0.125em', 'vertical-align:-0.125em'],
-    ['va10%', 'vertical-align:10%'],
-    ['td2px', 'text-decoration:2px'],
+    [
+      'bgpx50%',
+      'background-position-x:50%',
+    ],
+    [
+      'bgpy10px',
+      'background-position-y:10px',
+    ],
+    [
+      'va-0.125em',
+      'vertical-align:-0.125em',
+    ],
+    [
+      'va10%',
+      'vertical-align:10%',
+    ],
+    [
+      'td2px',
+      'text-decoration:2px',
+    ],
   ])('%s → %s — там, где число законно, оно проходит', (token, expected) => {
-    const [prop, value] = expected.split(':');
+    const [
+      prop,
+      value,
+    ] = expected.split(':');
     expect(lexer.matchProperty(prop, value).matched).toBeTruthy();
     expect(compile([token]).css).toContain(expected);
   });
 
   test.each([
-    ['posA', 'position:absolute'],
-    ['posSticky', 'position:sticky'],
-    ['posWebkitSticky', 'position:-webkit-sticky'],
-    ['pos', 'position:relative'],
-    ['posInherit', 'position:inherit'],
-    ['pos--v', 'position:var(--v)'],
+    [
+      'posA',
+      'position:absolute',
+    ],
+    [
+      'posSticky',
+      'position:sticky',
+    ],
+    [
+      'posWebkitSticky',
+      'position:-webkit-sticky',
+    ],
+    [
+      'pos',
+      'position:relative',
+    ],
+    [
+      'posInherit',
+      'position:inherit',
+    ],
+    [
+      'pos--v',
+      'position:var(--v)',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
 
-  test.each(['posZzz', 'posF00'])('%s бракуется', (token) => {
+  test.each([
+    'posZzz',
+    'posF00',
+  ])('%s бракуется', (token) => {
     expect(compile([token]).css).toBe('');
   });
 });
 
 describe('стиль границы — закрытый перечень', () => {
   test.each([
-    ['bs', 'border-style:solid'],
-    ['bsS', 'border-style:solid'],
-    ['bsN', 'border-style:none'],
-    ['bsDT', 'border-style:dotted'],
-    ['bsSolid', 'border-style:solid'],
-    ['bstS', 'border-top-style:solid'],
-    ['bslS', 'border-left-style:solid'],
-    ['bsInherit', 'border-style:inherit'],
-    ['bs--v', 'border-style:var(--v)'],
+    [
+      'bs',
+      'border-style:solid',
+    ],
+    [
+      'bsS',
+      'border-style:solid',
+    ],
+    [
+      'bsN',
+      'border-style:none',
+    ],
+    [
+      'bsDT',
+      'border-style:dotted',
+    ],
+    [
+      'bsSolid',
+      'border-style:solid',
+    ],
+    [
+      'bstS',
+      'border-top-style:solid',
+    ],
+    [
+      'bslS',
+      'border-left-style:solid',
+    ],
+    [
+      'bsInherit',
+      'border-style:inherit',
+    ],
+    [
+      'bs--v',
+      'border-style:var(--v)',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
@@ -702,43 +1192,118 @@ describe('свойства, которые берут безразмерное �
   // Единица к такому значению приписывалась по общему правилу нотации
   // «число = px» или уходила как написана, а проверки не было вовсе.
   test.each([
-    ['wid2', 'widows:2'],
-    ['wid-2', 'widows:-2'],
-    ['orp2', 'orphans:2'],
-    ['or2', 'order:2'],
-    ['or-2', 'order:-2'],
-    ['fxg1', 'flex-grow:1'],
-    ['fxg1.5', 'flex-grow:1.5'],
-    ['fxs1', 'flex-shrink:1'],
-    ['zm1.5', 'zoom:1.5'],
-    ['zm150%', 'zoom:150%'],
-    ['zmNormal', 'zoom:normal'],
-    ['zmReset', 'zoom:reset'],
-    ['ar1.5', 'aspect-ratio:1.5'],
-    ['arA', 'aspect-ratio:auto'],
-    ['ar16/9', 'aspect-ratio:16/9'],
+    [
+      'wid2',
+      'widows:2',
+    ],
+    [
+      'wid-2',
+      'widows:-2',
+    ],
+    [
+      'orp2',
+      'orphans:2',
+    ],
+    [
+      'or2',
+      'order:2',
+    ],
+    [
+      'or-2',
+      'order:-2',
+    ],
+    [
+      'fxg1',
+      'flex-grow:1',
+    ],
+    [
+      'fxg1.5',
+      'flex-grow:1.5',
+    ],
+    [
+      'fxs1',
+      'flex-shrink:1',
+    ],
+    [
+      'zm1.5',
+      'zoom:1.5',
+    ],
+    [
+      'zm150%',
+      'zoom:150%',
+    ],
+    [
+      'zmNormal',
+      'zoom:normal',
+    ],
+    [
+      'zmReset',
+      'zoom:reset',
+    ],
+    [
+      'ar1.5',
+      'aspect-ratio:1.5',
+    ],
+    [
+      'arA',
+      'aspect-ratio:auto',
+    ],
+    [
+      'ar16/9',
+      'aspect-ratio:16/9',
+    ],
   ])('%s → %s', (token, expected) => {
-    const [prop, value] = expected.split(':');
+    const [
+      prop,
+      value,
+    ] = expected.split(':');
     expect(lexer.matchProperty(prop, value).matched).toBeTruthy();
     expect(compile([token]).css).toContain(expected);
   });
 
   test.each([
-    ['wid10px', 'widows'],
-    ['or2px', 'order'],
-    ['fxg10px', 'flex-grow'],
-    ['fxs10px', 'flex-shrink'],
-    ['zm10px', 'zoom'],
-    ['ar10px', 'aspect-ratio'],
+    [
+      'wid10px',
+      'widows',
+    ],
+    [
+      'or2px',
+      'order',
+    ],
+    [
+      'fxg10px',
+      'flex-grow',
+    ],
+    [
+      'fxs10px',
+      'flex-shrink',
+    ],
+    [
+      'zm10px',
+      'zoom',
+    ],
+    [
+      'ar10px',
+      'aspect-ratio',
+    ],
   ])('%s бракуется — у %s единицы нет', (token, prop) => {
     expect(lexer.matchProperty(prop, '10px').matched).toBeFalsy();
     expect(compile([token]).css).toBe('');
   });
 
   test.each([
-    ['wid2.5', 'widows'],
-    ['orp2.5', 'orphans'],
-    ['or2.5', 'order'],
+    [
+      'wid2.5',
+      'widows',
+    ],
+    [
+      'orp2.5',
+      'orphans',
+    ],
+    [
+      'or2.5',
+      'order',
+    ],
   ])('%s бракуется — %s берёт только целое', (token, prop) => {
     expect(lexer.matchProperty(prop, '2.5').matched).toBeFalsy();
     expect(compile([token]).css).toBe('');
@@ -788,10 +1353,22 @@ describe('уточнения там, где первая проверка ока
   });
 
   test.each([
-    ['bgpx10zz', 'background-position-x'],
-    ['bgpx10s', 'background-position-x'],
-    ['va10zz', 'vertical-align'],
-    ['td10zz', 'text-decoration'],
+    [
+      'bgpx10zz',
+      'background-position-x',
+    ],
+    [
+      'bgpx10s',
+      'background-position-x',
+    ],
+    [
+      'va10zz',
+      'vertical-align',
+    ],
+    [
+      'td10zz',
+      'text-decoration',
+    ],
   ])('%s бракуется — у %s число это длина, а не что угодно', (token, prop) => {
     expect(lexer.matchProperty(prop, '10zz').matched).toBeFalsy();
     expect(compile([token]).css).toBe('');
@@ -822,16 +1399,46 @@ describe('border-style: только то, что есть в специфика
   });
 
   test.each([
-    ['bsN', 'none'],
-    ['bsH', 'hidden'],
-    ['bsDT', 'dotted'],
-    ['bsDS', 'dashed'],
-    ['bsS', 'solid'],
-    ['bsDB', 'double'],
-    ['bsG', 'groove'],
-    ['bsR', 'ridge'],
-    ['bsI', 'inset'],
-    ['bsO', 'outset'],
+    [
+      'bsN',
+      'none',
+    ],
+    [
+      'bsH',
+      'hidden',
+    ],
+    [
+      'bsDT',
+      'dotted',
+    ],
+    [
+      'bsDS',
+      'dashed',
+    ],
+    [
+      'bsS',
+      'solid',
+    ],
+    [
+      'bsDB',
+      'double',
+    ],
+    [
+      'bsG',
+      'groove',
+    ],
+    [
+      'bsR',
+      'ridge',
+    ],
+    [
+      'bsI',
+      'inset',
+    ],
+    [
+      'bsO',
+      'outset',
+    ],
   ])('%s → border-style:%s — весь <line-style> на месте', (token, value) => {
     expect(lexer.matchProperty('border-style', value).matched).toBeTruthy();
     expect(compile([token]).css).toContain('border-style:' + value);
@@ -842,21 +1449,57 @@ describe('свойства-картинки оборачивают в url() то
   // Обёртка была безусловной, поэтому готовое значение заворачивалось второй
   // раз, а ключевое слово превращалось в имя файла.
   test.each([
-    ['bgi', 'background-image:none'],
-    ['bgiN', 'background-image:none'],
-    ['bgi_none', 'background-image:none'],
-    ['bgiInherit', 'background-image:inherit'],
-    ['lisiN', 'list-style-image:none'],
-    ['maskiN', 'mask-image:none'],
+    [
+      'bgi',
+      'background-image:none',
+    ],
+    [
+      'bgiN',
+      'background-image:none',
+    ],
+    [
+      'bgi_none',
+      'background-image:none',
+    ],
+    [
+      'bgiInherit',
+      'background-image:inherit',
+    ],
+    [
+      'lisiN',
+      'list-style-image:none',
+    ],
+    [
+      'maskiN',
+      'mask-image:none',
+    ],
   ])('%s → %s — ключевое слово не заворачивается', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
 
-  test.each([['bgi_a\\.png', 'background-image:url("a.png")'], ['bgi_images/a\\.png', 'background-image:url("images/a.png")']])('%s → %s — голый путь заворачивается', (token, expected) => {
+  test.each([
+    [
+      'bgi_a\\.png',
+      'background-image:url("a.png")',
+    ],
+    [
+      'bgi_images/a\\.png',
+      'background-image:url("images/a.png")',
+    ],
+  ])('%s → %s — голый путь заворачивается', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
 
-  test.each([['bgi_url\\(a\\.png\\)', 'background-image:url(a.png)'], ['bgi_linear-gradient\\(red,blue\\)', 'background-image:linear-gradient(red,blue)']])('%s → %s — готовая функция проходит как есть', (token, expected) => {
+  test.each([
+    [
+      'bgi_url\\(a\\.png\\)',
+      'background-image:url(a.png)',
+    ],
+    [
+      'bgi_linear-gradient\\(red,blue\\)',
+      'background-image:linear-gradient(red,blue)',
+    ],
+  ])('%s → %s — готовая функция проходит как есть', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
 
@@ -870,28 +1513,70 @@ describe('сырой режим только там, где значение с�
   // свойства с закрытым перечнем готового значения, которого автор нотации не
   // предусмотрел, не бывает — там выход только пропускал мусор.
   test.each([
-    ['ov_solid', 'overflow'],
-    ['ovx_solid', 'overflow-x'],
-    ['of_solid', 'object-fit'],
-    ['ta_solid', 'text-align'],
-    ['wb_solid', 'word-break'],
-    ['us_solid', 'user-select'],
-    ['vis_solid', 'visibility'],
-    ['bxz_solid', 'box-sizing'],
+    [
+      'ov_solid',
+      'overflow',
+    ],
+    [
+      'ovx_solid',
+      'overflow-x',
+    ],
+    [
+      'of_solid',
+      'object-fit',
+    ],
+    [
+      'ta_solid',
+      'text-align',
+    ],
+    [
+      'wb_solid',
+      'word-break',
+    ],
+    [
+      'us_solid',
+      'user-select',
+    ],
+    [
+      'vis_solid',
+      'visibility',
+    ],
+    [
+      'bxz_solid',
+      'box-sizing',
+    ],
   ])('%s бракуется — у %s перечень закрыт', (token, prop) => {
     expect(lexer.matchProperty(prop, 'solid').matched).toBeFalsy();
     expect(compile([token]).css).toBe('');
   });
 
   const COMPOSITE: Array<[string, string]> = [
-    ['d_inline_flow-root', 'display:inline flow-root'],
-    ['lis_disc_inside', 'list-style:disc inside'],
-    ['ovb_contain_auto', 'overscroll-behavior:contain auto'],
+    [
+      'd_inline_flow-root',
+      'display:inline flow-root',
+    ],
+    [
+      'lis_disc_inside',
+      'list-style:disc inside',
+    ],
+    [
+      'ovb_contain_auto',
+      'overscroll-behavior:contain auto',
+    ],
     // Цвет в shorthand не выражается — он задаётся атомарным `tdc`
     // (`tdU tdcF00`), как и решено по `ol`: один способ на одно значение.
-    ['td_underline_wavy', 'text-decoration:underline wavy'],
-    ['tcha_pan-x_pan-y', 'touch-action:pan-x pan-y'],
-    ['op_left_top', 'object-position:left top'],
+    [
+      'td_underline_wavy',
+      'text-decoration:underline wavy',
+    ],
+    [
+      'tcha_pan-x_pan-y',
+      'touch-action:pan-x pan-y',
+    ],
+    [
+      'op_left_top',
+      'object-position:left top',
+    ],
   ];
 
   test.each(COMPOSITE)('%s → %s — составное значение, выход остаётся', (token, expected) => {
@@ -902,13 +1587,34 @@ describe('сырой режим только там, где значение с�
   });
 
   test.each([
-    ['dB', 'display:block'],
-    ['ovA', 'overflow:auto'],
-    ['ofCT', 'object-fit:contain'],
-    ['tdU', 'text-decoration:underline'],
-    ['lisD', 'list-style:disc'],
-    ['tchaA', 'touch-action:auto'],
-    ['ovbCT', 'overscroll-behavior:contain'],
+    [
+      'dB',
+      'display:block',
+    ],
+    [
+      'ovA',
+      'overflow:auto',
+    ],
+    [
+      'ofCT',
+      'object-fit:contain',
+    ],
+    [
+      'tdU',
+      'text-decoration:underline',
+    ],
+    [
+      'lisD',
+      'list-style:disc',
+    ],
+    [
+      'tchaA',
+      'touch-action:auto',
+    ],
+    [
+      'ovbCT',
+      'overscroll-behavior:contain',
+    ],
   ])('%s → %s — обычные записи не задеты', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
@@ -919,9 +1625,18 @@ describe('content: кавычки ставит хендлер', () => {
   // Раньше кавычки писал автор, а их отсутствие не проверялось: `cntHello`
   // давало `content:hello`, которое браузер отбрасывает.
   test.each([
-    ['cnt_Hello_World', 'content:"Hello World"'],
-    ['cnt_a_b', 'content:"a b"'],
-    ['cnt_a\\.b', 'content:"a.b"'],
+    [
+      'cnt_Hello_World',
+      'content:"Hello World"',
+    ],
+    [
+      'cnt_a_b',
+      'content:"a b"',
+    ],
+    [
+      'cnt_a\\.b',
+      'content:"a.b"',
+    ],
   ])('%s → %s', (token, expected) => {
     const at = expected.indexOf(':');
     expect(lexer.matchProperty('content', expected.slice(at + 1)).matched).toBeTruthy();
@@ -949,12 +1664,30 @@ describe('content: кавычки ставит хендлер', () => {
   });
 
   test.each([
-    ['cnt', 'content:none'],
-    ['cntNone', 'content:none'],
-    ['cntNormal', 'content:normal'],
-    ['cntOpenQuote', 'content:open-quote'],
-    ['cntNoCloseQuote', 'content:no-close-quote'],
-    ['cntInherit', 'content:inherit'],
+    [
+      'cnt',
+      'content:none',
+    ],
+    [
+      'cntNone',
+      'content:none',
+    ],
+    [
+      'cntNormal',
+      'content:normal',
+    ],
+    [
+      'cntOpenQuote',
+      'content:open-quote',
+    ],
+    [
+      'cntNoCloseQuote',
+      'content:no-close-quote',
+    ],
+    [
+      'cntInherit',
+      'content:inherit',
+    ],
   ])('%s → %s — без `_` ожидается ключевое слово', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
@@ -973,15 +1706,36 @@ describe('content: кавычки ставит хендлер', () => {
   });
 
   test.each([
-    ['cnt_attr\\(href\\)', 'content:attr(href)'],
-    ['cnt_counter\\(n\\)', 'content:counter(n)'],
-    ['cnt_url\\(a\\.png\\)', 'content:url(a.png)'],
-    ['cnt--v', 'content:var(--v)'],
+    [
+      'cnt_attr\\(href\\)',
+      'content:attr(href)',
+    ],
+    [
+      'cnt_counter\\(n\\)',
+      'content:counter(n)',
+    ],
+    [
+      'cnt_url\\(a\\.png\\)',
+      'content:url(a.png)',
+    ],
+    [
+      'cnt--v',
+      'content:var(--v)',
+    ],
   ])('%s → %s — функция и подстановка не кавычатся', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
 
-  test.each([['cnt_he_said_"hi"', 'content:"he said \\"hi\\""'], ['cnt_a_"b"_c', 'content:"a \\"b\\" c"']])('%s → %s — кавычка внутри текста экранируется', (token, expected) => {
+  test.each([
+    [
+      'cnt_he_said_"hi"',
+      'content:"he said \\"hi\\""',
+    ],
+    [
+      'cnt_a_"b"_c',
+      'content:"a \\"b\\" c"',
+    ],
+  ])('%s → %s — кавычка внутри текста экранируется', (token, expected) => {
     // `content: a "b" c` по грамматике невалиден, поэтому трактовать кавычку
     // как «автор управляет сам» нельзя — она экранируется.
     const at = expected.indexOf(':');
@@ -995,14 +1749,38 @@ describe('transition: слоты в фиксированном порядке', 
   // `||`, и `all 0.2s` с `0.2s all` равноправны. Нотация фиксирует один:
   // проверка становится однозначной, а записей одного и того же не плодится.
   const OK: Array<[string, string]> = [
-    ['tn0.2s', 'transition:0.2s'],
-    ['tn200', 'transition:200ms'],
-    ['tnAll', 'transition:all'],
-    ['tn_all_0.2s', 'transition:all 0.2s'],
-    ['tn_color_0.2s_ease', 'transition:color 0.2s ease'],
-    ['tn_color_0.2s_ease_0.1s', 'transition:color 0.2s ease 0.1s'],
-    ['tn_0.2s_0.1s', 'transition:0.2s 0.1s'],
-    ['tn_cubic-bezier\\(0,0,1,1\\)', 'transition:cubic-bezier(0,0,1,1)'],
+    [
+      'tn0.2s',
+      'transition:0.2s',
+    ],
+    [
+      'tn200',
+      'transition:200ms',
+    ],
+    [
+      'tnAll',
+      'transition:all',
+    ],
+    [
+      'tn_all_0.2s',
+      'transition:all 0.2s',
+    ],
+    [
+      'tn_color_0.2s_ease',
+      'transition:color 0.2s ease',
+    ],
+    [
+      'tn_color_0.2s_ease_0.1s',
+      'transition:color 0.2s ease 0.1s',
+    ],
+    [
+      'tn_0.2s_0.1s',
+      'transition:0.2s 0.1s',
+    ],
+    [
+      'tn_cubic-bezier\\(0,0,1,1\\)',
+      'transition:cubic-bezier(0,0,1,1)',
+    ],
   ];
 
   test.each(OK)('%s → %s', (token, expected) => {
@@ -1016,7 +1794,16 @@ describe('transition: слоты в фиксированном порядке', 
     expect(compile(['dn200']).css).toContain('transition-duration:200ms');
   });
 
-  test.each([['tn_0.2s_all', 'свойство идёт перед длительностью'], ['tn_ease_0.2s', 'длительность идёт перед плавностью']])('%s бракуется — %s', (token) => {
+  test.each([
+    [
+      'tn_0.2s_all',
+      'свойство идёт перед длительностью',
+    ],
+    [
+      'tn_ease_0.2s',
+      'длительность идёт перед плавностью',
+    ],
+  ])('%s бракуется — %s', (token) => {
     // Обе записи по грамматике CSS валидны; нотация принимает одну.
     const {
       css, warnings,
@@ -1056,19 +1843,40 @@ describe('тени: список и переменная вместо сырог
   });
 
   test.each([
-    ['bxshB--blur', 'box-shadow:0px 0px var(--blur) 0px #000'],
-    ['bxshB--blur;c--shadow', 'box-shadow:0px 0px var(--blur) 0px var(--shadow)'],
-    ['bxshB--my_blur;', 'box-shadow:0px 0px var(--my_blur) 0px #000'],
+    [
+      'bxshB--blur',
+      'box-shadow:0px 0px var(--blur) 0px #000',
+    ],
+    [
+      'bxshB--blur;c--shadow',
+      'box-shadow:0px 0px var(--blur) 0px var(--shadow)',
+    ],
+    [
+      'bxshB--my_blur;',
+      'box-shadow:0px 0px var(--my_blur) 0px #000',
+    ],
   ])('%s → %s — переменная в позиции blur', (token, expected) => {
     // `;` — терминатор имени: без него имя заберёт следующие модификаторы.
     expect(compile([token]).css).toContain(expected);
   });
 
   test.each([
-    ['bxsh--shadow', 'box-shadow:var(--shadow)'],
-    ['bxsh--shadow;', 'box-shadow:var(--shadow)'],
-    ['bxsh--a,--b', 'box-shadow:var(--a),var(--b)'],
-    ['tsh--shadow', 'text-shadow:var(--shadow)'],
+    [
+      'bxsh--shadow',
+      'box-shadow:var(--shadow)',
+    ],
+    [
+      'bxsh--shadow;',
+      'box-shadow:var(--shadow)',
+    ],
+    [
+      'bxsh--a,--b',
+      'box-shadow:var(--a),var(--b)',
+    ],
+    [
+      'tsh--shadow',
+      'text-shadow:var(--shadow)',
+    ],
   ])('%s → %s — переменная без буквы означает всю тень', (token, expected) => {
     // У любого другого свойства `--x` это значение целиком (`bg--panel`,
     // `tn--t`), и тень не исключение. До 2026-09-29 переменная молча попадала
@@ -1086,10 +1894,22 @@ describe('тени: список и переменная вместо сырог
   });
 
   test.each([
-    ['bxshN', 'box-shadow:none'],
-    ['bxshNone', 'box-shadow:none'],
-    ['bxsh', 'box-shadow:none'],
-    ['bxsh10m0', 'box-shadow:none'],
+    [
+      'bxshN',
+      'box-shadow:none',
+    ],
+    [
+      'bxshNone',
+      'box-shadow:none',
+    ],
+    [
+      'bxsh',
+      'box-shadow:none',
+    ],
+    [
+      'bxsh10m0',
+      'box-shadow:none',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
@@ -1116,7 +1936,16 @@ describe('тени: список и переменная вместо сырог
 
 describe('transition: список свойств с общими параметрами', () => {
   // Сокращение, которого в CSS нет: там каждое свойство пишется целым блоком.
-  test.each([['tn_color;background_0.2s', 'transition:color 0.2s,background 0.2s'], ['tn_color;background;border-color_0.2s', 'transition:color 0.2s,background 0.2s,border-color 0.2s']])('%s → %s', (token, expected) => {
+  test.each([
+    [
+      'tn_color;background_0.2s',
+      'transition:color 0.2s,background 0.2s',
+    ],
+    [
+      'tn_color;background;border-color_0.2s',
+      'transition:color 0.2s,background 0.2s,border-color 0.2s',
+    ],
+  ])('%s → %s', (token, expected) => {
     const at = expected.indexOf(':');
     expect(lexer.matchProperty('transition', expected.slice(at + 1)).matched).toBeTruthy();
     expect(compile([token]).css).toContain(expected);
@@ -1132,7 +1961,10 @@ describe('transition: список свойств с общими парамет
       .toContain('transition:color 0.2s,background 0.2s,transform 0.4s');
   });
 
-  test.each(['tn_color;_0.2s', 'tn_;color_0.2s'])('%s бракуется — пустое имя в списке', (token) => {
+  test.each([
+    'tn_color;_0.2s',
+    'tn_;color_0.2s',
+  ])('%s бракуется — пустое имя в списке', (token) => {
     expect(compile([token]).css).toBe('');
   });
 
@@ -1149,10 +1981,22 @@ describe('список переменных через `;` и запятую', (
   // значения, но не перед запятой: `g_--a;,--b` давало `grid:--a;,--b` —
   // переменные не разворачивались, а `;` уезжал в CSS литералом.
   test.each([
-    ['g_--a;,--b', 'grid:var(--a),var(--b)'],
-    ['g_--a;,--b;,--c', 'grid:var(--a),var(--b),var(--c)'],
-    ['g_--my_a;,--my_b;', 'grid:var(--my_a),var(--my_b)'],
-    ['tn_--a;,--b', 'transition:var(--a),var(--b)'],
+    [
+      'g_--a;,--b',
+      'grid:var(--a),var(--b)',
+    ],
+    [
+      'g_--a;,--b;,--c',
+      'grid:var(--a),var(--b),var(--c)',
+    ],
+    [
+      'g_--my_a;,--my_b;',
+      'grid:var(--my_a),var(--my_b)',
+    ],
+    [
+      'tn_--a;,--b',
+      'transition:var(--a),var(--b)',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
@@ -1180,10 +2024,22 @@ describe('`;` между переменными — разделитель ча�
   // Писать `g--a;_--b` было лишним церемониалом: между двумя переменными
   // подряд другого смысла у `;` нет. Запятая по-прежнему пишется явно.
   test.each([
-    ['gtc--a;--b', 'grid-template-columns:var(--a) var(--b)'],
-    ['gtc--a;--b;--c', 'grid-template-columns:var(--a) var(--b) var(--c)'],
-    ['col--a;--b', 'columns:var(--a) var(--b)'],
-    ['tn--a;--b', 'transition:var(--a) var(--b)'],
+    [
+      'gtc--a;--b',
+      'grid-template-columns:var(--a) var(--b)',
+    ],
+    [
+      'gtc--a;--b;--c',
+      'grid-template-columns:var(--a) var(--b) var(--c)',
+    ],
+    [
+      'col--a;--b',
+      'columns:var(--a) var(--b)',
+    ],
+    [
+      'tn--a;--b',
+      'transition:var(--a) var(--b)',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
@@ -1217,7 +2073,10 @@ describe('тени: порядок модификаторов жёсткий', (
   // Свободный порядок был следствием реализации — независимые regex'ы искали
   // каждый свой фрагмент где угодно. Решение владельца 2026-09-27: одно
   // значение не должно записываться по-разному, как и у `tn`.
-  test.each(['bxsh19c43Fx5y5r3', 'bxsh19y5x5'])('%s бракуется — порядок blur, x, y, r, m, c, in', (token) => {
+  test.each([
+    'bxsh19c43Fx5y5r3',
+    'bxsh19y5x5',
+  ])('%s бракуется — порядок blur, x, y, r, m, c, in', (token) => {
     expect(compile([token]).css).toBe('');
   });
 
@@ -1231,23 +2090,74 @@ describe('составные значения по слотам: fx, col, tem, c
   // Все пять были permissive pass-through: значение кебабилось и уходило в
   // CSS как есть, поэтому `fxN` давало `flex:n`, `colA` — `columns:a`.
   const OK: Array<[string, string]> = [
-    ['fx1', 'flex:1'],
-    ['fx_1_1', 'flex:1 1'],
-    ['fx_1_1_auto', 'flex:1 1 auto'],
-    ['fx_1_1_0%', 'flex:1 1 0%'],
-    ['fxN', 'flex:none'],
-    ['fxA', 'flex:auto'],
-    ['fxContent', 'flex:content'],
-    ['col3', 'columns:3'],
-    ['col_3_30em', 'columns:3 30em'],
-    ['colA', 'columns:auto'],
-    ['temFilled', 'text-emphasis:filled'],
-    ['tem_filled_dot', 'text-emphasis:filled dot'],
-    ['temN', 'text-emphasis:none'],
-    ['coi_n_2', 'counter-increment:n 2'],
-    ['coiNone', 'counter-increment:none'],
-    ['cor_n_0', 'counter-reset:n 0'],
-    ['corNone', 'counter-reset:none'],
+    [
+      'fx1',
+      'flex:1',
+    ],
+    [
+      'fx_1_1',
+      'flex:1 1',
+    ],
+    [
+      'fx_1_1_auto',
+      'flex:1 1 auto',
+    ],
+    [
+      'fx_1_1_0%',
+      'flex:1 1 0%',
+    ],
+    [
+      'fxN',
+      'flex:none',
+    ],
+    [
+      'fxA',
+      'flex:auto',
+    ],
+    [
+      'fxContent',
+      'flex:content',
+    ],
+    [
+      'col3',
+      'columns:3',
+    ],
+    [
+      'col_3_30em',
+      'columns:3 30em',
+    ],
+    [
+      'colA',
+      'columns:auto',
+    ],
+    [
+      'temFilled',
+      'text-emphasis:filled',
+    ],
+    [
+      'tem_filled_dot',
+      'text-emphasis:filled dot',
+    ],
+    [
+      'temN',
+      'text-emphasis:none',
+    ],
+    [
+      'coi_n_2',
+      'counter-increment:n 2',
+    ],
+    [
+      'coiNone',
+      'counter-increment:none',
+    ],
+    [
+      'cor_n_0',
+      'counter-reset:n 0',
+    ],
+    [
+      'corNone',
+      'counter-reset:none',
+    ],
   ];
 
   test.each(OK)('%s → %s', (token, expected) => {
@@ -1258,12 +2168,30 @@ describe('составные значения по слотам: fx, col, tem, c
   });
 
   test.each([
-    ['fxZzz', 'flex:zzz'],
-    ['fx10zz', 'flex:10zz'],
-    ['col10zz', 'columns:10zz'],
-    ['temZzz', 'text-emphasis:zzz'],
-    ['tem10', 'text-emphasis:10'],
-    ['coi10', 'counter-increment:10'],
+    [
+      'fxZzz',
+      'flex:zzz',
+    ],
+    [
+      'fx10zz',
+      'flex:10zz',
+    ],
+    [
+      'col10zz',
+      'columns:10zz',
+    ],
+    [
+      'temZzz',
+      'text-emphasis:zzz',
+    ],
+    [
+      'tem10',
+      'text-emphasis:10',
+    ],
+    [
+      'coi10',
+      'counter-increment:10',
+    ],
   ])('%s больше не даёт "%s"', (token, wasGiving) => {
     const at = wasGiving.indexOf(':');
     expect(lexer.matchProperty(wasGiving.slice(0, at), wasGiving.slice(at + 1)).matched)
@@ -1272,11 +2200,26 @@ describe('составные значения по слотам: fx, col, tem, c
   });
 
   test.each([
-    ['fx_1_10px', 'сжатие — число без единицы'],
-    ['fx_1_1_zzz', 'база — длина или ключевое слово'],
-    ['fx_1_1_1_1', 'у flex не больше трёх частей'],
-    ['col_30em_3', 'у columns сначала число колонок'],
-    ['coi_2_n', 'у счётчика сначала имя'],
+    [
+      'fx_1_10px',
+      'сжатие — число без единицы',
+    ],
+    [
+      'fx_1_1_zzz',
+      'база — длина или ключевое слово',
+    ],
+    [
+      'fx_1_1_1_1',
+      'у flex не больше трёх частей',
+    ],
+    [
+      'col_30em_3',
+      'у columns сначала число колонок',
+    ],
+    [
+      'coi_2_n',
+      'у счётчика сначала имя',
+    ],
   ])('%s бракуется — %s', (token) => {
     expect(compile([token]).css).toBe('');
   });
@@ -1296,17 +2239,50 @@ describe('составные значения по слотам: fx, col, tem, c
 
 describe('дорожки и позиции сетки', () => {
   const TRACKS: Array<[string, string]> = [
-    ['gtc1fr_1fr', 'grid-template-columns:1fr 1fr'],
-    ['gtc50%', 'grid-template-columns:50%'],
-    ['gtcN', 'grid-template-columns:none'],
-    ['gtcAuto', 'grid-template-columns:auto'],
-    ['gtcMinContent', 'grid-template-columns:min-content'],
-    ['gtcSubgrid', 'grid-template-columns:subgrid'],
-    ['gtc_repeat\\(3,1fr\\)', 'grid-template-columns:repeat(3,1fr)'],
-    ['gtr_minmax\\(100px,1fr\\)', 'grid-template-rows:minmax(100px,1fr)'],
-    ['gtc_\\[a\\]_1fr', 'grid-template-columns:[a] 1fr'],
-    ['gac1fr', 'grid-auto-columns:1fr'],
-    ['garA', 'grid-auto-rows:auto'],
+    [
+      'gtc1fr_1fr',
+      'grid-template-columns:1fr 1fr',
+    ],
+    [
+      'gtc50%',
+      'grid-template-columns:50%',
+    ],
+    [
+      'gtcN',
+      'grid-template-columns:none',
+    ],
+    [
+      'gtcAuto',
+      'grid-template-columns:auto',
+    ],
+    [
+      'gtcMinContent',
+      'grid-template-columns:min-content',
+    ],
+    [
+      'gtcSubgrid',
+      'grid-template-columns:subgrid',
+    ],
+    [
+      'gtc_repeat\\(3,1fr\\)',
+      'grid-template-columns:repeat(3,1fr)',
+    ],
+    [
+      'gtr_minmax\\(100px,1fr\\)',
+      'grid-template-rows:minmax(100px,1fr)',
+    ],
+    [
+      'gtc_\\[a\\]_1fr',
+      'grid-template-columns:[a] 1fr',
+    ],
+    [
+      'gac1fr',
+      'grid-auto-columns:1fr',
+    ],
+    [
+      'garA',
+      'grid-auto-rows:auto',
+    ],
   ];
 
   test.each(TRACKS)('%s → %s', (token, expected) => {
@@ -1317,10 +2293,22 @@ describe('дорожки и позиции сетки', () => {
   });
 
   test.each([
-    ['gtcZzz', 'grid-template-columns:zzz'],
-    ['gtc10zz', 'grid-template-columns:10zz'],
-    ['gtc10', 'grid-template-columns:10'],
-    ['gacZzz', 'grid-auto-columns:zzz'],
+    [
+      'gtcZzz',
+      'grid-template-columns:zzz',
+    ],
+    [
+      'gtc10zz',
+      'grid-template-columns:10zz',
+    ],
+    [
+      'gtc10',
+      'grid-template-columns:10',
+    ],
+    [
+      'gacZzz',
+      'grid-auto-columns:zzz',
+    ],
   ])('%s больше не даёт "%s"', (token, wasGiving) => {
     // Размер дорожки без единицы невалиден, в отличие от голого числа в
     // других местах нотации.
@@ -1336,11 +2324,26 @@ describe('дорожки и позиции сетки', () => {
   });
 
   test.each([
-    ['gr1', 'grid-row:1'],
-    ['gr1/3', 'grid-row:1/3'],
-    ['gc1/-1', 'grid-column:1/-1'],
-    ['grAuto', 'grid-row:auto'],
-    ['grSpan2', 'grid-row:span2'],
+    [
+      'gr1',
+      'grid-row:1',
+    ],
+    [
+      'gr1/3',
+      'grid-row:1/3',
+    ],
+    [
+      'gc1/-1',
+      'grid-column:1/-1',
+    ],
+    [
+      'grAuto',
+      'grid-row:auto',
+    ],
+    [
+      'grSpan2',
+      'grid-row:span2',
+    ],
   ])('%s → %s — позиция это номер или имя линии', (token, expected) => {
     // `<grid-line>` допускает почти любой идентификатор, поэтому `span2` и
     // `zzz` — законные имена линий, и проверять там почти нечего.
@@ -1355,26 +2358,71 @@ describe('дорожки и позиции сетки', () => {
 
 describe('flex-flow, transition-property, font-family', () => {
   test.each([
-    ['fxfRow', 'flex-flow:row'],
-    ['fxf_row_wrap', 'flex-flow:row wrap'],
-    ['fxfColumnReverse', 'flex-flow:column-reverse'],
-    ['tpAll', 'transition-property:all'],
-    ['tpNone', 'transition-property:none'],
-    ['tp_color', 'transition-property:color'],
-    ['ffArial', 'font-family:arial'],
-    ['ffSerif', 'font-family:serif'],
-    ['ff_Times_New_Roman', 'font-family:"Times New Roman"'],
-    ['ff_Arial,sans-serif', 'font-family:Arial,sans-serif'],
-    ['ff--v', 'font-family:var(--v)'],
+    [
+      'fxfRow',
+      'flex-flow:row',
+    ],
+    [
+      'fxf_row_wrap',
+      'flex-flow:row wrap',
+    ],
+    [
+      'fxfColumnReverse',
+      'flex-flow:column-reverse',
+    ],
+    [
+      'tpAll',
+      'transition-property:all',
+    ],
+    [
+      'tpNone',
+      'transition-property:none',
+    ],
+    [
+      'tp_color',
+      'transition-property:color',
+    ],
+    [
+      'ffArial',
+      'font-family:arial',
+    ],
+    [
+      'ffSerif',
+      'font-family:serif',
+    ],
+    [
+      'ff_Times_New_Roman',
+      'font-family:"Times New Roman"',
+    ],
+    [
+      'ff_Arial,sans-serif',
+      'font-family:Arial,sans-serif',
+    ],
+    [
+      'ff--v',
+      'font-family:var(--v)',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
 
   test.each([
-    ['fxf10px', 'flex-flow:10px'],
-    ['fxfZzz', 'flex-flow:zzz'],
-    ['tp10px', 'transition-property:10px'],
-    ['ff10px', 'font-family:10px'],
+    [
+      'fxf10px',
+      'flex-flow:10px',
+    ],
+    [
+      'fxfZzz',
+      'flex-flow:zzz',
+    ],
+    [
+      'tp10px',
+      'transition-property:10px',
+    ],
+    [
+      'ff10px',
+      'font-family:10px',
+    ],
   ])('%s больше не даёт "%s"', (token, wasGiving) => {
     const at = wasGiving.indexOf(':');
     expect(lexer.matchProperty(wasGiving.slice(0, at), wasGiving.slice(at + 1)).matched)
@@ -1410,12 +2458,30 @@ describe('составное значение проверяется по час
   });
 
   test.each([
-    ['d_inline_flow-root', 'display:inline flow-root'],
-    ['lis_disc_inside', 'list-style:disc inside'],
-    ['ovb_contain_auto', 'overscroll-behavior:contain auto'],
-    ['tcha_pan-x_pan-y', 'touch-action:pan-x pan-y'],
-    ['op_left_top', 'object-position:left top'],
-    ['td_underline_2px', 'text-decoration:underline 2px'],
+    [
+      'd_inline_flow-root',
+      'display:inline flow-root',
+    ],
+    [
+      'lis_disc_inside',
+      'list-style:disc inside',
+    ],
+    [
+      'ovb_contain_auto',
+      'overscroll-behavior:contain auto',
+    ],
+    [
+      'tcha_pan-x_pan-y',
+      'touch-action:pan-x pan-y',
+    ],
+    [
+      'op_left_top',
+      'object-position:left top',
+    ],
+    [
+      'td_underline_2px',
+      'text-decoration:underline 2px',
+    ],
   ])('%s → %s — законные части не задеты', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
@@ -1423,21 +2489,51 @@ describe('составное значение проверяется по час
 
 describe('фильтры, text-size-adjust, позиции сетки', () => {
   test.each([
-    ['ftBlur4', 'filter:blur(4px)'],
-    ['ftbBlur8', 'backdrop-filter:blur(8px)'],
-    ['ftGray50', 'filter:grayscale(50%)'],
-    ['ftHue180', 'filter:hue-rotate(180deg)'],
-    ['ftBlur3_Invert20', 'filter:blur(3px) invert(20%)'],
-    ['ft_blur5', 'filter:blur(5px)'],
+    [
+      'ftBlur4',
+      'filter:blur(4px)',
+    ],
+    [
+      'ftbBlur8',
+      'backdrop-filter:blur(8px)',
+    ],
+    [
+      'ftGray50',
+      'filter:grayscale(50%)',
+    ],
+    [
+      'ftHue180',
+      'filter:hue-rotate(180deg)',
+    ],
+    [
+      'ftBlur3_Invert20',
+      'filter:blur(3px) invert(20%)',
+    ],
+    [
+      'ft_blur5',
+      'filter:blur(5px)',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
 
   test.each([
-    ['ftbF00', 'backdrop-filter:f(00)'],
-    ['ftb_solid', 'backdrop-filter:solid()'],
-    ['ftbA', 'backdrop-filter:a()'],
-    ['ftZzz10', 'filter:zzz(10)'],
+    [
+      'ftbF00',
+      'backdrop-filter:f(00)',
+    ],
+    [
+      'ftb_solid',
+      'backdrop-filter:solid()',
+    ],
+    [
+      'ftbA',
+      'backdrop-filter:a()',
+    ],
+    [
+      'ftZzz10',
+      'filter:zzz(10)',
+    ],
   ])('%s больше не даёт "%s"', (token) => {
     // Арбитр здесь мягче спецификации: грамматика `filter` допускает `<url>`
     // и вендорные функции, поэтому `zzz(10)` он принимает. Список
@@ -1447,11 +2543,26 @@ describe('фильтры, text-size-adjust, позиции сетки', () => {
   });
 
   test.each([
-    ['tsa', 'text-size-adjust:100%'],
-    ['tsa10', 'text-size-adjust:10%'],
-    ['tsa100%', 'text-size-adjust:100%'],
-    ['tsaA', 'text-size-adjust:auto'],
-    ['tsaN', 'text-size-adjust:none'],
+    [
+      'tsa',
+      'text-size-adjust:100%',
+    ],
+    [
+      'tsa10',
+      'text-size-adjust:10%',
+    ],
+    [
+      'tsa100%',
+      'text-size-adjust:100%',
+    ],
+    [
+      'tsaA',
+      'text-size-adjust:auto',
+    ],
+    [
+      'tsaN',
+      'text-size-adjust:none',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
@@ -1473,11 +2584,26 @@ describe('фильтры, text-size-adjust, позиции сетки', () => {
   });
 
   test.each([
-    ['gr1', 'grid-row:1'],
-    ['gr1/3', 'grid-row:1/3'],
-    ['gc1/-1', 'grid-column:1/-1'],
-    ['gr_span_2', 'grid-row:span 2'],
-    ['grAuto', 'grid-row:auto'],
+    [
+      'gr1',
+      'grid-row:1',
+    ],
+    [
+      'gr1/3',
+      'grid-row:1/3',
+    ],
+    [
+      'gc1/-1',
+      'grid-column:1/-1',
+    ],
+    [
+      'gr_span_2',
+      'grid-row:span 2',
+    ],
+    [
+      'grAuto',
+      'grid-row:auto',
+    ],
   ])('%s → %s — законные позиции не задеты', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
@@ -1485,26 +2611,71 @@ describe('фильтры, text-size-adjust, позиции сетки', () => {
 
 describe('фон и маска: только цвет, градиент или подстановка', () => {
   test.each([
-    ['bgF00', 'background:#f00'],
-    ['bgF00.5', 'background:rgba(255,0,0,.5)'],
-    ['bgF00-00F', 'background:linear-gradient(180deg,#f00 0%,#00f 100%)'],
-    ['bg--v', 'background:var(--v)'],
-    ['bgCT', 'background:currentColor'],
-    ['bgT', 'background:transparent'],
-    ['bg0F0-00F_g90', 'background:linear-gradient(270deg,#0f0 0%,#00f 100%)'],
-    ['bgF00-00F_r', 'background:radial-gradient(circle,#f00 0%,#00f 100%)'],
-    ['maskbgF00-00F', 'mask-image:linear-gradient(180deg,#f00 0%,#00f 100%)'],
-    ['maskbg--v', 'mask-image:var(--v)'],
+    [
+      'bgF00',
+      'background:#f00',
+    ],
+    [
+      'bgF00.5',
+      'background:rgba(255,0,0,.5)',
+    ],
+    [
+      'bgF00-00F',
+      'background:linear-gradient(180deg,#f00 0%,#00f 100%)',
+    ],
+    [
+      'bg--v',
+      'background:var(--v)',
+    ],
+    [
+      'bgCT',
+      'background:currentColor',
+    ],
+    [
+      'bgT',
+      'background:transparent',
+    ],
+    [
+      'bg0F0-00F_g90',
+      'background:linear-gradient(270deg,#0f0 0%,#00f 100%)',
+    ],
+    [
+      'bgF00-00F_r',
+      'background:radial-gradient(circle,#f00 0%,#00f 100%)',
+    ],
+    [
+      'maskbgF00-00F',
+      'mask-image:linear-gradient(180deg,#f00 0%,#00f 100%)',
+    ],
+    [
+      'maskbg--v',
+      'mask-image:var(--v)',
+    ],
   ])('%s → %s — мини-язык не задет', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
 
   test.each([
-    ['bg10zz', 'background:10zz'],
-    ['bg1/2', 'background:1/2'],
-    ['bg10_20', 'background:10_20'],
-    ['bg+5', 'background:+5'],
-    ['bg10s', 'background:10s'],
+    [
+      'bg10zz',
+      'background:10zz',
+    ],
+    [
+      'bg1/2',
+      'background:1/2',
+    ],
+    [
+      'bg10_20',
+      'background:10_20',
+    ],
+    [
+      'bg+5',
+      'background:+5',
+    ],
+    [
+      'bg10s',
+      'background:10s',
+    ],
   ])('%s больше не даёт "%s"', (token, wasGiving) => {
     const at = wasGiving.indexOf(':');
     expect(lexer.matchProperty(wasGiving.slice(0, at), wasGiving.slice(at + 1)).matched)
@@ -1529,24 +2700,63 @@ describe('фон и маска: только цвет, градиент или �
 
 describe('border-image: источник, слайсы, ширина после «/»', () => {
   test.each([
-    ['bi', 'border-image:none'],
-    ['biN', 'border-image:none'],
-    ['bi_url\\(a\\.png\\)_30', 'border-image:url(a.png) 30'],
-    ['bi_url\\(a\\.png\\)_30_/_1px', 'border-image:url(a.png) 30 / 1px'],
-    ['biStretch', 'border-image:stretch'],
-    ['bi_30_round', 'border-image:30 round'],
-    ['bi--v', 'border-image:var(--v)'],
+    [
+      'bi',
+      'border-image:none',
+    ],
+    [
+      'biN',
+      'border-image:none',
+    ],
+    [
+      'bi_url\\(a\\.png\\)_30',
+      'border-image:url(a.png) 30',
+    ],
+    [
+      'bi_url\\(a\\.png\\)_30_/_1px',
+      'border-image:url(a.png) 30 / 1px',
+    ],
+    [
+      'biStretch',
+      'border-image:stretch',
+    ],
+    [
+      'bi_30_round',
+      'border-image:30 round',
+    ],
+    [
+      'bi--v',
+      'border-image:var(--v)',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
 
   test.each([
-    ['bi10px', 'border-image:10px'],
-    ['bi10zz', 'border-image:10zz'],
-    ['biF00', 'border-image:f00'],
-    ['biZzz', 'border-image:zzz'],
-    ['bi-5', 'border-image:-5'],
-    ['bi10s', 'border-image:10s'],
+    [
+      'bi10px',
+      'border-image:10px',
+    ],
+    [
+      'bi10zz',
+      'border-image:10zz',
+    ],
+    [
+      'biF00',
+      'border-image:f00',
+    ],
+    [
+      'biZzz',
+      'border-image:zzz',
+    ],
+    [
+      'bi-5',
+      'border-image:-5',
+    ],
+    [
+      'bi10s',
+      'border-image:10s',
+    ],
   ])('%s больше не даёт "%s"', (token, wasGiving) => {
     // Одна длина значением `border-image` быть не может: там либо картинка,
     // либо `none`, либо слайсы. Длина — это ширина рамки, она идёт после «/».
@@ -1559,13 +2769,34 @@ describe('border-image: источник, слайсы, ширина после 
 
 describe('grid и grid-template', () => {
   const OK: Array<[string, string]> = [
-    ['gN', 'grid:none'],
-    ['g_1fr_/_1fr', 'grid:1fr / 1fr'],
-    ['g_"a"_1fr', 'grid:"a" 1fr'],
-    ['g_auto-flow_1fr_/_1fr', 'grid:auto-flow 1fr / 1fr'],
-    ['g_auto-flow_/_1fr', 'grid:auto-flow / 1fr'],
-    ['gt_"a_b"_1fr', 'grid-template:"a b" 1fr'],
-    ['gt_"a_b"_1fr_/_auto', 'grid-template:"a b" 1fr / auto'],
+    [
+      'gN',
+      'grid:none',
+    ],
+    [
+      'g_1fr_/_1fr',
+      'grid:1fr / 1fr',
+    ],
+    [
+      'g_"a"_1fr',
+      'grid:"a" 1fr',
+    ],
+    [
+      'g_auto-flow_1fr_/_1fr',
+      'grid:auto-flow 1fr / 1fr',
+    ],
+    [
+      'g_auto-flow_/_1fr',
+      'grid:auto-flow / 1fr',
+    ],
+    [
+      'gt_"a_b"_1fr',
+      'grid-template:"a b" 1fr',
+    ],
+    [
+      'gt_"a_b"_1fr_/_auto',
+      'grid-template:"a b" 1fr / auto',
+    ],
   ];
 
   test.each(OK)('%s → %s', (token, expected) => {
@@ -1576,9 +2807,18 @@ describe('grid и grid-template', () => {
   });
 
   test.each([
-    ['g10zz', 'grid:10zz'],
-    ['gZzz', 'grid:zzz'],
-    ['g10px', 'grid:10px'],
+    [
+      'g10zz',
+      'grid:10zz',
+    ],
+    [
+      'gZzz',
+      'grid:zzz',
+    ],
+    [
+      'g10px',
+      'grid:10px',
+    ],
   ])('%s больше не даёт "%s"', (token, wasGiving) => {
     const at = wasGiving.indexOf(':');
     expect(lexer.matchProperty(wasGiving.slice(0, at), wasGiving.slice(at + 1)).matched)
@@ -1601,7 +2841,16 @@ describe('grid и grid-template', () => {
 });
 
 describe('последние пограничные случаи', () => {
-  test.each([['gr10_20', 'grid-row:10 20'], ['gc10_20', 'grid-column:10 20']])('%s больше не даёт "%s" — вторая позиция через «/»', (token, wasGiving) => {
+  test.each([
+    [
+      'gr10_20',
+      'grid-row:10 20',
+    ],
+    [
+      'gc10_20',
+      'grid-column:10 20',
+    ],
+  ])('%s больше не даёт "%s" — вторая позиция через «/»', (token, wasGiving) => {
     const at = wasGiving.indexOf(':');
     expect(lexer.matchProperty(wasGiving.slice(0, at), wasGiving.slice(at + 1)).matched)
       .toBeFalsy();
@@ -1617,7 +2866,10 @@ describe('последние пограничные случаи', () => {
     expect(compile(['tsa10']).css).toContain('text-size-adjust:10%');
   });
 
-  test.each(['maskbg1.5', 'maskbg10.5'])('%s бракуется — дробь разбиралась как цвет с альфой', (token) => {
+  test.each([
+    'maskbg1.5',
+    'maskbg10.5',
+  ])('%s бракуется — дробь разбиралась как цвет с альфой', (token) => {
     // Давало `mask-image:rgba(17,17,17,.5)`, а цвет `mask-image` не принимает.
     expect(compile([token]).css).toBe('');
   });
@@ -1627,14 +2879,38 @@ describe('свойства, принимающие числа и несколь�
   // Найдены сплошной сверкой с грамматикой после того, как сборка сайта
   // упёрлась в `bgs100%_.16em`: помечать такие свойства по одному ненадёжно.
   test.each([
-    ['bgs100%_.16em', 'background-size:100% .16em'],
-    ['bgs10px_20px', 'background-size:10px 20px'],
-    ['bgs100%', 'background-size:100%'],
-    ['bgsCV', 'background-size:cover'],
-    ['ov_hidden_auto', 'overflow:hidden auto'],
-    ['tov_ellipsis_clip', 'text-overflow:ellipsis clip'],
-    ['op50%_50%', 'object-position:50% 50%'],
-    ['op_left_top', 'object-position:left top'],
+    [
+      'bgs100%_.16em',
+      'background-size:100% .16em',
+    ],
+    [
+      'bgs10px_20px',
+      'background-size:10px 20px',
+    ],
+    [
+      'bgs100%',
+      'background-size:100%',
+    ],
+    [
+      'bgsCV',
+      'background-size:cover',
+    ],
+    [
+      'ov_hidden_auto',
+      'overflow:hidden auto',
+    ],
+    [
+      'tov_ellipsis_clip',
+      'text-overflow:ellipsis clip',
+    ],
+    [
+      'op50%_50%',
+      'object-position:50% 50%',
+    ],
+    [
+      'op_left_top',
+      'object-position:left top',
+    ],
   ])('%s → %s', (token, expected) => {
     const at = expected.indexOf(':');
     expect(lexer.matchProperty(expected.slice(0, at), expected.slice(at + 1)).matched)

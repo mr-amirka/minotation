@@ -41,12 +41,14 @@ const STRICT_SHIFT: Record<string, number> = {
 export function mediaCondition(
   side: string, operator: MnMediaOperator, length: string, classic: boolean,
 ): string {
-  const matchs = classic && (operator === '<' || operator === '>') ? REGEXP_LENGTH.exec(length) : null;
+  const greater = operator === '>';
+  const strict = operator === '<' || greater;
+  const matchs = classic && strict ? REGEXP_LENGTH.exec(length) : null;
   // Строгое сравнение длины, которую не сдвинуть (`calc(…)`, `var(…)`), — остаётся диапазоном.
-  return !classic || (operator === '<' || operator === '>') && !matchs
+  return !classic || strict && !matchs
     ? '(' + side + ' ' + operator + ' ' + length + ')'
     : '(' + (operator[0] === '>' ? 'min-' : 'max-') + side + ': ' + (matchs
-      ? round(parseFloat(matchs[1]) + (operator === '>' ? 1 : -1) * STRICT_SHIFT[matchs[2]]) + matchs[2]
+      ? round(parseFloat(matchs[1]) + (greater ? 1 : -1) * STRICT_SHIFT[matchs[2]]) + matchs[2]
       : length) + ')';
 }
 

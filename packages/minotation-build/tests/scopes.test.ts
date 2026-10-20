@@ -3,7 +3,10 @@
  * свой экземпляр ядра, свой реестр хендлеров; динамические пресеты — только в своей области.
  */
 import {
-  mkdirSync, mkdtempSync, rmSync, writeFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
 } from 'node:fs';
 import {
   join,
@@ -12,14 +15,21 @@ import {
   tmpdir,
 } from 'node:os';
 import {
-  checkBuildOptions, clearPackageDirectiveCache, createBuildCollector, createScopeRewriter, createTokenCollector,
+  checkBuildOptions,
+  clearPackageDirectiveCache,
+  createBuildCollector,
+  createScopeRewriter,
+  createTokenCollector,
   scopeClassName,
 } from '../src/index';
 import type {
   MnPreset,
 } from '../src/index';
 import {
-  presetMedias, presetStandard, presetSynonyms, presetTw4,
+  presetMedias,
+  presetStandard,
+  presetSynonyms,
+  presetTw4,
 } from 'minotation';
 
 const APP: MnPreset[] = [
@@ -135,7 +145,10 @@ describe('пакет со своим семейством — своя обла�
       dir, 'ui', 'package.json',
     ), JSON.stringify({
       minotation: {
-        requires: ['presetTw4', 'presetMedias'],
+        requires: [
+          'presetTw4',
+          'presetMedias',
+        ],
       },
     }));
     const {
@@ -268,7 +281,16 @@ describe('изоляция областей пакетов (D-075…D-077)', () 
     expect(twin && scopeClassName(twin).length).toBeGreaterThan(2);
   });
 
-  test.each([['class', (cls: string) => '.p-4.' + cls + '{padding:calc(var(--spacing) * 4)}'], ['where', (cls: string) => '.p-4:where(.' + cls + '){padding:calc(var(--spacing) * 4)}']])("isolateMode '%s': правила пакета привязаны к классу области, приложения — нет", (mode, rule) => {
+  test.each([
+    [
+      'class',
+      (cls: string) => '.p-4.' + cls + '{padding:calc(var(--spacing) * 4)}',
+    ],
+    [
+      'where',
+      (cls: string) => '.p-4:where(.' + cls + '){padding:calc(var(--spacing) * 4)}',
+    ],
+  ])("isolateMode '%s': правила пакета привязаны к классу области, приложения — нет", (mode, rule) => {
     const out = createTokenCollector({
       attrs: 'class',
       presets: APP,
@@ -425,7 +447,10 @@ describe('медиа и синонимы области — только из е
     const seen: string[] = [];
     const out = createTokenCollector({
       attrs: 'class',
-      presets: [presetStandard, presetSynonyms],
+      presets: [
+        presetStandard,
+        presetSynonyms,
+      ],
       scopePresets: [presetPkg],
       media: {
         tab: {

@@ -4,7 +4,7 @@
  * инстанса (`mn.setOptions`, `onError`, `onWarning`).
  */
 import {
-  minotationProvider, 
+  minotationProvider,
 } from '../core/index';
 import presetStandard from '../presets/standard';
 
@@ -41,7 +41,7 @@ describe('mn.synonyms', () => {
     const mn = makeMn();
     mn.synonyms({
       hov: ':hover',
-      foc: ':focus', 
+      foc: ':focus',
     });
 
     const css = compile(
@@ -81,13 +81,16 @@ describe('опции инстанса', () => {
   test('onError получает ошибку хендлера', () => {
     const errors: unknown[] = [];
     const mn: any = minotationProvider({
-      onError: (e: unknown) => errors.push(e), 
+      onError: (e: unknown) => errors.push(e),
     });
-    mn.setPresets([presetStandard, (instance: any) => {
-      instance('kaboomer', () => {
-        throw new Error('поломка'); 
-      });
-    }]);
+    mn.setPresets([
+      presetStandard,
+      (instance: any) => {
+        instance('kaboomer', () => {
+          throw new Error('поломка');
+        });
+      },
+    ]);
 
     compile(mn, 'kaboomer');
 
@@ -123,7 +126,7 @@ describe('опции инстанса', () => {
     mn.setPresets([presetStandard]);
 
     mn.setOptions({
-      isolateClass: '_m', 
+      isolateClass: '_m',
     });
 
     expect(mn.options.isolateClass).toBe('_m');

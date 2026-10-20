@@ -10,10 +10,13 @@
  * @module compile
  */
 import {
-  readdirSync, readFileSync, statSync,
+  readdirSync,
+  readFileSync,
+  statSync,
 } from 'node:fs';
 import {
-  join, resolve,
+  join,
+  resolve,
 } from 'node:path';
 import {
   presetHints,
@@ -27,14 +30,27 @@ import {
   isStringArray,
 } from 'minotation';
 import type {
-  MnWarning, OptionSchema,
+  MnWarning,
+  OptionSchema,
   MnPreset,
 } from 'minotation';
 import {
-  BUILD_OPTIONS_SCHEMA, CORE_OPTION_KEYS, createBuildCollector, createFileFilter, createMatcher, createScopeRewriter,
+  BUILD_OPTIONS_SCHEMA,
+  CORE_OPTION_KEYS,
+  createBuildCollector,
+  createFileFilter,
+  createMatcher,
+  createScopeRewriter,
 } from 'minotation-build';
 import type {
-  BuildOutput, Metrics, MnAttrs, MnCoreOptions, MnEntryOptions, MnFileMatcher, MnScopeRule, ScopeRewrite,
+  BuildOutput,
+  Metrics,
+  MnAttrs,
+  MnCoreOptions,
+  MnEntryOptions,
+  MnFileMatcher,
+  MnScopeRule,
+  ScopeRewrite,
 } from 'minotation-build';
 
 /**

@@ -13,7 +13,7 @@
 // (2026-08-15) — здесь применён ко всем остальным реэкспортам. Явный импорт +
 // `export const` компилируется в простое `exports.X =...` — лексер находит.
 import {
-  minotationProvider as minotationProviderImpl, 
+  minotationProvider as minotationProviderImpl,
 } from './core/index';
 import coreDefault from './core/index';
 import {
@@ -23,10 +23,10 @@ import {
   getCombinator as getCombinatorImpl,
 } from './selectorsCompileProvider';
 import {
-  selectorNormalize as selectorNormalizeImpl, 
+  selectorNormalize as selectorNormalizeImpl,
 } from './selectorNormalize';
 import {
-  isInvalidSelector as isInvalidSelectorImpl, 
+  isInvalidSelector as isInvalidSelectorImpl,
 } from './isInvalidSelector';
 import {
   extractTokens as extractTokensImpl,
@@ -44,7 +44,9 @@ import {
   createScopeClassWriter as createScopeClassWriterImpl,
 } from './scopeClass';
 export type {
-  ScopeClassResult, ScopeClassWriter, ScopeClassWriterOptions,
+  ScopeClassResult,
+  ScopeClassWriter,
+  ScopeClassWriterOptions,
 } from './scopeClass';
 import {
   checkOptions as checkOptionsImpl,
@@ -167,7 +169,8 @@ export type {
   ScanTokensOptions,
 } from './extractTokens';
 export type {
-  ScannerOptions, Scanner,
+  ScannerOptions,
+  Scanner,
 } from './scanner';
 export type {
   MnClassValue,
@@ -176,10 +179,12 @@ export type {
   MnScaleOptions,
 } from './presets/shared/scale';
 export type {
-  MnTwArgs, MnTwHandler,
+  MnTwArgs,
+  MnTwHandler,
 } from './presets/shared/tw';
 export type {
-  OptionCheck, OptionSchema,
+  OptionCheck,
+  OptionSchema,
 } from './checkOptions';
 export type {
   MnInstance,

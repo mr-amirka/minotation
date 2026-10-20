@@ -4,11 +4,11 @@
  * аргументов (она превращается в warning, а не в исключение наружу).
  */
 import {
-  minotationProvider, 
+  minotationProvider,
 } from '../../../core';
 import presetStandard from '..';
 import type {
-  MnWarning, 
+  MnWarning,
 } from '../../../core/types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -18,7 +18,7 @@ function compile(tokens: string[], options?: any): { css: string;
   const warnings: MnWarning[] = [];
   const mn: any = minotationProvider({
     onWarning: (w: MnWarning) => warnings.push(w),
-    ...options, 
+    ...options,
   });
   mn.setPresets([presetStandard]);
   const c = mn.getCompiler('class');
@@ -28,7 +28,7 @@ function compile(tokens: string[], options?: any): { css: string;
   mn.compile();
   return {
     css: mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n'),
-    warnings, 
+    warnings,
   };
 }
 
@@ -49,7 +49,10 @@ describe('составные значения', () => {
   });
 
   test('transform: Z-сдвиг и поворот вместе с базовым translate', () => {
-    const css = compile(['xZ10', 'x50Y30S150Rz45']).css;
+    const css = compile([
+      'xZ10',
+      'x50Y30S150Rz45',
+    ]).css;
     expect(css).toContain('translateZ(10px)');
     expect(css).toContain('translate(50px,30px) scale(1.5) rotateZ(45deg)');
   });
@@ -58,7 +61,7 @@ describe('составные значения', () => {
 describe('битые аргументы', () => {
   test('два десятичных разделителя в числе — токен не даёт правила', () => {
     const {
-      css, 
+      css,
     } = compile(['w1.2.3']);
 
     // хендлер бросает обычную ошибку разбора: она уходит в error$, а не в warnings$
@@ -68,7 +71,7 @@ describe('битые аргументы', () => {
 
   test('неизвестная единица измерения — токен отбраковывается', () => {
     const {
-      css, 
+      css,
     } = compile(['w10qq']);
 
     expect(css).not.toContain('width:10qq');
@@ -76,8 +79,11 @@ describe('битые аргументы', () => {
 
   test('битый токен не мешает соседним компилироваться', () => {
     const {
-      css, 
-    } = compile(['w1.2.3', 'p10']);
+      css,
+    } = compile([
+      'w1.2.3',
+      'p10',
+    ]);
 
     expect(css).toContain('padding:10px');
   });
@@ -93,7 +99,10 @@ describe('сдвиги, стороны и производные значени�
   });
 
   test('хендлеры сторон без аргумента раскрываются в значение по умолчанию', () => {
-    const css = compile(['s', 'st']).css;
+    const css = compile([
+      's',
+      'st',
+    ]).css;
     expect(css).toContain('top:0');
     expect(css).toContain('bottom:0');
   });
@@ -109,7 +118,10 @@ describe('сдвиги, стороны и производные значени�
   });
 
   test('известный фильтр без аргумента берёт значение по умолчанию из реестра', () => {
-    const css = compile(['ftBlur', 'ftGrayscale']).css;
+    const css = compile([
+      'ftBlur',
+      'ftGrayscale',
+    ]).css;
     expect(css).toContain('filter:blur(4px)');
     expect(css).toContain('filter:grayscale()');
   });
@@ -133,10 +145,22 @@ describe('toFixed — устойчивость к погрешности IEEE754
   // Баг был в `Math.floor(v*100)*0.01`: `33.3*100 === 3329.9999999999995` в IEEE754,
   // floor отбрасывал вниз → "33.29" вместо "33.3". Починено на `Math.round`.
   test.each([
-    ['pt33.3%', 'padding-top:33.3%'],
-    ['pt0.29%', 'padding-top:.29%'],
-    ['pt0.58%', 'padding-top:.58%'],
-    ['pt12.3%', 'padding-top:12.3%'],
+    [
+      'pt33.3%',
+      'padding-top:33.3%',
+    ],
+    [
+      'pt0.29%',
+      'padding-top:.29%',
+    ],
+    [
+      'pt0.58%',
+      'padding-top:.58%',
+    ],
+    [
+      'pt12.3%',
+      'padding-top:12.3%',
+    ],
   ])('%s → %s (не искажается погрешностью float)', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
@@ -166,29 +190,83 @@ describe('единица по умолчанию у свойств-длин', ()
   }
 
   test.each([
-    ['ti10', 'text-indent:10px'],
-    ['wos10', 'word-spacing:10px'],
-    ['bsp10', 'border-spacing:10px'],
-    ['fxb10', 'flex-basis:10px'],
-    ['tdt2', 'text-decoration-thickness:2px'],
-    ['tuo2', 'text-underline-offset:2px'],
+    [
+      'ti10',
+      'text-indent:10px',
+    ],
+    [
+      'wos10',
+      'word-spacing:10px',
+    ],
+    [
+      'bsp10',
+      'border-spacing:10px',
+    ],
+    [
+      'fxb10',
+      'flex-basis:10px',
+    ],
+    [
+      'tdt2',
+      'text-decoration-thickness:2px',
+    ],
+    [
+      'tuo2',
+      'text-underline-offset:2px',
+    ],
     // Дробное и отрицательное — тоже длина.
-    ['ti1.5', 'text-indent:1.5px'],
-    ['ti-5', 'text-indent:-5px'],
+    [
+      'ti1.5',
+      'text-indent:1.5px',
+    ],
+    [
+      'ti-5',
+      'text-indent:-5px',
+    ],
     // Каждая часть многозначного значения.
-    ['bsp10_20', 'border-spacing:10px 20px'],
+    [
+      'bsp10_20',
+      'border-spacing:10px 20px',
+    ],
     // Явная единица не дублируется, `0` остаётся без единицы.
-    ['ti10px', 'text-indent:10px'],
-    ['ti0', 'text-indent:0'],
+    [
+      'ti10px',
+      'text-indent:10px',
+    ],
+    [
+      'ti0',
+      'text-indent:0',
+    ],
     // Пустой суффикс — значение по умолчанию, как у `p`/`m`.
-    ['ti', 'text-indent:0'],
-    ['wos', 'word-spacing:0'],
-    ['bsp', 'border-spacing:0'],
-    ['fxb', 'flex-basis:0'],
+    [
+      'ti',
+      'text-indent:0',
+    ],
+    [
+      'wos',
+      'word-spacing:0',
+    ],
+    [
+      'bsp',
+      'border-spacing:0',
+    ],
+    [
+      'fxb',
+      'flex-basis:0',
+    ],
     // Ключевые слова и переменные не трогаем.
-    ['tiInherit', 'text-indent:inherit'],
-    ['fxbA', 'flex-basis:auto'],
-    ['ti--v', 'text-indent:var(--v)'],
+    [
+      'tiInherit',
+      'text-indent:inherit',
+    ],
+    [
+      'fxbA',
+      'flex-basis:auto',
+    ],
+    [
+      'ti--v',
+      'text-indent:var(--v)',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
@@ -216,12 +294,30 @@ describe('gap: синоним N (normal) во всём семействе', () =
   }
 
   test.each([
-    ['gapN', 'gap:normal'],
-    ['gapxN', 'column-gap:normal'],
-    ['gapyN', 'row-gap:normal'],
-    ['ggN', 'grid-gap:normal'],
-    ['ggrN', 'grid-row-gap:normal'],
-    ['ggcN', 'grid-column-gap:normal'],
+    [
+      'gapN',
+      'gap:normal',
+    ],
+    [
+      'gapxN',
+      'column-gap:normal',
+    ],
+    [
+      'gapyN',
+      'row-gap:normal',
+    ],
+    [
+      'ggN',
+      'grid-gap:normal',
+    ],
+    [
+      'ggrN',
+      'grid-row-gap:normal',
+    ],
+    [
+      'ggcN',
+      'grid-column-gap:normal',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
@@ -255,56 +351,182 @@ describe('сокращённые записи значений', () => {
 
   test.each([
     // Карты, которые были заполнены значениями из умерших черновиков.
-    ['twB', 'text-wrap:balance'],
-    ['twP', 'text-wrap:pretty'],
-    ['wscC', 'white-space-collapse:collapse'],
-    ['wscPB', 'white-space-collapse:preserve-breaks'],
-    ['wwA', 'word-wrap:anywhere'],
+    [
+      'twB',
+      'text-wrap:balance',
+    ],
+    [
+      'twP',
+      'text-wrap:pretty',
+    ],
+    [
+      'wscC',
+      'white-space-collapse:collapse',
+    ],
+    [
+      'wscPB',
+      'white-space-collapse:preserve-breaks',
+    ],
+    [
+      'wwA',
+      'word-wrap:anywhere',
+    ],
     // Пропуски в существующих картах.
-    ['crW', 'cursor:wait'],
-    ['crZI', 'cursor:zoom-in'],
-    ['crNWR', 'cursor:nw-resize'],
-    ['ovC', 'overflow:clip'],
-    ['aiAC', 'align-items:anchor-center'],
-    ['jiFS', 'justify-items:flex-start'],
+    [
+      'crW',
+      'cursor:wait',
+    ],
+    [
+      'crZI',
+      'cursor:zoom-in',
+    ],
+    [
+      'crNWR',
+      'cursor:nw-resize',
+    ],
+    [
+      'ovC',
+      'overflow:clip',
+    ],
+    [
+      'aiAC',
+      'align-items:anchor-center',
+    ],
+    [
+      'jiFS',
+      'justify-items:flex-start',
+    ],
     // `bgp` убран (трек notation-ergonomics, задача 5) — только атомарные оси.
-    ['bgpxL', 'background-position-x:left'],
-    ['bgpyT', 'background-position-y:top'],
-    ['bgpxXS', 'background-position-x:x-start'],
-    ['opC', 'object-position:center'],
-    ['clIS', 'clear:inline-start'],
-    ['rszBL', 'resize:block'],
-    ['taMP', 'text-align:match-parent'],
-    ['ttMA', 'text-transform:math-auto'],
-    ['tjICH', 'text-justify:inter-character'],
-    ['wsPR', 'white-space:preserve'],
-    ['wbBW', 'word-break:break-word'],
-    ['bgcpBA', 'background-clip:border-area'],
-    ['wmSRL', 'writing-mode:sideways-rl'],
-    ['dFW', 'display:flow'],
-    ['tdBL', 'text-decoration:blink'],
-    ['tdW', 'text-decoration:wavy'],
-    ['usAL', 'user-select:all'],
-    ['peAL', 'pointer-events:all'],
-    ['vaS', 'vertical-align:sub'],
-    ['fvTN', 'font-variant:tabular-nums'],
-    ['fsmS', 'font-smooth:small'],
+    [
+      'bgpxL',
+      'background-position-x:left',
+    ],
+    [
+      'bgpyT',
+      'background-position-y:top',
+    ],
+    [
+      'bgpxXS',
+      'background-position-x:x-start',
+    ],
+    [
+      'opC',
+      'object-position:center',
+    ],
+    [
+      'clIS',
+      'clear:inline-start',
+    ],
+    [
+      'rszBL',
+      'resize:block',
+    ],
+    [
+      'taMP',
+      'text-align:match-parent',
+    ],
+    [
+      'ttMA',
+      'text-transform:math-auto',
+    ],
+    [
+      'tjICH',
+      'text-justify:inter-character',
+    ],
+    [
+      'wsPR',
+      'white-space:preserve',
+    ],
+    [
+      'wbBW',
+      'word-break:break-word',
+    ],
+    [
+      'bgcpBA',
+      'background-clip:border-area',
+    ],
+    [
+      'wmSRL',
+      'writing-mode:sideways-rl',
+    ],
+    [
+      'dFW',
+      'display:flow',
+    ],
+    [
+      'tdBL',
+      'text-decoration:blink',
+    ],
+    [
+      'tdW',
+      'text-decoration:wavy',
+    ],
+    [
+      'usAL',
+      'user-select:all',
+    ],
+    [
+      'peAL',
+      'pointer-events:all',
+    ],
+    [
+      'vaS',
+      'vertical-align:sub',
+    ],
+    [
+      'fvTN',
+      'font-variant:tabular-nums',
+    ],
+    [
+      'fsmS',
+      'font-smooth:small',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
 
   test.each([
     // Сторожа: прежние формы не сломаны переназначением букв.
-    ['dF', 'display:flex'],
-    ['clB', 'clear:both'],
-    ['rszB', 'resize:both'],
-    ['taL', 'text-align:left'],
-    ['wsN', 'white-space:normal'],
-    ['wbK', 'word-break:keep-all'],
-    ['crP', 'cursor:pointer'],
-    ['tdU', 'text-decoration:underline'],
-    ['vaSUP', 'vertical-align:super'],
-    ['fvSC', 'font-variant:small-caps'],
+    [
+      'dF',
+      'display:flex',
+    ],
+    [
+      'clB',
+      'clear:both',
+    ],
+    [
+      'rszB',
+      'resize:both',
+    ],
+    [
+      'taL',
+      'text-align:left',
+    ],
+    [
+      'wsN',
+      'white-space:normal',
+    ],
+    [
+      'wbK',
+      'word-break:keep-all',
+    ],
+    [
+      'crP',
+      'cursor:pointer',
+    ],
+    [
+      'tdU',
+      'text-decoration:underline',
+    ],
+    [
+      'vaSUP',
+      'vertical-align:super',
+    ],
+    [
+      'fvSC',
+      'font-variant:small-caps',
+    ],
   ])('%s → %s (прежняя форма)', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
@@ -357,15 +579,42 @@ describe('переменная как слагаемое в calc (PATTERN_VAR_AD
   // слагаемое (`.w10\+--a+--a{width:10px}`). Исключение добавлено в
   // `REGEXP_SELECTOR_EXCEPTIONS`.
   test.each([
-    ['w10---a', 'width:calc(10px - var(--a))'],
-    ['w10----a', 'width:calc(10px - env(--a))'],
-    ['w10---a,10px', 'width:calc(10px - var(--a,10px))'],
-    ['w10---a,10', 'width:calc(10px - var(--a,10px))'],
-    ['w--a;---b', 'width:calc(var(--a) - var(--b))'],
-    ['w10+--a', 'width:calc(10px + var(--a))'],
-    ['w10+---a', 'width:calc(10px + env(--a))'],
-    ['w10+--a,10px', 'width:calc(10px + var(--a,10px))'],
-    ['w--a;+--b', 'width:calc(var(--a) + var(--b))'],
+    [
+      'w10---a',
+      'width:calc(10px - var(--a))',
+    ],
+    [
+      'w10----a',
+      'width:calc(10px - env(--a))',
+    ],
+    [
+      'w10---a,10px',
+      'width:calc(10px - var(--a,10px))',
+    ],
+    [
+      'w10---a,10',
+      'width:calc(10px - var(--a,10px))',
+    ],
+    [
+      'w--a;---b',
+      'width:calc(var(--a) - var(--b))',
+    ],
+    [
+      'w10+--a',
+      'width:calc(10px + var(--a))',
+    ],
+    [
+      'w10+---a',
+      'width:calc(10px + env(--a))',
+    ],
+    [
+      'w10+--a,10px',
+      'width:calc(10px + var(--a,10px))',
+    ],
+    [
+      'w--a;+--b',
+      'width:calc(var(--a) + var(--b))',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
@@ -427,9 +676,18 @@ describe('ratio: хвост, который не разобрался, брак�
   }
 
   test.each([
-    ['ratio16/9', 'пропорция пишется через `x`: ratio16x9'],
-    ['ratio56.25', 'дробь в этой позиции шаблон не принимает'],
-    ['ratio9x16zzz', 'мусор в хвосте'],
+    [
+      'ratio16/9',
+      'пропорция пишется через `x`: ratio16x9',
+    ],
+    [
+      'ratio56.25',
+      'дробь в этой позиции шаблон не принимает',
+    ],
+    [
+      'ratio9x16zzz',
+      'мусор в хвосте',
+    ],
   ])('%s → брак (%s)', (token) => {
     const r = compileRatio(token);
     expect(r.css).not.toContain('padding-top');
@@ -437,9 +695,18 @@ describe('ratio: хвост, который не разобрался, брак�
   });
 
   test.each([
-    ['ratio9x16', 'padding-top:177.78%'],
-    ['ratio16', 'padding-top:16%'],
-    ['ratio16+10px', 'padding-top:calc(16% + 10px)'],
+    [
+      'ratio9x16',
+      'padding-top:177.78%',
+    ],
+    [
+      'ratio16',
+      'padding-top:16%',
+    ],
+    [
+      'ratio16+10px',
+      'padding-top:calc(16% + 10px)',
+    ],
   ])('%s продолжает работать', (token, expected) => {
     expect(compileRatio(token).css).toContain(expected);
   });
@@ -464,13 +731,34 @@ describe('auto-repeat: gtcAF240 вместо gtcRepeat\\(auto-fit,minmax\\(240px
   }
 
   test.each([
-    ['gtcAF240', 'grid-template-columns:repeat(auto-fit, minmax(240px, 1fr))'],
-    ['gtcAF240_1fr', 'grid-template-columns:repeat(auto-fit, minmax(240px, 1fr))'],
-    ['gtcAF240_300', 'grid-template-columns:repeat(auto-fit, minmax(240px, 300px))'],
-    ['gtcAF15em', 'grid-template-columns:repeat(auto-fit, minmax(15em, 1fr))'],
-    ['gtcAF20%_1fr', 'grid-template-columns:repeat(auto-fit, minmax(20%, 1fr))'],
-    ['gtcAFL240', 'grid-template-columns:repeat(auto-fill, minmax(240px, 1fr))'],
-    ['gtrAF100', 'grid-template-rows:repeat(auto-fit, minmax(100px, 1fr))'],
+    [
+      'gtcAF240',
+      'grid-template-columns:repeat(auto-fit, minmax(240px, 1fr))',
+    ],
+    [
+      'gtcAF240_1fr',
+      'grid-template-columns:repeat(auto-fit, minmax(240px, 1fr))',
+    ],
+    [
+      'gtcAF240_300',
+      'grid-template-columns:repeat(auto-fit, minmax(240px, 300px))',
+    ],
+    [
+      'gtcAF15em',
+      'grid-template-columns:repeat(auto-fit, minmax(15em, 1fr))',
+    ],
+    [
+      'gtcAF20%_1fr',
+      'grid-template-columns:repeat(auto-fit, minmax(20%, 1fr))',
+    ],
+    [
+      'gtcAFL240',
+      'grid-template-columns:repeat(auto-fill, minmax(240px, 1fr))',
+    ],
+    [
+      'gtrAF100',
+      'grid-template-rows:repeat(auto-fit, minmax(100px, 1fr))',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
@@ -491,10 +779,22 @@ describe('auto-repeat: gtcAF240 вместо gtcRepeat\\(auto-fit,minmax\\(240px
   });
 
   test.each([
-    ['gtcN', 'grid-template-columns:none'],
-    ['gtcAuto', 'grid-template-columns:auto'],
-    ['gtc1fr_auto', 'grid-template-columns:1fr auto'],
-    ['gtcSubgrid', 'grid-template-columns:subgrid'],
+    [
+      'gtcN',
+      'grid-template-columns:none',
+    ],
+    [
+      'gtcAuto',
+      'grid-template-columns:auto',
+    ],
+    [
+      'gtc1fr_auto',
+      'grid-template-columns:1fr auto',
+    ],
+    [
+      'gtcSubgrid',
+      'grid-template-columns:subgrid',
+    ],
   ])('%s — обычные значения не задеты', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
@@ -537,23 +837,56 @@ describe('незнакомое слово у хендлера со словар�
   });
 
   test.each([
-    ['ovH', 'overflow:hidden'],
-    ['clN', 'clear:none'],
-    ['dF', 'display:flex'],
-    ['crP', 'cursor:pointer'],
-    ['jcC', 'justify-content:center'],
+    [
+      'ovH',
+      'overflow:hidden',
+    ],
+    [
+      'clN',
+      'clear:none',
+    ],
+    [
+      'dF',
+      'display:flex',
+    ],
+    [
+      'crP',
+      'cursor:pointer',
+    ],
+    [
+      'jcC',
+      'justify-content:center',
+    ],
   ])('%s → %s — краткая запись работает', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
 
-  test.each([['ovInherit', 'overflow:inherit'], ['dUnset', 'display:unset']])('%s → %s — CSS-wide keywords проходят', (token, expected) => {
+  test.each([
+    [
+      'ovInherit',
+      'overflow:inherit',
+    ],
+    [
+      'dUnset',
+      'display:unset',
+    ],
+  ])('%s → %s — CSS-wide keywords проходят', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
 
   test.each([
-    ['d--v', 'display:var(--v)'],
-    ['bgpx50%', 'background-position-x:50%'],
-    ['tn_all_0.2s_ease', 'transition:all 0.2s ease'],
+    [
+      'd--v',
+      'display:var(--v)',
+    ],
+    [
+      'bgpx50%',
+      'background-position-x:50%',
+    ],
+    [
+      'tn_all_0.2s_ease',
+      'transition:all 0.2s ease',
+    ],
   ])('%s → %s — переменные, числа и свободная форма не задеты', (token, expected) => {
     // Проверяется только СЛОВО: числа, проценты, функции и режим с ведущим `_`
     // словарём не перечислить, и у многих свойств они законны.
@@ -601,21 +934,57 @@ describe('голое слово у свойства-длины', () => {
   });
 
   test.each([
-    ['ti10', 'text-indent:10px'],
-    ['wosNormal', 'word-spacing:normal'],
-    ['fxbA', 'flex-basis:auto'],
-    ['fxbFitContent', 'flex-basis:fit-content'],
-    ['tdtFromFont', 'text-decoration-thickness:from-font'],
-    ['tuoA', 'text-underline-offset:auto'],
+    [
+      'ti10',
+      'text-indent:10px',
+    ],
+    [
+      'wosNormal',
+      'word-spacing:normal',
+    ],
+    [
+      'fxbA',
+      'flex-basis:auto',
+    ],
+    [
+      'fxbFitContent',
+      'flex-basis:fit-content',
+    ],
+    [
+      'tdtFromFont',
+      'text-decoration-thickness:from-font',
+    ],
+    [
+      'tuoA',
+      'text-underline-offset:auto',
+    ],
   ])('%s → %s — ключевое слово своего свойства', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
 
-  test.each([['tiInherit', 'text-indent:inherit'], ['bspUnset', 'border-spacing:unset']])('%s → %s — CSS-wide проходят', (token, expected) => {
+  test.each([
+    [
+      'tiInherit',
+      'text-indent:inherit',
+    ],
+    [
+      'bspUnset',
+      'border-spacing:unset',
+    ],
+  ])('%s → %s — CSS-wide проходят', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
 
-  test.each([['apN', 'appearance:none'], ['irPixelated', 'image-rendering:pixelated']])('%s → %s — не-длины в том же блоке не задеты', (token, expected) => {
+  test.each([
+    [
+      'apN',
+      'appearance:none',
+    ],
+    [
+      'irPixelated',
+      'image-rendering:pixelated',
+    ],
+  ])('%s → %s — не-длины в том же блоке не задеты', (token, expected) => {
     // У них значения произвольны и словарём не перечислимы.
     expect(cssOf(token)).toBe(expected);
   });

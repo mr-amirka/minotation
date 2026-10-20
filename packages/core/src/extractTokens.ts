@@ -316,7 +316,8 @@ function readOperand(state: ExpressionState): void {
       source, i, out,
     );
   } else if (ch !== undefined && (isIdentChar(ch) || ch === '.')) {
-    while (i < source.length && (isIdentChar(source[i]) || source[i] === '.')) {
+    const sourceLength = source.length;
+    while (i < sourceLength && (isIdentChar(source[i]) || source[i] === '.')) {
       i++;
     }
     state[MN_EXPR_AT] = i;
@@ -338,7 +339,8 @@ function readPostfix(state: ExpressionState): boolean {
       i = skipBalanced(source, i);
     } else if (ch === '.' || (ch === '?' && source[i + 1] === '.')) {
       i += ch === '.' ? 1 : 2;
-      while (i < source.length && isIdentChar(source[i])) {
+      const sourceLength = source.length;
+      while (i < sourceLength && isIdentChar(source[i])) {
         i++;
       }
     } else if (ch === '!' && source[i + 1] !== '=') {
@@ -975,7 +977,10 @@ export function scanTokens(source: string, options: ScanTokensOptions): string[]
   extractMergeCallTokensInto(
     tokens,
     source,
-    options.mergeFnNames === undefined ? ['mne', 'mnClass'] : options.mergeFnNames,
+    options.mergeFnNames === undefined ? [
+      'mne',
+      'mnClass',
+    ] : options.mergeFnNames,
     suffixes,
   );
   return tokens;

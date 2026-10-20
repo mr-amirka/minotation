@@ -2,7 +2,10 @@
  * Опция `scopes` — правила для пакетов и путей со стороны потребителя (D-080…D-082).
  */
 import {
-  mkdirSync, mkdtempSync, rmSync, writeFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
 } from 'node:fs';
 import {
   join,
@@ -11,14 +14,22 @@ import {
   tmpdir,
 } from 'node:os';
 import {
-  checkBuildOptions, clearPackageDirectiveCache, createScopeResolver, createTokenCollector, globToRegExp, isScopeRules,
+  checkBuildOptions,
+  clearPackageDirectiveCache,
+  createScopeResolver,
+  createTokenCollector,
+  globToRegExp,
+  isScopeRules,
   readPackageName,
 } from '../src/index';
 import type {
   MnPreset,
 } from '../src/index';
 import {
-  presetMedias, presetStandard, presetSynonyms, presetTw4,
+  presetMedias,
+  presetStandard,
+  presetSynonyms,
+  presetTw4,
 } from 'minotation';
 
 let dir: string;
@@ -107,10 +118,12 @@ describe('globToRegExp', () => {
 
 describe('createScopeResolver', () => {
   test('строка без `./` и шаблона — имя пакета, а не путь', () => {
-    expect(createScopeResolver([{
-      match: 'src',
-      notationMode: 'tw4-compatible',
-    }], dir)(join(
+    expect(createScopeResolver([
+      {
+        match: 'src',
+        notationMode: 'tw4-compatible',
+      },
+    ], dir)(join(
       dir, 'src', 'App.tsx',
     ), undefined)).toBeUndefined();
   });
@@ -122,7 +135,10 @@ describe('createScopeResolver', () => {
         notationMode: 'tw4-compatible',
       },
       {
-        match: ['src/legacy/**', /\.tw\.tsx$/g],
+        match: [
+          'src/legacy/**',
+          /\.tw\.tsx$/g,
+        ],
         notationMode: 'breakpoint-prefixed',
       },
       {
@@ -160,19 +176,23 @@ describe('createScopeResolver', () => {
     const file = join(
       dir, 'src', 'App.tsx',
     );
-    expect(createScopeResolver([{
-      match: './src',
-      notationMode: 'tw4-compatible',
-      requires: ['presetTw4'],
-    }], dir)(file, own)).toEqual({
+    expect(createScopeResolver([
+      {
+        match: './src',
+        notationMode: 'tw4-compatible',
+        requires: ['presetTw4'],
+      },
+    ], dir)(file, own)).toEqual({
       notationMode: 'context-qualified',
       requires: ['presetTw4'],
     });
-    expect(createScopeResolver([{
-      match: './src',
-      notationMode: 'tw4-compatible',
-      override: true,
-    }], dir)(file, own)).toEqual({
+    expect(createScopeResolver([
+      {
+        match: './src',
+        notationMode: 'tw4-compatible',
+        override: true,
+      },
+    ], dir)(file, own)).toEqual({
       notationMode: 'tw4-compatible',
     });
   });
@@ -187,34 +207,60 @@ describe('createScopeResolver', () => {
 
 describe('scopes — проверка опции', () => {
   test.each([
-    [{
-      scopes: {},
-    }, 'option "scopes" expects an array of scope rules'],
-    [{
-      scopes: ['@acme/ui'],
-    }, 'option "scopes[0]" expects an object with "match"'],
-    [{
-      scopes: [{
-        notationMode: 'tw4-compatible',
-      }],
-    }, 'option "scopes[0]" needs "match"'],
-    [{
-      scopes: [{
-        match: 5,
-      }],
-    }, 'expects a package name, a path pattern, a RegExp or an array of them'],
-    [{
-      scopes: [{
-        match: [],
-      }],
-    }, 'expects a package name, a path pattern, a RegExp or an array of them'],
-    [{
-      scopes: [{
-        match: 'a',
-        attrs: 'class',
-      }],
-    }, 'unknown option "scopes[0].attrs". Known options: notationMode, requires, groupMode, contextWhere, warningMode, specificityMode, importantMode,'
-      + ' maxDepthMode, maxSpecificityMode, childSelectorMode, unknownMediaMode, suspectClassMode, groupSuspectMode, match, override'],
+    [
+      {
+        scopes: {},
+      },
+      'option "scopes" expects an array of scope rules',
+    ],
+    [
+      {
+        scopes: ['@acme/ui'],
+      },
+      'option "scopes[0]" expects an object with "match"',
+    ],
+    [
+      {
+        scopes: [
+          {
+            notationMode: 'tw4-compatible',
+          },
+        ],
+      },
+      'option "scopes[0]" needs "match"',
+    ],
+    [
+      {
+        scopes: [
+          {
+            match: 5,
+          },
+        ],
+      },
+      'expects a package name, a path pattern, a RegExp or an array of them',
+    ],
+    [
+      {
+        scopes: [
+          {
+            match: [],
+          },
+        ],
+      },
+      'expects a package name, a path pattern, a RegExp or an array of them',
+    ],
+    [
+      {
+        scopes: [
+          {
+            match: 'a',
+            attrs: 'class',
+          },
+        ],
+      },
+      'unknown option "scopes[0].attrs". Known options: notationMode, requires, groupMode, contextWhere, warningMode, specificityMode, importantMode,'
+      + ' maxDepthMode, maxSpecificityMode, childSelectorMode, unknownMediaMode, suspectClassMode, groupSuspectMode, match, override',
+    ],
   ])('%j', (options, message) => {
     expect(() => checkBuildOptions(options as never, 'mnVite')).toThrow(message);
   });
@@ -234,12 +280,17 @@ describe('scopes — проверка опции', () => {
 
   test('допустимые правила', () => {
     expect(() => checkBuildOptions({
-      scopes: [{
-        match: ['@acme/ui', /x/],
-        override: true,
-        requires: ['presetTw4'],
-        notationMode: 'tw4-compatible',
-      }],
+      scopes: [
+        {
+          match: [
+            '@acme/ui',
+            /x/,
+          ],
+          override: true,
+          requires: ['presetTw4'],
+          notationMode: 'tw4-compatible',
+        },
+      ],
     }, 'mnVite')).not.toThrow();
   });
 });
@@ -254,11 +305,13 @@ describe('scopes в сборке: пакет без декларации на Ta
         presetMedias,
       ] as MnPreset[],
       scopePresets: [presetTw4],
-      scopes: [{
-        match: '@acme/ui',
-        requires: ['presetTw4'],
-        notationMode: 'tw4-compatible',
-      }],
+      scopes: [
+        {
+          match: '@acme/ui',
+          requires: ['presetTw4'],
+          notationMode: 'tw4-compatible',
+        },
+      ],
     });
     collector.add(join(
       dir, 'src', 'App.html',

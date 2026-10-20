@@ -32,16 +32,37 @@ describe('CSS-переменные в составном значении', () =
   test.each([
     // Регрессия, с которой всё началось: суффикс начинается с `_`, поэтому
     // целиком уходил в «сырой» режим и давал `outline:3px solid --marker`.
-    ['tn_all_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
+    [
+      'tn_all_0.2s_--ease',
+      'transition:all 0.2s var(--ease)',
+    ],
     // Та же форма без ведущего `_` — другой путь внутри хендлера, тот же итог.
-    ['tnAll_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
+    [
+      'tnAll_0.2s_--ease',
+      'transition:all 0.2s var(--ease)',
+    ],
     // Одиночная переменная у хендлера свободного значения тоже не работала.
-    ['tn--ease', 'transition:var(--ease)'],
-    ['tn_all_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
-    ['bxsh10c--shadow', 'box-shadow:0px 0px 10px 0px var(--shadow)'],
+    [
+      'tn--ease',
+      'transition:var(--ease)',
+    ],
+    [
+      'tn_all_0.2s_--ease',
+      'transition:all 0.2s var(--ease)',
+    ],
+    [
+      'bxsh10c--shadow',
+      'box-shadow:0px 0px 10px 0px var(--shadow)',
+    ],
     // Несколько переменных в одном значении.
-    ['tn_all_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
-    ['tn_--prop_--dur_--ease', 'transition:var(--prop) var(--dur) var(--ease)'],
+    [
+      'tn_all_0.2s_--ease',
+      'transition:all 0.2s var(--ease)',
+    ],
+    [
+      'tn_--prop_--dur_--ease',
+      'transition:var(--prop) var(--dur) var(--ease)',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
@@ -85,20 +106,50 @@ describe('`;` — явный конец имени переменной', () => 
 
   test.each([
     // Числовой путь (getVal) — режет суффикс по `_`, терминатор его защищает.
-    ['w--my_width;', 'width:var(--my_width)'],
-    ['p--gap_size;', 'padding:var(--gap_size)'],
+    [
+      'w--my_width;',
+      'width:var(--my_width)',
+    ],
+    [
+      'p--gap_size;',
+      'padding:var(--gap_size)',
+    ],
     // Терминатор совместим с арифметикой.
-    ['w--my_w;+5', 'width:calc(var(--my_w) + 5px)'],
+    [
+      'w--my_w;+5',
+      'width:calc(var(--my_w) + 5px)',
+    ],
     // Путь «свободного» значения.
-    ['ff--my_font;', 'font-family:var(--my_font)'],
-    ['tn_all_--ease;', 'transition:all var(--ease)'],
+    [
+      'ff--my_font;',
+      'font-family:var(--my_font)',
+    ],
+    [
+      'tn_all_--ease;',
+      'transition:all var(--ease)',
+    ],
     // Цветовой путь: `_` там и так был доступен, но `;` не должен ломать.
-    ['c--my_ink;', 'color:var(--my_ink)'],
-    ['bc--my_line;', 'border-color:var(--my_line)'],
-    ['olc--my_line;', 'outline-color:var(--my_line)'],
-    ['bg--my_bg;', 'background:var(--my_bg)'],
+    [
+      'c--my_ink;',
+      'color:var(--my_ink)',
+    ],
+    [
+      'bc--my_line;',
+      'border-color:var(--my_line)',
+    ],
+    [
+      'olc--my_line;',
+      'outline-color:var(--my_line)',
+    ],
+    [
+      'bg--my_bg;',
+      'background:var(--my_bg)',
+    ],
     // Несколько имён с `_` в одном значении.
-    ['tn--a_b;_all_--c_d;', 'transition:var(--a_b) all var(--c_d)'],
+    [
+      'tn--a_b;_all_--c_d;',
+      'transition:var(--a_b) all var(--c_d)',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
@@ -124,30 +175,75 @@ describe('хендлеры со своим путём разбора — спл�
   // Три группы мимо общего пути, 107 битых комбинаций.
   test.each([
     // border-style (16 хендлеров по сторонам) — шёл через голый toKebabCase.
-    ['bs--v', 'border-style:var(--v)'],
-    ['bs--a_b;', 'border-style:var(--a_b)'],
-    ['bsx--v', 'border-left-style:var(--v);border-right-style:var(--v)'],
+    [
+      'bs--v',
+      'border-style:var(--v)',
+    ],
+    [
+      'bs--a_b;',
+      'border-style:var(--a_b)',
+    ],
+    [
+      'bsx--v',
+      'border-left-style:var(--v);border-right-style:var(--v)',
+    ],
     // page-break — единственные пользователи МАССИВНОЙ формы synonymProvider,
     // она нормализовала значение как имя шрифта.
-    ['pgba--v', 'page-break-after:var(--v);break-after:var(--v)'],
-    ['pgba--a_b;', 'page-break-after:var(--a_b);break-after:var(--a_b)'],
-    ['pgbi--v', 'page-break-inside:var(--v);break-inside:var(--v)'],
+    [
+      'pgba--v',
+      'page-break-after:var(--v);break-after:var(--v)',
+    ],
+    [
+      'pgba--a_b;',
+      'page-break-after:var(--a_b);break-after:var(--a_b)',
+    ],
+    [
+      'pgbi--v',
+      'page-break-inside:var(--v);break-inside:var(--v)',
+    ],
     // url-свойства: переменная — значение целиком, а не имя файла внутри url.
-    ['bgi--hero', 'background-image:var(--hero)'],
-    ['bgi--a_b;', 'background-image:var(--a_b)'],
-    ['lisi--v', 'list-style-image:var(--v)'],
-    ['maski--v', 'mask-image:var(--v)'],
+    [
+      'bgi--hero',
+      'background-image:var(--hero)',
+    ],
+    [
+      'bgi--a_b;',
+      'background-image:var(--a_b)',
+    ],
+    [
+      'lisi--v',
+      'list-style-image:var(--v)',
+    ],
+    [
+      'maski--v',
+      'mask-image:var(--v)',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
 
   test.each([
     // Сторожа: обычные значения тех же хендлеров не задеты.
-    ['bsS', 'border-style:solid'],
-    ['bs', 'border-style:solid'],
-    ['bsDotted', 'border-style:dotted'],
-    ['pgbaAV', 'page-break-after:avoid;break-after:avoid'],
-    ['bgi', 'background-image:none'],
+    [
+      'bsS',
+      'border-style:solid',
+    ],
+    [
+      'bs',
+      'border-style:solid',
+    ],
+    [
+      'bsDotted',
+      'border-style:dotted',
+    ],
+    [
+      'pgbaAV',
+      'page-break-after:avoid;break-after:avoid',
+    ],
+    [
+      'bgi',
+      'background-image:none',
+    ],
   ])('%s → %s (без переменной)', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });
@@ -155,18 +251,42 @@ describe('хендлеры со своим путём разбора — спл�
 
 describe('составные значения без переменных не затронуты', () => {
   test.each([
-    ['tn_all_0.2s_ease', 'transition:all 0.2s ease'],
-    ['tnAll', 'transition:all'],
-    ['tn_all_0.2s_ease', 'transition:all 0.2s ease'],
-    ['bxsh10cF00', 'box-shadow:0px 0px 10px 0px #f00'],
-    ['posSticky', 'position:sticky'],
+    [
+      'tn_all_0.2s_ease',
+      'transition:all 0.2s ease',
+    ],
+    [
+      'tnAll',
+      'transition:all',
+    ],
+    [
+      'tn_all_0.2s_ease',
+      'transition:all 0.2s ease',
+    ],
+    [
+      'bxsh10cF00',
+      'box-shadow:0px 0px 10px 0px #f00',
+    ],
+    [
+      'posSticky',
+      'position:sticky',
+    ],
     // Посегментный kebab: склеенная строка дала бы `0_1_-auto`.
-    ['fx0_1_Auto', 'flex:0 1 auto'],
+    [
+      'fx0_1_Auto',
+      'flex:0 1 auto',
+    ],
     // Ведущий `_` означает «дальше текст», а текста нет — пустая строка.
-    ['cnt_', 'content:""'],
+    [
+      'cnt_',
+      'content:""',
+    ],
     // `\_` снимается до хендлера (см. тест-ограничение выше), поэтому `_`
     // здесь работает как обычный разделитель → пробел.
-    ['ff_my\\_font', 'font-family:"my font"'],
+    [
+      'ff_my\\_font',
+      'font-family:"my font"',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });

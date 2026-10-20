@@ -11,7 +11,7 @@ import {
   type MnDepthCheck,
 } from '../selectorsCompileProvider/getCombinator';
 import {
-  MnParseError, 
+  MnParseError,
 } from '../core/types';
 import {
   maxDepthMessage,
@@ -23,7 +23,10 @@ function makeDepthCheck(over: Partial<MnDepthCheck> = {}): MnDepthCheck & { call
     maxDepth: 3,
     token: 'testToken',
     onExceed: (depth, maxDepth) => {
-      calls.push([depth, maxDepth]);
+      calls.push([
+        depth,
+        maxDepth,
+      ]);
       return undefined;
     },
     calls,
@@ -52,12 +55,21 @@ describe('getCombinatorByDepth', () => {
 
 describe('getCombinator', () => {
   test('имя без числового префикса — комбинатор-пробел', () => {
-    expect(getCombinator('Parent')).toEqual([' ', 'Parent']);
+    expect(getCombinator('Parent')).toEqual([
+      ' ',
+      'Parent',
+    ]);
   });
 
   test('числовой префикс задаёт глубину', () => {
-    expect(getCombinator('1Child')).toEqual(['>', 'Child']);
-    expect(getCombinator('2Parent')).toEqual(['>*>', 'Parent']);
+    expect(getCombinator('1Child')).toEqual([
+      '>',
+      'Child',
+    ]);
+    expect(getCombinator('2Parent')).toEqual([
+      '>*>',
+      'Parent',
+    ]);
   });
 
   test('только число, без имени — вырожденная форма, бракуется (§14.3)', () => {
@@ -68,30 +80,53 @@ describe('getCombinator', () => {
   });
 
   test.each([
-    ['', 'пустой сегмент'],
-    ['0', 'глубина 0 — склеивание классов'],
-    ['-1', 'отрицательная глубина — инверсия направления'],
+    [
+      '',
+      'пустой сегмент',
+    ],
+    [
+      '0',
+      'глубина 0 — склеивание классов',
+    ],
+    [
+      '-1',
+      'отрицательная глубина — инверсия направления',
+    ],
   ])('вырожденная форма %s (%s) бракуется', (name) => {
     expect(() => getCombinator(name)).toThrow(MnParseError);
   });
 
   test('глубина в пределах maxDepth — предупреждение не вызывается', () => {
     const check = makeDepthCheck();
-    expect(getCombinator('3Parent', check)).toEqual(['>*>*>', 'Parent']);
+    expect(getCombinator('3Parent', check)).toEqual([
+      '>*>*>',
+      'Parent',
+    ]);
     expect(check.calls).toEqual([]);
   });
 
   test('режим warn: предупреждение вызывается, комбинатор всё равно возвращается', () => {
     const check = makeDepthCheck();
-    expect(getCombinator('5Parent', check)).toEqual(['>*>*>*>*>', 'Parent']);
-    expect(check.calls).toEqual([[5, 3]]);
+    expect(getCombinator('5Parent', check)).toEqual([
+      '>*>*>*>*>',
+      'Parent',
+    ]);
+    expect(check.calls).toEqual([
+      [
+        5,
+        3,
+      ],
+    ]);
   });
 
   test('onExceed вернул true (strict): MnParseError с forbidden — токен не даёт CSS', () => {
     const calls: Array<[number, number]> = [];
     const check = makeDepthCheck({
       onExceed: (depth, maxDepth) => {
-        calls.push([depth, maxDepth]);
+        calls.push([
+          depth,
+          maxDepth,
+        ]);
         return true;
       },
     });
@@ -118,12 +153,17 @@ describe('getCombinator', () => {
       // Уже учтён ядром для MnForbiddenTokenError — в warnings$ не идёт.
       forbidden: true,
     });
-    expect(calls).toEqual([[5, 3]]);
+    expect(calls).toEqual([
+      [
+        5,
+        3,
+      ],
+    ]);
   });
 
   test('maxDepth не задан — мягкая проверка пропускается', () => {
     const check = makeDepthCheck({
-      maxDepth: undefined, 
+      maxDepth: undefined,
     });
     expect(getCombinator('40Parent', check)[0]).toBe(getCombinatorByDepth(MN_MAX_DEPTH_HARD_LIMIT));
     expect(check.calls).toEqual([]);

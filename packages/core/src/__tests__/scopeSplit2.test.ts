@@ -5,7 +5,7 @@
  * здесь напрямую, а не только через компиляцию токенов.
  */
 import {
-  scopeSplit2, 
+  scopeSplit2,
 } from '../selectorsCompileProvider/scopeSplit2';
 
 describe('scopeSplit2', () => {
@@ -14,15 +14,41 @@ describe('scopeSplit2', () => {
   });
 
   test('вложенные скобки разбираются в дерево пар [текст, дети]', () => {
-    expect(scopeSplit2('not(.disabled(.as).lak).checked')).toEqual([['not', [['.disabled', [['.as']]], ['.lak']]], ['.checked']]);
+    expect(scopeSplit2('not(.disabled(.as).lak).checked')).toEqual([
+      [
+        'not',
+        [
+          [
+            '.disabled',
+            [['.as']],
+          ],
+          ['.lak'],
+        ],
+      ],
+      ['.checked'],
+    ]);
   });
 
   test('несколько скобок подряд на одном уровне', () => {
-    expect(scopeSplit2('a(b)c(d)')).toEqual([['a', [['b']]], ['c', [['d']]]]);
+    expect(scopeSplit2('a(b)c(d)')).toEqual([
+      [
+        'a',
+        [['b']],
+      ],
+      [
+        'c',
+        [['d']],
+      ],
+    ]);
   });
 
   test('незакрытая скобка закрывается в конце разбора', () => {
-    expect(scopeSplit2('a(b')).toEqual([['a', [['b']]]]);
+    expect(scopeSplit2('a(b')).toEqual([
+      [
+        'a',
+        [['b']],
+      ],
+    ]);
   });
 
   test('лишняя закрывающая скобка — синтаксическая ошибка', () => {
@@ -36,7 +62,13 @@ describe('scopeSplit2', () => {
   test('кастомные открывающая/закрывающая последовательности', () => {
     expect(scopeSplit2(
       'a[[b]]c', '[[', ']]',
-    )).toEqual([['a', [['b']]], ['c']]);
+    )).toEqual([
+      [
+        'a',
+        [['b']],
+      ],
+      ['c'],
+    ]);
   });
 
   test('экранирующая последовательность: следующий символ не считается скобкой', () => {

@@ -36,15 +36,42 @@ function compile(tokens: string, options: MnOptions = {}): { css: string;
 
 describe('a) группа без `|` после функционального псевдокласса — аргумент', () => {
   test.each([
-    ['cF:not(.a)', '.cF\\:not\\(\\.a\\):not(.a){color:#fff}'],
-    ['cF:not(.a,.b)', '.cF\\:not\\(\\.a\\,\\.b\\):not(.a,.b){color:#fff}'],
-    ['cF:n(2n+1)', '.cF\\:n\\(2n\\+1\\):nth-child(2n+1){color:#fff}'],
-    ['cF:has(>img)', '.cF\\:has\\(\\>img\\):has(>img){color:#fff}'],
-    ['cF:not([type=a])', '.cF\\:not\\(\\[type\\=a\\]\\):not([type=a]){color:#fff}'],
-    ['cF:not(:n(2n))', ':not(:nth-child(2n)){color:#fff}'],
-    ['cF:is(.a\\(x)', ':is(.a\\(x){color:#fff}'],
-    ['cF(:not(.a)|:f)', ':not(.a),'],
-    ['cF::part(label)', '::part(label){color:#fff}'],
+    [
+      'cF:not(.a)',
+      '.cF\\:not\\(\\.a\\):not(.a){color:#fff}',
+    ],
+    [
+      'cF:not(.a,.b)',
+      '.cF\\:not\\(\\.a\\,\\.b\\):not(.a,.b){color:#fff}',
+    ],
+    [
+      'cF:n(2n+1)',
+      '.cF\\:n\\(2n\\+1\\):nth-child(2n+1){color:#fff}',
+    ],
+    [
+      'cF:has(>img)',
+      '.cF\\:has\\(\\>img\\):has(>img){color:#fff}',
+    ],
+    [
+      'cF:not([type=a])',
+      '.cF\\:not\\(\\[type\\=a\\]\\):not([type=a]){color:#fff}',
+    ],
+    [
+      'cF:not(:n(2n))',
+      ':not(:nth-child(2n)){color:#fff}',
+    ],
+    [
+      'cF:is(.a\\(x)',
+      ':is(.a\\(x){color:#fff}',
+    ],
+    [
+      'cF(:not(.a)|:f)',
+      ':not(.a),',
+    ],
+    [
+      'cF::part(label)',
+      '::part(label){color:#fff}',
+    ],
   ])('%s', (token, expected) => {
     const {
       css, warnings,
@@ -68,7 +95,16 @@ describe('a) группа без `|` после функционального �
 });
 
 describe('b) groupSuspectMode — группа даёт заведомо битый CSS', () => {
-  test.each([['cF:h(2n)', 'Parentheses "(2n)" after ":h" are scope grammar'], ['cF:is(.a|.b)', 'Group "(.a|.b)" right after ":is"']])("%s — 'warn' (по умолчанию): предупреждение, CSS как написано", (token, message) => {
+  test.each([
+    [
+      'cF:h(2n)',
+      'Parentheses "(2n)" after ":h" are scope grammar',
+    ],
+    [
+      'cF:is(.a|.b)',
+      'Group "(.a|.b)" right after ":is"',
+    ],
+  ])("%s — 'warn' (по умолчанию): предупреждение, CSS как написано", (token, message) => {
     const {
       warnings,
     } = compile(token);
@@ -86,7 +122,10 @@ describe('b) groupSuspectMode — группа даёт заведомо бит�
     const mn = minotationProvider({
       groupSuspectMode: 'strict',
     });
-    mn.setPresets([presetStandard, presetSynonyms]);
+    mn.setPresets([
+      presetStandard,
+      presetSynonyms,
+    ]);
     mn.getCompiler('class')('cF:is(.a|.b) p10');
     expect(() => mn.compile()).toThrow("(groupSuspectMode: 'strict') — the token gives no CSS");
   });
@@ -99,10 +138,22 @@ describe('b) groupSuspectMode — группа даёт заведомо бит�
 
 describe("c) groupMode: 'css' — скобки это CSS", () => {
   test.each([
-    ['cF:nth-child(2n)', ':nth-child(2n){color:#fff}'],
-    ['cF:not(.a)', ':not(.a){color:#fff}'],
-    ['crUrl(a\\.png)', '{cursor:url(a.png)}'],
-    ['gtcRepeat(auto-fit,minmax(240px,1fr))', '{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}'],
+    [
+      'cF:nth-child(2n)',
+      ':nth-child(2n){color:#fff}',
+    ],
+    [
+      'cF:not(.a)',
+      ':not(.a){color:#fff}',
+    ],
+    [
+      'crUrl(a\\.png)',
+      '{cursor:url(a.png)}',
+    ],
+    [
+      'gtcRepeat(auto-fit,minmax(240px,1fr))',
+      '{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}',
+    ],
   ])('%s', (token, expected) => {
     expect(compile(token, {
       groupMode: 'css',
@@ -166,18 +217,33 @@ describe('настройки разбора компилятора: getCompiler(
   });
 
   test.each([
-    [undefined, ''],
-    [{}, ''],
-    [{
-      notationMode: 'tw4-compatible' as const,
-    }, 'tw4-compatible,,'],
-    [{
-      groupMode: 'css' as const,
-      contextWhere: false,
-    }, ',css,0'],
-    [{
-      contextWhere: true,
-    }, ',,1'],
+    [
+      undefined,
+      '',
+    ],
+    [
+      {},
+      '',
+    ],
+    [
+      {
+        notationMode: 'tw4-compatible' as const,
+      },
+      'tw4-compatible,,',
+    ],
+    [
+      {
+        groupMode: 'css' as const,
+        contextWhere: false,
+      },
+      ',css,0',
+    ],
+    [
+      {
+        contextWhere: true,
+      },
+      ',,1',
+    ],
   ])('parseSettingsKey(%j) = %p', (settings, key) => {
     expect(parseSettingsKey(settings)).toBe(key);
   });
@@ -191,10 +257,13 @@ describe('_quietRaise — служебный переключатель сбор
       onWarning: (w) => seen.push(w.type),
     });
     (mn as unknown as { _quietRaise: boolean })._quietRaise = true;
-    mn.setPresets([presetStandard, {
-      name: 'presetOther',
-      setup: (inner: (name: string, value: string) => void) => inner('p', 'cF00'),
-    } as never]);
+    mn.setPresets([
+      presetStandard,
+      {
+        name: 'presetOther',
+        setup: (inner: (name: string, value: string) => void) => inner('p', 'cF00'),
+      } as never,
+    ]);
     mn.getCompiler('class')('p10*2');
     mn.compile();
     expect(seen).toContain('raised-specificity');

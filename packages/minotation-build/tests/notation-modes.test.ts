@@ -2,7 +2,10 @@
  * Режим синтаксиса файла разметки, `requires` и конфликты режимов (D-045 этап 3, SPEC 14 §4–§5).
  */
 import {
-  mkdirSync, mkdtempSync, rmSync, writeFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
 } from 'node:fs';
 import {
   join,
@@ -11,7 +14,10 @@ import {
   tmpdir,
 } from 'node:os';
 import {
-  clearPackageDirectiveCache, createBuildCollector, createTokenCollector, readNotationDirective,
+  clearPackageDirectiveCache,
+  createBuildCollector,
+  createTokenCollector,
+  readNotationDirective,
   readPackageDirective,
 } from '../src/index';
 import type {
@@ -33,7 +39,10 @@ const presetTailwindish = {
   },
 } as unknown as MnPreset;
 
-const PRESETS: MnPreset[] = [presetStandard, presetTailwindish];
+const PRESETS: MnPreset[] = [
+  presetStandard,
+  presetTailwindish,
+];
 
 let dir: string;
 beforeEach(() => {
@@ -49,22 +58,40 @@ afterEach(() => {
 
 describe('readNotationDirective — комментарий @minotation в начале файла', () => {
   test.each([
-    ['/* @minotation notationMode: tw4-compatible */', {
-      notationMode: 'tw4-compatible',
-    }],
-    ['// @minotation notationMode: tw4-compatible; requires: presetA, presetB', {
-      notationMode: 'tw4-compatible',
-      requires: ['presetA', 'presetB'],
-    }],
-    ['/* @minotation notationMode: tw4-compatible; */', {
-      notationMode: 'tw4-compatible',
-    }],
-    ['<!-- @minotation requires: presetTailwind -->\n<div>', {
-      requires: ['presetTailwind'],
-    }],
-    ['/**\n * Кнопка.\n * @minotation notationMode: context-qualified\n */', {
-      notationMode: 'context-qualified',
-    }],
+    [
+      '/* @minotation notationMode: tw4-compatible */',
+      {
+        notationMode: 'tw4-compatible',
+      },
+    ],
+    [
+      '// @minotation notationMode: tw4-compatible; requires: presetA, presetB',
+      {
+        notationMode: 'tw4-compatible',
+        requires: [
+          'presetA',
+          'presetB',
+        ],
+      },
+    ],
+    [
+      '/* @minotation notationMode: tw4-compatible; */',
+      {
+        notationMode: 'tw4-compatible',
+      },
+    ],
+    [
+      '<!-- @minotation requires: presetTailwind -->\n<div>',
+      {
+        requires: ['presetTailwind'],
+      },
+    ],
+    [
+      '/**\n * Кнопка.\n * @minotation notationMode: context-qualified\n */',
+      {
+        notationMode: 'context-qualified',
+      },
+    ],
   ])('%s', (source, expected) => {
     expect(readNotationDirective(source, 'a.tsx')).toEqual(expected);
   });
@@ -226,13 +253,15 @@ describe('notationConflictMode — один класс в разных режи�
     collector.add(join(dir, 'a.html'), projectFile);
     collector.add(join(dir, 'b.tsx'), tailwindFile);
     expect(collector.css()).toContain('.hover\\:cF00:hover{color:#f00}');
-    expect(collector.takeWarnings()).toEqual([{
-      type: 'notation-conflict',
-      token: 'hover:cF00',
-      message: 'Class "hover:cF00" means different things in different notation settings:'
+    expect(collector.takeWarnings()).toEqual([
+      {
+        type: 'notation-conflict',
+        token: 'hover:cF00',
+        message: 'Class "hover:cF00" means different things in different notation settings:'
         + ' context-qualified (no CSS), tw4-compatible. Kept: tw4-compatible.'
         + ' To fail the build instead: notationConflictMode: \'strict\'.',
-    }]);
+      },
+    ]);
   });
 
   test("'strict': ошибка", () => {
@@ -362,10 +391,12 @@ describe('настройки разбора по файлу: groupMode, contextW
       attrs: 'class',
       presets: [presetStandard],
       groupMode: 'css',
-      scopes: [{
-        match: 'lib',
-        groupMode: 'groups',
-      }],
+      scopes: [
+        {
+          match: 'lib',
+          groupMode: 'groups',
+        },
+      ],
     });
     collector.add(join(
       dir, 'lib', 'a.html',

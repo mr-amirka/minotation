@@ -7,7 +7,8 @@ import presetStandard from '../presets/standard';
 import presetMedias from '../presets/medias';
 import presetSynonyms from '../presets/synonyms';
 import type {
-  MnOptions, MnWarning,
+  MnOptions,
+  MnWarning,
 } from '../core/types';
 
 function compile(tokens: string, options: MnOptions = {}) {
@@ -17,7 +18,10 @@ function compile(tokens: string, options: MnOptions = {}) {
     onWarning: (w) => warnings.push(w),
     ...options,
   });
-  mn.setPresets([presetStandard, presetMedias]);
+  mn.setPresets([
+    presetStandard,
+    presetMedias,
+  ]);
   mn.media.grid = {
     supports: '(display: grid)',
   };
@@ -40,11 +44,29 @@ function compile(tokens: string, options: MnOptions = {}) {
 
 describe('@supports и @container (D-057)', () => {
   test.each([
-    ['m1@grid', ['@supports (display: grid){.m1\\@grid{margin:1px}}']],
-    ['m1@side', ['@container sidebar (width >= 448px){.m1\\@side{margin:1px}}']],
-    ['m1@dark&grid', ['@media (prefers-color-scheme: dark){@supports (display: grid){.m1\\@dark\\&grid{margin:1px}}}']],
-    ['m1@grid&side', ['@supports (display: grid){@container sidebar (width >= 448px){.m1\\@grid\\&side{margin:1px}}}']],
-    ['m1@grid,dark', ['@supports (display: grid){.m1\\@grid\\,dark{margin:1px}}', '@media (prefers-color-scheme: dark){.m1\\@grid\\,dark{margin:1px}}']],
+    [
+      'm1@grid',
+      ['@supports (display: grid){.m1\\@grid{margin:1px}}'],
+    ],
+    [
+      'm1@side',
+      ['@container sidebar (width >= 448px){.m1\\@side{margin:1px}}'],
+    ],
+    [
+      'm1@dark&grid',
+      ['@media (prefers-color-scheme: dark){@supports (display: grid){.m1\\@dark\\&grid{margin:1px}}}'],
+    ],
+    [
+      'm1@grid&side',
+      ['@supports (display: grid){@container sidebar (width >= 448px){.m1\\@grid\\&side{margin:1px}}}'],
+    ],
+    [
+      'm1@grid,dark',
+      [
+        '@supports (display: grid){.m1\\@grid\\,dark{margin:1px}}',
+        '@media (prefers-color-scheme: dark){.m1\\@grid\\,dark{margin:1px}}',
+      ],
+    ],
   ])('%s', (token, css) => {
     expect(compile(token).css).toEqual(css);
   });
@@ -71,8 +93,16 @@ describe('unknownMediaMode (D-058)', () => {
       css, warnings, error,
     } = compile('p10@zz');
     expect(css).toEqual(['@media zz{.p10\\@zz{padding:10px}}']);
-    expect(warnings.map((w) => [w.type, w.message])).toEqual([['unknown-media', 'Media "@zz" is unknown — it goes to CSS as written: "@media zz". Describe it in mn.media; to hide'
-        + ' this warning: unknownMediaMode: \'silent\'; to forbid such tokens: unknownMediaMode: \'strict\'.']]);
+    expect(warnings.map((w) => [
+      w.type,
+      w.message,
+    ])).toEqual([
+      [
+        'unknown-media',
+        'Media "@zz" is unknown — it goes to CSS as written: "@media zz". Describe it in mn.media; to hide'
+        + ' this warning: unknownMediaMode: \'silent\'; to forbid such tokens: unknownMediaMode: \'strict\'.',
+      ],
+    ]);
     expect(error).toBeUndefined();
   });
 
@@ -117,15 +147,42 @@ describe('unknownMediaMode (D-058)', () => {
 
 describe('presetMedias — признаки устройства (D-057)', () => {
   test.each([
-    ['light', '(prefers-color-scheme: light)'],
-    ['portrait', '(orientation: portrait)'],
-    ['motion-reduce', '(prefers-reduced-motion: reduce)'],
-    ['contrast-more', '(prefers-contrast: more)'],
-    ['forced-colors', '(forced-colors: active)'],
-    ['pointer-coarse', '(pointer: coarse)'],
-    ['any-pointer-fine', '(any-pointer: fine)'],
-    ['noscript', '(scripting: none)'],
-    ['print', 'print'],
+    [
+      'light',
+      '(prefers-color-scheme: light)',
+    ],
+    [
+      'portrait',
+      '(orientation: portrait)',
+    ],
+    [
+      'motion-reduce',
+      '(prefers-reduced-motion: reduce)',
+    ],
+    [
+      'contrast-more',
+      '(prefers-contrast: more)',
+    ],
+    [
+      'forced-colors',
+      '(forced-colors: active)',
+    ],
+    [
+      'pointer-coarse',
+      '(pointer: coarse)',
+    ],
+    [
+      'any-pointer-fine',
+      '(any-pointer: fine)',
+    ],
+    [
+      'noscript',
+      '(scripting: none)',
+    ],
+    [
+      'print',
+      'print',
+    ],
   ])('@%s → %s', (name, query) => {
     const {
       css, warnings,
@@ -160,8 +217,10 @@ describe('mediaNesting (D-070)', () => {
     [
       'p1@m4&dark&grid',
       true,
-      ['@media (width < 480px){@media (prefers-color-scheme: dark){@supports (display: grid){'
-      + '.p1\\@m4\\&dark\\&grid{padding:1px}}}}'],
+      [
+        '@media (width < 480px){@media (prefers-color-scheme: dark){@supports (display: grid){'
+      + '.p1\\@m4\\&dark\\&grid{padding:1px}}}}',
+      ],
     ],
   ])('%s, mediaNesting: %s', (
     token, mediaNesting, css,
@@ -190,15 +249,33 @@ describe('приоритет ^N (D-071)', () => {
     ]);
     mn.getCompiler('class')(tokens);
     mn.compile();
-    return mn.styles$.getValue().map((s) => [s.priority, s.content]);
+    return mn.styles$.getValue().map((s) => [
+      s.priority,
+      s.content,
+    ]);
   }
 
   test('@^5 — без медиа: правило без условия, свой блок с приоритетом', () => {
-    expect(styles('cF00@^5')).toEqual([[5, '.cF00\\@\\^5{color:#f00}']]);
+    expect(styles('cF00@^5')).toEqual([
+      [
+        5,
+        '.cF00\\@\\^5{color:#f00}',
+      ],
+    ]);
   });
 
   test(':h с приоритетом — медиа синонима встаёт перед ^N', () => {
-    expect(styles('cF00:h@d^3')).toEqual([[3, '@media (width < 992px) and (hover: hover){.cF00\\:h\\@d\\^3:hover{color:#f00}}']]);
-    expect(styles('cF00:h@^5')).toEqual([[5, '@media (hover: hover){.cF00\\:h\\@\\^5:hover{color:#f00}}']]);
+    expect(styles('cF00:h@d^3')).toEqual([
+      [
+        3,
+        '@media (width < 992px) and (hover: hover){.cF00\\:h\\@d\\^3:hover{color:#f00}}',
+      ],
+    ]);
+    expect(styles('cF00:h@^5')).toEqual([
+      [
+        5,
+        '@media (hover: hover){.cF00\\:h\\@\\^5:hover{color:#f00}}',
+      ],
+    ]);
   });
 });

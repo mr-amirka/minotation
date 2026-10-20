@@ -14,7 +14,8 @@ import {
   mediaCondition,
 } from '../core/mediaCondition';
 import type {
-  MnOptions, MnWarning,
+  MnOptions,
+  MnWarning,
 } from '../core/types';
 
 function compile(
@@ -27,7 +28,10 @@ function compile(
     onWarning: (w) => warnings.push(w),
     ...options,
   });
-  mn.setPresets(options.notationMode === 'tw4-compatible' ? [presetMedias, presetTw4] : [
+  mn.setPresets(options.notationMode === 'tw4-compatible' ? [
+    presetMedias,
+    presetTw4,
+  ] : [
     presetStandard,
     presetSynonyms,
     presetMedias,
@@ -123,21 +127,51 @@ describe('mediaCondition', () => {
 
 describe('mediaSyntax: \'classic\' — во всех режимах (D-087)', () => {
   test.each([
-    ['p10@m4', '@media (max-width: 479.98px){.p10\\@m4{padding:10px}}'],
-    ['p10@m4-', '@media (min-width: 480px){.p10\\@m4-{padding:10px}}'],
-    ['p10@768', '@media (max-width: 768px){.p10\\@768{padding:10px}}'],
-    ['p10@m4-d', '@media (min-width: 480px) and (max-width: 991.98px){.p10\\@m4-d{padding:10px}}'],
-    ['p10@m4:side', '@container side (width < 480px){.p10\\@m4\\:side{padding:10px}}'],
+    [
+      'p10@m4',
+      '@media (max-width: 479.98px){.p10\\@m4{padding:10px}}',
+    ],
+    [
+      'p10@m4-',
+      '@media (min-width: 480px){.p10\\@m4-{padding:10px}}',
+    ],
+    [
+      'p10@768',
+      '@media (max-width: 768px){.p10\\@768{padding:10px}}',
+    ],
+    [
+      'p10@m4-d',
+      '@media (min-width: 480px) and (max-width: 991.98px){.p10\\@m4-d{padding:10px}}',
+    ],
+    [
+      'p10@m4:side',
+      '@container side (width < 480px){.p10\\@m4\\:side{padding:10px}}',
+    ],
   ])('запись minotation: %s', (token, css) => {
     expect(compile(token, CLASSIC).css).toBe(css);
   });
 
   test.each([
-    ['md:flex', '@media (min-width: 48rem){.md\\:flex{display:flex}}'],
-    ['max-md:flex', '@media (max-width: 47.99875rem){.max-md\\:flex{display:flex}}'],
-    ['min-[600px]:flex', '@media (min-width: 600px){.min-\\[600px\\]\\:flex{display:flex}}'],
-    ['max-[var(--x)]:flex', '@media (width < var(--x)){.max-\\[var\\(--x\\)\\]\\:flex{display:flex}}'],
-    ['@md:flex', '@container (width >= 28rem){.\\@md\\:flex{display:flex}}'],
+    [
+      'md:flex',
+      '@media (min-width: 48rem){.md\\:flex{display:flex}}',
+    ],
+    [
+      'max-md:flex',
+      '@media (max-width: 47.99875rem){.max-md\\:flex{display:flex}}',
+    ],
+    [
+      'min-[600px]:flex',
+      '@media (min-width: 600px){.min-\\[600px\\]\\:flex{display:flex}}',
+    ],
+    [
+      'max-[var(--x)]:flex',
+      '@media (width < var(--x)){.max-\\[var\\(--x\\)\\]\\:flex{display:flex}}',
+    ],
+    [
+      '@md:flex',
+      '@container (width >= 28rem){.\\@md\\:flex{display:flex}}',
+    ],
   ])('запись Tailwind: %s', (token, css) => {
     expect(compile(token, {
       ...CLASSIC,
@@ -164,12 +198,30 @@ describe('запись minotation: диапазон, высота, контей�
   };
 
   test.each([
-    ['w100@10em-30em', '@media (width >= 10em) and (width <= 30em){.w100\\@10em-30em{width:100px}}'],
-    ['w100@m4/tall', '@media (width < 480px) and (height < 500px){.w100\\@m4\\/tall{width:100px}}'],
-    ['w100@low', '@media (height < 400px){.w100\\@low{width:100px}}'],
-    ['w100@:side', '@container side{.w100\\@\\:side{width:100px}}'],
-    ['w100@/low-', '@media (height >= 400px){.w100\\@\\/low-{width:100px}}'],
-    ['w100@(m4|d)', '@media (width < 992px){.w100\\@\\(m4\\|d\\){width:100px}}@media (width < 480px){.w100\\@\\(m4\\|d\\){width:100px}}'],
+    [
+      'w100@10em-30em',
+      '@media (width >= 10em) and (width <= 30em){.w100\\@10em-30em{width:100px}}',
+    ],
+    [
+      'w100@m4/tall',
+      '@media (width < 480px) and (height < 500px){.w100\\@m4\\/tall{width:100px}}',
+    ],
+    [
+      'w100@low',
+      '@media (height < 400px){.w100\\@low{width:100px}}',
+    ],
+    [
+      'w100@:side',
+      '@container side{.w100\\@\\:side{width:100px}}',
+    ],
+    [
+      'w100@/low-',
+      '@media (height >= 400px){.w100\\@\\/low-{width:100px}}',
+    ],
+    [
+      'w100@(m4|d)',
+      '@media (width < 992px){.w100\\@\\(m4\\|d\\){width:100px}}@media (width < 480px){.w100\\@\\(m4\\|d\\){width:100px}}',
+    ],
   ])('%s', (token, css) => {
     expect(compile(
       token, {}, media,
@@ -177,10 +229,22 @@ describe('запись minotation: диапазон, высота, контей�
   });
 
   test.each([
-    ['w100@m4/m2', 'uses the point "m2" for the height, but it has no "height"'],
-    ['w100@:2col', 'names the container "2col", which is not a CSS identifier'],
-    ['w100@/', 'is malformed'],
-    ['w100@360x100', 'is malformed'],
+    [
+      'w100@m4/m2',
+      'uses the point "m2" for the height, but it has no "height"',
+    ],
+    [
+      'w100@:2col',
+      'names the container "2col", which is not a CSS identifier',
+    ],
+    [
+      'w100@/',
+      'is malformed',
+    ],
+    [
+      'w100@360x100',
+      'is malformed',
+    ],
   ])('%s — сообщение, CSS нет', (token, message) => {
     const {
       css, warnings,
@@ -189,16 +253,34 @@ describe('запись minotation: диапазон, высота, контей�
     expect(warnings.join(' ')).toContain(message);
   });
 
-  test.each(['w100@10.5rem', 'w100@m4*2'])('%s — точка числа и множитель в конце — не селектор', (token) => {
+  test.each([
+    'w100@10.5rem',
+    'w100@m4*2',
+  ])('%s — точка числа и множитель в конце — не селектор', (token) => {
     expect(compile(token).warnings.filter((w) => w.indexOf('after the media part') > -1)).toEqual([]);
   });
 
   test.each([
-    ['w100@m4.x', '"@m4." — a selector'],
-    ['w100@m4.', '"@m4." — a selector'],
-    ['w100@m4::before', '"@m4::" — a state'],
-    ['w100@m4:h', '"@m4:h" — a state'],
-    ['w100@m4:', 'ends with ":"'],
+    [
+      'w100@m4.x',
+      '"@m4." — a selector',
+    ],
+    [
+      'w100@m4.',
+      '"@m4." — a selector',
+    ],
+    [
+      'w100@m4::before',
+      '"@m4::" — a state',
+    ],
+    [
+      'w100@m4:h',
+      '"@m4:h" — a state',
+    ],
+    [
+      'w100@m4:',
+      'ends with ":"',
+    ],
   ])('%s — брак: %s', (token, message) => {
     expect(compile(token).warnings.join(' ')).toContain(message);
   });
@@ -215,12 +297,30 @@ test('экранированный символ в варианте группы
 describe('маркер контейнера: cn, ct (D-088)', () => {
   test.each([
     // Имена — как записаны, как и в запросе `@…:имя` (D-091).
-    ['cnMainNav', '.cnMainNav{container-name:MainNav}'],
-    ['cn_main-nav', '.cn_main-nav{container-name:main-nav}'],
-    ['cn_side_main', '.cn_side_main{container-name:side main}'],
-    ['ctIS', '.ctIS{container-type:inline-size}'],
-    ['ctS', '.ctS{container-type:size}'],
-    ['ctN', '.ctN{container-type:normal}'],
+    [
+      'cnMainNav',
+      '.cnMainNav{container-name:MainNav}',
+    ],
+    [
+      'cn_main-nav',
+      '.cn_main-nav{container-name:main-nav}',
+    ],
+    [
+      'cn_side_main',
+      '.cn_side_main{container-name:side main}',
+    ],
+    [
+      'ctIS',
+      '.ctIS{container-type:inline-size}',
+    ],
+    [
+      'ctS',
+      '.ctS{container-type:size}',
+    ],
+    [
+      'ctN',
+      '.ctN{container-type:normal}',
+    ],
   ])('%s', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
@@ -230,7 +330,10 @@ describe('маркер контейнера: cn, ct (D-088)', () => {
       + '@container sidebar{.w100\\@\\:sidebar{width:100px}}');
   });
 
-  test.each(['cn10', 'cn1/2'])('%s — не имя контейнера: сообщение, CSS нет', (token) => {
+  test.each([
+    'cn10',
+    'cn1/2',
+  ])('%s — не имя контейнера: сообщение, CSS нет', (token) => {
     const {
       css, warnings,
     } = compile(token);
@@ -268,7 +371,10 @@ describe('опция media важнее пресета, совпадение —
         mediaConflictMode: mode,
       } : {},
     });
-    mn.setPresets([presetStandard, presetMedias]);
+    mn.setPresets([
+      presetStandard,
+      presetMedias,
+    ]);
     mn.getCompiler('class')('p10@m p10@md p10@own');
     mn.compile();
     return {
@@ -283,9 +389,12 @@ describe('опция media важнее пресета, совпадение —
     } = run();
     expect(css).toContain('@media (width < 700px){.p10\\@m{');
     expect(css).toContain('@media (width < 900px){.p10\\@md{');
-    expect(warnings).toEqual(['media-conflict: media "m" from the options overrides the one of presetMedias. To hide this warning:'
-        + ' mediaConflictMode: \'silent\'.', 'media-conflict: media "md" from the options overrides the one of presetMedias. To hide this warning:'
-        + ' mediaConflictMode: \'silent\'.']);
+    expect(warnings).toEqual([
+      'media-conflict: media "m" from the options overrides the one of presetMedias. To hide this warning:'
+        + ' mediaConflictMode: \'silent\'.',
+      'media-conflict: media "md" from the options overrides the one of presetMedias. To hide this warning:'
+        + ' mediaConflictMode: \'silent\'.',
+    ]);
   });
 
   test('silent: своё определение, ни слова', () => {
@@ -310,14 +419,38 @@ describe('опция media важнее пресета, совпадение —
 
 describe('D-094: переименования и подсказки на частые промахи', () => {
   test.each([
-    ['eN', 'peN'],
-    ['apcN', 'apN'],
-    ['apcNone', 'apN'],
-    ['apcButton', 'apButton'],
-    ['lt', 'flL'],
-    ['rt', 'flR'],
-    ['jt', 'flN'],
-    ['contrast', 'irOptimizeContrast'],
+    [
+      'eN',
+      'peN',
+    ],
+    [
+      'apcN',
+      'apN',
+    ],
+    [
+      'apcNone',
+      'apN',
+    ],
+    [
+      'apcButton',
+      'apButton',
+    ],
+    [
+      'lt',
+      'flL',
+    ],
+    [
+      'rt',
+      'flR',
+    ],
+    [
+      'jt',
+      'flN',
+    ],
+    [
+      'contrast',
+      'irOptimizeContrast',
+    ],
   ])('%s — переименовано: «write "%s"», CSS нет', (token, replacement) => {
     const {
       css, warnings,

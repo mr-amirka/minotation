@@ -5,10 +5,16 @@
  * запуском процесса и перехватом `process.exit`.
  */
 import {
-  mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync,
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  rmSync,
+  existsSync,
 } from 'node:fs';
 import {
-  join, resolve,
+  join,
+  resolve,
 } from 'node:path';
 import {
   tmpdir,
@@ -17,7 +23,8 @@ import {
   parseArgs,
 } from '../src/args';
 import {
-  CONFIG_FILE_NAMES, scopeClassName,
+  CONFIG_FILE_NAMES,
+  scopeClassName,
 } from 'minotation-build';
 import {
   presetTw4,
@@ -29,10 +36,15 @@ import type {
   CompileResult,
 } from '../src/compile';
 import {
-  build, loadConfig, mergeSettings, startWatch, DEFAULT_CONFIG,
+  build,
+  loadConfig,
+  mergeSettings,
+  startWatch,
+  DEFAULT_CONFIG,
 } from '../src/run';
 import type {
-  Reporter, RunSettings,
+  Reporter,
+  RunSettings,
 } from '../src/run';
 
 let dir: string;
@@ -174,23 +186,32 @@ describe('mergeSettings', () => {
   test('флаги складываются: включён хоть где-то — включён', () => {
     expect(mergeSettings(parseArgs(['--skip-partials']), {}).skipPartials).toBe(true);
     expect(mergeSettings(parseArgs([]), {
-      skipPartials: true, 
+      skipPartials: true,
     }).skipPartials).toBe(true);
     // Флаг важнее конфига.
-    expect(mergeSettings(parseArgs(['--warning-mode', 'error']), {
+    expect(mergeSettings(parseArgs([
+      '--warning-mode',
+      'error',
+    ]), {
       warningMode: 'silent',
     }).warningMode).toBe('error');
     expect(mergeSettings(parseArgs([]), {
       warningMode: 'error',
     }).warningMode).toBe('error');
     // Режимы *N и -i (D-039): флаг важнее конфига.
-    const merged = mergeSettings(parseArgs(['--specificity-mode', 'strict']), {
+    const merged = mergeSettings(parseArgs([
+      '--specificity-mode',
+      'strict',
+    ]), {
       specificityMode: 'silent',
       importantMode: 'silent',
     });
     expect(merged.specificityMode).toBe('strict');
     expect(merged.importantMode).toBe('silent');
-    expect(mergeSettings(parseArgs(['--child-selector-mode', 'silent']), {}).childSelectorMode).toBe('silent');
+    expect(mergeSettings(parseArgs([
+      '--child-selector-mode',
+      'silent',
+    ]), {}).childSelectorMode).toBe('silent');
     expect(mergeSettings(parseArgs([]), {
       unknownMediaMode: 'strict',
     }).unknownMediaMode).toBe('strict');
@@ -207,7 +228,10 @@ describe('mergeSettings', () => {
         handlerConflictMode: 'silent',
         presetConflictMode: 'strict',
       });
-    expect(mergeSettings(parseArgs(['--group-mode', 'css']), {
+    expect(mergeSettings(parseArgs([
+      '--group-mode',
+      'css',
+    ]), {
       groupSuspectMode: 'silent',
     })).toMatchObject({
       groupMode: 'css',
@@ -221,7 +245,10 @@ describe('mergeSettings', () => {
     expect(mergeSettings(parseArgs([]), {
       mediaNesting: true,
     }).mediaNesting).toBe(true);
-    expect(mergeSettings(parseArgs(['--notation-conflict-mode', 'strict']), {}).notationConflictMode).toBe('strict');
+    expect(mergeSettings(parseArgs([
+      '--notation-conflict-mode',
+      'strict',
+    ]), {}).notationConflictMode).toBe('strict');
     expect(mergeSettings(parseArgs([]), {
       contextWhere: true,
     }).contextWhere).toBe(true);
@@ -245,7 +272,10 @@ describe('mergeSettings', () => {
   });
 
   test('файл конфигурации не сканируется как исходник', () => {
-    const settings = mergeSettings(parseArgs(['-c', './my.config.js']), {});
+    const settings = mergeSettings(parseArgs([
+      '-c',
+      './my.config.js',
+    ]), {});
     expect(settings.ignore).toContain(resolve('./my.config.js'));
     // Без опции исключается конфиг по умолчанию.
     expect(mergeSettings(parseArgs([]), {}).ignore)
@@ -356,7 +386,7 @@ describe('build — имя файла, entry и манифест (D-030, D-031)'
       dir, 'out', 'mn-manifest.json',
     ), 'utf8')))
       .toEqual({
-        'mn.css': 'mn.css', 
+        'mn.css': 'mn.css',
       });
   });
 
@@ -390,13 +420,13 @@ describe('build — имя файла, entry и манифест (D-030, D-031)'
       ),
       entry: {
         site: {
-          include: /site/, 
+          include: /site/,
         },
         admin: {
           include: /admin/,
           fileName: join(
             dir, 'out', 'adm.css',
-          ), 
+          ),
         },
       },
     }, report);
@@ -431,11 +461,11 @@ describe('build — имя файла, entry и манифест (D-030, D-031)'
       ),
       entry: {
         site: {
-          include: /site/, 
+          include: /site/,
         },
         admin: {
-          include: /admin/, 
-        }, 
+          include: /admin/,
+        },
       },
     }, report)).toThrow('add [name] to --output');
   });
@@ -454,7 +484,7 @@ describe('build — имя файла, entry и манифест (D-030, D-031)'
     ))).toBe(false);
     expect(mergeSettings(parseArgs(['--no-manifest']), {}).manifest).toBe(false);
     expect(mergeSettings(parseArgs([]), {
-      manifest: 'x.json', 
+      manifest: 'x.json',
     }).manifest).toBe('x.json');
 
     write('empty/b.html', '<div>');
@@ -489,15 +519,18 @@ describe('метрики (D-032)', () => {
     const metrics = JSON.parse(readFileSync(join(
       dir, 'out', 'mn-metrics.json',
     ), 'utf8'));
-    expect(metrics.tokens).toEqual([{
-      name: 'p10',
-      count: 2,
-    }, {
-      name: 'm20',
-      count: 1,
-    }]);
+    expect(metrics.tokens).toEqual([
+      {
+        name: 'p10',
+        count: 2,
+      },
+      {
+        name: 'm20',
+        count: 1,
+      },
+    ]);
     expect(metrics.files).toEqual({
-      'a.html': metrics.tokens, 
+      'a.html': metrics.tokens,
     });
     expect(logs.some((m) => m.includes('Metrics'))).toBe(true);
   });
@@ -529,13 +562,19 @@ describe('метрики (D-032)', () => {
   });
 
   test('-m задаёт путь, --no-metrics выключает, иначе решает конфиг', () => {
-    expect(mergeSettings(parseArgs(['-m', './m.json']), {}).metrics).toBe('./m.json');
-    expect(mergeSettings(parseArgs(['--metrics', './m.json']), {}).metrics).toBe('./m.json');
+    expect(mergeSettings(parseArgs([
+      '-m',
+      './m.json',
+    ]), {}).metrics).toBe('./m.json');
+    expect(mergeSettings(parseArgs([
+      '--metrics',
+      './m.json',
+    ]), {}).metrics).toBe('./m.json');
     expect(mergeSettings(parseArgs(['--no-metrics']), {
-      metrics: './c.json', 
+      metrics: './c.json',
     }).metrics).toBe(false);
     expect(mergeSettings(parseArgs([]), {
-      metrics: './c.json', 
+      metrics: './c.json',
     }).metrics).toBe('./c.json');
     expect(mergeSettings(parseArgs([]), {}).metrics).toBeUndefined();
   });
@@ -654,7 +693,10 @@ describe('изоляция: --isolate-out, --isolate-copy (D-079, D-081)', () =>
       recursive: true,
     });
     isolate({
-      isolateCopy: ['**/*.html', /readme/],
+      isolateCopy: [
+        '**/*.html',
+        /readme/,
+      ],
     });
     expect(existsSync(join(
       out, 'app', 'App.html',
@@ -742,7 +784,13 @@ describe('изоляция: --isolate-out, --isolate-copy (D-079, D-081)', () =>
     expect(mergeSettings(parseArgs(['--no-isolate-copy']), {
       isolateCopy: true,
     }).isolateCopy).toBe(false);
-    expect(() => parseArgs(['--isolate-mode', 'x'])).toThrow('Option "--isolate-mode" expects none, class or where, got "x"');
-    expect(() => parseArgs(['--unreachable-class-mode', 'x'])).toThrow('Option "--unreachable-class-mode" expects warn, silent or strict');
+    expect(() => parseArgs([
+      '--isolate-mode',
+      'x',
+    ])).toThrow('Option "--isolate-mode" expects none, class or where, got "x"');
+    expect(() => parseArgs([
+      '--unreachable-class-mode',
+      'x',
+    ])).toThrow('Option "--unreachable-class-mode" expects warn, silent or strict');
   });
 });

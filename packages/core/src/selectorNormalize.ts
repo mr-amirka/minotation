@@ -77,8 +77,9 @@ function attrPartReplacer(
   dangling && throwDanglingStar(match);
   // `^=`/`$=` проверяют начало и конец всей строки `class`, а не каждого класса: у
   // `class="card btn-x"` `.^btn-` не совпал бы. Решение владельца — не поддерживать (D-050).
-  kind === '.' && operator !== '*' && throwClassAnchor(match, operator);
-  return '[' + (kind === '.' ? 'class' : 'id') + operator + '='
+  const isClass = kind === '.';
+  isClass && operator !== '*' && throwClassAnchor(match, operator);
+  return '[' + (isClass ? 'class' : 'id') + operator + '='
     + (REGEXP_CSS_IDENT.test(text) ? text : '"' + text + '"') + ']';
 }
 

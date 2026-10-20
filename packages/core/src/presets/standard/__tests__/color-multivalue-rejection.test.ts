@@ -13,7 +13,7 @@
  * (.
  */
 import {
-  minotationProvider, 
+  minotationProvider,
 } from '../../../core';
 import presetStandard from '..';
 
@@ -79,7 +79,7 @@ describe('border-color: нераспознанный непустой суффи
 describe('border-color: легитимные случаи не задеты фиксом', () => {
   test('голый bc (пустой суффикс) — дефолт currentColor, без ошибок', () => {
     const {
-      css, errorCount, 
+      css, errorCount,
     } = compile('bc');
     expect(css).toContain('border-color:currentColor');
     expect(errorCount).toBe(0);
@@ -87,7 +87,7 @@ describe('border-color: легитимные случаи не задеты фи
 
   test('одиночный валидный hex-цвет компилируется как раньше', () => {
     const {
-      css, errorCount, 
+      css, errorCount,
     } = compile('bcF00');
     expect(css).toContain('border-color:#f00');
     expect(errorCount).toBe(0);
@@ -95,7 +95,7 @@ describe('border-color: легитимные случаи не задеты фи
 
   test('явный дефолтный алиас bc0 (чёрный) остаётся достижим напрямую', () => {
     const {
-      css, errorCount, 
+      css, errorCount,
     } = compile('bc0');
     expect(css).toContain('border-color:#000');
     expect(errorCount).toBe(0);

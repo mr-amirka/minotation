@@ -76,7 +76,10 @@ describe('сообщения библиотеки — только на англ
 
   test.each(packages)('%s', (name) => {
     const found: string[] = [];
-    for (const dir of ['src', 'scripts']) {
+    for (const dir of [
+      'src',
+      'scripts',
+    ]) {
       const full = path.join(
         PACKAGES, name, dir,
       );

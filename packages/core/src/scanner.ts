@@ -16,7 +16,10 @@ import type {
   ScanTokensOptions,
 } from './extractTokens';
 import {
-  checkOptions, isBoolean, isFunction, isStringArray,
+  checkOptions,
+  isBoolean,
+  isFunction,
+  isStringArray,
 } from './checkOptions';
 import type {
   OptionSchema,

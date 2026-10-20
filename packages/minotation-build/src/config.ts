@@ -6,19 +6,23 @@
  * Холодный путь: файл читается один раз на каталог.
  */
 import {
-  existsSync, readFileSync, statSync,
+  existsSync,
+  readFileSync,
+  statSync,
 } from 'node:fs';
 import {
   createRequire,
 } from 'node:module';
 import {
-  join, relative,
+  join,
+  relative,
 } from 'node:path';
 import {
   checkOptions,
 } from 'minotation';
 import type {
-  OptionCheck, OptionSchema,
+  OptionCheck,
+  OptionSchema,
 } from 'minotation';
 
 /** Имена файла по порядку поиска. */
@@ -103,7 +107,10 @@ export function loadConfigFile(
     path: full,
     options,
   };
-  cache.set(full, [out, mtime]);
+  cache.set(full, [
+    out,
+    mtime,
+  ]);
   return out;
 }
 

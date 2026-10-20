@@ -4,13 +4,18 @@
  * Холодный путь: вызывается из `mn.setPresets` один раз на список.
  */
 import {
-  checkOptions, isFunction, isString, isStringArray, oneOf,
+  checkOptions,
+  isFunction,
+  isString,
+  isStringArray,
+  oneOf,
 } from '../checkOptions';
 import type {
   OptionSchema,
 } from '../checkOptions';
 import type {
-  MnPreset, MnPresetObject,
+  MnPreset,
+  MnPresetObject,
 } from './types';
 
 /** Допустимые поля пресет-объекта. */
@@ -26,11 +31,12 @@ const PRESET_SCHEMA: OptionSchema = {
 
 /** Проверяет пресет-объект: обязательные `name`, `setup` и схема полей (D-038). */
 function checkPreset(preset: MnPresetObject): void {
-  const where = 'preset ' + (typeof preset.name === 'string' ? '"' + preset.name + '"' : 'object');
+  const named = typeof preset.name === 'string';
+  const where = 'preset ' + (named ? '"' + preset.name + '"' : 'object');
   checkOptions(
     preset, PRESET_SCHEMA, where,
   );
-  typeof preset.name === 'string' && preset.name
+  named && preset.name
     || fail(where + ': a preset object needs a "name"');
   typeof preset.setup === 'function' || fail(where + ': a preset object needs a "setup(mn)" function');
 }

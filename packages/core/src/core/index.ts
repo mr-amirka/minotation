@@ -27,7 +27,10 @@ import {
   MN_CSS_RULE,
 } from '../selectorsCompileProvider/constants';
 import {
-  checkOptions, CORE_OPTIONS_SCHEMA, describeValue, isObject as isObjectOption,
+  checkOptions,
+  CORE_OPTIONS_SCHEMA,
+  describeValue,
+  isObject as isObjectOption,
 } from '../checkOptions';
 import {
   mediaCondition,
@@ -168,8 +171,9 @@ function logWarning(warning: MnWarning): void {
  * объекта без него — `'context-qualified'`, на котором написаны стандартные пресеты.
  */
 function asPresetFunction(preset: MnPreset): (mn: MnInstance) => void {
-  const mode = typeof preset === 'function' ? 'context-qualified' : preset.notationMode || 'context-qualified';
-  const setup = typeof preset === 'function' ? preset : preset.setup;
+  const presetIsFunction = typeof preset === 'function';
+  const mode = presetIsFunction ? 'context-qualified' : preset.notationMode || 'context-qualified';
+  const setup = presetIsFunction ? preset : preset.setup;
   return (mn) => {
     (mn as any)._presetMode = mode;
     (mn as any)._presetName = presetLabel(preset);
@@ -729,7 +733,10 @@ function minotationProvider(options?: MnOptions) {
       inited: 1,
     }) as MnEssenceResult);
     baseSet(
-      $$staticsEssences, path, mergeEssenceDepth([getBase($$staticsEssences, path) || [], __normalize(extendedEssence) as MnEssenceResult], []),
+      $$staticsEssences, path, mergeEssenceDepth([
+        getBase($$staticsEssences, path) || [],
+        __normalize(extendedEssence) as MnEssenceResult,
+      ], []),
     );
   }
 
@@ -775,7 +782,10 @@ function minotationProvider(options?: MnOptions) {
   function getCompiler(attrName: string, settings?: MnParseSettings): MnCompiler {
     const settingsKey = parseSettingsKey(settings);
     const key = settingsKey ? attrName + ' ' + settingsKey : attrName;
-    settingsKey && ($$compilerModes[key] = [attrName, settings as MnParseSettings]);
+    settingsKey && ($$compilerModes[key] = [
+      attrName,
+      settings as MnParseSettings,
+    ]);
     return $$compilers[key]
       || ($$compilers[key] = __compileProvider(attrName));
   }
@@ -1088,12 +1098,14 @@ function minotationProvider(options?: MnOptions) {
       mediaPriority = parseInt(priorityMatch[2]);
       // `@^5` — приоритет без медиа: правило без условия, но своим блоком с этим приоритетом.
       if (!mediaExpression) {
-        return [[
-          priorityMatch[0],
-          mediaPriority,
-          '',
-          '',
-        ]];
+        return [
+          [
+            priorityMatch[0],
+            mediaPriority,
+            '',
+            '',
+          ],
+        ];
       }
     }
 
@@ -1177,21 +1189,24 @@ function minotationProvider(options?: MnOptions) {
       return undefined;
     }
     const colon = fragment.indexOf(':');
-    const body = colon < 0 ? fragment : fragment.slice(0, colon);
-    const container = colon < 0 ? '' : fragment.slice(colon + 1);
+    const noColon = colon < 0;
+    const body = noColon ? fragment : fragment.slice(0, colon);
+    const container = noColon ? '' : fragment.slice(colon + 1);
     const slash = body.indexOf('/');
-    const explicit = colon > -1 || slash > -1;
-    const classic = $$mediaClassic && colon < 0;
+    const noSlash = slash < 0;
+    const explicit = !noColon || !noSlash;
+    const classic = $$mediaClassic && noColon;
     const conditions: string[] = [];
-    const width = slash < 0 ? body : body.slice(0, slash);
-    const height = slash < 0 ? '' : body.slice(slash + 1);
+    const width = noSlash ? body : body.slice(0, slash);
+    const height = noSlash ? '' : body.slice(slash + 1);
     const first = width ? rangeOf(
       width, '', fragment, classic, conditions,
     ) : [undefined];
     const second = height ? rangeOf(
       height, 'height', fragment, classic, conditions,
     ) : [undefined];
-    if (!explicit && first.length < 2) {
+    const firstSingle = first.length < 2;
+    if (!explicit && firstSingle) {
       // Не диапазон: имя медиа — дальше; записано цифрами — битый шаблон.
       return first[0] === 0 ? [
         MEDIA_NEVER,
@@ -1206,10 +1221,10 @@ function minotationProvider(options?: MnOptions) {
         '',
       ];
     }
-    if (width && first.length < 2 || height && second.length < 2 || explicit && !width && !height && !container) {
+    if (width && firstSingle || height && second.length < 2 || explicit && !width && !height && !container) {
       return mediaRangeProblem(fragment);
     }
-    if (colon > -1 && !REGEXP_CONTAINER_NAME.test(container)) {
+    if (!noColon && !REGEXP_CONTAINER_NAME.test(container)) {
       mediaProblem(fragment, 'names the container "' + container + '", which is not a CSS identifier. The class gives'
         + ' no CSS.');
       return [
@@ -1235,8 +1250,9 @@ function minotationProvider(options?: MnOptions) {
   ): [undefined] | [0] | [1, number | undefined] {
     const whole = $$media[part] ? part : '';
     const dash = whole ? -1 : part.indexOf('-');
-    const lowerText = dash < 0 ? '' : part.slice(0, dash);
-    const upperText = dash < 0 ? part : part.slice(dash + 1);
+    const noDash = dash < 0;
+    const lowerText = noDash ? '' : part.slice(0, dash);
+    const upperText = noDash ? part : part.slice(dash + 1);
     const lower = lowerText ? boundOf(
       lowerText, side, fragment,
     ) : undefined;
@@ -1260,7 +1276,10 @@ function minotationProvider(options?: MnOptions) {
       upper[0], upper[3] ? '<' : '<=', upper[1], classic,
     ));
     // Порядок правил: «до» — по верхней границе (меньшие ниже и важнее), «от» точки — по нижней.
-    return [1, upper ? -upper[2] : (lower as MediaBound)[3] ? (lower as MediaBound)[2] : undefined];
+    return [
+      1,
+      upper ? -upper[2] : (lower as MediaBound)[3] ? (lower as MediaBound)[2] : undefined,
+    ];
   }
 
   /**
@@ -1337,16 +1356,18 @@ function minotationProvider(options?: MnOptions) {
    * (`'48rem'` → 768 px для порядка: rem и em считаются от 16px).
    */
   function pointLength(value: number | string): [string, number, boolean] | undefined {
-    const matchs = typeof value === 'number' ? null : REGEXP_POINT_LENGTH.exec(value);
+    const numeric = typeof value === 'number';
+    const matchs = numeric ? null : REGEXP_POINT_LENGTH.exec(value);
     const amount = matchs ? parseFloat(matchs[1]) : value as number;
-    return typeof value === 'number' ? [
+    const px = !!matchs && matchs[2] === 'px';
+    return numeric ? [
       value + 'px',
       value,
       true,
     ] : matchs ? [
       value,
-      matchs[2] === 'px' ? amount : amount * 16,
-      matchs[2] === 'px',
+      px ? amount : amount * 16,
+      px,
     ] : undefined;
   }
 
@@ -1363,7 +1384,10 @@ function minotationProvider(options?: MnOptions) {
       utility: 'parseMediaExpression',
       message: 'Media "@' + fragment + '" ' + problem,
     });
-    return [MEDIA_NEVER, 0];
+    return [
+      MEDIA_NEVER,
+      0,
+    ];
   }
 
   /**
@@ -1939,7 +1963,10 @@ function minotationProvider(options?: MnOptions) {
         childs[_childName] = compileMixedEssence(
           $$essences[childEssenceName] = [],
           childStaticEssence
-            ? mergeEssenceDepth([_childEssence, childStaticEssence], [])
+            ? mergeEssenceDepth([
+              _childEssence,
+              childStaticEssence,
+            ], [])
             : _childEssence,
           excludes, important,
         );
@@ -2084,7 +2111,10 @@ function minotationProvider(options?: MnOptions) {
     const normalizedSelectors = normalizeSelectors(selectors);
     for (from in normalizedSelectors) { // eslint-disable-line
       to = extractMedia(mediaNames = [], from);
-      selectorsMedias[to] = [0, mediaNames[0]];
+      selectorsMedias[to] = [
+        0,
+        mediaNames[0],
+      ];
     }
     // _synonyms: внутреннее expando-свойство, не часть публичного MnInstance.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2107,12 +2137,15 @@ function minotationProvider(options?: MnOptions) {
     $$root = $$data.root = {};
     $$statics = $$data.statics || ($$data.statics = {
       essences: {},
-      assigned: {}, 
+      assigned: {},
     });
 
     // обе половины $$statics заводятся вместе (либо из $$data.statics, либо тут же выше)
     $$staticsEssences = $$statics.essences;
-    $$keyframes = $$data.keyframes || ($$data.keyframes = [{}, 0]);
+    $$keyframes = $$data.keyframes || ($$data.keyframes = [
+      {},
+      0,
+    ]);
     // Кадры переживают сброс, а их отрисованный блок уходит вместе с `$$stylesMap` — перерисовать.
     $$keyframes[1] = $$keyframes[1] || (Object.keys($$keyframes[0]).length ? 1 : 0);
     $$stylesMap = $$data.stylesMap = {};
@@ -2358,5 +2391,5 @@ function minotationProvider(options?: MnOptions) {
 
 export default minotationProvider;
 export {
-  minotationProvider, 
+  minotationProvider,
 };

@@ -13,10 +13,14 @@ import {
   join,
 } from 'node:path';
 import {
-  HELP, parseArgs,
+  HELP,
+  parseArgs,
 } from './args';
 import {
-  build, loadConfig, mergeSettings, startWatch,
+  build,
+  loadConfig,
+  mergeSettings,
+  startWatch,
 } from './run';
 import type {
   Reporter,

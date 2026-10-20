@@ -2,7 +2,10 @@
  * `minotation.config.*` — общий файл настроек всех плагинов и CLI (D-081).
  */
 import {
-  mkdtempSync, rmSync, utimesSync, writeFileSync,
+  mkdtempSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
 } from 'node:fs';
 import {
   join,
@@ -11,7 +14,13 @@ import {
   tmpdir,
 } from 'node:os';
 import {
-  BUILD_OPTIONS_SCHEMA, CONFIG_FILE_NAMES, TOOL_OPTION_KEYS, checkBuildOptions, clearConfigFileCache, loadConfigFile, withBuildConfig,
+  BUILD_OPTIONS_SCHEMA,
+  CONFIG_FILE_NAMES,
+  TOOL_OPTION_KEYS,
+  checkBuildOptions,
+  clearConfigFileCache,
+  loadConfigFile,
+  withBuildConfig,
   withConfigFile,
 } from '../src/index';
 import {
@@ -50,9 +59,18 @@ describe('loadConfigFile', () => {
   });
 
   test.each([
-    ['minotation.config.js', 'module.exports = { metrics: false };'],
-    ['minotation.config.cjs', 'exports.default = { metrics: false };'],
-    ['minotation.config.json', '{ "metrics": false }'],
+    [
+      'minotation.config.js',
+      'module.exports = { metrics: false };',
+    ],
+    [
+      'minotation.config.cjs',
+      'exports.default = { metrics: false };',
+    ],
+    [
+      'minotation.config.json',
+      '{ "metrics": false }',
+    ],
   ])('%s', (name, body) => {
     write(name, body);
     expect(loadConfigFile(BUILD_OPTIONS_SCHEMA, dir)?.options).toEqual({

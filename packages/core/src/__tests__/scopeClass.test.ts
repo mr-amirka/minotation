@@ -2,10 +2,14 @@
  * Класс области в разметке (D-075, D-076): разбором — JS/TS/JSX, текстом — остальное.
  */
 import {
-  addScopeClassText, createScopeClassWriter,
+  addScopeClassText,
+  createScopeClassWriter,
 } from '../index';
 
-const ATTR = ['class', 'className'];
+const ATTR = [
+  'class',
+  'className',
+];
 const write = createScopeClassWriter({
   attr: ATTR,
 });
@@ -176,10 +180,22 @@ describe('классы, заданные из JS, — недостижимы', (
     expect(write(
       source, 'a.ts', '_l',
     ).unreachable).toEqual([
-      [1, '.className='],
-      [3, '.classList.add('],
-      [3, '.classList.toggle('],
-      [4, 'setAttribute(\'class\''],
+      [
+        1,
+        '.className=',
+      ],
+      [
+        3,
+        '.classList.add(',
+      ],
+      [
+        3,
+        '.classList.toggle(',
+      ],
+      [
+        4,
+        'setAttribute(\'class\'',
+      ],
     ]);
   });
 });

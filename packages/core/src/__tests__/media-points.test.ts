@@ -17,7 +17,10 @@ function compile(token: string, media?: Record<string, unknown>) {
       media: media as never,
     } : {}),
   });
-  mn.setPresets(media ? [presetStandard] : [presetStandard, presetMedias]);
+  mn.setPresets(media ? [presetStandard] : [
+    presetStandard,
+    presetMedias,
+  ]);
   mn.getCompiler('class')(token);
   mn.compile();
   return {
@@ -28,13 +31,34 @@ function compile(token: string, media?: Record<string, unknown>) {
 
 describe('presetMedias — точки (примеры владельца)', () => {
   test.each([
-    ['p10@d', '@media (width < 992px){.p10\\@d{padding:10px}}'],
-    ['p10@d-', '@media (width >= 992px){.p10\\@d-{padding:10px}}'],
-    ['p10@m4-d', '@media (width >= 480px) and (width < 992px){.p10\\@m4-d{padding:10px}}'],
-    ['p10@m4', '@media (width < 480px){.p10\\@m4{padding:10px}}'],
-    ['p10@d-d2', '@media (width >= 992px) and (width < 1200px){.p10\\@d-d2{padding:10px}}'],
-    ['p10@480-d', '@media (width >= 480px) and (width < 992px){.p10\\@480-d{padding:10px}}'],
-    ['p10@m4-1000', '@media (width >= 480px) and (width <= 1000px){.p10\\@m4-1000{padding:10px}}'],
+    [
+      'p10@d',
+      '@media (width < 992px){.p10\\@d{padding:10px}}',
+    ],
+    [
+      'p10@d-',
+      '@media (width >= 992px){.p10\\@d-{padding:10px}}',
+    ],
+    [
+      'p10@m4-d',
+      '@media (width >= 480px) and (width < 992px){.p10\\@m4-d{padding:10px}}',
+    ],
+    [
+      'p10@m4',
+      '@media (width < 480px){.p10\\@m4{padding:10px}}',
+    ],
+    [
+      'p10@d-d2',
+      '@media (width >= 992px) and (width < 1200px){.p10\\@d-d2{padding:10px}}',
+    ],
+    [
+      'p10@480-d',
+      '@media (width >= 480px) and (width < 992px){.p10\\@480-d{padding:10px}}',
+    ],
+    [
+      'p10@m4-1000',
+      '@media (width >= 480px) and (width <= 1000px){.p10\\@m4-1000{padding:10px}}',
+    ],
   ])('%s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
@@ -70,7 +94,7 @@ describe('точки по высоте и ошибки', () => {
 
   test('ширина и высота в одном диапазоне — предупреждение, правило не действует', () => {
     const {
-      css, warnings, 
+      css, warnings,
     } = compile('p10@w-t', media);
     expect(css).toBe('');
     expect(warnings.map((w) => w.message)).toEqual(['Media "@w-t" mixes width and height. The class gives no CSS.']);
@@ -78,7 +102,7 @@ describe('точки по высоте и ошибки', () => {
 
   test('query вместе с точкой — предупреждение, берётся query', () => {
     const {
-      css, warnings, 
+      css, warnings,
     } = compile('p10@bad', media);
     expect(css).toBe('@media (x){.p10\\@bad{padding:10px}}');
     expect(warnings[0].message).toBe('Media "@bad" has both "query" and "width"/"height" — "query" is used');
@@ -112,13 +136,34 @@ describe('точка с единицей (D-069)', () => {
   };
 
   test.each([
-    ['p10@md', '@media (width < 48rem){.p10\\@md{padding:10px}}'],
-    ['p10@md-', '@media (width >= 48rem){.p10\\@md-{padding:10px}}'],
-    ['p10@md-lg', '@media (width >= 48rem) and (width < 64rem){.p10\\@md-lg{padding:10px}}'],
-    ['p10@480-md', '@media (width >= 480px) and (width < 48rem){.p10\\@480-md{padding:10px}}'],
-    ['p10@md-1200', '@media (width >= 48rem) and (width <= 1200px){.p10\\@md-1200{padding:10px}}'],
-    ['p10@em', '@media (height < 30em){.p10\\@em{padding:10px}}'],
-    ['p10@px', '@media (width < 600px){.p10\\@px{padding:10px}}'],
+    [
+      'p10@md',
+      '@media (width < 48rem){.p10\\@md{padding:10px}}',
+    ],
+    [
+      'p10@md-',
+      '@media (width >= 48rem){.p10\\@md-{padding:10px}}',
+    ],
+    [
+      'p10@md-lg',
+      '@media (width >= 48rem) and (width < 64rem){.p10\\@md-lg{padding:10px}}',
+    ],
+    [
+      'p10@480-md',
+      '@media (width >= 480px) and (width < 48rem){.p10\\@480-md{padding:10px}}',
+    ],
+    [
+      'p10@md-1200',
+      '@media (width >= 48rem) and (width <= 1200px){.p10\\@md-1200{padding:10px}}',
+    ],
+    [
+      'p10@em',
+      '@media (height < 30em){.p10\\@em{padding:10px}}',
+    ],
+    [
+      'p10@px',
+      '@media (width < 600px){.p10\\@px{padding:10px}}',
+    ],
   ])('%s → %s', (token, css) => {
     expect(compile(token, media).css).toBe(css);
   });

@@ -6,7 +6,13 @@
  * относительный путь считается от `base`, что `isStream`-файл не роняет пайп.
  */
 import {
-  mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
 } from 'node:fs';
 import {
   join,
@@ -48,7 +54,10 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  for (const path of [dir, dest]) {
+  for (const path of [
+    dir,
+    dest,
+  ]) {
     rmSync(path, {
       recursive: true,
       force: true,
@@ -316,7 +325,7 @@ describe('minotation-gulp — имя файла, entry и манифест (D-03
 
     expect(files['mn.css']).toContain('padding:10px');
     expect(JSON.parse(files['mn-manifest.json'])).toEqual({
-      'mn.css': 'mn.css', 
+      'mn.css': 'mn.css',
     });
   });
 
@@ -329,12 +338,12 @@ describe('minotation-gulp — имя файла, entry и манифест (D-03
       manifest: false,
       entry: {
         site: {
-          include: /site/, 
+          include: /site/,
         },
         admin: {
           include: /admin/,
-          fileName: 'adm.css', 
-        }, 
+          fileName: 'adm.css',
+        },
       },
     });
 
@@ -355,7 +364,7 @@ describe('minotation-gulp — статистика употребления то
     // Папка вывода общая: убрать отчёт первого прогона.
     rmSync(join(dest, 'mn-metrics.json'));
     expect((await run('*.html', {
-      metrics: false, 
+      metrics: false,
     }))['mn-metrics.json']).toBeUndefined();
   });
 });
@@ -365,9 +374,9 @@ describe('mnGulp — проверка опций (D-038)', () => {
     expect(() => mnGulp({
       entry: {
         admin: {
-          incude: /admin/, 
-        }, 
-      }, 
+          incude: /admin/,
+        },
+      },
     } as never))
       .toThrow('[minotation] mnGulp: unknown option "entry.admin.incude". Did you mean "entry.admin.include"?');
   });

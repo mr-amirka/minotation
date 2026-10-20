@@ -4,7 +4,7 @@
  * `[handler, exts]`, а также реакция на некорректный путь.
  */
 import {
-  minotationProvider, 
+  minotationProvider,
 } from '../core/index';
 import presetStandard from '../presets/standard';
 
@@ -31,13 +31,13 @@ describe('формы регистрации эссенций', () => {
     mn({
       redish: () => ({
         style: {
-          color: '#f00', 
-        }, 
+          color: '#f00',
+        },
       }),
       blockish: () => ({
         style: {
-          display: 'block', 
-        }, 
+          display: 'block',
+        },
       }),
     });
 
@@ -64,11 +64,14 @@ describe('формы регистрации эссенций', () => {
     // второй элемент — паттерн разбора суффикса (как PATTERN_COLOR в пресетах):
     // хендлер получает именованные поля вместо сырой строки
     mn({
-      tint: [(p: any) => ({
-        style: {
-          color: '#' + p.value, 
-        }, 
-      }), '^(([A-Fa-f0-9]+):value)'], 
+      tint: [
+        (p: any) => ({
+          style: {
+            color: '#' + p.value,
+          },
+        }),
+        '^(([A-Fa-f0-9]+):value)',
+      ],
     });
 
     const css = compile(mn, 'tintF00');
@@ -80,8 +83,8 @@ describe('формы регистрации эссенций', () => {
     const mn = makeMn();
     mn('plain', {
       style: {
-        color: '#f00', 
-      }, 
+        color: '#f00',
+      },
     });
 
     expect(compile(mn, 'plain')).toContain('color:#f00');
@@ -103,8 +106,8 @@ describe('формы регистрации эссенций', () => {
     try {
       expect(() => mn(123 as any, () => ({
         style: {
-          color: '#f00', 
-        }, 
+          color: '#f00',
+        },
       }))).not.toThrow();
     } finally {
       // снимок до mockRestore: он сбрасывает накопленные вызовы
@@ -122,17 +125,22 @@ describe('обход DOM — обе формы аргумента attrs', () => 
     return {
       nodeType: 1,
       getAttribute: (name: string) => attrs[name] ?? null,
-      childNodes: children, 
+      childNodes: children,
     };
   }
 
   test('recursiveCheckByAttrs принимает список атрибутов', () => {
     const mn = makeMn();
     mn.recursiveCheckByAttrs(node({
-      class: 'p10', 
-    }, [node({
-      id: 'mt4', 
-    })]), ['class', 'id']);
+      class: 'p10',
+    }, [
+      node({
+        id: 'mt4',
+      }),
+    ]), [
+      'class',
+      'id',
+    ]);
     mn.compile();
 
     const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
@@ -143,7 +151,7 @@ describe('обход DOM — обе формы аргумента attrs', () => 
   test('checkOneNodeByAttrs принимает одиночное имя атрибута', () => {
     const mn = makeMn();
     mn.checkOneNodeByAttrs(node({
-      class: 'p10', 
+      class: 'p10',
     }), 'class');
     mn.compile();
 

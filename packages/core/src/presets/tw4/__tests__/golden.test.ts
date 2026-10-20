@@ -94,7 +94,10 @@ function mnDeclarations(candidate: string): string[] {
     notationMode: 'tw4-compatible',
     warningMode: 'silent',
   });
-  mn.setPresets([presetMedias, presetTw4]);
+  mn.setPresets([
+    presetMedias,
+    presetTw4,
+  ]);
   mn.getCompiler('class')(candidate);
   mn.compile();
   const out: string[] = [];

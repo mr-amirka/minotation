@@ -6,7 +6,10 @@
  * а остальные сборщики молча теряли токены из переменных.
  */
 import {
-  mkdtempSync, mkdirSync, writeFileSync, rmSync,
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
 } from 'node:fs';
 import {
   join,
@@ -18,7 +21,8 @@ import {
   createServer,
 } from 'node:net';
 import {
-  collectFiles, compile,
+  collectFiles,
+  compile,
 } from '../src/compile';
 import {
   presetTw4,
@@ -55,7 +59,10 @@ describe('collectFiles', () => {
   test('обходит директорию рекурсивно', () => {
     write('a.html', '');
     write('nested/b.tsx', '');
-    expect(collectFiles(dir).sort()).toEqual([join(dir, 'a.html'), join(dir, 'nested/b.tsx')].sort());
+    expect(collectFiles(dir).sort()).toEqual([
+      join(dir, 'a.html'),
+      join(dir, 'nested/b.tsx'),
+    ].sort());
   });
 
   test('пропускает node_modules, .git и сборки', () => {
@@ -110,7 +117,10 @@ describe('collectFiles', () => {
     write('vendor/c.html', '');
     expect(collectFiles(dir, {
       include: /\.html$/,
-    })).toEqual([join(dir, 'a.html'), join(dir, 'vendor/c.html')]);
+    })).toEqual([
+      join(dir, 'a.html'),
+      join(dir, 'vendor/c.html'),
+    ]);
     expect(collectFiles(dir, {
       include: /\.html$/,
       exclude: /vendor/,
@@ -122,15 +132,24 @@ describe('collectFiles', () => {
     write('b.tpl', '');
     write('vendor/c.html', '');
     expect(collectFiles(dir, {
-      include: ['b.tpl', (path: string) => path.endsWith('.html')],
+      include: [
+        'b.tpl',
+        (path: string) => path.endsWith('.html'),
+      ],
       exclude: (path: string) => path.endsWith('vendor'),
-    }).sort()).toEqual([join(dir, 'a.html'), join(dir, 'b.tpl')]);
+    }).sort()).toEqual([
+      join(dir, 'a.html'),
+      join(dir, 'b.tpl'),
+    ]);
   });
 
   test('skipPartials пропускает файлы `_*`', () => {
     write('a.html', '');
     write('_part.html', '');
-    expect(collectFiles(dir).sort()).toEqual([join(dir, '_part.html'), join(dir, 'a.html')]);
+    expect(collectFiles(dir).sort()).toEqual([
+      join(dir, '_part.html'),
+      join(dir, 'a.html'),
+    ]);
     expect(collectFiles(dir, {
       skipPartials: true,
     })).toEqual([join(dir, 'a.html')]);
@@ -277,18 +296,23 @@ describe('метрики', () => {
     expect(metrics.tokensTotal).toBe(2);
     expect(metrics.occurrences).toBe(4);
     // По убыванию частоты: p10 встретился трижды, m20 — один раз.
-    expect(metrics.tokens).toEqual([{
-      name: 'p10',
-      count: 3,
-    }, {
-      name: 'm20',
-      count: 1,
-    }]);
+    expect(metrics.tokens).toEqual([
+      {
+        name: 'p10',
+        count: 3,
+      },
+      {
+        name: 'm20',
+        count: 1,
+      },
+    ]);
     // Пути — от корня скана.
-    expect(metrics.files['b.html']).toEqual([{
-      name: 'p10',
-      count: 1,
-    }]);
+    expect(metrics.files['b.html']).toEqual([
+      {
+        name: 'p10',
+        count: 1,
+      },
+    ]);
   });
 
   test('при равной частоте порядок по имени — отчёт воспроизводим', () => {
@@ -322,17 +346,19 @@ describe('scopes и scopePresets в CLI (D-078, D-081)', () => {
   test('пакет по правилу — своя область с пресетом Tailwind', () => {
     write('app.html', '<div class="p10">');
     write('ui/package.json', JSON.stringify({
-      name: '@acme/ui', 
+      name: '@acme/ui',
     }));
     write('ui/Button.html', '<b class="p-4">');
     const css = compile({
       input: dir,
       scopePresets: [presetTw4 as MnPreset],
-      scopes: [{
-        match: '@acme/ui',
-        requires: ['presetTw4'],
-        notationMode: 'tw4-compatible', 
-      }],
+      scopes: [
+        {
+          match: '@acme/ui',
+          requires: ['presetTw4'],
+          notationMode: 'tw4-compatible',
+        },
+      ],
     }).css;
     expect(css).toContain('.p10{padding:10px}');
     expect(css).toContain('.p-4{padding:calc(var(--spacing) * 4)}');

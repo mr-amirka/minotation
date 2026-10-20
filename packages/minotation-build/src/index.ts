@@ -21,15 +21,20 @@
  * @module minotation-build
  */
 import {
-  readFileSync, readdirSync, statSync,
+  readFileSync,
+  readdirSync,
+  statSync,
 } from 'node:fs';
 import {
-  CONFIG_FILE_NAMES as CONFIG_FILE_NAMES_IMPL, TOOL_OPTION_KEYS as TOOL_OPTION_KEYS_IMPL,
-  clearConfigFileCache as clearConfigFileCacheImpl, loadConfigFile as loadConfigFileImpl,
+  CONFIG_FILE_NAMES as CONFIG_FILE_NAMES_IMPL,
+  TOOL_OPTION_KEYS as TOOL_OPTION_KEYS_IMPL,
+  clearConfigFileCache as clearConfigFileCacheImpl,
+  loadConfigFile as loadConfigFileImpl,
   withConfigFile as withConfigFileImpl,
 } from './config';
 import {
-  createScopeResolver as createScopeResolverImpl, globToRegExp as globToRegExpImpl,
+  createScopeResolver as createScopeResolverImpl,
+  globToRegExp as globToRegExpImpl,
   isScopeRules as isScopeRulesImpl,
 } from './scopes';
 import type {
@@ -39,7 +44,9 @@ import {
   createHash,
 } from 'node:crypto';
 import {
-  basename, join, relative,
+  basename,
+  join,
+  relative,
 } from 'node:path';
 import {
   clearPackageDirectiveCache as clearPackageDirectiveCacheImpl,
@@ -85,18 +92,38 @@ export const globToRegExp = globToRegExpImpl;
 /** Проверка опции `scopes`. */
 export const isScopeRules = isScopeRulesImpl;
 export type {
-  MnScopeMatch, MnScopeRule,
+  MnScopeMatch,
+  MnScopeRule,
 } from './scopes';
 export type {
   LoadedConfig,
 } from './config';
 import {
-  CORE_OPTIONS_SCHEMA, MnForbiddenTokenError, MnWarningError, checkOptions, createScanner, createScopeClassWriter, isBoolean,
+  CORE_OPTIONS_SCHEMA,
+  MnForbiddenTokenError,
+  MnWarningError,
+  checkOptions,
+  createScanner,
+  createScopeClassWriter,
+  isBoolean,
   isBooleanOrString,
-  isFunction, isPresetArray, isString, isStringArray, minotationProvider, oneOf, optionsOf, parseSettingsKey,
+  isFunction,
+  isPresetArray,
+  isString,
+  isStringArray,
+  minotationProvider,
+  oneOf,
+  optionsOf,
+  parseSettingsKey,
 } from 'minotation';
 import type {
-  MnNotationMode, MnOptions, MnParseSettings, MnPreset as MnCorePreset, MnWarning, OptionCheck, OptionSchema,
+  MnNotationMode,
+  MnOptions,
+  MnParseSettings,
+  MnPreset as MnCorePreset,
+  MnWarning,
+  OptionCheck,
+  OptionSchema,
   ScannerOptions,
 } from 'minotation';
 
@@ -154,13 +181,14 @@ const REGEXP_ATTRS_SPLIT = /[\s|,;]+/;
 export function parseAttrs(attrs?: MnAttrs): Record<string, string> {
   if (attrs === undefined || attrs === null) {
     return {
-      class: 'class', 
+      class: 'class',
     };
   }
   const out: Record<string, string> = {};
   let found = 0;
-  if (typeof attrs === 'string' || Array.isArray(attrs)) {
-    const items = typeof attrs === 'string' ? attrs.split(REGEXP_ATTRS_SPLIT) : attrs;
+  const isString = typeof attrs === 'string';
+  if (isString || Array.isArray(attrs)) {
+    const items = isString ? attrs.split(REGEXP_ATTRS_SPLIT) : attrs;
     let at: number;
     let from: string;
     let to: string;
@@ -286,18 +314,21 @@ export function createAttrsScanner(options: Omit<ScannerOptions, 'attr' | 'onWar
   }
   const targets = Object.keys(byTarget);
   const classTarget = byTarget.class ? 'class' : targets[0];
-  const scanners = targets.map((target) => createScanner({
-    syntax: options.syntax,
-    comments: options.comments,
-    // У сканера свой `onWarning` — о недоступном парсере. В опциях плагина это
-    // имя занято предупреждениями компиляции (D-034), поэтому колбэк сканера
-    // приходит как `onScannerWarning`.
-    onWarning: options.onScannerWarning,
-    attr: byTarget[target],
-    // Переменные и вызовы сканируются один раз — в группе классов.
-    classVarSuffixes: target === classTarget ? options.classVarSuffixes : [],
-    mergeFnNames: target === classTarget ? options.mergeFnNames : [],
-  }));
+  const scanners = targets.map((target) => {
+    const isClassTarget = target === classTarget;
+    return createScanner({
+      syntax: options.syntax,
+      comments: options.comments,
+      // У сканера свой `onWarning` — о недоступном парсере. В опциях плагина это
+      // имя занято предупреждениями компиляции (D-034), поэтому колбэк сканера
+      // приходит как `onScannerWarning`.
+      onWarning: options.onScannerWarning,
+      attr: byTarget[target],
+      // Переменные и вызовы сканируются один раз — в группе классов.
+      classVarSuffixes: isClassTarget ? options.classVarSuffixes : [],
+      mergeFnNames: isClassTarget ? options.mergeFnNames : [],
+    });
+  });
   const l = targets.length;
   return (source: string, fileName?: string): string[] => {
     const out: string[] = [];
@@ -1094,7 +1125,10 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
       return own || [];
     }
     const out: string[] = [];
-    for (const [name, ids] of files) {
+    for (const [
+      name,
+      ids,
+    ] of files) {
       name.indexOf(token) > -1 && out.push(...ids);
     }
     return out;
@@ -1104,7 +1138,10 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   function filesByToken(): Map<string, string[]> {
     const out = new Map<string, string[]>();
     let token: string;
-    for (const [id, entries] of byFile) {
+    for (const [
+      id,
+      entries,
+    ] of byFile) {
       for (const entry of entries) {
         token = entry.slice(entry.indexOf(' ') + 1);
         (out.get(token) || out.set(token, []).get(token) as string[]).push(id);
@@ -1171,7 +1208,15 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
 
   /** Записи по областям; область приложения есть всегда (статика пресетов, `mn.css`). */
   function collect(appNames: string[]): Map<string, ScopeEntries> {
-    const scopes = new Map<string, ScopeEntries>([['', [new Set<string>(), '']]]);
+    const scopes = new Map<string, ScopeEntries>([
+      [
+        '',
+        [
+          new Set<string>(),
+          '',
+        ],
+      ],
+    ]);
     let settings: string | undefined;
     let scope: ScopeEntries;
     let key: string;
@@ -1179,7 +1224,10 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     for (const id of Array.from(byFile.keys()).sort()) {
       settings = fileSettings.get(id);
       key = scopeOf(fileRequires.get(id), appNames);
-      scope = scopes.get(key) || scopes.set(key, [new Set<string>(), id]).get(key) as ScopeEntries;
+      scope = scopes.get(key) || scopes.set(key, [
+        new Set<string>(),
+        id,
+      ]).get(key) as ScopeEntries;
       for (const token of byFile.get(id) as Set<string>) {
         scope[0].add(settings ? settings + '\0' + token : token);
       }
@@ -1196,7 +1244,10 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     scope: string, firstId: string, appNames: string[],
   ): MnPreset[] {
     const own: MnPreset[] = [];
-    for (const [id, preset] of dynamic) {
+    for (const [
+      id,
+      preset,
+    ] of dynamic) {
       scopeOf(dynamicNotation.get(id) && (dynamicNotation.get(id) as MnNotationDirective).requires, appNames) === scope
         && own.push(preset);
     }
@@ -1250,7 +1301,10 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     let outputs: string[];
     let keep: number;
     let message: string;
-    for ([token, variants] of byToken) {
+    for ([
+      token,
+      variants,
+    ] of byToken) {
       if (variants.length < 2) {
         continue;
       }
@@ -1605,7 +1659,7 @@ export interface BuildCollector {
  */
 export function createBuildCollector(options: MnBuildOptions, root: string): BuildCollector {
   const entries = options.entry || {
-    mn: {}, 
+    mn: {},
   };
   const names = Object.keys(entries);
   if (!names.length) {
@@ -1719,7 +1773,10 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
       const total: Record<string, number> = {};
       const files: Record<string, TokenCount[]> = {};
       let list: TokenCount[];
-      for (const [id, own] of counts) {
+      for (const [
+        id,
+        own,
+      ] of counts) {
         for (const name in own) {
           total[name] = (total[name] || 0) + own[name];
         }

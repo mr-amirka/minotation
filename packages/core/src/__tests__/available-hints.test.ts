@@ -83,7 +83,10 @@ describe('подсказка: какие записи у хендлера ест
       }
     }
     for (const name of names) {
-      for (const probe of ['Qqz', '10']) {
+      for (const probe of [
+        'Qqz',
+        '10',
+      ]) {
         for (const warning of compile(name + probe).warnings) {
           for (const token of suggestions(warning.message)) {
             suggested++;

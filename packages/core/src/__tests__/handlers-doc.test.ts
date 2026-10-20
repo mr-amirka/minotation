@@ -5,13 +5,13 @@
  * с поведением ядра — падением, а не молчаливым дрейфом.
  */
 import {
-  readFileSync, 
+  readFileSync,
 } from 'fs';
 import {
-  join, 
+  join,
 } from 'path';
 import {
-  minotationProvider, 
+  minotationProvider,
 } from '../core/index';
 import presetStandard from '../presets/standard';
 import presetSynonyms from '../presets/synonyms';
@@ -40,7 +40,10 @@ function parseDocPairs(): DocPair[] {
     if (token === css || !css.includes(':')) {
       continue;
     }
-    pairs.push([token, css.split(';').map((d) => d.trim()).filter(Boolean)]);
+    pairs.push([
+      token,
+      css.split(';').map((d) => d.trim()).filter(Boolean),
+    ]);
   }
   return pairs;
 }
@@ -62,7 +65,8 @@ function compileAll(tokens: string[]): string {
     container: 'sidebar (width >= 448px)',
   };
   const compile = mn.getCompiler('class');
-  for (let i = 0; i < tokens.length; i++) {
+  const tokensLength = tokens.length;
+  for (let i = 0; i < tokensLength; i++) {
     compile(tokens[i]);
   }
   mn.compile();

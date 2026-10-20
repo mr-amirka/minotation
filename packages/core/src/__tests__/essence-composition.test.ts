@@ -3,7 +3,7 @@
  * важность (`-i`) и вложенные `childs`/`media` при слиянии.
  */
 import {
-  minotationProvider, 
+  minotationProvider,
 } from '../core/index';
 import presetStandard from '../presets/standard';
 
@@ -24,19 +24,22 @@ describe('include — примеси эссенций', () => {
     const mn: any = minotationProvider();
     mn('typo', () => ({
       style: {
-        fontSize: '14px', 
-      }, 
+        fontSize: '14px',
+      },
     }));
     mn('shadowish', () => ({
       style: {
-        boxShadow: '0 0 1px #000', 
-      }, 
+        boxShadow: '0 0 1px #000',
+      },
     }));
     mn('card', () => ({
       style: {
-        padding: '8px', 
+        padding: '8px',
       },
-      include: ['typo', 'shadowish'], 
+      include: [
+        'typo',
+        'shadowish',
+      ],
     }));
 
     const css = compile(mn, 'card');
@@ -50,19 +53,19 @@ describe('include — примеси эссенций', () => {
     const mn: any = minotationProvider();
     mn('alpha', () => ({
       style: {
-        color: '#f00', 
-      }, 
+        color: '#f00',
+      },
     }));
     mn('beta', () => ({
       style: {
-        display: 'block', 
-      }, 
+        display: 'block',
+      },
     }));
     mn('gamma', () => ({
       style: {
-        margin: '1px', 
+        margin: '1px',
       },
-      include: 'alpha beta', 
+      include: 'alpha beta',
     }));
 
     const css = compile(mn, 'gamma');
@@ -76,20 +79,20 @@ describe('include — примеси эссенций', () => {
     const mn: any = minotationProvider();
     mn('loopone', () => ({
       style: {
-        color: '#f00', 
+        color: '#f00',
       },
-      include: 'looptwo', 
+      include: 'looptwo',
     }));
     mn('looptwo', () => ({
       style: {
-        display: 'block', 
+        display: 'block',
       },
-      include: 'loopone', 
+      include: 'loopone',
     }));
 
     let css = '';
     expect(() => {
-      css = compile(mn, 'loopone'); 
+      css = compile(mn, 'loopone');
     }).not.toThrow();
     expect(css).toContain('color:#f00');
     expect(css).toContain('display:block');
@@ -102,27 +105,27 @@ describe('important и вложенные части эссенции', () => {
       media: {
         sm: {
           query: '(width <= 600px)',
-          priority: 0, 
-        }, 
-      }, 
+          priority: 0,
+        },
+      },
     });
     mn('box', () => ({
       style: {
-        padding: '4px', 
+        padding: '4px',
       },
       childs: {
         ' span': {
           style: {
-            color: '#f00', 
-          }, 
-        }, 
+            color: '#f00',
+          },
+        },
       },
       media: {
         sm: {
           style: {
-            margin: '2px', 
-          }, 
-        }, 
+            margin: '2px',
+          },
+        },
       },
     }));
 

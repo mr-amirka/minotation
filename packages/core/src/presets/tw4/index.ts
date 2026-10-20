@@ -9,7 +9,9 @@
  * Холодный путь: только регистрация, разбор значений — в хендлерах при первой встрече класса.
  */
 import type {
-  MnInstance, MnHandler, MnHandlerResult,
+  MnInstance,
+  MnHandler,
+  MnHandlerResult,
 } from '../../types';
 import type {
   MnPresetObject,
@@ -27,10 +29,13 @@ import type {
   MnTwArgs,
 } from '../shared/tw';
 import {
-  TW4_KEYFRAMES, TW4_THEME,
+  TW4_KEYFRAMES,
+  TW4_THEME,
 } from './theme';
 import {
-  TW4_NEGATIVE_STATICS, TW4_PROPERTIES, TW4_STATICS,
+  TW4_NEGATIVE_STATICS,
+  TW4_PROPERTIES,
+  TW4_STATICS,
 } from './statics';
 
 /** Число шкалы: `4`, `0.5`, `2.5`. */
@@ -178,7 +183,8 @@ function scaleValue(args: MnTwArgs, options: ScaleOptions): string | undefined {
   if (args.negative && !options.negative) {
     return undefined;
   }
-  if (args.arbitrary !== undefined) {
+  const hasArbitrary = args.arbitrary !== undefined;
+  if (hasArbitrary) {
     value = parts.length || args.modifier !== undefined ? undefined : args.arbitrary;
   } else if (parts.length !== 1) {
     value = undefined;
@@ -195,7 +201,7 @@ function scaleValue(args: MnTwArgs, options: ScaleOptions): string | undefined {
   // Слово с минусом (`-m-auto`) сюда не доходит: его голое имя — статика из таблицы, и у Tailwind
   // отрицательной формы нет. Произвольное значение Tailwind 4 отрицает через `calc(… * -1)`, как бы
   // оно ни выглядело (`-mt-[0px]` → `calc(0px * -1)`).
-  return value && args.negative ? (args.arbitrary !== undefined ? negateCalc(value) : negate(value)) : value;
+  return value && args.negative ? (hasArbitrary ? negateCalc(value) : negate(value)) : value;
 }
 
 /**
@@ -233,8 +239,14 @@ function colorValue(args: MnTwArgs): TwColor | undefined {
   }
   const mix = 'color-mix(in oklab, ' + color + ' ' + alpha + ', transparent)';
   const literal = args.arbitrary === undefined && TW4_THEME['--color-' + key];
-  return literal ? ['color-mix(in srgb, ' + literal + ' ' + alpha + ', transparent)', mix]
-    : /var\(|currentcolor/.test(color) ? [color, mix] : [mix];
+  return literal ? [
+    'color-mix(in srgb, ' + literal + ' ' + alpha + ', transparent)',
+    mix,
+  ]
+    : /var\(|currentcolor/.test(color) ? [
+      color,
+      mix,
+    ] : [mix];
 }
 
 /** Медиа `@supports` для смеси цветов — как у Tailwind 4. */
@@ -465,12 +477,13 @@ function spaceHandler(axis: string, side: string) {
     });
     // Как у Tailwind 4: ноль — просто `0`, отрицательный `px` — литерал `-1px`.
     const step = value === 'calc(1px * -1)' ? '-1px' : value;
+    const zero = step === '0px';
     return step === undefined ? undefined : {
       selectors: [SPACE_CHILDREN],
       style: {
         ['--tw-space-' + axis + '-reverse']: '0',
-        ['margin' + side + 'Start']: step === '0px' ? '0' : 'calc(' + step + ' * ' + reverse + ')',
-        ['margin' + side + 'End']: step === '0px' ? '0' : 'calc(' + step + ' * calc(1 - ' + reverse + '))',
+        ['margin' + side + 'Start']: zero ? '0' : 'calc(' + step + ' * ' + reverse + ')',
+        ['margin' + side + 'End']: zero ? '0' : 'calc(' + step + ' * calc(1 - ' + reverse + '))',
       },
     };
   });
@@ -545,7 +558,10 @@ function setupSizing(mn: MnInstance): void {
   );
   scales(
     mn, {
-      size: ['width', 'height'],
+      size: [
+        'width',
+        'height',
+      ],
     }, {
       keywords: common,
       fraction: true,
@@ -703,12 +719,14 @@ function setupFlexGrid(mn: MnInstance): void {
   mn(
     'flex', tw((args) => {
       const step = args.parts[0];
+      const modifier = args.modifier;
+      const noModifier = modifier === undefined;
       // Модификатор — только у дроби: `flex-1/2` → `calc(1/2 * 100%)`.
-      const value = args.arbitrary !== undefined ? (args.modifier === undefined ? args.arbitrary : undefined)
+      const value = args.arbitrary !== undefined ? (noModifier ? args.arbitrary : undefined)
         : args.parts.length !== 1 || !REGEXP_INTEGER.test(step) ? undefined
-          : args.modifier === undefined ? step
-            : REGEXP_INTEGER.test(args.modifier) ? 'calc(' + step + '/' + args.modifier + ' * 100%)' : undefined;
-      return !args.parts.length && args.arbitrary === undefined ? (args.modifier === undefined ? result({
+          : noModifier ? step
+            : REGEXP_INTEGER.test(modifier) ? 'calc(' + step + '/' + modifier + ' * 100%)' : undefined;
+      return !args.parts.length && args.arbitrary === undefined ? (noModifier ? result({
         display: 'flex',
       }) : undefined) : value === undefined ? undefined : result({
         flex: value,
@@ -912,12 +930,30 @@ const BORDER_SIDES: Record<string, string[]> = {
 };
 
 const RADIUS_SIDES: Record<string, string[]> = {
-  t: ['borderTopLeftRadius', 'borderTopRightRadius'],
-  r: ['borderTopRightRadius', 'borderBottomRightRadius'],
-  b: ['borderBottomRightRadius', 'borderBottomLeftRadius'],
-  l: ['borderTopLeftRadius', 'borderBottomLeftRadius'],
-  s: ['borderStartStartRadius', 'borderEndStartRadius'],
-  e: ['borderStartEndRadius', 'borderEndEndRadius'],
+  t: [
+    'borderTopLeftRadius',
+    'borderTopRightRadius',
+  ],
+  r: [
+    'borderTopRightRadius',
+    'borderBottomRightRadius',
+  ],
+  b: [
+    'borderBottomRightRadius',
+    'borderBottomLeftRadius',
+  ],
+  l: [
+    'borderTopLeftRadius',
+    'borderBottomLeftRadius',
+  ],
+  s: [
+    'borderStartStartRadius',
+    'borderEndStartRadius',
+  ],
+  e: [
+    'borderStartEndRadius',
+    'borderEndEndRadius',
+  ],
   tl: ['borderTopLeftRadius'],
   tr: ['borderTopRightRadius'],
   br: ['borderBottomRightRadius'],
@@ -974,7 +1010,10 @@ function setupBorders(mn: MnInstance): void {
     }), '', 1,
   );
   mn(
-    'border-spacing', borderSpacing(['x', 'y']), '', 1,
+    'border-spacing', borderSpacing([
+      'x',
+      'y',
+    ]), '', 1,
   );
   mn(
     'border-spacing-x', borderSpacing(['x']), '', 1,
@@ -1047,13 +1086,14 @@ function divideWidth(axis: 'x' | 'y', args: MnTwArgs): MnHandlerResult | undefin
     : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.arbitrary)
       : !args.parts.length ? '1px' : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] + 'px' : undefined;
   const reverse = 'var(--tw-divide-' + axis + '-reverse)';
-  const start = axis === 'x' ? 'borderInlineStart' : 'borderTop';
-  const end = axis === 'x' ? 'borderInlineEnd' : 'borderBottom';
+  const inline = axis === 'x';
+  const start = inline ? 'borderInlineStart' : 'borderTop';
+  const end = inline ? 'borderInlineEnd' : 'borderBottom';
   return width === undefined ? undefined : {
     selectors: [DIVIDE_CHILDREN],
     style: {
       ['--tw-divide-' + axis + '-reverse']: '0',
-      ...(axis === 'x' ? {
+      ...(inline ? {
         borderInlineStyle: 'var(--tw-border-style)',
       } : {
         borderBottomStyle: 'var(--tw-border-style)',
@@ -1086,8 +1126,9 @@ function setupColorUtilities(mn: MnInstance): void {
   );
   mn(
     'outline', colorOr(['outlineColor'], (args) => {
-      const width = !args.parts.length && args.arbitrary === undefined && args.modifier === undefined && !args.negative
-        ? '1px' : isLengthArg(args) || args.arbitrary === undefined ? pixels(args) : undefined;
+      const noArbitrary = args.arbitrary === undefined;
+      const width = !args.parts.length && noArbitrary && args.modifier === undefined && !args.negative
+        ? '1px' : isLengthArg(args) || noArbitrary ? pixels(args) : undefined;
       return width === undefined ? undefined : result({
         outlineStyle: 'var(--tw-outline-style)',
         outlineWidth: width,
@@ -1149,8 +1190,9 @@ function setupColorUtilities(mn: MnInstance): void {
   );
   mn(
     'ring', colorOr(['--tw-ring-color'], (args) => {
-      const width = !args.parts.length && args.arbitrary === undefined && args.modifier === undefined && !args.negative
-        ? '1px' : isLengthArg(args) || args.arbitrary === undefined ? pixels(args) : undefined;
+      const noArbitrary = args.arbitrary === undefined;
+      const width = !args.parts.length && noArbitrary && args.modifier === undefined && !args.negative
+        ? '1px' : isLengthArg(args) || noArbitrary ? pixels(args) : undefined;
       return width === undefined ? undefined : result({
         '--tw-ring-shadow': 'var(--tw-ring-inset,) 0 0 0 calc(' + width + ' + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor)',
         boxShadow: BOX_SHADOW,
@@ -1168,8 +1210,9 @@ function setupColorUtilities(mn: MnInstance): void {
   );
   mn(
     'inset-ring', colorOr(['--tw-inset-ring-color'], (args) => {
-      const width = !args.parts.length && args.arbitrary === undefined && args.modifier === undefined && !args.negative
-        ? '1px' : isLengthArg(args) || args.arbitrary === undefined ? pixels(args) : undefined;
+      const noArbitrary = args.arbitrary === undefined;
+      const width = !args.parts.length && noArbitrary && args.modifier === undefined && !args.negative
+        ? '1px' : isLengthArg(args) || noArbitrary ? pixels(args) : undefined;
       return width === undefined ? undefined : result({
         '--tw-inset-ring-shadow': 'inset 0 0 0 ' + width + ' var(--tw-inset-ring-color, currentcolor)',
         boxShadow: BOX_SHADOW,
@@ -1177,7 +1220,10 @@ function setupColorUtilities(mn: MnInstance): void {
     }), '', 1,
   );
   let part: string;
-  for (part of ['thumb', 'track']) {
+  for (part of [
+    'thumb',
+    'track',
+  ]) {
     mn(
       'scrollbar-' + part, scrollbarColor(part), '', 1,
     );
@@ -1270,8 +1316,14 @@ function shadowColor(args: MnTwArgs, alphaVar: string): TwColor | undefined {
   }
   const literal = args.arbitrary === undefined && TW4_THEME['--color-' + args.parts.join('-')] || color;
   const mix = (value: string) => 'color-mix(in oklab, ' + value + ' var(' + alphaVar + '), transparent)';
-  return alpha ? ['color-mix(in srgb, ' + literal + ' ' + alpha + ', transparent)', mix('color-mix(in oklab, ' + color + ' ' + alpha + ', transparent)')]
-    : [literal, mix(color)];
+  return alpha ? [
+    'color-mix(in srgb, ' + literal + ' ' + alpha + ', transparent)',
+    mix('color-mix(in oklab, ' + color + ' ' + alpha + ', transparent)'),
+  ]
+    : [
+      literal,
+      mix(color),
+    ];
 }
 
 /** Ключ размера для произвольной тени `[…]` — не имя темы. */
@@ -1299,13 +1351,16 @@ function shadowHandler(family: ShadowFamily) {
   return tw((args) => {
     const key = args.parts.join('-');
     // Непонятная прозрачность у размера (`shadow-md/x`) Tailwind 4 пропускает — тень без неё.
-    const alpha = args.modifier === undefined ? undefined : alphaOf(args.modifier);
+    const noArbitrary = args.arbitrary === undefined;
+    const modifier = args.modifier;
+    const noModifier = modifier === undefined;
+    const alpha = noModifier ? undefined : alphaOf(modifier);
     const value = args.negative ? undefined
       : args.arbitrary !== undefined ? (args.parts.length || args.type === 'color' || REGEXP_COLOR_LIKE.test(args.arbitrary)
         ? undefined : args.arbitrary)
         : family.sizes[key] || TW4_THEME[family.theme + key];
-    if (args.arbitrary === undefined && key === 'none') {
-      return args.modifier === undefined && !args.negative ? result(family.none) : undefined;
+    if (noArbitrary && key === 'none') {
+      return noModifier && !args.negative ? result(family.none) : undefined;
     }
     if (value !== undefined) {
       return result({
@@ -1315,7 +1370,7 @@ function shadowHandler(family: ShadowFamily) {
         ...family.size(
           shadowParts(
             value, family.colorVar, alpha,
-          ), alpha, args.arbitrary === undefined ? key : ARBITRARY,
+          ), alpha, noArbitrary ? key : ARBITRARY,
         ),
       });
     }
@@ -1517,7 +1572,10 @@ function setupTransforms(mn: MnInstance): void {
     perspectives[name] = 'var(--perspective-' + name + ')';
   }
   mn(
-    'translate', translateHandler(['x', 'y'], TRANSLATE_XY), '', 1,
+    'translate', translateHandler([
+      'x',
+      'y',
+    ], TRANSLATE_XY), '', 1,
   );
   mn(
     'translate-x', translateHandler(['x'], TRANSLATE_XY), '', 1,
@@ -1562,7 +1620,10 @@ function setupTransforms(mn: MnInstance): void {
     'rotate-z', transformHandler('rotate', ['z']), '', 1,
   );
   mn(
-    'skew', transformHandler('skew', ['x', 'y']), '', 1,
+    'skew', transformHandler('skew', [
+      'x',
+      'y',
+    ]), '', 1,
   );
   mn(
     'skew-x', transformHandler('skew', ['x']), '', 1,
@@ -1797,7 +1858,10 @@ function filterHandler(
     }
     return result({
       [variable]: none ? ' ' : name + '(' + value + ')',
-      ...backdrop ? styleOf(['-webkit-backdrop-filter', 'backdropFilter'], BACKDROP_FILTER) : {
+      ...backdrop ? styleOf([
+        '-webkit-backdrop-filter',
+        'backdropFilter',
+      ], BACKDROP_FILTER) : {
         filter: FILTER,
       },
     });
@@ -1840,7 +1904,10 @@ function setupFilters(mn: MnInstance): void {
     'filter', filterRootHandler(['filter'], FILTER), '', 1,
   );
   mn(
-    'backdrop-filter', filterRootHandler(['-webkit-backdrop-filter', 'backdropFilter'], BACKDROP_FILTER), '', 1,
+    'backdrop-filter', filterRootHandler([
+      '-webkit-backdrop-filter',
+      'backdropFilter',
+    ], BACKDROP_FILTER), '', 1,
   );
 }
 
@@ -1876,11 +1943,12 @@ function setupTransitions(mn: MnInstance): void {
   mn(
     'transition', tw((args) => {
       const key = args.parts.join('-');
+      const none = key === 'none';
       const property = args.negative || args.modifier !== undefined ? undefined
         : args.arbitrary !== undefined ? (key ? undefined : args.arbitrary)
-          : key === 'none' ? key : TRANSITION_PROPERTIES[key];
+          : none ? key : TRANSITION_PROPERTIES[key];
       // `transition-none` — только свойство, без кривой и длительности.
-      return property === undefined ? undefined : result(key === 'none' ? {
+      return property === undefined ? undefined : result(none ? {
         transitionProperty: property,
       } : {
         transitionProperty: property,
@@ -1909,10 +1977,11 @@ function setupTransitions(mn: MnInstance): void {
   mn(
     'ease', tw((args) => {
       const key = args.parts.join('-');
-      const ease = keywordValue(args, EASE_KEYWORDS) || (args.arbitrary === undefined && key && !args.negative
+      const noArbitrary = args.arbitrary === undefined;
+      const ease = keywordValue(args, EASE_KEYWORDS) || (noArbitrary && key && !args.negative
         && args.modifier === undefined && TW4_THEME['--ease-' + key] ? 'var(--ease-' + key + ')' : undefined);
       // `ease-initial` — только сброс переменной.
-      return ease === undefined ? undefined : result(key === 'initial' && args.arbitrary === undefined ? {
+      return ease === undefined ? undefined : result(key === 'initial' && noArbitrary ? {
         '--tw-ease': ease,
       } : {
         '--tw-ease': ease,
@@ -2025,7 +2094,10 @@ function setupNestedStatics(mn: MnInstance): void {
       'divide-' + name, bareOnly(divideStyle(name)), '', 1,
     );
   }
-  for (name of ['x', 'y']) {
+  for (name of [
+    'x',
+    'y',
+  ]) {
     mn(
       'divide-' + name + '-reverse', bareOnly(divideStyle('', '--tw-divide-' + name + '-reverse')), '', 1,
     );
@@ -2208,8 +2280,14 @@ const MASK_EDGES: Record<string, string[]> = {
   r: ['right'],
   b: ['bottom'],
   l: ['left'],
-  x: ['right', 'left'],
-  y: ['top', 'bottom'],
+  x: [
+    'right',
+    'left',
+  ],
+  y: [
+    'top',
+    'bottom',
+  ],
 };
 
 /** Точки форм `mask-linear/radial/conic-from/to-*`: переменная точек и сама форма. */
@@ -2255,15 +2333,17 @@ function maskStopHandler(
   return tw((args) => {
     const key = args.parts.join('-');
     const arbitrary = args.arbitrary;
-    const colorArbitrary = arbitrary !== undefined && (args.type === 'color'
+    const hasArbitrary = arbitrary !== undefined;
+    const colorArbitrary = hasArbitrary && (args.type === 'color'
       || !args.type && arbitrary.indexOf('var(') !== 0 && REGEXP_COLOR_LIKE.test(arbitrary));
     const position = args.negative || args.modifier !== undefined || colorArbitrary ? undefined
-      : arbitrary !== undefined ? (key ? undefined : arbitrary)
+      : hasArbitrary ? (key ? undefined : arbitrary)
         : args.parts.length !== 1 ? undefined
           : REGEXP_PERCENT.test(key) ? key : REGEXP_NUMBER.test(key) ? spacing(key) : undefined;
-    const color = position === undefined && (arbitrary === undefined || colorArbitrary) ? colorValue(args) : undefined;
-    const suffix = '-' + stop + '-' + (position === undefined ? 'color' : 'position');
-    if (position === undefined && color === undefined) {
+    const noPosition = position === undefined;
+    const color = noPosition && (arbitrary === undefined || colorArbitrary) ? colorValue(args) : undefined;
+    const suffix = '-' + stop + '-' + (noPosition ? 'color' : 'position');
+    if (noPosition && color === undefined) {
       return undefined;
     }
     return colorResult(
@@ -2300,7 +2380,10 @@ function setupMasks(mn: MnInstance): void {
   let name: string;
   let stop: string;
   for (name in MASK_EDGES) { // eslint-disable-line
-    for (stop of ['from', 'to']) {
+    for (stop of [
+      'from',
+      'to',
+    ]) {
       mn(
         'mask-' + name + '-' + stop, maskStopHandler(
           MASK_EDGES[name], stop, maskEdgeStyle(MASK_EDGES[name]),
@@ -2309,7 +2392,10 @@ function setupMasks(mn: MnInstance): void {
     }
   }
   for (name in MASK_SHAPE_STOPS) { // eslint-disable-line
-    for (stop of ['from', 'to']) {
+    for (stop of [
+      'from',
+      'to',
+    ]) {
       mn(
         'mask-' + name + '-' + stop, maskStopHandler(
           [name], stop, MASK_SHAPE_STOPS[name],

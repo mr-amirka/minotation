@@ -11,7 +11,8 @@ import presetNormalize from '../presets/normalize';
 import presetMain from '../presets/main';
 import presetHints from '../presets/hints';
 import type {
-  MnPreset, MnPresetObject,
+  MnPreset,
+  MnPresetObject,
 } from '../core/types';
 
 /** Пресет-объект, который записывает свой запуск в журнал. */
@@ -81,7 +82,10 @@ describe('orderPresets — устойчивая топологическая с�
       fn,
       a,
       fn,
-    ], {})).toEqual([a, fn]);
+    ], {})).toEqual([
+      a,
+      fn,
+    ]);
   });
 
   test('зависимость, подключённая прошлым вызовом, засчитывается; сам он не повторяется', () => {
@@ -90,7 +94,10 @@ describe('orderPresets — устойчивая топологическая с�
       log, 'a', ['base'],
     );
     const base = track(log, 'base');
-    expect(orderPresets([a, base], {
+    expect(orderPresets([
+      a,
+      base,
+    ], {
       base,
     })).toEqual([a]);
   });
@@ -112,12 +119,18 @@ describe('orderPresets — устойчивая топологическая с�
     const b = track(
       [], 'presetB', ['presetA'],
     );
-    expect(() => orderPresets([a, b], {}))
+    expect(() => orderPresets([
+      a,
+      b,
+    ], {}))
       .toThrow('[minotation] presets require each other: presetA → presetB → presetA');
   });
 
   test('два разных пресета с одним именем — ошибка (и с уже подключённым тоже)', () => {
-    expect(() => orderPresets([track([], 'x'), track([], 'x')], {}))
+    expect(() => orderPresets([
+      track([], 'x'),
+      track([], 'x'),
+    ], {}))
       .toThrow('[minotation] two different presets are named "x"');
     expect(() => orderPresets([track([], 'x')], {
       x: track([], 'x'),
@@ -125,26 +138,36 @@ describe('orderPresets — устойчивая топологическая с�
   });
 
   test('проверка пресет-объекта: опечатка в ключе, нет имени, нет setup, чужой режим', () => {
-    expect(() => orderPresets([{
-      name: 'a',
-      setup: () => undefined,
-      require: ['b'],
-    } as never], {})).toThrow('[minotation] preset "a": unknown option "require". Did you mean "requires"?');
-    expect(() => orderPresets([{
-      setup: () => undefined,
-    } as never], {})).toThrow('[minotation] preset object: a preset object needs a "name"');
-    expect(() => orderPresets([{
-      name: '',
-      setup: () => undefined,
-    } as never], {})).toThrow('a preset object needs a "name"');
-    expect(() => orderPresets([{
-      name: 'a',
-    } as never], {})).toThrow('[minotation] preset "a": a preset object needs a "setup(mn)" function');
-    expect(() => orderPresets([{
-      name: 'a',
-      setup: () => undefined,
-      notationMode: 'tailwind',
-    } as never], {})).toThrow('option "notationMode" expects "context-qualified", "tw4-compatible", "breakpoint-prefixed" or "property-value"');
+    expect(() => orderPresets([
+      {
+        name: 'a',
+        setup: () => undefined,
+        require: ['b'],
+      } as never,
+    ], {})).toThrow('[minotation] preset "a": unknown option "require". Did you mean "requires"?');
+    expect(() => orderPresets([
+      {
+        setup: () => undefined,
+      } as never,
+    ], {})).toThrow('[minotation] preset object: a preset object needs a "name"');
+    expect(() => orderPresets([
+      {
+        name: '',
+        setup: () => undefined,
+      } as never,
+    ], {})).toThrow('a preset object needs a "name"');
+    expect(() => orderPresets([
+      {
+        name: 'a',
+      } as never,
+    ], {})).toThrow('[minotation] preset "a": a preset object needs a "setup(mn)" function');
+    expect(() => orderPresets([
+      {
+        name: 'a',
+        setup: () => undefined,
+        notationMode: 'tailwind',
+      } as never,
+    ], {})).toThrow('option "notationMode" expects "context-qualified", "tw4-compatible", "breakpoint-prefixed" or "property-value"');
   });
 });
 
@@ -178,9 +201,12 @@ describe('mn.setPresets с пресет-объектами', () => {
   test('ошибка зависимости — до выполнения любого пресета', () => {
     const log: string[] = [];
     const mn = minotationProvider();
-    expect(() => mn.setPresets([track(log, 'ok'), track(
-      log, 'broken', ['missing'],
-    )]))
+    expect(() => mn.setPresets([
+      track(log, 'ok'),
+      track(
+        log, 'broken', ['missing'],
+      ),
+    ]))
       .toThrow('broken requires "missing"');
     expect(log).toEqual([]);
   });
@@ -202,7 +228,10 @@ describe('mn.setPresets с пресет-объектами', () => {
 
   test('опции провайдера: presets — функции и объекты', () => {
     expect(() => minotationProvider({
-      presets: [presetStandard, () => undefined],
+      presets: [
+        presetStandard,
+        () => undefined,
+      ],
     })).not.toThrow();
     expect(() => minotationProvider({
       presets: ['presetStandard'] as never,

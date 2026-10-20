@@ -23,7 +23,8 @@ import {
   selectorNormalize,
 } from '../selectorNormalize';
 import {
-  MN_MAX_SPECIFICITY, MnParseError,
+  MN_MAX_SPECIFICITY,
+  MnParseError,
   parseSettingsKey,
 } from '../core/types';
 import type {
@@ -70,7 +71,11 @@ import type {
   MnMediaOperator,
 } from '../core/mediaCondition';
 import {
-  childSelectorMessage, importantMessage, maxDepthMessage, maxSpecificityMessage, specificityMessage,
+  childSelectorMessage,
+  importantMessage,
+  maxDepthMessage,
+  maxSpecificityMessage,
+  specificityMessage,
 } from './raiseMessages';
 import {
   getCombinator,
@@ -272,13 +277,19 @@ function splitCompounds(source: string): Array<[number, string]> {
     ch = source[i];
     if (!quote && !depth && (SELECTOR_MEDIA_END[ch])) {
       // Комбинатор: пробелы вокруг `>`/`+`/`~` не значат ничего, одни пробелы — потомок.
-      compound && out.push([1, compound]);
+      compound && out.push([
+        1,
+        compound,
+      ]);
       compound = '';
       combinator = ch === ' ' || ch === '\t' || ch === '\n' ? combinator || ' ' : ch;
       continue;
     }
     if (combinator) {
-      out.length && out.push([0, combinator]);
+      out.length && out.push([
+        0,
+        combinator,
+      ]);
       combinator = '';
     }
     if (ch === '\\') {
@@ -297,7 +308,10 @@ function splitCompounds(source: string): Array<[number, string]> {
     }
     compound += ch;
   }
-  compound && out.push([1, compound]);
+  compound && out.push([
+    1,
+    compound,
+  ]);
   return out;
 }
 
@@ -349,7 +363,10 @@ function takeSelectorMedia(source: string): [string, string] {
     }
     out += ch;
   }
-  return [out, medias.join('&')];
+  return [
+    out,
+    medias.join('&'),
+  ];
 }
 
 /** Медиа из разбора и медиа селектора — через `&`, приоритет `^N` — в конце. */
@@ -846,7 +863,10 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   function suffixesIteratee(
     items: Array<[StrMap<number>, AltMap]>, essences: StrMap<number>, suffix: string,
   ): Array<[StrMap<number>, AltMap]> {
-    return push(items, [essences, buildContext(parseContext(suffix), $$tgt)]);
+    return push(items, [
+      essences,
+      buildContext(parseContext(suffix), $$tgt),
+    ]);
   }
 
   /**
@@ -870,12 +890,14 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     const l = prefixes.length - 1;
     const states: string[] = [''];
     const medias: string[] = [];
-    const chain: MnChain = [[
-      '',
-      '',
-      undefined,
-      undefined,
-    ]];
+    const chain: MnChain = [
+      [
+        '',
+        '',
+        undefined,
+        undefined,
+      ],
+    ];
     const childs: Array<[string, MnChain]> = [];
     const marks: string[] = [];
     const media: StrMap<unknown> = (instance as any).media || {};
@@ -899,7 +921,12 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
               chain, prefix, media,
             ) || throwUnknownVariant(comboName, prefix);
     }
-    states.length > 1 && (chain[0][2] = [[states, undefined]]);
+    states.length > 1 && (chain[0][2] = [
+      [
+        states,
+        undefined,
+      ],
+    ]);
     medias.length && (chain[0][3] = medias.join('&'));
     // Стили дочерних элементов (`*:`, `[&>li]:`) — childSelectorMode, как в других режимах (D-041).
     if (marks.length && (instance as any)._raisedToken?.(
@@ -917,7 +944,15 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       return [];
     }
     essences[tailwindEssence(utility) + (important ? '-i' : '')] = 1;
-    return [[essences, buildContext([chain, childs], targetName)]];
+    return [
+      [
+        essences,
+        buildContext([
+          chain,
+          childs,
+        ], targetName),
+      ],
+    ];
   }
 
   /**
@@ -950,21 +985,28 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   ): boolean {
     const self = chain[0];
     const bracket = prefix.indexOf('-[');
-    const name = bracket > 0 && prefix[prefix.length - 1] === ']' ? prefix.slice(0, bracket) : '';
+    const closesBracket = prefix[prefix.length - 1] === ']';
+    const name = bracket > 0 && closesBracket ? prefix.slice(0, bracket) : '';
     const value = name ? arbitrary(prefix.slice(bracket + 2, -1)) : '';
     let relation: string | undefined;
     let at: number;
-    if (prefix === '*' || prefix === '**') {
-      childs.push([prefix === '*' ? '>' : ' ', [[
-        '',
-        '*',
-        undefined,
-        undefined,
-      ]]]);
+    const children = prefix === '*';
+    if (children || prefix === '**') {
+      childs.push([
+        children ? '>' : ' ',
+        [
+          [
+            '',
+            '*',
+            undefined,
+            undefined,
+          ],
+        ],
+      ]);
       marks.push(prefix);
       return true;
     }
-    if (prefix[0] === '[' && prefix[prefix.length - 1] === ']') {
+    if (prefix[0] === '[' && closesBracket) {
       const selector = arbitrary(prefix.slice(1, -1));
       if (selector[0] === '@') {
         medias.push(arbitraryAtRule(
@@ -1015,9 +1057,10 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       ]);
       return true;
     }
-    if (name === 'min' || name === 'max') {
+    const atLeast = name === 'min';
+    if (atLeast || name === 'max') {
       medias.push(registerQuery((instance as any).media || {}, mediaCondition(
-        'width', name === 'min' ? '>=' : '<', value, $$mediaClassic,
+        'width', atLeast ? '>=' : '<', value, $$mediaClassic,
       )));
       return true;
     }
@@ -1059,16 +1102,18 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    */
   function pushContainerVariant(medias: string[], prefix: string): boolean {
     const slash = prefix.indexOf('/');
-    const base = slash < 0 ? prefix.slice(1) : prefix.slice(1, slash);
-    const named = slash < 0 ? '' : prefix.slice(slash + 1) + ' ';
+    const noSlash = slash < 0;
+    const base = noSlash ? prefix.slice(1) : prefix.slice(1, slash);
+    const named = noSlash ? '' : prefix.slice(slash + 1) + ' ';
     const bracket = base.indexOf('-[');
     const compare = base.slice(0, 4) === 'min-' || base.slice(0, 4) === 'max-' ? base.slice(0, 3) : '';
     const kind = bracket > 0 && base[base.length - 1] === ']' ? base.slice(0, bracket) : '';
     const size = kind ? '' : compare ? base.slice(4) : base;
     const width = kind ? undefined : containerWidth(size);
     let condition: string;
-    if (kind === 'min' || kind === 'max') {
-      condition = '(width ' + (kind === 'min' ? '>=' : '<') + ' ' + arbitrary(base.slice(bracket + 2, -1)) + ')';
+    const atLeast = kind === 'min';
+    if (atLeast || kind === 'max') {
+      condition = '(width ' + (atLeast ? '>=' : '<') + ' ' + arbitrary(base.slice(bracket + 2, -1)) + ')';
     } else if (width !== undefined) {
       condition = '(width ' + (compare === 'max' ? '<' : '>=') + ' ' + pointCss(width) + ')';
     } else {
@@ -1182,8 +1227,9 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   ): boolean {
     const relations: StrMap<string> = (instance as any)._variantPrefixedSynonyms || {};
     const slash = prefix.indexOf('/');
-    const base = slash < 0 ? prefix : prefix.slice(0, slash);
-    const label = slash < 0 ? '' : escapeCss(prefix.slice(slash));
+    const noSlash = slash < 0;
+    const base = noSlash ? prefix : prefix.slice(0, slash);
+    const label = noSlash ? '' : escapeCss(prefix.slice(slash));
     let i = base.lastIndexOf('-');
     let rest: string;
     let relation: string | undefined;
@@ -1194,7 +1240,15 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       isState = $$synonyms[rest] || $$states[rest];
       if (relation && (isState || media[rest])) {
         chain.push(labelSegment(
-          relation, label, isState ? [[['', rest], undefined]] : undefined, isState ? undefined : rest,
+          relation, label, isState ? [
+            [
+              [
+                '',
+                rest,
+              ],
+              undefined,
+            ],
+          ] : undefined, isState ? undefined : rest,
         ));
         return true;
       }
@@ -1237,12 +1291,22 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       media[name] || throwUnknownBreakpoint(comboName, matchs[1]);
     }
     essences[unslash(matchs ? matchs[2] : comboName)] = 1;
-    return [[essences, buildContext([[[
-      '',
-      '',
-      undefined,
-      name,
-    ]], []], targetName)]];
+    return [
+      [
+        essences,
+        buildContext([
+          [
+            [
+              '',
+              '',
+              undefined,
+              name,
+            ],
+          ],
+          [],
+        ], targetName),
+      ],
+    ];
   }
 
   /**
@@ -1257,11 +1321,13 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     targetName: string): Array<[StrMap<number>, AltMap]> {
     const l = comboName.length;
     const essences: StrMap<number> = {};
-    const compounds: Array<[string, string, string[]]> = [[
-      '',
-      '',
-      [''],
-    ]];
+    const compounds: Array<[string, string, string[]]> = [
+      [
+        '',
+        '',
+        [''],
+      ],
+    ];
     let decls: string[];
     let important = false;
     let media: string | undefined;
@@ -1325,28 +1391,48 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       )) {
         return [];
       }
-      childs.push([compound[0], [[
-        '',
-        compound[1],
-        statesOf(compound[2]),
-        undefined,
-      ]]]);
+      childs.push([
+        compound[0],
+        [
+          [
+            '',
+            compound[1],
+            statesOf(compound[2]),
+            undefined,
+          ],
+        ],
+      ]);
     }
     $$quietStates = true;
     try {
-      return [[essences, buildContext([[[
-        '',
-        compounds[0][1],
-        statesOf(compounds[0][2]),
-        media,
-      ]], childs], targetName)]];
+      return [
+        [
+          essences,
+          buildContext([
+            [
+              [
+                '',
+                compounds[0][1],
+                statesOf(compounds[0][2]),
+                media,
+              ],
+            ],
+            childs,
+          ], targetName),
+        ],
+      ];
     } finally {
       $$quietStates = false;
     }
   }
 
   function statesOf(names: string[]): MnStateNode[] | undefined {
-    return names.length > 1 ? [[names, undefined]] : undefined;
+    return names.length > 1 ? [
+      [
+        names,
+        undefined,
+      ],
+    ] : undefined;
   }
 
   /**
@@ -1560,9 +1646,15 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       part = getCombinator(
         childNames[i], $$depthCheck, true,
       );
-      childs.push([part[0], parseChain(part[1])]);
+      childs.push([
+        part[0],
+        parseChain(part[1]),
+      ]);
     }
-    return [chain, childs];
+    return [
+      chain,
+      childs,
+    ];
   }
 
   /**
@@ -1584,7 +1676,10 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       at = mediaAt(segment);
       part = i
         ? getCombinator(at < 0 ? segment : segment.slice(0, at), $$depthCheck)
-        : ['', at < 0 ? segment : segment.slice(0, at)];
+        : [
+          '',
+          at < 0 ? segment : segment.slice(0, at),
+        ];
       chain.push(parseSegment(
         part[0], part[1], at < 0 ? undefined : unslash(segment.slice(at + 1)),
       ));
@@ -1715,7 +1810,10 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     let scope: ScopeNode;
     for (; i < l; i++) {
       scope = scopes[i];
-      out.push([splitState(scope[0]), scope[1] && toStateNodes(scope[1])]);
+      out.push([
+        splitState(scope[0]),
+        scope[1] && toStateNodes(scope[1]),
+      ]);
     }
     return out;
   }
@@ -1841,7 +1939,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    */
   function getSynonyms(nodes: MnStateNode[]): AltMap {
     let alts: AltMap = {
-      '': [], 
+      '': [],
     };
     base(nodes, 1);
     return alts;
@@ -1982,11 +2080,19 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
         // Медиа в селекторе — где угодно (`.a(:h|.active)@m .child`), в отличие от класса: относится
         // ко всему селектору и вынимается до разбора; конец выражения — пробел или комбинатор.
         media = takeSelectorMedia(part);
-        results = [['', media[1]]];
+        results = [
+          [
+            '',
+            media[1],
+          ],
+        ];
         // Комбинаторы CSS (пробел, `>`, `+`, `~`) остаются CSS — `>` здесь ребёнок, а не потомок,
         // как в записи классов; запись классов действует внутри каждого составного селектора.
         for (piece of splitCompounds(media[0])) {
-          results = piece[0] ? joinCompound(results, piece[1]) : results.map((result) => [result[0] + piece[1], result[1]] as [string, string]);
+          results = piece[0] ? joinCompound(results, piece[1]) : results.map((result) => [
+            result[0] + piece[1],
+            result[1],
+          ] as [string, string]);
         }
         for (result of results) {
           out[result[0]] = result[1];
@@ -2024,7 +2130,10 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       // Значение — имя медиа строкой (после `buildContext`), как видит его ядро в `__assignCore`.
       for (selector in alt[1]) { // eslint-disable-line
         for (result of results) {
-          next.push([result[0] + selector, joinSelectorMedia(result[1], (alt[1] as unknown as StrMap<string>)[selector])]);
+          next.push([
+            result[0] + selector,
+            joinSelectorMedia(result[1], (alt[1] as unknown as StrMap<string>)[selector]),
+          ]);
         }
       }
     }

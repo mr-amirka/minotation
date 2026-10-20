@@ -43,15 +43,12 @@
     "fundamentool": "workspace:*"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@stylistic/eslint-plugin": "^5.10.0",
     "@types/css-tree": "^3.2.0",
     "@types/jest": "^29.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.68.0",
-    "@typescript-eslint/parser": "^8.68.0",
     "css-tree": "^3.2.1",
     "esbuild": "^0.28.0",
     "eslint": "^10.9.1",
+    "eslint-config-lab": "github:mr-amirka/eslint-config-lab#c7c7fed4ff6dfbe15b3d2f3fb02fdeb5fa67d2fd",
     "fast-check": "^4.8.0",
     "jest": "^29.0.0",
     "postcss": "^8.5.15",

@@ -60,7 +60,8 @@ function cssOfTokens(tokens: string[]): string {
     presetMedias,
   ]);
   const compile = mn.getCompiler('class');
-  for (let i = 0; i < tokens.length; i++) {
+  const tokensLength = tokens.length;
+  for (let i = 0; i < tokensLength; i++) {
     compile(tokens[i]);
   }
   mn.compile();
@@ -148,7 +149,8 @@ function profileOf(name: string): ValueProfile {
 }
 
 const PROFILES: Record<string, ValueProfile> = {};
-for (let i = 0; i < HANDLER_NAMES.length; i++) {
+const handlerNamesLength = HANDLER_NAMES.length;
+for (let i = 0; i < handlerNamesLength; i++) {
   PROFILES[HANDLER_NAMES[i]] = profileOf(HANDLER_NAMES[i]);
 }
 
@@ -164,7 +166,8 @@ const GRADIENT_HANDLERS = withProfile('gradient');
 /** Прогоняет форму по списку хендлеров, возвращает список нарушителей. */
 function sweep(makeToken: (name: string) => string, names: string[] = HANDLER_NAMES): string[] {
   const bad: string[] = [];
-  for (let i = 0; i < names.length; i++) {
+  const namesLength = names.length;
+  for (let i = 0; i < namesLength; i++) {
     const token = makeToken(names[i]);
     let css: string;
     try {
@@ -243,7 +246,10 @@ describe('все хендлеры стандартного пресета: пе�
       'cor',
     ]));
     // Градиент строят ровно `bg` и `maskbg` — оба через backgroundProvider.
-    expect(GRADIENT_HANDLERS).toEqual(['bg', 'maskbg']);
+    expect(GRADIENT_HANDLERS).toEqual([
+      'bg',
+      'maskbg',
+    ]);
   });
 
   test('экранированная точка — остаётся в значении', () => {
@@ -271,52 +277,199 @@ describe('представители классов разбора — точн�
 
   describe.each([
     // [класс разбора, токены и ожидания]
-    ['числовой/размерный (getVal)', [
-      ['w--v', 'width:var(--v)'],
-      ['w--my_w;', 'width:var(--my_w)'],
-      ['w--v;+5', 'width:calc(var(--v) + 5px)'],
-      ['w10+5', 'width:calc(10px + 5px)'],
-      ['w10-5', 'width:calc(10px - 5px)'],
-      ['w10.5', 'width:10.5px'],
-      ['w10\\.5', 'width:10.5px'],
-      ['p--a;_--b;', 'padding:var(--a) var(--b)'],
-    ]],
-    ['цветовой', [
-      ['c--v', 'color:var(--v)'],
-      ['c--my_ink;', 'color:var(--my_ink)'],
-      ['bc--my_line;', 'border-color:var(--my_line)'],
-      ['olc--v', 'outline-color:var(--v)'],
-    ]],
-    ['свободное значение (synonymProvider)', [
-      ['tn--v', 'transition:var(--v)'],
-      ['tn_--a_--b', 'transition:var(--a) var(--b)'],
-      ['tnAll_0.2s_--ease', 'transition:all 0.2s var(--ease)'],
-      ['tn_all_0.2s_---safe', 'transition:all 0.2s env(--safe)'],
-      ['cnt_a\\.b', 'content:"a.b"'],
-      ['pos--v', 'position:var(--v)'],
-    ]],
-    ['border-style (свой sidesSetter)', [
-      ['bs--v', 'border-style:var(--v)'],
-      ['bs--a_b;', 'border-style:var(--a_b)'],
-      ['bsx--v', 'border-left-style:var(--v);border-right-style:var(--v)'],
-    ]],
-    ['массивная форма synonymProvider (page-break)', [['pgba--v', 'page-break-after:var(--v);break-after:var(--v)'], ['pgbi--a_b;', 'page-break-inside:var(--a_b);break-inside:var(--a_b)']]],
-    ['url-свойства', [
-      ['bgi--hero', 'background-image:var(--hero)'],
-      ['bgi--a_b;', 'background-image:var(--a_b)'],
-      ['bgi_img/a\\.png', 'background-image:url("img/a.png")'],
-      ['lisi--v', 'list-style-image:var(--v)'],
-      ['maski--v', 'mask-image:var(--v)'],
-    ]],
-    ['тени (свой позиционный парсер)', [['bxsh10c--shadow', 'box-shadow:0px 0px 10px 0px var(--shadow)'], ['bxshB--a;c--b;', 'box-shadow:0px 0px var(--a) 0px var(--b)']]],
-    ['multi-value свойства', [['tn_all_0.2s_--ease', 'transition:all 0.2s var(--ease)'], ['tn_--a;_--b;', 'transition:var(--a) var(--b)']]],
-    ['шрифт и content', [
-      ['ff--v', 'font-family:var(--v)'],
-      ['ff--my_font;', 'font-family:var(--my_font)'],
-      ['ff--mono,serif', 'font-family:var(--mono,serif)'],
-      ['font--v', 'font:var(--v)'],
-      ['cnt_a\\.b', 'content:"a.b"'],
-    ]],
+    [
+      'числовой/размерный (getVal)',
+      [
+        [
+          'w--v',
+          'width:var(--v)',
+        ],
+        [
+          'w--my_w;',
+          'width:var(--my_w)',
+        ],
+        [
+          'w--v;+5',
+          'width:calc(var(--v) + 5px)',
+        ],
+        [
+          'w10+5',
+          'width:calc(10px + 5px)',
+        ],
+        [
+          'w10-5',
+          'width:calc(10px - 5px)',
+        ],
+        [
+          'w10.5',
+          'width:10.5px',
+        ],
+        [
+          'w10\\.5',
+          'width:10.5px',
+        ],
+        [
+          'p--a;_--b;',
+          'padding:var(--a) var(--b)',
+        ],
+      ],
+    ],
+    [
+      'цветовой',
+      [
+        [
+          'c--v',
+          'color:var(--v)',
+        ],
+        [
+          'c--my_ink;',
+          'color:var(--my_ink)',
+        ],
+        [
+          'bc--my_line;',
+          'border-color:var(--my_line)',
+        ],
+        [
+          'olc--v',
+          'outline-color:var(--v)',
+        ],
+      ],
+    ],
+    [
+      'свободное значение (synonymProvider)',
+      [
+        [
+          'tn--v',
+          'transition:var(--v)',
+        ],
+        [
+          'tn_--a_--b',
+          'transition:var(--a) var(--b)',
+        ],
+        [
+          'tnAll_0.2s_--ease',
+          'transition:all 0.2s var(--ease)',
+        ],
+        [
+          'tn_all_0.2s_---safe',
+          'transition:all 0.2s env(--safe)',
+        ],
+        [
+          'cnt_a\\.b',
+          'content:"a.b"',
+        ],
+        [
+          'pos--v',
+          'position:var(--v)',
+        ],
+      ],
+    ],
+    [
+      'border-style (свой sidesSetter)',
+      [
+        [
+          'bs--v',
+          'border-style:var(--v)',
+        ],
+        [
+          'bs--a_b;',
+          'border-style:var(--a_b)',
+        ],
+        [
+          'bsx--v',
+          'border-left-style:var(--v);border-right-style:var(--v)',
+        ],
+      ],
+    ],
+    [
+      'массивная форма synonymProvider (page-break)',
+      [
+        [
+          'pgba--v',
+          'page-break-after:var(--v);break-after:var(--v)',
+        ],
+        [
+          'pgbi--a_b;',
+          'page-break-inside:var(--a_b);break-inside:var(--a_b)',
+        ],
+      ],
+    ],
+    [
+      'url-свойства',
+      [
+        [
+          'bgi--hero',
+          'background-image:var(--hero)',
+        ],
+        [
+          'bgi--a_b;',
+          'background-image:var(--a_b)',
+        ],
+        [
+          'bgi_img/a\\.png',
+          'background-image:url("img/a.png")',
+        ],
+        [
+          'lisi--v',
+          'list-style-image:var(--v)',
+        ],
+        [
+          'maski--v',
+          'mask-image:var(--v)',
+        ],
+      ],
+    ],
+    [
+      'тени (свой позиционный парсер)',
+      [
+        [
+          'bxsh10c--shadow',
+          'box-shadow:0px 0px 10px 0px var(--shadow)',
+        ],
+        [
+          'bxshB--a;c--b;',
+          'box-shadow:0px 0px var(--a) 0px var(--b)',
+        ],
+      ],
+    ],
+    [
+      'multi-value свойства',
+      [
+        [
+          'tn_all_0.2s_--ease',
+          'transition:all 0.2s var(--ease)',
+        ],
+        [
+          'tn_--a;_--b;',
+          'transition:var(--a) var(--b)',
+        ],
+      ],
+    ],
+    [
+      'шрифт и content',
+      [
+        [
+          'ff--v',
+          'font-family:var(--v)',
+        ],
+        [
+          'ff--my_font;',
+          'font-family:var(--my_font)',
+        ],
+        [
+          'ff--mono,serif',
+          'font-family:var(--mono,serif)',
+        ],
+        [
+          'font--v',
+          'font:var(--v)',
+        ],
+        [
+          'cnt_a\\.b',
+          'content:"a.b"',
+        ],
+      ],
+    ],
   ])('%s', (_cls, cases) => {
     test.each(cases)('%s → %s', (token, expected) => {
       expect(cssOf(token as string)).toBe(expected);
@@ -338,22 +491,55 @@ describe('градиенты: bg / maskbg', () => {
 
   test.each([
     // Два цвета: fallback-цвет + сам градиент.
-    ['bgF00-00F', 'background:linear-gradient(180deg,#f00 0%,#00f 100%)'],
-    ['bg0F0-00F', 'background:linear-gradient(180deg,#0f0 0%,#00f 100%)'],
+    [
+      'bgF00-00F',
+      'background:linear-gradient(180deg,#f00 0%,#00f 100%)',
+    ],
+    [
+      'bg0F0-00F',
+      'background:linear-gradient(180deg,#0f0 0%,#00f 100%)',
+    ],
     // Три точки — проценты распределяются автоматически.
-    ['bgF00-00F-0F0', 'background:linear-gradient(180deg,#f00 0%,#00f 50%,#0f0 100%)'],
+    [
+      'bgF00-00F-0F0',
+      'background:linear-gradient(180deg,#f00 0%,#00f 50%,#0f0 100%)',
+    ],
     // Переменные как цвета градиента.
-    ['bg--a;--b;--c', 'background:linear-gradient(180deg,var(--a) 0%,var(--b) 50%,var(--c) 100%)'],
-    ['bg--a;-F00-324', 'background:linear-gradient(180deg,var(--a) 0%,#f00 50%,#324 100%)'],
+    [
+      'bg--a;--b;--c',
+      'background:linear-gradient(180deg,var(--a) 0%,var(--b) 50%,var(--c) 100%)',
+    ],
+    [
+      'bg--a;-F00-324',
+      'background:linear-gradient(180deg,var(--a) 0%,#f00 50%,#324 100%)',
+    ],
     // Переменная с `_` в имени внутри градиента — терминатор работает и здесь.
-    ['bg--my_a;--my_b', 'background:linear-gradient(180deg,var(--my_a) 0%,var(--my_b) 100%)'],
+    [
+      'bg--my_a;--my_b',
+      'background:linear-gradient(180deg,var(--my_a) 0%,var(--my_b) 100%)',
+    ],
     // Модификаторы: угол, радиальный, повторяющийся.
-    ['bg0F0-00F_g90', 'background:linear-gradient(270deg,#0f0 0%,#00f 100%)'],
-    ['bgF00-00F_r', 'background:radial-gradient(circle,#f00 0%,#00f 100%)'],
-    ['bgF00-00F_rpt', 'background:repeating-linear-gradient(180deg,#f00 0%,#00f 100%)'],
+    [
+      'bg0F0-00F_g90',
+      'background:linear-gradient(270deg,#0f0 0%,#00f 100%)',
+    ],
+    [
+      'bgF00-00F_r',
+      'background:radial-gradient(circle,#f00 0%,#00f 100%)',
+    ],
+    [
+      'bgF00-00F_rpt',
+      'background:repeating-linear-gradient(180deg,#f00 0%,#00f 100%)',
+    ],
     // maskbg — тот же backgroundProvider, свойство mask-image.
-    ['maskbg0F0-00F', 'mask-image:linear-gradient(180deg,#0f0 0%,#00f 100%)'],
-    ['maskbg--a;-F00-324', 'mask-image:linear-gradient(180deg,var(--a) 0%,#f00 50%,#324 100%)'],
+    [
+      'maskbg0F0-00F',
+      'mask-image:linear-gradient(180deg,#0f0 0%,#00f 100%)',
+    ],
+    [
+      'maskbg--a;-F00-324',
+      'mask-image:linear-gradient(180deg,var(--a) 0%,#f00 50%,#324 100%)',
+    ],
   ])('%s → %s', (token, expected) => {
     expect(cssOf(token)).toBe(expected);
   });

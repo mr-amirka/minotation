@@ -5,7 +5,7 @@
  * node, а компилятору от узла нужны только `getAttribute`/`childNodes`.
  */
 import {
-  minotationProvider, 
+  minotationProvider,
 } from '../core/index';
 import presetStandard from '../presets/standard';
 import {
@@ -23,7 +23,7 @@ import {
 import presetSynonyms from '../presets/synonyms';
 import presetMedias from '../presets/medias';
 import type {
-  MnWarning, 
+  MnWarning,
 } from '../core/types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -57,7 +57,7 @@ describe('mn — обход значений атрибутов', () => {
     mn.updateAttrByMap({
       p10: 1,
       mt4: 1,
-      cF00: 1, 
+      cF00: 1,
     }, 'class');
     mn.compile();
 
@@ -68,15 +68,15 @@ describe('mn — обход значений атрибутов', () => {
   test('recompileFrom пересобирает CSS с нуля по снимку атрибутов', () => {
     const mn: any = makeMn();
     mn.updateAttrByMap({
-      'p10': 1, 
+      'p10': 1,
     }, 'class');
     mn.compile();
     expect(cssOf(mn)).toContain('padding:10px');
 
     mn.recompileFrom({
       class: {
-        'mt4': 1, 
-      }, 
+        'mt4': 1,
+      },
     });
 
     const css = cssOf(mn);
@@ -87,7 +87,10 @@ describe('mn — обход значений атрибутов', () => {
   test('checkByAttrs принимает готовое значение атрибута — строкой и списком атрибутов', () => {
     const mn: any = makeMn();
     mn.checkByAttrs('p10', 'class');
-    mn.checkByAttrs('mt4', ['class', 'id']);
+    mn.checkByAttrs('mt4', [
+      'class',
+      'id',
+    ]);
     mn.compile();
 
     const css = cssOf(mn);
@@ -97,10 +100,12 @@ describe('mn — обход значений атрибутов', () => {
 
   test('recursiveCheckByAttrs обходит поддерево, checkOneNodeByAttrs — только сам узел', () => {
     const tree = node({
-      class: 'p10', 
-    }, [node({
-      class: 'mt4', 
-    })]);
+      class: 'p10',
+    }, [
+      node({
+        class: 'mt4',
+      }),
+    ]);
 
     const deep: any = makeMn();
     deep.recursiveCheckByAttrs(tree, 'class');
@@ -130,7 +135,7 @@ describe('mn — предупреждения и maxDepth', () => {
     const mn: any = makeMn({
       maxDepth: 2,
       maxDepthMode: 'warn',
-      onWarning: (w: MnWarning) => warnings.push(w), 
+      onWarning: (w: MnWarning) => warnings.push(w),
     });
     mn.checkByAttrs('p10<5.parent', 'class');
     mn.compile();
@@ -189,7 +194,7 @@ describe('mn — предупреждения и maxDepth', () => {
     let calls: unknown[][];
     try {
       const mn: any = makeMn({
-        warningMode: 'log', 
+        warningMode: 'log',
       });
       mn.checkByAttrs('p10zz', 'class');
       mn.compile();
@@ -261,7 +266,10 @@ describe('регистрация хендлера с массивом патте
             color: '#000',
           },
         };
-      }, ['(x|X)([0-9]+):x', '(y|Y)([0-9]+):y'],
+      }, [
+        '(x|X)([0-9]+):x',
+        '(y|Y)([0-9]+):y',
+      ],
     );
     // Имя хендлера жадно забирает строчные буквы, поэтому модификаторы
     // в токене — заглавные: `probex5` искал бы хендлер `probex`.

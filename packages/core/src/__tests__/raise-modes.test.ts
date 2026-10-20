@@ -9,13 +9,18 @@ import {
   MnForbiddenTokenError,
 } from '../core/types';
 import type {
-  MnOptions, MnWarning,
+  MnOptions,
+  MnWarning,
 } from '../core/types';
 import {
   selectorsCompileProvider,
 } from '../selectorsCompileProvider';
 import {
-  childSelectorMessage, importantMessage, maxDepthMessage, maxSpecificityMessage, specificityMessage,
+  childSelectorMessage,
+  importantMessage,
+  maxDepthMessage,
+  maxSpecificityMessage,
+  specificityMessage,
 } from '../selectorsCompileProvider/raiseMessages';
 
 // Экземпляр ядра нетипизирован снаружи (`checkByAttrs`, `recompile`), как в core-api.test.ts.
@@ -59,28 +64,30 @@ afterEach(() => {
 describe('specificityMode — множитель *N', () => {
   test('по умолчанию warn: CSS есть, предупреждение с подсказкой — в консоль и onWarning', () => {
     const {
-      css, warnings, error, 
+      css, warnings, error,
     } = run('f10*2');
     expect(error).toBeUndefined();
     expect(css).toContain('.f10\\*2.f10\\*2{');
-    expect(warnings).toEqual([{
-      type: 'raised-specificity',
-      token: 'f10*2',
-      message: SPECIFICITY_WARN,
-    }]);
+    expect(warnings).toEqual([
+      {
+        type: 'raised-specificity',
+        token: 'f10*2',
+        message: SPECIFICITY_WARN,
+      },
+    ]);
     expect(warn).toHaveBeenCalledWith('[minotation] f10*2: ' + SPECIFICITY_WARN);
   });
 
   test('*1 — не накрутка: молчим', () => {
     const {
-      warnings, 
+      warnings,
     } = run('f10*1');
     expect(warnings).toEqual([]);
   });
 
   test('silent: CSS есть, ни слова', () => {
     const {
-      css, warnings, 
+      css, warnings,
     } = run('f10*2', {
       specificityMode: 'silent',
     });
@@ -91,7 +98,7 @@ describe('specificityMode — множитель *N', () => {
 
   test('strict: токен не даёт CSS, compile бросает ошибку с инструкцией; остальное собрано', () => {
     const {
-      css, warnings, error, mn, 
+      css, warnings, error, mn,
     } = run('f10*2 p10', {
       specificityMode: 'strict',
     });
@@ -109,26 +116,28 @@ describe('specificityMode — множитель *N', () => {
 describe('importantMode — -i', () => {
   test('по умолчанию warn', () => {
     const {
-      css, warnings, 
+      css, warnings,
     } = run('f10-i');
     expect(css).toContain('!important');
-    expect(warnings).toEqual([{
-      type: 'important',
-      token: 'f10-i',
-      message: IMPORTANT_WARN,
-    }]);
+    expect(warnings).toEqual([
+      {
+        type: 'important',
+        token: 'f10-i',
+        message: IMPORTANT_WARN,
+      },
+    ]);
   });
 
   test('-i внутри группы вариантов тоже виден', () => {
     const {
-      warnings, 
+      warnings,
     } = run('(p|m)10-i');
     expect(warnings.map((w) => w.type)).toEqual(['important']);
   });
 
   test('silent', () => {
     const {
-      warnings, 
+      warnings,
     } = run('f10-i', {
       importantMode: 'silent',
     });
@@ -137,7 +146,7 @@ describe('importantMode — -i', () => {
 
   test('strict', () => {
     const {
-      css, error, 
+      css, error,
     } = run('f10-i', {
       importantMode: 'strict',
     });
@@ -147,16 +156,19 @@ describe('importantMode — -i', () => {
 
   test('*N и -i в одном токене — два независимых сообщения', () => {
     const {
-      warnings, 
+      warnings,
     } = run('f10-i*2');
-    expect(warnings.map((w) => w.type)).toEqual(['raised-specificity', 'important']);
+    expect(warnings.map((w) => w.type)).toEqual([
+      'raised-specificity',
+      'important',
+    ]);
   });
 });
 
 describe('warningMode на эти режимы не влияет', () => {
   test('warningMode: silent не глушит предупреждение', () => {
     const {
-      warnings, 
+      warnings,
     } = run('f10*2', {
       warningMode: 'silent',
     });
@@ -166,7 +178,7 @@ describe('warningMode на эти режимы не влияет', () => {
 
   test('warningMode: error не роняет сборку из-за warn-режимов', () => {
     const {
-      error, warnings, 
+      error, warnings,
     } = run('f10*2 f12-i p10<5.a', {
       warningMode: 'error',
       maxDepth: 2,
@@ -182,7 +194,7 @@ describe('warningMode на эти режимы не влияет', () => {
 
   test('warningMode: error по-прежнему роняет на обычных предупреждениях', () => {
     const {
-      error, 
+      error,
     } = run('f10*2 p10px10', {
       warningMode: 'error',
     });
@@ -192,7 +204,7 @@ describe('warningMode на эти режимы не влияет', () => {
 
   test('maxDepthMode: silent', () => {
     const {
-      warnings, css, 
+      warnings, css,
     } = run('p10<5.a', {
       maxDepth: 2,
       maxDepthMode: 'silent',
@@ -223,13 +235,15 @@ describe('maxSpecificity — предел *N, потолок 16 (D-089)', () => 
       maxSpecificity: 3,
     });
     expect(css).toBe('.p10\\*5'.repeat(5) + '{padding:10px}');
-    expect(warnings).toEqual([{
-      type: 'max-specificity',
-      token: 'p10*5',
-      message: maxSpecificityMessage(
-        5, 3, 16, false,
-      ),
-    }]);
+    expect(warnings).toEqual([
+      {
+        type: 'max-specificity',
+        token: 'p10*5',
+        message: maxSpecificityMessage(
+          5, 3, 16, false,
+        ),
+      },
+    ]);
     expect(warnings[0].message).toBe('Specificity multiplier *5 exceeds maxSpecificity 3, the CSS is still output'
       + ' (the ceiling is 16). To forbid such tokens: maxSpecificityMode: \'strict\'.');
   });
@@ -239,8 +253,10 @@ describe('maxSpecificity — предел *N, потолок 16 (D-089)', () => 
       css, warnings, error,
     } = run('p10*200 m5', silent);
     expect(css).toBe('.m5{margin:5px}');
-    expect(warnings.map((w) => w.message)).toEqual(['Specificity multiplier *200 exceeds maxSpecificity 16 and the'
-      + ' ceiling 16, the token gives no CSS. To forbid such tokens: maxSpecificityMode: \'strict\'.']);
+    expect(warnings.map((w) => w.message)).toEqual([
+      'Specificity multiplier *200 exceeds maxSpecificity 16 and the'
+      + ' ceiling 16, the token gives no CSS. To forbid such tokens: maxSpecificityMode: \'strict\'.',
+    ]);
     expect(error).toBeUndefined();
   });
 
@@ -289,19 +305,21 @@ describe('childSelectorMode — дочерний селектор > (D-041)', ()
 
   test('по умолчанию warn: CSS есть, предупреждение с подсказкой', () => {
     const {
-      css, warnings, 
+      css, warnings,
     } = run('cF00>1');
     expect(css).toContain('color:#f00');
-    expect(warnings).toEqual([{
-      type: 'child-selector',
-      token: 'cF00>1',
-      message: CHILD_WARN,
-    }]);
+    expect(warnings).toEqual([
+      {
+        type: 'child-selector',
+        token: 'cF00>1',
+        message: CHILD_WARN,
+      },
+    ]);
   });
 
   test('silent', () => {
     const {
-      warnings, 
+      warnings,
     } = run('cF00>1', {
       childSelectorMode: 'silent',
     });
@@ -310,7 +328,7 @@ describe('childSelectorMode — дочерний селектор > (D-041)', ()
 
   test('strict: токен не даёт CSS, compile бросает ошибку с инструкцией', () => {
     const {
-      css, error, 
+      css, error,
     } = run('cF00>.child p10', {
       childSelectorMode: 'strict',
     });
@@ -321,14 +339,14 @@ describe('childSelectorMode — дочерний селектор > (D-041)', ()
 
   test('контекст предков < не затрагивается', () => {
     const {
-      warnings, 
+      warnings,
     } = run('cF00<.parent');
     expect(warnings).toEqual([]);
   });
 
   test('warningMode: error из-за дочернего селектора не падает', () => {
     const {
-      error, 
+      error,
     } = run('cF00>1', {
       warningMode: 'error',
     });
@@ -338,28 +356,52 @@ describe('childSelectorMode — дочерний селектор > (D-041)', ()
 
 describe('тексты сообщений — нейтральный тон (замечание владельца 2026-10-09)', () => {
   test.each([
-    [specificityMessage('*2', false), 'Specificity is raised ("*2") — this may mean that component styles override'
-      + ' each other. To hide this warning: specificityMode: \'silent\'; to forbid such tokens: specificityMode: \'strict\'.'],
-    [specificityMessage('*2', true), 'Raising specificity ("*2") is forbidden (specificityMode: \'strict\'), the token'
-      + ' gives no CSS. To allow it: specificityMode: \'warn\'.'],
-    [importantMessage(false), '"!important" is used ("-i") — this may mean that component styles override each other.'
-      + ' To hide this warning: importantMode: \'silent\'; to forbid such tokens: importantMode: \'strict\'.'],
-    [importantMessage(true), '"!important" ("-i") is forbidden (importantMode: \'strict\'), the token gives no CSS.'
-      + ' To allow it: importantMode: \'warn\'.'],
-    [maxDepthMessage(
-      5, 2, false,
-    ), 'Context selector depth 5 exceeds maxDepth 2 — styles depend on a long chain of'
+    [
+      specificityMessage('*2', false),
+      'Specificity is raised ("*2") — this may mean that component styles override'
+      + ' each other. To hide this warning: specificityMode: \'silent\'; to forbid such tokens: specificityMode: \'strict\'.',
+    ],
+    [
+      specificityMessage('*2', true),
+      'Raising specificity ("*2") is forbidden (specificityMode: \'strict\'), the token'
+      + ' gives no CSS. To allow it: specificityMode: \'warn\'.',
+    ],
+    [
+      importantMessage(false),
+      '"!important" is used ("-i") — this may mean that component styles override each other.'
+      + ' To hide this warning: importantMode: \'silent\'; to forbid such tokens: importantMode: \'strict\'.',
+    ],
+    [
+      importantMessage(true),
+      '"!important" ("-i") is forbidden (importantMode: \'strict\'), the token gives no CSS.'
+      + ' To allow it: importantMode: \'warn\'.',
+    ],
+    [
+      maxDepthMessage(
+        5, 2, false,
+      ),
+      'Context selector depth 5 exceeds maxDepth 2 — styles depend on a long chain of'
       + ' ancestors, which may make the markup harder to change. To allow such depth: raise maxDepth;'
-      + ' to hide this warning: maxDepthMode: \'silent\'; to forbid such tokens: maxDepthMode: \'strict\'.'],
-    [maxDepthMessage(
-      5, 3, true,
-    ), 'Context selector depth 5 exceeds maxDepth 3 (maxDepthMode: \'strict\'), the token'
-      + ' gives no CSS. To allow such tokens: raise maxDepth or set maxDepthMode: \'warn\'.'],
-    [childSelectorMessage('>h2', false), 'Styles are applied to child elements (">h2") — this may indicate that the'
+      + ' to hide this warning: maxDepthMode: \'silent\'; to forbid such tokens: maxDepthMode: \'strict\'.',
+    ],
+    [
+      maxDepthMessage(
+        5, 3, true,
+      ),
+      'Context selector depth 5 exceeds maxDepth 3 (maxDepthMode: \'strict\'), the token'
+      + ' gives no CSS. To allow such tokens: raise maxDepth or set maxDepthMode: \'warn\'.',
+    ],
+    [
+      childSelectorMessage('>h2', false),
+      'Styles are applied to child elements (">h2") — this may indicate that the'
       + ' design architecture could be improved. To hide this warning: childSelectorMode: \'silent\';'
-      + ' to forbid such tokens: childSelectorMode: \'strict\'.'],
-    [childSelectorMessage('>h2', true), 'Styles for child elements (">h2") are forbidden (childSelectorMode: \'strict\'),'
-      + ' the token gives no CSS. To allow them: childSelectorMode: \'warn\'.'],
+      + ' to forbid such tokens: childSelectorMode: \'strict\'.',
+    ],
+    [
+      childSelectorMessage('>h2', true),
+      'Styles for child elements (">h2") are forbidden (childSelectorMode: \'strict\'),'
+      + ' the token gives no CSS. To allow them: childSelectorMode: \'warn\'.',
+    ],
   ])('%s', (actual, expected) => {
     expect(actual).toBe(expected);
   });

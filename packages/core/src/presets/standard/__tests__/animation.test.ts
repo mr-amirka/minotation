@@ -21,16 +21,46 @@ function compile(tokens: string, setup?: (mn: ReturnType<typeof minotationProvid
 }
 
 test.each([
-  ['an_wg-appear_0.2s_ease-out_0.3s_both', 'animation:wg-appear 0.2s ease-out 0.3s both'],
-  ['an_spin_1s_linear_infinite', 'animation:spin 1s linear infinite'],
-  ['an_fade_200', 'animation:fade 200ms'],
-  ['an_fade_200_300_2_alternate_forwards_paused', 'animation:fade 200ms 300ms 2 alternate forwards paused'],
-  ['an_none', 'animation:none'],
-  ['an_x_1s_none', 'animation:x 1s none'],
-  ['an_a_1s,b_2s', 'animation:a 1s,b 2s'],
-  ['an_--anim', 'animation:var(--anim)'],
-  ['an_fade_1s_cubic-bezier\\(0.4,0,0.2,1\\)', 'animation:fade 1s cubic-bezier(0.4,0,0.2,1)'],
-  ['an_fade_1s_steps\\(4\\)_infinite', 'animation:fade 1s steps(4) infinite'],
+  [
+    'an_wg-appear_0.2s_ease-out_0.3s_both',
+    'animation:wg-appear 0.2s ease-out 0.3s both',
+  ],
+  [
+    'an_spin_1s_linear_infinite',
+    'animation:spin 1s linear infinite',
+  ],
+  [
+    'an_fade_200',
+    'animation:fade 200ms',
+  ],
+  [
+    'an_fade_200_300_2_alternate_forwards_paused',
+    'animation:fade 200ms 300ms 2 alternate forwards paused',
+  ],
+  [
+    'an_none',
+    'animation:none',
+  ],
+  [
+    'an_x_1s_none',
+    'animation:x 1s none',
+  ],
+  [
+    'an_a_1s,b_2s',
+    'animation:a 1s,b 2s',
+  ],
+  [
+    'an_--anim',
+    'animation:var(--anim)',
+  ],
+  [
+    'an_fade_1s_cubic-bezier\\(0.4,0,0.2,1\\)',
+    'animation:fade 1s cubic-bezier(0.4,0,0.2,1)',
+  ],
+  [
+    'an_fade_1s_steps\\(4\\)_infinite',
+    'animation:fade 1s steps(4) infinite',
+  ],
 ])('%s → %s', (token, declaration) => {
   const result = compile(token);
   expect(result.css).toContain('{' + declaration + '}');
@@ -38,10 +68,19 @@ test.each([
 });
 
 test.each([
-  ['an_1s_fade', '"_1s_fade" is invalid for "an": the order is name, duration, easing, delay, iteration count,'
-    + ' direction, fill mode, play state — "fade" is out of place'],
-  ['an_fade_1s_9x', 'fits none of them'],
-  ['an', '"an" produced no CSS: handler "an" needs a value here'],
+  [
+    'an_1s_fade',
+    '"_1s_fade" is invalid for "an": the order is name, duration, easing, delay, iteration count,'
+    + ' direction, fill mode, play state — "fade" is out of place',
+  ],
+  [
+    'an_fade_1s_9x',
+    'fits none of them',
+  ],
+  [
+    'an',
+    '"an" produced no CSS: handler "an" needs a value here',
+  ],
 ])('%s — предупреждение', (token, message) => {
   const result = compile(token);
   expect(result.css).toBe('');

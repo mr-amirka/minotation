@@ -4,11 +4,11 @@
  * `clear`/`recompile`, в отличие от обычных значений атрибутов.
  */
 import {
-  minotationProvider, 
+  minotationProvider,
 } from '../core/index';
 import presetStandard from '../presets/standard';
 import {
-  mediaFilterIteratee, 
+  mediaFilterIteratee,
 } from '../selectorsCompileProvider';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -39,7 +39,7 @@ describe('mn.assign', () => {
     const mn = makeMn();
     mn.assign({
       '.card': 'p10',
-      '.title': 'mt4', 
+      '.title': 'mt4',
     });
     mn.compile();
 
@@ -65,9 +65,9 @@ describe('mn.assign', () => {
       media: {
         sm: {
           query: '(width <= 600px)',
-          priority: 0, 
-        }, 
-      }, 
+          priority: 0,
+        },
+      },
     });
     // Медиа — в селекторе (D-072): третий параметр убран.
     mn.assign('.btn@sm', 'p10');

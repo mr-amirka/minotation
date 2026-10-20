@@ -31,7 +31,15 @@ import type {
 } from 'node:stream';
 import Vinyl from 'vinyl';
 import {
-  checkBuildOptions, withBuildConfig, createBuildCollector, createScopeRewriter, createFileFilter, formatFileName, manifestFileName, manifestOf, metricsFileName,
+  checkBuildOptions,
+  withBuildConfig,
+  createBuildCollector,
+  createScopeRewriter,
+  createFileFilter,
+  formatFileName,
+  manifestFileName,
+  manifestOf,
+  metricsFileName,
 } from 'minotation-build';
 import type {
   MnBuildOptions,

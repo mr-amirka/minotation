@@ -119,6 +119,13 @@ import type {
   MnStyleEntry,
 } from './types';
 
+const SPACE = ' ';
+const BACKSLASH = '\\';
+const OPEN_PAREN = '(';
+const CLOSE_PAREN = ')';
+const OPEN_BRACKET = '[';
+const SELECTORS = 'selectors';
+
 /**
  * Нормализует пробелы в MN-значениях:
  * `_` → пробел, `\\_` → литерал `_`.
@@ -130,7 +137,7 @@ import type {
 export const REGEXP_SPACE_NORMALIZE = /(\\_)|(_)/g;
 
 export function replacerSpaceNormalize(_all: string, escaped: string): string {
-  return escaped ? '_' : ' ';
+  return escaped ? '_' : SPACE;
 }
 export function spaceNormalize(v: string): string {
   return v.replace(REGEXP_SPACE_NORMALIZE, replacerSpaceNormalize);
@@ -357,7 +364,7 @@ function pseudoBefore(
   while (i > from && isNameChar(value[i - 1])) {
     i--;
   }
-  return i < at && i > from && value[i - 1] === ':' && value[i - 2] !== '\\' ? value.slice(i, at) : '';
+  return i < at && i > from && value[i - 1] === ':' && value[i - 2] !== BACKSLASH ? value.slice(i, at) : '';
 }
 
 /**
@@ -383,11 +390,11 @@ function closingParen(
   let depth = 0;
   let i = at;
   for (; i < to; i++) {
-    if (value[i] === '\\') {
+    if (value[i] === BACKSLASH) {
       i++;
-    } else if (value[i] === '(') {
+    } else if (value[i] === OPEN_PAREN) {
       depth++;
-    } else if (value[i] === ')' && !--depth) {
+    } else if (value[i] === CLOSE_PAREN && !--depth) {
       return i;
     }
   }
@@ -403,11 +410,11 @@ function hasTopLevelBar(
   let ch: string;
   for (; i < to; i++) {
     ch = value[i];
-    if (ch === '\\') {
+    if (ch === BACKSLASH) {
       i++;
-    } else if (ch === '(' || ch === '[') {
+    } else if (ch === OPEN_PAREN || ch === OPEN_BRACKET) {
       depth++;
-    } else if (ch === ')' || ch === ']') {
+    } else if (ch === CLOSE_PAREN || ch === ']') {
       depth--;
     } else if (ch === '|' && !depth) {
       return true;
@@ -424,12 +431,12 @@ function escapeParens(text: string): string {
   let ch: string;
   for (; i < l; i++) {
     ch = text[i];
-    if (ch === '\\') {
+    if (ch === BACKSLASH) {
       // Кусок — содержимое закрытой группы: `\` в конце невозможен (он экранировал бы `)`).
       out += ch + text[i + 1];
       i++;
     } else {
-      out += ch === '(' || ch === ')' ? '\\' + ch : ch;
+      out += ch === OPEN_PAREN || ch === CLOSE_PAREN ? BACKSLASH + ch : ch;
     }
   }
   return out;
@@ -459,7 +466,7 @@ function escapeParens(text: string): string {
 export function rewriteGroups(
   value: string, synonyms: Record<string, unknown>, cssMode: boolean, issues: string[],
 ): string {
-  return value.indexOf('(') < 0 ? value : rewriteRange(
+  return value.indexOf(OPEN_PAREN) < 0 ? value : rewriteRange(
     value, 0, value.length, synonyms, cssMode, issues,
   );
 }
@@ -475,11 +482,11 @@ function rewriteRange(
   let name: string;
   let bar: boolean;
   for (; i < to; i++) {
-    if (value[i] === '\\') {
+    if (value[i] === BACKSLASH) {
       i++;
       continue;
     }
-    if (value[i] !== '(') {
+    if (value[i] !== OPEN_PAREN) {
       continue;
     }
     close = closingParen(
@@ -497,16 +504,16 @@ function rewriteRange(
     );
     out += value.slice(start, i);
     if (name && isFunctionalPseudo(name, synonyms) && (cssMode || !bar)) {
-      out += '[' + escapeParens(value.slice(i + 1, close)) + ']';
+      out += OPEN_BRACKET + escapeParens(value.slice(i + 1, close)) + ']';
     } else if (cssMode) {
       out += '\\(' + escapeParens(value.slice(i + 1, close)) + '\\)';
     } else {
       name && (bar ? isFunctionalPseudo(name, synonyms) : isNameChar(value[i + 1])) && issues.push(groupSuspectMessage(
         name, value.slice(i, close + 1), bar,
       ));
-      out += '(' + rewriteRange(
+      out += OPEN_PAREN + rewriteRange(
         value, i + 1, close, synonyms, cssMode, issues,
-      ) + ')';
+      ) + CLOSE_PAREN;
     }
     i = close;
     start = close + 1;
@@ -522,7 +529,7 @@ function groupSuspectMessage(
       + group.slice(1, group.search(/[|)]/)) + '") — ":' + name + '" needs an argument. Write the argument in'
       + ' square brackets (":' + name + '[…]") or put the group outside: "(:' + name + '[.a]|…)"'
     : 'Parentheses "' + group + '" after ":' + name + '" are scope grammar: their content is glued onto ":'
-      + name + '" (":' + name + group.slice(1, -1) + '"). If it is an argument, write ":' + name + '['
+      + name + '" (":' + name + group.slice(1, -1) + '"). If it is an argument, write ":' + name + OPEN_BRACKET
       + group.slice(1, -1) + ']"; to append to the selector, start with ".", "#", "[" or ":"';
 }
 
@@ -571,7 +578,7 @@ export function assertVariantGroups(
   let ch: string;
   while (i < l) {
     ch = value[i];
-    if (ch === '\\') {
+    if (ch === BACKSLASH) {
       // Экранированная скобка — часть значения, а не грамматики.
       if (depth) {
         hasContent[depth - 1] = anyContent[depth - 1] = true;
@@ -586,7 +593,7 @@ export function assertVariantGroups(
       // бракуем и здесь: наличие `|` внутри уже доказывает, что это группа.
       inContext = 1;
     }
-    if (ch === '(') {
+    if (ch === OPEN_PAREN) {
       if (depth) {
         hasContent[depth - 1] = anyContent[depth - 1] = true;
       }
@@ -594,7 +601,7 @@ export function assertVariantGroups(
       hasContent[depth] = false;
       anyContent[depth] = false;
       depth++;
-    } else if (ch === ')') {
+    } else if (ch === CLOSE_PAREN) {
       if (!depth) {
         throwVariantGroup(
           'Unmatched closing parenthesis in "' + value + '": it would silently vanish from '
@@ -635,7 +642,7 @@ export function assertVariantGroups(
     } else if (ch === '|' && depth) {
       hasAlternative[depth - 1] = true;
       hasContent[depth - 1] = false;
-    } else if (depth && ch !== ' ') {
+    } else if (depth && ch !== SPACE) {
       hasContent[depth - 1] = anyContent[depth - 1] = true;
     }
     i++;
@@ -684,7 +691,7 @@ export function assertTrailingSeparator(value: string, utility: string): void {
   // Считаем слэши перед последним символом: чётное число — сепаратор «голый».
   let slashes = 0;
   let i = l - 1;
-  while (i-- && value[i] === '\\') {
+  while (i-- && value[i] === BACKSLASH) {
     slashes++;
   }
   if (slashes % 2) {
@@ -717,7 +724,7 @@ function endsInParentSegment(value: string): boolean {
     }
     slashes = 0;
     j = i;
-    while (j-- && value[j] === '\\') {
+    while (j-- && value[j] === BACKSLASH) {
       slashes++;
     }
     if (slashes % 2 === 0) {
@@ -763,7 +770,7 @@ export function assertMediaNames(value: string, utility: string): void {
   const l = value.length - 1;
   let i = 0;
   for (; i < l; i++) {
-    if (value[i] === '\\') {
+    if (value[i] === BACKSLASH) {
       // Экранированный символ — часть значения, не сепаратор.
       i++;
       continue;
@@ -817,13 +824,13 @@ export function throwVariantGroup(
 }
 
 export function normalizeSelectorsIteratee(selectorsMap: Record<string, number>, selector: string): Record<string, number> {
-  forEach(SPLIT_SELECTOR(trim(selector).replace(RE_SPACE, ' ')), (selector: string) => {
+  forEach(SPLIT_SELECTOR(trim(selector).replace(RE_SPACE, SPACE)), (selector: string) => {
     if (!selector) {
       return;
     }
     // По записи — только структура скобок: непарная или пустая скобка видна
     // лишь в ней. Всё остальное — по результату развёртки, как у имён токенов.
-    assertVariantGroups(selector, 'selectors');
+    assertVariantGroups(selector, SELECTORS);
     const alts: string[] = variants(selector)[0];
     const l = alts.length;
     let i = 0;
@@ -834,11 +841,11 @@ export function normalizeSelectorsIteratee(selectorsMap: Record<string, number>,
       trim(alts[i]) || throwVariantGroup(
         'Empty selector among the variants of "' + selector + '": a rule with it '
           + 'would apply to nothing. Remove the extra "|"',
-        selector, 'selectors',
+        selector, SELECTORS,
       );
       // Висячий сепаратор — тоже по варианту: `(h1|h2:)` кончается на `)`, и
       // по записи висячее двоеточие не видно.
-      assertTrailingSeparator(alts[i], 'selectors');
+      assertTrailingSeparator(alts[i], SELECTORS);
     }
     // `pseudoBrackets` — только здесь: имена токенов разворачивают scope
     // собственным механизмом, и второе преобразование их бы испортило.

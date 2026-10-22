@@ -34,6 +34,9 @@ import {
   stripComments,
 } from '../extractTokens';
 
+const SPACE = ' ';
+const CLASS_ATTR = 'class';
+
 const FILES = 300;
 const ROUNDS = 20;
 
@@ -91,7 +94,7 @@ function extractUncached(source: string, attrName: string): string[] {
   let match: RegExpExecArray | null;
   while ((match = regexp.exec(source))) {
     const raw = (match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5]) as string;
-    for (const part of raw.replace(/\$\{[^}]*\}/g, ' ').split(/\s+/)) {
+    for (const part of raw.replace(/\$\{[^}]*\}/g, SPACE).split(/\s+/)) {
       if (part) {
         tokens.push(part);
       }
@@ -102,13 +105,13 @@ function extractUncached(source: string, attrName: string): string[] {
 
 const before = bench('extractTokens без кеша регулярки', () => {
   for (let i = 0; i < FILES; i++) {
-    extractUncached(sources[i], 'class');
+    extractUncached(sources[i], CLASS_ATTR);
   }
 });
 
 const after = bench('extractTokens с кешем регулярки ', () => {
   for (let i = 0; i < FILES; i++) {
-    extractTokens(sources[i], 'class');
+    extractTokens(sources[i], CLASS_ATTR);
   }
 });
 
@@ -118,7 +121,7 @@ console.log(`выигрыш: ${((1 - after / before) * 100).toFixed(1)}%\n`);
 bench('scanTokens — три прохода          ', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokens(sources[i], {
-      attr: 'class',
+      attr: CLASS_ATTR,
     });
   }
 });
@@ -131,7 +134,7 @@ bench('scanTokens — три прохода          ', () => {
 bench('scanTokens — без вырезания          ', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokens(sources[i], {
-      attr: 'class',
+      attr: CLASS_ATTR,
       comments: false,
     });
   }
@@ -164,8 +167,8 @@ bench('  только extractMergeCallTokens (1 имя)', () => {
 });
 
 // Сторож корректности: оптимизация не должна менять результат.
-const a = extractUncached(sources[0], 'class');
-const b = extractTokens(sources[0], 'class');
-console.log(a.join(' ') === b.join(' ')
+const a = extractUncached(sources[0], CLASS_ATTR);
+const b = extractTokens(sources[0], CLASS_ATTR);
+console.log(a.join(SPACE) === b.join(SPACE)
   ? 'корректность: результаты совпадают'
   : 'КОРРЕКТНОСТЬ НАРУШЕНА: ' + a.length + ' vs ' + b.length);

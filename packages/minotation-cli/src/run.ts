@@ -51,6 +51,8 @@ import type {
   CompileResult,
 } from './compile';
 
+const ENCODING = 'utf8';
+
 /** Куда писать сообщения — подменяется в тестах. */
 export interface Reporter {
   log: (message: string) => void;
@@ -191,7 +193,7 @@ function writeIsolated(
       recursive: true,
     });
     code === undefined ? copyFileSync(file, target) : writeFileSync(
-      target, code, 'utf8',
+      target, code, ENCODING,
     );
     code === undefined ? copied++ : written++;
   }
@@ -236,7 +238,7 @@ export function build(settings: RunSettings, report: Reporter): CompileResult {
       recursive: true,
     });
     writeFileSync(
-      full, output.css, 'utf8',
+      full, output.css, ENCODING,
     );
     files[output.name] = full;
   }
@@ -268,7 +270,7 @@ export function build(settings: RunSettings, report: Reporter): CompileResult {
     writeFileSync(
       manifestFull, JSON.stringify(
         manifestOf(relativeFiles), null, '  ',
-      ), 'utf8',
+      ), ENCODING,
     );
   }
   const metrics = metricsFileName(settings.metrics);
@@ -285,7 +287,7 @@ export function build(settings: RunSettings, report: Reporter): CompileResult {
     writeFileSync(
       metricsFull, JSON.stringify(
         result.metrics, null, '  ',
-      ), 'utf8',
+      ), ENCODING,
     );
     report.log('Metrics → ' + metricsFull);
   }

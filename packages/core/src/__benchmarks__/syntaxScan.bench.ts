@@ -20,6 +20,10 @@ import {
   scanTokensSyntax,
 } from '../syntaxScan';
 
+const ROW = 'Row';
+const CLASS_ATTR = 'class';
+const SPACE = ' ';
+
 const FILES = 300;
 const ROUNDS = 20;
 
@@ -44,7 +48,7 @@ export default function Row({ active }) {
 
 const sources: string[] = [];
 for (let i = 0; i < FILES; i++) {
-  sources.push(SAMPLE.replace('Row', 'Row' + i));
+  sources.push(SAMPLE.replace(ROW, ROW + i));
 }
 
 function bench(name: string, fn: () => void): number {
@@ -61,7 +65,7 @@ function bench(name: string, fn: () => void): number {
 }
 
 const options = {
-  attr: 'class',
+  attr: CLASS_ATTR,
 };
 
 const text = bench('scanTokens — текстовый          ', () => {
@@ -73,7 +77,7 @@ const text = bench('scanTokens — текстовый          ', () => {
 const syntax = bench('scanTokensSyntax — разбор AST   ', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokensSyntax(sources[i], {
-      attr: 'class',
+      attr: CLASS_ATTR,
       fileName: 'file' + i + '.tsx',
     });
   }
@@ -91,7 +95,7 @@ const SFC_SAMPLE = '<template>\n'
 
 const sfcSources: string[] = [];
 for (let i = 0; i < FILES; i++) {
-  sfcSources.push(SFC_SAMPLE.replace('Row', 'Row' + i));
+  sfcSources.push(SFC_SAMPLE.replace(ROW, ROW + i));
 }
 
 const sfcText = bench('SFC — текстовый                 ', () => {
@@ -103,7 +107,7 @@ const sfcText = bench('SFC — текстовый                 ', () => {
 const sfc = bench('SFC — скрипт разбором           ', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokensSfc(sfcSources[i], {
-      attr: 'class',
+      attr: CLASS_ATTR,
       fileName: 'file' + i + '.vue',
     });
   }
@@ -126,6 +130,6 @@ function setOf(tokens: string[]): string[] {
 
 const a = setOf(scanTokens(sources[0], options));
 const b = setOf(scanTokensSyntax(sources[0], options));
-console.log(a.join(' ') === b.join(' ')
+console.log(a.join(SPACE) === b.join(SPACE)
   ? 'корректность: наборы совпадают (' + a.length + ' токенов)'
-  : 'КОРРЕКТНОСТЬ НАРУШЕНА:\n  текст: ' + a.join(' ') + '\n  разбор: ' + b.join(' '));
+  : 'КОРРЕКТНОСТЬ НАРУШЕНА:\n  текст: ' + a.join(SPACE) + '\n  разбор: ' + b.join(SPACE));

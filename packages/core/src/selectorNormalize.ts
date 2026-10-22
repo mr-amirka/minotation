@@ -59,6 +59,9 @@ import {
   escapedSplitProvider,
 } from 'fundamentool';
 
+const OPEN_BRACKET = '[';
+const DOUBLE_QUOTE = '"';
+
 /** Сплиттер по `!` с учётом экранирования (base-версия без unslash). */
 const splitReverse = escapedSplitProvider('!').base;
 
@@ -79,12 +82,12 @@ function attrPartReplacer(
   // `class="card btn-x"` `.^btn-` не совпал бы. Решение владельца — не поддерживать (D-050).
   const isClass = kind === '.';
   isClass && operator !== '*' && throwClassAnchor(match, operator);
-  return '[' + (isClass ? 'class' : 'id') + operator + '='
-    + (REGEXP_CSS_IDENT.test(text) ? text : '"' + text + '"') + ']';
+  return OPEN_BRACKET + (isClass ? 'class' : 'id') + operator + '='
+    + (REGEXP_CSS_IDENT.test(text) ? text : DOUBLE_QUOTE + text + DOUBLE_QUOTE) + ']';
 }
 
 function throwClassAnchor(match: string, operator: string): never {
-  throw new MnParseError('"' + match + '" is not supported: CSS [class' + operator + '=…] checks the start'
+  throw new MnParseError(DOUBLE_QUOTE + match + '" is not supported: CSS [class' + operator + '=…] checks the start'
     + ' or end of the whole class attribute, not of each class, so it rarely matches. Use ".*text"'
     + ' (contains)', {
     token: '',
@@ -95,7 +98,7 @@ function throwClassAnchor(match: string, operator: string): never {
 }
 
 function throwDanglingStar(match: string): never {
-  throw new MnParseError('"' + match + '" ends with "*" with nothing after it. Use "'
+  throw new MnParseError(DOUBLE_QUOTE + match + '" ends with "*" with nothing after it. Use "'
     + match[0] + '*text" (contains)' + (match[0] === '#' ? ', "#^text" (starts with) or "#$text" (ends with)' : ''), {
     token: '',
     handler: '',
@@ -142,7 +145,7 @@ export function pseudoBrackets(selector: string): string {
     }
     output += matchs[0];
     i += matchs[0].length;
-    if (selector[i] !== '[') {
+    if (selector[i] !== OPEN_BRACKET) {
       continue;
     }
     // Ищем парную `]`, считая вложенность и пропуская экранированное.
@@ -153,7 +156,7 @@ export function pseudoBrackets(selector: string): string {
         j += 2;
         continue;
       }
-      if (selector[j] === '[') {
+      if (selector[j] === OPEN_BRACKET) {
         depth++;
       } else if (selector[j] === ']') {
         depth--;

@@ -10,6 +10,11 @@ import {
   MN_MAX_SPECIFICITY,
 } from './core/types';
 
+const LIST_SEPARATOR = ', ';
+const MODE_SILENT = 'silent';
+const MODE_WARN = 'warn';
+const MODE_STRICT = 'strict';
+
 /**
  * Проверка значения одной опции: `undefined` — значение подходит, строка —
  * что ожидалось («a boolean», `"log", "silent" or "error"`). `where` и `path`
@@ -119,7 +124,7 @@ export function checkOptions(
       hint = closest(key, names);
       throw new Error(at + 'unknown option "' + prefix + key + '". ' + (hint
         ? 'Did you mean "' + prefix + hint + '"?'
-        : 'Known options: ' + names.join(', ')));
+        : 'Known options: ' + names.join(LIST_SEPARATOR)));
     }
     expected = options[key] === undefined ? undefined : check(
       options[key], where, prefix + key,
@@ -154,7 +159,7 @@ export function checkKnownValues(
     if (known.indexOf(value) < 0) {
       hint = closest(value, known);
       throw new Error('[minotation] ' + where + ': unknown value "' + value + '" in "' + option + '". '
-        + (hint ? 'Did you mean "' + hint + '"? ' : '') + 'Known ' + what + ': ' + known.join(', '));
+        + (hint ? 'Did you mean "' + hint + '"? ' : '') + 'Known ' + what + ': ' + known.join(LIST_SEPARATOR));
     }
   }
 }
@@ -221,7 +226,7 @@ export const isPresetArray: OptionCheck = (value) => (
 export function oneOf(...values: unknown[]): OptionCheck {
   const list = values.map((value) => JSON.stringify(value));
   const expected = list.length > 1
-    ? list.slice(0, -1).join(', ') + ' or ' + list[list.length - 1]
+    ? list.slice(0, -1).join(LIST_SEPARATOR) + ' or ' + list[list.length - 1]
     : list[0];
   return (value) => (values.indexOf(value) < 0 ? expected : undefined);
 }
@@ -252,41 +257,41 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   media: isObject,
   onError: isFunction,
   warningMode: oneOf(
-    'log', 'silent', 'error',
+    'log', MODE_SILENT, 'error',
   ),
   onWarning: isFunction,
   maxDepth: isCount,
   maxDepthMode: oneOf(
-    'warn', 'silent', 'strict',
+    MODE_WARN, MODE_SILENT, MODE_STRICT,
   ),
   maxSpecificity: integerFrom(1, MN_MAX_SPECIFICITY),
-  maxSpecificityMode: oneOf('warn', 'strict'),
+  maxSpecificityMode: oneOf(MODE_WARN, MODE_STRICT),
   specificityMode: oneOf(
-    'warn', 'silent', 'strict',
+    MODE_WARN, MODE_SILENT, MODE_STRICT,
   ),
   importantMode: oneOf(
-    'warn', 'silent', 'strict',
+    MODE_WARN, MODE_SILENT, MODE_STRICT,
   ),
   childSelectorMode: oneOf(
-    'warn', 'silent', 'strict',
+    MODE_WARN, MODE_SILENT, MODE_STRICT,
   ),
   unknownMediaMode: oneOf(
-    'warn', 'silent', 'strict',
+    MODE_WARN, MODE_SILENT, MODE_STRICT,
   ),
   suspectClassMode: oneOf(
-    'warn', 'silent', 'strict',
+    MODE_WARN, MODE_SILENT, MODE_STRICT,
   ),
   mediaConflictMode: oneOf(
-    'warn', 'silent', 'strict',
+    MODE_WARN, MODE_SILENT, MODE_STRICT,
   ),
   handlerConflictMode: oneOf(
-    'warn', 'silent', 'strict',
+    MODE_WARN, MODE_SILENT, MODE_STRICT,
   ),
   presetConflictMode: oneOf(
-    'warn', 'silent', 'strict',
+    MODE_WARN, MODE_SILENT, MODE_STRICT,
   ),
   groupSuspectMode: oneOf(
-    'warn', 'silent', 'strict',
+    MODE_WARN, MODE_SILENT, MODE_STRICT,
   ),
   groupMode: oneOf('groups', 'css'),
   notationMode: oneOf(

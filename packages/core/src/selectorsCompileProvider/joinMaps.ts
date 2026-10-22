@@ -16,6 +16,8 @@ import type {
   AltMap,
 } from './types';
 
+const CLOSE_PAREN = ')';
+
 /**
  * Декартово произведение двух AltMap.
  *
@@ -124,10 +126,10 @@ export function joinWhere(
     last = parent[parent.length - 1];
     if ((last === '~' || last === '+') && parent[parent.length - 2] !== '\\') {
       inner = parent.slice(0, -1);
-      tail = ')' + last + '*)';
+      tail = CLOSE_PAREN + last + '*)';
     } else {
       inner = parent;
-      tail = ')' + (combinator === ' ' ? ' ' : combinator) + '*)';
+      tail = CLOSE_PAREN + (combinator === ' ' ? ' ' : combinator) + '*)';
     }
     for (subject in subjects) {
       tmp = output[subject + ':is(:where(' + inner + tail] = slice(subjects[subject]);
@@ -144,7 +146,7 @@ export function wrapWhere(alts: AltMap): AltMap {
   const output: AltMap = {};
   let key: string;
   for (key in alts) {
-    output[':where(' + key + ')'] = alts[key];
+    output[':where(' + key + CLOSE_PAREN] = alts[key];
   }
   return output;
 }

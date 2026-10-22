@@ -1,3 +1,29 @@
+/** A replacement: the match, escaped. */
+const ESCAPED_MATCH = '\\$&';
+const SPACE = ' ';
+const NEWLINE = '\n';
+const TAB = '	';
+const AND_OPERATOR = '&&';
+const LESS = '<';
+const GREATER = '>';
+const DASH = '-';
+const ASTERISK = '*';
+const SLASH = '/';
+const PIPE = '|';
+const QUESTION = '?';
+const DOT = '.';
+const EXCLAMATION = '!';
+const OPEN_PAREN = '(';
+const CLOSE_PAREN = ')';
+const QUOTE = '\'';
+const DOUBLE_QUOTE = '"';
+const BACKTICK = '`';
+const OPEN_BRACKET = '[';
+const EQUALS = '=';
+const BACKSLASH = '\\';
+const OPEN_BRACE = '{';
+const CLOSE_BRACE = '}';
+
 /**
  * Извлечение MN-токенов из значений заданного HTML/JSX-атрибута в тексте файла.
  *
@@ -45,7 +71,7 @@ const REGEXP_ESCAPE = /[.*+?^${}()|[\]\\]/g;
 const $$attrRegexps: Record<string, RegExp> = {};
 
 function buildAttrRegexp(attrName: string): RegExp {
-  const name = attrName.replace(REGEXP_ESCAPE, '\\$&');
+  const name = attrName.replace(REGEXP_ESCAPE, ESCAPED_MATCH);
   // `[:=]` — принимает как JSX-атрибут (`attr=`), так и свойство объектного
   // литерала (`attr:`, включая вложенное — напр. MUI `slotProps={{ paper: { className:... } }}`).
   // Граница слева: без неё `Name` ловил бы `className=`, а `class` — `data-class=`.
@@ -124,7 +150,7 @@ function isIdentChar(ch: string): boolean {
 
 /** Пробел, перевод строки или табуляция. */
 function isSpaceChar(ch: string): boolean {
-  return ch === ' ' || ch === '\n' || ch === '\t' || ch === '\r';
+  return ch === SPACE || ch === NEWLINE || ch === TAB || ch === '\r';
 }
 
 /**
@@ -144,21 +170,21 @@ const MN_EXPR_OUT = 2;
 const BINARY_OPERATORS = [
   '===',
   '!==',
-  '&&',
+  AND_OPERATOR,
   '||',
   '??',
   '==',
   '!=',
   '<=',
   '>=',
-  '<',
-  '>',
+  LESS,
+  GREATER,
   '+',
-  '-',
-  '*',
-  '/',
+  DASH,
+  ASTERISK,
+  SLASH,
   '%',
-  '|',
+  PIPE,
   '&',
   '^',
 ];
@@ -214,7 +240,7 @@ function readConditional(state: ExpressionState): void {
   readBinary(state, 0);
   skipSpaces(state);
   const i = state[MN_EXPR_AT];
-  if (source[i] !== '?' || source[i + 1] === '?' || source[i + 1] === '.') {
+  if (source[i] !== QUESTION || source[i + 1] === QUESTION || source[i + 1] === DOT) {
     return;
   }
   out.length = mark;
@@ -245,7 +271,7 @@ function binaryOperator(source: string, at: number): string {
 
 /** Приоритет: `??`/`||` — 1, `&&` — 2, остальные (сравнения, арифметика) — 3. */
 function precedence(operator: string): number {
-  return operator === '||' || operator === '??' ? 1 : operator === '&&' ? 2 : 3;
+  return operator === '||' || operator === '??' ? 1 : operator === AND_OPERATOR ? 2 : 3;
 }
 
 /**
@@ -272,7 +298,7 @@ function readBinary(state: ExpressionState, minPrecedence: number): void {
       return;
     }
     state[MN_EXPR_AT] += operator.length;
-    if (operator === '&&') {
+    if (operator === AND_OPERATOR) {
       out.length = mark;
       readBinary(state, level + 1);
     } else if (level === 1) {
@@ -295,29 +321,29 @@ function readOperand(state: ExpressionState): void {
   skipSpaces(state);
   let i = state[MN_EXPR_AT];
   const ch = source[i];
-  if (ch === '!' || ch === '~' || ch === '+' || ch === '-') {
+  if (ch === EXCLAMATION || ch === '~' || ch === '+' || ch === DASH) {
     // Унарный оператор: значение — уже не строка.
     state[MN_EXPR_AT] = i + 1;
     readOperand(state);
     out.length = mark;
     return;
   }
-  if (ch === '(') {
+  if (ch === OPEN_PAREN) {
     state[MN_EXPR_AT] = i + 1;
     readConditional(state);
     skipSpaces(state);
-    source[state[MN_EXPR_AT]] === ')' && state[MN_EXPR_AT]++;
-  } else if (ch === '\'' || ch === '"') {
+    source[state[MN_EXPR_AT]] === CLOSE_PAREN && state[MN_EXPR_AT]++;
+  } else if (ch === QUOTE || ch === DOUBLE_QUOTE) {
     i = skipString(source, i);
     pushLiteralTokens(out, source.slice(state[MN_EXPR_AT] + 1, i - 1));
     state[MN_EXPR_AT] = i;
-  } else if (ch === '`') {
+  } else if (ch === BACKTICK) {
     state[MN_EXPR_AT] = readTemplate(
       source, i, out,
     );
-  } else if (ch !== undefined && (isIdentChar(ch) || ch === '.')) {
+  } else if (ch !== undefined && (isIdentChar(ch) || ch === DOT)) {
     const sourceLength = source.length;
-    while (i < sourceLength && (isIdentChar(source[i]) || source[i] === '.')) {
+    while (i < sourceLength && (isIdentChar(source[i]) || source[i] === DOT)) {
       i++;
     }
     state[MN_EXPR_AT] = i;
@@ -335,15 +361,15 @@ function readPostfix(state: ExpressionState): boolean {
   let ch: string;
   for (;;) {
     ch = source[i];
-    if (ch === '(' || ch === '[') {
+    if (ch === OPEN_PAREN || ch === OPEN_BRACKET) {
       i = skipBalanced(source, i);
-    } else if (ch === '.' || (ch === '?' && source[i + 1] === '.')) {
-      i += ch === '.' ? 1 : 2;
+    } else if (ch === DOT || (ch === QUESTION && source[i + 1] === DOT)) {
+      i += ch === DOT ? 1 : 2;
       const sourceLength = source.length;
       while (i < sourceLength && isIdentChar(source[i])) {
         i++;
       }
-    } else if (ch === '!' && source[i + 1] !== '=') {
+    } else if (ch === EXCLAMATION && source[i + 1] !== EQUALS) {
       // TS: `value!` — утверждение «не null».
       i++;
     } else {
@@ -360,7 +386,7 @@ function skipString(source: string, at: number): number {
   const l = source.length;
   let i = at + 1;
   for (; i < l; i++) {
-    if (source[i] === '\\') {
+    if (source[i] === BACKSLASH) {
       i++;
       continue;
     }
@@ -384,15 +410,15 @@ function readTemplate(
   let i = at + 1;
   let from = i;
   for (; i < l; i++) {
-    if (source[i] === '\\') {
+    if (source[i] === BACKSLASH) {
       i++;
       continue;
     }
-    if (source[i] === '`') {
+    if (source[i] === BACKTICK) {
       out && pushLiteralTokens(out, source.slice(from, i));
       return i + 1;
     }
-    if (source[i] === '$' && source[i + 1] === '{') {
+    if (source[i] === '$' && source[i + 1] === OPEN_BRACE) {
       out && pushLiteralTokens(out, source.slice(from, i));
       i = out ? readSubstitution(
         source, i + 1, out,
@@ -415,7 +441,7 @@ function readSubstitution(
   const i = pushValueExpression(
     out, source, at + 1,
   );
-  if (source[i] === '}') {
+  if (source[i] === CLOSE_BRACE) {
     return i;
   }
   out.length = mark;
@@ -430,15 +456,15 @@ function skipBalanced(source: string, at: number): number {
   let ch: string;
   for (; i < l; i++) {
     ch = source[i];
-    if (ch === '(' || ch === '[' || ch === '{') {
+    if (ch === OPEN_PAREN || ch === OPEN_BRACKET || ch === OPEN_BRACE) {
       depth++;
-    } else if (ch === ')' || ch === ']' || ch === '}') {
+    } else if (ch === CLOSE_PAREN || ch === ']' || ch === CLOSE_BRACE) {
       if (!--depth) {
         return i + 1;
       }
-    } else if (ch === '\'' || ch === '"') {
+    } else if (ch === QUOTE || ch === DOUBLE_QUOTE) {
       i = skipString(source, i) - 1;
-    } else if (ch === '`') {
+    } else if (ch === BACKTICK) {
       i = readTemplate(
         source, i, undefined,
       ) - 1;
@@ -462,14 +488,14 @@ function skipBalanced(source: string, at: number): number {
 export function pushLiteralTokens(out: string[], literal: string): void {
   const text = literal.indexOf('${') < 0
     ? literal
-    : literal.replace(REGEXP_INTERPOLATION, ' ');
+    : literal.replace(REGEXP_INTERPOLATION, SPACE);
   const l = text.length;
   let i = 0;
   let from = -1;
   let ch: string;
   for (; i < l; i++) {
     ch = text[i];
-    if (ch === ' ' || ch === '\n' || ch === '\t' || ch === '\r') {
+    if (ch === SPACE || ch === NEWLINE || ch === TAB || ch === '\r') {
       if (from >= 0) {
         out.push(text.slice(from, i));
         from = -1;
@@ -562,13 +588,13 @@ export function extractClassVarTokensInto(
           i++;
         }
         quote = source[i];
-        if (quote !== '\'' && quote !== '"' && quote !== '`') {
+        if (quote !== QUOTE && quote !== DOUBLE_QUOTE && quote !== BACKTICK) {
           // Аннотация доходит до `=`, обрываясь на `;` и переводе строки —
           // как и прежняя регулярка (`[^=;\n]+`). Не дошла (или `=` — часть
           // `===`/`=>`) — это свойство объекта со значением-выражением:
           // `{ aClass: on ? 'a' : 'b' }`.
           at = i;
-          while (i < l && source[i] !== '=' && source[i] !== ';' && source[i] !== '\n') {
+          while (i < l && source[i] !== EQUALS && source[i] !== ';' && source[i] !== NEWLINE) {
             i++;
           }
           if (!isAssignment(source, i)) {
@@ -591,7 +617,7 @@ export function extractClassVarTokensInto(
         continue;
       }
       quote = source[i];
-      if (quote !== '\'' && quote !== '"') {
+      if (quote !== QUOTE && quote !== DOUBLE_QUOTE) {
         // `const aClass = on ? 'a' : 'b'` — значение-выражение; шаблон — тоже
         // через разбор: его подстановки читаются (D-074).
         from = pushValueExpression(
@@ -601,7 +627,7 @@ export function extractClassVarTokensInto(
       }
       valueFrom = ++i;
       for (; i < l; i++) {
-        if (source[i] === '\\') {
+        if (source[i] === BACKSLASH) {
           i++;
           continue;
         }
@@ -619,9 +645,9 @@ export function extractClassVarTokensInto(
 function isAssignment(source: string, at: number): boolean {
   const next = source[at + 1];
   const prev = source[at - 1];
-  return source[at] === '='
-    && next !== '=' && next !== '>'
-    && prev !== '=' && prev !== '!' && prev !== '<' && prev !== '>';
+  return source[at] === EQUALS
+    && next !== EQUALS && next !== GREATER
+    && prev !== EQUALS && prev !== EXCLAMATION && prev !== LESS && prev !== GREATER;
 }
 
 /**
@@ -642,15 +668,15 @@ const $$mergeCallRegexps: Record<string, RegExp> = {};
  * зовётся функция, которую вернул `mnClass(base)`, и её аргументы — те же токены.
  */
 function mergeCallRegExp(names: string[], suffixes: string[]): RegExp {
-  const key = names.join('|') + '/' + suffixes.join('|');
+  const key = names.join(PIPE) + SLASH + suffixes.join(PIPE);
   const cached = $$mergeCallRegexps[key];
   if (cached) {
     return cached;
   }
-  const alternatives = names.map((n) => n.replace(REGEXP_ESCAPE, '\\$&'));
+  const alternatives = names.map((n) => n.replace(REGEXP_ESCAPE, ESCAPED_MATCH));
   suffixes.length && alternatives.push('[\\w$]+(?:'
-    + suffixes.map((n) => n.replace(REGEXP_ESCAPE, '\\$&')).join('|') + ')');
-  return ($$mergeCallRegexps[key] = new RegExp('(?<![\\w$.])(?:' + alternatives.join('|')
+    + suffixes.map((n) => n.replace(REGEXP_ESCAPE, ESCAPED_MATCH)).join(PIPE) + CLOSE_PAREN);
+  return ($$mergeCallRegexps[key] = new RegExp('(?<![\\w$.])(?:' + alternatives.join(PIPE)
     + ')(?![\\w$])\\s*\\(', 'g'));
 }
 
@@ -714,24 +740,24 @@ export function extractMergeCallTokensInto(
     depth = 0;
     for (; i < l; i++) {
       ch = source[i];
-      if (ch === '(' || ch === '[' || ch === '{') {
+      if (ch === OPEN_PAREN || ch === OPEN_BRACKET || ch === OPEN_BRACE) {
         depth++;
         continue;
       }
-      if (ch === ')' || ch === ']' || ch === '}') {
+      if (ch === CLOSE_PAREN || ch === ']' || ch === CLOSE_BRACE) {
         if (!--depth) {
           break;
         }
         continue;
       }
-      if (ch === '`') {
+      if (ch === BACKTICK) {
         // Шаблон: статика и значение подстановок (D-074).
         i = readTemplate(
           source, i, out,
         ) - 1;
         continue;
       }
-      if (ch !== '\'' && ch !== '"') {
+      if (ch !== QUOTE && ch !== DOUBLE_QUOTE) {
         continue;
       }
       // Границы литерала запоминаем и режем одним `slice`: посимвольная склейка
@@ -739,7 +765,7 @@ export function extractMergeCallTokensInto(
       quote = ch;
       from = ++i;
       for (; i < l; i++) {
-        if (source[i] === '\\') {
+        if (source[i] === BACKSLASH) {
           i++;
           continue;
         }
@@ -793,10 +819,10 @@ export function stripComments(source: string, markers?: string[]): string {
   while (i < l) {
     ch = source[i];
     // Строка: пропускаем целиком, внутри комментариев нет.
-    if (ch === '\'' || ch === '"' || ch === '`') {
+    if (ch === QUOTE || ch === DOUBLE_QUOTE || ch === BACKTICK) {
       quote = ch;
       for (i++; i < l; i++) {
-        if (source[i] === '\\') {
+        if (source[i] === BACKSLASH) {
           i++;
           continue;
         }
@@ -807,26 +833,26 @@ export function stripComments(source: string, markers?: string[]): string {
       i++;
       continue;
     }
-    if (ch !== '/' && ch !== '<') {
+    if (ch !== SLASH && ch !== LESS) {
       i++;
       continue;
     }
     from = i;
-    if (ch === '/' && source[i + 1] === '/') {
-      while (i < l && source[i] !== '\n') {
+    if (ch === SLASH && source[i + 1] === SLASH) {
+      while (i < l && source[i] !== NEWLINE) {
         i++;
       }
-    } else if (ch === '/' && source[i + 1] === '*') {
+    } else if (ch === SLASH && source[i + 1] === ASTERISK) {
       for (i += 2; i < l; i++) {
-        if (source[i] === '*' && source[i + 1] === '/') {
+        if (source[i] === ASTERISK && source[i + 1] === SLASH) {
           i += 2;
           break;
         }
       }
-    } else if (ch === '<' && source[i + 1] === '!'
-      && source[i + 2] === '-' && source[i + 3] === '-') {
+    } else if (ch === LESS && source[i + 1] === EXCLAMATION
+      && source[i + 2] === DASH && source[i + 3] === DASH) {
       for (i += 4; i < l; i++) {
-        if (source[i] === '-' && source[i + 1] === '-' && source[i + 2] === '>') {
+        if (source[i] === DASH && source[i + 1] === DASH && source[i + 2] === GREATER) {
           i += 3;
           break;
         }
@@ -873,9 +899,9 @@ function markerTokens(
   let next: string;
   while (at > -1 && at < to) {
     next = source[at + 3];
-    if ((next === ' ' || next === '\t') && !isIdentChar(source[at - 1])) {
+    if ((next === SPACE || next === TAB) && !isIdentChar(source[at - 1])) {
       end = at + 4;
-      while (end < to && source[end] !== '\n') {
+      while (end < to && source[end] !== NEWLINE) {
         end++;
       }
       pushLiteralTokens(out, source.slice(at + 4, end).replace(REGEXP_MARKER_TAIL, ''));
@@ -891,7 +917,7 @@ function newlinesOf(
   let out = '';
   let i = from;
   for (; i < to; i++) {
-    source[i] === '\n' && (out += '\n');
+    source[i] === NEWLINE && (out += NEWLINE);
   }
   return out;
 }

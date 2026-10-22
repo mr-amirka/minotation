@@ -29,6 +29,8 @@ import {
   syntaxKindOf,
 } from './scanner';
 
+const SPACE = ' ';
+
 /** Опции {@link createScopeClassWriter}. */
 export interface ScopeClassWriterOptions {
   /** Имена атрибутов, чьи значения — классы (цель `class`): `['class', 'className']`. */
@@ -154,7 +156,7 @@ function textEditsFor(
     ) || edits.push([
       at,
       at,
-      className + ' ',
+      className + SPACE,
     ]);
   }
 }
@@ -187,7 +189,7 @@ function startsWithClass(
   source: string, at: number, className: string,
 ): boolean {
   const next = source[at + className.length];
-  return source.startsWith(className, at) && (next === ' ' || next === '"' || next === '\'' || next === '`');
+  return source.startsWith(className, at) && (next === SPACE || next === '"' || next === '\'' || next === '`');
 }
 
 /**
@@ -197,7 +199,7 @@ function startsWithClass(
  * @param className — класс области
  */
 export function wrapExpression(expression: string, className: string): string {
-  return JSON.stringify(className + ' ') + ' + ((' + expression + ') || "")';
+  return JSON.stringify(className + SPACE) + ' + ((' + expression + ') || "")';
 }
 
 /**
@@ -207,7 +209,7 @@ export function wrapExpression(expression: string, className: string): string {
  * @param className — класс области
  */
 export function isWrapped(expression: string, className: string): boolean {
-  return expression.startsWith(JSON.stringify(className + ' ') + ' + ');
+  return expression.startsWith(JSON.stringify(className + SPACE) + ' + ');
 }
 
 /**

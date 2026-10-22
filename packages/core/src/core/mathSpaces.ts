@@ -1,3 +1,6 @@
+const OPEN_PAREN = '(';
+const SPACE = ' ';
+
 /**
  * Пробелы вокруг операторов в математике произвольных значений — как пишет их Tailwind 4: и в утилитах
  * (`w-[calc(100%-2rem)]`, `presets/shared/tw.ts`), и в вариантах (`max-[calc(100%-2rem)]:`, разбор ядра).
@@ -76,7 +79,7 @@ export function mathSpaces(value: string): string {
   for (; i < l; i++) {
     ch = value[i];
     REGEXP_DIGIT.test(ch) || run >= 0 && (ch === '%' || REGEXP_LETTER.test(ch)) ? run = i : (previousRun = run, run = -1);
-    if (ch === '(') {
+    if (ch === OPEN_PAREN) {
       out += ch;
       j = i;
       while (j > 0 && REGEXP_FUNCTION_CHAR.test(value[j - 1])) {
@@ -90,7 +93,7 @@ export function mathSpaces(value: string): string {
       math.shift();
     } else if (ch === ',' && math[0]) {
       out += ', ';
-    } else if (ch === ' ' && math[0] && out[out.length - 1] === ' ') {
+    } else if (ch === SPACE && math[0] && out[out.length - 1] === SPACE) {
       continue;
     } else if (math[0] && REGEXP_OPERATOR.test(ch)) {
       trimmed = out.trimEnd();
@@ -99,10 +102,10 @@ export function mathSpaces(value: string): string {
       next = value[i + 1];
       // За концом строки `next` — `undefined`: `test` видит строку «undefined», в ней нет цифр и операторов.
       out += (last === 'e' || last === 'E') && REGEXP_DIGIT.test(before) || REGEXP_OPERATOR.test(last)
-        || last === '(' || last === ',' ? ch
-        : value[i - 1] === ' ' ? ch + ' '
-          : REGEXP_DIGIT.test(last) || REGEXP_DIGIT.test(next) || last === ')' || next === '('
-            || REGEXP_OPERATOR.test(next) || previousRun >= 0 && previousRun === i - 1 ? ' ' + ch + ' ' : ch;
+        || last === OPEN_PAREN || last === ',' ? ch
+        : value[i - 1] === SPACE ? ch + SPACE
+          : REGEXP_DIGIT.test(last) || REGEXP_DIGIT.test(next) || last === ')' || next === OPEN_PAREN
+            || REGEXP_OPERATOR.test(next) || previousRun >= 0 && previousRun === i - 1 ? SPACE + ch + SPACE : ch;
     } else {
       out += ch;
     }

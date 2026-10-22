@@ -24,6 +24,8 @@ import type {
   OptionCheck,
 } from '../../checkOptions';
 
+const DASH = '-';
+
 /** Опции {@link defineScale}. */
 export interface MnScaleOptions {
   /** Имя → свойство CSS: `{ m: 'margin', p: 'padding' }`. */
@@ -105,7 +107,7 @@ function camel(property: string): string {
 
 /** Отрицание значения: `1rem` → `-1rem`, `0` → `0`, `var(--x)` → `calc(var(--x) * -1)`. */
 function negate(value: string): string {
-  return value === '0' ? value : REGEXP_LEADING_NUMBER.test(value) ? '-' + value : 'calc(' + value + ' * -1)';
+  return value === '0' ? value : REGEXP_LEADING_NUMBER.test(value) ? DASH + value : 'calc(' + value + ' * -1)';
 }
 
 function required(option: string): never {
@@ -149,7 +151,7 @@ export function defineScale(mn: MnInstance, options: MnScaleOptions): MnInstance
   const sides = options.sides || {
     '': [''],
   };
-  const separator = options.separator === undefined ? '-' : options.separator;
+  const separator = options.separator === undefined ? DASH : options.separator;
   // Шаги карты — тоже статикой: слово-шаг (`pt-v`, `q-pa-md`) — точное имя, без разбора.
   // Хендлер ловит числовой шаг вне карты, `-[…]` и отрицательные значения.
   const keywords: Record<string, string> = typeof options.scale === 'function'
@@ -166,7 +168,7 @@ export function defineScale(mn: MnInstance, options: MnScaleOptions): MnInstance
   for (key in options.properties) { // eslint-disable-line
     for (side in sides) { // eslint-disable-line
       name = key + side;
-      properties = sides[side].map((part) => camel(options.properties[key] + (part ? '-' + part : '')));
+      properties = sides[side].map((part) => camel(options.properties[key] + (part ? DASH + part : '')));
       // Имя с дефисом (`min-w`, `gap-x`) ядро находит само: домен `min`, префикс `-w` (D-063).
       mn(
         name, scaleHandler(
@@ -204,7 +206,7 @@ function scaleHandler(
   return (p: MnEssenceParams) => {
     const suffix = p.suffix;
     const step = suffix.slice(separator.length);
-    const negative = p.sign === '-';
+    const negative = p.sign === DASH;
     let value: string;
     if (negative && !options.negative) {
       return undefined;

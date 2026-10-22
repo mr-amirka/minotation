@@ -25,7 +25,12 @@ import {
   minotationProvider, presetMedias, presetTw4,
 } from '../../../../dist/index.js';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
+const PARENT_DIR = '..';
+const SPACE = ' ';
+const SEMICOLON = ';';
+const MODE_SILENT = 'silent';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), PARENT_DIR, PARENT_DIR, PARENT_DIR, PARENT_DIR);
 const require = createRequire(join(root, 'package.json'));
 const INPUT = '@import "tailwindcss/theme.css" layer(theme); @import "tailwindcss/utilities.css" layer(utilities);';
 const options = {
@@ -43,7 +48,7 @@ const options = {
 const design = await loadDesignSystem(INPUT, options);
 const classes = design.getClassList().map((item) => item[0]);
 
-const normalize = (text) => text.replace(/\s+/g, ' ').replace(/\s*,\s*/g, ',').replace(/\(\s+/g, '(')
+const normalize = (text) => text.replace(/\s+/g, SPACE).replace(/\s*,\s*/g, ',').replace(/\(\s+/g, '(')
   .replace(/\s+\)/g, ')').replace(/\s*:\s*/, ':').trim();
 const unescape = (selector) => selector.replace(/\\(.)/g, '$1');
 
@@ -67,7 +72,7 @@ function parse(css) {
       flush(text, stack);
       stack.pop();
       text = '';
-    } else if (ch === ';') {
+    } else if (ch === SEMICOLON) {
       flush(text, stack);
       text = '';
     } else {
@@ -102,14 +107,14 @@ const expected = parse(twCss.slice(twCss.indexOf('@layer utilities')));
 
 const mn = minotationProvider({
   notationMode: 'tw4-compatible',
-  warningMode: 'silent',
-  importantMode: 'silent',
-  childSelectorMode: 'silent',
-  suspectClassMode: 'silent',
-  unknownMediaMode: 'silent',
+  warningMode: MODE_SILENT,
+  importantMode: MODE_SILENT,
+  childSelectorMode: MODE_SILENT,
+  suspectClassMode: MODE_SILENT,
+  unknownMediaMode: MODE_SILENT,
 });
 mn.setPresets([presetMedias, presetTw4]);
-mn.getCompiler('class')(classes.join(' '));
+mn.getCompiler('class')(classes.join(SPACE));
 mn.compile();
 const actual = parse(mn.styles$.getValue().filter((style) => style.priority > -3000).map((style) => style.content).join('\n'));
 
@@ -117,8 +122,8 @@ let same = 0;
 const missing = [];
 const differ = [];
 for (const name of classes) {
-  const want = (expected[name] || []).slice().sort().join(';');
-  const got = (actual[name] || []).slice().sort().join(';');
+  const want = (expected[name] || []).slice().sort().join(SEMICOLON);
+  const got = (actual[name] || []).slice().sort().join(SEMICOLON);
   if (!want) {
     continue;
   }
@@ -133,7 +138,7 @@ for (const name of missing.concat(differ.map((item) => item[0]))) {
 console.log('tw4-conformance: ' + same + ' / ' + total + ' classes match (' + (100 * same / total).toFixed(1) + '%), '
   + missing.length + ' missing, ' + differ.length + ' differ');
 console.log('top roots: ' + Object.entries(byRoot).sort((a, b) => b[1] - a[1]).slice(0, 40)
-  .map((item) => item[0] + ' ' + item[1]).join(', '));
+  .map((item) => item[0] + SPACE + item[1]).join(', '));
 process.argv[2] && writeFileSync(process.argv[2], JSON.stringify({
   same,
   missing,

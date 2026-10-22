@@ -6,66 +6,270 @@
 /** Tailwind version the table was taken from. */
 export const TW4_STATICS_VERSION = '4.3.3';
 
+/** The values the tables write 3+ times. */
+const HEX_0000 = '#0000';
+const TW_BORDER_STYLE = '--tw-border-style';
+const TW_GRADIENT_POSITION = '--tw-gradient-position';
+const TW_MASK_RADIAL_POSITION = '--tw-mask-radial-position';
+const TW_MASK_RADIAL_SIZE = '--tw-mask-radial-size';
+const TW_OUTLINE_STYLE = '--tw-outline-style';
+const TW_PAN_X = '--tw-pan-x';
+const TW_PAN_Y = '--tw-pan-y';
+const TW_TRANSLATE_X = '--tw-translate-x';
+const TW_TRANSLATE_Y = '--tw-translate-y';
+const MINUS_100_PERCENT = '-100%';
+const MINUS_1PX = '-1px';
+const WEBKIT_BOX_DECORATION_BREAK = '-webkit-box-decoration-break';
+const WEBKIT_HYPHENS = '-webkit-hyphens';
+const WEBKIT_USER_SELECT = '-webkit-user-select';
+const V_0 = '0';
+const V_0_0_0000 = '0 0 #0000';
+const V_0_PERCENT = '0%';
+const V_1 = '1';
+const V_100_PERCENT = '100%';
+const V_100DVH = '100dvh';
+const V_100DVW = '100dvw';
+const V_100LVH = '100lvh';
+const V_100LVW = '100lvw';
+const V_100SVH = '100svh';
+const V_100SVW = '100svw';
+const V_100VH = '100vh';
+const V_100VW = '100vw';
+const V_1LH = '1lh';
+const V_1PX = '1px';
+const ALIGN_CONTENT = 'align-content';
+const ALIGN_ITEMS = 'align-items';
+const ALIGN_SELF = 'align-self';
+const ALL = 'all';
+const AUTO = 'auto';
+const AVOID = 'avoid';
+const AVOID_PAGE = 'avoid-page';
+const BACKGROUND_ATTACHMENT = 'background-attachment';
+const BACKGROUND_BLEND_MODE = 'background-blend-mode';
+const BACKGROUND_CLIP = 'background-clip';
+const BACKGROUND_IMAGE = 'background-image';
+const BACKGROUND_ORIGIN = 'background-origin';
+const BACKGROUND_POSITION = 'background-position';
+const BACKGROUND_REPEAT = 'background-repeat';
+const BACKGROUND_SIZE = 'background-size';
+const BASELINE = 'baseline';
+const BLACK = 'black';
+const BLOCK_SIZE = 'block-size';
+const BORDER_BOX = 'border-box';
+const BORDER_SPACING = 'border-spacing';
+const BORDER_STYLE = 'border-style';
+const BOTTOM = 'bottom';
+const BOX_DECORATION_BREAK = 'box-decoration-break';
+const BREAK_AFTER = 'break-after';
+const BREAK_BEFORE = 'break-before';
+const BREAK_INSIDE = 'break-inside';
+const CENTER = 'center';
+const CLEAR = 'clear';
+const CLIP = 'clip';
+const CLONE = 'clone';
+const COLOR_SCHEME = 'color-scheme';
+const COLUMN = 'column';
+const CONTAIN = 'contain';
+const CONTENT = 'content';
+const CONTENT_BOX = 'content-box';
+const COVER = 'cover';
+const CURSOR = 'cursor';
+const DASHED = 'dashed';
+const DISPLAY = 'display';
+const DOTTED = 'dotted';
+const DOUBLE = 'double';
+const ELLIPSIS = 'ellipsis';
+const END = 'end';
+const FILL_BOX = 'fill-box';
+const FIT_CONTENT = 'fit-content';
+const FIXED = 'fixed';
+const FLEX = 'flex';
+const FLEX_BASIS = 'flex-basis';
+const FLEX_DIRECTION = 'flex-direction';
+const FLEX_END = 'flex-end';
+const FLEX_START = 'flex-start';
+const FLEX_WRAP = 'flex-wrap';
+const FLOAT = 'float';
+const FONT_STRETCH = 'font-stretch';
+const FONT_VARIANT_NUMERIC = 'font-variant-numeric';
+const GRID_AUTO_FLOW = 'grid-auto-flow';
+const HEIGHT = 'height';
+const HIDDEN = 'hidden';
+const HYPHENS = 'hyphens';
+const INITIAL = 'initial';
+const INLINE_SIZE = 'inline-size';
+const INSET = 'inset';
+const INSET_BLOCK = 'inset-block';
+const INSET_BLOCK_END = 'inset-block-end';
+const INSET_BLOCK_START = 'inset-block-start';
+const INSET_INLINE = 'inset-inline';
+const INSET_INLINE_END = 'inset-inline-end';
+const INSET_INLINE_START = 'inset-inline-start';
+const JUSTIFY_CONTENT = 'justify-content';
+const JUSTIFY_ITEMS = 'justify-items';
+const JUSTIFY_SELF = 'justify-self';
+const LEFT = 'left';
+const LEFT_BOTTOM = 'left bottom';
+const LEFT_TOP = 'left top';
+const LINEAR_GRADIENT_FFF_FFF = 'linear-gradient(#fff, #fff)';
+const LINEAR_GRADIENT_VAR_TW_GRADIENT_STOPS = 'linear-gradient(var(--tw-gradient-stops))';
+const MARGIN = 'margin';
+const MARGIN_BLOCK = 'margin-block';
+const MARGIN_BLOCK_END = 'margin-block-end';
+const MARGIN_BLOCK_START = 'margin-block-start';
+const MARGIN_BOTTOM = 'margin-bottom';
+const MARGIN_INLINE = 'margin-inline';
+const MARGIN_INLINE_END = 'margin-inline-end';
+const MARGIN_INLINE_START = 'margin-inline-start';
+const MARGIN_LEFT = 'margin-left';
+const MARGIN_RIGHT = 'margin-right';
+const MARGIN_TOP = 'margin-top';
+const MASK_CLIP = 'mask-clip';
+const MASK_COMPOSITE = 'mask-composite';
+const MASK_MODE = 'mask-mode';
+const MASK_ORIGIN = 'mask-origin';
+const MASK_POSITION = 'mask-position';
+const MASK_REPEAT = 'mask-repeat';
+const MASK_SIZE = 'mask-size';
+const MAX_BLOCK_SIZE = 'max-block-size';
+const MAX_CONTENT = 'max-content';
+const MAX_HEIGHT = 'max-height';
+const MAX_INLINE_SIZE = 'max-inline-size';
+const MAX_WIDTH = 'max-width';
+const MIN_BLOCK_SIZE = 'min-block-size';
+const MIN_CONTENT = 'min-content';
+const MIN_HEIGHT = 'min-height';
+const MIN_INLINE_SIZE = 'min-inline-size';
+const MIN_WIDTH = 'min-width';
+const MIX_BLEND_MODE = 'mix-blend-mode';
+const NONE = 'none';
+const NORMAL = 'normal';
+const NOWRAP = 'nowrap';
+const OBJECT_FIT = 'object-fit';
+const OBJECT_POSITION = 'object-position';
+const OUTLINE_STYLE = 'outline-style';
+const OVERFLOW = 'overflow';
+const OVERFLOW_WRAP = 'overflow-wrap';
+const OVERFLOW_X = 'overflow-x';
+const OVERFLOW_Y = 'overflow-y';
+const OVERSCROLL_BEHAVIOR = 'overscroll-behavior';
+const OVERSCROLL_BEHAVIOR_X = 'overscroll-behavior-x';
+const OVERSCROLL_BEHAVIOR_Y = 'overscroll-behavior-y';
+const PADDING = 'padding';
+const PADDING_BOX = 'padding-box';
+const PLACE_CONTENT = 'place-content';
+const PLACE_ITEMS = 'place-items';
+const PLACE_SELF = 'place-self';
+const POSITION = 'position';
+const RESIZE = 'resize';
+const RIGHT = 'right';
+const RIGHT_BOTTOM = 'right bottom';
+const RIGHT_TOP = 'right top';
+const SAFE_CENTER = 'safe center';
+const SAFE_END = 'safe end';
+const SAFE_FLEX_END = 'safe flex-end';
+const SCROLL = 'scroll';
+const SCROLL_SNAP_ALIGN = 'scroll-snap-align';
+const SCROLL_SNAP_TYPE = 'scroll-snap-type';
+const SCROLLBAR_GUTTER = 'scrollbar-gutter';
+const SCROLLBAR_WIDTH = 'scrollbar-width';
+const SLICE = 'slice';
+const SOLID = 'solid';
+const SPACE_AROUND = 'space-around';
+const SPACE_BETWEEN = 'space-between';
+const SPACE_EVENLY = 'space-evenly';
+const START = 'start';
+const STRETCH = 'stretch';
+const STROKE_BOX = 'stroke-box';
+const TEXT = 'text';
+const TEXT_ALIGN = 'text-align';
+const TEXT_DECORATION_LINE = 'text-decoration-line';
+const TEXT_DECORATION_STYLE = 'text-decoration-style';
+const TEXT_OVERFLOW = 'text-overflow';
+const TEXT_TRANSFORM = 'text-transform';
+const TEXT_WRAP = 'text-wrap';
+const TOP = 'top';
+const TOUCH_ACTION = 'touch-action';
+const TRANSFORM = 'transform';
+const TRANSFORM_BOX = 'transform-box';
+const TRANSLATE = 'translate';
+const TRANSPARENT = 'transparent';
+const USER_SELECT = 'user-select';
+const VAR_TW_BORDER_SPACING_X_VAR_TW_BORDER_SPACING_Y = 'var(--tw-border-spacing-x) var(--tw-border-spacing-y)';
+const VAR_TW_CONTAIN_SIZE_VAR_TW_CONTAIN_LAYOUT_VAR_TW_CONTAIN_PAINT_VAR_TW_CONTAIN_STYLE = 'var(--tw-contain-size,) var(--tw-contain-layout,) var(--tw-contain-paint,) var(--tw-contain-style,)';
+const VAR_TW_ORDINAL_VAR_TW_SLASHED_ZERO_VAR_TW_NUMERIC_FIGURE_VAR_TW_NUMERIC_SPACING_VAR_TW_NUMERIC_FRACTION = 'var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)';
+const VAR_TW_PAN_X_VAR_TW_PAN_Y_VAR_TW_PINCH_ZOOM = 'var(--tw-pan-x,) var(--tw-pan-y,) var(--tw-pinch-zoom,)';
+const VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y = 'var(--tw-translate-x) var(--tw-translate-y)';
+const VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y_VAR_TW_TRANSLATE_Z = 'var(--tw-translate-x) var(--tw-translate-y) var(--tw-translate-z)';
+const VERTICAL_ALIGN = 'vertical-align';
+const VIEW_BOX = 'view-box';
+const VISIBILITY = 'visibility';
+const VISIBLE = 'visible';
+const WHITE_SPACE = 'white-space';
+const WIDTH = 'width';
+const WILL_CHANGE = 'will-change';
+const WORD_BREAK = 'word-break';
+
 /** Flat static utilities: class → [property, value] declarations, as Tailwind emits them. */
 export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   'absolute': [
     [
-      'position',
+      POSITION,
       'absolute',
     ],
   ],
   'accent-auto': [
     [
       'accent-color',
-      'auto',
+      AUTO,
     ],
   ],
   'align-baseline': [
     [
-      'vertical-align',
-      'baseline',
+      VERTICAL_ALIGN,
+      BASELINE,
     ],
   ],
   'align-bottom': [
     [
-      'vertical-align',
-      'bottom',
+      VERTICAL_ALIGN,
+      BOTTOM,
     ],
   ],
   'align-middle': [
     [
-      'vertical-align',
+      VERTICAL_ALIGN,
       'middle',
     ],
   ],
   'align-sub': [
     [
-      'vertical-align',
+      VERTICAL_ALIGN,
       'sub',
     ],
   ],
   'align-super': [
     [
-      'vertical-align',
+      VERTICAL_ALIGN,
       'super',
     ],
   ],
   'align-text-bottom': [
     [
-      'vertical-align',
+      VERTICAL_ALIGN,
       'text-bottom',
     ],
   ],
   'align-text-top': [
     [
-      'vertical-align',
+      VERTICAL_ALIGN,
       'text-top',
     ],
   ],
   'align-top': [
     [
-      'vertical-align',
-      'top',
+      VERTICAL_ALIGN,
+      TOP,
     ],
   ],
   'antialiased': [
@@ -81,489 +285,489 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   'appearance-auto': [
     [
       'appearance',
-      'auto',
+      AUTO,
     ],
   ],
   'appearance-none': [
     [
       'appearance',
-      'none',
+      NONE,
     ],
   ],
   'backface-hidden': [
     [
       'backface-visibility',
-      'hidden',
+      HIDDEN,
     ],
   ],
   'backface-visible': [
     [
       'backface-visibility',
-      'visible',
+      VISIBLE,
     ],
   ],
   'basis-auto': [
     [
-      'flex-basis',
-      'auto',
+      FLEX_BASIS,
+      AUTO,
     ],
   ],
   'basis-full': [
     [
-      'flex-basis',
-      '100%',
+      FLEX_BASIS,
+      V_100_PERCENT,
     ],
   ],
   'basis-px': [
     [
-      'flex-basis',
-      '1px',
+      FLEX_BASIS,
+      V_1PX,
     ],
   ],
   'bg-auto': [
     [
-      'background-size',
-      'auto',
+      BACKGROUND_SIZE,
+      AUTO,
     ],
   ],
   'bg-blend-color': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'color',
     ],
   ],
   'bg-blend-color-burn': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'color-burn',
     ],
   ],
   'bg-blend-color-dodge': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'color-dodge',
     ],
   ],
   'bg-blend-darken': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'darken',
     ],
   ],
   'bg-blend-difference': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'difference',
     ],
   ],
   'bg-blend-exclusion': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'exclusion',
     ],
   ],
   'bg-blend-hard-light': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'hard-light',
     ],
   ],
   'bg-blend-hue': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'hue',
     ],
   ],
   'bg-blend-lighten': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'lighten',
     ],
   ],
   'bg-blend-luminosity': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'luminosity',
     ],
   ],
   'bg-blend-multiply': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'multiply',
     ],
   ],
   'bg-blend-normal': [
     [
-      'background-blend-mode',
-      'normal',
+      BACKGROUND_BLEND_MODE,
+      NORMAL,
     ],
   ],
   'bg-blend-overlay': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'overlay',
     ],
   ],
   'bg-blend-saturation': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'saturation',
     ],
   ],
   'bg-blend-screen': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'screen',
     ],
   ],
   'bg-blend-soft-light': [
     [
-      'background-blend-mode',
+      BACKGROUND_BLEND_MODE,
       'soft-light',
     ],
   ],
   'bg-bottom': [
     [
-      'background-position',
-      'bottom',
+      BACKGROUND_POSITION,
+      BOTTOM,
     ],
   ],
   'bg-bottom-left': [
     [
-      'background-position',
-      'left bottom',
+      BACKGROUND_POSITION,
+      LEFT_BOTTOM,
     ],
   ],
   'bg-bottom-right': [
     [
-      'background-position',
-      'right bottom',
+      BACKGROUND_POSITION,
+      RIGHT_BOTTOM,
     ],
   ],
   'bg-center': [
     [
-      'background-position',
-      'center',
+      BACKGROUND_POSITION,
+      CENTER,
     ],
   ],
   'bg-clip-border': [
     [
-      'background-clip',
-      'border-box',
+      BACKGROUND_CLIP,
+      BORDER_BOX,
     ],
   ],
   'bg-clip-content': [
     [
-      'background-clip',
-      'content-box',
+      BACKGROUND_CLIP,
+      CONTENT_BOX,
     ],
   ],
   'bg-clip-padding': [
     [
-      'background-clip',
-      'padding-box',
+      BACKGROUND_CLIP,
+      PADDING_BOX,
     ],
   ],
   'bg-clip-text': [
     [
-      'background-clip',
-      'text',
+      BACKGROUND_CLIP,
+      TEXT,
     ],
   ],
   'bg-contain': [
     [
-      'background-size',
-      'contain',
+      BACKGROUND_SIZE,
+      CONTAIN,
     ],
   ],
   'bg-cover': [
     [
-      'background-size',
-      'cover',
+      BACKGROUND_SIZE,
+      COVER,
     ],
   ],
   'bg-fixed': [
     [
-      'background-attachment',
-      'fixed',
+      BACKGROUND_ATTACHMENT,
+      FIXED,
     ],
   ],
   'bg-gradient-to-b': [
     [
-      '--tw-gradient-position',
+      TW_GRADIENT_POSITION,
       'to bottom in oklab',
     ],
     [
-      'background-image',
-      'linear-gradient(var(--tw-gradient-stops))',
+      BACKGROUND_IMAGE,
+      LINEAR_GRADIENT_VAR_TW_GRADIENT_STOPS,
     ],
   ],
   'bg-gradient-to-bl': [
     [
-      '--tw-gradient-position',
+      TW_GRADIENT_POSITION,
       'to bottom left in oklab',
     ],
     [
-      'background-image',
-      'linear-gradient(var(--tw-gradient-stops))',
+      BACKGROUND_IMAGE,
+      LINEAR_GRADIENT_VAR_TW_GRADIENT_STOPS,
     ],
   ],
   'bg-gradient-to-br': [
     [
-      '--tw-gradient-position',
+      TW_GRADIENT_POSITION,
       'to bottom right in oklab',
     ],
     [
-      'background-image',
-      'linear-gradient(var(--tw-gradient-stops))',
+      BACKGROUND_IMAGE,
+      LINEAR_GRADIENT_VAR_TW_GRADIENT_STOPS,
     ],
   ],
   'bg-gradient-to-l': [
     [
-      '--tw-gradient-position',
+      TW_GRADIENT_POSITION,
       'to left in oklab',
     ],
     [
-      'background-image',
-      'linear-gradient(var(--tw-gradient-stops))',
+      BACKGROUND_IMAGE,
+      LINEAR_GRADIENT_VAR_TW_GRADIENT_STOPS,
     ],
   ],
   'bg-gradient-to-r': [
     [
-      '--tw-gradient-position',
+      TW_GRADIENT_POSITION,
       'to right in oklab',
     ],
     [
-      'background-image',
-      'linear-gradient(var(--tw-gradient-stops))',
+      BACKGROUND_IMAGE,
+      LINEAR_GRADIENT_VAR_TW_GRADIENT_STOPS,
     ],
   ],
   'bg-gradient-to-t': [
     [
-      '--tw-gradient-position',
+      TW_GRADIENT_POSITION,
       'to top in oklab',
     ],
     [
-      'background-image',
-      'linear-gradient(var(--tw-gradient-stops))',
+      BACKGROUND_IMAGE,
+      LINEAR_GRADIENT_VAR_TW_GRADIENT_STOPS,
     ],
   ],
   'bg-gradient-to-tl': [
     [
-      '--tw-gradient-position',
+      TW_GRADIENT_POSITION,
       'to top left in oklab',
     ],
     [
-      'background-image',
-      'linear-gradient(var(--tw-gradient-stops))',
+      BACKGROUND_IMAGE,
+      LINEAR_GRADIENT_VAR_TW_GRADIENT_STOPS,
     ],
   ],
   'bg-gradient-to-tr': [
     [
-      '--tw-gradient-position',
+      TW_GRADIENT_POSITION,
       'to top right in oklab',
     ],
     [
-      'background-image',
-      'linear-gradient(var(--tw-gradient-stops))',
+      BACKGROUND_IMAGE,
+      LINEAR_GRADIENT_VAR_TW_GRADIENT_STOPS,
     ],
   ],
   'bg-left': [
     [
-      'background-position',
-      'left',
+      BACKGROUND_POSITION,
+      LEFT,
     ],
   ],
   'bg-left-bottom': [
     [
-      'background-position',
-      'left bottom',
+      BACKGROUND_POSITION,
+      LEFT_BOTTOM,
     ],
   ],
   'bg-left-top': [
     [
-      'background-position',
-      'left top',
+      BACKGROUND_POSITION,
+      LEFT_TOP,
     ],
   ],
   'bg-local': [
     [
-      'background-attachment',
+      BACKGROUND_ATTACHMENT,
       'local',
     ],
   ],
   'bg-no-repeat': [
     [
-      'background-repeat',
+      BACKGROUND_REPEAT,
       'no-repeat',
     ],
   ],
   'bg-none': [
     [
-      'background-image',
-      'none',
+      BACKGROUND_IMAGE,
+      NONE,
     ],
   ],
   'bg-origin-border': [
     [
-      'background-origin',
-      'border-box',
+      BACKGROUND_ORIGIN,
+      BORDER_BOX,
     ],
   ],
   'bg-origin-content': [
     [
-      'background-origin',
-      'content-box',
+      BACKGROUND_ORIGIN,
+      CONTENT_BOX,
     ],
   ],
   'bg-origin-padding': [
     [
-      'background-origin',
-      'padding-box',
+      BACKGROUND_ORIGIN,
+      PADDING_BOX,
     ],
   ],
   'bg-repeat': [
     [
-      'background-repeat',
+      BACKGROUND_REPEAT,
       'repeat',
     ],
   ],
   'bg-repeat-round': [
     [
-      'background-repeat',
+      BACKGROUND_REPEAT,
       'round',
     ],
   ],
   'bg-repeat-space': [
     [
-      'background-repeat',
+      BACKGROUND_REPEAT,
       'space',
     ],
   ],
   'bg-repeat-x': [
     [
-      'background-repeat',
+      BACKGROUND_REPEAT,
       'repeat-x',
     ],
   ],
   'bg-repeat-y': [
     [
-      'background-repeat',
+      BACKGROUND_REPEAT,
       'repeat-y',
     ],
   ],
   'bg-right': [
     [
-      'background-position',
-      'right',
+      BACKGROUND_POSITION,
+      RIGHT,
     ],
   ],
   'bg-right-bottom': [
     [
-      'background-position',
-      'right bottom',
+      BACKGROUND_POSITION,
+      RIGHT_BOTTOM,
     ],
   ],
   'bg-right-top': [
     [
-      'background-position',
-      'right top',
+      BACKGROUND_POSITION,
+      RIGHT_TOP,
     ],
   ],
   'bg-scroll': [
     [
-      'background-attachment',
-      'scroll',
+      BACKGROUND_ATTACHMENT,
+      SCROLL,
     ],
   ],
   'bg-top': [
     [
-      'background-position',
-      'top',
+      BACKGROUND_POSITION,
+      TOP,
     ],
   ],
   'bg-top-left': [
     [
-      'background-position',
-      'left top',
+      BACKGROUND_POSITION,
+      LEFT_TOP,
     ],
   ],
   'bg-top-right': [
     [
-      'background-position',
-      'right top',
+      BACKGROUND_POSITION,
+      RIGHT_TOP,
     ],
   ],
   'block': [
     [
-      'display',
+      DISPLAY,
       'block',
     ],
   ],
   'block-auto': [
     [
-      'block-size',
-      'auto',
+      BLOCK_SIZE,
+      AUTO,
     ],
   ],
   'block-dvh': [
     [
-      'block-size',
-      '100dvh',
+      BLOCK_SIZE,
+      V_100DVH,
     ],
   ],
   'block-fit': [
     [
-      'block-size',
-      'fit-content',
+      BLOCK_SIZE,
+      FIT_CONTENT,
     ],
   ],
   'block-full': [
     [
-      'block-size',
-      '100%',
+      BLOCK_SIZE,
+      V_100_PERCENT,
     ],
   ],
   'block-lh': [
     [
-      'block-size',
-      '1lh',
+      BLOCK_SIZE,
+      V_1LH,
     ],
   ],
   'block-lvh': [
     [
-      'block-size',
-      '100lvh',
+      BLOCK_SIZE,
+      V_100LVH,
     ],
   ],
   'block-max': [
     [
-      'block-size',
-      'max-content',
+      BLOCK_SIZE,
+      MAX_CONTENT,
     ],
   ],
   'block-min': [
     [
-      'block-size',
-      'min-content',
+      BLOCK_SIZE,
+      MIN_CONTENT,
     ],
   ],
   'block-px': [
     [
-      'block-size',
-      '1px',
+      BLOCK_SIZE,
+      V_1PX,
     ],
   ],
   'block-screen': [
     [
-      'block-size',
-      '100vh',
+      BLOCK_SIZE,
+      V_100VH,
     ],
   ],
   'block-svh': [
     [
-      'block-size',
-      '100svh',
+      BLOCK_SIZE,
+      V_100SVH,
     ],
   ],
   'border-collapse': [
@@ -574,52 +778,52 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'border-dashed': [
     [
-      '--tw-border-style',
-      'dashed',
+      TW_BORDER_STYLE,
+      DASHED,
     ],
     [
-      'border-style',
-      'dashed',
+      BORDER_STYLE,
+      DASHED,
     ],
   ],
   'border-dotted': [
     [
-      '--tw-border-style',
-      'dotted',
+      TW_BORDER_STYLE,
+      DOTTED,
     ],
     [
-      'border-style',
-      'dotted',
+      BORDER_STYLE,
+      DOTTED,
     ],
   ],
   'border-double': [
     [
-      '--tw-border-style',
-      'double',
+      TW_BORDER_STYLE,
+      DOUBLE,
     ],
     [
-      'border-style',
-      'double',
+      BORDER_STYLE,
+      DOUBLE,
     ],
   ],
   'border-hidden': [
     [
-      '--tw-border-style',
-      'hidden',
+      TW_BORDER_STYLE,
+      HIDDEN,
     ],
     [
-      'border-style',
-      'hidden',
+      BORDER_STYLE,
+      HIDDEN,
     ],
   ],
   'border-none': [
     [
-      '--tw-border-style',
-      'none',
+      TW_BORDER_STYLE,
+      NONE,
     ],
     [
-      'border-style',
-      'none',
+      BORDER_STYLE,
+      NONE,
     ],
   ],
   'border-separate': [
@@ -630,320 +834,320 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'border-solid': [
     [
-      '--tw-border-style',
-      'solid',
+      TW_BORDER_STYLE,
+      SOLID,
     ],
     [
-      'border-style',
-      'solid',
+      BORDER_STYLE,
+      SOLID,
     ],
   ],
   'border-spacing-px': [
     [
       '--tw-border-spacing-x',
-      '1px',
+      V_1PX,
     ],
     [
       '--tw-border-spacing-y',
-      '1px',
+      V_1PX,
     ],
     [
-      'border-spacing',
-      'var(--tw-border-spacing-x) var(--tw-border-spacing-y)',
+      BORDER_SPACING,
+      VAR_TW_BORDER_SPACING_X_VAR_TW_BORDER_SPACING_Y,
     ],
   ],
   'border-spacing-x-px': [
     [
       '--tw-border-spacing-x',
-      '1px',
+      V_1PX,
     ],
     [
-      'border-spacing',
-      'var(--tw-border-spacing-x) var(--tw-border-spacing-y)',
+      BORDER_SPACING,
+      VAR_TW_BORDER_SPACING_X_VAR_TW_BORDER_SPACING_Y,
     ],
   ],
   'border-spacing-y-px': [
     [
       '--tw-border-spacing-y',
-      '1px',
+      V_1PX,
     ],
     [
-      'border-spacing',
-      'var(--tw-border-spacing-x) var(--tw-border-spacing-y)',
+      BORDER_SPACING,
+      VAR_TW_BORDER_SPACING_X_VAR_TW_BORDER_SPACING_Y,
     ],
   ],
   'bottom-auto': [
     [
-      'bottom',
-      'auto',
+      BOTTOM,
+      AUTO,
     ],
   ],
   'bottom-full': [
     [
-      'bottom',
-      '100%',
+      BOTTOM,
+      V_100_PERCENT,
     ],
   ],
   'bottom-px': [
     [
-      'bottom',
-      '1px',
+      BOTTOM,
+      V_1PX,
     ],
   ],
   'box-border': [
     [
       'box-sizing',
-      'border-box',
+      BORDER_BOX,
     ],
   ],
   'box-content': [
     [
       'box-sizing',
-      'content-box',
+      CONTENT_BOX,
     ],
   ],
   'box-decoration-clone': [
     [
-      '-webkit-box-decoration-break',
-      'clone',
+      WEBKIT_BOX_DECORATION_BREAK,
+      CLONE,
     ],
     [
-      'box-decoration-break',
-      'clone',
+      BOX_DECORATION_BREAK,
+      CLONE,
     ],
   ],
   'box-decoration-slice': [
     [
-      '-webkit-box-decoration-break',
-      'slice',
+      WEBKIT_BOX_DECORATION_BREAK,
+      SLICE,
     ],
     [
-      'box-decoration-break',
-      'slice',
+      BOX_DECORATION_BREAK,
+      SLICE,
     ],
   ],
   'break-after-all': [
     [
-      'break-after',
-      'all',
+      BREAK_AFTER,
+      ALL,
     ],
   ],
   'break-after-auto': [
     [
-      'break-after',
-      'auto',
+      BREAK_AFTER,
+      AUTO,
     ],
   ],
   'break-after-avoid': [
     [
-      'break-after',
-      'avoid',
+      BREAK_AFTER,
+      AVOID,
     ],
   ],
   'break-after-avoid-page': [
     [
-      'break-after',
-      'avoid-page',
+      BREAK_AFTER,
+      AVOID_PAGE,
     ],
   ],
   'break-after-column': [
     [
-      'break-after',
-      'column',
+      BREAK_AFTER,
+      COLUMN,
     ],
   ],
   'break-after-left': [
     [
-      'break-after',
-      'left',
+      BREAK_AFTER,
+      LEFT,
     ],
   ],
   'break-after-page': [
     [
-      'break-after',
+      BREAK_AFTER,
       'page',
     ],
   ],
   'break-after-right': [
     [
-      'break-after',
-      'right',
+      BREAK_AFTER,
+      RIGHT,
     ],
   ],
   'break-all': [
     [
-      'word-break',
+      WORD_BREAK,
       'break-all',
     ],
   ],
   'break-before-all': [
     [
-      'break-before',
-      'all',
+      BREAK_BEFORE,
+      ALL,
     ],
   ],
   'break-before-auto': [
     [
-      'break-before',
-      'auto',
+      BREAK_BEFORE,
+      AUTO,
     ],
   ],
   'break-before-avoid': [
     [
-      'break-before',
-      'avoid',
+      BREAK_BEFORE,
+      AVOID,
     ],
   ],
   'break-before-avoid-page': [
     [
-      'break-before',
-      'avoid-page',
+      BREAK_BEFORE,
+      AVOID_PAGE,
     ],
   ],
   'break-before-column': [
     [
-      'break-before',
-      'column',
+      BREAK_BEFORE,
+      COLUMN,
     ],
   ],
   'break-before-left': [
     [
-      'break-before',
-      'left',
+      BREAK_BEFORE,
+      LEFT,
     ],
   ],
   'break-before-page': [
     [
-      'break-before',
+      BREAK_BEFORE,
       'page',
     ],
   ],
   'break-before-right': [
     [
-      'break-before',
-      'right',
+      BREAK_BEFORE,
+      RIGHT,
     ],
   ],
   'break-inside-auto': [
     [
-      'break-inside',
-      'auto',
+      BREAK_INSIDE,
+      AUTO,
     ],
   ],
   'break-inside-avoid': [
     [
-      'break-inside',
-      'avoid',
+      BREAK_INSIDE,
+      AVOID,
     ],
   ],
   'break-inside-avoid-column': [
     [
-      'break-inside',
+      BREAK_INSIDE,
       'avoid-column',
     ],
   ],
   'break-inside-avoid-page': [
     [
-      'break-inside',
-      'avoid-page',
+      BREAK_INSIDE,
+      AVOID_PAGE,
     ],
   ],
   'break-keep': [
     [
-      'word-break',
+      WORD_BREAK,
       'keep-all',
     ],
   ],
   'break-normal': [
     [
-      'overflow-wrap',
-      'normal',
+      OVERFLOW_WRAP,
+      NORMAL,
     ],
     [
-      'word-break',
-      'normal',
+      WORD_BREAK,
+      NORMAL,
     ],
   ],
   'break-words': [
     [
-      'overflow-wrap',
+      OVERFLOW_WRAP,
       'break-word',
     ],
   ],
   'capitalize': [
     [
-      'text-transform',
+      TEXT_TRANSFORM,
       'capitalize',
     ],
   ],
   'caption-bottom': [
     [
       'caption-side',
-      'bottom',
+      BOTTOM,
     ],
   ],
   'caption-top': [
     [
       'caption-side',
-      'top',
+      TOP,
     ],
   ],
   'clear-both': [
     [
-      'clear',
+      CLEAR,
       'both',
     ],
   ],
   'clear-end': [
     [
-      'clear',
+      CLEAR,
       'inline-end',
     ],
   ],
   'clear-left': [
     [
-      'clear',
-      'left',
+      CLEAR,
+      LEFT,
     ],
   ],
   'clear-none': [
     [
-      'clear',
-      'none',
+      CLEAR,
+      NONE,
     ],
   ],
   'clear-right': [
     [
-      'clear',
-      'right',
+      CLEAR,
+      RIGHT,
     ],
   ],
   'clear-start': [
     [
-      'clear',
+      CLEAR,
       'inline-start',
     ],
   ],
   'collapse': [
     [
-      'visibility',
+      VISIBILITY,
       'collapse',
     ],
   ],
   'contain-content': [
     [
-      'contain',
-      'content',
+      CONTAIN,
+      CONTENT,
     ],
   ],
   'contain-inline-size': [
     [
       '--tw-contain-size',
-      'inline-size',
+      INLINE_SIZE,
     ],
     [
-      'contain',
-      'var(--tw-contain-size,) var(--tw-contain-layout,) var(--tw-contain-paint,) var(--tw-contain-style,)',
+      CONTAIN,
+      VAR_TW_CONTAIN_SIZE_VAR_TW_CONTAIN_LAYOUT_VAR_TW_CONTAIN_PAINT_VAR_TW_CONTAIN_STYLE,
     ],
   ],
   'contain-layout': [
@@ -952,14 +1156,14 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
       'layout',
     ],
     [
-      'contain',
-      'var(--tw-contain-size,) var(--tw-contain-layout,) var(--tw-contain-paint,) var(--tw-contain-style,)',
+      CONTAIN,
+      VAR_TW_CONTAIN_SIZE_VAR_TW_CONTAIN_LAYOUT_VAR_TW_CONTAIN_PAINT_VAR_TW_CONTAIN_STYLE,
     ],
   ],
   'contain-none': [
     [
-      'contain',
-      'none',
+      CONTAIN,
+      NONE,
     ],
   ],
   'contain-paint': [
@@ -968,8 +1172,8 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
       'paint',
     ],
     [
-      'contain',
-      'var(--tw-contain-size,) var(--tw-contain-layout,) var(--tw-contain-paint,) var(--tw-contain-style,)',
+      CONTAIN,
+      VAR_TW_CONTAIN_SIZE_VAR_TW_CONTAIN_LAYOUT_VAR_TW_CONTAIN_PAINT_VAR_TW_CONTAIN_STYLE,
     ],
   ],
   'contain-size': [
@@ -978,13 +1182,13 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
       'size',
     ],
     [
-      'contain',
-      'var(--tw-contain-size,) var(--tw-contain-layout,) var(--tw-contain-paint,) var(--tw-contain-style,)',
+      CONTAIN,
+      VAR_TW_CONTAIN_SIZE_VAR_TW_CONTAIN_LAYOUT_VAR_TW_CONTAIN_PAINT_VAR_TW_CONTAIN_STYLE,
     ],
   ],
   'contain-strict': [
     [
-      'contain',
+      CONTAIN,
       'strict',
     ],
   ],
@@ -994,340 +1198,340 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
       'style',
     ],
     [
-      'contain',
-      'var(--tw-contain-size,) var(--tw-contain-layout,) var(--tw-contain-paint,) var(--tw-contain-style,)',
+      CONTAIN,
+      VAR_TW_CONTAIN_SIZE_VAR_TW_CONTAIN_LAYOUT_VAR_TW_CONTAIN_PAINT_VAR_TW_CONTAIN_STYLE,
     ],
   ],
   'content-around': [
     [
-      'align-content',
-      'space-around',
+      ALIGN_CONTENT,
+      SPACE_AROUND,
     ],
   ],
   'content-baseline': [
     [
-      'align-content',
-      'baseline',
+      ALIGN_CONTENT,
+      BASELINE,
     ],
   ],
   'content-between': [
     [
-      'align-content',
-      'space-between',
+      ALIGN_CONTENT,
+      SPACE_BETWEEN,
     ],
   ],
   'content-center': [
     [
-      'align-content',
-      'center',
+      ALIGN_CONTENT,
+      CENTER,
     ],
   ],
   'content-center-safe': [
     [
-      'align-content',
-      'safe center',
+      ALIGN_CONTENT,
+      SAFE_CENTER,
     ],
   ],
   'content-end': [
     [
-      'align-content',
-      'flex-end',
+      ALIGN_CONTENT,
+      FLEX_END,
     ],
   ],
   'content-end-safe': [
     [
-      'align-content',
-      'safe flex-end',
+      ALIGN_CONTENT,
+      SAFE_FLEX_END,
     ],
   ],
   'content-evenly': [
     [
-      'align-content',
-      'space-evenly',
+      ALIGN_CONTENT,
+      SPACE_EVENLY,
     ],
   ],
   'content-none': [
     [
       '--tw-content',
-      'none',
+      NONE,
     ],
     [
-      'content',
-      'none',
+      CONTENT,
+      NONE,
     ],
   ],
   'content-normal': [
     [
-      'align-content',
-      'normal',
+      ALIGN_CONTENT,
+      NORMAL,
     ],
   ],
   'content-start': [
     [
-      'align-content',
-      'flex-start',
+      ALIGN_CONTENT,
+      FLEX_START,
     ],
   ],
   'content-stretch': [
     [
-      'align-content',
-      'stretch',
+      ALIGN_CONTENT,
+      STRETCH,
     ],
   ],
   'contents': [
     [
-      'display',
+      DISPLAY,
       'contents',
     ],
   ],
   'cursor-alias': [
     [
-      'cursor',
+      CURSOR,
       'alias',
     ],
   ],
   'cursor-all-scroll': [
     [
-      'cursor',
+      CURSOR,
       'all-scroll',
     ],
   ],
   'cursor-auto': [
     [
-      'cursor',
-      'auto',
+      CURSOR,
+      AUTO,
     ],
   ],
   'cursor-cell': [
     [
-      'cursor',
+      CURSOR,
       'cell',
     ],
   ],
   'cursor-col-resize': [
     [
-      'cursor',
+      CURSOR,
       'col-resize',
     ],
   ],
   'cursor-context-menu': [
     [
-      'cursor',
+      CURSOR,
       'context-menu',
     ],
   ],
   'cursor-copy': [
     [
-      'cursor',
+      CURSOR,
       'copy',
     ],
   ],
   'cursor-crosshair': [
     [
-      'cursor',
+      CURSOR,
       'crosshair',
     ],
   ],
   'cursor-default': [
     [
-      'cursor',
+      CURSOR,
       'default',
     ],
   ],
   'cursor-e-resize': [
     [
-      'cursor',
+      CURSOR,
       'e-resize',
     ],
   ],
   'cursor-ew-resize': [
     [
-      'cursor',
+      CURSOR,
       'ew-resize',
     ],
   ],
   'cursor-grab': [
     [
-      'cursor',
+      CURSOR,
       'grab',
     ],
   ],
   'cursor-grabbing': [
     [
-      'cursor',
+      CURSOR,
       'grabbing',
     ],
   ],
   'cursor-help': [
     [
-      'cursor',
+      CURSOR,
       'help',
     ],
   ],
   'cursor-move': [
     [
-      'cursor',
+      CURSOR,
       'move',
     ],
   ],
   'cursor-n-resize': [
     [
-      'cursor',
+      CURSOR,
       'n-resize',
     ],
   ],
   'cursor-ne-resize': [
     [
-      'cursor',
+      CURSOR,
       'ne-resize',
     ],
   ],
   'cursor-nesw-resize': [
     [
-      'cursor',
+      CURSOR,
       'nesw-resize',
     ],
   ],
   'cursor-no-drop': [
     [
-      'cursor',
+      CURSOR,
       'no-drop',
     ],
   ],
   'cursor-none': [
     [
-      'cursor',
-      'none',
+      CURSOR,
+      NONE,
     ],
   ],
   'cursor-not-allowed': [
     [
-      'cursor',
+      CURSOR,
       'not-allowed',
     ],
   ],
   'cursor-ns-resize': [
     [
-      'cursor',
+      CURSOR,
       'ns-resize',
     ],
   ],
   'cursor-nw-resize': [
     [
-      'cursor',
+      CURSOR,
       'nw-resize',
     ],
   ],
   'cursor-nwse-resize': [
     [
-      'cursor',
+      CURSOR,
       'nwse-resize',
     ],
   ],
   'cursor-pointer': [
     [
-      'cursor',
+      CURSOR,
       'pointer',
     ],
   ],
   'cursor-progress': [
     [
-      'cursor',
+      CURSOR,
       'progress',
     ],
   ],
   'cursor-row-resize': [
     [
-      'cursor',
+      CURSOR,
       'row-resize',
     ],
   ],
   'cursor-s-resize': [
     [
-      'cursor',
+      CURSOR,
       's-resize',
     ],
   ],
   'cursor-se-resize': [
     [
-      'cursor',
+      CURSOR,
       'se-resize',
     ],
   ],
   'cursor-sw-resize': [
     [
-      'cursor',
+      CURSOR,
       'sw-resize',
     ],
   ],
   'cursor-text': [
     [
-      'cursor',
-      'text',
+      CURSOR,
+      TEXT,
     ],
   ],
   'cursor-vertical-text': [
     [
-      'cursor',
+      CURSOR,
       'vertical-text',
     ],
   ],
   'cursor-w-resize': [
     [
-      'cursor',
+      CURSOR,
       'w-resize',
     ],
   ],
   'cursor-wait': [
     [
-      'cursor',
+      CURSOR,
       'wait',
     ],
   ],
   'cursor-zoom-in': [
     [
-      'cursor',
+      CURSOR,
       'zoom-in',
     ],
   ],
   'cursor-zoom-out': [
     [
-      'cursor',
+      CURSOR,
       'zoom-out',
     ],
   ],
   'decoration-auto': [
     [
       'text-decoration-thickness',
-      'auto',
+      AUTO,
     ],
   ],
   'decoration-clone': [
     [
-      '-webkit-box-decoration-break',
-      'clone',
+      WEBKIT_BOX_DECORATION_BREAK,
+      CLONE,
     ],
     [
-      'box-decoration-break',
-      'clone',
+      BOX_DECORATION_BREAK,
+      CLONE,
     ],
   ],
   'decoration-dashed': [
     [
-      'text-decoration-style',
-      'dashed',
+      TEXT_DECORATION_STYLE,
+      DASHED,
     ],
   ],
   'decoration-dotted': [
     [
-      'text-decoration-style',
-      'dotted',
+      TEXT_DECORATION_STYLE,
+      DOTTED,
     ],
   ],
   'decoration-double': [
     [
-      'text-decoration-style',
-      'double',
+      TEXT_DECORATION_STYLE,
+      DOUBLE,
     ],
   ],
   'decoration-from-font': [
@@ -1338,23 +1542,23 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'decoration-slice': [
     [
-      '-webkit-box-decoration-break',
-      'slice',
+      WEBKIT_BOX_DECORATION_BREAK,
+      SLICE,
     ],
     [
-      'box-decoration-break',
-      'slice',
+      BOX_DECORATION_BREAK,
+      SLICE,
     ],
   ],
   'decoration-solid': [
     [
-      'text-decoration-style',
-      'solid',
+      TEXT_DECORATION_STYLE,
+      SOLID,
     ],
   ],
   'decoration-wavy': [
     [
-      'text-decoration-style',
+      TEXT_DECORATION_STYLE,
       'wavy',
     ],
   ],
@@ -1364,8 +1568,8 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
       'diagonal-fractions',
     ],
     [
-      'font-variant-numeric',
-      'var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)',
+      FONT_VARIANT_NUMERIC,
+      VAR_TW_ORDINAL_VAR_TW_SLASHED_ZERO_VAR_TW_NUMERIC_FIGURE_VAR_TW_NUMERIC_SPACING_VAR_TW_NUMERIC_FRACTION,
     ],
   ],
   'drop-shadow-none': [
@@ -1381,625 +1585,625 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   'duration-initial': [
     [
       '--tw-duration',
-      'initial',
+      INITIAL,
     ],
   ],
   'end-auto': [
     [
-      'inset-inline-end',
-      'auto',
+      INSET_INLINE_END,
+      AUTO,
     ],
   ],
   'end-full': [
     [
-      'inset-inline-end',
-      '100%',
+      INSET_INLINE_END,
+      V_100_PERCENT,
     ],
   ],
   'end-px': [
     [
-      'inset-inline-end',
-      '1px',
+      INSET_INLINE_END,
+      V_1PX,
     ],
   ],
   'field-sizing-content': [
     [
       'field-sizing',
-      'content',
+      CONTENT,
     ],
   ],
   'field-sizing-fixed': [
     [
       'field-sizing',
-      'fixed',
+      FIXED,
     ],
   ],
   'fill-none': [
     [
       'fill',
-      'none',
+      NONE,
     ],
   ],
   'fixed': [
     [
-      'position',
-      'fixed',
+      POSITION,
+      FIXED,
     ],
   ],
   'flex': [
     [
-      'display',
-      'flex',
+      DISPLAY,
+      FLEX,
     ],
   ],
   'flex-auto': [
     [
-      'flex',
-      'auto',
+      FLEX,
+      AUTO,
     ],
   ],
   'flex-col': [
     [
-      'flex-direction',
-      'column',
+      FLEX_DIRECTION,
+      COLUMN,
     ],
   ],
   'flex-col-reverse': [
     [
-      'flex-direction',
+      FLEX_DIRECTION,
       'column-reverse',
     ],
   ],
   'flex-initial': [
     [
-      'flex',
+      FLEX,
       '0 auto',
     ],
   ],
   'flex-none': [
     [
-      'flex',
-      'none',
+      FLEX,
+      NONE,
     ],
   ],
   'flex-nowrap': [
     [
-      'flex-wrap',
-      'nowrap',
+      FLEX_WRAP,
+      NOWRAP,
     ],
   ],
   'flex-row': [
     [
-      'flex-direction',
+      FLEX_DIRECTION,
       'row',
     ],
   ],
   'flex-row-reverse': [
     [
-      'flex-direction',
+      FLEX_DIRECTION,
       'row-reverse',
     ],
   ],
   'flex-wrap': [
     [
-      'flex-wrap',
+      FLEX_WRAP,
       'wrap',
     ],
   ],
   'flex-wrap-reverse': [
     [
-      'flex-wrap',
+      FLEX_WRAP,
       'wrap-reverse',
     ],
   ],
   'float-end': [
     [
-      'float',
+      FLOAT,
       'inline-end',
     ],
   ],
   'float-left': [
     [
-      'float',
-      'left',
+      FLOAT,
+      LEFT,
     ],
   ],
   'float-none': [
     [
-      'float',
-      'none',
+      FLOAT,
+      NONE,
     ],
   ],
   'float-right': [
     [
-      'float',
-      'right',
+      FLOAT,
+      RIGHT,
     ],
   ],
   'float-start': [
     [
-      'float',
+      FLOAT,
       'inline-start',
     ],
   ],
   'flow-root': [
     [
-      'display',
+      DISPLAY,
       'flow-root',
     ],
   ],
   'font-stretch-condensed': [
     [
-      'font-stretch',
+      FONT_STRETCH,
       'condensed',
     ],
   ],
   'font-stretch-expanded': [
     [
-      'font-stretch',
+      FONT_STRETCH,
       'expanded',
     ],
   ],
   'font-stretch-extra-condensed': [
     [
-      'font-stretch',
+      FONT_STRETCH,
       'extra-condensed',
     ],
   ],
   'font-stretch-extra-expanded': [
     [
-      'font-stretch',
+      FONT_STRETCH,
       'extra-expanded',
     ],
   ],
   'font-stretch-normal': [
     [
-      'font-stretch',
-      'normal',
+      FONT_STRETCH,
+      NORMAL,
     ],
   ],
   'font-stretch-semi-condensed': [
     [
-      'font-stretch',
+      FONT_STRETCH,
       'semi-condensed',
     ],
   ],
   'font-stretch-semi-expanded': [
     [
-      'font-stretch',
+      FONT_STRETCH,
       'semi-expanded',
     ],
   ],
   'font-stretch-ultra-condensed': [
     [
-      'font-stretch',
+      FONT_STRETCH,
       'ultra-condensed',
     ],
   ],
   'font-stretch-ultra-expanded': [
     [
-      'font-stretch',
+      FONT_STRETCH,
       'ultra-expanded',
     ],
   ],
   'forced-color-adjust-auto': [
     [
       'forced-color-adjust',
-      'auto',
+      AUTO,
     ],
   ],
   'forced-color-adjust-none': [
     [
       'forced-color-adjust',
-      'none',
+      NONE,
     ],
   ],
   'gap-px': [
     [
       'gap',
-      '1px',
+      V_1PX,
     ],
   ],
   'gap-x-px': [
     [
       'column-gap',
-      '1px',
+      V_1PX,
     ],
   ],
   'gap-y-px': [
     [
       'row-gap',
-      '1px',
+      V_1PX,
     ],
   ],
   'grid': [
     [
-      'display',
+      DISPLAY,
       'grid',
     ],
   ],
   'grid-flow-col': [
     [
-      'grid-auto-flow',
-      'column',
+      GRID_AUTO_FLOW,
+      COLUMN,
     ],
   ],
   'grid-flow-col-dense': [
     [
-      'grid-auto-flow',
+      GRID_AUTO_FLOW,
       'column dense',
     ],
   ],
   'grid-flow-dense': [
     [
-      'grid-auto-flow',
+      GRID_AUTO_FLOW,
       'dense',
     ],
   ],
   'grid-flow-row': [
     [
-      'grid-auto-flow',
+      GRID_AUTO_FLOW,
       'row',
     ],
   ],
   'grid-flow-row-dense': [
     [
-      'grid-auto-flow',
+      GRID_AUTO_FLOW,
       'row dense',
     ],
   ],
   'h-auto': [
     [
-      'height',
-      'auto',
+      HEIGHT,
+      AUTO,
     ],
   ],
   'h-dvh': [
     [
-      'height',
-      '100dvh',
+      HEIGHT,
+      V_100DVH,
     ],
   ],
   'h-dvw': [
     [
-      'height',
-      '100dvw',
+      HEIGHT,
+      V_100DVW,
     ],
   ],
   'h-fit': [
     [
-      'height',
-      'fit-content',
+      HEIGHT,
+      FIT_CONTENT,
     ],
   ],
   'h-full': [
     [
-      'height',
-      '100%',
+      HEIGHT,
+      V_100_PERCENT,
     ],
   ],
   'h-lh': [
     [
-      'height',
-      '1lh',
+      HEIGHT,
+      V_1LH,
     ],
   ],
   'h-lvh': [
     [
-      'height',
-      '100lvh',
+      HEIGHT,
+      V_100LVH,
     ],
   ],
   'h-lvw': [
     [
-      'height',
-      '100lvw',
+      HEIGHT,
+      V_100LVW,
     ],
   ],
   'h-max': [
     [
-      'height',
-      'max-content',
+      HEIGHT,
+      MAX_CONTENT,
     ],
   ],
   'h-min': [
     [
-      'height',
-      'min-content',
+      HEIGHT,
+      MIN_CONTENT,
     ],
   ],
   'h-px': [
     [
-      'height',
-      '1px',
+      HEIGHT,
+      V_1PX,
     ],
   ],
   'h-screen': [
     [
-      'height',
-      '100vh',
+      HEIGHT,
+      V_100VH,
     ],
   ],
   'h-svh': [
     [
-      'height',
-      '100svh',
+      HEIGHT,
+      V_100SVH,
     ],
   ],
   'h-svw': [
     [
-      'height',
-      '100svw',
+      HEIGHT,
+      V_100SVW,
     ],
   ],
   'hidden': [
     [
-      'display',
-      'none',
+      DISPLAY,
+      NONE,
     ],
   ],
   'hyphens-auto': [
     [
-      '-webkit-hyphens',
-      'auto',
+      WEBKIT_HYPHENS,
+      AUTO,
     ],
     [
-      'hyphens',
-      'auto',
+      HYPHENS,
+      AUTO,
     ],
   ],
   'hyphens-manual': [
     [
-      '-webkit-hyphens',
+      WEBKIT_HYPHENS,
       'manual',
     ],
     [
-      'hyphens',
+      HYPHENS,
       'manual',
     ],
   ],
   'hyphens-none': [
     [
-      '-webkit-hyphens',
-      'none',
+      WEBKIT_HYPHENS,
+      NONE,
     ],
     [
-      'hyphens',
-      'none',
+      HYPHENS,
+      NONE,
     ],
   ],
   'indent-px': [
     [
       'text-indent',
-      '1px',
+      V_1PX,
     ],
   ],
   'inline': [
     [
-      'display',
+      DISPLAY,
       'inline',
     ],
   ],
   'inline-auto': [
     [
-      'inline-size',
-      'auto',
+      INLINE_SIZE,
+      AUTO,
     ],
   ],
   'inline-block': [
     [
-      'display',
+      DISPLAY,
       'inline-block',
     ],
   ],
   'inline-dvw': [
     [
-      'inline-size',
-      '100dvw',
+      INLINE_SIZE,
+      V_100DVW,
     ],
   ],
   'inline-fit': [
     [
-      'inline-size',
-      'fit-content',
+      INLINE_SIZE,
+      FIT_CONTENT,
     ],
   ],
   'inline-flex': [
     [
-      'display',
+      DISPLAY,
       'inline-flex',
     ],
   ],
   'inline-full': [
     [
-      'inline-size',
-      '100%',
+      INLINE_SIZE,
+      V_100_PERCENT,
     ],
   ],
   'inline-grid': [
     [
-      'display',
+      DISPLAY,
       'inline-grid',
     ],
   ],
   'inline-lvw': [
     [
-      'inline-size',
-      '100lvw',
+      INLINE_SIZE,
+      V_100LVW,
     ],
   ],
   'inline-max': [
     [
-      'inline-size',
-      'max-content',
+      INLINE_SIZE,
+      MAX_CONTENT,
     ],
   ],
   'inline-min': [
     [
-      'inline-size',
-      'min-content',
+      INLINE_SIZE,
+      MIN_CONTENT,
     ],
   ],
   'inline-px': [
     [
-      'inline-size',
-      '1px',
+      INLINE_SIZE,
+      V_1PX,
     ],
   ],
   'inline-screen': [
     [
-      'inline-size',
-      '100vw',
+      INLINE_SIZE,
+      V_100VW,
     ],
   ],
   'inline-svw': [
     [
-      'inline-size',
-      '100svw',
+      INLINE_SIZE,
+      V_100SVW,
     ],
   ],
   'inline-table': [
     [
-      'display',
+      DISPLAY,
       'inline-table',
     ],
   ],
   'inset-auto': [
     [
-      'inset',
-      'auto',
+      INSET,
+      AUTO,
     ],
   ],
   'inset-be-auto': [
     [
-      'inset-block-end',
-      'auto',
+      INSET_BLOCK_END,
+      AUTO,
     ],
   ],
   'inset-be-full': [
     [
-      'inset-block-end',
-      '100%',
+      INSET_BLOCK_END,
+      V_100_PERCENT,
     ],
   ],
   'inset-be-px': [
     [
-      'inset-block-end',
-      '1px',
+      INSET_BLOCK_END,
+      V_1PX,
     ],
   ],
   'inset-bs-auto': [
     [
-      'inset-block-start',
-      'auto',
+      INSET_BLOCK_START,
+      AUTO,
     ],
   ],
   'inset-bs-full': [
     [
-      'inset-block-start',
-      '100%',
+      INSET_BLOCK_START,
+      V_100_PERCENT,
     ],
   ],
   'inset-bs-px': [
     [
-      'inset-block-start',
-      '1px',
+      INSET_BLOCK_START,
+      V_1PX,
     ],
   ],
   'inset-e-auto': [
     [
-      'inset-inline-end',
-      'auto',
+      INSET_INLINE_END,
+      AUTO,
     ],
   ],
   'inset-e-full': [
     [
-      'inset-inline-end',
-      '100%',
+      INSET_INLINE_END,
+      V_100_PERCENT,
     ],
   ],
   'inset-e-px': [
     [
-      'inset-inline-end',
-      '1px',
+      INSET_INLINE_END,
+      V_1PX,
     ],
   ],
   'inset-full': [
     [
-      'inset',
-      '100%',
+      INSET,
+      V_100_PERCENT,
     ],
   ],
   'inset-px': [
     [
-      'inset',
-      '1px',
+      INSET,
+      V_1PX,
     ],
   ],
   'inset-s-auto': [
     [
-      'inset-inline-start',
-      'auto',
+      INSET_INLINE_START,
+      AUTO,
     ],
   ],
   'inset-s-full': [
     [
-      'inset-inline-start',
-      '100%',
+      INSET_INLINE_START,
+      V_100_PERCENT,
     ],
   ],
   'inset-s-px': [
     [
-      'inset-inline-start',
-      '1px',
+      INSET_INLINE_START,
+      V_1PX,
     ],
   ],
   'inset-shadow-initial': [
     [
       '--tw-inset-shadow-color',
-      'initial',
+      INITIAL,
     ],
   ],
   'inset-x-auto': [
     [
-      'inset-inline',
-      'auto',
+      INSET_INLINE,
+      AUTO,
     ],
   ],
   'inset-x-full': [
     [
-      'inset-inline',
-      '100%',
+      INSET_INLINE,
+      V_100_PERCENT,
     ],
   ],
   'inset-x-px': [
     [
-      'inset-inline',
-      '1px',
+      INSET_INLINE,
+      V_1PX,
     ],
   ],
   'inset-y-auto': [
     [
-      'inset-block',
-      'auto',
+      INSET_BLOCK,
+      AUTO,
     ],
   ],
   'inset-y-full': [
     [
-      'inset-block',
-      '100%',
+      INSET_BLOCK,
+      V_100_PERCENT,
     ],
   ],
   'inset-y-px': [
     [
-      'inset-block',
-      '1px',
+      INSET_BLOCK,
+      V_1PX,
     ],
   ],
   'invisible': [
     [
-      'visibility',
-      'hidden',
+      VISIBILITY,
+      HIDDEN,
     ],
   ],
   'isolate': [
@@ -2011,7 +2215,7 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   'isolation-auto': [
     [
       'isolation',
-      'auto',
+      AUTO,
     ],
   ],
   'italic': [
@@ -2022,233 +2226,233 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'items-baseline': [
     [
-      'align-items',
-      'baseline',
+      ALIGN_ITEMS,
+      BASELINE,
     ],
   ],
   'items-baseline-last': [
     [
-      'align-items',
+      ALIGN_ITEMS,
       'last baseline',
     ],
   ],
   'items-center': [
     [
-      'align-items',
-      'center',
+      ALIGN_ITEMS,
+      CENTER,
     ],
   ],
   'items-center-safe': [
     [
-      'align-items',
-      'safe center',
+      ALIGN_ITEMS,
+      SAFE_CENTER,
     ],
   ],
   'items-end': [
     [
-      'align-items',
-      'flex-end',
+      ALIGN_ITEMS,
+      FLEX_END,
     ],
   ],
   'items-end-safe': [
     [
-      'align-items',
-      'safe flex-end',
+      ALIGN_ITEMS,
+      SAFE_FLEX_END,
     ],
   ],
   'items-start': [
     [
-      'align-items',
-      'flex-start',
+      ALIGN_ITEMS,
+      FLEX_START,
     ],
   ],
   'items-stretch': [
     [
-      'align-items',
-      'stretch',
+      ALIGN_ITEMS,
+      STRETCH,
     ],
   ],
   'justify-around': [
     [
-      'justify-content',
-      'space-around',
+      JUSTIFY_CONTENT,
+      SPACE_AROUND,
     ],
   ],
   'justify-baseline': [
     [
-      'justify-content',
-      'baseline',
+      JUSTIFY_CONTENT,
+      BASELINE,
     ],
   ],
   'justify-between': [
     [
-      'justify-content',
-      'space-between',
+      JUSTIFY_CONTENT,
+      SPACE_BETWEEN,
     ],
   ],
   'justify-center': [
     [
-      'justify-content',
-      'center',
+      JUSTIFY_CONTENT,
+      CENTER,
     ],
   ],
   'justify-center-safe': [
     [
-      'justify-content',
-      'safe center',
+      JUSTIFY_CONTENT,
+      SAFE_CENTER,
     ],
   ],
   'justify-end': [
     [
-      'justify-content',
-      'flex-end',
+      JUSTIFY_CONTENT,
+      FLEX_END,
     ],
   ],
   'justify-end-safe': [
     [
-      'justify-content',
-      'safe flex-end',
+      JUSTIFY_CONTENT,
+      SAFE_FLEX_END,
     ],
   ],
   'justify-evenly': [
     [
-      'justify-content',
-      'space-evenly',
+      JUSTIFY_CONTENT,
+      SPACE_EVENLY,
     ],
   ],
   'justify-items-center': [
     [
-      'justify-items',
-      'center',
+      JUSTIFY_ITEMS,
+      CENTER,
     ],
   ],
   'justify-items-center-safe': [
     [
-      'justify-items',
-      'safe center',
+      JUSTIFY_ITEMS,
+      SAFE_CENTER,
     ],
   ],
   'justify-items-end': [
     [
-      'justify-items',
-      'end',
+      JUSTIFY_ITEMS,
+      END,
     ],
   ],
   'justify-items-end-safe': [
     [
-      'justify-items',
-      'safe end',
+      JUSTIFY_ITEMS,
+      SAFE_END,
     ],
   ],
   'justify-items-normal': [
     [
-      'justify-items',
-      'normal',
+      JUSTIFY_ITEMS,
+      NORMAL,
     ],
   ],
   'justify-items-start': [
     [
-      'justify-items',
-      'start',
+      JUSTIFY_ITEMS,
+      START,
     ],
   ],
   'justify-items-stretch': [
     [
-      'justify-items',
-      'stretch',
+      JUSTIFY_ITEMS,
+      STRETCH,
     ],
   ],
   'justify-normal': [
     [
-      'justify-content',
-      'normal',
+      JUSTIFY_CONTENT,
+      NORMAL,
     ],
   ],
   'justify-self-auto': [
     [
-      'justify-self',
-      'auto',
+      JUSTIFY_SELF,
+      AUTO,
     ],
   ],
   'justify-self-center': [
     [
-      'justify-self',
-      'center',
+      JUSTIFY_SELF,
+      CENTER,
     ],
   ],
   'justify-self-center-safe': [
     [
-      'justify-self',
-      'safe center',
+      JUSTIFY_SELF,
+      SAFE_CENTER,
     ],
   ],
   'justify-self-end': [
     [
-      'justify-self',
-      'flex-end',
+      JUSTIFY_SELF,
+      FLEX_END,
     ],
   ],
   'justify-self-end-safe': [
     [
-      'justify-self',
-      'safe flex-end',
+      JUSTIFY_SELF,
+      SAFE_FLEX_END,
     ],
   ],
   'justify-self-start': [
     [
-      'justify-self',
-      'flex-start',
+      JUSTIFY_SELF,
+      FLEX_START,
     ],
   ],
   'justify-self-stretch': [
     [
-      'justify-self',
-      'stretch',
+      JUSTIFY_SELF,
+      STRETCH,
     ],
   ],
   'justify-start': [
     [
-      'justify-content',
-      'flex-start',
+      JUSTIFY_CONTENT,
+      FLEX_START,
     ],
   ],
   'justify-stretch': [
     [
-      'justify-content',
-      'stretch',
+      JUSTIFY_CONTENT,
+      STRETCH,
     ],
   ],
   'leading-px': [
     [
       '--tw-leading',
-      '1px',
+      V_1PX,
     ],
     [
       'line-height',
-      '1px',
+      V_1PX,
     ],
   ],
   'left-auto': [
     [
-      'left',
-      'auto',
+      LEFT,
+      AUTO,
     ],
   ],
   'left-full': [
     [
-      'left',
-      '100%',
+      LEFT,
+      V_100_PERCENT,
     ],
   ],
   'left-px': [
     [
-      'left',
-      '1px',
+      LEFT,
+      V_1PX,
     ],
   ],
   'line-through': [
     [
-      'text-decoration-line',
+      TEXT_DECORATION_LINE,
       'line-through',
     ],
   ],
@@ -2258,8 +2462,8 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
       'lining-nums',
     ],
     [
-      'font-variant-numeric',
-      'var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)',
+      FONT_VARIANT_NUMERIC,
+      VAR_TW_ORDINAL_VAR_TW_SLASHED_ZERO_VAR_TW_NUMERIC_FIGURE_VAR_TW_NUMERIC_SPACING_VAR_TW_NUMERIC_FRACTION,
     ],
   ],
   'list-inside': [
@@ -2270,7 +2474,7 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'list-item': [
     [
-      'display',
+      DISPLAY,
       'list-item',
     ],
   ],
@@ -2282,62 +2486,62 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'lowercase': [
     [
-      'text-transform',
+      TEXT_TRANSFORM,
       'lowercase',
     ],
   ],
   'm-auto': [
     [
-      'margin',
-      'auto',
+      MARGIN,
+      AUTO,
     ],
   ],
   'm-px': [
     [
-      'margin',
-      '1px',
+      MARGIN,
+      V_1PX,
     ],
   ],
   'mask-add': [
     [
-      'mask-composite',
+      MASK_COMPOSITE,
       'add',
     ],
   ],
   'mask-alpha': [
     [
-      'mask-mode',
+      MASK_MODE,
       'alpha',
     ],
   ],
   'mask-auto': [
     [
-      'mask-size',
-      'auto',
+      MASK_SIZE,
+      AUTO,
     ],
   ],
   'mask-bottom': [
     [
-      'mask-position',
-      'bottom',
+      MASK_POSITION,
+      BOTTOM,
     ],
   ],
   'mask-bottom-left': [
     [
-      'mask-position',
-      'left bottom',
+      MASK_POSITION,
+      LEFT_BOTTOM,
     ],
   ],
   'mask-bottom-right': [
     [
-      'mask-position',
-      'right bottom',
+      MASK_POSITION,
+      RIGHT_BOTTOM,
     ],
   ],
   'mask-center': [
     [
-      'mask-position',
-      'center',
+      MASK_POSITION,
+      CENTER,
     ],
   ],
   'mask-circle': [
@@ -2348,50 +2552,50 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'mask-clip-border': [
     [
-      'mask-clip',
-      'border-box',
+      MASK_CLIP,
+      BORDER_BOX,
     ],
   ],
   'mask-clip-content': [
     [
-      'mask-clip',
-      'content-box',
+      MASK_CLIP,
+      CONTENT_BOX,
     ],
   ],
   'mask-clip-fill': [
     [
-      'mask-clip',
-      'fill-box',
+      MASK_CLIP,
+      FILL_BOX,
     ],
   ],
   'mask-clip-padding': [
     [
-      'mask-clip',
-      'padding-box',
+      MASK_CLIP,
+      PADDING_BOX,
     ],
   ],
   'mask-clip-stroke': [
     [
-      'mask-clip',
-      'stroke-box',
+      MASK_CLIP,
+      STROKE_BOX,
     ],
   ],
   'mask-clip-view': [
     [
-      'mask-clip',
-      'view-box',
+      MASK_CLIP,
+      VIEW_BOX,
     ],
   ],
   'mask-contain': [
     [
-      'mask-size',
-      'contain',
+      MASK_SIZE,
+      CONTAIN,
     ],
   ],
   'mask-cover': [
     [
-      'mask-size',
-      'cover',
+      MASK_SIZE,
+      COVER,
     ],
   ],
   'mask-ellipse': [
@@ -2402,224 +2606,224 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'mask-exclude': [
     [
-      'mask-composite',
+      MASK_COMPOSITE,
       'exclude',
     ],
   ],
   'mask-intersect': [
     [
-      'mask-composite',
+      MASK_COMPOSITE,
       'intersect',
     ],
   ],
   'mask-left': [
     [
-      'mask-position',
-      'left',
+      MASK_POSITION,
+      LEFT,
     ],
   ],
   'mask-luminance': [
     [
-      'mask-mode',
+      MASK_MODE,
       'luminance',
     ],
   ],
   'mask-match': [
     [
-      'mask-mode',
+      MASK_MODE,
       'match-source',
     ],
   ],
   'mask-no-clip': [
     [
-      'mask-clip',
+      MASK_CLIP,
       'no-clip',
     ],
   ],
   'mask-no-repeat': [
     [
-      'mask-repeat',
+      MASK_REPEAT,
       'no-repeat',
     ],
   ],
   'mask-none': [
     [
       'mask-image',
-      'none',
+      NONE,
     ],
   ],
   'mask-origin-border': [
     [
-      'mask-origin',
-      'border-box',
+      MASK_ORIGIN,
+      BORDER_BOX,
     ],
   ],
   'mask-origin-content': [
     [
-      'mask-origin',
-      'content-box',
+      MASK_ORIGIN,
+      CONTENT_BOX,
     ],
   ],
   'mask-origin-fill': [
     [
-      'mask-origin',
-      'fill-box',
+      MASK_ORIGIN,
+      FILL_BOX,
     ],
   ],
   'mask-origin-padding': [
     [
-      'mask-origin',
-      'padding-box',
+      MASK_ORIGIN,
+      PADDING_BOX,
     ],
   ],
   'mask-origin-stroke': [
     [
-      'mask-origin',
-      'stroke-box',
+      MASK_ORIGIN,
+      STROKE_BOX,
     ],
   ],
   'mask-origin-view': [
     [
-      'mask-origin',
-      'view-box',
+      MASK_ORIGIN,
+      VIEW_BOX,
     ],
   ],
   'mask-radial-at-bottom': [
     [
-      '--tw-mask-radial-position',
-      'bottom',
+      TW_MASK_RADIAL_POSITION,
+      BOTTOM,
     ],
   ],
   'mask-radial-at-bottom-left': [
     [
-      '--tw-mask-radial-position',
+      TW_MASK_RADIAL_POSITION,
       'bottom left',
     ],
   ],
   'mask-radial-at-bottom-right': [
     [
-      '--tw-mask-radial-position',
+      TW_MASK_RADIAL_POSITION,
       'bottom right',
     ],
   ],
   'mask-radial-at-center': [
     [
-      '--tw-mask-radial-position',
-      'center',
+      TW_MASK_RADIAL_POSITION,
+      CENTER,
     ],
   ],
   'mask-radial-at-left': [
     [
-      '--tw-mask-radial-position',
-      'left',
+      TW_MASK_RADIAL_POSITION,
+      LEFT,
     ],
   ],
   'mask-radial-at-right': [
     [
-      '--tw-mask-radial-position',
-      'right',
+      TW_MASK_RADIAL_POSITION,
+      RIGHT,
     ],
   ],
   'mask-radial-at-top': [
     [
-      '--tw-mask-radial-position',
-      'top',
+      TW_MASK_RADIAL_POSITION,
+      TOP,
     ],
   ],
   'mask-radial-at-top-left': [
     [
-      '--tw-mask-radial-position',
+      TW_MASK_RADIAL_POSITION,
       'top left',
     ],
   ],
   'mask-radial-at-top-right': [
     [
-      '--tw-mask-radial-position',
+      TW_MASK_RADIAL_POSITION,
       'top right',
     ],
   ],
   'mask-radial-closest-corner': [
     [
-      '--tw-mask-radial-size',
+      TW_MASK_RADIAL_SIZE,
       'closest-corner',
     ],
   ],
   'mask-radial-closest-side': [
     [
-      '--tw-mask-radial-size',
+      TW_MASK_RADIAL_SIZE,
       'closest-side',
     ],
   ],
   'mask-radial-farthest-corner': [
     [
-      '--tw-mask-radial-size',
+      TW_MASK_RADIAL_SIZE,
       'farthest-corner',
     ],
   ],
   'mask-radial-farthest-side': [
     [
-      '--tw-mask-radial-size',
+      TW_MASK_RADIAL_SIZE,
       'farthest-side',
     ],
   ],
   'mask-repeat': [
     [
-      'mask-repeat',
+      MASK_REPEAT,
       'repeat',
     ],
   ],
   'mask-repeat-round': [
     [
-      'mask-repeat',
+      MASK_REPEAT,
       'round',
     ],
   ],
   'mask-repeat-space': [
     [
-      'mask-repeat',
+      MASK_REPEAT,
       'space',
     ],
   ],
   'mask-repeat-x': [
     [
-      'mask-repeat',
+      MASK_REPEAT,
       'repeat-x',
     ],
   ],
   'mask-repeat-y': [
     [
-      'mask-repeat',
+      MASK_REPEAT,
       'repeat-y',
     ],
   ],
   'mask-right': [
     [
-      'mask-position',
-      'right',
+      MASK_POSITION,
+      RIGHT,
     ],
   ],
   'mask-subtract': [
     [
-      'mask-composite',
+      MASK_COMPOSITE,
       'subtract',
     ],
   ],
   'mask-top': [
     [
-      'mask-position',
-      'top',
+      MASK_POSITION,
+      TOP,
     ],
   ],
   'mask-top-left': [
     [
-      'mask-position',
-      'left top',
+      MASK_POSITION,
+      LEFT_TOP,
     ],
   ],
   'mask-top-right': [
     [
-      'mask-position',
-      'right top',
+      MASK_POSITION,
+      RIGHT_TOP,
     ],
   ],
   'mask-type-alpha': [
@@ -2636,917 +2840,917 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'max-block-dvh': [
     [
-      'max-block-size',
-      '100dvh',
+      MAX_BLOCK_SIZE,
+      V_100DVH,
     ],
   ],
   'max-block-fit': [
     [
-      'max-block-size',
-      'fit-content',
+      MAX_BLOCK_SIZE,
+      FIT_CONTENT,
     ],
   ],
   'max-block-full': [
     [
-      'max-block-size',
-      '100%',
+      MAX_BLOCK_SIZE,
+      V_100_PERCENT,
     ],
   ],
   'max-block-lh': [
     [
-      'max-block-size',
-      '1lh',
+      MAX_BLOCK_SIZE,
+      V_1LH,
     ],
   ],
   'max-block-lvh': [
     [
-      'max-block-size',
-      '100lvh',
+      MAX_BLOCK_SIZE,
+      V_100LVH,
     ],
   ],
   'max-block-max': [
     [
-      'max-block-size',
-      'max-content',
+      MAX_BLOCK_SIZE,
+      MAX_CONTENT,
     ],
   ],
   'max-block-min': [
     [
-      'max-block-size',
-      'min-content',
+      MAX_BLOCK_SIZE,
+      MIN_CONTENT,
     ],
   ],
   'max-block-none': [
     [
-      'max-block-size',
-      'none',
+      MAX_BLOCK_SIZE,
+      NONE,
     ],
   ],
   'max-block-px': [
     [
-      'max-block-size',
-      '1px',
+      MAX_BLOCK_SIZE,
+      V_1PX,
     ],
   ],
   'max-block-screen': [
     [
-      'max-block-size',
-      '100vh',
+      MAX_BLOCK_SIZE,
+      V_100VH,
     ],
   ],
   'max-block-svh': [
     [
-      'max-block-size',
-      '100svh',
+      MAX_BLOCK_SIZE,
+      V_100SVH,
     ],
   ],
   'max-h-dvh': [
     [
-      'max-height',
-      '100dvh',
+      MAX_HEIGHT,
+      V_100DVH,
     ],
   ],
   'max-h-dvw': [
     [
-      'max-height',
-      '100dvw',
+      MAX_HEIGHT,
+      V_100DVW,
     ],
   ],
   'max-h-fit': [
     [
-      'max-height',
-      'fit-content',
+      MAX_HEIGHT,
+      FIT_CONTENT,
     ],
   ],
   'max-h-full': [
     [
-      'max-height',
-      '100%',
+      MAX_HEIGHT,
+      V_100_PERCENT,
     ],
   ],
   'max-h-lh': [
     [
-      'max-height',
-      '1lh',
+      MAX_HEIGHT,
+      V_1LH,
     ],
   ],
   'max-h-lvh': [
     [
-      'max-height',
-      '100lvh',
+      MAX_HEIGHT,
+      V_100LVH,
     ],
   ],
   'max-h-lvw': [
     [
-      'max-height',
-      '100lvw',
+      MAX_HEIGHT,
+      V_100LVW,
     ],
   ],
   'max-h-max': [
     [
-      'max-height',
-      'max-content',
+      MAX_HEIGHT,
+      MAX_CONTENT,
     ],
   ],
   'max-h-min': [
     [
-      'max-height',
-      'min-content',
+      MAX_HEIGHT,
+      MIN_CONTENT,
     ],
   ],
   'max-h-none': [
     [
-      'max-height',
-      'none',
+      MAX_HEIGHT,
+      NONE,
     ],
   ],
   'max-h-px': [
     [
-      'max-height',
-      '1px',
+      MAX_HEIGHT,
+      V_1PX,
     ],
   ],
   'max-h-screen': [
     [
-      'max-height',
-      '100vh',
+      MAX_HEIGHT,
+      V_100VH,
     ],
   ],
   'max-h-svh': [
     [
-      'max-height',
-      '100svh',
+      MAX_HEIGHT,
+      V_100SVH,
     ],
   ],
   'max-h-svw': [
     [
-      'max-height',
-      '100svw',
+      MAX_HEIGHT,
+      V_100SVW,
     ],
   ],
   'max-inline-dvw': [
     [
-      'max-inline-size',
-      '100dvw',
+      MAX_INLINE_SIZE,
+      V_100DVW,
     ],
   ],
   'max-inline-fit': [
     [
-      'max-inline-size',
-      'fit-content',
+      MAX_INLINE_SIZE,
+      FIT_CONTENT,
     ],
   ],
   'max-inline-full': [
     [
-      'max-inline-size',
-      '100%',
+      MAX_INLINE_SIZE,
+      V_100_PERCENT,
     ],
   ],
   'max-inline-lvw': [
     [
-      'max-inline-size',
-      '100lvw',
+      MAX_INLINE_SIZE,
+      V_100LVW,
     ],
   ],
   'max-inline-max': [
     [
-      'max-inline-size',
-      'max-content',
+      MAX_INLINE_SIZE,
+      MAX_CONTENT,
     ],
   ],
   'max-inline-min': [
     [
-      'max-inline-size',
-      'min-content',
+      MAX_INLINE_SIZE,
+      MIN_CONTENT,
     ],
   ],
   'max-inline-none': [
     [
-      'max-inline-size',
-      'none',
+      MAX_INLINE_SIZE,
+      NONE,
     ],
   ],
   'max-inline-px': [
     [
-      'max-inline-size',
-      '1px',
+      MAX_INLINE_SIZE,
+      V_1PX,
     ],
   ],
   'max-inline-screen': [
     [
-      'max-inline-size',
-      '100vw',
+      MAX_INLINE_SIZE,
+      V_100VW,
     ],
   ],
   'max-inline-svw': [
     [
-      'max-inline-size',
-      '100svw',
+      MAX_INLINE_SIZE,
+      V_100SVW,
     ],
   ],
   'max-w-dvh': [
     [
-      'max-width',
-      '100dvh',
+      MAX_WIDTH,
+      V_100DVH,
     ],
   ],
   'max-w-dvw': [
     [
-      'max-width',
-      '100dvw',
+      MAX_WIDTH,
+      V_100DVW,
     ],
   ],
   'max-w-fit': [
     [
-      'max-width',
-      'fit-content',
+      MAX_WIDTH,
+      FIT_CONTENT,
     ],
   ],
   'max-w-full': [
     [
-      'max-width',
-      '100%',
+      MAX_WIDTH,
+      V_100_PERCENT,
     ],
   ],
   'max-w-lvh': [
     [
-      'max-width',
-      '100lvh',
+      MAX_WIDTH,
+      V_100LVH,
     ],
   ],
   'max-w-lvw': [
     [
-      'max-width',
-      '100lvw',
+      MAX_WIDTH,
+      V_100LVW,
     ],
   ],
   'max-w-max': [
     [
-      'max-width',
-      'max-content',
+      MAX_WIDTH,
+      MAX_CONTENT,
     ],
   ],
   'max-w-min': [
     [
-      'max-width',
-      'min-content',
+      MAX_WIDTH,
+      MIN_CONTENT,
     ],
   ],
   'max-w-none': [
     [
-      'max-width',
-      'none',
+      MAX_WIDTH,
+      NONE,
     ],
   ],
   'max-w-px': [
     [
-      'max-width',
-      '1px',
+      MAX_WIDTH,
+      V_1PX,
     ],
   ],
   'max-w-screen': [
     [
-      'max-width',
-      '100vw',
+      MAX_WIDTH,
+      V_100VW,
     ],
   ],
   'max-w-svh': [
     [
-      'max-width',
-      '100svh',
+      MAX_WIDTH,
+      V_100SVH,
     ],
   ],
   'max-w-svw': [
     [
-      'max-width',
-      '100svw',
+      MAX_WIDTH,
+      V_100SVW,
     ],
   ],
   'mb-auto': [
     [
-      'margin-bottom',
-      'auto',
+      MARGIN_BOTTOM,
+      AUTO,
     ],
   ],
   'mb-px': [
     [
-      'margin-bottom',
-      '1px',
+      MARGIN_BOTTOM,
+      V_1PX,
     ],
   ],
   'mbe-auto': [
     [
-      'margin-block-end',
-      'auto',
+      MARGIN_BLOCK_END,
+      AUTO,
     ],
   ],
   'mbe-px': [
     [
-      'margin-block-end',
-      '1px',
+      MARGIN_BLOCK_END,
+      V_1PX,
     ],
   ],
   'mbs-auto': [
     [
-      'margin-block-start',
-      'auto',
+      MARGIN_BLOCK_START,
+      AUTO,
     ],
   ],
   'mbs-px': [
     [
-      'margin-block-start',
-      '1px',
+      MARGIN_BLOCK_START,
+      V_1PX,
     ],
   ],
   'me-auto': [
     [
-      'margin-inline-end',
-      'auto',
+      MARGIN_INLINE_END,
+      AUTO,
     ],
   ],
   'me-px': [
     [
-      'margin-inline-end',
-      '1px',
+      MARGIN_INLINE_END,
+      V_1PX,
     ],
   ],
   'min-block-auto': [
     [
-      'min-block-size',
-      'auto',
+      MIN_BLOCK_SIZE,
+      AUTO,
     ],
   ],
   'min-block-dvh': [
     [
-      'min-block-size',
-      '100dvh',
+      MIN_BLOCK_SIZE,
+      V_100DVH,
     ],
   ],
   'min-block-fit': [
     [
-      'min-block-size',
-      'fit-content',
+      MIN_BLOCK_SIZE,
+      FIT_CONTENT,
     ],
   ],
   'min-block-full': [
     [
-      'min-block-size',
-      '100%',
+      MIN_BLOCK_SIZE,
+      V_100_PERCENT,
     ],
   ],
   'min-block-lh': [
     [
-      'min-block-size',
-      '1lh',
+      MIN_BLOCK_SIZE,
+      V_1LH,
     ],
   ],
   'min-block-lvh': [
     [
-      'min-block-size',
-      '100lvh',
+      MIN_BLOCK_SIZE,
+      V_100LVH,
     ],
   ],
   'min-block-max': [
     [
-      'min-block-size',
-      'max-content',
+      MIN_BLOCK_SIZE,
+      MAX_CONTENT,
     ],
   ],
   'min-block-min': [
     [
-      'min-block-size',
-      'min-content',
+      MIN_BLOCK_SIZE,
+      MIN_CONTENT,
     ],
   ],
   'min-block-px': [
     [
-      'min-block-size',
-      '1px',
+      MIN_BLOCK_SIZE,
+      V_1PX,
     ],
   ],
   'min-block-screen': [
     [
-      'min-block-size',
-      '100vh',
+      MIN_BLOCK_SIZE,
+      V_100VH,
     ],
   ],
   'min-block-svh': [
     [
-      'min-block-size',
-      '100svh',
+      MIN_BLOCK_SIZE,
+      V_100SVH,
     ],
   ],
   'min-h-auto': [
     [
-      'min-height',
-      'auto',
+      MIN_HEIGHT,
+      AUTO,
     ],
   ],
   'min-h-dvh': [
     [
-      'min-height',
-      '100dvh',
+      MIN_HEIGHT,
+      V_100DVH,
     ],
   ],
   'min-h-dvw': [
     [
-      'min-height',
-      '100dvw',
+      MIN_HEIGHT,
+      V_100DVW,
     ],
   ],
   'min-h-fit': [
     [
-      'min-height',
-      'fit-content',
+      MIN_HEIGHT,
+      FIT_CONTENT,
     ],
   ],
   'min-h-full': [
     [
-      'min-height',
-      '100%',
+      MIN_HEIGHT,
+      V_100_PERCENT,
     ],
   ],
   'min-h-lh': [
     [
-      'min-height',
-      '1lh',
+      MIN_HEIGHT,
+      V_1LH,
     ],
   ],
   'min-h-lvh': [
     [
-      'min-height',
-      '100lvh',
+      MIN_HEIGHT,
+      V_100LVH,
     ],
   ],
   'min-h-lvw': [
     [
-      'min-height',
-      '100lvw',
+      MIN_HEIGHT,
+      V_100LVW,
     ],
   ],
   'min-h-max': [
     [
-      'min-height',
-      'max-content',
+      MIN_HEIGHT,
+      MAX_CONTENT,
     ],
   ],
   'min-h-min': [
     [
-      'min-height',
-      'min-content',
+      MIN_HEIGHT,
+      MIN_CONTENT,
     ],
   ],
   'min-h-px': [
     [
-      'min-height',
-      '1px',
+      MIN_HEIGHT,
+      V_1PX,
     ],
   ],
   'min-h-screen': [
     [
-      'min-height',
-      '100vh',
+      MIN_HEIGHT,
+      V_100VH,
     ],
   ],
   'min-h-svh': [
     [
-      'min-height',
-      '100svh',
+      MIN_HEIGHT,
+      V_100SVH,
     ],
   ],
   'min-h-svw': [
     [
-      'min-height',
-      '100svw',
+      MIN_HEIGHT,
+      V_100SVW,
     ],
   ],
   'min-inline-auto': [
     [
-      'min-inline-size',
-      'auto',
+      MIN_INLINE_SIZE,
+      AUTO,
     ],
   ],
   'min-inline-dvw': [
     [
-      'min-inline-size',
-      '100dvw',
+      MIN_INLINE_SIZE,
+      V_100DVW,
     ],
   ],
   'min-inline-fit': [
     [
-      'min-inline-size',
-      'fit-content',
+      MIN_INLINE_SIZE,
+      FIT_CONTENT,
     ],
   ],
   'min-inline-full': [
     [
-      'min-inline-size',
-      '100%',
+      MIN_INLINE_SIZE,
+      V_100_PERCENT,
     ],
   ],
   'min-inline-lvw': [
     [
-      'min-inline-size',
-      '100lvw',
+      MIN_INLINE_SIZE,
+      V_100LVW,
     ],
   ],
   'min-inline-max': [
     [
-      'min-inline-size',
-      'max-content',
+      MIN_INLINE_SIZE,
+      MAX_CONTENT,
     ],
   ],
   'min-inline-min': [
     [
-      'min-inline-size',
-      'min-content',
+      MIN_INLINE_SIZE,
+      MIN_CONTENT,
     ],
   ],
   'min-inline-px': [
     [
-      'min-inline-size',
-      '1px',
+      MIN_INLINE_SIZE,
+      V_1PX,
     ],
   ],
   'min-inline-screen': [
     [
-      'min-inline-size',
-      '100vw',
+      MIN_INLINE_SIZE,
+      V_100VW,
     ],
   ],
   'min-inline-svw': [
     [
-      'min-inline-size',
-      '100svw',
+      MIN_INLINE_SIZE,
+      V_100SVW,
     ],
   ],
   'min-w-auto': [
     [
-      'min-width',
-      'auto',
+      MIN_WIDTH,
+      AUTO,
     ],
   ],
   'min-w-dvh': [
     [
-      'min-width',
-      '100dvh',
+      MIN_WIDTH,
+      V_100DVH,
     ],
   ],
   'min-w-dvw': [
     [
-      'min-width',
-      '100dvw',
+      MIN_WIDTH,
+      V_100DVW,
     ],
   ],
   'min-w-fit': [
     [
-      'min-width',
-      'fit-content',
+      MIN_WIDTH,
+      FIT_CONTENT,
     ],
   ],
   'min-w-full': [
     [
-      'min-width',
-      '100%',
+      MIN_WIDTH,
+      V_100_PERCENT,
     ],
   ],
   'min-w-lvh': [
     [
-      'min-width',
-      '100lvh',
+      MIN_WIDTH,
+      V_100LVH,
     ],
   ],
   'min-w-lvw': [
     [
-      'min-width',
-      '100lvw',
+      MIN_WIDTH,
+      V_100LVW,
     ],
   ],
   'min-w-max': [
     [
-      'min-width',
-      'max-content',
+      MIN_WIDTH,
+      MAX_CONTENT,
     ],
   ],
   'min-w-min': [
     [
-      'min-width',
-      'min-content',
+      MIN_WIDTH,
+      MIN_CONTENT,
     ],
   ],
   'min-w-px': [
     [
-      'min-width',
-      '1px',
+      MIN_WIDTH,
+      V_1PX,
     ],
   ],
   'min-w-screen': [
     [
-      'min-width',
-      '100vw',
+      MIN_WIDTH,
+      V_100VW,
     ],
   ],
   'min-w-svh': [
     [
-      'min-width',
-      '100svh',
+      MIN_WIDTH,
+      V_100SVH,
     ],
   ],
   'min-w-svw': [
     [
-      'min-width',
-      '100svw',
+      MIN_WIDTH,
+      V_100SVW,
     ],
   ],
   'mix-blend-color': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'color',
     ],
   ],
   'mix-blend-color-burn': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'color-burn',
     ],
   ],
   'mix-blend-color-dodge': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'color-dodge',
     ],
   ],
   'mix-blend-darken': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'darken',
     ],
   ],
   'mix-blend-difference': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'difference',
     ],
   ],
   'mix-blend-exclusion': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'exclusion',
     ],
   ],
   'mix-blend-hard-light': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'hard-light',
     ],
   ],
   'mix-blend-hue': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'hue',
     ],
   ],
   'mix-blend-lighten': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'lighten',
     ],
   ],
   'mix-blend-luminosity': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'luminosity',
     ],
   ],
   'mix-blend-multiply': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'multiply',
     ],
   ],
   'mix-blend-normal': [
     [
-      'mix-blend-mode',
-      'normal',
+      MIX_BLEND_MODE,
+      NORMAL,
     ],
   ],
   'mix-blend-overlay': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'overlay',
     ],
   ],
   'mix-blend-plus-darker': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'plus-darker',
     ],
   ],
   'mix-blend-plus-lighter': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'plus-lighter',
     ],
   ],
   'mix-blend-saturation': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'saturation',
     ],
   ],
   'mix-blend-screen': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'screen',
     ],
   ],
   'mix-blend-soft-light': [
     [
-      'mix-blend-mode',
+      MIX_BLEND_MODE,
       'soft-light',
     ],
   ],
   'ml-auto': [
     [
-      'margin-left',
-      'auto',
+      MARGIN_LEFT,
+      AUTO,
     ],
   ],
   'ml-px': [
     [
-      'margin-left',
-      '1px',
+      MARGIN_LEFT,
+      V_1PX,
     ],
   ],
   'mr-auto': [
     [
-      'margin-right',
-      'auto',
+      MARGIN_RIGHT,
+      AUTO,
     ],
   ],
   'mr-px': [
     [
-      'margin-right',
-      '1px',
+      MARGIN_RIGHT,
+      V_1PX,
     ],
   ],
   'ms-auto': [
     [
-      'margin-inline-start',
-      'auto',
+      MARGIN_INLINE_START,
+      AUTO,
     ],
   ],
   'ms-px': [
     [
-      'margin-inline-start',
-      '1px',
+      MARGIN_INLINE_START,
+      V_1PX,
     ],
   ],
   'mt-auto': [
     [
-      'margin-top',
-      'auto',
+      MARGIN_TOP,
+      AUTO,
     ],
   ],
   'mt-px': [
     [
-      'margin-top',
-      '1px',
+      MARGIN_TOP,
+      V_1PX,
     ],
   ],
   'mx-auto': [
     [
-      'margin-inline',
-      'auto',
+      MARGIN_INLINE,
+      AUTO,
     ],
   ],
   'mx-px': [
     [
-      'margin-inline',
-      '1px',
+      MARGIN_INLINE,
+      V_1PX,
     ],
   ],
   'my-auto': [
     [
-      'margin-block',
-      'auto',
+      MARGIN_BLOCK,
+      AUTO,
     ],
   ],
   'my-px': [
     [
-      'margin-block',
-      '1px',
+      MARGIN_BLOCK,
+      V_1PX,
     ],
   ],
   'no-underline': [
     [
-      'text-decoration-line',
-      'none',
+      TEXT_DECORATION_LINE,
+      NONE,
     ],
   ],
   'normal-case': [
     [
-      'text-transform',
-      'none',
+      TEXT_TRANSFORM,
+      NONE,
     ],
   ],
   'normal-nums': [
     [
-      'font-variant-numeric',
-      'normal',
+      FONT_VARIANT_NUMERIC,
+      NORMAL,
     ],
   ],
   'not-italic': [
     [
       'font-style',
-      'normal',
+      NORMAL,
     ],
   ],
   'not-sr-only': [
     [
-      'position',
+      POSITION,
       'static',
     ],
     [
-      'width',
-      'auto',
+      WIDTH,
+      AUTO,
     ],
     [
-      'height',
-      'auto',
+      HEIGHT,
+      AUTO,
     ],
     [
-      'padding',
-      '0',
+      PADDING,
+      V_0,
     ],
     [
-      'margin',
-      '0',
+      MARGIN,
+      V_0,
     ],
     [
-      'overflow',
-      'visible',
+      OVERFLOW,
+      VISIBLE,
     ],
     [
       'clip-path',
-      'none',
+      NONE,
     ],
     [
-      'white-space',
-      'normal',
+      WHITE_SPACE,
+      NORMAL,
     ],
   ],
   'object-contain': [
     [
-      'object-fit',
-      'contain',
+      OBJECT_FIT,
+      CONTAIN,
     ],
   ],
   'object-cover': [
     [
-      'object-fit',
-      'cover',
+      OBJECT_FIT,
+      COVER,
     ],
   ],
   'object-fill': [
     [
-      'object-fit',
+      OBJECT_FIT,
       'fill',
     ],
   ],
   'object-left-bottom': [
     [
-      'object-position',
-      'left bottom',
+      OBJECT_POSITION,
+      LEFT_BOTTOM,
     ],
   ],
   'object-left-top': [
     [
-      'object-position',
-      'left top',
+      OBJECT_POSITION,
+      LEFT_TOP,
     ],
   ],
   'object-none': [
     [
-      'object-fit',
-      'none',
+      OBJECT_FIT,
+      NONE,
     ],
   ],
   'object-right-bottom': [
     [
-      'object-position',
-      'right bottom',
+      OBJECT_POSITION,
+      RIGHT_BOTTOM,
     ],
   ],
   'object-right-top': [
     [
-      'object-position',
-      'right top',
+      OBJECT_POSITION,
+      RIGHT_TOP,
     ],
   ],
   'object-scale-down': [
     [
-      'object-fit',
+      OBJECT_FIT,
       'scale-down',
     ],
   ],
@@ -3556,14 +3760,14 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
       'oldstyle-nums',
     ],
     [
-      'font-variant-numeric',
-      'var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)',
+      FONT_VARIANT_NUMERIC,
+      VAR_TW_ORDINAL_VAR_TW_SLASHED_ZERO_VAR_TW_NUMERIC_FIGURE_VAR_TW_NUMERIC_SPACING_VAR_TW_NUMERIC_FRACTION,
     ],
   ],
   'order-none': [
     [
       'order',
-      '0',
+      V_0,
     ],
   ],
   'ordinal': [
@@ -3572,412 +3776,412 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
       'ordinal',
     ],
     [
-      'font-variant-numeric',
-      'var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)',
+      FONT_VARIANT_NUMERIC,
+      VAR_TW_ORDINAL_VAR_TW_SLASHED_ZERO_VAR_TW_NUMERIC_FIGURE_VAR_TW_NUMERIC_SPACING_VAR_TW_NUMERIC_FRACTION,
     ],
   ],
   'outline-dashed': [
     [
-      '--tw-outline-style',
-      'dashed',
+      TW_OUTLINE_STYLE,
+      DASHED,
     ],
     [
-      'outline-style',
-      'dashed',
+      OUTLINE_STYLE,
+      DASHED,
     ],
   ],
   'outline-dotted': [
     [
-      '--tw-outline-style',
-      'dotted',
+      TW_OUTLINE_STYLE,
+      DOTTED,
     ],
     [
-      'outline-style',
-      'dotted',
+      OUTLINE_STYLE,
+      DOTTED,
     ],
   ],
   'outline-double': [
     [
-      '--tw-outline-style',
-      'double',
+      TW_OUTLINE_STYLE,
+      DOUBLE,
     ],
     [
-      'outline-style',
-      'double',
+      OUTLINE_STYLE,
+      DOUBLE,
     ],
   ],
   'outline-none': [
     [
-      '--tw-outline-style',
-      'none',
+      TW_OUTLINE_STYLE,
+      NONE,
     ],
     [
-      'outline-style',
-      'none',
+      OUTLINE_STYLE,
+      NONE,
     ],
   ],
   'outline-solid': [
     [
-      '--tw-outline-style',
-      'solid',
+      TW_OUTLINE_STYLE,
+      SOLID,
     ],
     [
-      'outline-style',
-      'solid',
+      OUTLINE_STYLE,
+      SOLID,
     ],
   ],
   'overflow-auto': [
     [
-      'overflow',
-      'auto',
+      OVERFLOW,
+      AUTO,
     ],
   ],
   'overflow-clip': [
     [
-      'overflow',
-      'clip',
+      OVERFLOW,
+      CLIP,
     ],
   ],
   'overflow-ellipsis': [
     [
-      'text-overflow',
-      'ellipsis',
+      TEXT_OVERFLOW,
+      ELLIPSIS,
     ],
   ],
   'overflow-hidden': [
     [
-      'overflow',
-      'hidden',
+      OVERFLOW,
+      HIDDEN,
     ],
   ],
   'overflow-scroll': [
     [
-      'overflow',
-      'scroll',
+      OVERFLOW,
+      SCROLL,
     ],
   ],
   'overflow-visible': [
     [
-      'overflow',
-      'visible',
+      OVERFLOW,
+      VISIBLE,
     ],
   ],
   'overflow-x-auto': [
     [
-      'overflow-x',
-      'auto',
+      OVERFLOW_X,
+      AUTO,
     ],
   ],
   'overflow-x-clip': [
     [
-      'overflow-x',
-      'clip',
+      OVERFLOW_X,
+      CLIP,
     ],
   ],
   'overflow-x-hidden': [
     [
-      'overflow-x',
-      'hidden',
+      OVERFLOW_X,
+      HIDDEN,
     ],
   ],
   'overflow-x-scroll': [
     [
-      'overflow-x',
-      'scroll',
+      OVERFLOW_X,
+      SCROLL,
     ],
   ],
   'overflow-x-visible': [
     [
-      'overflow-x',
-      'visible',
+      OVERFLOW_X,
+      VISIBLE,
     ],
   ],
   'overflow-y-auto': [
     [
-      'overflow-y',
-      'auto',
+      OVERFLOW_Y,
+      AUTO,
     ],
   ],
   'overflow-y-clip': [
     [
-      'overflow-y',
-      'clip',
+      OVERFLOW_Y,
+      CLIP,
     ],
   ],
   'overflow-y-hidden': [
     [
-      'overflow-y',
-      'hidden',
+      OVERFLOW_Y,
+      HIDDEN,
     ],
   ],
   'overflow-y-scroll': [
     [
-      'overflow-y',
-      'scroll',
+      OVERFLOW_Y,
+      SCROLL,
     ],
   ],
   'overflow-y-visible': [
     [
-      'overflow-y',
-      'visible',
+      OVERFLOW_Y,
+      VISIBLE,
     ],
   ],
   'overline': [
     [
-      'text-decoration-line',
+      TEXT_DECORATION_LINE,
       'overline',
     ],
   ],
   'overscroll-auto': [
     [
-      'overscroll-behavior',
-      'auto',
+      OVERSCROLL_BEHAVIOR,
+      AUTO,
     ],
   ],
   'overscroll-contain': [
     [
-      'overscroll-behavior',
-      'contain',
+      OVERSCROLL_BEHAVIOR,
+      CONTAIN,
     ],
   ],
   'overscroll-none': [
     [
-      'overscroll-behavior',
-      'none',
+      OVERSCROLL_BEHAVIOR,
+      NONE,
     ],
   ],
   'overscroll-x-auto': [
     [
-      'overscroll-behavior-x',
-      'auto',
+      OVERSCROLL_BEHAVIOR_X,
+      AUTO,
     ],
   ],
   'overscroll-x-contain': [
     [
-      'overscroll-behavior-x',
-      'contain',
+      OVERSCROLL_BEHAVIOR_X,
+      CONTAIN,
     ],
   ],
   'overscroll-x-none': [
     [
-      'overscroll-behavior-x',
-      'none',
+      OVERSCROLL_BEHAVIOR_X,
+      NONE,
     ],
   ],
   'overscroll-y-auto': [
     [
-      'overscroll-behavior-y',
-      'auto',
+      OVERSCROLL_BEHAVIOR_Y,
+      AUTO,
     ],
   ],
   'overscroll-y-contain': [
     [
-      'overscroll-behavior-y',
-      'contain',
+      OVERSCROLL_BEHAVIOR_Y,
+      CONTAIN,
     ],
   ],
   'overscroll-y-none': [
     [
-      'overscroll-behavior-y',
-      'none',
+      OVERSCROLL_BEHAVIOR_Y,
+      NONE,
     ],
   ],
   'p-px': [
     [
-      'padding',
-      '1px',
+      PADDING,
+      V_1PX,
     ],
   ],
   'pb-px': [
     [
       'padding-bottom',
-      '1px',
+      V_1PX,
     ],
   ],
   'pbe-px': [
     [
       'padding-block-end',
-      '1px',
+      V_1PX,
     ],
   ],
   'pbs-px': [
     [
       'padding-block-start',
-      '1px',
+      V_1PX,
     ],
   ],
   'pe-px': [
     [
       'padding-inline-end',
-      '1px',
+      V_1PX,
     ],
   ],
   'pl-px': [
     [
       'padding-left',
-      '1px',
+      V_1PX,
     ],
   ],
   'place-content-around': [
     [
-      'place-content',
-      'space-around',
+      PLACE_CONTENT,
+      SPACE_AROUND,
     ],
   ],
   'place-content-baseline': [
     [
-      'place-content',
-      'baseline',
+      PLACE_CONTENT,
+      BASELINE,
     ],
   ],
   'place-content-between': [
     [
-      'place-content',
-      'space-between',
+      PLACE_CONTENT,
+      SPACE_BETWEEN,
     ],
   ],
   'place-content-center': [
     [
-      'place-content',
-      'center',
+      PLACE_CONTENT,
+      CENTER,
     ],
   ],
   'place-content-center-safe': [
     [
-      'place-content',
-      'safe center',
+      PLACE_CONTENT,
+      SAFE_CENTER,
     ],
   ],
   'place-content-end': [
     [
-      'place-content',
-      'end',
+      PLACE_CONTENT,
+      END,
     ],
   ],
   'place-content-end-safe': [
     [
-      'place-content',
-      'safe end',
+      PLACE_CONTENT,
+      SAFE_END,
     ],
   ],
   'place-content-evenly': [
     [
-      'place-content',
-      'space-evenly',
+      PLACE_CONTENT,
+      SPACE_EVENLY,
     ],
   ],
   'place-content-start': [
     [
-      'place-content',
-      'start',
+      PLACE_CONTENT,
+      START,
     ],
   ],
   'place-content-stretch': [
     [
-      'place-content',
-      'stretch',
+      PLACE_CONTENT,
+      STRETCH,
     ],
   ],
   'place-items-baseline': [
     [
-      'place-items',
-      'baseline',
+      PLACE_ITEMS,
+      BASELINE,
     ],
   ],
   'place-items-center': [
     [
-      'place-items',
-      'center',
+      PLACE_ITEMS,
+      CENTER,
     ],
   ],
   'place-items-center-safe': [
     [
-      'place-items',
-      'safe center',
+      PLACE_ITEMS,
+      SAFE_CENTER,
     ],
   ],
   'place-items-end': [
     [
-      'place-items',
-      'end',
+      PLACE_ITEMS,
+      END,
     ],
   ],
   'place-items-end-safe': [
     [
-      'place-items',
-      'safe end',
+      PLACE_ITEMS,
+      SAFE_END,
     ],
   ],
   'place-items-start': [
     [
-      'place-items',
-      'start',
+      PLACE_ITEMS,
+      START,
     ],
   ],
   'place-items-stretch': [
     [
-      'place-items',
-      'stretch',
+      PLACE_ITEMS,
+      STRETCH,
     ],
   ],
   'place-self-auto': [
     [
-      'place-self',
-      'auto',
+      PLACE_SELF,
+      AUTO,
     ],
   ],
   'place-self-center': [
     [
-      'place-self',
-      'center',
+      PLACE_SELF,
+      CENTER,
     ],
   ],
   'place-self-center-safe': [
     [
-      'place-self',
-      'safe center',
+      PLACE_SELF,
+      SAFE_CENTER,
     ],
   ],
   'place-self-end': [
     [
-      'place-self',
-      'end',
+      PLACE_SELF,
+      END,
     ],
   ],
   'place-self-end-safe': [
     [
-      'place-self',
-      'safe end',
+      PLACE_SELF,
+      SAFE_END,
     ],
   ],
   'place-self-start': [
     [
-      'place-self',
-      'start',
+      PLACE_SELF,
+      START,
     ],
   ],
   'place-self-stretch': [
     [
-      'place-self',
-      'stretch',
+      PLACE_SELF,
+      STRETCH,
     ],
   ],
   'pointer-events-auto': [
     [
       'pointer-events',
-      'auto',
+      AUTO,
     ],
   ],
   'pointer-events-none': [
     [
       'pointer-events',
-      'none',
+      NONE,
     ],
   ],
   'pr-px': [
     [
       'padding-right',
-      '1px',
+      V_1PX,
     ],
   ],
   'proportional-nums': [
@@ -3986,92 +4190,92 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
       'proportional-nums',
     ],
     [
-      'font-variant-numeric',
-      'var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)',
+      FONT_VARIANT_NUMERIC,
+      VAR_TW_ORDINAL_VAR_TW_SLASHED_ZERO_VAR_TW_NUMERIC_FIGURE_VAR_TW_NUMERIC_SPACING_VAR_TW_NUMERIC_FRACTION,
     ],
   ],
   'ps-px': [
     [
       'padding-inline-start',
-      '1px',
+      V_1PX,
     ],
   ],
   'pt-px': [
     [
       'padding-top',
-      '1px',
+      V_1PX,
     ],
   ],
   'px-px': [
     [
       'padding-inline',
-      '1px',
+      V_1PX,
     ],
   ],
   'py-px': [
     [
       'padding-block',
-      '1px',
+      V_1PX,
     ],
   ],
   'relative': [
     [
-      'position',
+      POSITION,
       'relative',
     ],
   ],
   'resize': [
     [
-      'resize',
+      RESIZE,
       'both',
     ],
   ],
   'resize-none': [
     [
-      'resize',
-      'none',
+      RESIZE,
+      NONE,
     ],
   ],
   'resize-x': [
     [
-      'resize',
+      RESIZE,
       'horizontal',
     ],
   ],
   'resize-y': [
     [
-      'resize',
+      RESIZE,
       'vertical',
     ],
   ],
   'right-auto': [
     [
-      'right',
-      'auto',
+      RIGHT,
+      AUTO,
     ],
   ],
   'right-full': [
     [
-      'right',
-      '100%',
+      RIGHT,
+      V_100_PERCENT,
     ],
   ],
   'right-px': [
     [
-      'right',
-      '1px',
+      RIGHT,
+      V_1PX,
     ],
   ],
   'ring-inset': [
     [
       '--tw-ring-inset',
-      'inset',
+      INSET,
     ],
   ],
   'rotate-none': [
     [
       'rotate',
-      'none',
+      NONE,
     ],
   ],
   'scale-3d': [
@@ -4083,181 +4287,181 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   'scale-none': [
     [
       'scale',
-      'none',
+      NONE,
     ],
   ],
   'scheme-dark': [
     [
-      'color-scheme',
+      COLOR_SCHEME,
       'dark',
     ],
   ],
   'scheme-light': [
     [
-      'color-scheme',
+      COLOR_SCHEME,
       'light',
     ],
   ],
   'scheme-light-dark': [
     [
-      'color-scheme',
+      COLOR_SCHEME,
       'light dark',
     ],
   ],
   'scheme-normal': [
     [
-      'color-scheme',
-      'normal',
+      COLOR_SCHEME,
+      NORMAL,
     ],
   ],
   'scheme-only-dark': [
     [
-      'color-scheme',
+      COLOR_SCHEME,
       'only dark',
     ],
   ],
   'scheme-only-light': [
     [
-      'color-scheme',
+      COLOR_SCHEME,
       'only light',
     ],
   ],
   'scroll-auto': [
     [
       'scroll-behavior',
-      'auto',
+      AUTO,
     ],
   ],
   'scroll-m-px': [
     [
       'scroll-margin',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-mb-px': [
     [
       'scroll-margin-bottom',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-mbe-px': [
     [
       'scroll-margin-block-end',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-mbs-px': [
     [
       'scroll-margin-block-start',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-me-px': [
     [
       'scroll-margin-inline-end',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-ml-px': [
     [
       'scroll-margin-left',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-mr-px': [
     [
       'scroll-margin-right',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-ms-px': [
     [
       'scroll-margin-inline-start',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-mt-px': [
     [
       'scroll-margin-top',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-mx-px': [
     [
       'scroll-margin-inline',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-my-px': [
     [
       'scroll-margin-block',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-p-px': [
     [
       'scroll-padding',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-pb-px': [
     [
       'scroll-padding-bottom',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-pbe-px': [
     [
       'scroll-padding-block-end',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-pbs-px': [
     [
       'scroll-padding-block-start',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-pe-px': [
     [
       'scroll-padding-inline-end',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-pl-px': [
     [
       'scroll-padding-left',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-pr-px': [
     [
       'scroll-padding-right',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-ps-px': [
     [
       'scroll-padding-inline-start',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-pt-px': [
     [
       'scroll-padding-top',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-px-px': [
     [
       'scroll-padding-inline',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-py-px': [
     [
       'scroll-padding-block',
-      '1px',
+      V_1PX,
     ],
   ],
   'scroll-smooth': [
@@ -4268,258 +4472,258 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'scrollbar-auto': [
     [
-      'scrollbar-width',
-      'auto',
+      SCROLLBAR_WIDTH,
+      AUTO,
     ],
   ],
   'scrollbar-gutter-auto': [
     [
-      'scrollbar-gutter',
-      'auto',
+      SCROLLBAR_GUTTER,
+      AUTO,
     ],
   ],
   'scrollbar-gutter-both': [
     [
-      'scrollbar-gutter',
+      SCROLLBAR_GUTTER,
       'stable both-edges',
     ],
   ],
   'scrollbar-gutter-stable': [
     [
-      'scrollbar-gutter',
+      SCROLLBAR_GUTTER,
       'stable',
     ],
   ],
   'scrollbar-none': [
     [
-      'scrollbar-width',
-      'none',
+      SCROLLBAR_WIDTH,
+      NONE,
     ],
   ],
   'scrollbar-thin': [
     [
-      'scrollbar-width',
+      SCROLLBAR_WIDTH,
       'thin',
     ],
   ],
   'select-all': [
     [
-      '-webkit-user-select',
-      'all',
+      WEBKIT_USER_SELECT,
+      ALL,
     ],
     [
-      'user-select',
-      'all',
+      USER_SELECT,
+      ALL,
     ],
   ],
   'select-auto': [
     [
-      '-webkit-user-select',
-      'auto',
+      WEBKIT_USER_SELECT,
+      AUTO,
     ],
     [
-      'user-select',
-      'auto',
+      USER_SELECT,
+      AUTO,
     ],
   ],
   'select-none': [
     [
-      '-webkit-user-select',
-      'none',
+      WEBKIT_USER_SELECT,
+      NONE,
     ],
     [
-      'user-select',
-      'none',
+      USER_SELECT,
+      NONE,
     ],
   ],
   'select-text': [
     [
-      '-webkit-user-select',
-      'text',
+      WEBKIT_USER_SELECT,
+      TEXT,
     ],
     [
-      'user-select',
-      'text',
+      USER_SELECT,
+      TEXT,
     ],
   ],
   'self-auto': [
     [
-      'align-self',
-      'auto',
+      ALIGN_SELF,
+      AUTO,
     ],
   ],
   'self-baseline': [
     [
-      'align-self',
-      'baseline',
+      ALIGN_SELF,
+      BASELINE,
     ],
   ],
   'self-baseline-last': [
     [
-      'align-self',
+      ALIGN_SELF,
       'last baseline',
     ],
   ],
   'self-center': [
     [
-      'align-self',
-      'center',
+      ALIGN_SELF,
+      CENTER,
     ],
   ],
   'self-center-safe': [
     [
-      'align-self',
-      'safe center',
+      ALIGN_SELF,
+      SAFE_CENTER,
     ],
   ],
   'self-end': [
     [
-      'align-self',
-      'flex-end',
+      ALIGN_SELF,
+      FLEX_END,
     ],
   ],
   'self-end-safe': [
     [
-      'align-self',
-      'safe flex-end',
+      ALIGN_SELF,
+      SAFE_FLEX_END,
     ],
   ],
   'self-start': [
     [
-      'align-self',
-      'flex-start',
+      ALIGN_SELF,
+      FLEX_START,
     ],
   ],
   'self-stretch': [
     [
-      'align-self',
-      'stretch',
+      ALIGN_SELF,
+      STRETCH,
     ],
   ],
   'shadow-initial': [
     [
       '--tw-shadow-color',
-      'initial',
+      INITIAL,
     ],
   ],
   'size-auto': [
     [
-      'width',
-      'auto',
+      WIDTH,
+      AUTO,
     ],
     [
-      'height',
-      'auto',
+      HEIGHT,
+      AUTO,
     ],
   ],
   'size-dvh': [
     [
-      'width',
-      '100dvh',
+      WIDTH,
+      V_100DVH,
     ],
     [
-      'height',
-      '100dvh',
+      HEIGHT,
+      V_100DVH,
     ],
   ],
   'size-dvw': [
     [
-      'width',
-      '100dvw',
+      WIDTH,
+      V_100DVW,
     ],
     [
-      'height',
-      '100dvw',
+      HEIGHT,
+      V_100DVW,
     ],
   ],
   'size-fit': [
     [
-      'width',
-      'fit-content',
+      WIDTH,
+      FIT_CONTENT,
     ],
     [
-      'height',
-      'fit-content',
+      HEIGHT,
+      FIT_CONTENT,
     ],
   ],
   'size-full': [
     [
-      'width',
-      '100%',
+      WIDTH,
+      V_100_PERCENT,
     ],
     [
-      'height',
-      '100%',
+      HEIGHT,
+      V_100_PERCENT,
     ],
   ],
   'size-lvh': [
     [
-      'width',
-      '100lvh',
+      WIDTH,
+      V_100LVH,
     ],
     [
-      'height',
-      '100lvh',
+      HEIGHT,
+      V_100LVH,
     ],
   ],
   'size-lvw': [
     [
-      'width',
-      '100lvw',
+      WIDTH,
+      V_100LVW,
     ],
     [
-      'height',
-      '100lvw',
+      HEIGHT,
+      V_100LVW,
     ],
   ],
   'size-max': [
     [
-      'width',
-      'max-content',
+      WIDTH,
+      MAX_CONTENT,
     ],
     [
-      'height',
-      'max-content',
+      HEIGHT,
+      MAX_CONTENT,
     ],
   ],
   'size-min': [
     [
-      'width',
-      'min-content',
+      WIDTH,
+      MIN_CONTENT,
     ],
     [
-      'height',
-      'min-content',
+      HEIGHT,
+      MIN_CONTENT,
     ],
   ],
   'size-px': [
     [
-      'width',
-      '1px',
+      WIDTH,
+      V_1PX,
     ],
     [
-      'height',
-      '1px',
+      HEIGHT,
+      V_1PX,
     ],
   ],
   'size-svh': [
     [
-      'width',
-      '100svh',
+      WIDTH,
+      V_100SVH,
     ],
     [
-      'height',
-      '100svh',
+      HEIGHT,
+      V_100SVH,
     ],
   ],
   'size-svw': [
     [
-      'width',
-      '100svw',
+      WIDTH,
+      V_100SVW,
     ],
     [
-      'height',
-      '100svw',
+      HEIGHT,
+      V_100SVW,
     ],
   ],
   'slashed-zero': [
@@ -4528,14 +4732,14 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
       'slashed-zero',
     ],
     [
-      'font-variant-numeric',
-      'var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)',
+      FONT_VARIANT_NUMERIC,
+      VAR_TW_ORDINAL_VAR_TW_SLASHED_ZERO_VAR_TW_NUMERIC_FIGURE_VAR_TW_NUMERIC_SPACING_VAR_TW_NUMERIC_FRACTION,
     ],
   ],
   'snap-align-none': [
     [
-      'scroll-snap-align',
-      'none',
+      SCROLL_SNAP_ALIGN,
+      NONE,
     ],
   ],
   'snap-always': [
@@ -4546,20 +4750,20 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'snap-both': [
     [
-      'scroll-snap-type',
+      SCROLL_SNAP_TYPE,
       'both var(--tw-scroll-snap-strictness)',
     ],
   ],
   'snap-center': [
     [
-      'scroll-snap-align',
-      'center',
+      SCROLL_SNAP_ALIGN,
+      CENTER,
     ],
   ],
   'snap-end': [
     [
-      'scroll-snap-align',
-      'end',
+      SCROLL_SNAP_ALIGN,
+      END,
     ],
   ],
   'snap-mandatory': [
@@ -4570,14 +4774,14 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'snap-none': [
     [
-      'scroll-snap-type',
-      'none',
+      SCROLL_SNAP_TYPE,
+      NONE,
     ],
   ],
   'snap-normal': [
     [
       'scroll-snap-stop',
-      'normal',
+      NORMAL,
     ],
   ],
   'snap-proximity': [
@@ -4588,58 +4792,58 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'snap-start': [
     [
-      'scroll-snap-align',
-      'start',
+      SCROLL_SNAP_ALIGN,
+      START,
     ],
   ],
   'snap-x': [
     [
-      'scroll-snap-type',
+      SCROLL_SNAP_TYPE,
       'x var(--tw-scroll-snap-strictness)',
     ],
   ],
   'snap-y': [
     [
-      'scroll-snap-type',
+      SCROLL_SNAP_TYPE,
       'y var(--tw-scroll-snap-strictness)',
     ],
   ],
   'sr-only': [
     [
-      'position',
+      POSITION,
       'absolute',
     ],
     [
-      'width',
-      '1px',
+      WIDTH,
+      V_1PX,
     ],
     [
-      'height',
-      '1px',
+      HEIGHT,
+      V_1PX,
     ],
     [
-      'padding',
-      '0',
+      PADDING,
+      V_0,
     ],
     [
-      'margin',
-      '-1px',
+      MARGIN,
+      MINUS_1PX,
     ],
     [
-      'overflow',
-      'hidden',
+      OVERFLOW,
+      HIDDEN,
     ],
     [
       'clip-path',
       'inset(50%)',
     ],
     [
-      'white-space',
-      'nowrap',
+      WHITE_SPACE,
+      NOWRAP,
     ],
     [
       'border-width',
-      '0',
+      V_0,
     ],
   ],
   'stacked-fractions': [
@@ -4648,119 +4852,119 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
       'stacked-fractions',
     ],
     [
-      'font-variant-numeric',
-      'var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)',
+      FONT_VARIANT_NUMERIC,
+      VAR_TW_ORDINAL_VAR_TW_SLASHED_ZERO_VAR_TW_NUMERIC_FIGURE_VAR_TW_NUMERIC_SPACING_VAR_TW_NUMERIC_FRACTION,
     ],
   ],
   'start-auto': [
     [
-      'inset-inline-start',
-      'auto',
+      INSET_INLINE_START,
+      AUTO,
     ],
   ],
   'start-full': [
     [
-      'inset-inline-start',
-      '100%',
+      INSET_INLINE_START,
+      V_100_PERCENT,
     ],
   ],
   'start-px': [
     [
-      'inset-inline-start',
-      '1px',
+      INSET_INLINE_START,
+      V_1PX,
     ],
   ],
   'static': [
     [
-      'position',
+      POSITION,
       'static',
     ],
   ],
   'sticky': [
     [
-      'position',
+      POSITION,
       'sticky',
     ],
   ],
   'stroke-none': [
     [
       'stroke',
-      'none',
+      NONE,
     ],
   ],
   'subpixel-antialiased': [
     [
       '-webkit-font-smoothing',
-      'auto',
+      AUTO,
     ],
     [
       '-moz-osx-font-smoothing',
-      'auto',
+      AUTO,
     ],
   ],
   'table': [
     [
-      'display',
+      DISPLAY,
       'table',
     ],
   ],
   'table-auto': [
     [
       'table-layout',
-      'auto',
+      AUTO,
     ],
   ],
   'table-caption': [
     [
-      'display',
+      DISPLAY,
       'table-caption',
     ],
   ],
   'table-cell': [
     [
-      'display',
+      DISPLAY,
       'table-cell',
     ],
   ],
   'table-column': [
     [
-      'display',
+      DISPLAY,
       'table-column',
     ],
   ],
   'table-column-group': [
     [
-      'display',
+      DISPLAY,
       'table-column-group',
     ],
   ],
   'table-fixed': [
     [
       'table-layout',
-      'fixed',
+      FIXED,
     ],
   ],
   'table-footer-group': [
     [
-      'display',
+      DISPLAY,
       'table-footer-group',
     ],
   ],
   'table-header-group': [
     [
-      'display',
+      DISPLAY,
       'table-header-group',
     ],
   ],
   'table-row': [
     [
-      'display',
+      DISPLAY,
       'table-row',
     ],
   ],
   'table-row-group': [
     [
-      'display',
+      DISPLAY,
       'table-row-group',
     ],
   ],
@@ -4770,182 +4974,182 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
       'tabular-nums',
     ],
     [
-      'font-variant-numeric',
-      'var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)',
+      FONT_VARIANT_NUMERIC,
+      VAR_TW_ORDINAL_VAR_TW_SLASHED_ZERO_VAR_TW_NUMERIC_FIGURE_VAR_TW_NUMERIC_SPACING_VAR_TW_NUMERIC_FRACTION,
     ],
   ],
   'text-balance': [
     [
-      'text-wrap',
+      TEXT_WRAP,
       'balance',
     ],
   ],
   'text-center': [
     [
-      'text-align',
-      'center',
+      TEXT_ALIGN,
+      CENTER,
     ],
   ],
   'text-clip': [
     [
-      'text-overflow',
-      'clip',
+      TEXT_OVERFLOW,
+      CLIP,
     ],
   ],
   'text-ellipsis': [
     [
-      'text-overflow',
-      'ellipsis',
+      TEXT_OVERFLOW,
+      ELLIPSIS,
     ],
   ],
   'text-end': [
     [
-      'text-align',
-      'end',
+      TEXT_ALIGN,
+      END,
     ],
   ],
   'text-justify': [
     [
-      'text-align',
+      TEXT_ALIGN,
       'justify',
     ],
   ],
   'text-left': [
     [
-      'text-align',
-      'left',
+      TEXT_ALIGN,
+      LEFT,
     ],
   ],
   'text-nowrap': [
     [
-      'text-wrap',
-      'nowrap',
+      TEXT_WRAP,
+      NOWRAP,
     ],
   ],
   'text-pretty': [
     [
-      'text-wrap',
+      TEXT_WRAP,
       'pretty',
     ],
   ],
   'text-right': [
     [
-      'text-align',
-      'right',
+      TEXT_ALIGN,
+      RIGHT,
     ],
   ],
   'text-shadow-initial': [
     [
       '--tw-text-shadow-color',
-      'initial',
+      INITIAL,
     ],
   ],
   'text-start': [
     [
-      'text-align',
-      'start',
+      TEXT_ALIGN,
+      START,
     ],
   ],
   'text-wrap': [
     [
-      'text-wrap',
+      TEXT_WRAP,
       'wrap',
     ],
   ],
   'top-auto': [
     [
-      'top',
-      'auto',
+      TOP,
+      AUTO,
     ],
   ],
   'top-full': [
     [
-      'top',
-      '100%',
+      TOP,
+      V_100_PERCENT,
     ],
   ],
   'top-px': [
     [
-      'top',
-      '1px',
+      TOP,
+      V_1PX,
     ],
   ],
   'touch-auto': [
     [
-      'touch-action',
-      'auto',
+      TOUCH_ACTION,
+      AUTO,
     ],
   ],
   'touch-manipulation': [
     [
-      'touch-action',
+      TOUCH_ACTION,
       'manipulation',
     ],
   ],
   'touch-none': [
     [
-      'touch-action',
-      'none',
+      TOUCH_ACTION,
+      NONE,
     ],
   ],
   'touch-pan-down': [
     [
-      '--tw-pan-y',
+      TW_PAN_Y,
       'pan-down',
     ],
     [
-      'touch-action',
-      'var(--tw-pan-x,) var(--tw-pan-y,) var(--tw-pinch-zoom,)',
+      TOUCH_ACTION,
+      VAR_TW_PAN_X_VAR_TW_PAN_Y_VAR_TW_PINCH_ZOOM,
     ],
   ],
   'touch-pan-left': [
     [
-      '--tw-pan-x',
+      TW_PAN_X,
       'pan-left',
     ],
     [
-      'touch-action',
-      'var(--tw-pan-x,) var(--tw-pan-y,) var(--tw-pinch-zoom,)',
+      TOUCH_ACTION,
+      VAR_TW_PAN_X_VAR_TW_PAN_Y_VAR_TW_PINCH_ZOOM,
     ],
   ],
   'touch-pan-right': [
     [
-      '--tw-pan-x',
+      TW_PAN_X,
       'pan-right',
     ],
     [
-      'touch-action',
-      'var(--tw-pan-x,) var(--tw-pan-y,) var(--tw-pinch-zoom,)',
+      TOUCH_ACTION,
+      VAR_TW_PAN_X_VAR_TW_PAN_Y_VAR_TW_PINCH_ZOOM,
     ],
   ],
   'touch-pan-up': [
     [
-      '--tw-pan-y',
+      TW_PAN_Y,
       'pan-up',
     ],
     [
-      'touch-action',
-      'var(--tw-pan-x,) var(--tw-pan-y,) var(--tw-pinch-zoom,)',
+      TOUCH_ACTION,
+      VAR_TW_PAN_X_VAR_TW_PAN_Y_VAR_TW_PINCH_ZOOM,
     ],
   ],
   'touch-pan-x': [
     [
-      '--tw-pan-x',
+      TW_PAN_X,
       'pan-x',
     ],
     [
-      'touch-action',
-      'var(--tw-pan-x,) var(--tw-pan-y,) var(--tw-pinch-zoom,)',
+      TOUCH_ACTION,
+      VAR_TW_PAN_X_VAR_TW_PAN_Y_VAR_TW_PINCH_ZOOM,
     ],
   ],
   'touch-pan-y': [
     [
-      '--tw-pan-y',
+      TW_PAN_Y,
       'pan-y',
     ],
     [
-      'touch-action',
-      'var(--tw-pan-x,) var(--tw-pan-y,) var(--tw-pinch-zoom,)',
+      TOUCH_ACTION,
+      VAR_TW_PAN_X_VAR_TW_PAN_Y_VAR_TW_PINCH_ZOOM,
     ],
   ],
   'touch-pinch-zoom': [
@@ -4954,8 +5158,8 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
       'pinch-zoom',
     ],
     [
-      'touch-action',
-      'var(--tw-pan-x,) var(--tw-pan-y,) var(--tw-pinch-zoom,)',
+      TOUCH_ACTION,
+      VAR_TW_PAN_X_VAR_TW_PAN_Y_VAR_TW_PINCH_ZOOM,
     ],
   ],
   'transform-3d': [
@@ -4966,26 +5170,26 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'transform-border': [
     [
-      'transform-box',
-      'border-box',
+      TRANSFORM_BOX,
+      BORDER_BOX,
     ],
   ],
   'transform-content': [
     [
-      'transform-box',
-      'content-box',
+      TRANSFORM_BOX,
+      CONTENT_BOX,
     ],
   ],
   'transform-cpu': [
     [
-      'transform',
+      TRANSFORM,
       'var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)',
     ],
   ],
   'transform-fill': [
     [
-      'transform-box',
-      'fill-box',
+      TRANSFORM_BOX,
+      FILL_BOX,
     ],
   ],
   'transform-flat': [
@@ -4996,26 +5200,26 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   ],
   'transform-gpu': [
     [
-      'transform',
+      TRANSFORM,
       'translateZ(0) var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)',
     ],
   ],
   'transform-none': [
     [
-      'transform',
-      'none',
+      TRANSFORM,
+      NONE,
     ],
   ],
   'transform-stroke': [
     [
-      'transform-box',
-      'stroke-box',
+      TRANSFORM_BOX,
+      STROKE_BOX,
     ],
   ],
   'transform-view': [
     [
-      'transform-box',
-      'view-box',
+      TRANSFORM_BOX,
+      VIEW_BOX,
     ],
   ],
   'transition-discrete': [
@@ -5027,291 +5231,291 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
   'transition-normal': [
     [
       'transition-behavior',
-      'normal',
+      NORMAL,
     ],
   ],
   'translate-3d': [
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y) var(--tw-translate-z)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y_VAR_TW_TRANSLATE_Z,
     ],
   ],
   'translate-full': [
     [
-      '--tw-translate-x',
-      '100%',
+      TW_TRANSLATE_X,
+      V_100_PERCENT,
     ],
     [
-      '--tw-translate-y',
-      '100%',
+      TW_TRANSLATE_Y,
+      V_100_PERCENT,
     ],
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y,
     ],
   ],
   'translate-none': [
     [
-      'translate',
-      'none',
+      TRANSLATE,
+      NONE,
     ],
   ],
   'translate-px': [
     [
-      '--tw-translate-x',
-      '1px',
+      TW_TRANSLATE_X,
+      V_1PX,
     ],
     [
-      '--tw-translate-y',
-      '1px',
+      TW_TRANSLATE_Y,
+      V_1PX,
     ],
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y,
     ],
   ],
   'translate-x-full': [
     [
-      '--tw-translate-x',
-      '100%',
+      TW_TRANSLATE_X,
+      V_100_PERCENT,
     ],
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y,
     ],
   ],
   'translate-x-px': [
     [
-      '--tw-translate-x',
-      '1px',
+      TW_TRANSLATE_X,
+      V_1PX,
     ],
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y,
     ],
   ],
   'translate-y-full': [
     [
-      '--tw-translate-y',
-      '100%',
+      TW_TRANSLATE_Y,
+      V_100_PERCENT,
     ],
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y,
     ],
   ],
   'translate-y-px': [
     [
-      '--tw-translate-y',
-      '1px',
+      TW_TRANSLATE_Y,
+      V_1PX,
     ],
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y,
     ],
   ],
   'translate-z-px': [
     [
       '--tw-translate-z',
-      '1px',
+      V_1PX,
     ],
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y) var(--tw-translate-z)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y_VAR_TW_TRANSLATE_Z,
     ],
   ],
   'truncate': [
     [
-      'overflow',
-      'hidden',
+      OVERFLOW,
+      HIDDEN,
     ],
     [
-      'text-overflow',
-      'ellipsis',
+      TEXT_OVERFLOW,
+      ELLIPSIS,
     ],
     [
-      'white-space',
-      'nowrap',
+      WHITE_SPACE,
+      NOWRAP,
     ],
   ],
   'underline': [
     [
-      'text-decoration-line',
+      TEXT_DECORATION_LINE,
       'underline',
     ],
   ],
   'uppercase': [
     [
-      'text-transform',
+      TEXT_TRANSFORM,
       'uppercase',
     ],
   ],
   'via-none': [
     [
       '--tw-gradient-via-stops',
-      'initial',
+      INITIAL,
     ],
   ],
   'visible': [
     [
-      'visibility',
-      'visible',
+      VISIBILITY,
+      VISIBLE,
     ],
   ],
   'w-auto': [
     [
-      'width',
-      'auto',
+      WIDTH,
+      AUTO,
     ],
   ],
   'w-dvh': [
     [
-      'width',
-      '100dvh',
+      WIDTH,
+      V_100DVH,
     ],
   ],
   'w-dvw': [
     [
-      'width',
-      '100dvw',
+      WIDTH,
+      V_100DVW,
     ],
   ],
   'w-fit': [
     [
-      'width',
-      'fit-content',
+      WIDTH,
+      FIT_CONTENT,
     ],
   ],
   'w-full': [
     [
-      'width',
-      '100%',
+      WIDTH,
+      V_100_PERCENT,
     ],
   ],
   'w-lvh': [
     [
-      'width',
-      '100lvh',
+      WIDTH,
+      V_100LVH,
     ],
   ],
   'w-lvw': [
     [
-      'width',
-      '100lvw',
+      WIDTH,
+      V_100LVW,
     ],
   ],
   'w-max': [
     [
-      'width',
-      'max-content',
+      WIDTH,
+      MAX_CONTENT,
     ],
   ],
   'w-min': [
     [
-      'width',
-      'min-content',
+      WIDTH,
+      MIN_CONTENT,
     ],
   ],
   'w-px': [
     [
-      'width',
-      '1px',
+      WIDTH,
+      V_1PX,
     ],
   ],
   'w-screen': [
     [
-      'width',
-      '100vw',
+      WIDTH,
+      V_100VW,
     ],
   ],
   'w-svh': [
     [
-      'width',
-      '100svh',
+      WIDTH,
+      V_100SVH,
     ],
   ],
   'w-svw': [
     [
-      'width',
-      '100svw',
+      WIDTH,
+      V_100SVW,
     ],
   ],
   'whitespace-break-spaces': [
     [
-      'white-space',
+      WHITE_SPACE,
       'break-spaces',
     ],
   ],
   'whitespace-normal': [
     [
-      'white-space',
-      'normal',
+      WHITE_SPACE,
+      NORMAL,
     ],
   ],
   'whitespace-nowrap': [
     [
-      'white-space',
-      'nowrap',
+      WHITE_SPACE,
+      NOWRAP,
     ],
   ],
   'whitespace-pre': [
     [
-      'white-space',
+      WHITE_SPACE,
       'pre',
     ],
   ],
   'whitespace-pre-line': [
     [
-      'white-space',
+      WHITE_SPACE,
       'pre-line',
     ],
   ],
   'whitespace-pre-wrap': [
     [
-      'white-space',
+      WHITE_SPACE,
       'pre-wrap',
     ],
   ],
   'will-change-auto': [
     [
-      'will-change',
-      'auto',
+      WILL_CHANGE,
+      AUTO,
     ],
   ],
   'will-change-contents': [
     [
-      'will-change',
+      WILL_CHANGE,
       'contents',
     ],
   ],
   'will-change-scroll': [
     [
-      'will-change',
+      WILL_CHANGE,
       'scroll-position',
     ],
   ],
   'will-change-transform': [
     [
-      'will-change',
-      'transform',
+      WILL_CHANGE,
+      TRANSFORM,
     ],
   ],
   'wrap-anywhere': [
     [
-      'overflow-wrap',
+      OVERFLOW_WRAP,
       'anywhere',
     ],
   ],
   'wrap-break-word': [
     [
-      'overflow-wrap',
+      OVERFLOW_WRAP,
       'break-word',
     ],
   ],
   'wrap-normal': [
     [
-      'overflow-wrap',
-      'normal',
+      OVERFLOW_WRAP,
+      NORMAL,
     ],
   ],
 };
@@ -5320,454 +5524,454 @@ export const TW4_STATICS: Record<string, Array<[string, string]>> = {
 export const TW4_NEGATIVE_STATICS: Record<string, Array<[string, string]>> = {
   'bottom-full': [
     [
-      'bottom',
-      '-100%',
+      BOTTOM,
+      MINUS_100_PERCENT,
     ],
   ],
   'bottom-px': [
     [
-      'bottom',
-      '-1px',
+      BOTTOM,
+      MINUS_1PX,
     ],
   ],
   'end-full': [
     [
-      'inset-inline-end',
-      '-100%',
+      INSET_INLINE_END,
+      MINUS_100_PERCENT,
     ],
   ],
   'end-px': [
     [
-      'inset-inline-end',
-      '-1px',
+      INSET_INLINE_END,
+      MINUS_1PX,
     ],
   ],
   'indent-px': [
     [
       'text-indent',
-      '-1px',
+      MINUS_1PX,
     ],
   ],
   'inset-be-full': [
     [
-      'inset-block-end',
-      '-100%',
+      INSET_BLOCK_END,
+      MINUS_100_PERCENT,
     ],
   ],
   'inset-be-px': [
     [
-      'inset-block-end',
-      '-1px',
+      INSET_BLOCK_END,
+      MINUS_1PX,
     ],
   ],
   'inset-bs-full': [
     [
-      'inset-block-start',
-      '-100%',
+      INSET_BLOCK_START,
+      MINUS_100_PERCENT,
     ],
   ],
   'inset-bs-px': [
     [
-      'inset-block-start',
-      '-1px',
+      INSET_BLOCK_START,
+      MINUS_1PX,
     ],
   ],
   'inset-e-full': [
     [
-      'inset-inline-end',
-      '-100%',
+      INSET_INLINE_END,
+      MINUS_100_PERCENT,
     ],
   ],
   'inset-e-px': [
     [
-      'inset-inline-end',
-      '-1px',
+      INSET_INLINE_END,
+      MINUS_1PX,
     ],
   ],
   'inset-full': [
     [
-      'inset',
-      '-100%',
+      INSET,
+      MINUS_100_PERCENT,
     ],
   ],
   'inset-px': [
     [
-      'inset',
-      '-1px',
+      INSET,
+      MINUS_1PX,
     ],
   ],
   'inset-s-full': [
     [
-      'inset-inline-start',
-      '-100%',
+      INSET_INLINE_START,
+      MINUS_100_PERCENT,
     ],
   ],
   'inset-s-px': [
     [
-      'inset-inline-start',
-      '-1px',
+      INSET_INLINE_START,
+      MINUS_1PX,
     ],
   ],
   'inset-x-full': [
     [
-      'inset-inline',
-      '-100%',
+      INSET_INLINE,
+      MINUS_100_PERCENT,
     ],
   ],
   'inset-x-px': [
     [
-      'inset-inline',
-      '-1px',
+      INSET_INLINE,
+      MINUS_1PX,
     ],
   ],
   'inset-y-full': [
     [
-      'inset-block',
-      '-100%',
+      INSET_BLOCK,
+      MINUS_100_PERCENT,
     ],
   ],
   'inset-y-px': [
     [
-      'inset-block',
-      '-1px',
+      INSET_BLOCK,
+      MINUS_1PX,
     ],
   ],
   'left-full': [
     [
-      'left',
-      '-100%',
+      LEFT,
+      MINUS_100_PERCENT,
     ],
   ],
   'left-px': [
     [
-      'left',
-      '-1px',
+      LEFT,
+      MINUS_1PX,
     ],
   ],
   'm-px': [
     [
-      'margin',
-      '-1px',
+      MARGIN,
+      MINUS_1PX,
     ],
   ],
   'mb-px': [
     [
-      'margin-bottom',
-      '-1px',
+      MARGIN_BOTTOM,
+      MINUS_1PX,
     ],
   ],
   'mbe-px': [
     [
-      'margin-block-end',
-      '-1px',
+      MARGIN_BLOCK_END,
+      MINUS_1PX,
     ],
   ],
   'mbs-px': [
     [
-      'margin-block-start',
-      '-1px',
+      MARGIN_BLOCK_START,
+      MINUS_1PX,
     ],
   ],
   'me-px': [
     [
-      'margin-inline-end',
-      '-1px',
+      MARGIN_INLINE_END,
+      MINUS_1PX,
     ],
   ],
   'ml-px': [
     [
-      'margin-left',
-      '-1px',
+      MARGIN_LEFT,
+      MINUS_1PX,
     ],
   ],
   'mr-px': [
     [
-      'margin-right',
-      '-1px',
+      MARGIN_RIGHT,
+      MINUS_1PX,
     ],
   ],
   'ms-px': [
     [
-      'margin-inline-start',
-      '-1px',
+      MARGIN_INLINE_START,
+      MINUS_1PX,
     ],
   ],
   'mt-px': [
     [
-      'margin-top',
-      '-1px',
+      MARGIN_TOP,
+      MINUS_1PX,
     ],
   ],
   'mx-px': [
     [
-      'margin-inline',
-      '-1px',
+      MARGIN_INLINE,
+      MINUS_1PX,
     ],
   ],
   'my-px': [
     [
-      'margin-block',
-      '-1px',
+      MARGIN_BLOCK,
+      MINUS_1PX,
     ],
   ],
   'right-full': [
     [
-      'right',
-      '-100%',
+      RIGHT,
+      MINUS_100_PERCENT,
     ],
   ],
   'right-px': [
     [
-      'right',
-      '-1px',
+      RIGHT,
+      MINUS_1PX,
     ],
   ],
   'scroll-m-px': [
     [
       'scroll-margin',
-      '-1px',
+      MINUS_1PX,
     ],
   ],
   'scroll-mb-px': [
     [
       'scroll-margin-bottom',
-      '-1px',
+      MINUS_1PX,
     ],
   ],
   'scroll-mbe-px': [
     [
       'scroll-margin-block-end',
-      '-1px',
+      MINUS_1PX,
     ],
   ],
   'scroll-mbs-px': [
     [
       'scroll-margin-block-start',
-      '-1px',
+      MINUS_1PX,
     ],
   ],
   'scroll-me-px': [
     [
       'scroll-margin-inline-end',
-      '-1px',
+      MINUS_1PX,
     ],
   ],
   'scroll-ml-px': [
     [
       'scroll-margin-left',
-      '-1px',
+      MINUS_1PX,
     ],
   ],
   'scroll-mr-px': [
     [
       'scroll-margin-right',
-      '-1px',
+      MINUS_1PX,
     ],
   ],
   'scroll-ms-px': [
     [
       'scroll-margin-inline-start',
-      '-1px',
+      MINUS_1PX,
     ],
   ],
   'scroll-mt-px': [
     [
       'scroll-margin-top',
-      '-1px',
+      MINUS_1PX,
     ],
   ],
   'scroll-mx-px': [
     [
       'scroll-margin-inline',
-      '-1px',
+      MINUS_1PX,
     ],
   ],
   'scroll-my-px': [
     [
       'scroll-margin-block',
-      '-1px',
+      MINUS_1PX,
     ],
   ],
   'start-full': [
     [
-      'inset-inline-start',
-      '-100%',
+      INSET_INLINE_START,
+      MINUS_100_PERCENT,
     ],
   ],
   'start-px': [
     [
-      'inset-inline-start',
-      '-1px',
+      INSET_INLINE_START,
+      MINUS_1PX,
     ],
   ],
   'top-full': [
     [
-      'top',
-      '-100%',
+      TOP,
+      MINUS_100_PERCENT,
     ],
   ],
   'top-px': [
     [
-      'top',
-      '-1px',
+      TOP,
+      MINUS_1PX,
     ],
   ],
   'translate-full': [
     [
-      '--tw-translate-x',
-      '-100%',
+      TW_TRANSLATE_X,
+      MINUS_100_PERCENT,
     ],
     [
-      '--tw-translate-y',
-      '-100%',
+      TW_TRANSLATE_Y,
+      MINUS_100_PERCENT,
     ],
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y,
     ],
   ],
   'translate-px': [
     [
-      '--tw-translate-x',
-      '-1px',
+      TW_TRANSLATE_X,
+      MINUS_1PX,
     ],
     [
-      '--tw-translate-y',
-      '-1px',
+      TW_TRANSLATE_Y,
+      MINUS_1PX,
     ],
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y,
     ],
   ],
   'translate-x-full': [
     [
-      '--tw-translate-x',
-      '-100%',
+      TW_TRANSLATE_X,
+      MINUS_100_PERCENT,
     ],
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y,
     ],
   ],
   'translate-x-px': [
     [
-      '--tw-translate-x',
-      '-1px',
+      TW_TRANSLATE_X,
+      MINUS_1PX,
     ],
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y,
     ],
   ],
   'translate-y-full': [
     [
-      '--tw-translate-y',
-      '-100%',
+      TW_TRANSLATE_Y,
+      MINUS_100_PERCENT,
     ],
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y,
     ],
   ],
   'translate-y-px': [
     [
-      '--tw-translate-y',
-      '-1px',
+      TW_TRANSLATE_Y,
+      MINUS_1PX,
     ],
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y,
     ],
   ],
   'translate-z-px': [
     [
       '--tw-translate-z',
-      '-1px',
+      MINUS_1PX,
     ],
     [
-      'translate',
-      'var(--tw-translate-x) var(--tw-translate-y) var(--tw-translate-z)',
+      TRANSLATE,
+      VAR_TW_TRANSLATE_X_VAR_TW_TRANSLATE_Y_VAR_TW_TRANSLATE_Z,
     ],
   ],
 };
 
 /** Initial values of Tailwind helper properties (`@property … initial-value`). */
 export const TW4_PROPERTIES: Record<string, string> = {
-  '--tw-border-spacing-x': '0',
-  '--tw-border-spacing-y': '0',
-  '--tw-border-style': 'solid',
-  '--tw-divide-x-reverse': '0',
-  '--tw-divide-y-reverse': '0',
-  '--tw-drop-shadow-alpha': '100%',
-  '--tw-gradient-from': '#0000',
-  '--tw-gradient-from-position': '0%',
-  '--tw-gradient-to': '#0000',
-  '--tw-gradient-to-position': '100%',
-  '--tw-gradient-via': '#0000',
+  '--tw-border-spacing-x': V_0,
+  '--tw-border-spacing-y': V_0,
+  '--tw-border-style': SOLID,
+  '--tw-divide-x-reverse': V_0,
+  '--tw-divide-y-reverse': V_0,
+  '--tw-drop-shadow-alpha': V_100_PERCENT,
+  '--tw-gradient-from': HEX_0000,
+  '--tw-gradient-from-position': V_0_PERCENT,
+  '--tw-gradient-to': HEX_0000,
+  '--tw-gradient-to-position': V_100_PERCENT,
+  '--tw-gradient-via': HEX_0000,
   '--tw-gradient-via-position': '50%',
-  '--tw-inset-ring-shadow': '0 0 #0000',
-  '--tw-inset-shadow': '0 0 #0000',
-  '--tw-inset-shadow-alpha': '100%',
-  '--tw-mask-bottom': 'linear-gradient(#fff, #fff)',
-  '--tw-mask-bottom-from-color': 'black',
-  '--tw-mask-bottom-from-position': '0%',
-  '--tw-mask-bottom-to-color': 'transparent',
-  '--tw-mask-bottom-to-position': '100%',
-  '--tw-mask-conic': 'linear-gradient(#fff, #fff)',
-  '--tw-mask-conic-from-color': 'black',
-  '--tw-mask-conic-from-position': '0%',
+  '--tw-inset-ring-shadow': V_0_0_0000,
+  '--tw-inset-shadow': V_0_0_0000,
+  '--tw-inset-shadow-alpha': V_100_PERCENT,
+  '--tw-mask-bottom': LINEAR_GRADIENT_FFF_FFF,
+  '--tw-mask-bottom-from-color': BLACK,
+  '--tw-mask-bottom-from-position': V_0_PERCENT,
+  '--tw-mask-bottom-to-color': TRANSPARENT,
+  '--tw-mask-bottom-to-position': V_100_PERCENT,
+  '--tw-mask-conic': LINEAR_GRADIENT_FFF_FFF,
+  '--tw-mask-conic-from-color': BLACK,
+  '--tw-mask-conic-from-position': V_0_PERCENT,
   '--tw-mask-conic-position': '0deg',
-  '--tw-mask-conic-to-color': 'transparent',
-  '--tw-mask-conic-to-position': '100%',
-  '--tw-mask-left': 'linear-gradient(#fff, #fff)',
-  '--tw-mask-left-from-color': 'black',
-  '--tw-mask-left-from-position': '0%',
-  '--tw-mask-left-to-color': 'transparent',
-  '--tw-mask-left-to-position': '100%',
-  '--tw-mask-linear': 'linear-gradient(#fff, #fff)',
-  '--tw-mask-linear-from-color': 'black',
-  '--tw-mask-linear-from-position': '0%',
+  '--tw-mask-conic-to-color': TRANSPARENT,
+  '--tw-mask-conic-to-position': V_100_PERCENT,
+  '--tw-mask-left': LINEAR_GRADIENT_FFF_FFF,
+  '--tw-mask-left-from-color': BLACK,
+  '--tw-mask-left-from-position': V_0_PERCENT,
+  '--tw-mask-left-to-color': TRANSPARENT,
+  '--tw-mask-left-to-position': V_100_PERCENT,
+  '--tw-mask-linear': LINEAR_GRADIENT_FFF_FFF,
+  '--tw-mask-linear-from-color': BLACK,
+  '--tw-mask-linear-from-position': V_0_PERCENT,
   '--tw-mask-linear-position': '0deg',
-  '--tw-mask-linear-to-color': 'transparent',
-  '--tw-mask-linear-to-position': '100%',
-  '--tw-mask-radial': 'linear-gradient(#fff, #fff)',
-  '--tw-mask-radial-from-color': 'black',
-  '--tw-mask-radial-from-position': '0%',
-  '--tw-mask-radial-position': 'center',
+  '--tw-mask-linear-to-color': TRANSPARENT,
+  '--tw-mask-linear-to-position': V_100_PERCENT,
+  '--tw-mask-radial': LINEAR_GRADIENT_FFF_FFF,
+  '--tw-mask-radial-from-color': BLACK,
+  '--tw-mask-radial-from-position': V_0_PERCENT,
+  '--tw-mask-radial-position': CENTER,
   '--tw-mask-radial-shape': 'ellipse',
   '--tw-mask-radial-size': 'farthest-corner',
-  '--tw-mask-radial-to-color': 'transparent',
-  '--tw-mask-radial-to-position': '100%',
-  '--tw-mask-right': 'linear-gradient(#fff, #fff)',
-  '--tw-mask-right-from-color': 'black',
-  '--tw-mask-right-from-position': '0%',
-  '--tw-mask-right-to-color': 'transparent',
-  '--tw-mask-right-to-position': '100%',
-  '--tw-mask-top': 'linear-gradient(#fff, #fff)',
-  '--tw-mask-top-from-color': 'black',
-  '--tw-mask-top-from-position': '0%',
-  '--tw-mask-top-to-color': 'transparent',
-  '--tw-mask-top-to-position': '100%',
-  '--tw-outline-style': 'solid',
+  '--tw-mask-radial-to-color': TRANSPARENT,
+  '--tw-mask-radial-to-position': V_100_PERCENT,
+  '--tw-mask-right': LINEAR_GRADIENT_FFF_FFF,
+  '--tw-mask-right-from-color': BLACK,
+  '--tw-mask-right-from-position': V_0_PERCENT,
+  '--tw-mask-right-to-color': TRANSPARENT,
+  '--tw-mask-right-to-position': V_100_PERCENT,
+  '--tw-mask-top': LINEAR_GRADIENT_FFF_FFF,
+  '--tw-mask-top-from-color': BLACK,
+  '--tw-mask-top-from-position': V_0_PERCENT,
+  '--tw-mask-top-to-color': TRANSPARENT,
+  '--tw-mask-top-to-position': V_100_PERCENT,
+  '--tw-outline-style': SOLID,
   '--tw-ring-offset-color': '#fff',
-  '--tw-ring-offset-shadow': '0 0 #0000',
+  '--tw-ring-offset-shadow': V_0_0_0000,
   '--tw-ring-offset-width': '0px',
-  '--tw-ring-shadow': '0 0 #0000',
-  '--tw-scale-x': '1',
-  '--tw-scale-y': '1',
-  '--tw-scale-z': '1',
+  '--tw-ring-shadow': V_0_0_0000,
+  '--tw-scale-x': V_1,
+  '--tw-scale-y': V_1,
+  '--tw-scale-z': V_1,
   '--tw-scroll-snap-strictness': 'proximity',
-  '--tw-scrollbar-thumb': '#0000',
-  '--tw-scrollbar-track': '#0000',
-  '--tw-shadow': '0 0 #0000',
-  '--tw-shadow-alpha': '100%',
-  '--tw-space-x-reverse': '0',
-  '--tw-space-y-reverse': '0',
-  '--tw-text-shadow-alpha': '100%',
-  '--tw-translate-x': '0',
-  '--tw-translate-y': '0',
-  '--tw-translate-z': '0',
+  '--tw-scrollbar-thumb': HEX_0000,
+  '--tw-scrollbar-track': HEX_0000,
+  '--tw-shadow': V_0_0_0000,
+  '--tw-shadow-alpha': V_100_PERCENT,
+  '--tw-space-x-reverse': V_0,
+  '--tw-space-y-reverse': V_0,
+  '--tw-text-shadow-alpha': V_100_PERCENT,
+  '--tw-translate-x': V_0,
+  '--tw-translate-y': V_0,
+  '--tw-translate-z': V_0,
 };
 
 /** Static utilities with nested blocks — implemented by preset handlers, not by this table. */

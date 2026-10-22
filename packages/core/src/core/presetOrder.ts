@@ -18,6 +18,8 @@ import type {
   MnPresetObject,
 } from './types';
 
+const DOUBLE_QUOTE = '"';
+
 /** Допустимые поля пресет-объекта. */
 const PRESET_SCHEMA: OptionSchema = {
   name: isString,
@@ -32,7 +34,7 @@ const PRESET_SCHEMA: OptionSchema = {
 /** Проверяет пресет-объект: обязательные `name`, `setup` и схема полей (D-038). */
 function checkPreset(preset: MnPresetObject): void {
   const named = typeof preset.name === 'string';
-  const where = 'preset ' + (named ? '"' + preset.name + '"' : 'object');
+  const where = 'preset ' + (named ? DOUBLE_QUOTE + preset.name + DOUBLE_QUOTE : 'object');
   checkOptions(
     preset, PRESET_SCHEMA, where,
   );
@@ -67,7 +69,7 @@ export function orderPresets(presets: MnPreset[], connected: Record<string, MnPr
     if (typeof preset !== 'function') {
       checkPreset(preset);
       known = byName[preset.name] || connected[preset.name];
-      known && known !== preset && fail('two different presets are named "' + preset.name + '"');
+      known && known !== preset && fail('two different presets are named "' + preset.name + DOUBLE_QUOTE);
       byName[preset.name] = preset;
     }
   }

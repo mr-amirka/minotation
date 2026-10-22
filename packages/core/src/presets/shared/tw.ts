@@ -14,6 +14,10 @@ import type {
   MnHandlerResult,
 } from '../../types';
 
+const SLASH = '/';
+const DASH = '-';
+const CLOSE_PAREN = ')';
+
 /** Разобранный остаток класса для хендлера в {@link tw}. */
 export interface MnTwArgs {
   /** Части до произвольного значения: `gap-x-2` → `['x', '2']`, `bg-blue-500` → `['blue', '500']`. */
@@ -61,11 +65,11 @@ export function parseTwSuffix(suffix: string, negative: boolean): MnTwArgs | und
     return args;
   }
   // Голое имя с модификатором: `shadow/50`, `bg-radial/oklch`.
-  if (suffix[0] === '/') {
+  if (suffix[0] === SLASH) {
     args.modifier = suffix.slice(1);
-    return args.modifier && args.modifier.indexOf('/') < 0 ? args : undefined;
+    return args.modifier && args.modifier.indexOf(SLASH) < 0 ? args : undefined;
   }
-  if (suffix[0] !== '-') {
+  if (suffix[0] !== DASH) {
     return undefined;
   }
   const l = suffix.length;
@@ -77,10 +81,10 @@ export function parseTwSuffix(suffix: string, negative: boolean): MnTwArgs | und
   for (; i < l; i++) {
     ch = suffix[i];
     if (ch === '[' || ch === '(') {
-      depth++ || open < 0 && suffix[i - 1] === '-' && (open = i);
-    } else if (ch === ']' || ch === ')') {
+      depth++ || open < 0 && suffix[i - 1] === DASH && (open = i);
+    } else if (ch === ']' || ch === CLOSE_PAREN) {
       depth--;
-    } else if (ch === '/' && !depth) {
+    } else if (ch === SLASH && !depth) {
       slash = i;
     }
   }
@@ -90,20 +94,20 @@ export function parseTwSuffix(suffix: string, negative: boolean): MnTwArgs | und
     return undefined;
   }
   if (open < 0) {
-    args.parts = body.split('-');
+    args.parts = body.split(DASH);
     return args.parts.indexOf('') < 0 ? args : undefined;
   }
   const head = suffix.slice(1, open - 1);
   const close = slash < 0 ? l - 1 : slash - 1;
   const bracket = suffix[open];
-  if (suffix[close] !== (bracket === '[' ? ']' : ')') || close - open < 2) {
+  if (suffix[close] !== (bracket === '[' ? ']' : CLOSE_PAREN) || close - open < 2) {
     return undefined;
   }
-  args.parts = head ? head.split('-') : [];
+  args.parts = head ? head.split(DASH) : [];
   let value = suffix.slice(open + 1, close).replace(REGEXP_ARBITRARY_SPACE, (match) => (match === '_' ? ' ' : '_'));
   const typed = REGEXP_ARBITRARY_TYPE.exec(value);
   typed && (args.type = typed[1], value = typed[2]);
-  args.arbitrary = bracket === '(' ? 'var(' + value + ')' : mathSpaces(value);
+  args.arbitrary = bracket === '(' ? 'var(' + value + CLOSE_PAREN : mathSpaces(value);
   return args.parts.indexOf('') < 0 ? args : undefined;
 }
 
@@ -126,7 +130,7 @@ export function parseTwSuffix(suffix: string, negative: boolean): MnTwArgs | und
  */
 export function tw(handler: MnTwHandler): MnHandler {
   return (p: MnEssenceParams) => {
-    const args = parseTwSuffix(p.suffix, p.sign === '-');
+    const args = parseTwSuffix(p.suffix, p.sign === DASH);
     return args ? handler(args, p) : undefined;
   };
 }

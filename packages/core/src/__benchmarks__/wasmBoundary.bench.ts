@@ -34,6 +34,8 @@ import {
   scanTokens,
 } from '../extractTokens';
 
+const CLASS_ATTR = 'class';
+
 const FILES = 300;
 const ROUNDS = 20;
 
@@ -77,7 +79,7 @@ function bench(name: string, fn: () => void): number {
 console.log('образец: ' + kb.toFixed(0) + ' КБ × ' + ROUNDS + ' прогонов\n');
 
 const options = {
-  attr: 'class',
+  attr: CLASS_ATTR,
 };
 
 const full = bench('scanTokens — все три механизма      ', () => {
@@ -88,7 +90,7 @@ const full = bench('scanTokens — все три механизма      ', () =
 
 bench('extractTokens — только атрибут      ', () => {
   for (let i = 0; i < FILES; i++) {
-    extractTokens(sources[i], 'class');
+    extractTokens(sources[i], CLASS_ATTR);
   }
 });
 
@@ -107,7 +109,7 @@ const copyIn = bench('граница: копирование в память WAS
 
 // Обратный путь, вариант 1: токены приходят строками из линейной памяти.
 const decoder = new TextDecoder();
-const found = extractTokens(sources[0], 'class');
+const found = extractTokens(sources[0], CLASS_ATTR);
 const encoded = found.map((token) => encoder.encode(token));
 let offset = 0;
 const encodedLength = encoded.length;

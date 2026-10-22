@@ -61,6 +61,8 @@ import type {
   SourceEdit,
 } from './scopeClass';
 
+const TS_EXTENSION = '.ts';
+
 /** Опции {@link scanTokensSyntax}. */
 export interface SyntaxScanOptions extends ScanTokensOptions {
   /**
@@ -75,7 +77,7 @@ export interface SyntaxScanOptions extends ScanTokensOptions {
 function scriptKindOf(fileName: string): ts.ScriptKind {
   const dot = fileName.lastIndexOf('.');
   const ext = dot > -1 ? fileName.slice(dot) : '';
-  if (ext === '.ts' || ext === '.mts' || ext === '.cts') {
+  if (ext === TS_EXTENSION || ext === '.mts' || ext === '.cts') {
     return ts.ScriptKind.TS;
   }
   return ts.ScriptKind.TSX;
@@ -412,7 +414,7 @@ export function scanTokensSfc(source: string, options: SyntaxScanOptions): strin
     front = source.indexOf('\n---', 3);
     if (front > -1) {
       pushSyntax(
-        tokens, source.slice(3, front), options, '.ts',
+        tokens, source.slice(3, front), options, TS_EXTENSION,
       );
       rest.push(newlinesOf(
         source, 0, front,
@@ -486,7 +488,7 @@ function extensionOf(tag: string): string {
   if (tag.indexOf('sx"') > -1 || tag.indexOf("sx'") > -1) {
     return '.tsx';
   }
-  return '.ts';
+  return TS_EXTENSION;
 }
 
 /** Только переводы строк из диапазона — остальное отбрасывается. */

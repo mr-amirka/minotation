@@ -9,6 +9,8 @@ import {
   scanTokens,
 } from '../extractTokens';
 
+const CLASS_ATTR = 'class';
+
 const FILES = 300;
 const ROUNDS = 20;
 const SAMPLE = `
@@ -142,14 +144,14 @@ function scanByQuotes(
 const three = bench('три прохода (текущая реализация)', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokens(sources[i], {
-      attr: 'class',
+      attr: CLASS_ATTR,
     });
   }
 });
 const quotes = bench('от кавычки назад                ', () => {
   for (let i = 0; i < FILES; i++) {
     scanByQuotes(
-      sources[i], 'class', 'Class', [
+      sources[i], CLASS_ATTR, 'Class', [
         'mne',
         'mnClass',
       ],
@@ -159,10 +161,10 @@ const quotes = bench('от кавычки назад                ', () => {
 console.log(`разница: ${((1 - quotes / three) * 100).toFixed(1)}%`);
 
 const a = scanTokens(sources[0], {
-  attr: 'class',
+  attr: CLASS_ATTR,
 }).slice().sort().join(' ');
 const b = scanByQuotes(
-  sources[0], 'class', 'Class', [
+  sources[0], CLASS_ATTR, 'Class', [
     'mne',
     'mnClass',
   ],

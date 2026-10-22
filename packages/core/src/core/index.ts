@@ -157,6 +157,28 @@ import type {
   MnInstance,
 } from '../types';
 
+const AMPERSAND = '&';
+const MEDIA_AND = ' and ';
+const MEDIA_PREFIX = '@media ';
+const MSG_UNKNOWN_MEDIA = 'Media "@';
+const COLON = ':';
+const WARNING_SUSPECT_CLASS = 'suspect-class';
+const WARNING_PRESET_CONFLICT = 'preset-conflict';
+const SPACE_OPEN_PAREN = ' (';
+const DOT = '.';
+const MODE_WARN = 'warn';
+const SPACE = ' ';
+const MODE_STRICT = 'strict';
+const DOUBLE_QUOTE = '"';
+const AT = '@';
+/** The notation's "important" suffix of an essence. */
+const IMPORTANT_SUFFIX = '-i';
+const WARNING_PARSE_ERROR = 'parse-error';
+const OPEN_BRACE = '{';
+const PX = 'px';
+const MEDIA_ALL = 'all';
+const CLOSE_BRACE = '}';
+
 // Присваиваем utils статическому свойству (нужно для обратной совместимости)
 minotationProvider.utils = baseUtils;
 
@@ -238,7 +260,7 @@ function joinEssenceSelectors(prefixes: Record<string, number>, suffixes: Record
   let suffix: string;
   for (prefix in prefixes) { // eslint-disable-line
     for (suffix in suffixes) { // eslint-disable-line
-      dst[suffix.indexOf('&') < 0 ? prefix + suffix : suffix.split('&').join(prefix)] = 1;
+      dst[suffix.indexOf(AMPERSAND) < 0 ? prefix + suffix : suffix.split(AMPERSAND).join(prefix)] = 1;
     }
   }
   return dst;
@@ -256,10 +278,10 @@ function nestedMedia(queries: string[]): string[] {
   let parts: string[];
   for (query of queries) {
     parts = [];
-    for (part of query.split(' and ')) {
+    for (part of query.split(MEDIA_AND)) {
       seen[part] || (seen[part] = 1, parts.push(part));
     }
-    parts.length && out.push('@media ' + parts.join(' and '));
+    parts.length && out.push(MEDIA_PREFIX + parts.join(MEDIA_AND));
   }
   return out;
 }
@@ -274,7 +296,7 @@ function joinMedia(token?: string, selector?: string): string {
   const left = token ? (a ? token.slice(0, a.index) : token) : '';
   const right = selector ? (b ? selector.slice(0, b.index) : selector) : '';
   const priority = a ? a[0] : b ? b[0] : '';
-  return (left && right ? left + '&' + right : left || right) + priority;
+  return (left && right ? left + AMPERSAND + right : left || right) + priority;
 }
 
 /** Приоритет в конце медиа-выражения: `^3`, `^-100`. */
@@ -287,7 +309,7 @@ function uniqueConditions(queries: string[]): string[] {
   let query: string;
   let part: string;
   for (query of queries) {
-    for (part of query.split(' and ')) {
+    for (part of query.split(MEDIA_AND)) {
       seen[part] || (seen[part] = 1, out.push(part));
     }
   }
@@ -326,9 +348,9 @@ const CSS_MEDIA_TYPES: Record<string, number> = {
 
 function unknownMediaMessage(name: string, strict: boolean): string {
   return strict
-    ? 'Media "@' + name + '" is unknown (unknownMediaMode: \'strict\'), the token gives no CSS.'
+    ? MSG_UNKNOWN_MEDIA + name + '" is unknown (unknownMediaMode: \'strict\'), the token gives no CSS.'
       + ' Describe it in mn.media or allow it: unknownMediaMode: \'warn\'.'
-    : 'Media "@' + name + '" is unknown — it goes to CSS as written: "@media ' + name + '". Describe it'
+    : MSG_UNKNOWN_MEDIA + name + '" is unknown — it goes to CSS as written: "@media ' + name + '". Describe it'
       + ' in mn.media; to hide this warning: unknownMediaMode: \'silent\'; to forbid such tokens:'
       + ' unknownMediaMode: \'strict\'.';
 }
@@ -346,7 +368,7 @@ function throwRawProperty(body: string): never {
 
 function throwNoHandler(name: string, value: string): never {
   throw new MnParseError('Property "' + name + '" has no handler: the class gives no CSS', {
-    token: value.replace(MN_ESSENCE_PAIR, ':'),
+    token: value.replace(MN_ESSENCE_PAIR, COLON),
     handler: name,
     arg: '',
   });
@@ -359,8 +381,8 @@ function throwNoHandler(name: string, value: string): never {
 function isCompileWarning(warning: MnWarning): boolean {
   return warning.type !== 'raised-specificity' && warning.type !== 'important'
     && warning.type !== 'max-depth-exceeded' && warning.type !== 'child-selector'
-    && warning.type !== 'unknown-media' && warning.type !== 'suspect-class'
-    && warning.type !== 'handler-conflict' && warning.type !== 'preset-conflict' && warning.type !== 'media-conflict'
+    && warning.type !== 'unknown-media' && warning.type !== WARNING_SUSPECT_CLASS
+    && warning.type !== 'handler-conflict' && warning.type !== WARNING_PRESET_CONFLICT && warning.type !== 'media-conflict'
     && warning.type !== 'group-suspect';
 }
 
@@ -454,8 +476,8 @@ function minotationProvider(options?: MnOptions) {
         b = marked[j];
         (a.ecosystems as string[]).some((name) => (b.ecosystems as string[]).indexOf(name) > -1)
           || raiseConfiguration(
-            'preset-conflict', a.name + ' (' + (a.ecosystems as string[]).join(', ') + ') and ' + b.name
-              + ' (' + (b.ecosystems as string[]).join(', ') + ') belong to different preset ecosystems',
+            WARNING_PRESET_CONFLICT, a.name + SPACE_OPEN_PAREN + (a.ecosystems as string[]).join(', ') + ') and ' + b.name
+              + SPACE_OPEN_PAREN + (b.ecosystems as string[]).join(', ') + ') belong to different preset ecosystems',
             'presetConflictMode',
           );
       }
@@ -490,7 +512,7 @@ function minotationProvider(options?: MnOptions) {
     $$logWarning = warningMode === 'log' ? logWarning : noop;
     $$onWarning = settings.onWarning || noop;
     // Изоляция (D-075): режим без класса области — не к чему привязывать правила.
-    (mn as any)._isolateSuffix = settings.isolateMode === 'class' ? '.' + settings.isolateClass
+    (mn as any)._isolateSuffix = settings.isolateMode === 'class' ? DOT + settings.isolateClass
       : settings.isolateMode === 'where' ? ':where(.' + settings.isolateClass + ')' : '';
     (settings.isolateMode || 'none') === 'none' || settings.isolateClass || fail('minotationProvider: option "isolateMode" is \'' + settings.isolateMode + '\' but "isolateClass" is not'
         + ' set — the scope class every rule is bound to (e.g. isolateClass: \'_l\')');
@@ -499,17 +521,17 @@ function minotationProvider(options?: MnOptions) {
     $$mediaNesting = settings.mediaNesting === true;
     $$mediaClassic = settings.mediaSyntax === 'classic';
     $$raiseModes = {
-      'raised-specificity': settings.specificityMode || 'warn',
-      important: settings.importantMode || 'warn',
-      'max-depth-exceeded': settings.maxDepthMode || 'warn',
-      'max-specificity': settings.maxSpecificityMode || 'warn',
-      'child-selector': settings.childSelectorMode || 'warn',
-      'unknown-media': settings.unknownMediaMode || 'warn',
-      'suspect-class': settings.suspectClassMode || 'warn',
-      'handler-conflict': settings.handlerConflictMode || 'warn',
-      'media-conflict': settings.mediaConflictMode || 'warn',
-      'preset-conflict': settings.presetConflictMode || 'warn',
-      'group-suspect': settings.groupSuspectMode || 'warn',
+      'raised-specificity': settings.specificityMode || MODE_WARN,
+      important: settings.importantMode || MODE_WARN,
+      'max-depth-exceeded': settings.maxDepthMode || MODE_WARN,
+      'max-specificity': settings.maxSpecificityMode || MODE_WARN,
+      'child-selector': settings.childSelectorMode || MODE_WARN,
+      'unknown-media': settings.unknownMediaMode || MODE_WARN,
+      'suspect-class': settings.suspectClassMode || MODE_WARN,
+      'handler-conflict': settings.handlerConflictMode || MODE_WARN,
+      'media-conflict': settings.mediaConflictMode || MODE_WARN,
+      'preset-conflict': settings.presetConflictMode || MODE_WARN,
+      'group-suspect': settings.groupSuspectMode || MODE_WARN,
     };
   }
   /**
@@ -527,18 +549,18 @@ function minotationProvider(options?: MnOptions) {
     token: string, type: RaiseType, message: (strict: boolean) => string,
   ): boolean {
     const mode = $$raiseModes[type];
-    const key = type + ' ' + token;
+    const key = type + SPACE + token;
     let warning: MnWarning;
     if (mode === 'silent' || $$raisedTokens[key]) {
-      return mode === 'strict';
+      return mode === MODE_STRICT;
     }
     $$raisedTokens[key] = 1;
     warning = {
       type: type,
       token: token,
-      message: message(mode === 'strict'),
+      message: message(mode === MODE_STRICT),
     };
-    if (mode === 'strict') {
+    if (mode === MODE_STRICT) {
       $$forbidden.push(warning);
       return true;
     }
@@ -616,9 +638,9 @@ function minotationProvider(options?: MnOptions) {
           type: 'invalid-css-value',
           token,
           handler: handlerName,
-          arg: prop + ':' + bad,
+          arg: prop + COLON + bad,
           message: 'Handler "' + handlerName + '" returned what looks like a broken CSS value for "'
-            + prop + '": "' + bad + '"',
+            + prop + '": "' + bad + DOUBLE_QUOTE,
         });
         return false;
       }
@@ -717,7 +739,7 @@ function minotationProvider(options?: MnOptions) {
     if (REGEXP_IMPORTANT.test(name)) {
       return;
     }
-    const at = name.indexOf('@');
+    const at = name.indexOf(AT);
     if (at < 1 || at === name.length - 1) {
       return;
     }
@@ -742,7 +764,7 @@ function minotationProvider(options?: MnOptions) {
 
   const MN_ESSENCE_CHILDS_KEY = '' + MN_ESSENCE_CHILDS;
   function baseSetEssense(_essencePath: string, extendedEssence: MnEssenceRaw): void {
-    const essencePath = _essencePath.split('.');
+    const essencePath = _essencePath.split(DOT);
     const essenceName = essencePath[0];
     const path = [essenceName];
     const l = essencePath.length;
@@ -758,13 +780,13 @@ function minotationProvider(options?: MnOptions) {
     }
     // Статика ищется через домен, как и хендлер (D-063); `box@sm` — переопределение медиа,
     // его находят по полному имени из `initEssence`, отдельной записи домена ему не нужно.
-    essenceName.indexOf('@') > -1 || setDomainEntry(essenceName, staticEntry(essenceName));
+    essenceName.indexOf(AT) > -1 || setDomainEntry(essenceName, staticEntry(essenceName));
     baseSetEssenseBase(
       essenceName, path, extendedEssence,
     );
     // for important
     baseSetEssenseBase(
-      path[0] = essenceName + '-i', path,
+      path[0] = essenceName + IMPORTANT_SUFFIX, path,
       extend(extend({}, extendedEssence), {
         important: 1,
       }),
@@ -781,7 +803,7 @@ function minotationProvider(options?: MnOptions) {
    */
   function getCompiler(attrName: string, settings?: MnParseSettings): MnCompiler {
     const settingsKey = parseSettingsKey(settings);
-    const key = settingsKey ? attrName + ' ' + settingsKey : attrName;
+    const key = settingsKey ? attrName + SPACE + settingsKey : attrName;
     settingsKey && ($$compilerModes[key] = [
       attrName,
       settings as MnParseSettings,
@@ -1028,7 +1050,7 @@ function minotationProvider(options?: MnOptions) {
         if (ex instanceof MnParseError) {
           // Запрещённый токен уже учтён для MnForbiddenTokenError (D-039).
           ex.context.forbidden || collectWarning({
-            type: ex.context.warningType || 'parse-error',
+            type: ex.context.warningType || WARNING_PARSE_ERROR,
             token: ex.context.token,
             handler: ex.context.handler,
             arg: ex.context.arg,
@@ -1049,7 +1071,7 @@ function minotationProvider(options?: MnOptions) {
     const output: Record<string, T> = {};
     for (selector in selectorsMap) { // eslint-disable-line
       isInvalidSelector(selector)
-        ? emitError(new Error('Invalid selector: "' + selector + '"'))
+        ? emitError(new Error('Invalid selector: "' + selector + DOUBLE_QUOTE))
         : (output[selector] = selectorsMap[selector]);
     }
     return output;
@@ -1147,7 +1169,7 @@ function minotationProvider(options?: MnOptions) {
         ? (outputRules = nestedMedia(outputQuery).concat(outputRules), query = '')
         : query = JOIN_AND(uniqueConditions(outputQuery));
       // Запись с at-правилами — отдельная: `@supports` и `@media` через запятую не объединить.
-      outputRules.length && (query = (query ? '@media ' + query + '{' : '') + outputRules.join('{'));
+      outputRules.length && (query = (query ? MEDIA_PREFIX + query + OPEN_BRACE : '') + outputRules.join(OPEN_BRACE));
       (selector = joinOnly(outputSelector)) || outputRules.length
         ? push(medias, [
           name,
@@ -1188,7 +1210,7 @@ function minotationProvider(options?: MnOptions) {
     if (entry && !isDefined(entry.width) && !isDefined(entry.height)) {
       return undefined;
     }
-    const colon = fragment.indexOf(':');
+    const colon = fragment.indexOf(COLON);
     const noColon = colon < 0;
     const body = noColon ? fragment : fragment.slice(0, colon);
     const container = noColon ? '' : fragment.slice(colon + 1);
@@ -1234,9 +1256,9 @@ function minotationProvider(options?: MnOptions) {
       ];
     }
     return [
-      container ? '' : conditions.join(' and '),
+      container ? '' : conditions.join(MEDIA_AND),
       first.length > 1 ? first[1] : second[1],
-      container ? '@container ' + container + (conditions.length ? ' ' + conditions.join(' and ') : '') : '',
+      container ? '@container ' + container + (conditions.length ? SPACE + conditions.join(MEDIA_AND) : '') : '',
     ];
   }
 
@@ -1314,8 +1336,8 @@ function minotationProvider(options?: MnOptions) {
     }
     return matchs ? [
       side || 'width',
-      matchs[1] + (matchs[2] || 'px'),
-      matchs[2] && matchs[2] !== 'px' ? parseFloat(matchs[1]) * 16 : parseFloat(matchs[1]),
+      matchs[1] + (matchs[2] || PX),
+      matchs[2] && matchs[2] !== PX ? parseFloat(matchs[1]) * 16 : parseFloat(matchs[1]),
       0,
     ] : undefined;
   }
@@ -1359,9 +1381,9 @@ function minotationProvider(options?: MnOptions) {
     const numeric = typeof value === 'number';
     const matchs = numeric ? null : REGEXP_POINT_LENGTH.exec(value);
     const amount = matchs ? parseFloat(matchs[1]) : value as number;
-    const px = !!matchs && matchs[2] === 'px';
+    const px = !!matchs && matchs[2] === PX;
     return numeric ? [
-      value + 'px',
+      value + PX,
       value,
       true,
     ] : matchs ? [
@@ -1377,12 +1399,12 @@ function minotationProvider(options?: MnOptions) {
    */
   function mediaProblem(fragment: string, problem: string): [string, number] {
     collectWarning({
-      type: 'parse-error',
-      token: '@' + fragment,
+      type: WARNING_PARSE_ERROR,
+      token: AT + fragment,
       handler: '',
       arg: fragment,
       utility: 'parseMediaExpression',
-      message: 'Media "@' + fragment + '" ' + problem,
+      message: MSG_UNKNOWN_MEDIA + fragment + '" ' + problem,
     });
     return [
       MEDIA_NEVER,
@@ -1397,7 +1419,7 @@ function minotationProvider(options?: MnOptions) {
    */
   function unknownMedia(fragment: string): string {
     return CSS_MEDIA_TYPES[fragment] || !raisedToken(
-      '@' + fragment, 'unknown-media', (strict: boolean) => unknownMediaMessage(fragment, strict),
+      AT + fragment, 'unknown-media', (strict: boolean) => unknownMediaMessage(fragment, strict),
     ) ? fragment : MEDIA_NEVER;
   }
 
@@ -1473,7 +1495,7 @@ function minotationProvider(options?: MnOptions) {
       selectorsIteratee = selectorPrefixes
         ? ((selectors: string[]) => (
           joinComma(joinArrays(
-            selectorPrefixes as string[], selectors, ' ',
+            selectorPrefixes as string[], selectors, SPACE,
           )) + cssText
         ))
         : ((selectors: string[]) => joinComma(selectors) + cssText);
@@ -1493,16 +1515,16 @@ function minotationProvider(options?: MnOptions) {
 
       isContinue || (
         output = joinOnly(mapContentByMediaName(values(context).sort(priotitySortContext), mediaName)),
-        mediaQuery && mediaQuery !== 'all' && output
-          && (output = mediaQuery[0] === '@'
+        mediaQuery && mediaQuery !== MEDIA_ALL && output
+          && (output = mediaQuery[0] === AT
             // Цепочка at-правил (D-057): `@media …{@supports …` — закрыть столько же скобок.
-            ? mediaQuery + '{' + output + repeat('}', mediaQuery.split('{').length)
+            ? mediaQuery + OPEN_BRACE + output + repeat(CLOSE_BRACE, mediaQuery.split(OPEN_BRACE).length)
             : joinOnly([
-              '@media ',
+              MEDIA_PREFIX,
               mediaQuery,
-              '{',
+              OPEN_BRACE,
               output,
-              '}',
+              CLOSE_BRACE,
             ])),
         setStyle(
           // Часть выражения `@safari,dark` (запись с селектором или at-правилом) — под ключом
@@ -1526,7 +1548,7 @@ function minotationProvider(options?: MnOptions) {
     excludes?: Record<string, number>,
     selectorMedia?: string,
   ): void {
-    defaultMediaName = defaultMediaName || 'all';
+    defaultMediaName = defaultMediaName || MEDIA_ALL;
     let name: string;
     let selector: string;
     let l: number;
@@ -1627,12 +1649,12 @@ function minotationProvider(options?: MnOptions) {
       for (target in parsed) { // eslint-disable-line
         // Контекст правила есть всегда: первый вызов `mn.css` уже привязал статику (и `recompile`
         // привязывает её заново из `$$staticsAssigned`).
-        delete $$root[parsed[target] || 'all'][name];
+        delete $$root[parsed[target] || MEDIA_ALL][name];
       }
     }
     // Привязка — к разобранным селекторам напрямую: имя статики не токен, разбирать его не нужно.
     for (target in parsed) { // eslint-disable-line
-      media = parsed[target] || 'all';
+      media = parsed[target] || MEDIA_ALL;
       actx = $$staticsAssigned[media] || ($$staticsAssigned[media] = {});
       (actx[name] || (actx[name] = {}))[target] = 1;
       selectors = {};
@@ -1688,7 +1710,7 @@ function minotationProvider(options?: MnOptions) {
    */
   /** Хендлер не дал стиля — см. D-021. Ловится `catch` ниже как `parse-error`. */
   function throwNoStyle(value: string, name: string): never {
-    throw new MnParseError('"' + value + '" produced no CSS: handler "' + name
+    throw new MnParseError(DOUBLE_QUOTE + value + '" produced no CSS: handler "' + name
       + '" needs a value here', {
       token: value,
       handler: name,
@@ -1701,9 +1723,9 @@ function minotationProvider(options?: MnOptions) {
    * Свойство — как написано (`--brand` тоже); пустое значение — брак.
    */
   function __rawProperty(value: string): ReturnType<typeof __normalize> {
-    const important = value.slice(-2) === '-i';
+    const important = value.slice(-2) === IMPORTANT_SUFFIX;
     const body = important ? value.slice(0, -2) : value;
-    const at = body.indexOf(':');
+    const at = body.indexOf(COLON);
     const property = body.slice(0, at).trim();
     const style: Record<string, string> = {};
     REGEXP_RAW_PROPERTY.test(property) && body.slice(at + 1).trim() || throwRawProperty(body);
@@ -1782,9 +1804,9 @@ function minotationProvider(options?: MnOptions) {
       return pair < 0 ? undefined : throwNoHandler(domain, value);
     } catch (ex) {
       // Хендлер распознал класс другой системы (D-065, D-066) — своя опция `suspectClassMode`.
-      if (ex instanceof MnParseError && ex.context.warningType === 'suspect-class') {
+      if (ex instanceof MnParseError && ex.context.warningType === WARNING_SUSPECT_CLASS) {
         raisedToken(
-          value, 'suspect-class', (strict: boolean) => suspectClassMessage(ex.message, strict),
+          value, WARNING_SUSPECT_CLASS, (strict: boolean) => suspectClassMessage(ex.message, strict),
         );
         return;
       }
@@ -1794,7 +1816,7 @@ function minotationProvider(options?: MnOptions) {
         // (см. его JSDoc в `presets/standard/index.ts`). Здесь они известны —
         // дозаполняем, чтобы предупреждение указывало на конкретный токен.
         ex.context.silent || collectWarning({
-          type: ex.context.warningType || 'parse-error',
+          type: ex.context.warningType || WARNING_PARSE_ERROR,
           token: ex.context.token || value,
           handler: ex.context.handler || name,
           arg: ex.context.arg || suffix,
@@ -1844,7 +1866,7 @@ function minotationProvider(options?: MnOptions) {
    * к более короткому префиксу (`min-w-fullx` → `min-w`).
    */
   function staticEntry(essenceName: string): MnDomainFn {
-    const important = essenceName + '-i';
+    const important = essenceName + IMPORTANT_SUFFIX;
     return (params) => (params.suffix || params.sign ? undefined
       : $$staticsEssences[params.ni ? important : essenceName]);
   }
@@ -1866,7 +1888,7 @@ function minotationProvider(options?: MnOptions) {
       if (entry[0] === prefix) {
         // Одно имя от двух пресетов (D-067); вне пресета (код приложения) — не сравниваем.
         owner && entry[2] && entry[2] !== owner && raiseConfiguration(
-          'handler-conflict', '"' + fullName + '" is registered by ' + entry[2] + ' and ' + owner
+          'handler-conflict', DOUBLE_QUOTE + fullName + '" is registered by ' + entry[2] + MEDIA_AND + owner
             + ' — ' + owner + ' wins', 'handlerConflictMode',
         );
         entry[1] = fn;
@@ -1899,13 +1921,13 @@ function minotationProvider(options?: MnOptions) {
       token: '',
       message: message + '. To hide this warning: ' + option + ': \'silent\'.',
     };
-    if (mode === 'silent' || $$raisedTokens[type + ' ' + message]) {
+    if (mode === 'silent' || $$raisedTokens[type + SPACE + message]) {
       return;
     }
-    $$raisedTokens[type + ' ' + message] = 1;
-    if (mode === 'strict') {
-      type === 'preset-conflict' && fail(message + ' (' + option + ': \'strict\')');
-      $$strictConflicts.push(message + ' (' + option + ': \'strict\')');
+    $$raisedTokens[type + SPACE + message] = 1;
+    if (mode === MODE_STRICT) {
+      type === WARNING_PRESET_CONFLICT && fail(message + SPACE_OPEN_PAREN + option + ': \'strict\')');
+      $$strictConflicts.push(message + SPACE_OPEN_PAREN + option + ': \'strict\')');
       return;
     }
     $$warnings = $$warnings.concat([warning]);
@@ -1978,9 +2000,9 @@ function minotationProvider(options?: MnOptions) {
         );
       });
     }
-    __childsHandle(essence[MN_ESSENCE_CHILDS], '.');
+    __childsHandle(essence[MN_ESSENCE_CHILDS], DOT);
     __childsHandle(
-      essence[MN_ESSENCE_MEDIA], '@', 1,
+      essence[MN_ESSENCE_MEDIA], AT, 1,
     );
   }
   function compileMixedEssence(
@@ -2003,7 +2025,7 @@ function minotationProvider(options?: MnOptions) {
 
     dst[MN_ESSENCE_CSS_TEXT] = (styleObj = dst[MN_ESSENCE_STYLE])
       && (styleText = (cssPropertiesStringify as any)(styleObj, dst[MN_ESSENCE_IMPORTANT] || important))
-      ? ('{' + styleText + '}') : '';
+      ? (OPEN_BRACE + styleText + CLOSE_BRACE) : '';
     dst[MN_ESSENCE_INITED] = 1;
     return dst;
   }
@@ -2037,7 +2059,7 @@ function minotationProvider(options?: MnOptions) {
     // задан» от «задан и называется all», иначе их собственный контекст
     // затирается фолбэком (см. __childsHandle ниже).
     const explicitMediaName = mediaName;
-    mediaName = mediaName || 'all';
+    mediaName = mediaName || MEDIA_ALL;
     excludes[essenceName] = 1;
     essence || (essence = $$essences[essenceName] || []);
     const context = $$root[mediaName] || ($$root[mediaName] = {});
@@ -2074,9 +2096,9 @@ function minotationProvider(options?: MnOptions) {
     const childs = essence[MN_ESSENCE_CHILDS];
     const media = essence[MN_ESSENCE_MEDIA];
     const exts = essence[MN_ESSENCE_EXTS];
-    childs && __childsHandle(childs, '.');
+    childs && __childsHandle(childs, DOT);
     media && __childsHandle(
-      media, '@', 1,
+      media, AT, 1,
     );
     exts && __assignCore(
       $$assigned, exts, selectors, mediaName, excludes,
@@ -2175,14 +2197,14 @@ function minotationProvider(options?: MnOptions) {
   /** Пересобирает CSS-блок `@keyframes` (`MN_KEYFRAMES_TOKEN`) из `$$keyframes[0]`, включая браузерные префиксы. Вызывается автоматически из {@link MnInstance.compile}, когда есть неприменённые изменения (`$$keyframes[1]`). */
   const keyframesRender = mn.keyframesCompile = (): any => {
     $$keyframes[1] = 0;
-    const keyframesPrefix = MN_KEYFRAMES_TOKEN + ' ';
+    const keyframesPrefix = MN_KEYFRAMES_TOKEN + SPACE;
     const prefixes = cssPropertiesStringify.prefixes;
     // eslint-disable-next-line
     setStyle(MN_KEYFRAMES_TOKEN, joinOnly(reduceIn($$keyframes[0], (output: string[], v: string, k: string): string[] => {
       let prefix: string;
       for (prefix in prefixes) push( // eslint-disable-line
-        output, '@' + prefix + keyframesPrefix + k + v);
-      push(output, '@' + keyframesPrefix + k + v);
+        output, AT + prefix + keyframesPrefix + k + v);
+      push(output, AT + keyframesPrefix + k + v);
       return output;
     }, [],
     )), MN_DEFAULT_CSS_PRIORITY,
@@ -2272,13 +2294,13 @@ function minotationProvider(options?: MnOptions) {
       return mn;
     }
     if (body) {
-      const output = ['{'];
+      const output = [OPEN_BRACE];
       isObject(body)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ? forIn(body, (css: string | Record<string, any>, k: string) => push(output, k + '{'
-          + (isObject(css) ? cssPropertiesStringify(css) : css) + '}'))
+        ? forIn(body, (css: string | Record<string, any>, k: string) => push(output, k + OPEN_BRACE
+          + (isObject(css) ? cssPropertiesStringify(css) : css) + CLOSE_BRACE))
         : push(output, body);
-      push(output, '}');
+      push(output, CLOSE_BRACE);
       keyframes[name] = joinOnly(output);
     } else {
       delete keyframes[name];

@@ -9,6 +9,10 @@ export const TW4_VERSION = '4.3.3';
 /** SHA-256 of the source file: a test compares it with `reference/` so the theme can't drift. */
 export const TW4_THEME_SHA256 = '443d7af364200f8ec8352dc78e39485a118a1840d498c97967bf0ae402b39167';
 
+/** The values the theme writes 3+ times. */
+const V_1 = '1';
+const OKLCH_98_5_PERCENT_0_NONE = 'oklch(98.5% 0 none)';
+
 /** Theme variables: name → value, as in `theme.css`. */
 export const TW4_THEME: Record<string, string> = {
   '--font-sans': "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'Noto Sans', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'",
@@ -223,7 +227,7 @@ export const TW4_THEME: Record<string, string> = {
   '--color-gray-800': 'oklch(27.8% 0.033 256.848)',
   '--color-gray-900': 'oklch(21% 0.034 264.665)',
   '--color-gray-950': 'oklch(13% 0.028 261.692)',
-  '--color-zinc-50': 'oklch(98.5% 0 none)',
+  '--color-zinc-50': OKLCH_98_5_PERCENT_0_NONE,
   '--color-zinc-100': 'oklch(96.7% 0.001 286.375)',
   '--color-zinc-200': 'oklch(92% 0.004 286.32)',
   '--color-zinc-300': 'oklch(87.1% 0.006 286.286)',
@@ -234,7 +238,7 @@ export const TW4_THEME: Record<string, string> = {
   '--color-zinc-800': 'oklch(27.4% 0.006 286.033)',
   '--color-zinc-900': 'oklch(21% 0.006 285.885)',
   '--color-zinc-950': 'oklch(14.1% 0.005 285.823)',
-  '--color-neutral-50': 'oklch(98.5% 0 none)',
+  '--color-neutral-50': OKLCH_98_5_PERCENT_0_NONE,
   '--color-neutral-100': 'oklch(97% 0 none)',
   '--color-neutral-200': 'oklch(92.2% 0 none)',
   '--color-neutral-300': 'oklch(87% 0 none)',
@@ -256,7 +260,7 @@ export const TW4_THEME: Record<string, string> = {
   '--color-stone-800': 'oklch(26.8% 0.007 34.298)',
   '--color-stone-900': 'oklch(21.6% 0.006 56.043)',
   '--color-stone-950': 'oklch(14.7% 0.004 49.25)',
-  '--color-mauve-50': 'oklch(98.5% 0 none)',
+  '--color-mauve-50': OKLCH_98_5_PERCENT_0_NONE,
   '--color-mauve-100': 'oklch(96% 0.003 325.6)',
   '--color-mauve-200': 'oklch(92.2% 0.005 325.62)',
   '--color-mauve-300': 'oklch(86.5% 0.012 325.68)',
@@ -338,15 +342,15 @@ export const TW4_THEME: Record<string, string> = {
   '--text-4xl': '2.25rem',
   '--text-4xl--line-height': 'calc(2.5 / 2.25)',
   '--text-5xl': '3rem',
-  '--text-5xl--line-height': '1',
+  '--text-5xl--line-height': V_1,
   '--text-6xl': '3.75rem',
-  '--text-6xl--line-height': '1',
+  '--text-6xl--line-height': V_1,
   '--text-7xl': '4.5rem',
-  '--text-7xl--line-height': '1',
+  '--text-7xl--line-height': V_1,
   '--text-8xl': '6rem',
-  '--text-8xl--line-height': '1',
+  '--text-8xl--line-height': V_1,
   '--text-9xl': '8rem',
-  '--text-9xl--line-height': '1',
+  '--text-9xl--line-height': V_1,
   '--font-weight-thin': '100',
   '--font-weight-extralight': '200',
   '--font-weight-light': '300',

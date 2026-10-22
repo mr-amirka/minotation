@@ -27,6 +27,11 @@ import {
   isStringArray,
 } from '../../checkOptions';
 
+const HINTS_TYPOS = 'typos';
+const HINTS_TAILWIND = 'tailwind';
+const HINTS_BOOTSTRAP = 'bootstrap';
+const DOUBLE_QUOTE = '"';
+
 /** Имя пресета — в начале каждой подсказки: по нему видно, что отключать. */
 const PRESET_NAME = 'presetHints';
 
@@ -35,16 +40,16 @@ type HintGroup = 'typos' | 'tailwind' | 'bootstrap';
 
 /** Все группы — для проверки `excludeGroups`. */
 const GROUPS: HintGroup[] = [
-  'typos',
-  'tailwind',
-  'bootstrap',
+  HINTS_TYPOS,
+  HINTS_TAILWIND,
+  HINTS_BOOTSTRAP,
 ];
 
-const TW: HintGroup[] = ['tailwind'];
-const BS: HintGroup[] = ['bootstrap'];
+const TW: HintGroup[] = [HINTS_TAILWIND];
+const BS: HintGroup[] = [HINTS_BOOTSTRAP];
 const TW_BS: HintGroup[] = [
-  'bootstrap',
-  'tailwind',
+  HINTS_BOOTSTRAP,
+  HINTS_TAILWIND,
 ];
 
 /**
@@ -443,8 +448,8 @@ function equivalentHandler(name: string, excluded: Record<string, 1>): (p: MnEss
     const groups = entry ? entry[1] : all;
     isExcluded(groups, excluded) && quiet();
     entry
-      ? hint(groups, '"' + token + '" gives no CSS — in minotation it is "' + entry[0] + '"')
-      : hint(groups, '"' + token + '" gives no CSS — it looks like a class of another CSS framework,'
+      ? hint(groups, DOUBLE_QUOTE + token + '" gives no CSS — in minotation it is "' + entry[0] + DOUBLE_QUOTE)
+      : hint(groups, DOUBLE_QUOTE + token + '" gives no CSS — it looks like a class of another CSS framework,'
         + ' and minotation has no such token');
   };
 }
@@ -452,7 +457,7 @@ function equivalentHandler(name: string, excluded: Record<string, 1>): (p: MnEss
 /** Хендлер-ловушка для опечатки в теге. */
 function typoHandler(name: string): (p: MnEssenceParams) => void {
   const tag = TYPOS[name];
-  return (p) => hint(['typos'], '"' + name + p.suffix + '" gives no CSS — did you mean "' + tag + p.suffix + '"?');
+  return (p) => hint([HINTS_TYPOS], DOUBLE_QUOTE + name + p.suffix + '" gives no CSS — did you mean "' + tag + p.suffix + '"?');
 }
 
 /** Хендлер-ловушка для опечатки, у которой меняется и значение: `appearanceNone` → `apN`. */
@@ -460,7 +465,7 @@ function valueTypoHandler(name: string): (p: MnEssenceParams) => void {
   const entry = VALUE_TYPOS[name];
   return (p) => {
     const rest = p.suffix.indexOf(entry[1]) === 0 ? p.suffix.slice(entry[1].length) : p.suffix;
-    hint(['typos'], '"' + name + p.suffix + '" gives no CSS — did you mean "' + entry[0] + (entry[2][rest] || rest) + '"?');
+    hint([HINTS_TYPOS], DOUBLE_QUOTE + name + p.suffix + '" gives no CSS — did you mean "' + entry[0] + (entry[2][rest] || rest) + '"?');
   };
 }
 

@@ -14,6 +14,9 @@ import type {
   MnPresetObject,
 } from '../../core/types';
 
+/** minotation's display: none. */
+const DISPLAY_NONE = 'dN';
+
 export default {
   name: 'presetMain',
   requires: [
@@ -35,7 +38,7 @@ export default {
       'dB',
 
       'input:-webkit-autofill': 'dn',
-      'input::-ms-(reveal|clear)': 'dN',
+      'input::-ms-(reveal|clear)': DISPLAY_NONE,
 
       hr: 'bxzCB h0 ovV',
 
@@ -193,13 +196,13 @@ export default {
       /**
      * Add the correct display in IE 10+.
      */
-      template: 'dN',
+      template: DISPLAY_NONE,
 
       /**
      * Add the correct display in IE 10.
      */
 
-      '[hidden]': 'dN',
+      '[hidden]': DISPLAY_NONE,
     });
   // assign('[m~="container"]', '(mhAuto|ph10|w970@md|w1170@lg|w1570@ll)');
   },

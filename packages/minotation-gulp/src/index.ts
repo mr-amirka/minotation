@@ -53,6 +53,8 @@ import {
   presetMain,
 } from 'minotation';
 
+const ENCODING = 'utf8';
+
 /**
  * Опции {@link mnGulp} — эталонный набор `minotation-build` (D-026); описание
  * каждой — в README `minotation-build`.
@@ -130,7 +132,7 @@ export function mnGulp(code: MnGulpOptions = {}): Transform {
         seenBase = true;
         base = file.base;
       }
-      const source = (file.contents as Buffer).toString('utf8');
+      const source = (file.contents as Buffer).toString(ENCODING);
       collector.add(file.path, source);
       // Файл изолированной области пакета — класс области в разметку, дальше по пайпу (D-075, D-076).
       const scoped = rewriteScope(
@@ -141,7 +143,7 @@ export function mnGulp(code: MnGulpOptions = {}): Transform {
         for (const message of scoped.warnings) {
           console.warn('[minotation] ' + message);
         }
-        scoped.code === undefined || (file.contents = Buffer.from(scoped.code, 'utf8'));
+        scoped.code === undefined || (file.contents = Buffer.from(scoped.code, ENCODING));
       }
       done(null, file);
     },
@@ -201,7 +203,7 @@ function vinylOf(
     cwd: process.cwd(),
     base,
     path: base + '/' + name,
-    contents: Buffer.from(text, 'utf8'),
+    contents: Buffer.from(text, ENCODING),
   });
 }
 

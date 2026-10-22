@@ -30,6 +30,9 @@ import type {
   MnNotationDirective,
 } from './directives';
 
+const SLASH = '/';
+const ASTERISK = '*';
+
 /** Чему соответствует правило: имя пакета, путь или шаблон пути, RegExp — или массив из них. */
 export type MnScopeMatch = string | RegExp | Array<string | RegExp>;
 
@@ -104,7 +107,7 @@ function fail(message: string): never {
 
 /** Строка — шаблон или путь, а не имя пакета: есть `* ? {`, или начинается с `.`/`/`. */
 function isPathPattern(value: string): boolean {
-  return /[*?{]/.test(value) || value[0] === '.' || value[0] === '/';
+  return /[*?{]/.test(value) || value[0] === '.' || value[0] === SLASH;
 }
 
 /**
@@ -122,12 +125,12 @@ export function globToRegExp(pattern: string): RegExp {
   let ch: string;
   for (; i < l; i++) {
     ch = source[i];
-    if (ch === '*' && source[i + 1] === '*') {
+    if (ch === ASTERISK && source[i + 1] === ASTERISK) {
       // `**/` — ноль и больше каталогов; `**` в конце — что угодно.
-      const anyDirectories = source[i + 2] === '/';
+      const anyDirectories = source[i + 2] === SLASH;
       out += anyDirectories ? '(?:.*/)?' : '.*';
       i += anyDirectories ? 2 : 1;
-    } else if (ch === '*') {
+    } else if (ch === ASTERISK) {
       out += '[^/]*';
     } else if (ch === '?') {
       out += '[^/]';
@@ -159,7 +162,7 @@ function partMatcher(part: string | RegExp, root: string): (id: string) => boole
   }
   if (isPathPattern(part)) {
     const pattern = globToRegExp(part);
-    return (id) => pattern.test(relative(root, id).split(sep).join('/'));
+    return (id) => pattern.test(relative(root, id).split(sep).join(SLASH));
   }
   return (id) => readPackageName(id) === part;
 }

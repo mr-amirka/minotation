@@ -1,3 +1,5 @@
+const SPACE = ' ';
+
 /**
  * Слияние наборов токенов без гонки специфичности.
  *
@@ -278,7 +280,7 @@ function collect(
     // Пропускаем пробелы справа.
     do {
       ch = text[--i];
-    } while (i >= 0 && (ch === ' ' || ch === '\n' || ch === '\t' || ch === '\r'));
+    } while (i >= 0 && (ch === SPACE || ch === '\n' || ch === '\t' || ch === '\r'));
     if (i < 0) {
       return;
     }
@@ -286,7 +288,7 @@ function collect(
     // Идём к началу слова.
     while (i > 0) {
       ch = text[i - 1];
-      if (ch === ' ' || ch === '\n' || ch === '\t' || ch === '\r') {
+      if (ch === SPACE || ch === '\n' || ch === '\t' || ch === '\r') {
         break;
       }
       i--;
@@ -355,7 +357,7 @@ export function mne(className?: MnClassValue, ...overrides: MnClassValue[]): str
       seen, output, arguments[i],
     );
   }
-  return output.reverse().join(' ');
+  return output.reverse().join(SPACE);
 }
 
 /**
@@ -413,7 +415,7 @@ export function mnClass(className?: string | null): (...overrides: MnClassValue[
       seen[key] = 1;
       output.push(part);
     }
-    return output.reverse().join(' ');
+    return output.reverse().join(SPACE);
   };
 }
 

@@ -34,6 +34,8 @@ import {
   pushLiteralTokens,
 } from '../extractTokens';
 
+const CLASS_ATTR = 'class';
+
 const FILES = 300;
 const ROUNDS = 20;
 const SAMPLE = `
@@ -365,7 +367,7 @@ function scanTokensInto(
 const three = bench('три прохода (рабочая реализация)', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokens(sources[i], {
-      attr: 'class',
+      attr: CLASS_ATTR,
     });
   }
 });
@@ -373,7 +375,7 @@ const one = bench('один проход, charCodeAt        ', () => {
   for (let i = 0; i < FILES; i++) {
     const out: string[] = [];
     scanTokensInto(
-      out, sources[i], 'class', ['Class'], [
+      out, sources[i], CLASS_ATTR, ['Class'], [
         'mne',
         'mnClass',
       ],
@@ -383,11 +385,11 @@ const one = bench('один проход, charCodeAt        ', () => {
 console.log(`один проход против трёх: ${((1 - one / three) * 100).toFixed(1)}%`);
 
 const a = scanTokens(sources[0], {
-  attr: 'class',
+  attr: CLASS_ATTR,
 }).slice().sort().join(' ');
 const outB: string[] = [];
 scanTokensInto(
-  outB, sources[0], 'class', ['Class'], [
+  outB, sources[0], CLASS_ATTR, ['Class'], [
     'mne',
     'mnClass',
   ],

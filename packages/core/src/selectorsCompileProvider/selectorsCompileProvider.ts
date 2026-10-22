@@ -90,6 +90,34 @@ import {
   wrapWhere,
 } from './joinMaps';
 
+const VARIANTS = 'variants';
+const BACKSLASH = '\\';
+const DOUBLE_QUOTE = '"';
+const QUOTE = '\'';
+const OPEN_BRACKET = '[';
+const CLOSE_BRACKET = ']';
+const SPACE = ' ';
+const OPEN_PAREN = '(';
+const CLOSE_PAREN = ')';
+const AT = '@';
+const AMPERSAND = '&';
+const SELECTORS = 'selectors';
+const DOT = '.';
+const ASTERISK = '*';
+const GREATER = '>';
+const WARNING_CHILD_SELECTOR = 'child-selector';
+const WARNING_IMPORTANT = 'important';
+const AT_LEAST = '>=';
+const EXCLAMATION = '!';
+const DASH = '-';
+const COLON = ':';
+const MAX = 'max';
+const WIDTH = 'width';
+const LESS = '<';
+const PLUS = '+';
+const TILDE = '~';
+const UNDERSCORE = '_';
+
 /**
  * Разворачивает `(a|b)`-группы в comboName в список плоских вариантов (глубина не нужна).
  *
@@ -143,7 +171,7 @@ function variantsBase(comboName: string, domains: Record<string, unknown>): stri
   // Структуру скобок проверяем по записи: непарная или пустая скобка видна
   // только в ней, после развёртки её уже нет.
   assertVariantGroups(
-    comboName, 'variants', 1,
+    comboName, VARIANTS, 1,
   );
   const alts = variants(comboName, false)[0];
   // А вырожденный вариант — по РЕЗУЛЬТАТУ развёртки. Пустая альтернатива сама
@@ -155,8 +183,8 @@ function variantsBase(comboName: string, domains: Record<string, unknown>): stri
   const l = alts.length;
   let i = 0;
   for (; i < l; i++) {
-    assertTrailingSeparator(alts[i], 'variants');
-    assertMediaNames(alts[i], 'variants');
+    assertTrailingSeparator(alts[i], VARIANTS);
+    assertMediaNames(alts[i], VARIANTS);
   }
   return alts;
 }
@@ -242,15 +270,15 @@ function elementEnd(source: string): number {
   let depth = 0;
   for (; i < l; i++) {
     ch = source[i];
-    if (ch === '\\') {
+    if (ch === BACKSLASH) {
       i++;
     } else if (quote) {
       ch === quote && (quote = '');
-    } else if (ch === '"' || ch === "'") {
+    } else if (ch === DOUBLE_QUOTE || ch === QUOTE) {
       quote = ch;
-    } else if (ch === '[') {
+    } else if (ch === OPEN_BRACKET) {
       depth++;
-    } else if (ch === ']') {
+    } else if (ch === CLOSE_BRACKET) {
       depth--;
     } else if (!depth && SELECTOR_CONTEXT[ch]) {
       return i;
@@ -282,7 +310,7 @@ function splitCompounds(source: string): Array<[number, string]> {
         compound,
       ]);
       compound = '';
-      combinator = ch === ' ' || ch === '\t' || ch === '\n' ? combinator || ' ' : ch;
+      combinator = ch === SPACE || ch === '\t' || ch === '\n' ? combinator || SPACE : ch;
       continue;
     }
     if (combinator) {
@@ -292,18 +320,18 @@ function splitCompounds(source: string): Array<[number, string]> {
       ]);
       combinator = '';
     }
-    if (ch === '\\') {
+    if (ch === BACKSLASH) {
       compound += source.slice(i, i + 2);
       i++;
       continue;
     }
     if (quote) {
       ch === quote && (quote = '');
-    } else if (ch === '"' || ch === "'") {
+    } else if (ch === DOUBLE_QUOTE || ch === QUOTE) {
       quote = ch;
-    } else if (ch === '[' || ch === '(') {
+    } else if (ch === OPEN_BRACKET || ch === OPEN_PAREN) {
       depth++;
-    } else if (ch === ']' || ch === ')') {
+    } else if (ch === CLOSE_BRACKET || ch === CLOSE_PAREN) {
       depth--;
     }
     compound += ch;
@@ -340,20 +368,20 @@ function takeSelectorMedia(source: string): [string, string] {
   let ch: string;
   for (; i < l; i++) {
     ch = source[i];
-    if (ch === '\\') {
+    if (ch === BACKSLASH) {
       out += source.slice(i, i + 2);
       i++;
       continue;
     }
     if (quote) {
       ch === quote && (quote = '');
-    } else if (ch === '"' || ch === "'") {
+    } else if (ch === DOUBLE_QUOTE || ch === QUOTE) {
       quote = ch;
-    } else if (ch === '[') {
+    } else if (ch === OPEN_BRACKET) {
       depth++;
-    } else if (ch === ']') {
+    } else if (ch === CLOSE_BRACKET) {
       depth--;
-    } else if (ch === '@' && !depth) {
+    } else if (ch === AT && !depth) {
       from = i + 1;
       while (i + 1 < l && !SELECTOR_MEDIA_END[source[i + 1]]) {
         i++;
@@ -365,7 +393,7 @@ function takeSelectorMedia(source: string): [string, string] {
   }
   return [
     out,
-    medias.join('&'),
+    medias.join(AMPERSAND),
   ];
 }
 
@@ -375,7 +403,7 @@ function joinSelectorMedia(parsed: string, taken: string): string {
   const b = REGEXP_SELECTOR_PRIORITY.exec(taken);
   const left = a ? parsed.slice(0, a.index) : parsed;
   const right = b ? taken.slice(0, b.index) : taken;
-  return (left && right ? left + '&' + right : left || right) + (a ? a[0] : b ? b[0] : '');
+  return (left && right ? left + AMPERSAND + right : left || right) + (a ? a[0] : b ? b[0] : '');
 }
 
 /** Приоритет в конце медиа-выражения: `^3`, `^-100`. */
@@ -403,14 +431,14 @@ function expandSelectorGroups(source: string): string[] {
     // Те же проверки структуры, что у прежнего разбора селекторов: непарная, пустая или
     // «вырожденная» скобка (`button:not(.plain)` — нужно `\\(` или `:not[.plain]`) — ошибка при
     // регистрации, а не битый CSS.
-    assertVariantGroups(part, 'selectors');
+    assertVariantGroups(part, SELECTORS);
     // Без экранирования-снятия (`false`): `\\(` остаётся для разбора контекста.
     for (alt of variants(part, false)[0]) {
       (alt = alt.trim()) || throwVariantGroup(
         'Empty selector among the variants of "' + part + '": a rule with it would apply to nothing.'
-          + ' Remove the extra "|"', part, 'selectors',
+          + ' Remove the extra "|"', part, SELECTORS,
       );
-      assertTrailingSeparator(alt, 'selectors');
+      assertTrailingSeparator(alt, SELECTORS);
       out.push(alt);
     }
   }
@@ -428,15 +456,15 @@ function splitSelectorList(source: string): string[] {
   let ch: string;
   for (; i < l; i++) {
     ch = source[i];
-    if (ch === '\\') {
+    if (ch === BACKSLASH) {
       i++;
     } else if (quote) {
       ch === quote && (quote = '');
-    } else if (ch === '"' || ch === "'") {
+    } else if (ch === DOUBLE_QUOTE || ch === QUOTE) {
       quote = ch;
-    } else if (ch === '[' || ch === '(') {
+    } else if (ch === OPEN_BRACKET || ch === OPEN_PAREN) {
       depth++;
-    } else if (ch === ']' || ch === ')') {
+    } else if (ch === CLOSE_BRACKET || ch === CLOSE_PAREN) {
       depth--;
     } else if (ch === ',' && !depth) {
       out.push(source.slice(from, i));
@@ -664,7 +692,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     if (!settingsKey) {
       return base;
     }
-    const key = attrName + ' ' + settingsKey;
+    const key = attrName + SPACE + settingsKey;
     return $$parsers[key] || ($$parsers[key] = (comboName: string) => {
       $$markupSettings = settings;
       try {
@@ -690,7 +718,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * @param comboName — одно слово из атрибута `class`
    */
   function parseClass(comboName: string): ReturnType<ParseComboNameFn> {
-    return parseComboName(comboName, '.' + escapeClass(comboName) + isolateSuffix());
+    return parseComboName(comboName, DOT + escapeClass(comboName) + isolateSuffix());
   }
 
   /**
@@ -710,7 +738,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * @returns функция разбора значения этого атрибута
    */
   function parseAttrProvider(attrName: string): ParseComboNameFn {
-    const prefix = '[' + attrName + '~="';
+    const prefix = OPEN_BRACKET + attrName + '~="';
     return (comboName: string) => parseComboName(comboName,
       prefix + escapeQuote(comboName) + '"]');
   }
@@ -787,7 +815,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       if (multiplier > 1) {
         // Накрутка специфичности — свой режим (D-039); запрещённый токен CSS не даёт.
         if ((instance as any)._raisedToken?.(
-          comboName, 'raised-specificity', (strict: boolean) => specificityMessage('*' + multiplier, strict),
+          comboName, 'raised-specificity', (strict: boolean) => specificityMessage(ASTERISK + multiplier, strict),
         )) {
           return [];
         }
@@ -810,17 +838,17 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     // `!important` (`-i`) виден только в именах эссенций — после разворота групп;
     // дочерний сегмент `>` — в суффиксе (D-041).
     for (suffix in suffixes) { // eslint-disable-line
-      if (suffix.indexOf('>') > -1 && (childs = splitChild(suffix)).length > 1 && !$$selectorMode
+      if (suffix.indexOf(GREATER) > -1 && (childs = splitChild(suffix)).length > 1 && !$$selectorMode
         && (instance as any)._raisedToken?.(
-          comboName, 'child-selector',
-          (strict: boolean) => childSelectorMessage('>' + childs.slice(1).join('>'), strict),
+          comboName, WARNING_CHILD_SELECTOR,
+          (strict: boolean) => childSelectorMessage(GREATER + childs.slice(1).join(GREATER), strict),
         )) {
         return [];
       }
       for (essence in suffixes[suffix]) { // eslint-disable-line
         if (REGEXP_MATCH_IMPORTANT.test(essence)
           && (instance as any)._raisedToken?.(
-            comboName, 'important', importantMessage,
+            comboName, WARNING_IMPORTANT, importantMessage,
           )) {
           return [];
         }
@@ -912,7 +940,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
         : media[prefix]
           // Точка — «от точки», как в Tailwind (D-060); описание без точки — как есть.
           ? medias.push(pointQuery(
-            media, prefix, '>=',
+            media, prefix, AT_LEAST,
           ) || prefix)
           : pushTailwindVariant(
             chain, childs, medias, marks, prefix, comboName,
@@ -927,19 +955,19 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
         undefined,
       ],
     ]);
-    medias.length && (chain[0][3] = medias.join('&'));
+    medias.length && (chain[0][3] = medias.join(AMPERSAND));
     // Стили дочерних элементов (`*:`, `[&>li]:`) — childSelectorMode, как в других режимах (D-041).
     if (marks.length && (instance as any)._raisedToken?.(
-      comboName, 'child-selector',
+      comboName, WARNING_CHILD_SELECTOR,
       (strict: boolean) => childSelectorMessage(marks.join(', '), strict),
     )) {
       return [];
     }
     // `!` — в начале (v3) или в конце (v4).
-    const important = utility[0] === '!' || utility[utility.length - 1] === '!';
-    important && (utility = utility[0] === '!' ? utility.slice(1) : utility.slice(0, -1));
+    const important = utility[0] === EXCLAMATION || utility[utility.length - 1] === EXCLAMATION;
+    important && (utility = utility[0] === EXCLAMATION ? utility.slice(1) : utility.slice(0, -1));
     if (important && (instance as any)._raisedToken?.(
-      comboName, 'important', importantMessage,
+      comboName, WARNING_IMPORTANT, importantMessage,
     )) {
       return [];
     }
@@ -964,11 +992,11 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   function tailwindEssence(utility: string): string {
     // Ведущий `-` (`-mt-4`) — метка для ядра, хендлер получит `p.sign` (D-064). `--имя=значение` —
     // переменная CSS в записи minotation, не минус: классов на `--` у Tailwind нет.
-    return utility[0] === '-' && utility[1] !== '-' && utility.length > 1
+    return utility[0] === DASH && utility[1] !== DASH && utility.length > 1
       ? MN_NEGATIVE + tailwindEssence(utility.slice(1))
-      : utility[0] === '[' && utility[utility.length - 1] === ']' && utility.indexOf(':') > 0
+      : utility[0] === OPEN_BRACKET && utility[utility.length - 1] === CLOSE_BRACKET && utility.indexOf(COLON) > 0
         ? MN_RAW_PROPERTY + arbitrary(utility.slice(1, -1))
-        : utility.indexOf('[') < 0 ? unslash(utility) : utility;
+        : utility.indexOf(OPEN_BRACKET) < 0 ? unslash(utility) : utility;
   }
 
   /**
@@ -985,19 +1013,19 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   ): boolean {
     const self = chain[0];
     const bracket = prefix.indexOf('-[');
-    const closesBracket = prefix[prefix.length - 1] === ']';
+    const closesBracket = prefix[prefix.length - 1] === CLOSE_BRACKET;
     const name = bracket > 0 && closesBracket ? prefix.slice(0, bracket) : '';
     const value = name ? arbitrary(prefix.slice(bracket + 2, -1)) : '';
     let relation: string | undefined;
     let at: number;
-    const children = prefix === '*';
+    const children = prefix === ASTERISK;
     if (children || prefix === '**') {
       childs.push([
-        children ? '>' : ' ',
+        children ? GREATER : SPACE,
         [
           [
             '',
-            '*',
+            ASTERISK,
             undefined,
             undefined,
           ],
@@ -1006,15 +1034,15 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       marks.push(prefix);
       return true;
     }
-    if (prefix[0] === '[' && closesBracket) {
+    if (prefix[0] === OPEN_BRACKET && closesBracket) {
       const selector = arbitrary(prefix.slice(1, -1));
-      if (selector[0] === '@') {
+      if (selector[0] === AT) {
         medias.push(arbitraryAtRule(
           selector, prefix, comboName,
         ));
         return true;
       }
-      at = selector.indexOf('&');
+      at = selector.indexOf(AMPERSAND);
       at < 0 && throwUnknownVariant(
         comboName, prefix, 'an arbitrary variant needs "&" for the element',
       );
@@ -1025,42 +1053,42 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     }
     if (name === 'supports') {
       // Как в Tailwind: `display:grid` → `(display:grid)`; `not (…)`, `selector(…)` — как есть.
-      medias.push(registerAtRule('supports', value.indexOf(':') > 0 && value[0] !== '('
-        && !REGEXP_SUPPORTS_FUNCTION.test(value) ? '(' + value + ')' : value));
+      medias.push(registerAtRule('supports', value.indexOf(COLON) > 0 && value[0] !== OPEN_PAREN
+        && !REGEXP_SUPPORTS_FUNCTION.test(value) ? OPEN_PAREN + value + CLOSE_PAREN : value));
       return true;
     }
-    if (prefix[0] === '@') {
+    if (prefix[0] === AT) {
       return pushContainerVariant(medias, prefix);
     }
     if (name === 'data' || name === 'aria') {
-      self[1] += '[' + name + '-' + value + ']';
+      self[1] += OPEN_BRACKET + name + DASH + value + CLOSE_BRACKET;
       return true;
     }
     if (prefix.slice(0, 5) === 'data-' || prefix.slice(0, 5) === 'aria-') {
-      self[1] += '[' + prefix + (prefix[0] === 'a' ? '="true"' : '') + ']';
+      self[1] += OPEN_BRACKET + prefix + (prefix[0] === 'a' ? '="true"' : '') + CLOSE_BRACKET;
       return true;
     }
     if (name === 'has' || name === 'not') {
-      self[1] += ':' + name + '(' + value + ')';
+      self[1] += COLON + name + OPEN_PAREN + value + CLOSE_PAREN;
       return true;
     }
     if (name === 'nth' || name === 'nth-last') {
-      self[1] += ':' + name + '-child(' + value + ')';
+      self[1] += COLON + name + '-child(' + value + CLOSE_PAREN;
       return true;
     }
     if (name === 'in') {
       chain.push([
-        ' ',
-        ':where(' + value + ')',
+        SPACE,
+        ':where(' + value + CLOSE_PAREN,
         undefined,
         undefined,
       ]);
       return true;
     }
     const atLeast = name === 'min';
-    if (atLeast || name === 'max') {
+    if (atLeast || name === MAX) {
       medias.push(registerQuery((instance as any).media || {}, mediaCondition(
-        'width', atLeast ? '>=' : '<', value, $$mediaClassic,
+        WIDTH, atLeast ? AT_LEAST : LESS, value, $$mediaClassic,
       )));
       return true;
     }
@@ -1104,18 +1132,18 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     const slash = prefix.indexOf('/');
     const noSlash = slash < 0;
     const base = noSlash ? prefix.slice(1) : prefix.slice(1, slash);
-    const named = noSlash ? '' : prefix.slice(slash + 1) + ' ';
+    const named = noSlash ? '' : prefix.slice(slash + 1) + SPACE;
     const bracket = base.indexOf('-[');
     const compare = base.slice(0, 4) === 'min-' || base.slice(0, 4) === 'max-' ? base.slice(0, 3) : '';
-    const kind = bracket > 0 && base[base.length - 1] === ']' ? base.slice(0, bracket) : '';
+    const kind = bracket > 0 && base[base.length - 1] === CLOSE_BRACKET ? base.slice(0, bracket) : '';
     const size = kind ? '' : compare ? base.slice(4) : base;
     const width = kind ? undefined : containerWidth(size);
     let condition: string;
     const atLeast = kind === 'min';
-    if (atLeast || kind === 'max') {
-      condition = '(width ' + (atLeast ? '>=' : '<') + ' ' + arbitrary(base.slice(bracket + 2, -1)) + ')';
+    if (atLeast || kind === MAX) {
+      condition = '(width ' + (atLeast ? AT_LEAST : LESS) + SPACE + arbitrary(base.slice(bracket + 2, -1)) + CLOSE_PAREN;
     } else if (width !== undefined) {
-      condition = '(width ' + (compare === 'max' ? '<' : '>=') + ' ' + pointCss(width) + ')';
+      condition = '(width ' + (compare === MAX ? LESS : AT_LEAST) + SPACE + pointCss(width) + CLOSE_PAREN;
     } else {
       return false;
     }
@@ -1133,7 +1161,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   /** Условие `@supports`/`@container` как имя медиа: ядро выведет вложенное at-правило. */
   function registerAtRule(kind: string, condition: string): string {
     const media = (instance as any).media || {};
-    const name = '@' + kind + ' ' + condition;
+    const name = AT + kind + SPACE + condition;
     media[name] || (media[name] = {
       [kind]: condition,
     });
@@ -1143,7 +1171,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   /** `min-md`/`max-md` — сравнение с точкой медиа (`width`, D-054). */
   function pushBreakpointCompare(medias: string[], prefix: string): boolean {
     const query = pointQuery(
-      (instance as any).media || {}, prefix.slice(4), prefix[1] === 'i' ? '>=' : '<',
+      (instance as any).media || {}, prefix.slice(4), prefix[1] === 'i' ? AT_LEAST : LESS,
     );
     return !!query && !!medias.push(query);
   }
@@ -1157,7 +1185,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     media: StrMap<any>, name: string, operator: string,
   ): string {
     const entry = media[name];
-    const side = !entry ? '' : entry.width !== undefined ? 'width' : entry.height !== undefined ? 'height' : '';
+    const side = !entry ? '' : entry.width !== undefined ? WIDTH : entry.height !== undefined ? 'height' : '';
     return side ? registerQuery(media, mediaCondition(
       side, operator as MnMediaOperator, pointCss(entry[side]), $$mediaClassic,
     )) : '';
@@ -1171,10 +1199,10 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   /** Часть произвольного варианта до `&` — предок: `.dark_&` → `.dark`, `.a>&` → `.a` и `>`. */
   function pushArbitraryParent(chain: MnChain, before: string): void {
     const last = before[before.length - 1];
-    const combinator = last === '>' || last === '+' || last === '~' ? last : ' ';
+    const combinator = last === GREATER || last === PLUS || last === TILDE ? last : SPACE;
     chain.push([
       combinator,
-      before.slice(0, combinator === ' ' ? before.length : -1).trim(),
+      before.slice(0, combinator === SPACE ? before.length : -1).trim(),
       undefined,
       undefined,
     ]);
@@ -1184,7 +1212,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   function arbitrary(value: string): string {
     // В математике — пробелы вокруг операторов, как у Tailwind: `max-[calc(100%-2rem)]:` (`calc(100%-2rem)` —
     // недействительный CSS).
-    return mathSpaces(value.replace(REGEXP_ARBITRARY_SPACE, (match) => (match === '_' ? ' ' : '_')));
+    return mathSpaces(value.replace(REGEXP_ARBITRARY_SPACE, (match) => (match === UNDERSCORE ? SPACE : UNDERSCORE)));
   }
 
   /** `:` вне `[…]`/`(…)` и не экранированный — разделитель приставок. */
@@ -1197,13 +1225,13 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     let ch: string;
     for (; i < l; i++) {
       ch = source[i];
-      if (ch === '\\') {
+      if (ch === BACKSLASH) {
         i++;
-      } else if (ch === '[' || ch === '(') {
+      } else if (ch === OPEN_BRACKET || ch === OPEN_PAREN) {
         depth++;
-      } else if (ch === ']' || ch === ')') {
+      } else if (ch === CLOSE_BRACKET || ch === CLOSE_PAREN) {
         depth--;
-      } else if (ch === ':' && !depth) {
+      } else if (ch === COLON && !depth) {
         out.push(source.slice(from, i));
         from = i + 1;
       }
@@ -1230,7 +1258,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     const noSlash = slash < 0;
     const base = noSlash ? prefix : prefix.slice(0, slash);
     const label = noSlash ? '' : escapeCss(prefix.slice(slash));
-    let i = base.lastIndexOf('-');
+    let i = base.lastIndexOf(DASH);
     let rest: string;
     let relation: string | undefined;
     let isState: unknown;
@@ -1252,7 +1280,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
         ));
         return true;
       }
-      i = base.lastIndexOf('-', i - 1);
+      i = base.lastIndexOf(DASH, i - 1);
     }
     return false;
   }
@@ -1265,9 +1293,9 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     relation: string, tail: string, states: MnStateNode[] | undefined, mediaName: string | undefined,
   ): MnSegment {
     const last = relation[relation.length - 1];
-    const combinator = last === '~' || last === '+' || last === '>' ? last : '';
+    const combinator = last === TILDE || last === PLUS || last === GREATER ? last : '';
     return [
-      combinator || ' ',
+      combinator || SPACE,
       (combinator ? relation.slice(0, -1) : relation) + tail,
       states,
       mediaName,
@@ -1346,20 +1374,20 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     }
     while (i < l) {
       ch = comboName[i];
-      if (ch === '!') {
+      if (ch === EXCLAMATION) {
         important = true;
         i++;
-      } else if (ch === '@') {
+      } else if (ch === AT) {
         media = masterMedia(comboName.slice(i + 1), comboName);
         i = l;
-      } else if (ch === ':') {
-        j = partEnd(comboName, i + (comboName[i + 1] === ':' ? 2 : 1));
+      } else if (ch === COLON) {
+        j = partEnd(comboName, i + (comboName[i + 1] === COLON ? 2 : 1));
         pushMasterState(current[2], comboName.slice(i, j));
         i = j;
-      } else if (ch === '>' || ch === '_' || ch === '+' || ch === '~') {
+      } else if (ch === GREATER || ch === UNDERSCORE || ch === PLUS || ch === TILDE) {
         j = partEnd(comboName, i + 1);
         current = [
-          ch === '_' ? ' ' : ch,
+          ch === UNDERSCORE ? SPACE : ch,
           comboName.slice(i + 1, j),
           [''],
         ];
@@ -1372,11 +1400,11 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       }
     }
     for (const decl of decls) {
-      j = decl.indexOf(':');
+      j = decl.indexOf(COLON);
       essences[(j < 0 ? decl : decl.slice(0, j) + MN_ESSENCE_PAIR + decl.slice(j + 1)) + (important ? '-i' : '')] = 1;
     }
     if (important && (instance as any)._raisedToken?.(
-      comboName, 'important', importantMessage,
+      comboName, WARNING_IMPORTANT, importantMessage,
     )) {
       return [];
     }
@@ -1385,9 +1413,9 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     let compound: [string, string, string[]];
     for (i = 1; i < compoundsLength; i++) {
       compound = compounds[i];
-      if ((compound[0] === '>' || compound[0] === ' ') && (instance as any)._raisedToken?.(
-        comboName, 'child-selector',
-        (strict: boolean) => childSelectorMessage((compound[0] === ' ' ? '_' : '>') + compound[1], strict),
+      if ((compound[0] === GREATER || compound[0] === SPACE) && (instance as any)._raisedToken?.(
+        comboName, WARNING_CHILD_SELECTOR,
+        (strict: boolean) => childSelectorMessage((compound[0] === SPACE ? UNDERSCORE : GREATER) + compound[1], strict),
       )) {
         return [];
       }
@@ -1446,7 +1474,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     while (i < l && REGEXP_PROPERTY_CHAR.test(source[i])) {
       i++;
     }
-    if (source[i] !== ':' || !((instance as any).domains || {})[source.slice(start, i)]) {
+    if (source[i] !== COLON || !((instance as any).domains || {})[source.slice(start, i)]) {
       return i;
     }
     return valueEnd(source, i + 1);
@@ -1463,13 +1491,13 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       ch = source[i];
       if (quote) {
         ch === quote && (quote = '');
-      } else if (ch === '\'' || ch === '"') {
+      } else if (ch === QUOTE || ch === DOUBLE_QUOTE) {
         quote = ch;
-      } else if (ch === '(') {
+      } else if (ch === OPEN_PAREN) {
         depth++;
-      } else if (ch === ')') {
+      } else if (ch === CLOSE_PAREN) {
         depth--;
-      } else if (!depth && (VALUE_STOPS[ch] || ch === '.' && /[A-Za-z]/.test(source[i + 1] || ''))) {
+      } else if (!depth && (VALUE_STOPS[ch] || ch === DOT && /[A-Za-z]/.test(source[i + 1] || ''))) {
         return i;
       }
     }
@@ -1484,9 +1512,9 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     let ch: string;
     for (; i < l; i++) {
       ch = source[i];
-      if (ch === '(' || ch === '[') {
+      if (ch === OPEN_PAREN || ch === OPEN_BRACKET) {
         depth++;
-      } else if (ch === ')' || ch === ']') {
+      } else if (ch === CLOSE_PAREN || ch === CLOSE_BRACKET) {
         depth--;
       } else if (!depth && PART_STOPS[ch]) {
         return i;
@@ -1516,8 +1544,8 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     let from = 0;
     let i = 0;
     for (; i < l; i++) {
-      source[i] === '(' && depth++;
-      source[i] === ')' && depth--;
+      source[i] === OPEN_PAREN && depth++;
+      source[i] === CLOSE_PAREN && depth--;
       if (!depth && source[i] === separator) {
         out.push(source.slice(from, i));
         from = i + 1;
@@ -1533,7 +1561,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * синоним важнее.
    */
   function pushMasterState(names: string[], part: string): void {
-    const pseudoElement = part[1] === ':';
+    const pseudoElement = part[1] === COLON;
     const name = part.slice(pseudoElement ? 2 : 1);
     const head = REGEXP_SCOPE_SUFFIX.exec(name);
     const base = head ? head[1] : name;
@@ -1554,7 +1582,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    */
   function masterMedia(expression: string, comboName: string): string {
     const media: StrMap<{ query?: string }> = (instance as any).media || {};
-    return splitTopLevel(expression, '&').map((atom) => {
+    return splitTopLevel(expression, AMPERSAND).map((atom) => {
       const matchs = REGEXP_MASTER_MEDIA_COMPARE.exec(atom);
       const isNumber = !!matchs && /^[0-9.]+$/.test(matchs[2]);
       let width: number;
@@ -1572,10 +1600,10 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
         media[matchs[2]], matchs[2], comboName,
       );
       query = mediaCondition(
-        'width', (matchs[1] || '>=') as MnMediaOperator, width + 'px', $$mediaClassic,
+        WIDTH, (matchs[1] || AT_LEAST) as MnMediaOperator, width + 'px', $$mediaClassic,
       );
       return registerQuery(media, query);
-    }).join('&');
+    }).join(AMPERSAND);
   }
 
   /** Ширина брейкпоинта из его запроса (`(min-width: 1024px)`). */
@@ -1596,7 +1624,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   }
 
   function throwPropertyValue(comboName: string, message: string): never {
-    throw new MnParseError('"' + comboName + '": ' + message + '. The class gives no CSS.', {
+    throw new MnParseError(DOUBLE_QUOTE + comboName + '": ' + message + '. The class gives no CSS.', {
       token: comboName,
       handler: '',
       arg: '',
@@ -1695,13 +1723,13 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     let ch: string;
     for (; i < l; i++) {
       ch = segment[i];
-      if (ch === '\\') {
+      if (ch === BACKSLASH) {
         i++;
-      } else if (ch === '[' || ch === '(') {
+      } else if (ch === OPEN_BRACKET || ch === OPEN_PAREN) {
         depth++;
-      } else if (ch === ']' || ch === ')') {
+      } else if (ch === CLOSE_BRACKET || ch === CLOSE_PAREN) {
         depth--;
-      } else if (ch === '@' && !depth) {
+      } else if (ch === AT && !depth) {
         return i;
       }
     }
@@ -1725,35 +1753,35 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     let name: string;
     for (; i < l; i++) {
       ch = comboName[i];
-      if (ch === '\\') {
+      if (ch === BACKSLASH) {
         i++;
-      } else if (ch === '[') {
+      } else if (ch === OPEN_BRACKET) {
         bracket++;
-      } else if (ch === ']') {
+      } else if (ch === CLOSE_BRACKET) {
         bracket--;
-      } else if (ch === '(') {
+      } else if (ch === OPEN_PAREN) {
         depth++;
-      } else if (ch === ')') {
+      } else if (ch === CLOSE_PAREN) {
         depth--;
-      } else if (ch === '@' && !bracket) {
+      } else if (ch === AT && !bracket) {
         for (j = i + 1, nested = 0; j < l; j++) {
           ch = comboName[j];
-          if (ch === '\\') {
+          if (ch === BACKSLASH) {
             // Экранированный символ — часть имени медиа (`@a\\|b`).
             j++;
-          } else if (ch === '(') {
+          } else if (ch === OPEN_PAREN) {
             nested++;
-          } else if (ch === ')' && nested) {
+          } else if (ch === CLOSE_PAREN && nested) {
             nested--;
-          } else if (ch === ')' || ch === '|' && !nested && depth || ch === '*' && REGEXP_TAIL_MULTIPLIER.test(comboName.slice(j))) {
+          } else if (ch === CLOSE_PAREN || ch === '|' && !nested && depth || ch === ASTERISK && REGEXP_TAIL_MULTIPLIER.test(comboName.slice(j))) {
             break;
-          } else if (!REGEXP_MEDIA_CHAR.test(ch) || ch === '.' && !REGEXP_DIGIT_CHAR.test(comboName[j + 1] || '')) {
+          } else if (!REGEXP_MEDIA_CHAR.test(ch) || ch === DOT && !REGEXP_DIGIT_CHAR.test(comboName[j + 1] || '')) {
             throwMediaPart(
               comboName, comboName.slice(i, j + 1), 'a selector',
             );
-          } else if (ch === ':') {
+          } else if (ch === COLON) {
             name = REGEXP_NAME_HEAD.exec(comboName.slice(j + 1))?.[0] || '';
-            ($$synonyms[name] || $$states[name] || CSS_PSEUDO_NAMES[name] || comboName[j + 1] === ':') && throwMediaPart(
+            ($$synonyms[name] || $$states[name] || CSS_PSEUDO_NAMES[name] || comboName[j + 1] === COLON) && throwMediaPart(
               comboName, comboName.slice(i, j + 1 + (name.length || 1)), 'a state',
             );
           }
@@ -1766,7 +1794,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   function throwMediaPart(
     comboName: string, found: string, what: string,
   ): never {
-    throw new MnParseError('"' + comboName + '": "' + found + '" — ' + what + ' after the media part. After "@" only'
+    throw new MnParseError(DOUBLE_QUOTE + comboName + '": "' + found + '" — ' + what + ' after the media part. After "@" only'
       + ' the media part may follow (D-088): selectors, states and chains go before "@" — "cF00.active:hover<.card@md",'
       + ' not "cF00@md.active:hover<.card". The class gives no CSS.', {
       token: comboName,
@@ -1780,7 +1808,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   function parseSegment(
     combinator: string, name: string, media: string | undefined,
   ): MnSegment {
-    const i = name.indexOf(':');
+    const i = name.indexOf(COLON);
     return i < 0
       ? [
         combinator,
@@ -1856,7 +1884,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     const subject = joinPrefixWithFirstValue(
       at < 0
         ? targetName + segment[1]
-        : ':where(' + targetName + segment[1].slice(0, at) + ')' + segment[1].slice(at),
+        : ':where(' + targetName + segment[1].slice(0, at) + CLOSE_PAREN + segment[1].slice(at),
       buildStates(segment[2]),
       segment[3],
     );
@@ -1874,11 +1902,11 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     let ch: string;
     while (i--) {
       ch = selector[i];
-      if (ch === ']' || ch === ')') {
+      if (ch === CLOSE_BRACKET || ch === CLOSE_PAREN) {
         depth++;
-      } else if (ch === '[' || ch === '(') {
+      } else if (ch === OPEN_BRACKET || ch === OPEN_PAREN) {
         depth--;
-      } else if (!depth && (ch === '+' || ch === '~') && selector[i - 1] !== '\\') {
+      } else if (!depth && (ch === PLUS || ch === TILDE) && selector[i - 1] !== BACKSLASH) {
         return i;
       }
     }
@@ -2019,16 +2047,16 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
                   + 'the rule is dead. Add a synonym '
                   + '(`mn.synonyms({ … })`) so the project has one canonical spelling',
               });
-              _pushSuffix(':' + _state);
+              _pushSuffix(COLON + _state);
             }
           }
         }
 
         childs = scope[1];
         if (childs) {
-          _pushSuffix(hasTop ? '(' : '[');
+          _pushSuffix(hasTop ? OPEN_PAREN : OPEN_BRACKET);
           base(childs, 0);
-          _pushSuffix(hasTop ? ')' : ']');
+          _pushSuffix(hasTop ? CLOSE_PAREN : CLOSE_BRACKET);
         }
       }
     }

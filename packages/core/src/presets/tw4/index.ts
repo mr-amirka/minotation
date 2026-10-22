@@ -38,6 +38,58 @@ import {
   TW4_STATICS,
 } from './statics';
 
+const ZERO = '0';
+const ONE = '1';
+const ZERO_PX = '0px';
+const CALC_OPEN = 'calc(';
+const CLOSE_PAREN = ')';
+const PERCENT = '%';
+const OPEN_BRACKET = '[';
+const DASH = '-';
+const COLOR = 'color';
+const COLOR_VAR_PREFIX = '--color-';
+const COLOR_MIX_OPEN = 'color-mix(in oklab, ';
+const SPACE = ' ';
+const COLOR_MIX_TRANSPARENT = ', transparent)';
+const MARGIN = 'margin';
+const AUTO = 'auto';
+const ONE_PX = '1px';
+const X = 'x';
+const Y = 'y';
+const REVERSE_SUFFIX = '-reverse';
+const CLOSE_TWO_PARENS = '))';
+const HUNDRED_PERCENT = '100%';
+const NONE = 'none';
+const BLOCK = 'block';
+const TOP = 'top';
+const RIGHT = 'right';
+const BOTTOM = 'bottom';
+const LEFT = 'left';
+const Z = 'z';
+const LENGTH = 'length';
+const BORDER_TOP_LEFT_RADIUS = 'borderTopLeftRadius';
+const BORDER_TOP_RIGHT_RADIUS = 'borderTopRightRadius';
+const BORDER_BOTTOM_RIGHT_RADIUS = 'borderBottomRightRadius';
+const BORDER_BOTTOM_LEFT_RADIUS = 'borderBottomLeftRadius';
+const PX = 'px';
+const WIDTH = 'Width';
+const VAR_TW_BORDER_STYLE = 'var(--tw-border-style)';
+const OPEN_PAREN = '(';
+const VAR_OPEN = 'var(';
+const LIST_SEPARATOR = ', ';
+const DEG = 'deg';
+const NORMAL = 'normal';
+const ROTATE = 'rotate';
+const SKEW = 'skew';
+const TO = 'to';
+const LINEAR = 'linear';
+const CONIC = 'conic';
+const VIA = 'via';
+const FROM = 'from';
+const OPACITY = 'opacity';
+const TW_MASK_PREFIX = '--tw-mask-';
+const AT = '@';
+
 /** Число шкалы: `4`, `0.5`, `2.5`. */
 const REGEXP_NUMBER = /^\d+(?:\.\d+)?$/;
 
@@ -141,15 +193,15 @@ function result(style: Style | undefined): MnHandlerResult | undefined {
 
 /** `calc(var(--spacing) * 4)` → `… * -4`; число → `-…`; иначе (и дробь) — `calc(… * -1)`, как у Tailwind 4. */
 function negate(value: string): string {
-  return value === '0px' ? value
+  return value === ZERO_PX ? value
     : value === 'var(--spacing)' ? 'calc(var(--spacing) * -1)'
       : value.indexOf('calc(var(--spacing) * ') === 0 ? value.replace('* ', '* -')
-        : 'calc(' + value + ' * -1)';
+        : CALC_OPEN + value + ' * -1)';
 }
 
 /** Отрицание через `calc(… * -1)` с пробелами вокруг операторов внутри: `-mt-[1/2]` → `calc(1 / 2 * -1)`. */
 function negateCalc(value: string): string {
-  return mathSpaces('calc(' + value + ' * -1)');
+  return mathSpaces(CALC_OPEN + value + ' * -1)');
 }
 
 /**
@@ -157,7 +209,7 @@ function negateCalc(value: string): string {
  * `calc(var(--spacing) * n)`.
  */
 function spacing(step: string): string {
-  return step === '0' ? '0px' : step === '1' ? 'var(--spacing)' : 'calc(var(--spacing) * ' + step + ')';
+  return step === ZERO ? ZERO_PX : step === ONE ? 'var(--spacing)' : 'calc(var(--spacing) * ' + step + CLOSE_PAREN;
 }
 
 /** Опции значения шкалы. */
@@ -190,13 +242,13 @@ function scaleValue(args: MnTwArgs, options: ScaleOptions): string | undefined {
     value = undefined;
   } else if (args.modifier !== undefined) {
     value = options.fraction && REGEXP_INTEGER.test(step) && REGEXP_INTEGER.test(args.modifier)
-      ? 'calc(' + step + ' / ' + args.modifier + ' * 100%)' : undefined;
+      ? CALC_OPEN + step + ' / ' + args.modifier + ' * 100%)' : undefined;
   } else if (options.keywords && Object.prototype.hasOwnProperty.call(options.keywords, step)) {
     value = options.keywords[step];
   } else if (REGEXP_NUMBER.test(step)) {
     value = spacing(step);
   } else if (options.container && TW4_THEME['--container-' + step]) {
-    value = 'var(--container-' + step + ')';
+    value = 'var(--container-' + step + CLOSE_PAREN;
   }
   // Слово с минусом (`-m-auto`) сюда не доходит: его голое имя — статика из таблицы, и у Tailwind
   // отрицательной формы нет. Произвольное значение Tailwind 4 отрицает через `calc(… * -1)`, как бы
@@ -215,20 +267,20 @@ type TwColor = [value: string, supports?: string];
 
 /** Прозрачность модификатора: `50` → `50%`, `[33%]` → `33%`. */
 function alphaOf(modifier: string): string | undefined {
-  return REGEXP_NUMBER.test(modifier) ? modifier + '%'
-    : modifier[0] === '[' && modifier[modifier.length - 1] === ']' ? modifier.slice(1, -1) : undefined;
+  return REGEXP_NUMBER.test(modifier) ? modifier + PERCENT
+    : modifier[0] === OPEN_BRACKET && modifier[modifier.length - 1] === ']' ? modifier.slice(1, -1) : undefined;
 }
 
 function colorValue(args: MnTwArgs): TwColor | undefined {
-  const key = args.parts.join('-');
+  const key = args.parts.join(DASH);
   let color: string | undefined;
   if (args.negative) {
     return undefined;
   }
   if (args.arbitrary !== undefined) {
-    color = args.parts.length || args.type && args.type !== 'color' ? undefined : args.arbitrary;
+    color = args.parts.length || args.type && args.type !== COLOR ? undefined : args.arbitrary;
   } else {
-    color = SPECIAL_COLORS[key] || (TW4_THEME['--color-' + key] ? 'var(--color-' + key + ')' : undefined);
+    color = SPECIAL_COLORS[key] || (TW4_THEME[COLOR_VAR_PREFIX + key] ? 'var(--color-' + key + CLOSE_PAREN : undefined);
   }
   if (!color || args.modifier === undefined) {
     return color ? [color] : undefined;
@@ -237,10 +289,10 @@ function colorValue(args: MnTwArgs): TwColor | undefined {
   if (!alpha) {
     return undefined;
   }
-  const mix = 'color-mix(in oklab, ' + color + ' ' + alpha + ', transparent)';
-  const literal = args.arbitrary === undefined && TW4_THEME['--color-' + key];
+  const mix = COLOR_MIX_OPEN + color + SPACE + alpha + COLOR_MIX_TRANSPARENT;
+  const literal = args.arbitrary === undefined && TW4_THEME[COLOR_VAR_PREFIX + key];
   return literal ? [
-    'color-mix(in srgb, ' + literal + ' ' + alpha + ', transparent)',
+    'color-mix(in srgb, ' + literal + SPACE + alpha + COLOR_MIX_TRANSPARENT,
     mix,
   ]
     : /var\(|currentcolor/.test(color) ? [
@@ -345,7 +397,7 @@ const SCROLL_SIDES: Record<string, string> = {
 
 function setupSpacing(mn: MnInstance): void {
   const margin = {
-    m: ['margin'],
+    m: [MARGIN],
     mx: ['marginInline'],
     my: ['marginBlock'],
     mt: ['marginTop'],
@@ -360,8 +412,8 @@ function setupSpacing(mn: MnInstance): void {
   scales(
     mn, margin, {
       keywords: {
-        auto: 'auto',
-        px: '1px',
+        auto: AUTO,
+        px: ONE_PX,
       },
       negative: true,
     },
@@ -381,7 +433,7 @@ function setupSpacing(mn: MnInstance): void {
       pbe: ['paddingBlockEnd'],
     }, {
       keywords: {
-        px: '1px',
+        px: ONE_PX,
       },
     },
   );
@@ -392,7 +444,7 @@ function setupSpacing(mn: MnInstance): void {
       'gap-y': ['rowGap'],
     }, {
       keywords: {
-        px: '1px',
+        px: ONE_PX,
       },
     },
   );
@@ -402,8 +454,8 @@ function setupSpacing(mn: MnInstance): void {
   let side: string;
   for (side of [
     '',
-    'x',
-    'y',
+    X,
+    Y,
     't',
     'r',
     'b',
@@ -419,7 +471,7 @@ function setupSpacing(mn: MnInstance): void {
   scales(
     mn, scrollMargin, {
       keywords: {
-        px: '1px',
+        px: ONE_PX,
       },
       negative: true,
     },
@@ -427,24 +479,24 @@ function setupSpacing(mn: MnInstance): void {
   scales(
     mn, scrollPadding, {
       keywords: {
-        px: '1px',
+        px: ONE_PX,
       },
     },
   );
   // `space-x-4` — промежуток между детьми: всем, кроме последнего, отступ в конце строки.
   mn(
-    'space-x', spaceHandler('x', 'Inline'), '', 1,
+    'space-x', spaceHandler(X, 'Inline'), '', 1,
   );
   mn(
-    'space-y', spaceHandler('y', 'Block'), '', 1,
+    'space-y', spaceHandler(Y, 'Block'), '', 1,
   );
   // `space-x-reverse` — промежутки с другой стороны (`flex-row-reverse`). Хендлер, а не статика:
   // к статике при слиянии добавляется селектор самого элемента, а нужны только дети.
   mn(
-    'space-x-reverse', spaceReverse('x'), '', 1,
+    'space-x-reverse', spaceReverse(X), '', 1,
   );
   mn(
-    'space-y-reverse', spaceReverse('y'), '', 1,
+    'space-y-reverse', spaceReverse(Y), '', 1,
   );
 }
 
@@ -460,7 +512,7 @@ function spaceReverse(axis: string) {
     || args.negative ? undefined : {
       selectors: [SPACE_CHILDREN],
       style: {
-        ['--tw-space-' + axis + '-reverse']: '1',
+        ['--tw-space-' + axis + REVERSE_SUFFIX]: ONE,
       },
     }));
 }
@@ -471,19 +523,19 @@ function spaceHandler(axis: string, side: string) {
   return tw((args) => {
     const value = scaleValue(args, {
       keywords: {
-        px: '1px',
+        px: ONE_PX,
       },
       negative: true,
     });
     // Как у Tailwind 4: ноль — просто `0`, отрицательный `px` — литерал `-1px`.
     const step = value === 'calc(1px * -1)' ? '-1px' : value;
-    const zero = step === '0px';
+    const zero = step === ZERO_PX;
     return step === undefined ? undefined : {
       selectors: [SPACE_CHILDREN],
       style: {
-        ['--tw-space-' + axis + '-reverse']: '0',
-        ['margin' + side + 'Start']: zero ? '0' : 'calc(' + step + ' * ' + reverse + ')',
-        ['margin' + side + 'End']: zero ? '0' : 'calc(' + step + ' * calc(1 - ' + reverse + '))',
+        ['--tw-space-' + axis + REVERSE_SUFFIX]: ZERO,
+        [MARGIN + side + 'Start']: zero ? ZERO : CALC_OPEN + step + ' * ' + reverse + CLOSE_PAREN,
+        [MARGIN + side + 'End']: zero ? ZERO : CALC_OPEN + step + ' * calc(1 - ' + reverse + CLOSE_TWO_PARENS,
       },
     };
   });
@@ -491,9 +543,9 @@ function spaceHandler(axis: string, side: string) {
 
 function setupSizing(mn: MnInstance): void {
   const common = {
-    auto: 'auto',
-    px: '1px',
-    full: '100%',
+    auto: AUTO,
+    px: ONE_PX,
+    full: HUNDRED_PERCENT,
     min: 'min-content',
     max: 'max-content',
     fit: 'fit-content',
@@ -529,7 +581,7 @@ function setupSizing(mn: MnInstance): void {
     }, {
       keywords: {
         ...width,
-        none: 'none',
+        none: NONE,
         prose: '65ch',
       },
       fraction: true,
@@ -551,7 +603,7 @@ function setupSizing(mn: MnInstance): void {
     }, {
       keywords: {
         ...height,
-        none: 'none',
+        none: NONE,
       },
       fraction: true,
     },
@@ -579,8 +631,8 @@ function setupSizing(mn: MnInstance): void {
     ), '', 1,
   );
   mn(
-    'block', logicalSize(
-      'block', 'blockSize', {
+    BLOCK, logicalSize(
+      BLOCK, 'blockSize', {
         keywords: height,
         fraction: true,
       },
@@ -601,7 +653,7 @@ function setupSizing(mn: MnInstance): void {
     }, {
       keywords: {
         ...width,
-        none: 'none',
+        none: NONE,
       },
       fraction: true,
       container: true,
@@ -621,7 +673,7 @@ function setupSizing(mn: MnInstance): void {
     }, {
       keywords: {
         ...height,
-        none: 'none',
+        none: NONE,
       },
       fraction: true,
     },
@@ -633,7 +685,7 @@ function borderSpacing(axes: string[]) {
   return tw((args) => {
     const value = scaleValue(args, {
       keywords: {
-        px: '1px',
+        px: ONE_PX,
       },
     });
     return value === undefined ? undefined : result({
@@ -661,10 +713,10 @@ function setupLayout(mn: MnInstance): void {
       inset: ['inset'],
       'inset-x': ['insetInline'],
       'inset-y': ['insetBlock'],
-      top: ['top'],
-      right: ['right'],
-      bottom: ['bottom'],
-      left: ['left'],
+      top: [TOP],
+      right: [RIGHT],
+      bottom: [BOTTOM],
+      left: [LEFT],
       start: ['insetInlineStart'],
       end: ['insetInlineEnd'],
       'inset-s': ['insetInlineStart'],
@@ -673,24 +725,24 @@ function setupLayout(mn: MnInstance): void {
       'inset-be': ['insetBlockEnd'],
     }, {
       keywords: {
-        auto: 'auto',
-        px: '1px',
-        full: '100%',
+        auto: AUTO,
+        px: ONE_PX,
+        full: HUNDRED_PERCENT,
       },
       fraction: true,
       negative: true,
     },
   );
   integers(
-    mn, 'z', 'zIndex', {
-      auto: 'auto',
+    mn, Z, 'zIndex', {
+      auto: AUTO,
     },
   );
   integers(
     mn, 'order', 'order', {
       first: '-9999',
       last: '9999',
-      none: '0',
+      none: ZERO,
     },
   );
 }
@@ -725,7 +777,7 @@ function setupFlexGrid(mn: MnInstance): void {
       const value = args.arbitrary !== undefined ? (noModifier ? args.arbitrary : undefined)
         : args.parts.length !== 1 || !REGEXP_INTEGER.test(step) ? undefined
           : noModifier ? step
-            : REGEXP_INTEGER.test(modifier) ? 'calc(' + step + '/' + modifier + ' * 100%)' : undefined;
+            : REGEXP_INTEGER.test(modifier) ? CALC_OPEN + step + '/' + modifier + ' * 100%)' : undefined;
       return !args.parts.length && args.arbitrary === undefined ? (noModifier ? result({
         display: 'flex',
       }) : undefined) : value === undefined ? undefined : result({
@@ -744,9 +796,9 @@ function setupFlexGrid(mn: MnInstance): void {
       basis: ['flexBasis'],
     }, {
       keywords: {
-        auto: 'auto',
-        px: '1px',
-        full: '100%',
+        auto: AUTO,
+        px: ONE_PX,
+        full: HUNDRED_PERCENT,
       },
       fraction: true,
       container: true,
@@ -771,7 +823,7 @@ function setupFlexGrid(mn: MnInstance): void {
 function flexFactor(property: string) {
   return tw((args) => {
     const value = args.modifier !== undefined ? undefined
-      : !args.parts.length && args.arbitrary === undefined ? '1'
+      : !args.parts.length && args.arbitrary === undefined ? ONE
         : args.arbitrary !== undefined ? args.arbitrary
           : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] : undefined;
     return value === undefined ? undefined : result({
@@ -787,7 +839,7 @@ function gridTemplate(property: string) {
     const value = args.arbitrary !== undefined && !args.parts.length ? args.arbitrary
       : args.parts.length !== 1 ? undefined
         : REGEXP_INTEGER.test(step) ? 'repeat(' + step + ', minmax(0, 1fr))'
-          : step === 'none' ? 'none' : step === 'subgrid' ? 'subgrid' : undefined;
+          : step === NONE ? NONE : step === 'subgrid' ? 'subgrid' : undefined;
     return value === undefined ? undefined : result({
       [property]: value,
     });
@@ -817,7 +869,7 @@ function gridPlacement(
         : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.negative ? negateCalc(args.arbitrary) : args.arbitrary)
           : args.parts.length !== 1 ? undefined
             : REGEXP_INTEGER.test(step) ? (args.negative ? negateCalc(step) : step)
-              : step === 'auto' && !args.negative ? step : undefined;
+              : step === AUTO && !args.negative ? step : undefined;
       return value === undefined ? undefined : result({
         [property]: value,
       });
@@ -825,26 +877,26 @@ function gridPlacement(
   );
   integers(
     mn, axis + '-start', property + 'Start', {
-      auto: 'auto',
+      auto: AUTO,
     },
   );
   integers(
     mn, axis + '-end', property + 'End', {
-      auto: 'auto',
+      auto: AUTO,
     },
   );
 }
 
 /** Размер шрифта `text-sm`, `text-sm/6`, `text-[14px]` — или `undefined`. */
 function fontSize(args: MnTwArgs): Style | undefined {
-  const key = args.parts.join('-');
+  const key = args.parts.join(DASH);
   const lineHeight = args.modifier === undefined ? undefined
     : REGEXP_NUMBER.test(args.modifier) ? spacing(args.modifier) : undefined;
   if (args.negative || args.modifier !== undefined && !lineHeight) {
     return undefined;
   }
   if (args.arbitrary !== undefined) {
-    return !args.parts.length && (args.type === 'length' || !args.type && REGEXP_LENGTH.test(args.arbitrary))
+    return !args.parts.length && (args.type === LENGTH || !args.type && REGEXP_LENGTH.test(args.arbitrary))
       ? lineHeight ? {
         fontSize: args.arbitrary,
         lineHeight,
@@ -853,7 +905,7 @@ function fontSize(args: MnTwArgs): Style | undefined {
       } : undefined;
   }
   return TW4_THEME['--text-' + key] && TW4_THEME['--text-' + key].indexOf('rem') > 0 ? {
-    fontSize: 'var(--text-' + key + ')',
+    fontSize: 'var(--text-' + key + CLOSE_PAREN,
     // `leading-*` задаёт `--tw-leading` — у Tailwind 4 размер шрифта её уважает.
     lineHeight: lineHeight || 'var(--tw-leading, var(--text-' + key + '--line-height))',
   } : undefined;
@@ -865,12 +917,12 @@ function setupTypography(mn: MnInstance): void {
     'text', tw((args) => {
       const size = fontSize(args);
       const color = size ? undefined : colorValue(args);
-      return size ? result(size) : color === undefined ? undefined : colorResult(['color'], color);
+      return size ? result(size) : color === undefined ? undefined : colorResult([COLOR], color);
     }), '', 1,
   );
   mn(
     'font', tw((args) => {
-      const key = args.parts.join('-');
+      const key = args.parts.join(DASH);
       return args.negative || args.modifier !== undefined ? undefined
         : args.arbitrary !== undefined && !args.parts.length
           ? result(REGEXP_INTEGER.test(args.arbitrary) || args.type === 'weight' ? {
@@ -880,20 +932,20 @@ function setupTypography(mn: MnInstance): void {
             fontFamily: args.arbitrary,
           })
           : TW4_THEME['--font-weight-' + key] ? result({
-            '--tw-font-weight': 'var(--font-weight-' + key + ')',
-            fontWeight: 'var(--font-weight-' + key + ')',
+            '--tw-font-weight': 'var(--font-weight-' + key + CLOSE_PAREN,
+            fontWeight: 'var(--font-weight-' + key + CLOSE_PAREN,
           }) : TW4_THEME['--font-' + key] ? result({
-            fontFamily: 'var(--font-' + key + ')',
+            fontFamily: 'var(--font-' + key + CLOSE_PAREN,
           }) : undefined;
     }), '', 1,
   );
   mn(
     'leading', tw((args) => {
-      const key = args.parts.join('-');
+      const key = args.parts.join(DASH);
       const value = args.negative || args.modifier !== undefined ? undefined
         : args.arbitrary !== undefined && !args.parts.length ? args.arbitrary
-          : key === 'none' ? '1'
-            : TW4_THEME['--leading-' + key] ? 'var(--leading-' + key + ')'
+          : key === NONE ? ONE
+            : TW4_THEME['--leading-' + key] ? 'var(--leading-' + key + CLOSE_PAREN
               : args.parts.length === 1 && REGEXP_NUMBER.test(key) ? spacing(key) : undefined;
       return value === undefined ? undefined : result({
         '--tw-leading': value,
@@ -903,10 +955,10 @@ function setupTypography(mn: MnInstance): void {
   );
   mn(
     'tracking', tw((args) => {
-      const key = args.parts.join('-');
+      const key = args.parts.join(DASH);
       const value = args.modifier !== undefined ? undefined
         : args.arbitrary !== undefined && !args.parts.length ? args.arbitrary
-          : TW4_THEME['--tracking-' + key] ? 'var(--tracking-' + key + ')' : undefined;
+          : TW4_THEME['--tracking-' + key] ? 'var(--tracking-' + key + CLOSE_PAREN : undefined;
       return value === undefined ? undefined : result({
         '--tw-tracking': args.negative ? negate(value) : value,
         letterSpacing: args.negative ? negate(value) : value,
@@ -931,20 +983,20 @@ const BORDER_SIDES: Record<string, string[]> = {
 
 const RADIUS_SIDES: Record<string, string[]> = {
   t: [
-    'borderTopLeftRadius',
-    'borderTopRightRadius',
+    BORDER_TOP_LEFT_RADIUS,
+    BORDER_TOP_RIGHT_RADIUS,
   ],
   r: [
-    'borderTopRightRadius',
-    'borderBottomRightRadius',
+    BORDER_TOP_RIGHT_RADIUS,
+    BORDER_BOTTOM_RIGHT_RADIUS,
   ],
   b: [
-    'borderBottomRightRadius',
-    'borderBottomLeftRadius',
+    BORDER_BOTTOM_RIGHT_RADIUS,
+    BORDER_BOTTOM_LEFT_RADIUS,
   ],
   l: [
-    'borderTopLeftRadius',
-    'borderBottomLeftRadius',
+    BORDER_TOP_LEFT_RADIUS,
+    BORDER_BOTTOM_LEFT_RADIUS,
   ],
   s: [
     'borderStartStartRadius',
@@ -954,10 +1006,10 @@ const RADIUS_SIDES: Record<string, string[]> = {
     'borderStartEndRadius',
     'borderEndEndRadius',
   ],
-  tl: ['borderTopLeftRadius'],
-  tr: ['borderTopRightRadius'],
-  br: ['borderBottomRightRadius'],
-  bl: ['borderBottomLeftRadius'],
+  tl: [BORDER_TOP_LEFT_RADIUS],
+  tr: [BORDER_TOP_RIGHT_RADIUS],
+  br: [BORDER_BOTTOM_RIGHT_RADIUS],
+  bl: [BORDER_BOTTOM_LEFT_RADIUS],
   ss: ['borderStartStartRadius'],
   se: ['borderStartEndRadius'],
   ee: ['borderEndEndRadius'],
@@ -966,9 +1018,9 @@ const RADIUS_SIDES: Record<string, string[]> = {
 
 /** Ширина рамки: пусто → `1px`, целое → `Npx`, `[…]` — как есть. */
 function borderWidth(args: MnTwArgs, rest: string[]): string | undefined {
-  return args.arbitrary !== undefined ? (!rest.length && (args.type === 'length'
+  return args.arbitrary !== undefined ? (!rest.length && (args.type === LENGTH
     || !args.type && REGEXP_LENGTH.test(args.arbitrary)) ? args.arbitrary : undefined)
-    : !rest.length ? '1px' : rest.length === 1 && REGEXP_INTEGER.test(rest[0]) ? rest[0] + 'px' : undefined;
+    : !rest.length ? ONE_PX : rest.length === 1 && REGEXP_INTEGER.test(rest[0]) ? rest[0] + PX : undefined;
 }
 
 function setupBorders(mn: MnInstance): void {
@@ -981,7 +1033,7 @@ function setupBorders(mn: MnInstance): void {
     'dotted',
     'double',
     'hidden',
-    'none',
+    NONE,
   ]) {
     mn('border-' + style, {
       style: {
@@ -1004,34 +1056,34 @@ function setupBorders(mn: MnInstance): void {
       const widths = side || ['borderWidth'];
       // Сторона — свой стиль и свой цвет: `border-t-4` → `border-top-style`, `border-t-red-500` → `border-top-color`.
       return width !== undefined ? result({
-        ...styleOf(widths.map((name) => name.replace('Width', 'Style')), 'var(--tw-border-style)'),
+        ...styleOf(widths.map((name) => name.replace(WIDTH, 'Style')), VAR_TW_BORDER_STYLE),
         ...styleOf(widths, width),
-      }) : color === undefined ? undefined : colorResult(widths.map((name) => name.replace('Width', 'Color')), color);
+      }) : color === undefined ? undefined : colorResult(widths.map((name) => name.replace(WIDTH, 'Color')), color);
     }), '', 1,
   );
   mn(
     'border-spacing', borderSpacing([
-      'x',
-      'y',
+      X,
+      Y,
     ]), '', 1,
   );
   mn(
-    'border-spacing-x', borderSpacing(['x']), '', 1,
+    'border-spacing-x', borderSpacing([X]), '', 1,
   );
   mn(
-    'border-spacing-y', borderSpacing(['y']), '', 1,
+    'border-spacing-y', borderSpacing([Y]), '', 1,
   );
   // `rounded`, `rounded-lg`, `rounded-t-lg`, `rounded-full`, `rounded-[3px]`.
   mn(
     'rounded', tw((args) => {
       const side = RADIUS_SIDES[args.parts[0]];
       const rest = side ? args.parts.slice(1) : args.parts;
-      const key = rest.join('-');
+      const key = rest.join(DASH);
       const value = args.negative || args.modifier !== undefined ? undefined
         : args.arbitrary !== undefined ? (rest.length ? undefined : args.arbitrary)
           : !rest.length ? '0.25rem'
-            : key === 'none' ? '0' : key === 'full' ? 'calc(infinity * 1px)'
-              : TW4_THEME['--radius-' + key] ? 'var(--radius-' + key + ')' : undefined;
+            : key === NONE ? ZERO : key === 'full' ? 'calc(infinity * 1px)'
+              : TW4_THEME['--radius-' + key] ? 'var(--radius-' + key + CLOSE_PAREN : undefined;
       return value === undefined ? undefined : result(styleOf(side || ['borderRadius'], value));
     }), '', 1,
   );
@@ -1051,13 +1103,13 @@ function setupColors(mn: MnInstance): void {
 function pixels(args: MnTwArgs, negative?: boolean): string | undefined {
   const value = args.modifier !== undefined || args.negative && !negative ? undefined
     : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.arbitrary)
-      : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] + 'px' : undefined;
+      : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] + PX : undefined;
   return value && args.negative ? negateCalc(value) : value;
 }
 
 /** Произвольное значение — длина (`[3px]`, `[length:var(--x)]`), а не цвет. */
 function isLengthArg(args: MnTwArgs): boolean {
-  return args.arbitrary !== undefined && (args.type === 'length' || !args.type && REGEXP_LENGTH.test(args.arbitrary));
+  return args.arbitrary !== undefined && (args.type === LENGTH || !args.type && REGEXP_LENGTH.test(args.arbitrary));
 }
 
 /** Хендлер «цвет — в эти свойства»; `other` — другая форма той же утилиты (ширина, толщина). */
@@ -1084,23 +1136,23 @@ const DIVIDE_CHILDREN = SPACE_CHILDREN;
 function divideWidth(axis: 'x' | 'y', args: MnTwArgs): MnHandlerResult | undefined {
   const width = args.modifier !== undefined || args.negative ? undefined
     : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.arbitrary)
-      : !args.parts.length ? '1px' : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] + 'px' : undefined;
+      : !args.parts.length ? ONE_PX : args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0]) ? args.parts[0] + PX : undefined;
   const reverse = 'var(--tw-divide-' + axis + '-reverse)';
-  const inline = axis === 'x';
+  const inline = axis === X;
   const start = inline ? 'borderInlineStart' : 'borderTop';
   const end = inline ? 'borderInlineEnd' : 'borderBottom';
   return width === undefined ? undefined : {
     selectors: [DIVIDE_CHILDREN],
     style: {
-      ['--tw-divide-' + axis + '-reverse']: '0',
+      ['--tw-divide-' + axis + REVERSE_SUFFIX]: ZERO,
       ...(inline ? {
-        borderInlineStyle: 'var(--tw-border-style)',
+        borderInlineStyle: VAR_TW_BORDER_STYLE,
       } : {
-        borderBottomStyle: 'var(--tw-border-style)',
-        borderTopStyle: 'var(--tw-border-style)',
+        borderBottomStyle: VAR_TW_BORDER_STYLE,
+        borderTopStyle: VAR_TW_BORDER_STYLE,
       }),
-      [start + 'Width']: 'calc(' + width + ' * ' + reverse + ')',
-      [end + 'Width']: 'calc(' + width + ' * calc(1 - ' + reverse + '))',
+      [start + WIDTH]: CALC_OPEN + width + ' * ' + reverse + CLOSE_PAREN,
+      [end + WIDTH]: CALC_OPEN + width + ' * calc(1 - ' + reverse + CLOSE_TWO_PARENS,
     },
   };
 }
@@ -1117,8 +1169,8 @@ function setupColorUtilities(mn: MnInstance): void {
   );
   mn(
     'underline-offset', tw((args) => {
-      const offset = args.parts.length === 1 && args.parts[0] === 'auto' && !args.negative && args.modifier === undefined
-        ? 'auto' : pixels(args, true);
+      const offset = args.parts.length === 1 && args.parts[0] === AUTO && !args.negative && args.modifier === undefined
+        ? AUTO : pixels(args, true);
       return offset === undefined ? undefined : result({
         textUnderlineOffset: offset,
       });
@@ -1128,7 +1180,7 @@ function setupColorUtilities(mn: MnInstance): void {
     'outline', colorOr(['outlineColor'], (args) => {
       const noArbitrary = args.arbitrary === undefined;
       const width = !args.parts.length && noArbitrary && args.modifier === undefined && !args.negative
-        ? '1px' : isLengthArg(args) || noArbitrary ? pixels(args) : undefined;
+        ? ONE_PX : isLengthArg(args) || noArbitrary ? pixels(args) : undefined;
       return width === undefined ? undefined : result({
         outlineStyle: 'var(--tw-outline-style)',
         outlineWidth: width,
@@ -1167,14 +1219,14 @@ function setupColorUtilities(mn: MnInstance): void {
     'placeholder', tw((args) => {
       const color = colorValue(args);
       return color && {
-        ...colorResult(['color'], color),
+        ...colorResult([COLOR], color),
         selectors: ['&::placeholder'],
       };
     }), '', 1,
   );
   mn(
     'divide', tw((args) => {
-      const axis = args.parts[0] === 'x' || args.parts[0] === 'y' ? args.parts[0] : undefined;
+      const axis = args.parts[0] === X || args.parts[0] === Y ? args.parts[0] : undefined;
       if (axis) {
         return divideWidth(axis, {
           ...args,
@@ -1192,7 +1244,7 @@ function setupColorUtilities(mn: MnInstance): void {
     'ring', colorOr(['--tw-ring-color'], (args) => {
       const noArbitrary = args.arbitrary === undefined;
       const width = !args.parts.length && noArbitrary && args.modifier === undefined && !args.negative
-        ? '1px' : isLengthArg(args) || noArbitrary ? pixels(args) : undefined;
+        ? ONE_PX : isLengthArg(args) || noArbitrary ? pixels(args) : undefined;
       return width === undefined ? undefined : result({
         '--tw-ring-shadow': 'var(--tw-ring-inset,) 0 0 0 calc(' + width + ' + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor)',
         boxShadow: BOX_SHADOW,
@@ -1212,7 +1264,7 @@ function setupColorUtilities(mn: MnInstance): void {
     'inset-ring', colorOr(['--tw-inset-ring-color'], (args) => {
       const noArbitrary = args.arbitrary === undefined;
       const width = !args.parts.length && noArbitrary && args.modifier === undefined && !args.negative
-        ? '1px' : isLengthArg(args) || noArbitrary ? pixels(args) : undefined;
+        ? ONE_PX : isLengthArg(args) || noArbitrary ? pixels(args) : undefined;
       return width === undefined ? undefined : result({
         '--tw-inset-ring-shadow': 'inset 0 0 0 ' + width + ' var(--tw-inset-ring-color, currentcolor)',
         boxShadow: BOX_SHADOW,
@@ -1263,7 +1315,7 @@ function splitTop(value: string, separator: string): string[] {
   let ch: string;
   for (; i < l; i++) {
     ch = value[i];
-    depth += ch === '(' ? 1 : ch === ')' ? -1 : 0;
+    depth += ch === OPEN_PAREN ? 1 : ch === CLOSE_PAREN ? -1 : 0;
     if (ch === separator && !depth) {
       out.push(value.slice(from, i));
       from = i + 1;
@@ -1290,10 +1342,10 @@ function shadowParts(
   value: string, colorVar: string, alpha?: string,
 ): string[] {
   return splitTop(value, ',').map((part) => {
-    const tokens = splitTop(part.trim(), ' ').filter(Boolean);
+    const tokens = splitTop(part.trim(), SPACE).filter(Boolean);
     const i = colorIndex(tokens);
-    i < 0 || (tokens[i] = 'var(' + colorVar + ', ' + (alpha ? 'oklab(from ' + tokens[i] + ' l a b / ' + alpha + ')' : tokens[i]) + ')');
-    return tokens.join(' ');
+    i < 0 || (tokens[i] = VAR_OPEN + colorVar + LIST_SEPARATOR + (alpha ? 'oklab(from ' + tokens[i] + ' l a b / ' + alpha + CLOSE_PAREN : tokens[i]) + CLOSE_PAREN);
+    return tokens.join(SPACE);
   });
 }
 
@@ -1314,11 +1366,11 @@ function shadowColor(args: MnTwArgs, alphaVar: string): TwColor | undefined {
   if (color === 'inherit') {
     return alpha ? undefined : [color];
   }
-  const literal = args.arbitrary === undefined && TW4_THEME['--color-' + args.parts.join('-')] || color;
-  const mix = (value: string) => 'color-mix(in oklab, ' + value + ' var(' + alphaVar + '), transparent)';
+  const literal = args.arbitrary === undefined && TW4_THEME[COLOR_VAR_PREFIX + args.parts.join(DASH)] || color;
+  const mix = (value: string) => COLOR_MIX_OPEN + value + ' var(' + alphaVar + '), transparent)';
   return alpha ? [
-    'color-mix(in srgb, ' + literal + ' ' + alpha + ', transparent)',
-    mix('color-mix(in oklab, ' + color + ' ' + alpha + ', transparent)'),
+    'color-mix(in srgb, ' + literal + SPACE + alpha + COLOR_MIX_TRANSPARENT,
+    mix(COLOR_MIX_OPEN + color + SPACE + alpha + COLOR_MIX_TRANSPARENT),
   ]
     : [
       literal,
@@ -1349,17 +1401,17 @@ interface ShadowFamily {
 /** Хендлер семейства теней: размер темы (`/50` — прозрачность), `none`, произвольная тень или цвет. */
 function shadowHandler(family: ShadowFamily) {
   return tw((args) => {
-    const key = args.parts.join('-');
+    const key = args.parts.join(DASH);
     // Непонятная прозрачность у размера (`shadow-md/x`) Tailwind 4 пропускает — тень без неё.
     const noArbitrary = args.arbitrary === undefined;
     const modifier = args.modifier;
     const noModifier = modifier === undefined;
     const alpha = noModifier ? undefined : alphaOf(modifier);
     const value = args.negative ? undefined
-      : args.arbitrary !== undefined ? (args.parts.length || args.type === 'color' || REGEXP_COLOR_LIKE.test(args.arbitrary)
+      : args.arbitrary !== undefined ? (args.parts.length || args.type === COLOR || REGEXP_COLOR_LIKE.test(args.arbitrary)
         ? undefined : args.arbitrary)
         : family.sizes[key] || TW4_THEME[family.theme + key];
-    if (noArbitrary && key === 'none') {
+    if (noArbitrary && key === NONE) {
       return noModifier && !args.negative ? result(family.none) : undefined;
     }
     if (value !== undefined) {
@@ -1392,7 +1444,7 @@ function setupShadows(mn: MnInstance): void {
         inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
       },
       size: (parts) => ({
-        '--tw-shadow': parts.join(', '),
+        '--tw-shadow': parts.join(LIST_SEPARATOR),
         boxShadow: BOX_SHADOW,
       }),
       none: {
@@ -1408,7 +1460,7 @@ function setupShadows(mn: MnInstance): void {
       alphaVar: '--tw-inset-shadow-alpha',
       sizes: {},
       size: (parts) => ({
-        '--tw-inset-shadow': parts.map((part) => (part.indexOf('inset') === 0 ? part : 'inset ' + part)).join(', '),
+        '--tw-inset-shadow': parts.map((part) => (part.indexOf('inset') === 0 ? part : 'inset ' + part)).join(LIST_SEPARATOR),
         boxShadow: BOX_SHADOW,
       }),
       none: {
@@ -1424,10 +1476,10 @@ function setupShadows(mn: MnInstance): void {
       alphaVar: '--tw-text-shadow-alpha',
       sizes: {},
       size: (parts) => ({
-        textShadow: parts.join(', '),
+        textShadow: parts.join(LIST_SEPARATOR),
       }),
       none: {
-        textShadow: 'none',
+        textShadow: NONE,
       },
     }), '', 1,
   );
@@ -1444,14 +1496,14 @@ function setupShadows(mn: MnInstance): void {
       size: (
         parts, alpha, key,
       ) => ({
-        '--tw-drop-shadow-size': parts.map((part) => 'drop-shadow(' + part + ')').join(' '),
+        '--tw-drop-shadow-size': parts.map((part) => 'drop-shadow(' + part + CLOSE_PAREN).join(SPACE),
         '--tw-drop-shadow': alpha && key || key === ARBITRARY ? 'var(--tw-drop-shadow-size)'
-          : key ? 'drop-shadow(var(--drop-shadow-' + key + '))'
+          : key ? 'drop-shadow(var(--drop-shadow-' + key + CLOSE_TWO_PARENS
             : 'drop-shadow(0 1px 2px rgb(0 0 0 / 0.1)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.06))',
         filter: FILTER,
       }),
       none: {
-        '--tw-drop-shadow': ' ',
+        '--tw-drop-shadow': SPACE,
         filter: FILTER,
       },
       colorExtra: {
@@ -1475,13 +1527,13 @@ const SCALE_XYZ = SCALE_XY + ' var(--tw-scale-z)';
 /** Точки `origin-*` и `perspective-origin-*` — как пишет их Tailwind 4. */
 const ORIGINS: Record<string, string> = {
   center: 'center',
-  top: 'top',
+  top: TOP,
   'top-right': '100% 0',
-  right: '100%',
+  right: HUNDRED_PERCENT,
   'bottom-right': '100% 100%',
-  bottom: 'bottom',
+  bottom: BOTTOM,
   'bottom-left': '0 100%',
-  left: '0',
+  left: ZERO,
   'top-left': '0 0',
 };
 
@@ -1498,7 +1550,7 @@ function unitValue(args: MnTwArgs, unit: string): string | undefined {
 
 /** Слово из таблицы или произвольное значение; минуса нет. */
 function keywordValue(args: MnTwArgs, keywords: Record<string, string>): string | undefined {
-  const key = args.parts.join('-');
+  const key = args.parts.join(DASH);
   return args.negative || args.modifier !== undefined ? undefined
     : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.arbitrary)
       : Object.prototype.hasOwnProperty.call(keywords, key) ? keywords[key] : undefined;
@@ -1508,7 +1560,7 @@ function keywordValue(args: MnTwArgs, keywords: Record<string, string>): string 
 function translateHandler(axes: string[], value: string) {
   return tw((args) => {
     const shift = scaleValue(args, {
-      fraction: axes[0] !== 'z',
+      fraction: axes[0] !== Z,
       negative: true,
     });
     return shift === undefined ? undefined : result({
@@ -1521,7 +1573,7 @@ function translateHandler(axes: string[], value: string) {
 /** `scale`, `scale-x/y/z`: голое имя с произвольным — сразу `scale`, иначе через переменные осей. */
 function scaleTransformHandler(axes: string[], value: string) {
   return tw((args) => {
-    const factor = unitValue(args, '%');
+    const factor = unitValue(args, PERCENT);
     return factor === undefined ? undefined : result(axes.length === 3 && args.arbitrary !== undefined ? {
       scale: factor,
     } : {
@@ -1534,13 +1586,13 @@ function scaleTransformHandler(axes: string[], value: string) {
 /** `rotate-x/y/z`, `skew`, `skew-x/y`: функции в переменных осей и общий `transform`. */
 function transformHandler(prefix: string, axes: string[]) {
   return tw((args) => {
-    const angle = unitValue(args, 'deg');
+    const angle = unitValue(args, DEG);
     const style: Style = {};
     if (angle === undefined) {
       return undefined;
     }
     for (const axis of axes) {
-      style['--tw-' + prefix + '-' + axis] = prefix + axis.toUpperCase() + '(' + angle + ')';
+      style['--tw-' + prefix + DASH + axis] = prefix + axis.toUpperCase() + OPEN_PAREN + angle + CLOSE_PAREN;
     }
     style.transform = TRANSFORM;
     return result(style);
@@ -1559,77 +1611,77 @@ function keywordHandler(property: string, keywords: Record<string, string>) {
 
 function setupTransforms(mn: MnInstance): void {
   const perspectives: Record<string, string> = {
-    none: 'none',
+    none: NONE,
   };
   let name: string;
   for (name of [
     'dramatic',
     'near',
-    'normal',
+    NORMAL,
     'midrange',
     'distant',
   ]) {
-    perspectives[name] = 'var(--perspective-' + name + ')';
+    perspectives[name] = 'var(--perspective-' + name + CLOSE_PAREN;
   }
   mn(
     'translate', translateHandler([
-      'x',
-      'y',
+      X,
+      Y,
     ], TRANSLATE_XY), '', 1,
   );
   mn(
-    'translate-x', translateHandler(['x'], TRANSLATE_XY), '', 1,
+    'translate-x', translateHandler([X], TRANSLATE_XY), '', 1,
   );
   mn(
-    'translate-y', translateHandler(['y'], TRANSLATE_XY), '', 1,
+    'translate-y', translateHandler([Y], TRANSLATE_XY), '', 1,
   );
   mn(
-    'translate-z', translateHandler(['z'], TRANSLATE_XYZ), '', 1,
+    'translate-z', translateHandler([Z], TRANSLATE_XYZ), '', 1,
   );
   mn(
     'scale', scaleTransformHandler([
-      'x',
-      'y',
-      'z',
+      X,
+      Y,
+      Z,
     ], SCALE_XY), '', 1,
   );
   mn(
-    'scale-x', scaleTransformHandler(['x'], SCALE_XY), '', 1,
+    'scale-x', scaleTransformHandler([X], SCALE_XY), '', 1,
   );
   mn(
-    'scale-y', scaleTransformHandler(['y'], SCALE_XY), '', 1,
+    'scale-y', scaleTransformHandler([Y], SCALE_XY), '', 1,
   );
   mn(
-    'scale-z', scaleTransformHandler(['z'], SCALE_XYZ), '', 1,
+    'scale-z', scaleTransformHandler([Z], SCALE_XYZ), '', 1,
   );
   mn(
-    'rotate', tw((args) => {
-      const angle = unitValue(args, 'deg');
+    ROTATE, tw((args) => {
+      const angle = unitValue(args, DEG);
       return angle === undefined ? undefined : result({
         rotate: angle,
       });
     }), '', 1,
   );
   mn(
-    'rotate-x', transformHandler('rotate', ['x']), '', 1,
+    'rotate-x', transformHandler(ROTATE, [X]), '', 1,
   );
   mn(
-    'rotate-y', transformHandler('rotate', ['y']), '', 1,
+    'rotate-y', transformHandler(ROTATE, [Y]), '', 1,
   );
   mn(
-    'rotate-z', transformHandler('rotate', ['z']), '', 1,
+    'rotate-z', transformHandler(ROTATE, [Z]), '', 1,
   );
   mn(
-    'skew', transformHandler('skew', [
-      'x',
-      'y',
+    SKEW, transformHandler(SKEW, [
+      X,
+      Y,
     ]), '', 1,
   );
   mn(
-    'skew-x', transformHandler('skew', ['x']), '', 1,
+    'skew-x', transformHandler(SKEW, [X]), '', 1,
   );
   mn(
-    'skew-y', transformHandler('skew', ['y']), '', 1,
+    'skew-y', transformHandler(SKEW, [Y]), '', 1,
   );
   mn(
     'origin', keywordHandler('transformOrigin', ORIGINS), '', 1,
@@ -1660,10 +1712,10 @@ const GRADIENT_VIA_STOPS = 'var(--tw-gradient-position), var(--tw-gradient-from)
 
 /** `bg-linear-to-tr` → `to top right`. */
 const GRADIENT_SIDES: Record<string, string> = {
-  t: 'top',
-  r: 'right',
-  b: 'bottom',
-  l: 'left',
+  t: TOP,
+  r: RIGHT,
+  b: BOTTOM,
+  l: LEFT,
 };
 
 /** Модификаторы оттенка: `/longer` → `in oklch longer hue`. */
@@ -1680,20 +1732,20 @@ const REGEXP_PERCENT = /^\d+%$/;
 /** Пространство интерполяции по модификатору: нет — `in oklab`, `/hsl` — `in hsl`, `/[in_hsl]` — как есть. */
 function interpolation(modifier: string | undefined): string {
   return modifier === undefined ? 'in oklab'
-    : modifier[0] === '[' ? modifier.slice(1, -1).replace(/_/g, ' ')
+    : modifier[0] === OPEN_BRACKET ? modifier.slice(1, -1).replace(/_/g, SPACE)
       : HUE_INTERPOLATIONS.indexOf(modifier) >= 0 ? 'in oklch ' + modifier + ' hue' : 'in ' + modifier;
 }
 
 /** Направление линейного градиента: `to-tr` → `to top right`, `45` → `45deg` (минус — `calc`). */
 function linearPosition(args: MnTwArgs): string | undefined {
   const parts = args.parts;
-  const side = parts.length === 2 && parts[0] === 'to' && parts[1].length <= 2 ? parts[1] : undefined;
+  const side = parts.length === 2 && parts[0] === TO && parts[1].length <= 2 ? parts[1] : undefined;
   if (side) {
     return args.negative || !GRADIENT_SIDES[side[0]] || side[1] && !GRADIENT_SIDES[side[1]] ? undefined
-      : 'to ' + GRADIENT_SIDES[side[0]] + (side[1] ? ' ' + GRADIENT_SIDES[side[1]] : '');
+      : 'to ' + GRADIENT_SIDES[side[0]] + (side[1] ? SPACE + GRADIENT_SIDES[side[1]] : '');
   }
   return parts.length === 1 && REGEXP_INTEGER.test(parts[0])
-    ? (args.negative ? 'calc(' + parts[0] + 'deg * -1)' : parts[0] + 'deg') : undefined;
+    ? (args.negative ? CALC_OPEN + parts[0] + 'deg * -1)' : parts[0] + DEG) : undefined;
 }
 
 /** `bg-linear`, `bg-radial`, `bg-conic`: произвольное — запасным значением в `var(--tw-gradient-stops, …)`. */
@@ -1704,20 +1756,20 @@ function gradientHandler(kind: 'linear' | 'radial' | 'conic') {
     if (args.arbitrary !== undefined) {
       return args.parts.length || args.negative || args.modifier !== undefined ? undefined : result({
         '--tw-gradient-position': args.arbitrary,
-        backgroundImage: image + ',' + args.arbitrary + '))',
+        backgroundImage: image + ',' + args.arbitrary + CLOSE_TWO_PARENS,
       });
     }
-    if (kind === 'linear') {
+    if (kind === LINEAR) {
       position = linearPosition(args);
       return position === undefined ? undefined : {
         style: {
           '--tw-gradient-position': position,
-          backgroundImage: image + '))',
+          backgroundImage: image + CLOSE_TWO_PARENS,
         },
         media: {
           [GRADIENT_MEDIA]: {
             style: {
-              '--tw-gradient-position': position + ' ' + interpolation(args.modifier),
+              '--tw-gradient-position': position + SPACE + interpolation(args.modifier),
             },
           },
         },
@@ -1725,19 +1777,19 @@ function gradientHandler(kind: 'linear' | 'radial' | 'conic') {
     }
     // У радиального — только голое имя; у конического — ещё угол начала.
     position = !args.parts.length ? (args.negative ? undefined : '')
-      : kind === 'conic' && args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0])
-        ? 'from ' + (args.negative ? 'calc(' + args.parts[0] + 'deg * -1)' : args.parts[0] + 'deg') + ' ' : undefined;
+      : kind === CONIC && args.parts.length === 1 && REGEXP_INTEGER.test(args.parts[0])
+        ? 'from ' + (args.negative ? CALC_OPEN + args.parts[0] + 'deg * -1)' : args.parts[0] + DEG) + SPACE : undefined;
     return position === undefined ? undefined : result({
       '--tw-gradient-position': position + interpolation(args.modifier),
-      backgroundImage: image + '))',
+      backgroundImage: image + CLOSE_TWO_PARENS,
     });
   });
 }
 
 /** Произвольное значение — позиция точки (`[10px]`, `[length:var(--x)]`), а не цвет; `var()` без типа — цвет. */
 function isPositionArg(args: MnTwArgs): boolean {
-  return args.arbitrary !== undefined && (args.type === 'length' || args.type === 'percentage'
-    || !args.type && args.arbitrary.indexOf('var(') !== 0 && REGEXP_LENGTH.test(args.arbitrary));
+  return args.arbitrary !== undefined && (args.type === LENGTH || args.type === 'percentage'
+    || !args.type && args.arbitrary.indexOf(VAR_OPEN) !== 0 && REGEXP_LENGTH.test(args.arbitrary));
 }
 
 /** `from`, `via`, `to`: цвет точки или её позиция (`from-10%`, `from-[10px]`). */
@@ -1753,7 +1805,7 @@ function gradientStopHandler(stop: 'from' | 'via' | 'to') {
       });
     }
     return color && colorResult(
-      ['--tw-gradient-' + stop], color, stop === 'via' ? {
+      ['--tw-gradient-' + stop], color, stop === VIA ? {
         '--tw-gradient-via-stops': GRADIENT_VIA_STOPS,
         '--tw-gradient-stops': 'var(--tw-gradient-via-stops)',
       } : {
@@ -1765,22 +1817,22 @@ function gradientStopHandler(stop: 'from' | 'via' | 'to') {
 
 function setupGradients(mn: MnInstance): void {
   mn(
-    'bg-linear', gradientHandler('linear'), '', 1,
+    'bg-linear', gradientHandler(LINEAR), '', 1,
   );
   mn(
     'bg-radial', gradientHandler('radial'), '', 1,
   );
   mn(
-    'bg-conic', gradientHandler('conic'), '', 1,
+    'bg-conic', gradientHandler(CONIC), '', 1,
   );
   mn(
-    'from', gradientStopHandler('from'), '', 1,
+    FROM, gradientStopHandler(FROM), '', 1,
   );
   mn(
-    'via', gradientStopHandler('via'), '', 1,
+    VIA, gradientStopHandler(VIA), '', 1,
   );
   mn(
-    'to', gradientStopHandler('to'), '', 1,
+    TO, gradientStopHandler(TO), '', 1,
   );
 }
 
@@ -1805,40 +1857,40 @@ const FILTER_FUNCTIONS: Record<string, FilterFunction> = {
     bare: '8px',
   },
   brightness: {
-    unit: '%',
+    unit: PERCENT,
   },
   contrast: {
-    unit: '%',
+    unit: PERCENT,
   },
   grayscale: {
-    unit: '%',
-    bare: '100%',
+    unit: PERCENT,
+    bare: HUNDRED_PERCENT,
   },
   'hue-rotate': {
-    unit: 'deg',
+    unit: DEG,
     negative: true,
   },
   invert: {
-    unit: '%',
-    bare: '100%',
+    unit: PERCENT,
+    bare: HUNDRED_PERCENT,
   },
   saturate: {
-    unit: '%',
+    unit: PERCENT,
   },
   sepia: {
-    unit: '%',
-    bare: '100%',
+    unit: PERCENT,
+    bare: HUNDRED_PERCENT,
   },
 };
 
 /** Аргумент функции фильтра: голое имя, целое с единицей, размер темы `blur`, `none` или произвольное. */
 function filterArgument(args: MnTwArgs, fn: FilterFunction): string | undefined {
-  const key = args.parts.join('-');
+  const key = args.parts.join(DASH);
   const value = args.modifier !== undefined || args.negative && !fn.negative ? undefined
     : args.arbitrary !== undefined ? (args.parts.length ? undefined : args.arbitrary)
       : !args.parts.length ? fn.bare
         : fn.unit ? (args.parts.length === 1 && REGEXP_INTEGER.test(key) ? key + fn.unit : undefined)
-          : TW4_THEME['--blur-' + key] ? 'var(--blur-' + key + ')' : undefined;
+          : TW4_THEME['--blur-' + key] ? 'var(--blur-' + key + CLOSE_PAREN : undefined;
   return value && args.negative ? negateCalc(value) : value;
 }
 
@@ -1851,13 +1903,13 @@ function filterHandler(
 ) {
   const variable = '--tw-' + (backdrop ? 'backdrop-' : '') + name;
   return tw((args) => {
-    const none = name === 'blur' && args.parts.length === 1 && args.parts[0] === 'none' && args.arbitrary === undefined;
+    const none = name === 'blur' && args.parts.length === 1 && args.parts[0] === NONE && args.arbitrary === undefined;
     const value = none ? undefined : filterArgument(args, fn);
     if (!none && value === undefined || none && (args.negative || args.modifier !== undefined)) {
       return undefined;
     }
     return result({
-      [variable]: none ? ' ' : name + '(' + value + ')',
+      [variable]: none ? SPACE : name + OPEN_PAREN + value + CLOSE_PAREN,
       ...backdrop ? styleOf([
         '-webkit-backdrop-filter',
         'backdropFilter',
@@ -1871,10 +1923,10 @@ function filterHandler(
 /** `filter`, `backdrop-filter`: голое имя — сборка, `none`, произвольное — само значение. */
 function filterRootHandler(properties: string[], value: string) {
   return tw((args) => {
-    const key = args.parts.join('-');
+    const key = args.parts.join(DASH);
     const own = args.negative || args.modifier !== undefined ? undefined
       : args.arbitrary !== undefined ? (key ? undefined : args.arbitrary)
-        : key === 'none' ? key : key ? undefined : value;
+        : key === NONE ? key : key ? undefined : value;
     return own === undefined ? undefined : result(styleOf(properties, own));
   });
 }
@@ -1895,8 +1947,8 @@ function setupFilters(mn: MnInstance): void {
   }
   mn(
     'backdrop-opacity', filterHandler(
-      'opacity', {
-        unit: '%',
+      OPACITY, {
+        unit: PERCENT,
       }, true,
     ), '', 1,
   );
@@ -1921,14 +1973,14 @@ const TRANSITION_PROPERTIES: Record<string, string> = {
     + 'backdrop-filter, display, content-visibility, overlay, pointer-events',
   all: 'all',
   colors: TRANSITION_COLORS,
-  opacity: 'opacity',
+  opacity: OPACITY,
   shadow: 'box-shadow',
   transform: 'transform, translate, scale, rotate',
 };
 
 /** Кривые `ease-*`: `linear`, `initial` — сами слова, остальные — из темы. */
 const EASE_KEYWORDS: Record<string, string> = {
-  linear: 'linear',
+  linear: LINEAR,
   initial: 'initial',
 };
 
@@ -1942,8 +1994,8 @@ function milliseconds(args: MnTwArgs): string | undefined {
 function setupTransitions(mn: MnInstance): void {
   mn(
     'transition', tw((args) => {
-      const key = args.parts.join('-');
-      const none = key === 'none';
+      const key = args.parts.join(DASH);
+      const none = key === NONE;
       const property = args.negative || args.modifier !== undefined ? undefined
         : args.arbitrary !== undefined ? (key ? undefined : args.arbitrary)
           : none ? key : TRANSITION_PROPERTIES[key];
@@ -1976,10 +2028,10 @@ function setupTransitions(mn: MnInstance): void {
   );
   mn(
     'ease', tw((args) => {
-      const key = args.parts.join('-');
+      const key = args.parts.join(DASH);
       const noArbitrary = args.arbitrary === undefined;
       const ease = keywordValue(args, EASE_KEYWORDS) || (noArbitrary && key && !args.negative
-        && args.modifier === undefined && TW4_THEME['--ease-' + key] ? 'var(--ease-' + key + ')' : undefined);
+        && args.modifier === undefined && TW4_THEME['--ease-' + key] ? 'var(--ease-' + key + CLOSE_PAREN : undefined);
       // `ease-initial` — только сброс переменной.
       return ease === undefined ? undefined : result(key === 'initial' && noArbitrary ? {
         '--tw-ease': ease,
@@ -1991,16 +2043,16 @@ function setupTransitions(mn: MnInstance): void {
   );
   mn(
     'animate', tw((args) => {
-      const key = args.parts.join('-');
+      const key = args.parts.join(DASH);
       const theme = args.arbitrary === undefined && key && TW4_THEME['--animate-' + key];
-      const animation = theme ? (args.negative || args.modifier !== undefined ? undefined : 'var(--animate-' + key + ')')
+      const animation = theme ? (args.negative || args.modifier !== undefined ? undefined : 'var(--animate-' + key + CLOSE_PAREN)
         : keywordValue(args, {
-          none: 'none',
+          none: NONE,
         });
-      const frames = theme && TW4_KEYFRAMES[theme.split(' ')[0]];
+      const frames = theme && TW4_KEYFRAMES[theme.split(SPACE)[0]];
       // Кадры темы (`@keyframes spin`) — по требованию, как у Tailwind: один раз на имя.
       animation && frames && mn.setKeyframes(
-        theme.split(' ')[0], frames, 1,
+        theme.split(SPACE)[0], frames, 1,
       );
       return animation === undefined ? undefined : result({
         animation,
@@ -2012,13 +2064,13 @@ function setupTransitions(mn: MnInstance): void {
 /** Точки `object-*` — как пишет их Tailwind 4 (`object-top-left` → `left top`). */
 const OBJECT_POSITIONS: Record<string, string> = {
   center: 'center',
-  top: 'top',
+  top: TOP,
   'top-right': 'right top',
-  right: 'right',
+  right: RIGHT,
   'bottom-right': 'right bottom',
-  bottom: 'bottom',
+  bottom: BOTTOM,
   'bottom-left': 'left bottom',
-  left: 'left',
+  left: LEFT,
   'top-left': 'left top',
 };
 
@@ -2028,7 +2080,7 @@ const FONT_STRETCHES = [
   'extra-condensed',
   'condensed',
   'semi-condensed',
-  'normal',
+  NORMAL,
   'semi-expanded',
   'expanded',
   'extra-expanded',
@@ -2038,7 +2090,7 @@ const FONT_STRETCHES = [
 /** `line-clamp-none` — снятие обрезки. */
 const LINE_CLAMP_NONE: Style = {
   overflow: 'visible',
-  display: 'block',
+  display: BLOCK,
   '-webkit-box-orient': 'horizontal',
   '-webkit-line-clamp': 'unset',
 };
@@ -2047,7 +2099,7 @@ const LINE_CLAMP_NONE: Style = {
 function plainValue(
   args: MnTwArgs, test: RegExp, unit: string, keywords: Record<string, string>,
 ): string | undefined {
-  const key = args.parts.join('-');
+  const key = args.parts.join(DASH);
   return args.parts.length === 1 && test.test(key) && !args.negative && args.modifier === undefined ? key + unit
     : keywordValue(args, keywords);
 }
@@ -2088,25 +2140,25 @@ function setupNestedStatics(mn: MnInstance): void {
     'dashed',
     'dotted',
     'double',
-    'none',
+    NONE,
   ]) {
     mn(
       'divide-' + name, bareOnly(divideStyle(name)), '', 1,
     );
   }
   for (name of [
-    'x',
-    'y',
+    X,
+    Y,
   ]) {
     mn(
-      'divide-' + name + '-reverse', bareOnly(divideStyle('', '--tw-divide-' + name + '-reverse')), '', 1,
+      'divide-' + name + REVERSE_SUFFIX, bareOnly(divideStyle('', '--tw-divide-' + name + REVERSE_SUFFIX)), '', 1,
     );
   }
   mn(
     'outline-hidden', bareOnly(() => ({
       style: {
-        '--tw-outline-style': 'none',
-        outlineStyle: 'none',
+        '--tw-outline-style': NONE,
+        outlineStyle: NONE,
       },
       media: {
         'forced-colors': {
@@ -2120,7 +2172,7 @@ function setupNestedStatics(mn: MnInstance): void {
   );
   // Тот же запрос «от брейкпоинта», что даёт вариант `sm:` (медиа с ключом-запросом, как у ядра).
   for (name of BREAKPOINTS) {
-    query = '(width >= ' + TW4_THEME['--breakpoint-' + name] + ')';
+    query = '(width >= ' + TW4_THEME['--breakpoint-' + name] + CLOSE_PAREN;
     mn.media[query] || (mn.media[query] = {
       query,
     });
@@ -2133,7 +2185,7 @@ function setupNestedStatics(mn: MnInstance): void {
   mn(
     'container', bareOnly(() => ({
       style: {
-        width: '100%',
+        width: HUNDRED_PERCENT,
       },
       media: breakpoints,
     })), '', 1,
@@ -2145,7 +2197,7 @@ function divideStyle(style: string, reverse?: string) {
   return (): MnHandlerResult => ({
     selectors: [DIVIDE_CHILDREN],
     style: reverse ? {
-      [reverse]: '1',
+      [reverse]: ONE,
     } : {
       '--tw-border-style': style,
       borderStyle: style,
@@ -2155,30 +2207,30 @@ function divideStyle(style: string, reverse?: string) {
 
 function setupMisc(mn: MnInstance): void {
   const containers: Record<string, string> = {
-    auto: 'auto',
+    auto: AUTO,
   };
   const stretches: Record<string, string> = {};
   const autoTracks = {
-    auto: 'auto',
+    auto: AUTO,
     min: 'min-content',
     max: 'max-content',
     fr: 'minmax(0, 1fr)',
   };
   let name: string;
   for (name in TW4_THEME) { // eslint-disable-line
-    name.indexOf('--container-') === 0 && (containers[name.slice(12)] = 'var(' + name + ')');
+    name.indexOf('--container-') === 0 && (containers[name.slice(12)] = VAR_OPEN + name + CLOSE_PAREN);
   }
   for (name of FONT_STRETCHES) {
     stretches[name] = name;
   }
   mn(
-    'opacity', plainHandler(
-      'opacity', REGEXP_NUMBER, '%', {},
+    OPACITY, plainHandler(
+      OPACITY, REGEXP_NUMBER, PERCENT, {},
     ), '', 1,
   );
   mn(
     'zoom', plainHandler(
-      'zoom', REGEXP_INTEGER, '%', {},
+      'zoom', REGEXP_INTEGER, PERCENT, {},
     ), '', 1,
   );
   mn(
@@ -2216,21 +2268,21 @@ function setupMisc(mn: MnInstance): void {
       'listStyleType', REGEXP_NONE, '', {
         disc: 'disc',
         decimal: 'decimal',
-        none: 'none',
+        none: NONE,
       },
     ), '', 1,
   );
   mn(
     'list-image', plainHandler(
       'listStyleImage', REGEXP_NONE, '', {
-        none: 'none',
+        none: NONE,
       },
     ), '', 1,
   );
   mn(
     'indent', scaleHandler(['textIndent'], {
       keywords: {
-        px: '1px',
+        px: ONE_PX,
       },
       negative: true,
     }), '', 1,
@@ -2238,12 +2290,12 @@ function setupMisc(mn: MnInstance): void {
   // `aspect-4/3` → `4/3`: дробь — модификатором.
   mn(
     'aspect', tw((args) => {
-      const key = args.parts.join('-');
+      const key = args.parts.join(DASH);
       const ratio = args.modifier !== undefined && args.arbitrary === undefined && !args.negative
         && args.parts.length === 1 && REGEXP_NUMBER.test(key) && REGEXP_NUMBER.test(args.modifier)
         ? key + '/' + args.modifier
         : keywordValue(args, {
-          auto: 'auto',
+          auto: AUTO,
           square: '1 / 1',
           video: 'var(--aspect-video)',
         });
@@ -2257,7 +2309,7 @@ function setupMisc(mn: MnInstance): void {
       const lines = plainValue(
         args, REGEXP_INTEGER, '', {},
       );
-      return args.parts.length === 1 && args.parts[0] === 'none' && !args.negative && args.modifier === undefined
+      return args.parts.length === 1 && args.parts[0] === NONE && !args.negative && args.modifier === undefined
         ? result(LINE_CLAMP_NONE) : lines === undefined ? undefined : result({
           overflow: 'hidden',
           display: '-webkit-box',
@@ -2276,17 +2328,17 @@ const MASK_BASE: Style = {
 
 /** Стороны масок-краёв: `mask-x-*` — правая и левая, `mask-y-*` — верх и низ. */
 const MASK_EDGES: Record<string, string[]> = {
-  t: ['top'],
-  r: ['right'],
-  b: ['bottom'],
-  l: ['left'],
+  t: [TOP],
+  r: [RIGHT],
+  b: [BOTTOM],
+  l: [LEFT],
   x: [
-    'right',
-    'left',
+    RIGHT,
+    LEFT,
   ],
   y: [
-    'top',
-    'bottom',
+    TOP,
+    BOTTOM,
   ],
 };
 
@@ -2317,7 +2369,7 @@ function maskEdgeStyle(sides: string[]): Style {
   };
   let side: string;
   for (side of sides) {
-    style['--tw-mask-' + side] = 'linear-gradient(to ' + side + ', var(--tw-mask-' + side + '-from-color) var(--tw-mask-' + side
+    style[TW_MASK_PREFIX + side] = 'linear-gradient(to ' + side + ', var(--tw-mask-' + side + '-from-color) var(--tw-mask-' + side
       + '-from-position), var(--tw-mask-' + side + '-to-color) var(--tw-mask-' + side + '-to-position))';
   }
   return style;
@@ -2331,23 +2383,23 @@ function maskStopHandler(
   names: string[], stop: string, shape: Style,
 ) {
   return tw((args) => {
-    const key = args.parts.join('-');
+    const key = args.parts.join(DASH);
     const arbitrary = args.arbitrary;
     const hasArbitrary = arbitrary !== undefined;
-    const colorArbitrary = hasArbitrary && (args.type === 'color'
-      || !args.type && arbitrary.indexOf('var(') !== 0 && REGEXP_COLOR_LIKE.test(arbitrary));
+    const colorArbitrary = hasArbitrary && (args.type === COLOR
+      || !args.type && arbitrary.indexOf(VAR_OPEN) !== 0 && REGEXP_COLOR_LIKE.test(arbitrary));
     const position = args.negative || args.modifier !== undefined || colorArbitrary ? undefined
       : hasArbitrary ? (key ? undefined : arbitrary)
         : args.parts.length !== 1 ? undefined
           : REGEXP_PERCENT.test(key) ? key : REGEXP_NUMBER.test(key) ? spacing(key) : undefined;
     const noPosition = position === undefined;
     const color = noPosition && (arbitrary === undefined || colorArbitrary) ? colorValue(args) : undefined;
-    const suffix = '-' + stop + '-' + (noPosition ? 'color' : 'position');
+    const suffix = DASH + stop + DASH + (noPosition ? COLOR : 'position');
     if (noPosition && color === undefined) {
       return undefined;
     }
     return colorResult(
-      names.map((name) => '--tw-mask-' + name + suffix), color || [position as string], {
+      names.map((name) => TW_MASK_PREFIX + name + suffix), color || [position as string], {
         ...MASK_BASE,
         ...shape,
       },
@@ -2357,21 +2409,21 @@ function maskStopHandler(
 
 /** Угол шага, как пишет Tailwind 4: `0` → `0deg` (и с минусом), `1` → `1deg`/`-1deg`, иначе `calc(1deg * ±n)`. */
 function maskAngle(step: string, negative: boolean): string {
-  return step === '0' ? '0deg' : step === '1' ? (negative ? '-1deg' : '1deg')
-    : 'calc(1deg * ' + (negative ? '-' : '') + step + ')';
+  return step === ZERO ? '0deg' : step === ONE ? (negative ? '-1deg' : '1deg')
+    : 'calc(1deg * ' + (negative ? DASH : '') + step + CLOSE_PAREN;
 }
 
 /** `mask-linear-45`, `-mask-conic-90`, `mask-linear-[3deg]`: угол формы. */
 function maskAngleHandler(shape: 'linear' | 'conic') {
   return tw((args) => {
-    const key = args.parts.join('-');
+    const key = args.parts.join(DASH);
     const angle = args.modifier !== undefined ? undefined
       : args.arbitrary !== undefined ? (key ? undefined : args.negative ? negateCalc(args.arbitrary) : args.arbitrary)
         : args.parts.length === 1 && REGEXP_INTEGER.test(key) ? maskAngle(key, args.negative) : undefined;
     return angle === undefined ? undefined : result({
       ...MASK_BASE,
-      ['--tw-mask-' + shape]: shape + '-gradient(var(--tw-mask-' + shape + '-stops, var(--tw-mask-' + shape + '-position)))',
-      ['--tw-mask-' + shape + '-position']: angle,
+      [TW_MASK_PREFIX + shape]: shape + '-gradient(var(--tw-mask-' + shape + '-stops, var(--tw-mask-' + shape + '-position)))',
+      [TW_MASK_PREFIX + shape + '-position']: angle,
     });
   });
 }
@@ -2381,11 +2433,11 @@ function setupMasks(mn: MnInstance): void {
   let stop: string;
   for (name in MASK_EDGES) { // eslint-disable-line
     for (stop of [
-      'from',
-      'to',
+      FROM,
+      TO,
     ]) {
       mn(
-        'mask-' + name + '-' + stop, maskStopHandler(
+        'mask-' + name + DASH + stop, maskStopHandler(
           MASK_EDGES[name], stop, maskEdgeStyle(MASK_EDGES[name]),
         ), '', 1,
       );
@@ -2393,28 +2445,28 @@ function setupMasks(mn: MnInstance): void {
   }
   for (name in MASK_SHAPE_STOPS) { // eslint-disable-line
     for (stop of [
-      'from',
-      'to',
+      FROM,
+      TO,
     ]) {
       mn(
-        'mask-' + name + '-' + stop, maskStopHandler(
+        'mask-' + name + DASH + stop, maskStopHandler(
           [name], stop, MASK_SHAPE_STOPS[name],
         ), '', 1,
       );
     }
   }
   mn(
-    'mask-linear', maskAngleHandler('linear'), '', 1,
+    'mask-linear', maskAngleHandler(LINEAR), '', 1,
   );
   mn(
-    'mask-conic', maskAngleHandler('conic'), '', 1,
+    'mask-conic', maskAngleHandler(CONIC), '', 1,
   );
 }
 
 /** Типы `@container-*`: голое имя — `inline-size`. */
 const CONTAINER_TYPES: Record<string, string> = {
   '': 'inline-size',
-  normal: 'normal',
+  normal: NORMAL,
   size: 'size',
 };
 
@@ -2424,7 +2476,7 @@ function failAtToken(token: string): never {
     + '@container, @container/name, @container-normal, @container-size; a container variant needs ":" '
     + '(@md:flex). The class gives no CSS.', {
     token,
-    handler: '@',
+    handler: AT,
     arg: token.slice(1),
   });
 }
@@ -2437,13 +2489,13 @@ function setupContainers(mn: MnInstance): void {
   mn(
     '@container', tw((args, p) => {
       const label = args.modifier === undefined ? undefined
-        : args.modifier[0] === '[' ? args.modifier.slice(1, -1) : args.modifier;
+        : args.modifier[0] === OPEN_BRACKET ? args.modifier.slice(1, -1) : args.modifier;
       const type = args.negative ? undefined : keywordValue({
         ...args,
         modifier: undefined,
       }, CONTAINER_TYPES);
       if (type === undefined) {
-        return failAtToken((args.negative ? '-' : '') + '@container' + p.suffix);
+        return failAtToken((args.negative ? DASH : '') + '@container' + p.suffix);
       }
       return result(label ? {
         containerType: type,
@@ -2454,7 +2506,7 @@ function setupContainers(mn: MnInstance): void {
     }), '', 1,
   );
   mn(
-    '@', (p) => failAtToken('@' + p.suffix), '', 1,
+    AT, (p) => failAtToken(AT + p.suffix), '', 1,
   );
 }
 

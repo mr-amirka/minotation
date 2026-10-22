@@ -48,7 +48,7 @@
     "css-tree": "^3.2.1",
     "esbuild": "^0.28.0",
     "eslint": "^10.9.1",
-    "eslint-config-lab": "github:mr-amirka/eslint-config-lab#c7c7fed4ff6dfbe15b3d2f3fb02fdeb5fa67d2fd",
+    "eslint-config-lab": "github:mr-amirka/eslint-config-lab#ae12acb0b507363ff8447eda45012bc047caba4e",
     "fast-check": "^4.8.0",
     "jest": "^29.0.0",
     "postcss": "^8.5.15",

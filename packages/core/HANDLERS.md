@@ -410,6 +410,23 @@ mn.setOptions({ axisMode: 'logical' }); mn.recompile(); // живой инста
 | `mt8` | `margin-top:8px` |
 | `mx0` | `margin-inline:0` |
 
+**Логические стороны (A2, D-097; имена K3, D-103)** — как у Tailwind 4: `s`/`e` — начало и конец оси строки, `bs`/`be`
+— начало и конец оси блока. Пишут одно логическое свойство в любом `axisMode`; в LTR `ps` — слева, в RTL — справа.
+Конец строки у padding — **`pie`**, не `pe`: `pe` — `pointer-events`, и `pe10` отвечает «did you mean "pie10"».
+
+| Токен | CSS |
+|-------|-----|
+| `ps10` | `padding-inline-start:10px` |
+| `pie10` | `padding-inline-end:10px` |
+| `pbs10` | `padding-block-start:10px` |
+| `pbe10` | `padding-block-end:10px` |
+| `ms8` | `margin-inline-start:8px` |
+| `meA` | `margin-inline-end:auto` |
+| `mbs8` | `margin-block-start:8px` |
+| `mbe8` | `margin-block-end:8px` |
+
+Сторона перекрывает ось и общий токен так же, как физическая: `px16 ps0` — `ps` позже в CSS.
+
 ---
 
 ## Размеры
@@ -423,6 +440,10 @@ mn.setOptions({ axisMode: 'logical' }); mn.recompile(); // живой инста
 | `sq32` | `width:32px;height:32px` |
 | `sq44` | `width:44px;height:44px` |
 | `wmin60` | `min-width:60px` |
+| `iz100` | `inline-size:100px` (логическая ширина, A2) |
+| `bz50%` | `block-size:50%` |
+| `izmin60` | `min-inline-size:60px` |
+| `bzmaxN` | `max-block-size:none` |
 
 ---
 
@@ -441,6 +462,10 @@ mn.setOptions({ axisMode: 'logical' }); mn.recompile(); // живой инста
 | `s0` | `top:0;right:0;bottom:0;left:0` |
 | `sx0` | `inset-inline:0` (D-101; `axisMode: 'physical'` — `left:0;right:0`) |
 | `sy10` | `inset-block:10px` |
+| `ss0` | `inset-inline-start:0` (A2: `s` — inset, второе `s` — start) |
+| `se0` | `inset-inline-end:0` |
+| `sbs0` | `inset-block-start:0` |
+| `sbe0` | `inset-block-end:0` |
 | `z1200` | `z-index:1200` |
 
 ---
@@ -688,6 +713,20 @@ border: '1px solid rgba(255,255,255,0.1)'
 | bottom | `bb1` | `bsbS` | `bcbF.08` |
 | ось строки (D-101) | `bx1` | `bsxS` | `bcxF.1` |
 | ось блока (D-101) | `by1` | `bsyS` | `bcyF.1` |
+| начало строки (A2) | `bis1` | `bssS` | `bcsF.1` |
+| конец строки (A2) | `bie1` | `bseS` | `bceF.1` |
+| начало блока (A2) | `bbs1` | `bsbsS` | `bcbsF.1` |
+| конец блока (A2) | `bbe1` | `bsbeS` | `bcbeF.1` |
+
+Ширина по началу/концу строки — **`bis`/`bie`** (K3, D-103): `bs` — `border-style`, `bs1` отвечает
+«did you mean "bis1"». У `border-image` логических сторон нет.
+
+| Токен | CSS |
+|-------|-----|
+| `bis1` | `border-inline-start-width:1px` |
+| `bbe2` | `border-block-end-width:2px` |
+| `bssS` | `border-inline-start-style:solid` |
+| `bcbeF00` | `border-block-end-color:#f00` |
 
 ```
 border-left:   '1px solid rgba(255,255,255,0.12)'  →  bl1  bslS  bclF.12
@@ -713,6 +752,15 @@ border-bottom: '1px solid rgba(255,255,255,0.08)'  →  bb1  bsbS  bcbF.08
 | `r1` | `border-radius:1px` |
 | `r4` | `border-radius:4px` |
 | `r8` | `border-radius:8px` |
+| `rlt4` | `border-top-left-radius:4px` |
+| `rss4` | `border-start-start-radius:4px` (угол: начало блока, начало строки) |
+| `rse4` | `border-start-end-radius:4px` |
+| `res4` | `border-end-start-radius:4px` |
+| `ree4` | `border-end-end-radius:4px` |
+| `rs8` | `border-start-start-radius:8px;border-end-start-radius:8px` (оба угла начала строки) |
+| `re8` | `border-start-end-radius:8px;border-end-end-radius:8px` |
+
+Угол перекрывает пару углов: `rs8 rss0` — `rss` позже в CSS.
 
 ---
 

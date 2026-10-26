@@ -220,6 +220,25 @@ const SIDES_MAP = {
   ],
 };
 /**
+ * Логические стороны (A2, D-097; RESEARCH/17 § 5.2): `s`/`e` — начало и конец оси строки, `bs`/`be` — оси блока.
+ * Пишут одно логическое свойство в любом `axisMode` (`ps10` → `padding-inline-start:10px`).
+ */
+const LOGICAL_SIDES: Record<string, string> = {
+  s: '-inline-start',
+  e: '-inline-end',
+  bs: '-block-start',
+  be: '-block-end',
+};
+/**
+ * K3 (D-103): имена по A2, занятые другими свойствами, — `pe` (pointer-events) и `bs` (border-style); их стороны
+ * берут `pie` и `bis`, `be` — `bie` в пару к `bis`.
+ */
+const LOGICAL_RENAMED: Record<string, string> = {
+  pe: 'pie',
+  bs: 'bis',
+  be: 'bie',
+};
+/**
  * Словесные значения цвета — только те, что кодом не выразить, и каждое
  * с краткой формой.
  *
@@ -2072,38 +2091,80 @@ const BOX_SIZING_WORDS: Record<string, 1> = {
  * неверно — к ошибке добавляется «did you mean». Проверка значения — до вызова хендлера, дешёвая; сам хендлер
  * вызывается как всегда.
  */
-const CROSS_HINTS: Record<string, CrossHint> = {
+const CROSS_HINTS: Record<string, CrossHint[]> = {
   fs: [
-    (suffix) => suffix[0] >= ZERO && suffix[0] <= '9',
-    'f',
-    'font-size',
+    [
+      startsWithDigit,
+      'f',
+      'font-size',
+    ],
   ],
   td: [
-    (suffix) => suffix[suffix.length - 1] === S && suffix[0] >= ZERO && suffix[0] <= '9',
-    'dn',
-    'transition-duration',
+    [
+      (suffix) => suffix[suffix.length - 1] === S && startsWithDigit(suffix),
+      'dn',
+      'transition-duration',
+    ],
+  ],
+  // `pe10`, `bs1` — привычка Tailwind (A2): эти стороны названы `pie`, `bis` (K3, D-103).
+  pe: [
+    [
+      startsWithDigit,
+      'pie',
+      'padding-inline-end',
+    ],
   ],
   bs: [
-    (suffix) => !!BOX_SIZING_WORDS[suffix],
-    'bxz',
-    'box-sizing',
+    [
+      (suffix) => !!BOX_SIZING_WORDS[suffix],
+      'bxz',
+      'box-sizing',
+    ],
+    [
+      startsWithDigit,
+      'bis',
+      'border-inline-start-width',
+    ],
   ],
   c: [
-    (suffix) => !!CURSOR_WORDS[suffix],
-    'cr',
-    'cursor',
+    [
+      (suffix) => !!CURSOR_WORDS[suffix],
+      'cr',
+      'cursor',
+    ],
   ],
   p: [
-    (suffix) => !!POSITION_WORDS[suffix],
-    POS,
-    'position',
+    [
+      (suffix) => !!POSITION_WORDS[suffix],
+      POS,
+      'position',
+    ],
   ],
   f: [
-    (suffix) => !!FLOAT_WORDS[suffix],
-    'fl',
-    'float',
+    [
+      (suffix) => !!FLOAT_WORDS[suffix],
+      'fl',
+      'float',
+    ],
   ],
 };
+
+/** Значение начинается с цифры (`10`, `1px`). */
+function startsWithDigit(suffix: string): boolean {
+  return suffix[0] >= ZERO && suffix[0] <= '9';
+}
+
+/** Первая подсказка, чьё условие подходит значению; `undefined` — подсказки нет. */
+function findCrossHint(hints: CrossHint[], suffix: string): CrossHint | undefined {
+  const l = hints.length;
+  let i = 0;
+  for (; i < l; i++) {
+    if (hints[i][0](suffix)) {
+      return hints[i];
+    }
+  }
+  return undefined;
+}
 
 /** Вызов хендлера; его ошибка разбора получает подсказку `did you mean "flL" (float)?`. */
 function withCrossHint(
@@ -2120,11 +2181,14 @@ function withCrossHint(
 
 function withSuspectCheck(instance: MnInstance): MnInstance {
   const guard = (handler: MnHandler, name: string): MnHandler => {
-    const hint = CROSS_HINTS[name];
+    const hints = CROSS_HINTS[name];
     const checked: MnHandler = (p) => (REGEXP_SUSPECT_VALUE.test(p.suffix) ? throwSuspect(p) : handler(p));
-    return hint ? (p) => (hint[0](p.suffix) ? withCrossHint(
-      checked, p, hint,
-    ) : checked(p)) : checked;
+    return hints ? (p) => {
+      const hint = findCrossHint(hints, p.suffix);
+      return hint ? withCrossHint(
+        checked, p, hint,
+      ) : checked(p);
+    } : checked;
   };
   return new Proxy(instance, {
     apply(
@@ -2950,7 +3014,10 @@ export default {
       };
     }
 
-    forIn(mapIn(SIDES_MAP, (sides) => reduce(
+    forIn(mapIn({
+      ...SIDES_MAP,
+      ...mapIn(LOGICAL_SIDES, (side) => [side]),
+    }, (sides) => reduce(
       sides, (dst, key) => {
         dst[key] = 1; return dst;
       }, {},
@@ -2959,6 +3026,7 @@ export default {
       // Ось `x`/`y` (D-101): по умолчанию логическое свойство (`padding-inline`), `axisMode: 'physical'` —
       // физическая пара. Остальные стороны (`t`, `xt`, `lb`…) — физические всегда.
       const axis = suffix === AXIS_X ? '-inline' : suffix === AXIS_Y ? '-block' : '';
+      const logicalSide = LOGICAL_SIDES[suffix];
       const bsSidesSet = axisSetter((side) => BORDER + side + '-style');
       const bcSidesSet = axisSetter((side) => BORDER + side + '-color');
       const biSidesSet = sidesSetter((side) => BORDER + side + '-image');
@@ -3070,8 +3138,9 @@ export default {
       }, (args: any[], pfx: string) => {
         const propName = args[0];
         const propSuffix = args[1] || '';
+        const name = pfx + suffix;
         mn(
-          pfx + suffix, handleProvider(
+          LOGICAL_RENAMED[name] || name, handleProvider(
             axisSetter((side) => propName + side + propSuffix),
             args[2],
             suffix,
@@ -3084,9 +3153,9 @@ export default {
       mn(
         S + suffix, handleProvider(
           suffix
-            ? axisSetter((side) => replace(
+            ? axisSetter((side) => (logicalSide ? INSET + side : replace(
               side, REGEXP_TRIM_KEBAB_LEFT, '',
-            ), INSET + axis)
+            )), INSET + axis)
             : (v) => {
             /* istanbul ignore next — та же защита, что в `sidesSetter` выше:
                `v` приходит из `getVal()[0]` и строкой быть обязан. */
@@ -3150,7 +3219,9 @@ export default {
             );
         }, PATTERN_COLOR, 1,
       );
-      mn(BI + suffix, (p) => {
+      // У `border-image` нет логических сторон (`border-inline-start-image` в CSS нет) — `bis`/`bie` заняты
+      // шириной (K3, D-103).
+      logicalSide || mn(BI + suffix, (p) => {
         let s;
         if (!(s = p.suffix) || s === N) {
           return styleWrap(biSidesSet(NONE), priority + 1);
@@ -3173,6 +3244,9 @@ export default {
       ],
       w: ['width'],
       h: ['height'],
+      // Логические размеры (A2, D-097): `iz` — по оси строки, `bz` — по оси блока; `izmin`, `bzmax`… как `wmin`.
+      iz: ['inline-size'],
+      bz: ['block-size'],
     }, (props, essencePrefix) => {
       const length = props.length;
       const priority = 2 - length;
@@ -3623,21 +3697,41 @@ export default {
     );
 
 
-    // border-radius by sides
+    // border-radius by corners; логические углы и пары углов `rs`/`re` (A2, D-097) — `border-<блок>-<строка>-radius`
     forIn({
-      lt: 'top-left',
-      lb: 'bottom-left',
-      rt: 'top-right',
-      rb: 'bottom-right',
-    }, (side, suffix) => {
-      const propName = 'border-' + side + '-radius';
+      lt: ['top-left'],
+      lb: ['bottom-left'],
+      rt: ['top-right'],
+      rb: ['bottom-right'],
+      ss: ['start-start'],
+      se: ['start-end'],
+      es: ['end-start'],
+      ee: ['end-end'],
+      // `rs` — оба угла начала строки, `re` — оба угла её конца (Tailwind `rounded-s` / `rounded-e`).
+      s: [
+        'start-start',
+        'end-start',
+      ],
+      e: [
+        'start-end',
+        'end-end',
+      ],
+    }, (corners, suffix) => {
+      const length = corners.length;
+      const propNames = corners.map((corner) => BORDER + DASH + corner + '-radius');
+      // Угол (2) позже пары углов (1): `rs8 rss0` — угол перекрывает пару.
+      const priority = 3 - length;
       mn(
         R + suffix, (p) => {
-          const style: Record<string, any> = {};
-          style[propName] = getVal(
+          const value = getVal(
             p.suffix || 10000, 1, 1, PX, 1,
           )[0];
-          return styleWrap(style, 2);
+          const style: Record<string, any> = {};
+          let i = 0;
+          for (; i < length; i++) {
+            style[propNames[i]] = value;
+          }
+          return styleWrap(style, priority);
         }, '', 1,
       );
     });

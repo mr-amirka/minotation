@@ -494,6 +494,16 @@ describe('D-094: переименования и подсказки на час�
       'flL',
       'float',
     ],
+    [
+      'pe10',
+      'pie10',
+      'padding-inline-end',
+    ],
+    [
+      'bs1',
+      'bis1',
+      'border-inline-start-width',
+    ],
   ])('%s — в ошибке подсказка «did you mean "%s" (%s)»', (
     token, right, property,
   ) => {
@@ -511,6 +521,7 @@ describe('D-094: переименования и подсказки на час�
     'p10',
     'f14',
     'bsS',
+    'peN',
     'td_underline',
   ])('%s — обычный токен не задет', (token) => {
     expect(compile(token).warnings.join(' ')).not.toContain('did you mean');

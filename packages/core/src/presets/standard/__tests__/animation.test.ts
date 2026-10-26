@@ -1,5 +1,6 @@
 /**
- * `an` — анимация, слоты в фиксированном порядке, как у `tn` (запрос трека web-games, 2026-10-14).
+ * `an` — анимация, слоты в фиксированном порядке, как у `tn` (запрос трека web-games, 2026-10-14); именованные
+ * анимации с кадрами по использованию — группа G (D-097).
  */
 import minotationProvider from '../../../core';
 import presetStandard from '..';
@@ -99,4 +100,68 @@ test('ключевые кадры — из пресета, анимация — 
     });
   }).css).toBe('@keyframes wg-appear{from{opacity:0}to{opacity:1}}'
     + '.an_wg-appear_0\\.2s_ease-out_0\\.3s_both{animation:wg-appear 0.2s ease-out 0.3s both}');
+});
+
+const KEYFRAMES_SPIN = '@keyframes spin{to{transform:rotate(360deg)}}';
+const KEYFRAMES_PULSE = '@keyframes pulse{50%{opacity:.5}}';
+
+describe('named animations (group G)', () => {
+  test.each([
+    [
+      'anSpin',
+      KEYFRAMES_SPIN + '.anSpin{animation:spin 1s linear infinite}',
+    ],
+    [
+      'anPing',
+      '@keyframes ping{75%,100%{transform:scale(2);opacity:0}}'
+      + '.anPing{animation:ping 1s cubic-bezier(0,0,.2,1) infinite}',
+    ],
+    [
+      'anPulse',
+      KEYFRAMES_PULSE + '.anPulse{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}',
+    ],
+    [
+      'anBounce',
+      '@keyframes bounce{0%,100%{transform:translateY(-25%);animation-timing-function:cubic-bezier(.8,0,1,1)}'
+      + '50%{transform:none;animation-timing-function:cubic-bezier(0,0,.2,1)}}.anBounce{animation:bounce 1s infinite}',
+    ],
+    // С частями значение остаётся как написано, кадры — те же.
+    [
+      'an_spin_2s',
+      KEYFRAMES_SPIN + '.an_spin_2s{animation:spin 2s}',
+    ],
+    [
+      'an_spin_2s,pulse',
+      KEYFRAMES_SPIN + KEYFRAMES_PULSE
+      + '.an_spin_2s\\,pulse{animation:spin 2s,pulse 2s cubic-bezier(.4,0,.6,1) infinite}',
+    ],
+    // Кадры — один раз на весь вывод.
+    [
+      'anSpin an_spin_3s',
+      KEYFRAMES_SPIN + '.anSpin{animation:spin 1s linear infinite}.an_spin_3s{animation:spin 3s}',
+    ],
+    [
+      'anN',
+      '.anN{animation:none}',
+    ],
+    // Своё имя кадров не получает: их задаёт автор.
+    [
+      'anFade',
+      '.anFade{animation:fade}',
+    ],
+  ])('%s', (token, css) => {
+    const result = compile(token);
+    expect(result.css).toBe(css);
+    expect(result.warnings).toEqual([]);
+  });
+
+  test('keyframes set by the author under the same name win', () => {
+    expect(compile('anSpin', (mn) => {
+      mn.setKeyframes('spin', {
+        to: {
+          transform: 'rotate(-360deg)',
+        },
+      });
+    }).css).toBe('@keyframes spin{to{transform:rotate(-360deg)}}.anSpin{animation:spin 1s linear infinite}');
+  });
 });

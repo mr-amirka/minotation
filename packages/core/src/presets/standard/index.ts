@@ -1661,6 +1661,53 @@ const ANIMATION_FILL_MODES = wordsSet('none forwards backwards both');
 const ANIMATION_PLAY_STATES = wordsSet('running paused');
 
 /**
+ * Именованные анимации (группа G, D-097) — четыре анимации Tailwind: значение без имени и ключевые кадры. Кадры
+ * регистрируются при первом использовании имени в `an` и не перезаписывают уже заданные под этим именем
+ * (`mn.setKeyframes('spin', …)` автора выигрывает). Голое имя (`anSpin`) получает ещё и длительность, плавность и
+ * повторы; в форме с частями (`an_spin_2s`) значение остаётся как написано.
+ */
+const NAMED_ANIMATIONS: Record<string, [string, Record<string, Record<string, string>>]> = {
+  spin: [
+    '1s linear infinite',
+    {
+      to: {
+        transform: 'rotate(360deg)',
+      },
+    },
+  ],
+  ping: [
+    '1s cubic-bezier(0,0,.2,1) infinite',
+    {
+      '75%,100%': {
+        transform: 'scale(2)',
+        opacity: ZERO,
+      },
+    },
+  ],
+  pulse: [
+    '2s cubic-bezier(.4,0,.6,1) infinite',
+    {
+      '50%': {
+        opacity: '.5',
+      },
+    },
+  ],
+  bounce: [
+    '1s infinite',
+    {
+      '0%,100%': {
+        transform: 'translateY(-25%)',
+        animationTimingFunction: 'cubic-bezier(.8,0,1,1)',
+      },
+      '50%': {
+        transform: NONE,
+        animationTimingFunction: 'cubic-bezier(0,0,.2,1)',
+      },
+    },
+  ],
+};
+
+/**
  * Одна анимация по слотам в фиксированном порядке, как у `tn` (запрос web-games, 2026-10-14):
  * `имя длительность плавность задержка повторы направление заполнение состояние`. Любой слот
  * можно пропустить, порядок — не убывает. Голое число в слоте времени — `ms`; голое число после
@@ -4390,7 +4437,7 @@ export default {
        */
       lcl: (p: MnEssenceParams) => {
         const suffix = p.suffix;
-        const none = suffix === 'N';
+        const none = suffix === N;
         const lines = none ? 'unset' : cssVarValue(suffix) || (REGEXP_LINE_COUNT.test(suffix) ? suffix
           : throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name
             + '": the number of lines is a whole number from 1, as "' + p.name + '3", or "N" to lift the clamp'));
@@ -5792,11 +5839,25 @@ export default {
         if (!(s = p.suffix)) {
           return 0;
         }
+        if (s === N) {
+          return styleWrap({
+            animation: NONE,
+          });
+        }
         const list = splitTopLevel(valueNormalize(s));
         const l = list.length;
         const out: string[] = new Array(l);
+        let parts: string[];
+        let named: [string, Record<string, Record<string, string>>] | undefined;
         for (i = 0; i < l; i++) {
-          out[i] = animationValue(list[i].trim().split(SPACE), s);
+          parts = list[i].trim().split(SPACE);
+          out[i] = animationValue(parts, s);
+          if (named = NAMED_ANIMATIONS[parts[0]]) {
+            setKeyframes(
+              parts[0], named[1], 1,
+            );
+            parts.length < 2 && (out[i] += SPACE + named[0]);
+          }
         }
         return styleWrap({
           animation: out.join(COMMA),

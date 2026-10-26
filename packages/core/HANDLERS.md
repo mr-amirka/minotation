@@ -966,6 +966,22 @@ import './loadingScreen.mn';
 хендлером (`mn('wgAppear', () => ({ style: { animation: '…' } }))`), потому что `an` не было
 (запрос трека web-games, 2026-10-14).
 
+#### Именованные анимации (группа G, D-097)
+
+Четыре анимации Tailwind — с кадрами, которые попадают в вывод только при использовании:
+
+| Токен | CSS |
+|-------|-----|
+| `anSpin` | `@keyframes spin{to{transform:rotate(360deg)}}` + `animation:spin 1s linear infinite` |
+| `anPing` | `@keyframes ping{75%,100%{transform:scale(2);opacity:0}}` + `animation:ping 1s cubic-bezier(0,0,.2,1) infinite` |
+| `anPulse` | `@keyframes pulse{50%{opacity:.5}}` + `animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite` |
+| `anBounce` | `@keyframes bounce{0%,100%{…}50%{…}}` + `animation:bounce 1s infinite` |
+| `an_spin_2s` | те же кадры `spin` + `animation:spin 2s` — с частями значение как написано |
+| `anN` | `animation:none` |
+
+Кадры выводятся один раз, сколько бы токенов их ни использовало. Кадры, заданные автором под тем же
+именем (`mn.setKeyframes('spin', …)`), выигрывают: пресет их не перезаписывает.
+
 ---
 
 ## Фильтры

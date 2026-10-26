@@ -7,8 +7,18 @@
  */
 
 import {
+  describeValue,
+  isPlainObject,
+  nearestKnown,
+} from 'fundamentool';
+import {
   MN_MAX_SPECIFICITY,
 } from './core/types';
+
+/** What came — for a message: `string "p10"`, `number 5`, `array`, `RegExp /x/i`, a class name (fundamentool's). */
+export {
+  describeValue,
+};
 
 const LIST_SEPARATOR = ', ';
 const MODE_SILENT = 'silent';
@@ -24,70 +34,6 @@ export type OptionCheck = (value: unknown, where: string, path: string) => strin
 
 /** Допустимые опции: имя → проверка значения. */
 export type OptionSchema = Record<string, OptionCheck>;
-
-/** Наибольшее расстояние правки, при котором ключ считается опечаткой. */
-const MAX_TYPO_DISTANCE = 2;
-
-/** Обычный объект: не массив, не `null`, не RegExp/функция. */
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return Object.prototype.toString.call(value) === '[object Object]';
-}
-
-/** Что пришло — для сообщения: `string "p10"`, `number 5`, `array`, `null`. */
-export function describeValue(value: unknown): string {
-  if (value === null) {
-    return 'null';
-  }
-  if (Array.isArray(value)) {
-    return 'array';
-  }
-  if (value instanceof RegExp) {
-    return 'RegExp ' + value;
-  }
-  const type = typeof value;
-  if (type === 'string') {
-    return 'string ' + JSON.stringify(value);
-  }
-  return type === 'number' || type === 'boolean' ? type + ' ' + value : type;
-}
-
-/** Расстояние Левенштейна — для подсказки «did you mean». */
-function distance(a: string, b: string): number {
-  const al = a.length;
-  const bl = b.length;
-  let prev: number[] = [];
-  let next: number[];
-  let i = 0;
-  let j: number;
-  for (j = 0; j <= bl; j++) {
-    prev[j] = j;
-  }
-  for (i = 1; i <= al; i++) {
-    next = [i];
-    for (j = 1; j <= bl; j++) {
-      next[j] = Math.min(
-        prev[j] + 1,
-        next[j - 1] + 1,
-        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
-      );
-    }
-    prev = next;
-  }
-  return prev[bl];
-}
-
-/** Ближайший допустимый ключ, если неизвестный похож на опечатку. */
-function closest(key: string, names: string[]): string | undefined {
-  const lower = key.toLowerCase();
-  let best: string | undefined;
-  let bestDistance = MAX_TYPO_DISTANCE + 1;
-  let d: number;
-  for (const name of names) {
-    d = distance(lower, name.toLowerCase());
-    d < bestDistance && (best = name, bestDistance = d);
-  }
-  return best;
-}
 
 /**
  * Проверяет объект опций по схеме; при ошибке бросает `Error` с подсказкой.
@@ -117,11 +63,11 @@ export function checkOptions(
   const prefix = path ? path + '.' : '';
   let check: OptionCheck | undefined;
   let expected: string | undefined;
-  let hint: string | undefined;
+  let hint: string;
   for (const key of Object.keys(options)) {
     check = Object.prototype.hasOwnProperty.call(schema, key) ? schema[key] : undefined;
     if (!check) {
-      hint = closest(key, names);
+      hint = nearestKnown(key, names);
       throw new Error(at + 'unknown option "' + prefix + key + '". ' + (hint
         ? 'Did you mean "' + prefix + hint + '"?'
         : 'Known options: ' + names.join(LIST_SEPARATOR)));
@@ -154,10 +100,10 @@ export function checkOptions(
 export function checkKnownValues(
   values: string[], known: string[], where: string, option: string, what: string,
 ): void {
-  let hint: string | undefined;
+  let hint: string;
   for (const value of values) {
     if (known.indexOf(value) < 0) {
-      hint = closest(value, known);
+      hint = nearestKnown(value, known);
       throw new Error('[minotation] ' + where + ': unknown value "' + value + '" in "' + option + '". '
         + (hint ? 'Did you mean "' + hint + '"? ' : '') + 'Known ' + what + ': ' + known.join(LIST_SEPARATOR));
     }

@@ -375,25 +375,40 @@ F.38      → hex=F → #fff → rgba(255,255,255,.38)
 
 ## Отступы
 
-Именование: **x** = горизонталь (left/right), **y** = вертикаль (top/bottom).
+Именование: **x** = ось строки (inline: в горизонтальном тексте лево + право), **y** = ось блока (block: верх + низ).
+
+**Оси — логические свойства (D-101, 2026-10-26)**, как у Tailwind 4: `px`/`py`, `mx`/`my`, `sx`/`sy`, `bx`/`by`,
+`bcx`/`bcy`, `bsx`/`bsy` пишут `padding-inline` / `padding-block`, `margin-inline`…, `inset-inline`…,
+`border-inline-width`…, `border-inline-color`…, `border-inline-style`…. В горизонтальном тексте (LTR и RTL) вид тот
+же, что у физической пары; при `writing-mode: vertical-*` отступ идёт вдоль текста. Перекрытие работает как раньше:
+`px16 pl0` — `pl` позже в CSS и побеждает на своей стороне. Остальные стороны (`t`, `b`, `l`, `r`, `xt`, `yl`, `lt`…)
+— физические всегда.
+
+Физическая пара — опция ядра `axisMode: 'physical'` (по умолчанию `'logical'`):
+
+```js
+const mn = minotationProvider({ presets: [presetStandard], axisMode: 'physical' });
+// px16 → padding-left:16px;padding-right:16px
+mn.setOptions({ axisMode: 'logical' }); mn.recompile(); // живой инстанс: px16 → padding-inline:16px
+```
 
 | Токен | CSS |
 |-------|-----|
 | `p10` | `padding:10px` |
-| `px8` | `padding-left:8px;padding-right:8px` |
-| `py4` | `padding-top:4px;padding-bottom:4px` |
-| `px1.5` | `padding-left:1.5px;padding-right:1.5px` |
+| `px8` | `padding-inline:8px` |
+| `py4` | `padding-block:4px` |
+| `px1.5` | `padding-inline:1.5px` |
 | `pt4` | `padding-top:4px` |
 | `pb4` | `padding-bottom:4px` |
 | `pl4` | `padding-left:4px` |
 | `pr4` | `padding-right:4px` |
 | `m0` | `margin:0` |
-| `mx4` | `margin-left:4px;margin-right:4px` |
-| `my12` | `margin-top:12px;margin-bottom:12px` |
-| `mxA` | `margin-left:auto;margin-right:auto` |
+| `mx4` | `margin-inline:4px` |
+| `my12` | `margin-block:12px` |
+| `mxA` | `margin-inline:auto` |
 | `mb8` | `margin-bottom:8px` |
 | `mt8` | `margin-top:8px` |
-| `mx0` | `margin-left:0;margin-right:0` |
+| `mx0` | `margin-inline:0` |
 
 ---
 
@@ -424,6 +439,8 @@ F.38      → hex=F → #fff → rgba(255,255,255,.38)
 | `sb24` | `bottom:24px` |
 | `sl50%` | `left:50%` |
 | `s0` | `top:0;right:0;bottom:0;left:0` |
+| `sx0` | `inset-inline:0` (D-101; `axisMode: 'physical'` — `left:0;right:0`) |
+| `sy10` | `inset-block:10px` |
 | `z1200` | `z-index:1200` |
 
 ---
@@ -656,6 +673,9 @@ border: '1px solid rgba(255,255,255,0.1)'
 | `b1` | `border-width:1px` |
 | `bsS` | `border-style:solid` |
 | `bcF.1` | `border-color:rgba(255,255,255,.1)` (см. `altColor` выше) |
+| `bx1` | `border-inline-width:1px` |
+| `bsyS` | `border-block-style:solid` |
+| `bcxF00` | `border-inline-color:#f00` |
 
 Паттерн сторон: суффикс `l/r/t/b` к каждому из трёх токенов:
 
@@ -666,6 +686,8 @@ border: '1px solid rgba(255,255,255,0.1)'
 | right | `br1` | `bsrS` | `bcrF.1` |
 | top | `bt1` | `bstS` | `bctF.1` |
 | bottom | `bb1` | `bsbS` | `bcbF.08` |
+| ось строки (D-101) | `bx1` | `bsxS` | `bcxF.1` |
+| ось блока (D-101) | `by1` | `bsyS` | `bcyF.1` |
 
 ```
 border-left:   '1px solid rgba(255,255,255,0.12)'  →  bl1  bslS  bclF.12

@@ -340,11 +340,11 @@ describe("notationMode: 'breakpoint-prefixed' — quantum-css (D-045 этап 4)
   }
 
   test('без брейкпоинта — утилита как есть', () => {
-    expect(compileQ('px15').css).toBe('.px15{padding-left:15px;padding-right:15px}');
+    expect(compileQ('px15').css).toBe('.px15{padding-inline:15px}');
   });
 
   test('SM_ — медиа sm (имя строчными)', () => {
-    expect(compileQ('SM_px15').css).toBe('@media (width >= 576px){.SM_px15{padding-left:15px;padding-right:15px}}');
+    expect(compileQ('SM_px15').css).toBe('@media (width >= 576px){.SM_px15{padding-inline:15px}}');
   });
 
   test('имя медиа как записано — важнее строчного', () => {

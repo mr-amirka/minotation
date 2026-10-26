@@ -63,7 +63,7 @@ describe('minotation-vite — classVarSuffixes (2026-09-22)', () => {
 
   test('const thClass = … — токены попадают в CSS', () => {
     const css = cssOf("const thClass = 'py12 w777';");
-    expect(css).toContain('padding-top:12px');
+    expect(css).toContain('padding-block:12px');
     expect(css).toContain('width:777px');
   });
 
@@ -86,13 +86,13 @@ describe('minotation-vite — classVarSuffixes (2026-09-22)', () => {
   test('шаблонная строка: статические части берутся, ${…} пропускается', () => {
     const css = cssOf('const rowClass = `w777 ${active ? "bgF" : ""} py12`;');
     expect(css).toContain('width:777px');
-    expect(css).toContain('padding-top:12px');
+    expect(css).toContain('padding-block:12px');
   });
 
   test('двойные кавычки и несколько переменных в файле', () => {
     const css = cssOf('const aClass = "w777";\nconst bClass = "py12";');
     expect(css).toContain('width:777px');
-    expect(css).toContain('padding-top:12px');
+    expect(css).toContain('padding-block:12px');
   });
 
   test('свои суффиксы через опцию', () => {

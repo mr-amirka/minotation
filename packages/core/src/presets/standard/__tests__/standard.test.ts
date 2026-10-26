@@ -72,10 +72,8 @@ describe('Standard preset — отступы', () => {
     expect(css('pt5')).toContain('padding-top:5px');
   });
 
-  test('mxA → margin-left:auto;margin-right:auto', () => {
-    const result = css('mxA');
-    expect(result).toContain('margin-left:auto');
-    expect(result).toContain('margin-right:auto');
+  test('mxA → margin-inline:auto (D-101)', () => {
+    expect(css('mxA')).toContain('margin-inline:auto');
   });
 
   test('gap10 → gap:10px (регресс: priority не была объявлена в хендлере)', () => {
@@ -565,7 +563,7 @@ describe('Standard preset — предсказуемость значений', 
   test.each([
     ['p20-8', 'padding:calc(20px - 8px)'],
     ['mt8-12', 'margin-top:calc(8px - 12px)'],
-    ['py8 px12', 'padding-left:12px'],
+    ['py8 px12', 'padding-inline:12px'],
   ])('%s → %s — законные случаи не затронуты', (token, expected) => {
     expect(css(token)).toContain(expected);
   });

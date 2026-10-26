@@ -762,6 +762,18 @@ describe('опции ядра — плоско, без mn (D-034)', () => {
     expect(collector.css()).toContain('.cF00\\.5{color:#f00;color:rgba(255,0,0,.5)}');
   });
 
+  test('axisMode — на верхнем уровне (D-101): физическая пара вместо padding-inline', () => {
+    const collector = createTokenCollector({
+      ...OPTIONS,
+      axisMode: 'physical',
+    });
+    collector.add('/a.html', '<div class="px16">');
+    expect(collector.css()).toContain('.px16{padding-left:16px;padding-right:16px}');
+    const logical = createTokenCollector(OPTIONS);
+    logical.add('/a.html', '<div class="px16">');
+    expect(logical.css()).toContain('.px16{padding-inline:16px}');
+  });
+
   test('колбэк сканера — onScannerWarning; onWarning сканеру не передаётся', () => {
     const said: string[] = [];
     const scan = createAttrsScanner({

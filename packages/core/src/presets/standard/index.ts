@@ -154,6 +154,12 @@ const PATTERN_VAL = '^(((([A-Za-z]+):otherName|([-]):sign?'
   + PATTERN_VAR_ADD + ')):add?$';
 
 
+/** `axisMode: 'physical'` (D-101) — осевые формы `x`/`y` пишут физическую пару сторон. */
+const AXIS_PHYSICAL = 'physical';
+/** Оси `x`/`y`: суффиксы сторон в `SIDES_MAP` (`x` — ось строки, inline; `y` — ось блока, block) и оси `rotate*`. */
+const AXIS_X = 'x';
+const AXIS_Y = 'y';
+const INSET = 'inset';
 const TOP = '-top';
 const BOTTOM = '-bottom';
 const LEFT = '-left';
@@ -2950,8 +2956,11 @@ export default {
       }, {},
     )), (sides, suffix) => {
       const priority = suffix ? (4 - size(sides)) : 0;
-      const bsSidesSet = sidesSetter((side) => BORDER + side + '-style');
-      const bcSidesSet = sidesSetter((side) => BORDER + side + '-color');
+      // Ось `x`/`y` (D-101): по умолчанию логическое свойство (`padding-inline`), `axisMode: 'physical'` —
+      // физическая пара. Остальные стороны (`t`, `xt`, `lb`…) — физические всегда.
+      const axis = suffix === AXIS_X ? '-inline' : suffix === AXIS_Y ? '-block' : '';
+      const bsSidesSet = axisSetter((side) => BORDER + side + '-style');
+      const bcSidesSet = axisSetter((side) => BORDER + side + '-color');
       const biSidesSet = sidesSetter((side) => BORDER + side + '-image');
 
       function sidesSetter(handle: (side: string) => string): (v: any) => Record<string, any> {
@@ -2969,6 +2978,29 @@ export default {
           const style: Record<string, any> = {};
           let pName: string;
         for (pName in propsMap) style[pName] = v; // eslint-disable-line
+          return style;
+        };
+      }
+
+      /**
+       * {@link sidesSetter} с осью: для `x`/`y` выбирает логическое свойство или физическую пару по
+       * `axisMode` инстанса — в момент компиляции токена, поэтому `setOptions` + `recompile` переключают живой
+       * инстанс. Для остальных сторон — сам `sidesSetter`.
+       * @param handle имя свойства по стороне (`'-left'` → `padding-left`, `'-inline'` → `padding-inline`)
+       * @param logical имя логического свойства, если `handle(axis)` его не даёт (`inset-inline`)
+       */
+      function axisSetter(handle: (side: string) => string, logical?: string): (v: any) => Record<string, any> {
+        const physicalSet = sidesSetter(handle);
+        if (!axis) {
+          return physicalSet;
+        }
+        const logicalName = logical || handle(axis);
+        return (v: any) => {
+          if (instance.options.axisMode === AXIS_PHYSICAL) {
+            return physicalSet(v);
+          }
+          const style: Record<string, any> = {};
+          style[logicalName] = v;
           return style;
         };
       }
@@ -3040,7 +3072,7 @@ export default {
         const propSuffix = args[1] || '';
         mn(
           pfx + suffix, handleProvider(
-            sidesSetter((side) => propName + side + propSuffix),
+            axisSetter((side) => propName + side + propSuffix),
             args[2],
             suffix,
             args[3],
@@ -3052,9 +3084,9 @@ export default {
       mn(
         S + suffix, handleProvider(
           suffix
-            ? sidesSetter((side) => replace(
+            ? axisSetter((side) => replace(
               side, REGEXP_TRIM_KEBAB_LEFT, '',
-            ))
+            ), INSET + axis)
             : (v) => {
             /* istanbul ignore next — та же защита, что в `sidesSetter` выше:
                `v` приходит из `getVal()[0]` и строкой быть обязан. */
@@ -3466,8 +3498,8 @@ export default {
     });
 
     forEach([
-      'x',
-      'y',
+      AXIS_X,
+      AXIS_Y,
       'z',
     ], (suffix) => {
       const prefix = 'rotate' + toUpper(suffix) + OPEN_PAREN;

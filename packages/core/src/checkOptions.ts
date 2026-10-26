@@ -252,4 +252,5 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   contextWhere: isBoolean,
   mediaNesting: isBoolean,
   mediaSyntax: oneOf('range', 'classic'),
+  axisMode: oneOf('logical', 'physical'),
 };

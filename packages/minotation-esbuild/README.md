@@ -91,6 +91,7 @@ esbuild.build({
 | `maxDepth`, `maxDepthMode` | —, `'warn'` | предел глубины контекстных селекторов (`<N`, `>N`); режим при превышении: `'warn'` — предупреждение с подсказкой, `'silent'` — молчать, `'strict'` — токен не даёт CSS, сборка падает (D-039) |
 | `maxSpecificity`, `maxSpecificityMode` | `16`, `'warn'` | предел множителя специфичности `*N` (1…16, выше 16 задать нельзя, D-089); при превышении: `'warn'` — предупреждение с подсказкой, CSS есть до `*16`, выше — нет; `'strict'` — токен без CSS и ошибка сборки |
 | `mediaSyntax` | `'range'` | запись условий ширины и высоты (D-087): `'range'` — `(width >= 48rem)`, `(width < 480px)`; `'classic'` — `min-`/`max-` для старых браузеров |
+| `axisMode` | `'logical'` | осевые формы `presetStandard` (D-101): `'logical'` — `px16` → `padding-inline:16px`; `'physical'` — `padding-left` + `padding-right` |
 | `mediaConflictMode` | `'warn'` | имя из опции `media` совпало с медиа пресета — остаётся определение из опции (D-092); `'warn'` — предупреждение, `'silent'` — молчать, `'strict'` — ошибка подключения пресетов |
 | `specificityMode` | `'warn'` | токены с накруткой специфичности `f10*2`: `'warn'` — предупреждение с подсказкой, `'silent'` — молчать, `'strict'` — токен не даёт CSS, сборка падает (D-039) |
 | `importantMode` | `'warn'` | токены с `!important` (`f10-i`) — режимы те же (D-039) |

@@ -210,8 +210,7 @@ describe('Демо-строка ControlPanel — новый MN', () => {
     inst.getCompiler('class')('px16 fxs0 h75 dF aiC');
     inst.compile();
     const out = inst.styles$.getValue().map(b => b.content).join('');
-    expect(out).toContain('padding-left:16px');
-    expect(out).toContain('padding-right:16px');
+    expect(out).toContain('padding-inline:16px');
     expect(out).toContain('flex-shrink:0');
     expect(out).toContain('height:75px');
     expect(out).toContain('display:flex');

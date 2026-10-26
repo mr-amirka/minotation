@@ -553,6 +553,17 @@ export interface MnOptions {
    */
   mediaSyntax?: 'range' | 'classic';
   /**
+   * Осевые формы `presetStandard` (D-101): `px`/`py`, `mx`/`my`, `sx`/`sy`, `bx`/`by`, `bcx`/`bcy`, `bsx`/`bsy`.
+   * - `'logical'` — логическое свойство, как у Tailwind 4: `px16` → `padding-inline:16px`, `py8` →
+   *   `padding-block:8px`; в горизонтальном тексте это те же лево + право / верх + низ, при
+   *   `writing-mode: vertical-*` — вдоль текста;
+   * - `'physical'` — физическая пара: `px16` → `padding-left:16px;padding-right:16px`.
+   *
+   * Читается при компиляции токена: после `mn.setOptions({ axisMode })` — `mn.recompile()`.
+   * @default 'logical'
+   */
+  axisMode?: 'logical' | 'physical';
+  /**
    * Режим синтаксиса классов разметки (D-045): `'context-qualified'` (по умолчанию) или
    * `'tw4-compatible'` (Tailwind). Строки пресетов разбираются в режиме пресета.
    * @default 'context-qualified'

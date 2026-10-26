@@ -185,7 +185,7 @@ describe('хендлеры со своим путём разбора — спл�
     ],
     [
       'bsx--v',
-      'border-left-style:var(--v);border-right-style:var(--v)',
+      'border-inline-style:var(--v)',
     ],
     // page-break — единственные пользователи МАССИВНОЙ формы synonymProvider,
     // она нормализовала значение как имя шрифта.

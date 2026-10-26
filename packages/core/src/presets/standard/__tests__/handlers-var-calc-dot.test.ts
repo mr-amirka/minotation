@@ -377,7 +377,7 @@ describe('представители классов разбора — точн�
         ],
         [
           'bsx--v',
-          'border-left-style:var(--v);border-right-style:var(--v)',
+          'border-inline-style:var(--v)',
         ],
       ],
     ],

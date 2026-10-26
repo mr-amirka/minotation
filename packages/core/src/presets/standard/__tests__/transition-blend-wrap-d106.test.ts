@@ -1,7 +1,7 @@
 /**
  * D-106: `tp` — список через запятую, как в CSS и в старой версии; буквы у `tp`/`ttf`/`mbm`; `ww` → `owr`;
- * опция `overflowWrapMode` для старого имени `word-wrap`; заглавная после `,`/`;` — начало элемента списка;
- * имя свойства из одной буквы у `tp`/`wc`/`tn` — ошибка.
+ * опция `overflowWrapMode` для старого имени `word-wrap`; имя свойства из одной буквы у `tp`/`wc`/`tn` — ошибка.
+ * D-107: заглавная после `,`/`;` не принимается — у элемента списка одно написание, со строчной.
  */
 import {
   lexer,
@@ -51,8 +51,12 @@ describe('tp — a list with commas, letters for all/none (D-106)', () => {
       'transition-property:color,opacity',
     ],
     [
-      'tpColor,Opacity',
+      'tpColor,opacity',
       'transition-property:color,opacity',
+    ],
+    [
+      'tpColor,backgroundColor',
+      'transition-property:color,background-color',
     ],
     [
       'tpA',
@@ -302,26 +306,61 @@ describe('overflowWrapMode — the old name word-wrap for old browsers (D-106)',
   });
 });
 
-describe('a capital after , or ; starts a list item, not a dash (D-106)', () => {
+describe('a list item starts with a lower-case letter (D-107)', () => {
   test.each([
     [
-      'tnColor;Opacity_200',
+      'tnColor;opacity_200',
       'transition:color 200ms,opacity 200ms',
     ],
     [
-      'tnColor_200,Opacity_300',
+      'tnColor_200,opacity_300',
       'transition:color 200ms,opacity 300ms',
     ],
     [
-      'wcTransform,Opacity',
+      'wcTransform,opacity',
       'will-change:transform,opacity',
     ],
     [
-      'ffArial,SansSerif',
+      'wcTransform,-webkitTransform',
+      'will-change:transform,-webkit-transform',
+    ],
+    [
+      'ffArial,sansSerif',
       'font-family:arial,sans-serif',
     ],
   ])('%s → %s', (token, expected) => {
     expect(declaration(token)).toBe(expected);
+  });
+
+  test.each([
+    [
+      'tnColor;Opacity_200',
+      'Value "Color;Opacity": after "," and ";" a list item starts with a lower-case letter — write "Color;opacity"',
+    ],
+    [
+      'tnColor_200,Opacity_300',
+      'write "200,opacity"',
+    ],
+    [
+      'tpColor,Opacity',
+      'write "Color,opacity"',
+    ],
+    [
+      'wcTransform,Opacity',
+      'write "Transform,opacity"',
+    ],
+    [
+      'ffArial,SansSerif',
+      'write "Arial,sansSerif"',
+    ],
+    [
+      'ttfSteps\\(4,JumpEnd\\)',
+      'write "Steps(4,jumpEnd)"',
+    ],
+  ])('%s gives no CSS: %s', (token, message) => {
+    const result = compile(token);
+    expect(result.css).toBe('');
+    expect(result.warnings).toContain(message);
   });
 });
 

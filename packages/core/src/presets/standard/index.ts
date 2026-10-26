@@ -1638,8 +1638,12 @@ const REGEXP_TIME = /^[0-9]*\.?[0-9]+(m?s)?$/;
  * `transition:a 200ms` (D-106).
  */
 const REGEXP_PROPERTY_LIST = /^-?[a-z][a-z0-9-]+(?:;-?[a-z][a-z0-9-]+)*;?$/;
-/** Заглавная в начале элемента списка значений — после `,` или `;` (см. `toKebabCase`). */
-const REGEXP_LIST_ITEM_CAPITAL = /([,;])([A-Z])/g;
+/**
+ * Заглавная в начале элемента списка значений — после `,` или `;`: не принимается (D-107), см. `toKebabCase`.
+ * Вторая регулярка — с флагом `g` для подсказки; `.test` на ней нельзя: `lastIndex` хранит состояние.
+ */
+const REGEXP_LIST_ITEM_CAPITAL = /[,;][A-Z]/;
+const REGEXP_LIST_ITEM_CAPITALS = /([,;])([A-Z])/g;
 function lowerItemStart(
   _match: string, separator: string, letter: string,
 ): string {
@@ -3096,11 +3100,15 @@ export default {
     }
 
     /**
-     * Заглавная после `,`/`;` начинает новый элемент списка, как заглавная в начале значения, — дефиса перед ней
-     * нет: `tnColor;Opacity_200` давало `-opacity`, `ffArial,SansSerif` — `"sans-serif"` (D-106).
+     * Camel case значения → kebab case. Заглавная сразу после `,`/`;` не принимается (D-107): у элемента списка
+     * одно написание — со строчной (`tnColor;opacity_200`). До D-106 такая заглавная давала дефис (`-opacity`),
+     * в D-106 — второе написание того же класса. Префикс производителя пишется явным дефисом:
+     * `wcTransform,-webkitTransform` → `transform,-webkit-transform`.
      */
     function toKebabCase(v: string): string {
-      return camelToKebabCase(lowerFirst(v.replace(REGEXP_LIST_ITEM_CAPITAL, lowerItemStart)));
+      REGEXP_LIST_ITEM_CAPITAL.test(v) && throwInvalid(MSG_VALUE + v + '": after "," and ";" a list item starts with a '
+        + 'lower-case letter — write "' + v.replace(REGEXP_LIST_ITEM_CAPITALS, lowerItemStart) + '"');
+      return camelToKebabCase(lowerFirst(v));
     }
     /**
    * Нормализует «свободное» значение хендлера, которое не разбирается общим

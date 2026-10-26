@@ -930,6 +930,12 @@ tn_color_0.2s_ease,transform_0.4s_linear
 одна буква (`tpB`) и `none` в списке (D-106). До D-106 запятая бракалась, а `;` уходил в CSS как есть и обрывал
 объявление: `transition-property:color;opacity` анимировал один `color`.
 
+Элемент списка начинается со строчной (D-107): `tnColor;opacity_200`, `wcTransform,opacity`, `ffArial,sansSerif`.
+Заглавная сразу после `,`/`;` — второе написание того же класса, поэтому бракуется с подсказкой: `tnColor;Opacity_200`
+→ «write "Color;opacity"». Внутри элемента заглавная по-прежнему пишет дефис (`tpColor,backgroundColor` →
+`color,background-color`), префикс производителя — явным дефисом: `wcTransform,-webkitTransform` →
+`transform,-webkit-transform`.
+
 До 2026-09-26 проверки не было вовсе: `tn200` давало `transition:200` (число
 без единицы), `tn10zz` — `transition:10zz`.
 

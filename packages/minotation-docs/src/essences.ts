@@ -254,6 +254,15 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'sbg', props: 'scrollbar-gutter', keywords: ['scrollbar', 'gutter', 'stable'], examples: ['sbgS', 'sbgSB'] },
   { name: 'sbc', props: 'scrollbar-color', keywords: ['scrollbar', 'color', 'thumb', 'track'], examples: ['sbcF00_0', 'sbcCT_T', 'sbcA'] },
 
+  // --- Сетка и выравнивание (группа C, D-097) ---
+  { name: 'grs', props: 'grid-row-start', keywords: ['grid', 'row', 'start', 'line'], examples: ['grs2', 'grsSpan_2'] },
+  { name: 'gre', props: 'grid-row-end', keywords: ['grid', 'row', 'end', 'line'], examples: ['gre-1', 'greA'] },
+  { name: 'gcs', props: 'grid-column-start', keywords: ['grid', 'column', 'start', 'line'], examples: ['gcs2', 'gcs2_Header'] },
+  { name: 'gce', props: 'grid-column-end', keywords: ['grid', 'column', 'end', 'line'], examples: ['gce-1', 'gceSpan_2'] },
+  { name: 'plc', props: 'place-content', keywords: ['place', 'content', 'align', 'justify', 'grid'], description: 'align-content_justify-content, буквы ac + jc', examples: ['plcC', 'plcSB_C'] },
+  { name: 'pli', props: 'place-items', keywords: ['place', 'items', 'align', 'justify', 'grid', 'center'], description: 'align-items_justify-items, буквы ai + ji', examples: ['pliC', 'pliC_S'] },
+  { name: 'pls', props: 'place-self', keywords: ['place', 'self', 'align', 'justify', 'grid'], description: 'align-self_justify-self, буквы as + js', examples: ['plsC', 'plsA_E'] },
+
   // --- Границы (доп.) — портировано из старого 1.x essences.js, проверено live-компиляцией ---
   { name: 'bi', props: 'border-image', keywords: ['border', 'image'], description: 'без аргумента — none; url()/gradient() — camelCase/snakeCase строка', examples: ['bi'] },
   { name: 'bdcl', props: 'border-collapse', keywords: ['border', 'collapse', 'table'], examples: ['bdclC', 'bdclS'] },

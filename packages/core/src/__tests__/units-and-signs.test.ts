@@ -2337,7 +2337,7 @@ describe('дорожки и позиции сетки', () => {
       'grid-column:1/-1',
     ],
     [
-      'grAuto',
+      'grA',
       'grid-row:auto',
     ],
     [
@@ -2601,7 +2601,7 @@ describe('фильтры, text-size-adjust, позиции сетки', () => {
       'grid-row:span 2',
     ],
     [
-      'grAuto',
+      'grA',
       'grid-row:auto',
     ],
   ])('%s → %s — законные позиции не задеты', (token, expected) => {

@@ -29,6 +29,8 @@ const PIPE = '|';
 const UNDERSCORE = '_';
 const VAR_OPEN = 'var(';
 const CLOSE_PAREN = ')';
+/** Начало пояснения в подсказке: `aiC (center)`. */
+const HINT_OPEN = ' (';
 const SPACE = ' ';
 const SEMICOLON = ';';
 const N = 'N';
@@ -476,6 +478,113 @@ const SCROLL_SNAP_ALIGN_WORDS: Record<string, string> = {
 const SCROLL_SNAP_ALIGN_SYNONYMS = withPairs(
   {}, SCROLL_SNAP_ALIGN_WORDS, SCROLL_SNAP_ALIGN_WORDS,
 );
+
+/**
+ * Буквы выравнивания: одни и те же у `ac`/`jc`, `ai`/`ji`, `as`/`js` и у пар `plc`/`pli`/`pls`, где первая часть —
+ * `align-*`, вторая — `justify-*` (группа C).
+ */
+const ALIGN_CONTENT_WORDS: Record<string, string> = {
+  S: NAME_START,
+  E: NAME_END,
+  C: NAME_CENTER,
+  FS: NAME_FLEX_START,
+  FE: NAME_FLEX_END,
+  SB: 'SpaceBetween',
+  SA: 'SpaceAround',
+  ST: NAME_STRETCH,
+  SE: 'SpaceEvenly',
+  N: NAME_NORMAL,
+  B: NAME_BASELINE,
+};
+
+const JUSTIFY_CONTENT_WORDS: Record<string, string> = {
+  C: NAME_CENTER,
+  FE: NAME_FLEX_END,
+  FS: NAME_FLEX_START,
+  SA: 'SpaceAround',
+  SB: 'SpaceBetween',
+  // Добавлено 2026-09-22 — набор приведён к `ac`/`as`, где эти ключи уже были.
+  S: NAME_START,
+  E: NAME_END,
+  SE: 'SpaceEvenly',
+  N: NAME_NORMAL,
+  ST: NAME_STRETCH,
+  L: NAME_LEFT,
+  R: NAME_RIGHT,
+};
+
+const ALIGN_ITEMS_WORDS: Record<string, string> = {
+  C: NAME_CENTER,
+  B: NAME_BASELINE,
+  FE: NAME_FLEX_END,
+  FS: NAME_FLEX_START,
+  // 2026-09-22: буквы приведены к `as`/`ac` — `S` это Start, `ST` — Stretch.
+  // Раньше `aiS` значило Stretch, и одна и та же буква у трёх родственных
+  // свойств означала разное. Ломающее изменение, но v2 не публиковалась,
+  // а в самой библиотеке `aiS` нигде не использовался.
+  S: NAME_START,
+  ST: NAME_STRETCH,
+  E: NAME_END,
+  N: NAME_NORMAL,
+  SS: NAME_SELF_START,
+  SE: NAME_SELF_END,
+  FB: NAME_FIRST_BASELINE,
+  LB: NAME_LAST_BASELINE,
+  AC: NAME_ANCHOR_CENTER,
+};
+
+const JUSTIFY_ITEMS_WORDS: Record<string, string> = {
+  N: NAME_NORMAL,
+  B: NAME_BASELINE,
+  C: NAME_CENTER,
+  S: NAME_START,
+  E: NAME_END,
+  ST: NAME_STRETCH,
+  SS: NAME_SELF_START,
+  SE: NAME_SELF_END,
+  L: NAME_LEFT,
+  R: NAME_RIGHT,
+  LG: 'Legacy',
+  AC: NAME_ANCHOR_CENTER,
+  FS: NAME_FLEX_START,
+  FE: NAME_FLEX_END,
+};
+
+const ALIGN_SELF_WORDS: Record<string, string> = {
+  A: NAME_AUTO,
+  N: NAME_NORMAL,
+  B: NAME_BASELINE,
+  C: NAME_CENTER,
+  FS: NAME_FLEX_START,
+  FE: NAME_FLEX_END,
+  SS: NAME_SELF_START,
+  SE: NAME_SELF_END,
+  S: NAME_START,
+  E: NAME_END,
+  ST: NAME_STRETCH,
+  FB: NAME_FIRST_BASELINE,
+  LB: NAME_LAST_BASELINE,
+  AC: NAME_ANCHOR_CENTER,
+};
+
+const JUSTIFY_SELF_WORDS: Record<string, string> = {
+  A: NAME_AUTO,
+  N: NAME_NORMAL,
+  B: NAME_BASELINE,
+  C: NAME_CENTER,
+  S: NAME_START,
+  E: NAME_END,
+  ST: NAME_STRETCH,
+  SS: NAME_SELF_START,
+  SE: NAME_SELF_END,
+  L: NAME_LEFT,
+  R: NAME_RIGHT,
+  FB: NAME_FIRST_BASELINE,
+  LB: NAME_LAST_BASELINE,
+  AC: NAME_ANCHOR_CENTER,
+  FS: NAME_FLEX_START,
+  FE: NAME_FLEX_END,
+};
 
 const POSITION_PRIORITIES: Record<string, number> = {
   relative: 0,
@@ -964,6 +1073,25 @@ const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
   gridAutoRows: {
     A: AUTO,
   },
+  // `gcA` давало `grid-column:a` — линию с именем `a`; `A` у остальных хендлеров — `auto`.
+  gridRow: {
+    A: AUTO,
+  },
+  gridColumn: {
+    A: AUTO,
+  },
+  gridRowStart: {
+    A: AUTO,
+  },
+  gridRowEnd: {
+    A: AUTO,
+  },
+  gridColumnStart: {
+    A: AUTO,
+  },
+  gridColumnEnd: {
+    A: AUTO,
+  },
   aspectRatio: {
     A: AUTO,
   },
@@ -1126,7 +1254,7 @@ function enumHint(
   }
   // Слово с краткой записью предлагается краткой (D-094): `apN (none)`, а не `apNone`.
   for (const word of Object.keys(words)) {
-    words[word] === 1 && items.push(short[word] ? essenceName + short[word] + ' (' + word + CLOSE_PAREN : essenceName + notationWord(word));
+    words[word] === 1 && items.push(short[word] ? essenceName + short[word] + HINT_OPEN + word + CLOSE_PAREN : essenceName + notationWord(word));
   }
   return availableHint(items);
 }
@@ -1820,6 +1948,52 @@ function gridLineValue(
   return parts.join(SPACE);
 }
 
+/** Номер линии в `<grid-line>`: целое, не ноль. */
+const REGEXP_GRID_LINE_NUMBER = /^[-+]?0*[1-9]\d*$/;
+
+/**
+ * Одна линия сетки: `grs`, `gre`, `gcs`, `gce` (группа C, RESEARCH/17). По грамматике это `<grid-line>`:
+ * `auto`, имя, номер с именем или без, `span` с номером и/или именем — по одному каждого. Второй позиции нет, и
+ * `gcs1/3` дало бы невалидное `grid-column-start:1/3`: пара пишется через `gc`.
+ */
+function gridLineSingleValue(
+  parts: string[], raw: string, essenceName: string,
+): string {
+  const l = parts.length;
+  const prefix = MSG_VALUE + raw + MSG_IS_INVALID_FOR + essenceName + MSG_COLON;
+  let numbers = 0;
+  let names = 0;
+  let span = 0;
+  let negative = 0;
+  let functions = 0;
+  let i = 0;
+  let part: string;
+  for (; i < l; i++) {
+    part = parts[i];
+    // Функция (`calc()`, `var()`) может дать и номер, и имя — разбирать её нечем.
+    if (part.indexOf(OPEN_PAREN) > -1) {
+      functions++;
+      continue;
+    }
+    part.indexOf(SLASH) < 0 || throwInvalid(prefix + 'one line only — both ends are written with "'
+      + essenceName.slice(0, 2) + raw + DOUBLE_QUOTE);
+    part === 'span'
+      ? span++
+      : REGEXP_GRID_LINE_NUMBER.test(part)
+        ? (numbers++, part[0] === '-' && (negative = 1))
+        : (part !== AUTO && REGEXP_SLOT_IDENT.test(part))
+          ? names++
+          : (l > 1 || part !== AUTO) && throwInvalid(prefix
+            + 'a line is "A" (auto), a number (not 0), a name or "span" with a number or a name');
+  }
+  (span < 2 && numbers < 2 && names < 2)
+    || throwInvalid(prefix + 'at most one number, one name and one "span"');
+  (!span || numbers || names || functions)
+    || throwInvalid(prefix + '"span" needs a number or a name — "' + essenceName + 'Span_2"');
+  span && negative && throwInvalid(prefix + 'a "span" counts lines forward — its number is positive');
+  return parts.join(SPACE);
+}
+
 /** `flex-flow` — направление и перенос, оба из закрытых списков. */
 const FLEX_FLOW_KEYWORDS = wordsSet('row row-reverse column column-reverse'
   + ' nowrap wrap wrap-reverse');
@@ -1887,6 +2061,10 @@ const SLOT_VALIDATORS: Record<string, (
   gridAutoRows: trackValue,
   gridRow: gridLineValue,
   gridColumn: gridLineValue,
+  gridRowStart: gridLineSingleValue,
+  gridRowEnd: gridLineSingleValue,
+  gridColumnStart: gridLineSingleValue,
+  gridColumnEnd: gridLineSingleValue,
   flex: flexValue,
   columns: columnsValue,
   textEmphasis: textEmphasisValue,
@@ -2730,7 +2908,7 @@ export default {
       function abbrHint(name: string): string {
         const items: string[] = [];
         forIn(synonyms, (word: string, abbr: string) => {
-          abbr && items.push(name + abbr + ' (' + valueNormalize(word) + CLOSE_PAREN);
+          abbr && items.push(name + abbr + HINT_OPEN + valueNormalize(word) + CLOSE_PAREN);
         });
         return availableHint(items);
       }
@@ -3652,6 +3830,113 @@ export default {
       });
     });
 
+    /**
+     * `place-content` / `-items` / `-self` (группа C, RESEARCH/17): `align` и, через `_`, `justify`. Буквы частей —
+     * те же, что у пары хендлеров: `plc` = `ac` + `jc`, `pli` = `ai` + `ji`, `pls` = `as` + `js`. `pliC` →
+     * `center`, `plcSB_C` → `space-between center`. Одна часть задаёт обе оси, поэтому в ней — только буквы `align`:
+     * `plcL` ошибка, как и `place-content: left` в CSS.
+     */
+    function placeProvider(
+      propName: string, slots: Record<string, string>[], slotNames: string[],
+    ): MnHandler {
+      const byWord: Record<string, string>[] = [];
+      let i = 0;
+      for (; i < 2; i++) {
+        byWord[i] = {};
+        forIn(slots[i], (word: string, abbr: string) => {
+          byWord[i][valueNormalize(word)] = abbr;
+        });
+      }
+      return (p: MnEssenceParams) => {
+        const suffix = p.suffix;
+        const style: Record<string, string> = {};
+        const parts = splitValueParts(suffix);
+        const l = parts.length;
+        // Одно слово CSS-wide — значение целиком, как у `sbc`. Переменная с `_` в имени закрывается `;`
+        // (`plc--my_gap;`), иначе `_` делит части: `plc--a_C` → `var(--a) center`.
+        const kebab = toKebabCase(suffix);
+        if (l === 1 && GLOBAL_KEYWORDS[kebab]) {
+          style[propName] = kebab;
+          return styleWrap(style);
+        }
+        l < 3 || throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name + '": at most two parts — '
+        + slotNames[0] + '_' + slotNames[1] + ', as "' + p.name + 'C_S"');
+        const words: string[] = [];
+        let part: string;
+        let word: string;
+        let head: string;
+        let tail: string;
+        let abbr: string;
+        let j = 0;
+        for (; j < l; j++) {
+          part = parts[j];
+          word = slots[j][part];
+          if (word) {
+            words.push(valueNormalize(word));
+            continue;
+          }
+          word = cssVarValue(part) || '';
+          if (word) {
+            words.push(word);
+            continue;
+          }
+          // Подсказка называет весь токен: `pliC_S`, а не `S`.
+          head = p.name + (j ? parts[0] + UNDERSCORE : '');
+          tail = j < l - 1 ? UNDERSCORE + parts[1] : '';
+          abbr = byWord[j][valueNormalize(part)];
+          abbr && throwInvalid('Write it shorter: "' + head + abbr + tail + MSG_INSTEAD_OF + head + part + tail
+          + DOUBLE_QUOTE);
+          throwInvalid(MSG_VALUE + part + MSG_IS_INVALID_FOR + p.name + '": the ' + (j ? 'second' : 'first')
+          + ' part is ' + slotNames[j] + availableHint(placeHintItems(
+            slots[j], head, tail,
+          )));
+        }
+        style[propName] = words.join(SPACE);
+        return styleWrap(style);
+      };
+    }
+
+    /** Варианты одной части `place-*` целыми токенами: `pliC_S (start)`. */
+    function placeHintItems(
+      words: Record<string, string>, head: string, tail: string,
+    ): string[] {
+      const items: string[] = [];
+      forIn(words, (word: string, abbr: string) => {
+        items.push(head + abbr + tail + HINT_OPEN + valueNormalize(word) + CLOSE_PAREN);
+      });
+      return items;
+    }
+
+    mn({
+      plc: placeProvider(
+        'placeContent', [
+          ALIGN_CONTENT_WORDS,
+          JUSTIFY_CONTENT_WORDS,
+        ], [
+          'align-content',
+          'justify-content',
+        ],
+      ),
+      pli: placeProvider(
+        'placeItems', [
+          ALIGN_ITEMS_WORDS,
+          JUSTIFY_ITEMS_WORDS,
+        ], [
+          'align-items',
+          'justify-items',
+        ],
+      ),
+      pls: placeProvider(
+        'placeSelf', [
+          ALIGN_SELF_WORDS,
+          JUSTIFY_SELF_WORDS,
+        ], [
+          'align-self',
+          'justify-self',
+        ],
+      ),
+    });
+
     forIn({
     // backgroundImage: url(...)
       bgi: 'backgroundImage',
@@ -4438,39 +4723,11 @@ export default {
       }),
       jc: synonymProvider('justifyContent', {
         '': NAME_CENTER,
-        C: NAME_CENTER,
-        FE: NAME_FLEX_END,
-        FS: NAME_FLEX_START,
-        SA: 'SpaceAround',
-        SB: 'SpaceBetween',
-        // Добавлено 2026-09-22 — набор приведён к `ac`/`as`, где эти ключи уже были.
-        S: NAME_START,
-        E: NAME_END,
-        SE: 'SpaceEvenly',
-        N: NAME_NORMAL,
-        ST: NAME_STRETCH,
-        L: NAME_LEFT,
-        R: NAME_RIGHT,
+        ...JUSTIFY_CONTENT_WORDS,
       }),
       ai: synonymProvider('alignItems', {
         '': NAME_CENTER,
-        C: NAME_CENTER,
-        B: NAME_BASELINE,
-        FE: NAME_FLEX_END,
-        FS: NAME_FLEX_START,
-        // 2026-09-22: буквы приведены к `as`/`ac` — `S` это Start, `ST` — Stretch.
-        // Раньше `aiS` значило Stretch, и одна и та же буква у трёх родственных
-        // свойств означала разное. Ломающее изменение, но v2 не публиковалась,
-        // а в самой библиотеке `aiS` нигде не использовался.
-        S: NAME_START,
-        ST: NAME_STRETCH,
-        E: NAME_END,
-        N: NAME_NORMAL,
-        SS: NAME_SELF_START,
-        SE: NAME_SELF_END,
-        FB: NAME_FIRST_BASELINE,
-        LB: NAME_LAST_BASELINE,
-        AC: NAME_ANCHOR_CENTER,
+        ...ALIGN_ITEMS_WORDS,
       }),
       bxz: synonymProvider('boxSizing', {
         '': NAME_BORDER_BOX,
@@ -4963,74 +5220,15 @@ export default {
           YE: 'YEnd',
         }, 2, 0 as any, 1,
       ),
-      as: synonymProvider('alignSelf', {
-        A: NAME_AUTO,
-        N: NAME_NORMAL,
-        B: NAME_BASELINE,
-        C: NAME_CENTER,
-        FS: NAME_FLEX_START,
-        FE: NAME_FLEX_END,
-        SS: NAME_SELF_START,
-        SE: NAME_SELF_END,
-        S: NAME_START,
-        E: NAME_END,
-        ST: NAME_STRETCH,
-        FB: NAME_FIRST_BASELINE,
-        LB: NAME_LAST_BASELINE,
-        AC: NAME_ANCHOR_CENTER,
-      }),
+      as: synonymProvider('alignSelf', ALIGN_SELF_WORDS),
       /**
      * `justify-self` / `justify-items` — grid-раскладка. Буквы `S`/`ST`/`E`/`C`/`N`/`B`
      * согласованы с `jc`/`ai`/`as`/`ac`; `L`/`R` — как у `jc`, `justify-items`
      * и `justify-self` их тоже принимают (унаследовано от `text-align`).
      */
-      js: synonymProvider('justifySelf', {
-        A: NAME_AUTO,
-        N: NAME_NORMAL,
-        B: NAME_BASELINE,
-        C: NAME_CENTER,
-        S: NAME_START,
-        E: NAME_END,
-        ST: NAME_STRETCH,
-        SS: NAME_SELF_START,
-        SE: NAME_SELF_END,
-        L: NAME_LEFT,
-        R: NAME_RIGHT,
-        FB: NAME_FIRST_BASELINE,
-        LB: NAME_LAST_BASELINE,
-        AC: NAME_ANCHOR_CENTER,
-        FS: NAME_FLEX_START,
-        FE: NAME_FLEX_END,
-      }),
-      ji: synonymProvider('justifyItems', {
-        N: NAME_NORMAL,
-        B: NAME_BASELINE,
-        C: NAME_CENTER,
-        S: NAME_START,
-        E: NAME_END,
-        ST: NAME_STRETCH,
-        SS: NAME_SELF_START,
-        SE: NAME_SELF_END,
-        L: NAME_LEFT,
-        R: NAME_RIGHT,
-        LG: 'Legacy',
-        AC: NAME_ANCHOR_CENTER,
-        FS: NAME_FLEX_START,
-        FE: NAME_FLEX_END,
-      }),
-      ac: synonymProvider('alignContent', {
-        S: NAME_START,
-        E: NAME_END,
-        C: NAME_CENTER,
-        FS: NAME_FLEX_START,
-        FE: NAME_FLEX_END,
-        SB: 'SpaceBetween',
-        SA: 'SpaceAround',
-        ST: NAME_STRETCH,
-        SE: 'SpaceEvenly',
-        N: NAME_NORMAL,
-        B: NAME_BASELINE,
-      }),
+      js: synonymProvider('justifySelf', JUSTIFY_SELF_WORDS),
+      ji: synonymProvider('justifyItems', JUSTIFY_ITEMS_WORDS),
+      ac: synonymProvider('alignContent', ALIGN_CONTENT_WORDS),
       va: synonymProvider(
         'verticalAlign', {
           SUP: 'Super',
@@ -5325,6 +5523,22 @@ export default {
       ],
       gc: [
         'gridColumn',
+        1,
+      ],
+      grs: [
+        'gridRowStart',
+        1,
+      ],
+      gre: [
+        'gridRowEnd',
+        1,
+      ],
+      gcs: [
+        'gridColumnStart',
+        1,
+      ],
+      gce: [
+        'gridColumnEnd',
         1,
       ],
 

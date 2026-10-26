@@ -508,7 +508,9 @@ mn.setOptions({ axisMode: 'logical' }); mn.recompile(); // живой инста
 плюс `L`/`R` (left/right) и `A`/`LG` (auto — только `js`; legacy — только `ji`).
 
 **Карты синонимов `jc`/`ai`/`as`/`ac`/`js`/`ji` — разные объекты** (общей таблицы `alignVal` не существует),
-но с 2026-09-22 одинаковые буквы означают одно и то же:
+но с 2026-09-22 одинаковые буквы означают одно и то же. С 2026-10-26 это константы модуля
+(`ALIGN_CONTENT_WORDS`, `JUSTIFY_CONTENT_WORDS`, …): их же берут пары `plc`/`pli`/`pls` (группа C).
+`''` → center у `jc` и `ai` — только у них, в константы не входит:
 
 | Токен | `jc` | `ai` | `as` | `js` | `ji` |
 |-------|------|------|------|------|------|
@@ -1336,11 +1338,12 @@ coi10   →  counter-increment:10
 | `gr1` | `grid-row:1` |
 | `gr1/3` | `grid-row:1/3` |
 | `gc1/-1` | `grid-column:1/-1` |
-| `grAuto` | `grid-row:auto` |
+| `grA` | `grid-row:auto` |
 
 Здесь проверяется немногое: по грамматике `<grid-line>` допускает почти любой
 идентификатор, так что `grSpan2` и `grZzz` — законные имена линий. Бракуется
-только длина: `gr10px`.
+только длина: `gr10px`. `A` — `auto` (2026-10-26, группа C): раньше `gcA` давало `grid-column:a`, линию с именем
+`a`; `grAuto` теперь отвечает «Write "grA"». Одна линия — `grs`/`gre`/`gcs`/`gce`, см. «Сетка и выравнивание».
 
 
 | Токен | CSS |
@@ -1413,6 +1416,41 @@ coi10   →  counter-increment:10
 Бракуются: один цвет (`sbcF00`), три (`sbcF00_0_0`), неукороченный код с подсказкой на весь токен (`sbcF00_0000` →
 «"sbcF00_0.0"»), длинное слово (`sbcCurrentColor_0` → «"sbcCT_0"»). С `altColor` у кода с альфой свойство пишется
 дважды: сначала запасная пара, потом основная.
+
+## Сетка и выравнивание (группа C, D-097)
+
+**Одна линия сетки:** `grs` (`grid-row-start`), `gre` (`grid-row-end`), `gcs` (`grid-column-start`), `gce`
+(`grid-column-end`). Значение — одна `<grid-line>`: `A` (auto), номер (целый, не 0), имя, `Span` с номером и/или
+именем — по одному каждого.
+
+| Токен | CSS |
+|-------|-----|
+| `gcs2` | `grid-column-start:2` |
+| `gce-1` | `grid-column-end:-1` |
+| `greA` | `grid-row-end:auto` |
+| `grsSpan_2` | `grid-row-start:span 2` |
+| `gcs2_Header` | `grid-column-start:2 header` |
+| `gceSpan_2_Header` | `grid-column-end:span 2 header` |
+
+Бракуются: пара через `/` (`gcs1/3` → «both ends are written with "gc1/3"»), `0`, дробь, два номера (`grs2_3`),
+`Span` без номера и имени, `Span` с отрицательным номером, длинное `gcsAuto` (→ «"gcsA"»).
+
+**Пары выравнивания:** `plc` (`place-content`), `pli` (`place-items`), `pls` (`place-self`). Первая часть — `align-*`,
+вторая через `_` — `justify-*`; буквы те же, что у одиночных хендлеров: `plc` = `ac` + `jc`, `pli` = `ai` + `ji`,
+`pls` = `as` + `js` (таблица букв в «Flex»). Одна часть задаёт обе оси, поэтому в ней только буквы `align-*`:
+`plcL` — ошибка, как и `place-content: left`.
+
+| Токен | CSS |
+|-------|-----|
+| `pliC` | `place-items:center` |
+| `pliC_S` | `place-items:center start` |
+| `plcSB_C` | `place-content:space-between center` |
+| `plcC_L` | `place-content:center left` |
+| `plsA_E` | `place-self:auto end` |
+| `plc--a_C` | `place-content:var(--a) center` |
+
+Ошибка называет часть и её свойство со списком вариантов целыми токенами (`pliC_Q` → «the second part is
+justify-items. Available: pliC_N (normal), …»); длинное слово — «Write it shorter: "pliC_S" instead of "pliC_Start"».
 
 ---
 

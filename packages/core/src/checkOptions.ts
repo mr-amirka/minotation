@@ -253,4 +253,7 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   mediaNesting: isBoolean,
   mediaSyntax: oneOf('range', 'classic'),
   axisMode: oneOf('logical', 'physical'),
+  overflowWrapMode: oneOf(
+    'standard', 'legacy', 'both',
+  ),
 };

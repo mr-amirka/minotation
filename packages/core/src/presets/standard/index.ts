@@ -35,6 +35,7 @@ const SPACE = ' ';
 const SEMICOLON = ';';
 const N = 'N';
 const NONE = 'none';
+const ALL = 'all';
 const AUTO = 'auto';
 const DOUBLE_QUOTE = '"';
 const DASH = '-';
@@ -541,7 +542,10 @@ const SCROLL_SNAP_ALIGN_SYNONYMS = withPairs(
   {}, SCROLL_SNAP_ALIGN_WORDS, SCROLL_SNAP_ALIGN_WORDS,
 );
 
-/** Функции плавности словами — `atfL` → `linear`, `atfEIO` → `ease-in-out` (группа F, RESEARCH/17). */
+/**
+ * Функции плавности словами — `atfL` → `linear`, `atfEIO` → `ease-in-out` (группа F, RESEARCH/17); у `ttf` те же буквы
+ * (D-106): одна плавность пишется одинаково у анимации и у перехода.
+ */
 const TIMING_FUNCTION_SYNONYMS: Record<string, string> = {
   L: 'Linear',
   E: 'Ease',
@@ -553,7 +557,8 @@ const TIMING_FUNCTION_SYNONYMS: Record<string, string> = {
 };
 /**
  * Режимы смешивания `background-blend-mode` (группа F): `bgbmM` → `multiply`. `C` — `color`, поэтому пары на «color»
- * получили вторую букву: `CD` — `color-dodge`, `CB` — `color-burn`. `plus-darker`/`plus-lighter` фону не положены.
+ * получили вторую букву: `CD` — `color-dodge`, `CB` — `color-burn`. `plus-darker`/`plus-lighter` фону не положены —
+ * они только у `mix-blend-mode` ({@link MIX_BLEND_MODE_SYNONYMS}).
  */
 const BLEND_MODE_SYNONYMS: Record<string, string> = {
   N: NAME_NORMAL,
@@ -572,6 +577,29 @@ const BLEND_MODE_SYNONYMS: Record<string, string> = {
   ST: 'Saturation',
   C: 'Color',
   LM: 'Luminosity',
+};
+/**
+ * `overflow-wrap` (`owr`): буквы те же, что у `wb`: `BW` — `break-word`. Значения `none`, `unrestricted`, `suppress`
+ * убраны 2026-09-24 ещё у `ww` — невалидны по спецификации.
+ */
+const OVERFLOW_WRAP_SYNONYMS: Record<string, string> = {
+  N: NAME_NORMAL,
+  BW: NAME_BREAK_WORD,
+  A: 'Anywhere',
+};
+/** `ww` → `owr` (D-106): у `ww` было по две буквы на значение — `B`/`BW`, `N`/`NM`. */
+const WW_RENAMED: Record<string, string> = {
+  B: 'BW',
+  NM: N,
+};
+/** `overflowWrapMode` (D-106): `'legacy'` — старое имя `word-wrap`, `'both'` — оба имени. */
+const WRAP_LEGACY = 'legacy';
+const WRAP_BOTH = 'both';
+/** Режимы смешивания элемента (`mbm`, D-106): буквы фона плюс `PD` — `plus-darker`, `PL` — `plus-lighter`. */
+const MIX_BLEND_MODE_SYNONYMS: Record<string, string> = {
+  ...BLEND_MODE_SYNONYMS,
+  PD: 'PlusDarker',
+  PL: 'PlusLighter',
 };
 /**
  * `color-scheme` (группа F): `cschL`, `cschL_D` → `light dark`, `cschD_O` → `dark only`. Одно `only` невалидно —
@@ -1228,6 +1256,11 @@ const BORDER_IMAGE_ABBREVIATIONS: Record<string, string> = {
 };
 
 const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
+  // `tpA`/`tpN` давали `transition-property:a`/`n` (D-106).
+  transitionProperty: {
+    A: ALL,
+    N: NONE,
+  },
   appearance: {
     N: NONE,
     A: AUTO,
@@ -1340,12 +1373,15 @@ const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
 };
 
 /**
- * Старая запись после переименования (D-094): сообщение с новой, CSS нет. Убирается через один выпуск — задача
+ * Старая запись после переименования: сообщение с новой, CSS нет. Убирается через один выпуск — задача
  * в PLAN; это сообщение, а не вторая реализация.
+ * @param decision решение, которым переименовано: D-094 (по умолчанию) или D-106 (`ww` → `owr`)
  */
-function throwRenamed(token: string, replacement: string): never {
-  throw new MnParseError(DOUBLE_QUOTE + token + '" was renamed: write "' + replacement + '" (D-094). The old'
-    + ' spelling gives no CSS and is removed in the next release.', {
+function throwRenamed(
+  token: string, replacement: string, decision?: string,
+): never {
+  throw new MnParseError(DOUBLE_QUOTE + token + '" was renamed: write "' + replacement + '" ('
+    + (decision || 'D-094') + '). The old spelling gives no CSS and is removed in the next release.', {
     token,
     handler: '',
     arg: '',
@@ -1375,9 +1411,6 @@ const ENUM_KEYWORDS: Record<string, Record<string, 1 | string>> = {
   },
   // Группа F: геометрические рамки `clip-path`; фигура (`circle(…)`) — функция и проходит мимо списка.
   clipPath: wordsSet('none border-box padding-box content-box margin-box fill-box stroke-box view-box'),
-  mixBlendMode: wordsSet('normal multiply screen overlay darken lighten'
-    + ' color-dodge color-burn hard-light soft-light difference exclusion hue'
-    + ' saturation color luminosity plus-darker plus-lighter'),
   textEmphasisStyle: wordsSet('none filled open dot circle double-circle'
     + ' triangle sesame'),
   // `right`/`left` валидны только вторым словом (`over right`): грамматика —
@@ -1596,13 +1629,24 @@ const FONT_KEYWORDS: Record<string, 1> = {
 /** Время: число с `s`/`ms`, либо голое число — оно получает `ms`, как у `dn`. */
 const REGEXP_TIME = /^[0-9]*\.?[0-9]+(m?s)?$/;
 /**
- * Имя CSS-свойства или `all`/`none`, либо несколько имён через `;`.
+ * Имя CSS-свойства у `tn`: `all`, `none` или несколько имён через `;` — сокращение `tn` для общих параметров.
  *
  * Список свойств CSS открыт, поэтому проверяется форма, а не словарь. `;` здесь
  * разделитель списка, а не терминатор имени переменной: имя переменной
- * начинается с `--`, и до этой проверки оно уже развёрнуто в `var(…)`.
+ * начинается с `--`, и до этой проверки оно уже развёрнуто в `var(…)`. Имя — от
+ * двух знаков: свойства из одной буквы в CSS нет, а `tnA_200` давало
+ * `transition:a 200ms` (D-106).
  */
-const REGEXP_PROPERTY_LIST = /^-?[a-z][a-z0-9-]*(?:;-?[a-z][a-z0-9-]*)*;?$/;
+const REGEXP_PROPERTY_LIST = /^-?[a-z][a-z0-9-]+(?:;-?[a-z][a-z0-9-]+)*;?$/;
+/** Заглавная в начале элемента списка значений — после `,` или `;` (см. `toKebabCase`). */
+const REGEXP_LIST_ITEM_CAPITAL = /([,;])([A-Z])/g;
+function lowerItemStart(
+  _match: string, separator: string, letter: string,
+): string {
+  return separator + letter.toLowerCase();
+}
+/** Одно имя CSS-свойства — от двух знаков, как в {@link REGEXP_PROPERTY_LIST}. */
+const REGEXP_PROPERTY_NAME = /^-?[a-z][a-z0-9-]+$/;
 /** Функции плавности: `cubic-bezier(…)`, `steps(…)`, `linear(…)`. */
 const REGEXP_EASING_FUNCTION = /^(?:cubic-bezier|steps|linear)\(/;
 /** Подстановка — годится в любой слот, что внутри неё, здесь не видно. */
@@ -2226,7 +2270,8 @@ function tabSizeValue(
 }
 
 /** Имя свойства в списке `will-change`: идентификатор, не число и не длина. */
-const REGEXP_WILL_CHANGE_ITEM = /^-?[a-z_][a-z0-9_-]*$/;
+// От двух знаков: `wcB` давало `will-change:b` (D-106).
+const REGEXP_WILL_CHANGE_ITEM = /^-?[a-z_][a-z0-9_-]+$/;
 /** Слова, которых в списке `will-change` быть не может: `auto` — только целиком, остальные — никогда. */
 const WILL_CHANGE_RESERVED: Record<string, 1> = wordsSet('auto none all will-change');
 /**
@@ -2314,19 +2359,26 @@ function flexFlowValue(parts: string[], raw: string): string {
 }
 
 /**
- * `transition-property`: `none` либо имена свойств через запятую. Список
- * свойств CSS открыт, поэтому проверяется форма имени — число или длина
- * свойством быть не может.
+ * `transition-property`: `none` либо имена свойств через запятую, как в CSS и как было в старой версии
+ * (`tp_color,opacity`, D-106). Список свойств CSS открыт, поэтому проверяется форма имени — число, длина,
+ * одна буква свойством быть не могут. `;` — сокращение `tn` для общих параметров; у `tp` параметров нет, и
+ * `tp_color;opacity` давало `transition-property:color;opacity` — `;` обрывал объявление в CSS.
  */
 function transitionPropertyValue(parts: string[], raw: string): string {
-  const l = parts.length;
+  const items = splitTopLevel(parts[0]);
+  const l = items.length;
+  let valid = parts.length < 2;
   let i = 0;
-  for (; i < l; i++) {
-    (parts[i].indexOf(OPEN_PAREN) > -1 || REGEXP_PROPERTY_LIST.test(parts[i]))
-      || throwInvalid(MSG_VALUE + raw + '" is invalid for "tp": expected '
-        + 'a CSS property name, `all` or `none`');
+  let item: string;
+  for (; valid && i < l; i++) {
+    item = items[i];
+    // `none` — только одно: в списке CSS его не принимает.
+    valid = item.indexOf(OPEN_PAREN) > -1
+      || REGEXP_PROPERTY_NAME.test(item) && (l < 2 || item !== NONE);
   }
-  return parts.join(SPACE);
+  valid || throwInvalid(MSG_VALUE + raw + '" is invalid for "tp": "A" (all), "N" (none) or CSS property names '
+    + 'separated by commas, as "tp_color,opacity"');
+  return parts[0];
 }
 
 /**
@@ -3043,8 +3095,12 @@ export default {
       ];
     }
 
+    /**
+     * Заглавная после `,`/`;` начинает новый элемент списка, как заглавная в начале значения, — дефиса перед ней
+     * нет: `tnColor;Opacity_200` давало `-opacity`, `ffArial,SansSerif` — `"sans-serif"` (D-106).
+     */
     function toKebabCase(v: string): string {
-      return camelToKebabCase(lowerFirst(v));
+      return camelToKebabCase(lowerFirst(v.replace(REGEXP_LIST_ITEM_CAPITAL, lowerItemStart)));
     }
     /**
    * Нормализует «свободное» значение хендлера, которое не разбирается общим
@@ -4465,6 +4521,24 @@ export default {
       }),
     });
 
+    /**
+     * `owr` — `overflow-wrap`. Старое имя свойства, `word-wrap`, пишется опцией `overflowWrapMode` (D-106) — для
+     * браузеров, что знают только его: `'legacy'` — вместо стандартного, `'both'` — оба, старое первым. Режим
+     * читается при компиляции токена, как `axisMode`: `setOptions` + `recompile` переключают живой инстанс.
+     */
+    function overflowWrapProvider(): MnHandler {
+      const standard = synonymProvider('overflowWrap', OVERFLOW_WRAP_SYNONYMS);
+      const legacy = synonymProvider('wordWrap', OVERFLOW_WRAP_SYNONYMS);
+      const both = synonymProvider([
+        'wordWrap',
+        'overflowWrap',
+      ], OVERFLOW_WRAP_SYNONYMS);
+      return (p) => {
+        const mode = instance.options.overflowWrapMode;
+        return (mode === WRAP_LEGACY ? legacy : (mode === WRAP_BOTH ? both : standard))(p);
+      };
+    }
+
     // Одиночные свойства группы F (RESEARCH/17, D-097).
     mn({
       csch: synonymProvider('colorScheme', COLOR_SCHEME_SYNONYMS),
@@ -4478,12 +4552,7 @@ export default {
         M: 'Manual',
         A: NAME_AUTO,
       }),
-      // `overflow-wrap` — стандартное имя `word-wrap` (`ww`); буквы те же, что у `wb`: `BW` — `break-word`.
-      owr: synonymProvider('overflowWrap', {
-        N: NAME_NORMAL,
-        BW: NAME_BREAK_WORD,
-        A: 'Anywhere',
-      }),
+      owr: overflowWrapProvider(),
       fvn: synonymProvider(
         'fontVariantNumeric', FONT_VARIANT_NUMERIC_SYNONYMS, 0, 0 as any, 0 as any, 1,
       ),
@@ -4505,7 +4574,12 @@ export default {
       }),
       // Функции (`atfCubicBezier\(…\)`, `atfSteps\(4\)`) проходят как есть.
       atf: synonymProvider('animationTimingFunction', TIMING_FUNCTION_SYNONYMS),
+      // Буквы `atf` (D-106); приоритет выше `tn`, как у прочих полных свойств перехода.
+      ttf: synonymProvider(
+        'transitionTimingFunction', TIMING_FUNCTION_SYNONYMS, 1,
+      ),
       bgbm: synonymProvider('backgroundBlendMode', BLEND_MODE_SYNONYMS),
+      mbm: synonymProvider('mixBlendMode', MIX_BLEND_MODE_SYNONYMS),
       /**
        * Обрезка текста по числу строк: `lcl3` → `overflow:hidden`, `display:-webkit-box`,
        * `-webkit-box-orient:vertical`, `-webkit-line-clamp:3`. `lclN` снимает обрезку (`display:block`,
@@ -4566,6 +4640,10 @@ export default {
       mn(name, (p) => (p.suffix ? 0 : throwRenamed(name, replacement)));
     });
     mn('apc', (p) => throwRenamed('apc' + p.suffix, 'ap' + (APPEARANCE_RENAMED[p.suffix] || p.suffix)));
+    // Переименовано (D-106): `ww` (`word-wrap` — старое имя `overflow-wrap`) → `owr`.
+    mn('ww', (p) => throwRenamed(
+      'ww' + p.suffix, 'owr' + (WW_RENAMED[p.suffix] || p.suffix), 'D-106',
+    ));
 
     mn(
       'x', (p) => {
@@ -5621,18 +5699,6 @@ export default {
         BW: NAME_BREAK_WORD,
         AP: 'AutoPhrase',
       }),
-      /**
-     * `word-wrap` (исторический алиас `overflow-wrap`). Значения `none`,
-     * `unrestricted`, `suppress` убраны 2026-09-24 — невалидны по спецификации,
-     * давали нерабочий CSS; добавлено `anywhere`.
-     */
-      ww: synonymProvider('wordWrap', {
-        N: NAME_NORMAL,
-        NM: NAME_NORMAL,
-        B: NAME_BREAK_WORD,
-        BW: NAME_BREAK_WORD,
-        A: 'Anywhere',
-      }),
       bgr: synonymProvider(
         'backgroundRepeat', REPEAT_SYNONYMS, 1,
       ),
@@ -6101,10 +6167,6 @@ export default {
         'transitionProperty',
         1,
       ],
-      ttf: [
-        'transitionTimingFunction',
-        1,
-      ],
 
 
 
@@ -6228,7 +6290,6 @@ export default {
       ],
 
       ts: ['transformStyle'],
-      mbm: ['mixBlendMode'],
       bsp: [
         'borderSpacing',
         0,
@@ -6391,3 +6452,10 @@ export default {
 
 /** Для тестов: краткие записи слов по свойствам (D-094). */
 export const STANDARD_VALUE_ABBREVIATIONS = VALUE_ABBREVIATIONS;
+/**
+ * Для тестов: буквы хендлеров на `synonymProvider` с закрытым списком (D-106) — значения в CamelCase, как в картах.
+ */
+export const STANDARD_SYNONYMS_BY_PROPERTY: Record<string, Record<string, string>> = {
+  transitionTimingFunction: TIMING_FUNCTION_SYNONYMS,
+  mixBlendMode: MIX_BLEND_MODE_SYNONYMS,
+};

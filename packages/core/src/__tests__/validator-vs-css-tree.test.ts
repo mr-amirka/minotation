@@ -34,6 +34,7 @@ import {
   minotationProvider,
 } from '../core/index';
 import presetStandard, {
+  STANDARD_SYNONYMS_BY_PROPERTY,
   STANDARD_VALUE_ABBREVIATIONS,
 } from '../presets/standard';
 import {
@@ -550,10 +551,16 @@ describe('списки закрытых перечислений совпада�
     const list = words.split(' ');
     const missing: string[] = [];
     // Слово с краткой записью пишется краткой (D-094): `apN`, а не `apNone`.
-    const abbreviations = STANDARD_VALUE_ABBREVIATIONS[prop.replace(/-([a-z])/g, (_m, c) => c.toUpperCase())] || {};
+    const propName = prop.replace(/-([a-z])/g, (_m, c) => c.toUpperCase());
+    const abbreviations = STANDARD_VALUE_ABBREVIATIONS[propName] || {};
     const short: Record<string, string> = {};
     for (const abbr of Object.keys(abbreviations)) {
       short[abbreviations[abbr]] = abbr;
+    }
+    // У `ttf`/`mbm` буквы в карте синонимов (D-106): `EaseIn` → `ease-in`.
+    const synonyms = STANDARD_SYNONYMS_BY_PROPERTY[propName] || {};
+    for (const abbr of Object.keys(synonyms)) {
+      short[synonyms[abbr].replace(/[A-Z]/g, (c, at) => (at ? '-' : '') + c.toLowerCase())] = abbr;
     }
     const listLength = list.length;
     for (let i = 0; i < listLength; i++) {

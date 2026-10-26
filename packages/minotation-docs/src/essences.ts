@@ -326,8 +326,8 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'delay', props: 'transition-delay', keywords: ['transition', 'delay'], examples: ['delay150'] },
   { name: 'tn', props: 'transition', keywords: ['transition'], description: '_ = пробел между значениями', examples: ['tn_all_1s_ease_0s'] },
   { name: 'an', props: 'animation, @keyframes', keywords: ['animation', 'keyframes', 'spin', 'ping', 'pulse', 'bounce'], description: 'Spin/Ping/Pulse/Bounce — с кадрами при использовании; _ = пробел между значениями', examples: ['anSpin', 'anPulse', 'an_spin_2s', 'anN'] },
-  { name: 'tp', props: 'transition-property', keywords: ['transition'], examples: ['tp_color'] },
-  { name: 'ttf', props: 'transition-timing-function', keywords: ['transition'], examples: ['ttfEaseIn'] },
+  { name: 'tp', props: 'transition-property', keywords: ['transition'], examples: ['tpA', 'tp_color,opacity'] },
+  { name: 'ttf', props: 'transition-timing-function', keywords: ['transition'], examples: ['ttfEI'] },
 
   // --- SVG / outline / доп. цвет ---
   { name: 'stroke', props: 'stroke', keywords: ['svg', 'color'], examples: ['strokeF', 'stroke0'] },
@@ -407,7 +407,6 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'ws', props: 'white-space', examples: ['wsNowrap'] },
   { name: 'wsc', props: 'white-space-collapse', examples: ['wscNormal'] },
   { name: 'wb', props: 'word-break', examples: ['wbBreakAll'] },
-  { name: 'ww', props: 'word-wrap', examples: ['wwNormal'] },
   { name: 'wos', props: 'word-spacing', examples: ['wos1rem'] },
   { name: 'q', props: 'quotes', examples: ['qNone'] },
   { name: 'va', props: 'vertical-align', keywords: ['vertical', 'align'], examples: ['vaBaseline'] },
@@ -415,7 +414,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'wm', props: 'writing-mode', keywords: ['writing', 'mode'], examples: ['wm'] },
   { name: 'v', props: 'visibility', examples: ['vHidden'] },
   { name: 'ts', props: 'transform-style', keywords: ['transform', 'style'], examples: ['tsFlat'] },
-  { name: 'mbm', props: 'mix-blend-mode', keywords: ['mix', 'blend', 'mode'], examples: ['mbmMultiply'] },
+  { name: 'mbm', props: 'mix-blend-mode', keywords: ['mix', 'blend', 'mode'], examples: ['mbmM'] },
 
   // --- Шрифт ---
   { name: 'font', props: 'font', description: 'shorthand', examples: ['fontCaption'] },

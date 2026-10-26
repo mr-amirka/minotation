@@ -564,6 +564,17 @@ export interface MnOptions {
    */
   axisMode?: 'logical' | 'physical';
   /**
+   * Имя свойства у `owr` в `presetStandard` (D-106): `word-wrap` — старое имя `overflow-wrap`, и только его знают
+   * IE, Edge до перехода на Chromium и Firefox до 49.
+   * - `'standard'` — `owrBW` → `overflow-wrap:break-word`;
+   * - `'legacy'` — `word-wrap:break-word`;
+   * - `'both'` — `word-wrap:break-word;overflow-wrap:break-word`: старый браузер берёт первое, новый — второе.
+   *
+   * Читается при компиляции токена: после `mn.setOptions({ overflowWrapMode })` — `mn.recompile()`.
+   * @default 'standard'
+   */
+  overflowWrapMode?: 'standard' | 'legacy' | 'both';
+  /**
    * Режим синтаксиса классов разметки (D-045): `'context-qualified'` (по умолчанию) или
    * `'tw4-compatible'` (Tailwind). Строки пресетов разбираются в режиме пресета.
    * @default 'context-qualified'

@@ -827,11 +827,11 @@ describe('свойства с закрытым перечнем значений
       'appearance:menulist-button',
     ],
     [
-      'ttfEaseInOut',
+      'ttfEIO',
       'transition-timing-function:ease-in-out',
     ],
     [
-      'ttfStepEnd',
+      'ttfSE',
       'transition-timing-function:step-end',
     ],
     [
@@ -859,7 +859,7 @@ describe('свойства с закрытым перечнем значений
       'transform-style:flat',
     ],
     [
-      'mbmPlusLighter',
+      'mbmPL',
       'mix-blend-mode:plus-lighter',
     ],
     [
@@ -2486,11 +2486,11 @@ describe('flex-flow, transition-property, font-family', () => {
       'flex-flow:column-reverse',
     ],
     [
-      'tpAll',
+      'tpA',
       'transition-property:all',
     ],
     [
-      'tpNone',
+      'tpN',
       'transition-property:none',
     ],
     [

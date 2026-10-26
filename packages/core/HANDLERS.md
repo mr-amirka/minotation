@@ -921,7 +921,14 @@ tn_color_0.2s_ease,transform_0.4s_linear
 
 Атомарные `tp`/`dn`/`ttf`/`delay` пишут по одному значению на все свойства
 сразу, поэтому разные параметры разным свойствам ими не задать. Одиночный
-переход лучше писать атомарно: `dn200 tpAll ttfEase`.
+переход лучше писать атомарно: `dn200 tpA ttfE`.
+
+`tp` — какие свойства анимируются: `tpA` — `all`, `tpN` — `none`, свойство — словом (`tp_color`,
+`tpBackgroundColor`), список — через запятую, как в CSS и как в старой версии: `tp_color,opacity` →
+`transition-property:color,opacity`. `;` — сокращение `tn` для общих параметров, а у `tp` параметров нет:
+`tp_color;opacity` и `tpColor_Opacity` бракуются с подсказкой «as "tp_color,opacity"», как и пустой элемент,
+одна буква (`tpB`) и `none` в списке (D-106). До D-106 запятая бракалась, а `;` уходил в CSS как есть и обрывал
+объявление: `transition-property:color;opacity` анимировал один `color`.
 
 До 2026-09-26 проверки не было вовсе: `tn200` давало `transition:200` (число
 без единицы), `tn10zz` — `transition:10zz`.
@@ -1520,7 +1527,7 @@ justify-items. Available: pliC_N (normal), …»); длинное слово —
 | `cpthBB`, `cpthCircle\(50%\)` | `clip-path:border-box`, `circle(50%)` | `N` none, рамки `BB`/`PB`/`CB`/`MB`/`FB`/`SB`/`VB`; фигура — функцией |
 | `fcaN` | `forced-color-adjust:none` | `A` auto, `N` none, `PPC` preserve-parent-color |
 | `hyA` | `hyphens:auto` | `N` none, `M` manual, `A` auto |
-| `owrA` | `overflow-wrap:anywhere` | `N` normal, `BW` break-word (как у `wb`), `A` anywhere |
+| `owrA` | `overflow-wrap:anywhere` | `N` normal, `BW` break-word (как у `wb`), `A` anywhere; старое имя `word-wrap` — опцией `overflowWrapMode` (ниже) |
 | `tbs4`, `tbs2em` | `tab-size:4`, `2em` | целое число пробелов без `px` или длина; не отрицательное, без `%` |
 | `fvnTN_SZ` | `font-variant-numeric:tabular-nums slashed-zero` | `N`, `LN`/`ON`, `PN`/`TN`, `DF`/`SF`, `O`, `SZ`; пара — из разных групп в порядке спецификации; три слова и больше — словами CSS: `fvn_lining-nums_tabular-nums_slashed-zero` |
 | `bdbC` | `-webkit-box-decoration-break:clone; box-decoration-break:clone` | `S` slice, `C` clone; префикс нужен Safari |
@@ -1529,8 +1536,24 @@ justify-items. Available: pliC_N (normal), …»); длинное слово —
 | `tnbAD` | `transition-behavior:allow-discrete` | `N` normal, `AD` allow-discrete |
 | `atfL`, `atfSteps\(4\)` | `animation-timing-function:linear`, `steps(4)` | `L`, `E`, `EI`, `EO`, `EIO`, `SS` step-start, `SE` step-end; функции как есть |
 | `bgbmM` | `background-blend-mode:multiply` | `N`, `M`, `S` screen, `O` overlay, `D`, `L`, `CD`, `CB`, `HL`, `SL`, `DF` difference, `E` exclusion, `H` hue, `ST` saturation, `C` color, `LM` luminosity |
+| `ttfEI`, `ttfSteps\(4\)` | `transition-timing-function:ease-in`, `steps(4)` | буквы `atf` (D-106) |
+| `mbmM` | `mix-blend-mode:multiply` | буквы `bgbm` и `PD` plus-darker, `PL` plus-lighter (D-106) |
 
 Длинное слово при наличии буквы — «Write it shorter: "hyA" instead of "hyAuto"».
+
+`jump-start`/`jump-end`/`jump-none`/`jump-both` у `ttf`/`atf` — аргументы `steps()`, а не значения свойства;
+пишутся функцией: `ttfSteps\(4,jump-end\)`.
+
+**`word-wrap` — старое имя `overflow-wrap`** (D-106). `ww…` даёт ошибку «"wwBW" was renamed: write "owrBW"»
+(`wwB` → `owrBW`, `wwNM` → `owrN`) и убирается через выпуск. Для браузеров, что знают только старое имя (IE, Edge
+до перехода на Chromium, Firefox до 49), — опция ядра `overflowWrapMode`:
+
+```ts
+const mn = minotationProvider({ presets: [presetStandard], overflowWrapMode: 'both' });
+// owrBW → word-wrap:break-word;overflow-wrap:break-word — старый браузер берёт первое, новый — второе
+// 'legacy' → word-wrap:break-word; 'standard' (по умолчанию) → overflow-wrap:break-word
+mn.setOptions({ overflowWrapMode: 'standard' }); mn.recompile(); // живой инстанс
+```
 
 ---
 
@@ -1549,26 +1572,21 @@ justify-items. Available: pliC_N (normal), …»); длинное слово —
 
 У части свойств набор значений закрыт спецификацией. Такие хендлеры принимают
 только слова из своего списка; всё остальное бракуется с предупреждением —
-`irZzz`, `apF00`, `ttfJumpNone` в CSS не попадают. До 2026-09-26 проходило
+`irZzz`, `apF00`, `gafZzz` в CSS не попадают. До 2026-09-26 проходило
 любое слово: `irF00` давал `image-rendering:f00`.
 
 | Тег | Свойство | Значения |
 |-----|----------|----------|
 | `ir` | `image-rendering` | `auto` `crisp-edges` `pixelated` `smooth` `optimize-contrast` `optimizeSpeed` `optimizeQuality` + вендорные |
 | `ap` | `appearance` | `none` `auto` `button` `textfield` `menulist-button` `checkbox` `radio` `listbox` `menulist` `meter` `progress-bar` `searchfield` `textarea` |
-| `ttf` | `transition-timing-function` | `linear` `ease` `ease-in` `ease-out` `ease-in-out` `step-start` `step-end` |
 | `gaf` | `grid-auto-flow` | `row` `column` `dense` |
 | `tds` | `text-decoration-skip` | `none` `objects` `spaces` `leading-spaces` `trailing-spaces` `edges` `box-decoration` |
 | `tdsi` | `text-decoration-skip-ink` | `auto` `all` `none` |
 | `tdst` | `text-decoration-style` | `solid` `double` `dotted` `dashed` `wavy` |
 | `tup` | `text-underline-position` | `auto` `from-font` `under` `left` `right` |
 | `ts` | `transform-style` | `flat` `preserve-3d` |
-| `mbm` | `mix-blend-mode` | 18 режимов наложения |
 | `tems` | `text-emphasis-style` | `none` `filled` `open` `dot` `circle` `double-circle` `triangle` `sesame` |
 | `temp` | `text-emphasis-position` | `auto` `over` `under` `right` `left` |
-
-`jump-start`/`jump-end`/`jump-none`/`jump-both` у `ttf` — это аргументы
-`steps()`, а не значения свойства; пишутся функцией: `ttfSteps\(4,jump-end\)`.
 
 **Несколько слов** берут `tems`, `temp`, `tds`, `tup`, `gaf` — через `_`:
 `temsFilled_Dot`, `gafRow_Dense`, `tempOver_Right`. Остальные принимают ровно
@@ -2155,7 +2173,7 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 | `tsa10` | `text-size-adjust:10%` |
 | `wsP` | `white-space:pre` |
 | `wscP` | `white-space-collapse:preserve` |
-| `wwN` | `word-wrap:normal` |
+| `owrN` | `overflow-wrap:normal` (бывший `wwN`, D-106) |
 | `tov` | `text-overflow:ellipsis` |
 
 `tov` без аргумента даёт `ellipsis` — самый частый случай обрезки текста.
@@ -2292,7 +2310,7 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 то же попадало бы в CSS двумя правилами.
 
 Там, где краткой записи нет, работает полная: `irPixelated`, `apMenulistButton`,
-`ttfEaseInOut`. Многословные значения пишутся camelCase и кебабятся сами —
+`temsDoubleCircle`. Многословные значения пишутся camelCase и кебабятся сами —
 справочник аббревиатур для них не нужен.
 
 Цвет задаётся кодом, а не именем: `cF00`, не `cRed`. По той же причине —

@@ -368,8 +368,8 @@ describe('сокращённые записи значений', () => {
       'white-space-collapse:preserve-breaks',
     ],
     [
-      'wwA',
-      'word-wrap:anywhere',
+      'owrA',
+      'overflow-wrap:anywhere',
     ],
     // Пропуски в существующих картах.
     [

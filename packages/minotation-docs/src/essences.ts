@@ -271,6 +271,24 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'tfb', props: 'transform-box', keywords: ['transform', 'box', 'svg'], examples: ['tfbFB', 'tfbBB'] },
   { name: 'bfv', props: 'backface-visibility', keywords: ['backface', 'visibility', '3d', 'flip'], examples: ['bfvH', 'bfvV'] },
 
+  // --- Одиночные свойства (группа F, D-097) ---
+  { name: 'acc', props: 'accent-color', keywords: ['accent', 'color', 'checkbox', 'form'], examples: ['accF00', 'accAuto'] },
+  { name: 'cc', props: 'caret-color', keywords: ['caret', 'color', 'cursor', 'input'], examples: ['ccF00', 'ccAuto'] },
+  { name: 'csch', props: 'color-scheme', keywords: ['color', 'scheme', 'dark', 'light', 'theme'], examples: ['cschL_D', 'cschD'] },
+  { name: 'wc', props: 'will-change', keywords: ['will', 'change', 'performance'], examples: ['wcT', 'wcSP'] },
+  { name: 'cpth', props: 'clip-path', keywords: ['clip', 'path', 'shape'], examples: ['cpthN', 'cpthBB', 'cpthCircle\\(50%\\)'] },
+  { name: 'fca', props: 'forced-color-adjust', keywords: ['forced', 'color', 'contrast', 'a11y'], examples: ['fcaN', 'fcaA'] },
+  { name: 'hy', props: 'hyphens', keywords: ['hyphens', 'text', 'wrap'], examples: ['hyA', 'hyM'] },
+  { name: 'owr', props: 'overflow-wrap', keywords: ['overflow', 'wrap', 'break', 'text'], examples: ['owrA', 'owrBW'] },
+  { name: 'tbs', props: 'tab-size', keywords: ['tab', 'size', 'code'], description: 'целое число пробелов без px или длина', examples: ['tbs4', 'tbs2em'] },
+  { name: 'fvn', props: 'font-variant-numeric', keywords: ['font', 'numeric', 'tabular', 'nums'], description: 'пара — из разных групп', examples: ['fvnTN', 'fvnTN_SZ'] },
+  { name: 'bdb', props: 'box-decoration-break', keywords: ['box', 'decoration', 'break', 'inline'], description: 'с -webkit- для Safari', examples: ['bdbC', 'bdbS'] },
+  { name: 'lcl', props: 'display, -webkit-line-clamp', keywords: ['line', 'clamp', 'truncate', 'ellipsis'], description: 'обрезка по числу строк; N снимает', examples: ['lcl3', 'lclN'] },
+  { name: 'fsz', props: 'field-sizing', keywords: ['field', 'sizing', 'input', 'textarea'], examples: ['fszC', 'fszF'] },
+  { name: 'tnb', props: 'transition-behavior', keywords: ['transition', 'discrete'], examples: ['tnbAD', 'tnbN'] },
+  { name: 'atf', props: 'animation-timing-function', keywords: ['animation', 'timing', 'easing'], examples: ['atfL', 'atfEIO'] },
+  { name: 'bgbm', props: 'background-blend-mode', keywords: ['background', 'blend', 'mode'], examples: ['bgbmM', 'bgbmS'] },
+
   // --- Границы (доп.) — портировано из старого 1.x essences.js, проверено live-компиляцией ---
   { name: 'bi', props: 'border-image', keywords: ['border', 'image'], description: 'без аргумента — none; url()/gradient() — camelCase/snakeCase строка', examples: ['bi'] },
   { name: 'bdcl', props: 'border-collapse', keywords: ['border', 'collapse', 'table'], examples: ['bdclC', 'bdclS'] },

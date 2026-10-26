@@ -1486,6 +1486,30 @@ justify-items. Available: pliC_N (normal), …»); длинное слово —
 | `bfvV` / `bfvH` | `backface-visibility:visible` / `hidden` |
 
 ---
+## Одиночные свойства (группа F, D-097)
+
+| Токен | CSS | Буквы и правила |
+|-------|-----|-----------------|
+| `accF00`, `accAuto` | `accent-color:#f00`, `auto` | цвет как у `c`; `auto` — словом: `A` — это код `#aaa` |
+| `ccF00`, `ccAuto` | `caret-color:#f00`, `auto` | то же |
+| `cschL_D` | `color-scheme:light dark` | `N` normal, `L` light, `D` dark; `O` (only) — только второй частью: `cschD_O` |
+| `wcT` | `will-change:transform` | `A` auto, `SP` scroll-position, `C` contents, `T` transform, `O` opacity; другое свойство — словом (`wcBackgroundColor`), список — через запятую: `wc_transform,opacity`; число, `none`, `all` — ошибка |
+| `cpthBB`, `cpthCircle\(50%\)` | `clip-path:border-box`, `circle(50%)` | `N` none, рамки `BB`/`PB`/`CB`/`MB`/`FB`/`SB`/`VB`; фигура — функцией |
+| `fcaN` | `forced-color-adjust:none` | `A` auto, `N` none, `PPC` preserve-parent-color |
+| `hyA` | `hyphens:auto` | `N` none, `M` manual, `A` auto |
+| `owrA` | `overflow-wrap:anywhere` | `N` normal, `BW` break-word (как у `wb`), `A` anywhere |
+| `tbs4`, `tbs2em` | `tab-size:4`, `2em` | целое число пробелов без `px` или длина; не отрицательное, без `%` |
+| `fvnTN_SZ` | `font-variant-numeric:tabular-nums slashed-zero` | `N`, `LN`/`ON`, `PN`/`TN`, `DF`/`SF`, `O`, `SZ`; пара — из разных групп в порядке спецификации; три слова и больше — словами CSS: `fvn_lining-nums_tabular-nums_slashed-zero` |
+| `bdbC` | `-webkit-box-decoration-break:clone; box-decoration-break:clone` | `S` slice, `C` clone; префикс нужен Safari |
+| `lcl3` | `overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3` | целое от 1 или переменная; `lclN` снимает обрезку |
+| `fszC` | `field-sizing:content` | `F` fixed, `C` content |
+| `tnbAD` | `transition-behavior:allow-discrete` | `N` normal, `AD` allow-discrete |
+| `atfL`, `atfSteps\(4\)` | `animation-timing-function:linear`, `steps(4)` | `L`, `E`, `EI`, `EO`, `EIO`, `SS` step-start, `SE` step-end; функции как есть |
+| `bgbmM` | `background-blend-mode:multiply` | `N`, `M`, `S` screen, `O` overlay, `D`, `L`, `CD`, `CB`, `HL`, `SL`, `DF` difference, `E` exclusion, `H` hue, `ST` saturation, `C` color, `LM` luminosity |
+
+Длинное слово при наличии буквы — «Write it shorter: "hyA" instead of "hyAuto"».
+
+---
 
 ## Misc
 

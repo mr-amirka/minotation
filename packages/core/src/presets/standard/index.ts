@@ -80,6 +80,7 @@ const NAME_SELF_END = 'SelfEnd';
 const NAME_FIRST_BASELINE = 'First_baseline';
 const NAME_LAST_BASELINE = 'Last_baseline';
 const NAME_ANCHOR_CENTER = 'AnchorCenter';
+const NAME_FIXED = 'Fixed';
 const NAME_BORDER_BOX = 'BorderBox';
 const NAME_CONTENT_BOX = 'ContentBox';
 const NAME_WRAP = 'Wrap';
@@ -438,7 +439,7 @@ const POSITION_SYNONYMS: Record<string, string> = {
   '': 'Relative',
   R: 'Relative',
   A: 'Absolute',
-  F: 'Fixed',
+  F: NAME_FIXED,
   S: 'Static',
   SK: 'Sticky',
 };
@@ -516,6 +517,103 @@ const SCROLL_SNAP_ALIGN_WORDS: Record<string, string> = {
 const SCROLL_SNAP_ALIGN_SYNONYMS = withPairs(
   {}, SCROLL_SNAP_ALIGN_WORDS, SCROLL_SNAP_ALIGN_WORDS,
 );
+
+/** Функции плавности словами — `atfL` → `linear`, `atfEIO` → `ease-in-out` (группа F, RESEARCH/17). */
+const TIMING_FUNCTION_SYNONYMS: Record<string, string> = {
+  L: 'Linear',
+  E: 'Ease',
+  EI: 'EaseIn',
+  EO: 'EaseOut',
+  EIO: 'EaseInOut',
+  SS: 'StepStart',
+  SE: 'StepEnd',
+};
+/**
+ * Режимы смешивания `background-blend-mode` (группа F): `bgbmM` → `multiply`. `C` — `color`, поэтому пары на «color»
+ * получили вторую букву: `CD` — `color-dodge`, `CB` — `color-burn`. `plus-darker`/`plus-lighter` фону не положены.
+ */
+const BLEND_MODE_SYNONYMS: Record<string, string> = {
+  N: NAME_NORMAL,
+  M: 'Multiply',
+  S: 'Screen',
+  O: 'Overlay',
+  D: 'Darken',
+  L: 'Lighten',
+  CD: 'ColorDodge',
+  CB: 'ColorBurn',
+  HL: 'HardLight',
+  SL: 'SoftLight',
+  DF: 'Difference',
+  E: 'Exclusion',
+  H: 'Hue',
+  ST: 'Saturation',
+  C: 'Color',
+  LM: 'Luminosity',
+};
+/**
+ * `color-scheme` (группа F): `cschL`, `cschL_D` → `light dark`, `cschD_O` → `dark only`. Одно `only` невалидно —
+ * схема нужна хотя бы одна, поэтому `O` бывает только второй частью.
+ */
+const COLOR_SCHEME_WORDS: Record<string, string> = {
+  L: 'Light',
+  D: 'Dark',
+};
+const COLOR_SCHEME_SYNONYMS = withPairs(
+  {
+    N: NAME_NORMAL,
+  }, COLOR_SCHEME_WORDS, {
+    ...COLOR_SCHEME_WORDS,
+    O: 'Only',
+  },
+);
+/**
+ * Группы `font-variant-numeric` в порядке спецификации: из группы берётся одно слово, `lining-nums oldstyle-nums`
+ * невалидно.
+ */
+const FONT_VARIANT_NUMERIC_GROUPS: Record<string, string>[] = [
+  {
+    LN: 'LiningNums',
+    ON: 'OldstyleNums',
+  },
+  {
+    PN: 'ProportionalNums',
+    TN: 'TabularNums',
+  },
+  {
+    DF: 'DiagonalFractions',
+    SF: 'StackedFractions',
+  },
+  {
+    O: 'Ordinal',
+  },
+  {
+    SZ: 'SlashedZero',
+  },
+];
+/**
+ * `font-variant-numeric` (группа F): слово или пара из РАЗНЫХ групп в порядке спецификации — `fvnTN`,
+ * `fvnTN_SZ` → `tabular-nums slashed-zero`. Обратный порядок (`fvnSZ_TN`) не порождается: то же значение второй
+ * записью дало бы второе правило. Три слова и больше — словами CSS: `fvn_lining-nums_tabular-nums_slashed-zero`.
+ */
+const FONT_VARIANT_NUMERIC_SYNONYMS = fontVariantNumericSynonyms();
+function fontVariantNumericSynonyms(): Record<string, string> {
+  const groups = FONT_VARIANT_NUMERIC_GROUPS;
+  const count = groups.length;
+  let out: Record<string, string> = {
+    N: NAME_NORMAL,
+    ...groups[count - 1],
+  };
+  let i = 0;
+  let j: number;
+  for (; i < count; i++) {
+    for (j = i + 1; j < count; j++) {
+      out = withPairs(
+        out, groups[i], groups[j],
+      );
+    }
+  }
+  return out;
+}
 
 /**
  * Буквы выравнивания: одни и те же у `ac`/`jc`, `ai`/`ji`, `as`/`js` и у пар `plc`/`pli`/`pls`, где первая часть —
@@ -1118,6 +1216,23 @@ const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
   perspective: {
     N: NONE,
   },
+  willChange: {
+    A: AUTO,
+    SP: 'scroll-position',
+    C: 'contents',
+    T: 'transform',
+    O: 'opacity',
+  },
+  clipPath: {
+    N: NONE,
+    BB: 'border-box',
+    PB: 'padding-box',
+    CB: 'content-box',
+    MB: 'margin-box',
+    FB: 'fill-box',
+    SB: 'stroke-box',
+    VB: 'view-box',
+  },
   gridColumn: {
     A: AUTO,
   },
@@ -1210,6 +1325,8 @@ const ENUM_KEYWORDS: Record<string, Record<string, 1 | string>> = {
     preserve3d: 'preserve-3d',
     'preserve3-d': 'preserve-3d',
   },
+  // Группа F: геометрические рамки `clip-path`; фигура (`circle(…)`) — функция и проходит мимо списка.
+  clipPath: wordsSet('none border-box padding-box content-box margin-box fill-box stroke-box view-box'),
   mixBlendMode: wordsSet('normal multiply screen overlay darken lighten'
     + ' color-dodge color-burn hard-light soft-light difference exclusion hue'
     + ' saturation color luminosity plus-darker plus-lighter'),
@@ -1997,6 +2114,54 @@ const REGEXP_GRID_LINE_NUMBER = /^[-+]?0*[1-9]\d*$/;
  * `auto`, имя, номер с именем или без, `span` с номером и/или именем — по одному каждого. Второй позиции нет, и
  * `gcs1/3` дало бы невалидное `grid-column-start:1/3`: пара пишется через `gc`.
  */
+/**
+ * `tab-size` (группа F): целое число пробелов без единицы (`tbs4` → `tab-size:4` — `px` здесь не дописывается, число
+ * и есть значение) или длина; не отрицательное и без процента. Дробь грамматика не берёт: `tbs1.5` давало
+ * `tab-size:1.5`.
+ */
+function tabSizeValue(
+  parts: string[], raw: string, essenceName: string,
+): string {
+  const v = parts[0];
+  parts.length < 2 && v[0] !== DASH && (v.indexOf(OPEN_PAREN) > -1 || REGEXP_VALUE_INTEGER.test(v)
+  || REGEXP_LENGTH_PART.test(v) && v.indexOf(PERCENT) < 0)
+  || throwInvalid(MSG_VALUE + raw + MSG_IS_INVALID_FOR + essenceName
+    + '": a whole number of spaces or a length — not negative, not a percent');
+  return v;
+}
+
+/** Имя свойства в списке `will-change`: идентификатор, не число и не длина. */
+const REGEXP_WILL_CHANGE_ITEM = /^-?[a-z_][a-z0-9_-]*$/;
+/** Слова, которых в списке `will-change` быть не может: `auto` — только целиком, остальные — никогда. */
+const WILL_CHANGE_RESERVED: Record<string, 1> = wordsSet('auto none all will-change');
+/**
+ * `will-change` (группа F): `auto` либо имена свойств через запятую — `wcT`, `wc_transform,opacity`. Список свойств
+ * открыт, поэтому проверяется форма имени: `wc10` давало `will-change:10`, `wc10_20` — `will-change:10 20`.
+ */
+function willChangeValue(
+  parts: string[], raw: string, essenceName: string,
+): string {
+  const v = parts[0];
+  const items = v.split(COMMA);
+  const l = items.length;
+  let valid = parts.length < 2;
+  let i = v === AUTO ? l : 0;
+  let item: string;
+  for (; valid && i < l; i++) {
+    item = items[i];
+    valid = item.indexOf(OPEN_PAREN) > -1 || REGEXP_WILL_CHANGE_ITEM.test(item) && !WILL_CHANGE_RESERVED[item];
+  }
+  valid || throwInvalid(MSG_VALUE + raw + MSG_IS_INVALID_FOR + essenceName
+    + '": "A" (auto) or property names separated by commas, as "wcT" or "wc_transform,opacity"');
+  return v;
+}
+
+/** Слово `auto` у свойства-цвета, где буква `A` занята кодом `#aaa`: `ccAuto`. */
+const AUTO_KEYWORD: Record<string, 1> = {
+  [AUTO]: 1,
+};
+/** Число строк у `lcl`: целое от 1. */
+const REGEXP_LINE_COUNT = /^[1-9]\d*$/;
 function gridLineSingleValue(
   parts: string[], raw: string, essenceName: string,
 ): string {
@@ -2102,6 +2267,8 @@ const SLOT_VALIDATORS: Record<string, (
   gridAutoRows: trackValue,
   gridRow: gridLineValue,
   gridColumn: gridLineValue,
+  tabSize: tabSizeValue,
+  willChange: willChangeValue,
   gridRowStart: gridLineSingleValue,
   gridRowEnd: gridLineSingleValue,
   gridColumnStart: gridLineSingleValue,
@@ -3760,12 +3927,32 @@ export default {
         'WebkitTapHighlightColor',
         1,
       ],
+      // Группа F (RESEARCH/17): цвет галочек и полей формы, цвет каретки. `auto` — словом (`ccAuto`): буква `A` —
+      // код цвета `#aaa`.
+      acc: [
+        'accentColor',
+        1,
+        AUTO_KEYWORD,
+      ],
+      cc: [
+        'caretColor',
+        1,
+        AUTO_KEYWORD,
+      ],
     }, (options: any[], pfx: string) => {
       const propName = options[0];
       const priority = options[1] || 0;
+      // Слова свойства сверх цвета — `auto` у `caret-color`.
+      const keywords: Record<string, 1> | undefined = options[2];
       mn(
         pfx, (p) => {
           let s: Record<string, any>; let v: string | undefined; let synonym: any;
+          const word = keywords && toKebabCase(p.suffix);
+          if (word && keywords[word]) {
+            s = {};
+            s[propName] = word;
+            return styleWrap(s, priority);
+          }
           const raw = rawColorValue(p.suffix);
           if (raw) {
             s = {};
@@ -4153,6 +4340,67 @@ export default {
         V: NAME_VISIBLE,
         H: NAME_HIDDEN,
       }),
+    });
+
+    // Одиночные свойства группы F (RESEARCH/17, D-097).
+    mn({
+      csch: synonymProvider('colorScheme', COLOR_SCHEME_SYNONYMS),
+      fca: synonymProvider('forcedColorAdjust', {
+        A: NAME_AUTO,
+        N: NAME_NONE,
+        PPC: 'PreserveParentColor',
+      }),
+      hy: synonymProvider('hyphens', {
+        N: NAME_NONE,
+        M: 'Manual',
+        A: NAME_AUTO,
+      }),
+      // `overflow-wrap` — стандартное имя `word-wrap` (`ww`); буквы те же, что у `wb`: `BW` — `break-word`.
+      owr: synonymProvider('overflowWrap', {
+        N: NAME_NORMAL,
+        BW: NAME_BREAK_WORD,
+        A: 'Anywhere',
+      }),
+      fvn: synonymProvider(
+        'fontVariantNumeric', FONT_VARIANT_NUMERIC_SYNONYMS, 0, 0 as any, 0 as any, 1,
+      ),
+      // Safari понимает только префиксное свойство, поэтому пишутся оба.
+      bdb: synonymProvider([
+        'WebkitBoxDecorationBreak',
+        'boxDecorationBreak',
+      ], {
+        S: 'Slice',
+        C: 'Clone',
+      }),
+      fsz: synonymProvider('fieldSizing', {
+        F: NAME_FIXED,
+        C: 'Content',
+      }),
+      tnb: synonymProvider('transitionBehavior', {
+        N: NAME_NORMAL,
+        AD: 'AllowDiscrete',
+      }),
+      // Функции (`atfCubicBezier\(…\)`, `atfSteps\(4\)`) проходят как есть.
+      atf: synonymProvider('animationTimingFunction', TIMING_FUNCTION_SYNONYMS),
+      bgbm: synonymProvider('backgroundBlendMode', BLEND_MODE_SYNONYMS),
+      /**
+       * Обрезка текста по числу строк: `lcl3` → `overflow:hidden`, `display:-webkit-box`,
+       * `-webkit-box-orient:vertical`, `-webkit-line-clamp:3`. `lclN` снимает обрезку (`display:block`,
+       * `-webkit-line-clamp:unset`). Число — целое от 1; переменная — как есть: `lcl--lines`.
+       */
+      lcl: (p: MnEssenceParams) => {
+        const suffix = p.suffix;
+        const none = suffix === 'N';
+        const lines = none ? 'unset' : cssVarValue(suffix) || (REGEXP_LINE_COUNT.test(suffix) ? suffix
+          : throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name
+            + '": the number of lines is a whole number from 1, as "' + p.name + '3", or "N" to lift the clamp'));
+        return styleWrap({
+          overflow: none ? 'visible' : 'hidden',
+          display: none ? 'block' : '-webkit-box',
+          WebkitBoxOrient: none ? 'horizontal' : 'vertical',
+          WebkitLineClamp: lines,
+        });
+      },
     });
 
     forIn({
@@ -5249,7 +5497,7 @@ export default {
       ),
       bga: synonymProvider(
         'backgroundAttachment', {
-          F: 'Fixed',
+          F: NAME_FIXED,
           S: 'Scroll',
           L: 'Local',
         }, 1,
@@ -5829,6 +6077,12 @@ export default {
         0,
         LENGTH_MULTI,
       ],
+      // Группа F: `wcT` → `transform`; любое другое свойство — словом (`wcBackgroundColor`).
+      wc: ['willChange'],
+      // Группа F: `cpthN`, `cpthBB` → `border-box`, фигура — функцией: `cpthCircle\(50%\)`.
+      cpth: ['clipPath'],
+      // Группа F: `tbs4` → `tab-size:4`, `tbs2em`.
+      tbs: ['tabSize'],
       // `perspective` (группа D): неотрицательная длина или `none` — `psp500`, `pspN`.
       psp: [
         'perspective',

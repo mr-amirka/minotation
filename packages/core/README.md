@@ -729,14 +729,22 @@ export const App = () => <div class="p10 m20" />;
 
 ## Форматы сборки
 
-Пакет публикуется в двух форматах, выбор — по полю `exports`:
+Пакет публикуется в трёх сборках, выбор — по полю `exports`:
 
 | Подключение | Файлы |
 |---|---|
-| `import` (Vite, Node ESM, бандлеры) | `dist/esm/*.mjs` |
+| `browser` (Vite в браузере, webpack `target: 'web'`, esbuild `--platform=browser`, Rollup с `browser: true`) | `dist/browser/*.mjs` |
+| `import` (Node ESM, Vite SSR, прочие бандлеры) | `dist/esm/*.mjs` |
 | `require` | `dist/*.js` (CommonJS) |
 
-Точки входа одинаковые: `minotation`, `minotation/mne`, `minotation/syntax`.
+Точки входа одинаковые: `minotation`, `minotation/mne`, `minotation/syntax` (последней в браузерной
+сборке нет — это и есть парсер).
+
+Браузерная сборка — тот же код, кроме одного: синтаксический сканер в ней не грузится, и `typescript` в
+бандл не попадает. Бандл `minotationProvider` + `presetStandard` — около 45 КБ gzip (с `typescript` было
+1 081 КБ; проверяет `pnpm test:dist`). `createScanner` там разбирает файлы текстом, а с `syntax: true`
+предупреждает: «the syntax scanner runs in Node only».
+
 ESM грузится и Node напрямую, и Vite как исходник workspace-пакета — обходы
 вроде `ssr.external: ['minotation']` не нужны. Если в процессе оказались обе
 копии (например, ESM-плагин и CJS-накопитель), они совместимы: ошибка разбора

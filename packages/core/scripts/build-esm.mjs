@@ -1,10 +1,18 @@
 /**
- * ESM-сборка ядра: `dist/esm/*.mjs` рядом с CommonJS из `tsc`.
+ * ESM-сборки ядра рядом с CommonJS из `tsc`: `dist/esm/*.mjs` (Node и всё, что не браузер) и
+ * `dist/browser/*.mjs` (условие `browser` в `exports`).
  *
- * Зачем. Подключённое через workspace-симлинк, ядро Vite в dev исполняет как
+ * Зачем ESM. Подключённое через workspace-симлинк, ядро Vite в dev исполняет как
  * исходник, то есть как ES-модуль, — и CommonJS-сборка падает на `exports is
  * not defined` (найдено на `affiliate`, 2026-10-05). Потребителю приходилось
  * обходить это `ssr.external` и `optimizeDeps.include`.
+ *
+ * Зачем отдельная браузерная сборка (2026-10-26, письмо fundamentool). Сканер грузит синтаксический
+ * разбор лениво (`require('./syntaxScan')` внутри функции), но бандл ESM-сборки встраивает этот
+ * `require` в общий чанк, и `import ts from "typescript"` оказывается в каждом бандле, дошедшем до
+ * `minotation`: 1 081 КБ gzip вместо 57. В браузерной сборке `./syntaxScan` заменён заглушкой, которая
+ * при загрузке бросает «только в Node»: сканер ловит это так же, как отсутствие `typescript`, и
+ * разбирает файлы текстом. Исходник один, сборок две — разница только в том, куда ведёт этот `require`.
  *
  * Почему esbuild с бандлом, а не второй прогон `tsc`. ESM, который грузит сам
  * Node, требует расширений в относительных импортах — `tsc` их не дописывает.
@@ -19,34 +27,69 @@ import { build } from 'esbuild';
 import { rmSync } from 'fs';
 import { fileURLToPath } from 'url';
 
-rmSync(fileURLToPath(new URL('../dist/esm', import.meta.url)), {
-  recursive: true,
-  force: true,
-});
+/** Сообщение заглушки — его увидит `syntax: true` в браузерной сборке. */
+const NODE_ONLY = 'the syntax scanner runs in Node only; this is the browser build of minotation';
 
-await build({
-  absWorkingDir: fileURLToPath(new URL('..', import.meta.url)),
-  entryPoints: {
-    index: 'src/index.ts',
-    mne: 'src/mne.ts',
-    syntaxScan: 'src/syntaxScan.ts',
+/** В браузерной сборке ленивый `require('./syntaxScan')` ведёт сюда. */
+const browserSyntaxStub = {
+  name: 'minotation-browser-syntax-stub',
+  setup(builder) {
+    builder.onResolve({ filter: /^\.\/syntaxScan$/ }, () => ({
+      path: 'syntaxScan',
+      namespace: 'minotation-node-only',
+    }));
+    builder.onLoad({ filter: /.*/, namespace: 'minotation-node-only' }, () => ({
+      contents: 'throw new Error(' + JSON.stringify(NODE_ONLY) + ');',
+      loader: 'js',
+    }));
   },
-  outdir: 'dist/esm',
-  outExtension: { '.js': '.mjs' },
-  bundle: true,
-  splitting: true,
-  format: 'esm',
-  platform: 'neutral',
-  target: 'es2022',
-  // Парсер — необязательная peer-зависимость, его ставит потребитель.
-  external: ['typescript'],
-  // `fundamentool` берётся из исходников: его опубликованный `dist/esm`
-  // собирается отдельно от `build` и отстал от CJS (на 2026-10-05 в нём нет
-  // `flatFlags`, `mergeDepth`, `setBase`, `toFixed`), а CJS не вырезается
-  // tree-shaking-ом. Исходник — ESM и всегда актуален.
-  alias: {
-    fundamentool: fileURLToPath(new URL('../node_modules/fundamentool/src/index.ts', import.meta.url)),
-  },
-  sourcemap: true,
-  logLevel: 'warning',
-});
+};
+
+/**
+ * Одна ESM-сборка.
+ *
+ * @param outdir — каталог в `dist`
+ * @param entryPoints — точки входа
+ * @param plugins — плагины esbuild
+ */
+async function buildEsm(outdir, entryPoints, plugins) {
+  rmSync(fileURLToPath(new URL('../' + outdir, import.meta.url)), {
+    recursive: true,
+    force: true,
+  });
+  await build({
+    absWorkingDir: fileURLToPath(new URL('..', import.meta.url)),
+    entryPoints,
+    outdir,
+    outExtension: { '.js': '.mjs' },
+    bundle: true,
+    splitting: true,
+    format: 'esm',
+    platform: 'neutral',
+    target: 'es2022',
+    // Парсер — необязательная peer-зависимость, его ставит потребитель.
+    external: ['typescript'],
+    // `fundamentool` берётся из исходников: его опубликованный `dist/esm`
+    // собирается отдельно от `build` и отстал от CJS (на 2026-10-05 в нём нет
+    // `flatFlags`, `mergeDepth`, `setBase`, `toFixed`), а CJS не вырезается
+    // tree-shaking-ом. Исходник — ESM и всегда актуален.
+    alias: {
+      fundamentool: fileURLToPath(new URL('../node_modules/fundamentool/src/index.ts', import.meta.url)),
+    },
+    plugins,
+    sourcemap: true,
+    logLevel: 'warning',
+  });
+}
+
+await buildEsm('dist/esm', {
+  index: 'src/index.ts',
+  mne: 'src/mne.ts',
+  syntaxScan: 'src/syntaxScan.ts',
+}, []);
+
+// `minotation/syntax` в браузере не нужен: он и есть парсер.
+await buildEsm('dist/browser', {
+  index: 'src/index.ts',
+  mne: 'src/mne.ts',
+}, [browserSyntaxStub]);

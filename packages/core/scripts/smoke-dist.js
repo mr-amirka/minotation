@@ -1,5 +1,5 @@
 /**
- * Smoke-тест собранного `dist` — CommonJS (`dist/*.js`) и ESM (`dist/esm/*.mjs`).
+ * Smoke-тест собранного `dist` — CommonJS (`dist/*.js`), ESM (`dist/esm/*.mjs`) и браузерная (`dist/browser/*.mjs`).
  * Запускается через: pnpm test:dist
  * Ловит расхождение между исходниками (ts-jest) и тем, что реально грузит Node.
  *
@@ -77,7 +77,49 @@ async function checkEsm() {
   check('cross-copy parse-error', mixed.warnings, 'parse-error fx');
 }
 
-checkEsm().then(() => {
+// ── Браузерная сборка (dist/browser, 2026-10-26) ─────────────────────────────
+// Бандл для браузера через имя пакета (условие `browser` в `exports`) не содержит `typescript`:
+// раньше общий чанк ESM-сборки импортировал его статически — 1 081 КБ gzip вместо 57 (письмо
+// fundamentool). Сама сборка: те же экспорты, тот же вывод, сканер с `syntax: true` разбирает
+// текстом и говорит почему.
+
+const BROWSER_ENTRY = "import { minotationProvider, presetStandard } from 'minotation';\n"
+  + 'const mn = minotationProvider();\n'
+  + 'mn.setPresets([presetStandard]);\n'
+  + "window.c = mn.getCompiler('class');\n";
+
+/** Верхняя граница gzip-размера бандла выше: 45 КБ на 2026-10-26, запас — на рост пресетов. */
+const BROWSER_GZIP_LIMIT = 80 * 1024;
+
+async function checkBrowser() {
+  const esbuild = require('esbuild');
+  const zlib = require('zlib');
+  const result = await esbuild.build({
+    stdin: { contents: BROWSER_ENTRY, resolveDir: __dirname, loader: 'js' },
+    bundle: true,
+    minify: true,
+    platform: 'browser',
+    write: false,
+    metafile: true,
+    logLevel: 'silent',
+  });
+  const inputs = Object.keys(result.metafile.inputs);
+  check('browser bundle via exports.browser', inputs.join(','), 'dist/browser/index.mjs');
+  checkAbsent('browser bundle without typescript', inputs.join(','), 'typescript');
+  const gzip = zlib.gzipSync(result.outputFiles[0].contents, { level: 9 }).length;
+  check('browser bundle gzip <= ' + BROWSER_GZIP_LIMIT, String(gzip <= BROWSER_GZIP_LIMIT), 'true');
+
+  const browser = await import('../dist/browser/index.mjs');
+  const cjsKeys = Object.keys(cjs).filter((k) => k !== '__esModule').sort().join(',');
+  check('browser exports = cjs exports', Object.keys(browser).sort().join(','), cjsKeys);
+  checkBuild('browser', browser);
+  const warnings = [];
+  const scan = browser.createScanner({ attr: 'class', syntax: true, onWarning: (m) => warnings.push(m) });
+  check('browser scanner by text', scan('<div class="p10"></div>', 'App.tsx').join(','), 'p10');
+  check('browser scanner says why', warnings.join(''), 'runs in Node only');
+}
+
+checkEsm().then(checkBrowser).then(() => {
   if (failed) {
     console.error('\nDist smoke-test FAILED.');
     process.exit(1);

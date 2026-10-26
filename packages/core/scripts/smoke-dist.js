@@ -119,6 +119,52 @@ async function checkBrowser() {
   check('browser scanner says why', warnings.join(''), 'runs in Node only');
 }
 
+// ── Разрешение `exports` (2026-10-26, письмо web-games) ──────────────────────
+// jest в окружении jsdom ставит условие `browser` и грузит модули через `require`: ему нельзя
+// отдать `.mjs`. Свой `require` Node 22+ грузит `.mjs` и этого не ловит, поэтому разрешаем
+// `exports` по алгоритму Node сами: ключи по порядку, первый подходящий.
+
+/**
+ * Файл, который получит потребитель с данным набором условий.
+ *
+ * @param target — значение из `exports`
+ * @param conditions — условия резолвера (`default` подходит всегда)
+ */
+function resolveExport(target, conditions) {
+  if (typeof target === 'string') return target;
+  for (const key of Object.keys(target)) {
+    if (key === 'default' || conditions.includes(key)) {
+      const found = resolveExport(target[key], conditions);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function checkExports() {
+  const { exports } = require('../package.json');
+  const fs = require('fs');
+  const path = require('path');
+  const cases = [
+    ['require', ['require']],
+    ['require+browser', ['require', 'browser']],
+    ['import', ['import']],
+    ['import+browser', ['import', 'browser']],
+  ];
+  for (const entry of Object.keys(exports)) {
+    for (const [label, conditions] of cases) {
+      const file = resolveExport(exports[entry], conditions);
+      const name = 'exports ' + entry + ' ' + label;
+      check(name + ' exists', String(Boolean(file) && fs.existsSync(path.join(__dirname, '..', file))), 'true');
+      // CommonJS-потребитель получает CommonJS, ESM-потребитель — ESM.
+      const isEsm = Boolean(file) && file.endsWith('.mjs');
+      check(name + ' format', isEsm ? 'esm' : 'cjs', conditions[0] === 'import' ? 'esm' : 'cjs');
+    }
+  }
+}
+
+checkExports();
+
 checkEsm().then(checkBrowser).then(() => {
   if (failed) {
     console.error('\nDist smoke-test FAILED.');

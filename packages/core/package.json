@@ -13,13 +13,19 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "browser": "./dist/browser/index.mjs",
+      "browser": {
+        "import": "./dist/browser/index.mjs",
+        "default": "./dist/index.js"
+      },
       "import": "./dist/esm/index.mjs",
       "default": "./dist/index.js"
     },
     "./mne": {
       "types": "./dist/mne.d.ts",
-      "browser": "./dist/browser/mne.mjs",
+      "browser": {
+        "import": "./dist/browser/mne.mjs",
+        "default": "./dist/mne.js"
+      },
       "import": "./dist/esm/mne.mjs",
       "default": "./dist/mne.js"
     },

@@ -64,6 +64,8 @@ const R = 'r';
 const NAME_VISIBLE = 'Visible';
 const NAME_COVER = 'Cover';
 const NAME_BLOCK = 'Block';
+const NAME_INLINE = 'Inline';
+const NAME_ALWAYS = 'Always';
 const NAME_BOTH = 'Both';
 const NAME_COLLAPSE = 'Collapse';
 const NAME_TEXT = 'Text';
@@ -349,7 +351,7 @@ const TD_SYNONYMS = {
 };
 const BREAK_AFTER_SYNONYMS = {
   A: NAME_AUTO,
-  AW: 'Always',
+  AW: NAME_ALWAYS,
   AV: 'Avoid',
   AVP: 'AvoidPage',
   AVC: 'AvoidColumn',
@@ -410,6 +412,70 @@ const OVERSCROLL_BEHAVIOR_PRIORITIES = {
   RL: NAME_REVERT_LAYER,
   U: NAME_UNSET,
 };
+
+/**
+ * Словарь «одно значение или пара через `_`»: к записям `first` добавляются
+ * пары `A_B` → `WordA_WordB` (`valueNormalize` разворачивает `_` в пробел).
+ * Пара из двух одинаковых частей не порождается — `start start` то же, что
+ * `start`, и вторая запись дала бы второе правило.
+ */
+function withPairs(
+  base: Record<string, string>,
+  first: Record<string, string>,
+  second: Record<string, string>,
+): Record<string, string> {
+  const out: Record<string, string> = {
+    ...base,
+    ...first,
+  };
+  const firstKeys = Object.keys(first);
+  const secondKeys = Object.keys(second);
+  let i = 0;
+  let j: number;
+  let a: string;
+  let b: string;
+  const firstCount = firstKeys.length;
+  const secondCount = secondKeys.length;
+  for (; i < firstCount; i++) {
+    a = firstKeys[i];
+    for (j = 0; j < secondCount; j++) {
+      b = secondKeys[j];
+      a === b || (out[a + UNDERSCORE + b] = first[a] + UNDERSCORE + second[b]);
+    }
+  }
+  return out;
+}
+
+/**
+ * `scroll-snap-type` (группа B, RESEARCH/17): ось и, через `_`, строгость —
+ * `sstX` → `x`, `sstX_M` → `x mandatory`, `sstBH_P` → `both proximity`.
+ * `B` — `block`, как у `display`.
+ */
+const SCROLL_SNAP_TYPE_SYNONYMS = withPairs(
+  {
+    N: NAME_NONE,
+  }, {
+    X: 'X',
+    Y: 'Y',
+    B: NAME_BLOCK,
+    I: NAME_INLINE,
+    BH: NAME_BOTH,
+  }, {
+    M: 'Mandatory',
+    P: 'Proximity',
+  },
+);
+
+/** `scroll-snap-align`: одно значение или пара «блок_строка» — `ssaS`, `ssaC_S`. */
+const SCROLL_SNAP_ALIGN_WORDS: Record<string, string> = {
+  N: NAME_NONE,
+  S: NAME_START,
+  E: NAME_END,
+  C: NAME_CENTER,
+};
+const SCROLL_SNAP_ALIGN_SYNONYMS = withPairs(
+  {}, SCROLL_SNAP_ALIGN_WORDS, SCROLL_SNAP_ALIGN_WORDS,
+);
 
 const POSITION_PRIORITIES: Record<string, number> = {
   relative: 0,
@@ -2883,7 +2949,9 @@ export default {
    * отсутствует. Приводить его к строке на месте вызова нельзя — `'' +
    * undefined` даёт `"undefined"`, и проверка ниже перестала бы срабатывать.
    */
-    function assertShortestHex(p: MnEssenceParams, hex?: string | number): void {
+    function assertShortestHex(
+      p: MnEssenceParams, hex?: string | number, head = '', tail = '',
+    ): void {
       if (!hex) {
         return;
       }
@@ -2891,8 +2959,10 @@ export default {
       const shorter = shorterHex(hex);
       const best = canonicalAlpha(shorter || hex) || shorter;
       if (best && best !== hex) {
-        throwInvalid('Write the color as "' + p.name + best
-        + MSG_INSTEAD_OF + p.name + hex + MSG_SAME_VALUE);
+        // `head`/`tail` — остальная часть значения, когда цветов в нём несколько
+        // (`sbcF00_0000` → подсказка `sbcF00_0`, а не `sbc0`).
+        throwInvalid('Write the color as "' + p.name + head + best + tail
+        + MSG_INSTEAD_OF + p.name + head + hex + tail + MSG_SAME_VALUE);
       }
     }
     /** Ведущий `0` перед точкой — в нотации альфа пишется как `.67`, не `0.67`. */
@@ -3134,6 +3204,23 @@ export default {
           // `border-width` — это `<line-width>`, то есть длина или одно из трёх
           // слов. Процентов не принимает, в отличие от `padding`/`margin`.
           1,
+        ],
+        // Группа B (RESEARCH/17): отступы прокрутки. `scroll-margin` — только
+        // длина, зато со знаком; `scroll-padding` — длина, процент или `auto`.
+        sm: [
+          'scroll-margin',
+          0,
+          0,
+          {},
+          1,
+        ],
+        sp: [
+          'scroll-padding',
+          0,
+          1,
+          {
+            A: NAME_AUTO,
+          },
         ],
       }, (args: any[], pfx: string) => {
         const propName = args[0];
@@ -3484,6 +3571,85 @@ export default {
             );
         }, PATTERN_COLOR,
       );
+    });
+
+    /** Код цвета в части значения: hex и, через точку, альфа (`F00.5`). */
+    const REGEXP_HEX_ALPHA = /^[0-9A-Fa-f]+(\.[0-9]+)?$/;
+    /**
+     * Один цвет из значения, где цветов несколько: синоним, функция, переменная
+     * (в том числе с альфой) или код. Те же проверки, что у `c`: длинное слово
+     * при наличии краткого, неукороченный код, не-цвет — ошибка.
+     *
+     * Возвращает список, как `getColor`: с `altColor` у кода с альфой там
+     * запасное значение и основное.
+     */
+    function colorPart(
+      p: MnEssenceParams, parts: string[], index: number,
+    ): string[] {
+      const part = parts[index];
+      const synonym = COLOR_SYNONYMS[part];
+      if (synonym) {
+        return getColor(synonym);
+      }
+      const raw = rawColorValue(part) || cssVarValue(part);
+      if (raw) {
+        return [raw];
+      }
+      // Подсказка называет весь токен: `sbcCT_0`, а не `CT`.
+      const head = p.name + parts.slice(0, index).join(UNDERSCORE) + (index ? UNDERSCORE : '');
+      const tail = index < parts.length - 1 ? UNDERSCORE + parts.slice(index + 1).join(UNDERSCORE) : '';
+      const abbr = COLOR_SYNONYM_BY_WORD[part.toLowerCase()];
+      abbr && throwInvalid('Write the color shorter: "' + head + abbr + tail
+      + MSG_INSTEAD_OF + head + part + tail + DOUBLE_QUOTE);
+      REGEXP_HEX_ALPHA.test(part) || throwInvalid(MSG_VALUE + part
+      + '" is not a color: expected a code (`F00`), a variable or a keyword');
+      assertShortestHex(
+        p, part, head.slice(p.name.length), tail,
+      );
+      return getColor(part);
+    }
+
+    /**
+     * `scrollbar-color` (группа B, RESEARCH/17): `sbcA` → `auto`, иначе ровно два
+     * цвета через `_` — ползунок и дорожка: `sbcF00_0` → `#f00 #000`. Одна
+     * переменная — значение целиком (`sbc--bar`), как у тени.
+     *
+     * С `altColor` у кода с альфой цвет приходит парой «запасное, основное» —
+     * тогда и свойство пишется дважды: сначала обе запасные части, потом обе
+     * основные.
+     */
+    mn('sbc', (p) => {
+      const suffix = p.suffix;
+      if (suffix === 'A') {
+        return styleWrap({
+          scrollbarColor: AUTO,
+        });
+      }
+      const parts = splitValueParts(suffix);
+      if (parts.length === 1) {
+        const whole = cssVarValue(suffix) || (GLOBAL_KEYWORDS[toKebabCase(suffix)] && toKebabCase(suffix));
+        whole || throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name
+        + '": expected "A" (auto), two colors — thumb_track, as "sbcF00_0" — or a variable');
+        return styleWrap({
+          scrollbarColor: whole,
+        });
+      }
+      parts.length === 2 || throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name
+      + '": two colors are expected — thumb_track, as "sbcF00_0"');
+      const thumb = colorPart(
+        p, parts, 0,
+      );
+      const track = colorPart(
+        p, parts, 1,
+      );
+      const main = thumb[thumb.length - 1] + SPACE + track[track.length - 1];
+      const fallback = thumb[0] + SPACE + track[0];
+      return styleWrap({
+        scrollbarColor: fallback === main ? main : [
+          fallback,
+          main,
+        ],
+      });
     });
 
     forIn({
@@ -4079,7 +4245,7 @@ export default {
           N: NAME_NONE,
           F: 'Flex',
           IF: 'InlineFlex',
-          I: 'Inline',
+          I: NAME_INLINE,
           IB: 'InlineBlock',
           LI: 'ListItem',
           RI: 'RunIn',
@@ -4132,6 +4298,26 @@ export default {
       ),
       ovbx: synonymProvider('overscrollBehaviorX', OVERSCROLL_BEHAVIOR_PRIORITIES),
       ovby: synonymProvider('overscrollBehaviorY', OVERSCROLL_BEHAVIOR_PRIORITIES),
+
+      // Группа B (RESEARCH/17): привязка прокрутки и полоса прокрутки. Пары
+      // значений перечислены словарём (`sstX_M`, `ssaC_S`), поэтому сырой
+      // режим этим свойствам не нужен.
+      sst: synonymProvider('scrollSnapType', SCROLL_SNAP_TYPE_SYNONYMS),
+      ssa: synonymProvider('scrollSnapAlign', SCROLL_SNAP_ALIGN_SYNONYMS),
+      sss: synonymProvider('scrollSnapStop', {
+        N: NAME_NORMAL,
+        A: NAME_ALWAYS,
+      }),
+      sbw: synonymProvider('scrollbarWidth', {
+        A: NAME_AUTO,
+        T: NAME_THIN,
+        N: NAME_NONE,
+      }),
+      sbg: synonymProvider('scrollbarGutter', {
+        A: NAME_AUTO,
+        S: 'Stable',
+        SB: 'Stable_BothEdges',
+      }),
 
       maskt: synonymProvider('maskType', {
         L: 'Luminance',
@@ -4202,7 +4388,7 @@ export default {
         V: 'Vertical',
         // Логические оси: `BL`, а не `B` — та уже занята `both`.
         BL: NAME_BLOCK,
-        IL: 'Inline',
+        IL: NAME_INLINE,
       }),
       /**
      * `cursor`. Однобуквенные заняты исторически (`C` — crosshair, `P` — pointer,
@@ -4354,7 +4540,7 @@ export default {
         'fontSmooth', {
           A: NAME_AUTO,
           N: 'Never',
-          AW: 'Always',
+          AW: NAME_ALWAYS,
           // Абсолютные размеры — порог, ниже которого сглаживание отключается.
           XXS: 'XxSmall',
           XS: 'XSmall',

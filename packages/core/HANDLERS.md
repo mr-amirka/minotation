@@ -1369,6 +1369,53 @@ coi10   →  counter-increment:10
 
 ---
 
+## Прокрутка (группа B, D-097)
+
+**Отступы прокрутки** `sm` (`scroll-margin`) и `sp` (`scroll-padding`) берут те же стороны, что `p`/`m`: физические
+`t`/`b`/`l`/`r`, оси `x`/`y` по `axisMode` (D-101), логические `s`/`e`/`bs`/`be` (A2). У `sm` — только длина, со знаком
+(`sm-8`), процентов нет; у `sp` — длина, процент или `A` (auto), без знака.
+
+| Токен | CSS |
+|-------|-----|
+| `smt80` | `scroll-margin-top:80px` |
+| `sm-8` | `scroll-margin:-8px` |
+| `smx8` | `scroll-margin-inline:8px` |
+| `sms8` | `scroll-margin-inline-start:8px` |
+| `smbe8` | `scroll-margin-block-end:8px` |
+| `spy16` | `scroll-padding-block:16px` |
+| `spA` | `scroll-padding:auto` |
+| `sp10%` | `scroll-padding:10%` |
+| `spe4` | `scroll-padding-inline-end:4px` |
+
+**Привязка и полоса прокрутки** — закрытые словари; пара значений пишется через `_` и тоже входит в словарь, поэтому
+длинная запись (`sst_x_mandatory`) отвечает «Write it shorter: "sstX_M"».
+
+| Тег | Свойство | Значения |
+|-----|----------|----------|
+| `sst` | `scroll-snap-type` | `N` none; ось `X`, `Y`, `B` block, `I` inline, `BH` both; ось + `_M` mandatory / `_P` proximity — `sstX_M` → `x mandatory` |
+| `ssa` | `scroll-snap-align` | `N`, `S` start, `E` end, `C` center; пара «блок_строка» из разных — `ssaC_S` → `center start` |
+| `sss` | `scroll-snap-stop` | `N` normal, `A` always |
+| `sbw` | `scrollbar-width` | `A` auto, `T` thin, `N` none |
+| `sbg` | `scrollbar-gutter` | `A` auto, `S` stable, `SB` stable both-edges |
+
+**`sbc` — `scrollbar-color`:** `A` (auto) или ровно два цвета через `_` — ползунок и дорожка. Каждый цвет — как у `c`:
+код, код с альфой, синоним (`CT`, `T`…), переменная (с альфой тоже). Одна переменная — значение целиком.
+
+| Токен | CSS |
+|-------|-----|
+| `sbcA` | `scrollbar-color:auto` |
+| `sbcF00_0` | `scrollbar-color:#f00 #000` |
+| `sbcCT_T` | `scrollbar-color:currentColor transparent` |
+| `sbcF00.5_0` | `scrollbar-color:rgba(255,0,0,.5) #000` |
+| `sbc--thumb_--track` | `scrollbar-color:var(--thumb) var(--track)` |
+| `sbc--bar` | `scrollbar-color:var(--bar)` |
+
+Бракуются: один цвет (`sbcF00`), три (`sbcF00_0_0`), неукороченный код с подсказкой на весь токен (`sbcF00_0000` →
+«"sbcF00_0.0"»), длинное слово (`sbcCurrentColor_0` → «"sbcCT_0"»). С `altColor` у кода с альфой свойство пишется
+дважды: сначала запасная пара, потом основная.
+
+---
+
 ## Misc
 
 | Токен | CSS |

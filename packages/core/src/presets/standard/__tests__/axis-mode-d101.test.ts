@@ -95,6 +95,16 @@ describe('axisMode (D-101)', () => {
       '.bsyDS{border-top-style:dashed;border-bottom-style:dashed}',
     ],
     [
+      'smx8',
+      '.smx8{scroll-margin-inline:8px}',
+      '.smx8{scroll-margin-left:8px;scroll-margin-right:8px}',
+    ],
+    [
+      'spy16',
+      '.spy16{scroll-padding-block:16px}',
+      '.spy16{scroll-padding-top:16px;scroll-padding-bottom:16px}',
+    ],
+    [
       'px--gap',
       '.px--gap{padding-inline:var(--gap)}',
       '.px--gap{padding-left:var(--gap);padding-right:var(--gap)}',

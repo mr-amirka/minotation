@@ -733,7 +733,7 @@ export const App = () => <div class="p10 m20" />;
 
 | Подключение | Файлы |
 |---|---|
-| `browser` (Vite в браузере, webpack `target: 'web'`, esbuild `--platform=browser`, Rollup с `browser: true`) | `dist/browser/*.mjs` |
+| `browser` (Vite в браузере, webpack `target: 'web'`, esbuild `--platform=browser`, Rollup с `browser: true`) | `dist/browser/*.mjs`; через `require` (jest с jsdom) — `dist/*.js` |
 | `import` (Node ESM, Vite SSR, прочие бандлеры) | `dist/esm/*.mjs` |
 | `require` | `dist/*.js` (CommonJS) |
 

@@ -263,6 +263,14 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'pli', props: 'place-items', keywords: ['place', 'items', 'align', 'justify', 'grid', 'center'], description: 'align-items_justify-items, буквы ai + ji', examples: ['pliC', 'pliC_S'] },
   { name: 'pls', props: 'place-self', keywords: ['place', 'self', 'align', 'justify', 'grid'], description: 'align-self_justify-self, буквы as + js', examples: ['plsC', 'plsA_E'] },
 
+  // --- Позиция и трансформация (группа D, D-097) ---
+  { name: 'op', props: 'object-position', keywords: ['object', 'position', 'image'], description: 'буквы L/C/R/T/B, углы TL/TR/BL/BR, длины; x, затем y', examples: ['opL_T', 'opTL', 'op50%_0', 'opR_10_B_20'] },
+  { name: 'tfo', props: 'transform-origin', keywords: ['transform', 'origin', 'rotate', 'scale'], description: 'как op, третья часть — z (длина)', examples: ['tfoTL', 'tfo50%_0', 'tfoC_C_10'] },
+  { name: 'pspo', props: 'perspective-origin', keywords: ['perspective', 'origin', '3d'], description: 'как op', examples: ['pspoC', 'pspoL_B'] },
+  { name: 'psp', props: 'perspective', keywords: ['perspective', '3d', 'transform'], examples: ['psp500', 'pspN'] },
+  { name: 'tfb', props: 'transform-box', keywords: ['transform', 'box', 'svg'], examples: ['tfbFB', 'tfbBB'] },
+  { name: 'bfv', props: 'backface-visibility', keywords: ['backface', 'visibility', '3d', 'flip'], examples: ['bfvH', 'bfvV'] },
+
   // --- Границы (доп.) — портировано из старого 1.x essences.js, проверено live-компиляцией ---
   { name: 'bi', props: 'border-image', keywords: ['border', 'image'], description: 'без аргумента — none; url()/gradient() — camelCase/snakeCase строка', examples: ['bi'] },
   { name: 'bdcl', props: 'border-collapse', keywords: ['border', 'collapse', 'table'], examples: ['bdclC', 'bdclS'] },

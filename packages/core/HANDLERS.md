@@ -191,7 +191,7 @@ ff_Times_New_Roman  →  font-family:"Times New Roman"
 | `ovb` | `overscroll-behavior` | `ovb_contain_auto` |
 | `td` | `text-decoration` | `td_underline_wavy_red` |
 | `tcha` | `touch-action` | `tcha_pan-x_pan-y` |
-| `op` | `object-position` | `op_left_top` |
+| `op` | `object-position` | `op_left_top` (буквами — `opL_T`, см. «Позиция и трансформация») |
 
 У остальных пишите краткую или полную запись: `ovA`, `dB`, `ofCT`.
 
@@ -1451,6 +1451,39 @@ coi10   →  counter-increment:10
 
 Ошибка называет часть и её свойство со списком вариантов целыми токенами (`pliC_Q` → «the second part is
 justify-items. Available: pliC_N (normal), …»); длинное слово — «Write it shorter: "pliC_S" instead of "pliC_Start"».
+
+---
+## Позиция и трансформация (группа D, D-097)
+
+**Позиция** — один разбор у `op` (`object-position`), `pspo` (`perspective-origin`) и `tfo` (`transform-origin`).
+Части через `_`: буквы `L`/`C`/`R`/`T`/`B`, длина или процент (голое число — `px`), переменная, функция. Угол
+`TL`/`TR`/`BL`/`BR` — первой частью, разворачивается в два слова. Ведущий `_` — запись словами CSS, как раньше:
+`op_left_top`, `op_right_10px_top_20px`.
+
+| Токен | CSS |
+|-------|-----|
+| `opL_T` | `object-position:left top` |
+| `opTL` | `object-position:top left` |
+| `op50%_0` | `object-position:50% 0` |
+| `opL_10` | `object-position:left 10px` |
+| `opR_10_B_20` | `object-position:right 10px bottom 20px` |
+| `pspoC` | `perspective-origin:center` |
+| `tfoTL` | `transform-origin:top left` |
+| `tfoC_C_10` | `transform-origin:center center 10px` |
+
+Сочетания — по грамматике: два слова в любом порядке, но не на одной оси (`opL_R` — «both parts are on one axis»); с
+длиной порядок x, затем y (`opT_10` — ошибка, пишите `op10_T`); четыре части — сторона и отступ дважды, стороны на
+разных осях, без `C`. У `tfo` четырёх частей нет, третья — z, длина без процента (`tfoL_T_50%` — ошибка). Длинное
+слово — «Write it shorter: "opC" instead of "opCenter"».
+
+**Остальное:**
+
+| Токен | CSS |
+|-------|-----|
+| `psp500` | `perspective:500px` — длина без процента и знака |
+| `pspN` | `perspective:none` |
+| `tfbCB` / `BB` / `FB` / `SB` / `VB` | `transform-box:content-box` / `border-box` / `fill-box` / `stroke-box` / `view-box` |
+| `bfvV` / `bfvH` | `backface-visibility:visible` / `hidden` |
 
 ---
 

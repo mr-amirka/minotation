@@ -41,6 +41,7 @@ const DASH = '-';
 const LIST_SEPARATOR = ', ';
 const MSG_INSTEAD_OF = '" instead of "';
 const MSG_SAME_VALUE = '" — same value';
+const MSG_WRITE_SHORTER = 'Write it shorter: "';
 const OPEN_PAREN = '(';
 const MSG_VALUE = 'Value "';
 const MSG_IS_INVALID_FOR = '" is invalid for "';
@@ -309,6 +310,43 @@ const POSITION_KEYWORDS = {
   R: NAME_RIGHT,
   T: NAME_TOP,
   B: NAME_BOTTOM,
+};
+/** Часть `<position>` — ключевое слово по оси x (`left`/`right`). */
+const POSITION_X = 1;
+/** Часть `<position>` — ключевое слово по оси y (`top`/`bottom`). */
+const POSITION_Y = 2;
+/** Часть `<position>` — `center`: годится обеим осям. */
+const POSITION_CENTER = 3;
+/** Часть `<position>` — длина, процент или функция. */
+const POSITION_OFFSET = 4;
+/** Часть `<position>` — переменная: что в ней, неизвестно, поэтому проходит любое место. */
+const POSITION_ANY = 5;
+/** Ось каждого ключевого слова позиции: по ней проверяется порядок и сочетание частей. */
+const POSITION_AXES: Record<string, number> = {
+  left: POSITION_X,
+  right: POSITION_X,
+  top: POSITION_Y,
+  bottom: POSITION_Y,
+  [CENTER]: POSITION_CENTER,
+};
+/** Углы целым значением: `tfoTL` → `top left`. Только первой частью — дальше они дали бы три слова на две оси. */
+const POSITION_CORNERS: Record<string, string[]> = {
+  TL: [
+    'top',
+    'left',
+  ],
+  TR: [
+    'top',
+    'right',
+  ],
+  BL: [
+    'bottom',
+    'left',
+  ],
+  BR: [
+    'bottom',
+    'right',
+  ],
 };
 const SIZE_SYNONYMS = {
   A: NAME_AUTO,
@@ -966,8 +1004,8 @@ const REGEXP_LENGTH_PART = new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:'
  * `text-indent:-5px` валиден, `flex-basis:-5px` — нет. Каждое разрешение
  * сверено с арбитром (`css-tree` + `mdn-data`), а не поставлено на глаз.
  *
- * Голый `0` означает «длина без единственной поблажки»; комбинируются через
- * `|`, например `LENGTH_PERCENT | LENGTH_SIGN` у `text-indent`.
+ * Длина без единственной поблажки — {@link LENGTH_PLAIN}: голый `0` в таблице означает «не длина».
+ * Комбинируются через `|`, например `LENGTH_PERCENT | LENGTH_SIGN` у `text-indent`.
  */
 /**
  * Ключевые слова одиночных свойств-длин. Пусто означает «только CSS-wide»:
@@ -1076,6 +1114,9 @@ const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
   // `gcA` давало `grid-column:a` — линию с именем `a`; `A` у остальных хендлеров — `auto`.
   gridRow: {
     A: AUTO,
+  },
+  perspective: {
+    N: NONE,
   },
   gridColumn: {
     A: AUTO,
@@ -2114,6 +2155,11 @@ const LENGTH_MULTI = 2;
 /** Отрицательные значения: `text-indent:-5px`, но не `flex-basis:-5px`. */
 const LENGTH_SIGN = 4;
 /**
+ * Длина без поблажек — `perspective:500px`, но не `50%`, `-5px` или два значения. Флаг нужен, потому что `0` в
+ * таблице читается как «не длина».
+ */
+const LENGTH_PLAIN = 8;
+/**
  * Бракует значение свойства-длины, которое длиной не является.
  *
  * Числовой путь ядра единицу проверяет (`validateUnit`), а общий блок свободных
@@ -2887,7 +2933,7 @@ export default {
       // есть аббревиатура — записано точно длинной формой.
         const abbr = byWord[value];
         if (abbr) {
-          throwInvalid('Write it shorter: "' + p.name + abbr
+          throwInvalid(MSG_WRITE_SHORTER + p.name + abbr
           + MSG_INSTEAD_OF + p.name + p.suffix + MSG_SAME_VALUE);
         }
         // Составное значение проверяется ПО ЧАСТЯМ, а не пропускается целиком:
@@ -3884,7 +3930,7 @@ export default {
           head = p.name + (j ? parts[0] + UNDERSCORE : '');
           tail = j < l - 1 ? UNDERSCORE + parts[1] : '';
           abbr = byWord[j][valueNormalize(part)];
-          abbr && throwInvalid('Write it shorter: "' + head + abbr + tail + MSG_INSTEAD_OF + head + part + tail
+          abbr && throwInvalid(MSG_WRITE_SHORTER + head + abbr + tail + MSG_INSTEAD_OF + head + part + tail
           + DOUBLE_QUOTE);
           throwInvalid(MSG_VALUE + part + MSG_IS_INVALID_FOR + p.name + '": the ' + (j ? 'second' : 'first')
           + ' part is ' + slotNames[j] + availableHint(placeHintItems(
@@ -3935,6 +3981,178 @@ export default {
           'justify-self',
         ],
       ),
+    });
+
+    /**
+     * `<position>` из букв и длин (группа D, RESEARCH/17) — общий разбор `op` (object-position), `pspo`
+     * (perspective-origin) и `tfo` (transform-origin). Буквы `L`/`C`/`R`/`T`/`B`, углы `TL`/`TR`/`BL`/`BR` первой
+     * частью, голое число — `px`: `opL_T` → `left top`, `tfoTL` → `top left`, `op50%_0`, `opR_10_B_20` →
+     * `right 10px bottom 20px`. Ведущий `_` — запись словами CSS, как раньше: `op_left_top`.
+     *
+     * Сочетания сверены с грамматикой: два слова — в любом порядке, но не на одной оси (`opL_R` ошибка); с длиной
+     * порядок x, затем y (`opT_10` ошибка, `op10_T` — нет); четыре части — сторона и отступ от неё дважды, стороны
+     * на разных осях и без `center`. У `transform-origin` четвёртой формы нет, зато есть третья часть — z, длина без
+     * процента: `tfoC_C_10` → `center center 10px`.
+     *
+     * @param priority — приоритет правила; у `op` он `1`, как был до общего разбора
+     * @param z — свойство берёт третью часть z (`transform-origin`); без неё частей 1, 2 или 4
+     */
+    function positionProvider(
+      propName: string, priority?: number, z?: 1,
+    ): MnHandler {
+      const byWord: Record<string, string> = {};
+      forIn(POSITION_KEYWORDS, (word: string, abbr: string) => {
+        byWord[valueNormalize(word)] = abbr;
+      });
+      return (p: MnEssenceParams) => {
+        const name = p.name;
+        const suffix = p.suffix;
+        const style: Record<string, string> = {};
+        const kebab = toKebabCase(suffix);
+        if (GLOBAL_KEYWORDS[kebab]) {
+          style[propName] = kebab;
+          return styleWrap(style, priority);
+        }
+        const prefix = MSG_VALUE + suffix + MSG_IS_INVALID_FOR + name + MSG_COLON;
+        // Ведущий `_` — слова CSS как есть: `op_right_10px_top_20px`. Буквы в этой записи не разворачиваются.
+        const raw = suffix[0] === UNDERSCORE;
+        const written = splitValueParts(raw ? suffix.slice(1) : suffix);
+        const writtenCount = written.length;
+        const words: string[] = [];
+        const kinds: number[] = [];
+        let part: string;
+        let word: string;
+        let corner: string[];
+        let abbr: string;
+        let j = 0;
+        for (; j < writtenCount; j++) {
+          part = written[j];
+          if (raw) {
+            if (POSITION_AXES[part]) {
+              words.push(part);
+              kinds.push(POSITION_AXES[part]);
+              continue;
+            }
+          } else {
+            corner = POSITION_CORNERS[part];
+            if (corner && !j) {
+              words.push(corner[0], corner[1]);
+              kinds.push(POSITION_Y, POSITION_X);
+              continue;
+            }
+            word = (POSITION_KEYWORDS as Record<string, string>)[part];
+            if (word) {
+              word = valueNormalize(word);
+              words.push(word);
+              kinds.push(POSITION_AXES[word]);
+              continue;
+            }
+          }
+          word = cssVarValue(part) || '';
+          if (word) {
+            words.push(word);
+            kinds.push(POSITION_ANY);
+            continue;
+          }
+          if (part.indexOf(OPEN_PAREN) > -1) {
+            words.push(valueNormalize(part));
+            kinds.push(POSITION_OFFSET);
+            continue;
+          }
+          word = defaultUnitNormalize(part);
+          if (REGEXP_LENGTH_PART.test(word)) {
+            words.push(word);
+            kinds.push(POSITION_OFFSET);
+            continue;
+          }
+          word = valueNormalize(part);
+          abbr = raw ? '' : byWord[word];
+          if (abbr) {
+            written[j] = abbr;
+            throwInvalid(MSG_WRITE_SHORTER + name + written.join(UNDERSCORE) + MSG_INSTEAD_OF + name + suffix
+            + DOUBLE_QUOTE);
+          }
+          REGEXP_BARE_WORD.test(word) || !word
+            ? throwInvalid(prefix + (raw
+              ? 'the "_" form takes CSS words — left, center, right, top, bottom — and lengths'
+              : 'a part is a side letter, a length or a percent' + positionHint(name, j ? '' : 1)))
+            : throwInvalid(prefix + 'expected a length or a percent');
+        }
+        positionAssert(
+          kinds, words, prefix, name, z,
+        );
+        style[propName] = words.join(SPACE);
+        return styleWrap(style, priority);
+      };
+    }
+
+    /** Буквы позиции целыми токенами: `opL (left)`, а первой частью — ещё и углы: `opTL (top left)`. */
+    function positionHint(name: string, corners?: 1 | ''): string {
+      const items: string[] = [];
+      forIn(POSITION_KEYWORDS, (word: string, abbr: string) => {
+        items.push(name + abbr + HINT_OPEN + valueNormalize(word) + CLOSE_PAREN);
+      });
+      corners && forIn(POSITION_CORNERS, (pair: string[], abbr: string) => {
+        items.push(name + abbr + HINT_OPEN + pair.join(SPACE) + CLOSE_PAREN);
+      });
+      return availableHint(items);
+    }
+
+    /** Сочетание частей позиции по грамматике `<position>` (и `transform-origin` при `z`). */
+    function positionAssert(
+      kinds: number[], words: string[], prefix: string, name: string, z?: 1,
+    ): void {
+      const l = kinds.length;
+      const first = kinds[0];
+      const second = kinds[1];
+      (z ? l < 4 : l !== 3 && l < 5) || throwInvalid(prefix + (z
+        ? 'at most three parts — x, y and a z length, as "' + name + 'L_T_10"'
+        : 'a position has 1, 2 or 4 parts, as "' + name + 'L_T" or "' + name + 'R_10_B_20"'));
+      if (l === 4) {
+        // `right 10px bottom 20px`: сторона и отступ от неё, стороны на разных осях; `center` здесь не бывает.
+        positionSide(first) && positionOffset(second) && positionSide(kinds[2]) && positionOffset(kinds[3])
+        && (first !== kinds[2] || first === POSITION_ANY)
+        || throwInvalid(prefix + 'four parts are side_offset_side_offset with the sides on different axes, as "'
+          + name + 'R_10_B_20"');
+        return;
+      }
+      if (l < 2) {
+        return;
+      }
+      (first !== second || first > POSITION_Y)
+      || throwInvalid(prefix + 'both parts are on one axis — one is x (L, C, R), the other y (T, C, B)');
+      // Два слова — в любом порядке; с длиной порядок закреплён: `top 10px` и `10px left` CSS не принимает.
+      (first !== POSITION_Y || second !== POSITION_OFFSET) && (first !== POSITION_OFFSET || second !== POSITION_X)
+      || throwInvalid(prefix + 'with a length the order is x, then y, as "' + name + '10_T"');
+      // z — длина без процента: `transform-origin: 0 0 50%` невалиден.
+      l < 3 || kinds[2] === POSITION_ANY || kinds[2] === POSITION_OFFSET && words[2].indexOf(PERCENT) < 0
+      || throwInvalid(prefix + 'the third part is z — a length without percent');
+    }
+    /** Сторона в четырёхчастной позиции: `left`/`right`/`top`/`bottom` или переменная. */
+    function positionSide(kind: number): boolean {
+      return kind === POSITION_X || kind === POSITION_Y || kind === POSITION_ANY;
+    }
+    /** Отступ в четырёхчастной позиции: длина, процент, функция или переменная. */
+    function positionOffset(kind: number): boolean {
+      return kind === POSITION_OFFSET || kind === POSITION_ANY;
+    }
+
+    mn({
+      tfo: positionProvider(
+        'transformOrigin', 0, 1,
+      ),
+      pspo: positionProvider('perspectiveOrigin'),
+      tfb: synonymProvider('transformBox', {
+        CB: NAME_CONTENT_BOX,
+        BB: NAME_BORDER_BOX,
+        FB: 'FillBox',
+        SB: 'StrokeBox',
+        VB: 'ViewBox',
+      }),
+      bfv: synonymProvider('backfaceVisibility', {
+        V: NAME_VISIBLE,
+        H: NAME_HIDDEN,
+      }),
     });
 
     forIn({
@@ -5190,9 +5408,7 @@ export default {
       // (`object-position: left top`). Атомарных `object-position-x/y` в CSS нет,
       // поэтому разложить его, как `bgpx`/`bgpy`, нельзя.
       // `numeric`: координаты задаются и числами — `op50%_50%`.
-      op: synonymProvider(
-        'objectPosition', POSITION_KEYWORDS, 1, 0 as any, 1, 1,
-      ),
+      op: positionProvider('objectPosition', 1),
       /**
      * Оси `background-position`. Ключевые слова у них РАЗНЫЕ: горизонтальная
      * принимает `left`/`right`/`x-start`/`x-end`, вертикальная —
@@ -5612,6 +5828,16 @@ export default {
         'borderSpacing',
         0,
         LENGTH_MULTI,
+      ],
+      // `perspective` (группа D): неотрицательная длина или `none` — `psp500`, `pspN`.
+      psp: [
+        'perspective',
+        0,
+        LENGTH_PLAIN,
+        0,
+        {
+          none: 1,
+        },
       ],
       // bdrs: ['borderRadius'],
       zm: ['zoom'],

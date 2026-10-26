@@ -292,7 +292,7 @@ export const ESSENCES: MnDocEntry[] = [
   // --- Маски, семейство mk… (E2, D-097) ---
   { name: 'mk', props: 'mask-image', keywords: ['mask', 'gradient', 'fade'], description: 'градиент, как у bg', examples: ['mkF00-00F'] },
   { name: 'mki', props: 'mask-image', keywords: ['mask', 'image', 'url'], examples: ['mki--v', 'mkiN'] },
-  { name: 'mks', props: 'mask-size', keywords: ['mask', 'size', 'cover', 'contain'], examples: ['mksCV', 'mks50%_auto'] },
+  { name: 'mks', props: 'mask-size', keywords: ['mask', 'size', 'cover', 'contain'], examples: ['mksCV', 'mks50%_auto', 'mks10'] },
   { name: 'mkp', props: 'mask-position', keywords: ['mask', 'position'], examples: ['mkpC', 'mkpR_10_B_20'] },
   { name: 'mkr', props: 'mask-repeat', keywords: ['mask', 'repeat'], examples: ['mkrN', 'mkrX'] },
   { name: 'mko', props: 'mask-origin', keywords: ['mask', 'origin', 'box'], examples: ['mkoCB', 'mkoBB'] },
@@ -346,7 +346,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'bgp', props: 'background-position', keywords: ['background', 'position'], examples: ['bgpTop'] },
   { name: 'bgpx', props: 'background-position-x', keywords: ['background', 'position'], examples: ['bgpxRight_32px'] },
   { name: 'bgpy', props: 'background-position-y', keywords: ['background', 'position'], examples: ['bgpyBottom_32px'] },
-  { name: 'bgs', props: 'background-size', keywords: ['background', 'size'], examples: ['bgsContain'] },
+  { name: 'bgs', props: 'background-size', keywords: ['background', 'size'], examples: ['bgsCV', 'bgs10_20'] },
   { name: 'bga', props: 'background-attachment', keywords: ['background'], examples: ['bgaFixed'] },
   { name: 'bgbk', props: 'background-break', keywords: ['background'], examples: ['bgbkBB'] },
   { name: 'bgcp', props: 'background-clip', keywords: ['background', 'clip'], examples: ['bgcpBorderBox'] },

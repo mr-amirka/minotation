@@ -1383,6 +1383,121 @@ describe('уточнения там, где первая проверка ока
   });
 });
 
+describe('голое число у свойств-длин со словарём — px, как у прочих длин (D-104)', () => {
+  test.each([
+    [
+      'bgs10',
+      'background-size:10px',
+    ],
+    [
+      'bgs10_20',
+      'background-size:10px 20px',
+    ],
+    [
+      'bgs0',
+      'background-size:0',
+    ],
+    [
+      'bgs50%_10',
+      'background-size:50% 10px',
+    ],
+    [
+      'mks10',
+      'mask-size:10px',
+    ],
+    [
+      'bgpx10',
+      'background-position-x:10px',
+    ],
+    [
+      'bgpy-10',
+      'background-position-y:-10px',
+    ],
+    [
+      'va-2',
+      'vertical-align:-2px',
+    ],
+    [
+      'td_underline_2',
+      'text-decoration:underline 2px',
+    ],
+    [
+      'td2',
+      'text-decoration:2px',
+    ],
+  ])('%s → %s', (token, expected) => {
+    const at = expected.indexOf(':');
+    expect(lexer.matchProperty(expected.slice(0, at), expected.slice(at + 1)).matched).toBeTruthy();
+    expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    [
+      'bgs-10px',
+      'background-size',
+    ],
+    [
+      'bgs-10',
+      'background-size',
+    ],
+    [
+      'bgs10_-20',
+      'background-size',
+    ],
+    [
+      'mks-5',
+      'mask-size',
+    ],
+  ])('%s бракуется — размер %s не бывает отрицательным', (token, prop) => {
+    // `bgs-10px` давало `background-size:-10px`, и браузер отбрасывал правило.
+    expect(lexer.matchProperty(prop, '-10px').matched).toBeFalsy();
+    const result = compile([token]);
+    expect(result.css).toBe('');
+    expect(result.warnings.map((w) => w.message).join(' ')).toContain('expected a length, zero or positive');
+  });
+
+  test.each([
+    [
+      'bgs10_20_30',
+      'background-size',
+      '10px 20px 30px',
+      'at most 2 lengths',
+    ],
+    [
+      'mks10px_20px_30px_40px',
+      'mask-size',
+      '10px 20px 30px 40px',
+      'at most 2 lengths',
+    ],
+    [
+      'bgs_cover_10',
+      'background-size',
+      'cover 10px',
+      '"cover" stands alone',
+    ],
+    [
+      'td_underline_2_3',
+      'text-decoration',
+      'underline 2px 3px',
+      'at most 1 length',
+    ],
+  ])('%s бракуется — %s не принимает "%s"', (
+    token, prop, value, message,
+  ) => {
+    // До D-104 эти записи давали CSS как есть, и браузер отбрасывал правило.
+    expect(lexer.matchProperty(prop, value).matched).toBeFalsy();
+    const result = compile([token]);
+    expect(result.css).toBe('');
+    expect(result.warnings.map((w) => w.message).join(' ')).toContain(message);
+  });
+
+  test('`auto` в паре с длиной и `auto auto` — законные размеры', () => {
+    expect(lexer.matchProperty('background-size', 'auto auto').matched).toBeTruthy();
+    expect(compile(['bgs_auto_auto']).css).toContain('background-size:auto auto');
+    expect(compile(['bgs_auto_10']).css).toContain('background-size:auto 10px');
+  });
+});
+
 describe('border-style: только то, что есть в спецификации', () => {
   test.each([
     'bsW',

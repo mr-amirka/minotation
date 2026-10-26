@@ -657,6 +657,13 @@ Text-align — тег `ta` + буква (`taC`/`taR`/`taL`/`taJ`/`taE`/`taS`), �
 `bg` задаёт **цвет или градиент** — и только их. Картинка, позиция, размер и
 повтор пишутся атомарными тегами: `bgi`, `bgpx`/`bgpy`, `bgs`, `bgr`.
 
+Голое число у `bgs`, `bgpx`, `bgpy` (и у `mks`, `va`, толщины в `td`) — пиксели, как у прочих длин (D-104):
+`bgs10` → `background-size:10px`, `bgs10_20` → `10px 20px`, `bgpy-10` → `background-position-y:-10px`. Размер
+отрицательным не бывает: `bgs-10px`, `mks-5` — ошибка «expected a length, zero or positive» (раньше `bgs-10px` давало
+`background-size:-10px`, и браузер отбрасывал правило). Длин в размере не больше двух, `cover`/`contain` стоят
+одни: `bgs10_20_30` — «at most 2 lengths», `bgs_cover_10` — «"cover" stands alone»; у `td` толщина одна
+(`td_underline_2_3` — «at most 1 length»). Раньше все три давали CSS, который браузер отбрасывал.
+
 Числовые формы бракуются с 2026-09-27: `bg10zz` давало `background:10zz`,
 `bg1/2` — `background:1/2`, `bg10_20` — `background:10_20`, а `bg100%-20px`
 собиралось в градиент из мусора (`linear-gradient(180deg,100% 0%,20px 100%)`).
@@ -2205,7 +2212,7 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 |-------|-----|-------|
 | `mkF00-00F` | `mask-image:linear-gradient(180deg,#f00 0%,#00f 100%)` | цвета не принимает: `mkF00` — ошибка |
 | `mki_a\.png`, `mkiN` | `mask-image:url("a.png")`, `none` | как `bgi` |
-| `mksCV`, `mks50%_auto` | `mask-size:cover`, `50% auto` | `A`, `CT` contain, `CV` cover; длины — с единицей |
+| `mksCV`, `mks50%_auto`, `mks10` | `mask-size:cover`, `50% auto`, `10px` | `A`, `CT` contain, `CV` cover; голое число — `px` |
 | `mkpTL`, `mkpR_10_B_20` | `mask-position:top left`, `right 10px bottom 20px` | разбор позиции как у `op` |
 | `mkrN` | `mask-repeat:no-repeat` | `R`, `N`, `X`, `Y`, `SP` space, `RD` round; пусто — `repeat` |
 | `mkoCB` | `mask-origin:content-box` | `BB`, `PB`, `CB`, `FB`, `SB`, `VB` |
@@ -2214,8 +2221,8 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 | `mktA` | `mask-type:alpha` | `L` luminance, `A` alpha |
 | `mkmMS` | `mask-mode:match-source` | `L`, `A`, `MS` match-source |
 
-Старые имена `maskbg`, `maski`, `maskt`, `maskm` CSS не дают и отвечают новым — `"maskbgF00-00F" was renamed: write
-"mkF00-00F" (D-097)`; убираются через выпуск.
+Старых имён `maskbg`, `maski`, `maskt`, `maskm` больше нет — убраны сразу, без ответа «переименовано»: в прошлой
+версии ими почти не пользовались (D-104).
 
 ### `border-image` и его стороны
 

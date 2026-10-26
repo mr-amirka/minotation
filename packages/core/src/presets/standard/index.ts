@@ -1165,6 +1165,31 @@ function wordsSet(words: string): Record<string, 1> {
   }
   return set;
 }
+
+/**
+ * Длина у свойства со словарём — флаг `numeric` у `synonymProvider` (D-104): бывает ли она отрицательной, сколько
+ * длин в значении и какие слова стоят только поодиночке. Голое число получает `px`, как у прочих длин.
+ */
+interface LengthRule {
+  signed: boolean;
+  max: number;
+  solo?: Record<string, 1>;
+}
+/**
+ * `background-size`, `mask-size`: ширина и высота — не отрицательные, не больше двух, `cover`/`contain` — только
+ * одни. Раньше `bgs-10px` давало `background-size:-10px`, `bgs10px_20px_30px` — три длины, `bgs_cover_10px` —
+ * `cover 10px`, и браузер отбрасывал все три.
+ */
+const SIZE_LENGTHS: LengthRule = {
+  signed: false,
+  max: 2,
+  solo: wordsSet('cover contain'),
+};
+/** Сдвиг: `vertical-align`, `background-position-x`/`-y`, толщина в `text-decoration` — одна длина со знаком. */
+const OFFSET_LENGTH: LengthRule = {
+  signed: true,
+  max: 1,
+};
 /**
  * Списки значений свойств с закрытым перечислением.
  *
@@ -1315,14 +1340,12 @@ const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
 };
 
 /**
- * Старая запись после переименования (D-094, маски — D-097): сообщение с новой, CSS нет. Убирается через один
- * выпуск — задача в PLAN; это сообщение, а не вторая реализация.
+ * Старая запись после переименования (D-094): сообщение с новой, CSS нет. Убирается через один выпуск — задача
+ * в PLAN; это сообщение, а не вторая реализация.
  */
-function throwRenamed(
-  token: string, replacement: string, decision?: string,
-): never {
-  throw new MnParseError(DOUBLE_QUOTE + token + '" was renamed: write "' + replacement + '" (' + (decision || 'D-094')
-    + '). The old spelling gives no CSS and is removed in the next release.', {
+function throwRenamed(token: string, replacement: string): never {
+  throw new MnParseError(DOUBLE_QUOTE + token + '" was renamed: write "' + replacement + '" (D-094). The old'
+    + ' spelling gives no CSS and is removed in the next release.', {
     token,
     handler: '',
     arg: '',
@@ -3120,13 +3143,16 @@ export default {
       synonyms: Record<string, any>,
       priority?: number,
       _style?: Record<string, any>,
-      // Свойство принимает не только слова из словаря, но и число/длину.
-      numeric?: 1,
+      // Свойство принимает не только слова из словаря, но и длину — по
+      // правилу `SIZE_LENGTHS` или `OFFSET_LENGTH` (D-104).
+      numeric?: LengthRule,
       // Значение свойства составное (`display: inline flow-root`), поэтому у
       // него остаётся сырой режим — перечислить такие сочетания словарём нельзя.
       composite?: 1,
     ): MnHandler {
       let props: Record<string, number>;
+      const signed = numeric && numeric.signed;
+      const lengthExpected = signed ? '": expected a length' : '": expected a length, zero or positive';
       // Обратный индекс: длинное слово → краткая запись, строится из самого
       // словаря, поэтому новый синоним сразу начинает бракать свою длинную форму.
       const byWord: Record<string, string> = {};
@@ -3182,9 +3208,13 @@ export default {
         if (composite && value.indexOf(SPACE) > -1) {
           const parts = value.split(SPACE);
           let i = parts.length;
+          let lengths = 0;
           while (i--) {
-            assertSynonymPart(p, parts[i]);
+            lengths += assertSynonymPart(p, parts[i]);
           }
+          numeric && assertLengthCount(
+            p, parts, lengths, numeric,
+          );
           return;
         }
         assertSynonymPart(p, value);
@@ -3197,14 +3227,33 @@ export default {
         });
         return availableHint(items);
       }
-      /** Одна часть значения: слово из словаря, число (если оно тут законно) или функция. */
-      function assertSynonymPart(p: MnEssenceParams, value: string): void {
+      /**
+       * Составное значение с длинами: длин не больше `rule.max`, а слово из `rule.solo` стоит одно —
+       * `bgs10_20_30` и `bgs_cover_10` бракуются.
+       */
+      function assertLengthCount(
+        p: MnEssenceParams, parts: string[], lengths: number, rule: LengthRule,
+      ): void {
+        const solo = rule.solo;
+        let i = parts.length;
+        lengths > rule.max && throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR + p.name
+          + '": at most ' + rule.max + (rule.max > 1 ? ' lengths' : ' length'));
+        while (solo && i--) {
+          solo[parts[i]] && throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR + p.name + '": "'
+            + parts[i] + '" stands alone');
+        }
+      }
+      /**
+       * Одна часть значения: слово из словаря, число (если оно тут законно) или функция. Возвращает 1, если часть —
+       * длина: составное значение считает их.
+       */
+      function assertSynonymPart(p: MnEssenceParams, value: string): number {
         if (value.indexOf(OPEN_PAREN) > -1
         // Строка в кавычках — готовое значение (`q_"a"_"b"`), словарём его
         // не перечислить.
         || value[0] === DOUBLE_QUOTE || value[0] === QUOTE
         || GLOBAL_KEYWORDS[value] || keywords[value]) {
-          return;
+          return 0;
         }
         REGEXP_BARE_WORD.test(value)
           ? throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR + p.name
@@ -3212,13 +3261,14 @@ export default {
           : (numeric
           // Число у такого свойства — длина или процент, а не что угодно:
           // `bgpx10zz` давало `background-position-x:10zz`, `va10s` —
-          // `vertical-align:10s`.
-            ? (REGEXP_LENGTH_PART.test(value)
-            || throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR
-              + p.name + '": expected a length'))
+          // `vertical-align:10s`. Размер не бывает отрицательным: `bgs-10px`
+          // давало `background-size:-10px`, которое браузер отбрасывает.
+            ? (REGEXP_LENGTH_PART.test(value) && (signed || value[0] !== DASH)
+            || throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR + p.name + lengthExpected))
             : throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR
             + p.name + '": the set of values is closed, a number is not allowed'
             + abbrHint(p.name)));
+        return 1;
       }
       return isArray(propName)
         ? (props = flags(propName), ((p: MnEssenceParams) => {
@@ -3252,6 +3302,7 @@ export default {
             return _style ? styleWrap(_style, priority) : 0;
           }
           s = valueNormalize(s);
+          numeric && (s = defaultUnitNormalize(s));
           assertSynonymAbbr(p, s);
           style = {};
           style[propName as string] = s;
@@ -4515,17 +4566,6 @@ export default {
       mn(name, (p) => (p.suffix ? 0 : throwRenamed(name, replacement)));
     });
     mn('apc', (p) => throwRenamed('apc' + p.suffix, 'ap' + (APPEARANCE_RENAMED[p.suffix] || p.suffix)));
-    // Маски (E2, D-097): старые имена отвечают новым, суффикс сохраняется — `maskbgF00-00F` → `mkF00-00F`.
-    forIn({
-      maskbg: 'mk',
-      maski: 'mki',
-      maskt: 'mkt',
-      maskm: 'mkm',
-    }, (replacement: string, name: string) => {
-      mn(name, (p) => throwRenamed(
-        name + p.suffix, replacement + p.suffix, 'D-097',
-      ));
-    });
 
     mn(
       'x', (p) => {
@@ -5179,7 +5219,7 @@ export default {
           A: NAME_AUTO,
           CT: NAME_CONTAIN,
           CV: NAME_COVER,
-        }, 1, 0 as any, 1, 1,
+        }, 1, 0 as any, SIZE_LENGTHS, 1,
       ),
       mkr: synonymProvider(
         'maskRepeat', REPEAT_SYNONYMS, 1,
@@ -5455,7 +5495,7 @@ export default {
           // `numeric`: толщина линии — длина (`text-decoration: underline 2px`).
           // `composite`: линия, стиль, цвет и толщина в одном значении
           // (`text-decoration: underline wavy red`).
-        }, 0, 0 as any, 1, 1,
+        }, 0, 0 as any, OFFSET_LENGTH, 1,
       ),
       tdl: synonymProvider(
         'textDecorationLine', TD_SYNONYMS, 1,
@@ -5635,7 +5675,7 @@ export default {
           A: NAME_AUTO,
           CT: NAME_CONTAIN,
           CV: NAME_COVER,
-        }, 1, 0 as any, 1, 1,
+        }, 1, 0 as any, SIZE_LENGTHS, 1,
       ),
       // `composite`: кавычки задаются парами — открывающая и закрывающая, и
       // пар может быть несколько (для вложенных уровней).
@@ -5776,7 +5816,7 @@ export default {
           R: NAME_RIGHT,
           XS: 'XStart',
           XE: 'XEnd',
-        }, 2, 0 as any, 1,
+        }, 2, 0 as any, OFFSET_LENGTH,
       ),
       bgpy: synonymProvider(
         'backgroundPositionY', {
@@ -5785,7 +5825,7 @@ export default {
           B: NAME_BOTTOM,
           YS: 'YStart',
           YE: 'YEnd',
-        }, 2, 0 as any, 1,
+        }, 2, 0 as any, OFFSET_LENGTH,
       ),
       as: synonymProvider('alignSelf', ALIGN_SELF_WORDS),
       /**
@@ -5810,7 +5850,7 @@ export default {
           TB: 'TextBottom',
           // `numeric`: сдвиг базовой линии задаётся длиной или процентом
           // (`vertical-align: -0.125em`).
-        }, 0, 0 as any, 1,
+        }, 0, 0 as any, OFFSET_LENGTH,
       ),
       wm: synonymProvider('writingMode', {
         '': 'LrTb',

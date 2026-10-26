@@ -1,6 +1,6 @@
 /**
  * Маски, E2 (D-097, RESEARCH/17 § 5.6): семейство `mk…` зеркалит `bg…` — `mk` градиент, `mki` url, `mks`, `mkp`,
- * `mkr`, `mko`, `mkcp`, `mkc`, `mkt`, `mkm`; старые `maskbg`/`maski`/`maskt`/`maskm` отвечают новым именем.
+ * `mkr`, `mko`, `mkcp`, `mkc`, `mkt`, `mkm`; старых `maskbg`/`maski`/`maskt`/`maskm` больше нет (D-104).
  */
 import {
   lexer,
@@ -194,30 +194,24 @@ describe('masks: the mk… family (E2)', () => {
   });
 
   test.each([
-    [
-      'maskbgF00-00F',
-      'mkF00-00F',
-    ],
-    [
-      'maski--v',
-      'mki--v',
-    ],
-    [
-      'masktA',
-      'mktA',
-    ],
-    [
-      'maskmL',
-      'mkmL',
-    ],
-  ])('the old %s answers with %s', (token, replacement) => {
-    const result = compile(token);
-    expect(result.css).toBe('');
-    expect(result.warnings).toContain('"' + token + '" was renamed: write "' + replacement + '" (D-097). The old'
-      + ' spelling gives no CSS and is removed in the next release.');
+    'maskbgF00-00F',
+    'maski--v',
+    'masktA',
+    'maskmL',
+  ])('the old %s gives no CSS — the names are gone (D-104)', (token) => {
+    expect(compile(token).css).toBe('');
   });
 
-  test('the renames of D-094 still name their decision', () => {
-    expect(compile('apcN').warnings).toContain('(D-094)');
+  test.each([
+    [
+      'mks10',
+      'mask-size:10px',
+    ],
+    [
+      'mks10_20',
+      'mask-size:10px 20px',
+    ],
+  ])('%s → %s — a bare number is px', (token, expected) => {
+    expect(declaration(token)).toBe(expected);
   });
 });

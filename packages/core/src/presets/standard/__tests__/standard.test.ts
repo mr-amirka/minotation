@@ -246,24 +246,24 @@ describe('Standard preset — object-fit / mask', () => {
     expect(css('ofCV')).toContain('object-fit:cover');
   });
 
-  test('maski_a\\.png → mask-image:url("a.png") (точка в значении требует экранирования)', () => {
-    expect(css('maski_a\\.png')).toContain('mask-image:url("a.png")');
+  test('mki_a\\.png → mask-image:url("a.png") (точка в значении требует экранирования)', () => {
+    expect(css('mki_a\\.png')).toContain('mask-image:url("a.png")');
   });
 
-  test('maskbgF00 бракуется — mask-image цвета не принимает', () => {
+  test('mkF00 бракуется — mask-image цвета не принимает', () => {
     // Маска задаётся градиентом или картинкой; одиночный цвет давал
     // заведомо нерабочее правило (2026-09-27).
-    expect(css('maskbgF00')).toBe('');
-    expect(css('maskbgF00-00F'))
+    expect(css('mkF00')).toBe('');
+    expect(css('mkF00-00F'))
       .toContain('mask-image:linear-gradient(180deg,#f00 0%,#00f 100%)');
   });
 
-  test('masktL → mask-type:luminance', () => {
-    expect(css('masktL')).toContain('mask-type:luminance');
+  test('mktL → mask-type:luminance', () => {
+    expect(css('mktL')).toContain('mask-type:luminance');
   });
 
-  test('maskmMS → mask-mode:match-source', () => {
-    expect(css('maskmMS')).toContain('mask-mode:match-source');
+  test('mkmMS → mask-mode:match-source', () => {
+    expect(css('mkmMS')).toContain('mask-mode:match-source');
   });
 });
 

@@ -289,6 +289,18 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'atf', props: 'animation-timing-function', keywords: ['animation', 'timing', 'easing'], examples: ['atfL', 'atfEIO'] },
   { name: 'bgbm', props: 'background-blend-mode', keywords: ['background', 'blend', 'mode'], examples: ['bgbmM', 'bgbmS'] },
 
+  // --- Маски, семейство mk… (E2, D-097) ---
+  { name: 'mk', props: 'mask-image', keywords: ['mask', 'gradient', 'fade'], description: 'градиент, как у bg', examples: ['mkF00-00F'] },
+  { name: 'mki', props: 'mask-image', keywords: ['mask', 'image', 'url'], examples: ['mki--v', 'mkiN'] },
+  { name: 'mks', props: 'mask-size', keywords: ['mask', 'size', 'cover', 'contain'], examples: ['mksCV', 'mks50%_auto'] },
+  { name: 'mkp', props: 'mask-position', keywords: ['mask', 'position'], examples: ['mkpC', 'mkpR_10_B_20'] },
+  { name: 'mkr', props: 'mask-repeat', keywords: ['mask', 'repeat'], examples: ['mkrN', 'mkrX'] },
+  { name: 'mko', props: 'mask-origin', keywords: ['mask', 'origin', 'box'], examples: ['mkoCB', 'mkoBB'] },
+  { name: 'mkcp', props: 'mask-clip', keywords: ['mask', 'clip', 'box'], examples: ['mkcpPB', 'mkcpNC'] },
+  { name: 'mkc', props: 'mask-composite', keywords: ['mask', 'composite'], examples: ['mkcI', 'mkcS'] },
+  { name: 'mkt', props: 'mask-type', keywords: ['mask', 'type', 'svg'], examples: ['mktA', 'mktL'] },
+  { name: 'mkm', props: 'mask-mode', keywords: ['mask', 'mode'], examples: ['mkmMS', 'mkmA'] },
+
   // --- Границы (доп.) — портировано из старого 1.x essences.js, проверено live-компиляцией ---
   { name: 'bi', props: 'border-image', keywords: ['border', 'image'], description: 'без аргумента — none; url()/gradient() — camelCase/snakeCase строка', examples: ['bi'] },
   { name: 'bdcl', props: 'border-collapse', keywords: ['border', 'collapse', 'table'], examples: ['bdclC', 'bdclS'] },

@@ -87,6 +87,29 @@ const NAME_WRAP = 'Wrap';
 const NAME_NOWRAP = 'Nowrap';
 const NAME_BREAK_WORD = 'BreakWord';
 const NAME_PADDING_BOX = 'PaddingBox';
+const NAME_FILL_BOX = 'FillBox';
+const NAME_STROKE_BOX = 'StrokeBox';
+const NAME_VIEW_BOX = 'ViewBox';
+/** Повтор `background-repeat` / `mask-repeat`: `bgrN`, `mkrX`; пустой суффикс — `repeat`. */
+const NAME_REPEAT = 'Repeat';
+const REPEAT_SYNONYMS: Record<string, string> = {
+  '': NAME_REPEAT,
+  R: NAME_REPEAT,
+  N: 'NoRepeat',
+  X: 'RepeatX',
+  Y: 'RepeatY',
+  SP: 'Space',
+  RD: 'Round',
+};
+/** Рамки `mask-origin` / `mask-clip`: `<coord-box>` и рамки SVG (`mkoCB`, `mkcpVB`). */
+const MASK_BOX_SYNONYMS: Record<string, string> = {
+  BB: NAME_BORDER_BOX,
+  PB: NAME_PADDING_BOX,
+  CB: NAME_CONTENT_BOX,
+  FB: NAME_FILL_BOX,
+  SB: NAME_STROKE_BOX,
+  VB: NAME_VIEW_BOX,
+};
 
 /**
  * Стандартный пресет Minotation — все CSS-токены.
@@ -1292,12 +1315,14 @@ const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
 };
 
 /**
- * Старая запись после переименования (D-094): сообщение с новой, CSS нет. Убирается через один выпуск — задача в
- * PLAN; это сообщение, а не вторая реализация.
+ * Старая запись после переименования (D-094, маски — D-097): сообщение с новой, CSS нет. Убирается через один
+ * выпуск — задача в PLAN; это сообщение, а не вторая реализация.
  */
-function throwRenamed(token: string, replacement: string): never {
-  throw new MnParseError(DOUBLE_QUOTE + token + '" was renamed: write "' + replacement + '" (D-094). The old spelling gives'
-    + ' no CSS and is removed in the next release.', {
+function throwRenamed(
+  token: string, replacement: string, decision?: string,
+): never {
+  throw new MnParseError(DOUBLE_QUOTE + token + '" was renamed: write "' + replacement + '" (' + (decision || 'D-094')
+    + '). The old spelling gives no CSS and is removed in the next release.', {
     token,
     handler: '',
     arg: '',
@@ -3514,7 +3539,7 @@ export default {
         // (`maskbgF00` → `mask-image:#f00`).
         propName === MASK_IMAGE && (first[0] === '#' || first.indexOf('rgba(') === 0)
         && throwInvalid(MSG_VALUE + v + MSG_IS_INVALID_FOR + p.name
-          + '": a mask is a gradient (`maskbgF00-00F`) or a variable, '
+          + '": a mask is a gradient (`mkF00-00F`) or a variable, '
           + '`mask-image` does not accept a single color');
         style = {};
         style[propName] = result;
@@ -4379,9 +4404,9 @@ export default {
       tfb: synonymProvider('transformBox', {
         CB: NAME_CONTENT_BOX,
         BB: NAME_BORDER_BOX,
-        FB: 'FillBox',
-        SB: 'StrokeBox',
-        VB: 'ViewBox',
+        FB: NAME_FILL_BOX,
+        SB: NAME_STROKE_BOX,
+        VB: NAME_VIEW_BOX,
       }),
       bfv: synonymProvider('backfaceVisibility', {
         V: NAME_VISIBLE,
@@ -4455,7 +4480,7 @@ export default {
       bgi: 'backgroundImage',
       // listStyleImage: url(...)
       lisi: 'listStyleImage',
-      maski: MASK_IMAGE,
+      mki: MASK_IMAGE,
     }, (propName, name) => {
       mn(name, (p) => {
         const style: Record<string, any> = {};
@@ -4490,6 +4515,17 @@ export default {
       mn(name, (p) => (p.suffix ? 0 : throwRenamed(name, replacement)));
     });
     mn('apc', (p) => throwRenamed('apc' + p.suffix, 'ap' + (APPEARANCE_RENAMED[p.suffix] || p.suffix)));
+    // Маски (E2, D-097): старые имена отвечают новым, суффикс сохраняется — `maskbgF00-00F` → `mkF00-00F`.
+    forIn({
+      maskbg: 'mk',
+      maski: 'mki',
+      maskt: 'mkt',
+      maskm: 'mkm',
+    }, (replacement: string, name: string) => {
+      mn(name, (p) => throwRenamed(
+        name + p.suffix, replacement + p.suffix, 'D-097',
+      ));
+    });
 
     mn(
       'x', (p) => {
@@ -5117,7 +5153,8 @@ export default {
         SB: 'Stable_BothEdges',
       }),
 
-      maskt: synonymProvider('maskType', {
+      // Маски (E2, D-097): семейство `mk…` зеркалит `bg…` — `mk` градиент, `mki` url, `mks`, `mkr`, `mko`, `mkcp`.
+      mkt: synonymProvider('maskType', {
         L: 'Luminance',
         A: 'Alpha',
         I: NAME_INHERIT,
@@ -5126,7 +5163,7 @@ export default {
         U: NAME_UNSET,
       }),
 
-      maskm: synonymProvider('maskMode', {
+      mkm: synonymProvider('maskMode', {
         L: 'Luminance',
         A: 'Alpha',
         I: NAME_INHERIT,
@@ -5136,7 +5173,32 @@ export default {
         MS: 'MatchSource',
       }),
 
-      maskbg: backgroundProvider(MASK_IMAGE),
+      mk: backgroundProvider(MASK_IMAGE),
+      mks: synonymProvider(
+        'maskSize', {
+          A: NAME_AUTO,
+          CT: NAME_CONTAIN,
+          CV: NAME_COVER,
+        }, 1, 0 as any, 1, 1,
+      ),
+      mkr: synonymProvider(
+        'maskRepeat', REPEAT_SYNONYMS, 1,
+      ),
+      mko: synonymProvider(
+        'maskOrigin', MASK_BOX_SYNONYMS, 1,
+      ),
+      mkcp: synonymProvider(
+        'maskClip', {
+          ...MASK_BOX_SYNONYMS,
+          NC: 'NoClip',
+        }, 1,
+      ),
+      mkc: synonymProvider('maskComposite', {
+        A: 'Add',
+        S: 'Subtract',
+        I: 'Intersect',
+        E: 'Exclude',
+      }),
 
       // `float` (D-094): `flL`, `flR`, `flN`, логические `flIS`, `flIE`.
       fl: synonymProvider('float', {
@@ -5532,15 +5594,7 @@ export default {
         A: 'Anywhere',
       }),
       bgr: synonymProvider(
-        'backgroundRepeat', {
-          '': 'Repeat',
-          R: 'Repeat',
-          N: 'NoRepeat',
-          X: 'RepeatX',
-          Y: 'RepeatY',
-          SP: 'Space',
-          RD: 'Round',
-        }, 1,
+        'backgroundRepeat', REPEAT_SYNONYMS, 1,
       ),
       bga: synonymProvider(
         'backgroundAttachment', {
@@ -5704,6 +5758,8 @@ export default {
       // поэтому разложить его, как `bgpx`/`bgpy`, нельзя.
       // `numeric`: координаты задаются и числами — `op50%_50%`.
       op: positionProvider('objectPosition', 1),
+      // `mask-position-x/y` в CSS нет (только с `-webkit-`), поэтому позиция маски — общим разбором, как у `op`.
+      mkp: positionProvider('maskPosition', 1),
       /**
      * Оси `background-position`. Ключевые слова у них РАЗНЫЕ: горизонтальная
      * принимает `left`/`right`/`x-start`/`x-end`, вертикальная —

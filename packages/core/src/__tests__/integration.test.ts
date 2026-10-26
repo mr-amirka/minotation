@@ -607,7 +607,7 @@ describe('self-class условия — полный CSS пайплайн', () =
     expect(result).not.toContain('.cF\\.active{');
   });
 
-  test('maski_a\\.png (экранированная точка) → без self-class условия, точка — часть значения', () => {
+  test('mki_a\\.png (экранированная точка) → без self-class условия, точка — часть значения', () => {
     // HANDLERS.md «Экранирование»: `\` перед точкой подавляет её трактовку как
     // границы self-class — в отличие от cF.active (см. тест выше), ".active"
     // здесь НЕ становится отдельным CSS-условием, а сама экранирующая обратная
@@ -617,8 +617,8 @@ describe('self-class условия — полный CSS пайплайн', () =
     // До 2026-10-12 здесь был `cF\\.active` → `color:#fff`: хендлер цвета молча отбрасывал
     // хвост `\\.active`. Теперь такой цвет — брак, и экранирование проверяется на значении,
     // где точка действительно нужна.
-    const result = css('maski_a\\.png');
-    expect(result).toBe('.maski_a\\\\\\.png{mask-image:url("a.png")}');
+    const result = css('mki_a\\.png');
+    expect(result).toBe('.mki_a\\\\\\.png{mask-image:url("a.png")}');
   });
 
   test('cF.38 (только opacity — НЕ self-class) → .cF\\.38{color:rgba(255,255,255,.38)}', () => {

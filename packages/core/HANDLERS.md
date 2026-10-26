@@ -77,9 +77,9 @@
 Экранирование (`\_`) для этого не годится и не поддерживается: обратный слэш снимается
 раньше, на разборе токена, и до хендлера не доходит.
 
-### Градиенты (`bg`, `maskbg`): разделитель — дефис
+### Градиенты (`bg`, `mk`): разделитель — дефис
 
-У `bg`/`maskbg` части значения разделяет **дефис**, а не `_` (тот остаётся модификатором).
+У `bg`/`mk` части значения разделяет **дефис**, а не `_` (тот остаётся модификатором).
 Имя переменной закрывается `;`, как обычно. Отдаётся два объявления: первый цвет как
 fallback и сам градиент.
 
@@ -93,7 +93,7 @@ fallback и сам градиент.
 | `bg--my_a;--my_b` | переменные с `_` в имени — терминатор работает и здесь |
 
 Модификаторы (через `_`, в конце): `_g90` — угол (`+90°` к базовым 180°), `_r` — радиальный,
-`_rpt` — повторяющийся. `maskbg` — то же самое для `mask-image`.
+`_rpt` — повторяющийся. `mk` — то же самое для `mask-image`.
 
 До 2026-09-23 градиенты для `background` молча не работали: валидатор проверял значение как
 чистый цвет и отбраковывал `linear-gradient(…)` целиком.
@@ -109,11 +109,11 @@ fallback и сам градиент.
 | `pgba--v` | `page-break-after:var(--v);break-after:var(--v)` |
 | `bgi--hero` | `background-image:var(--hero)` — переменная подставляется как значение целиком; предполагается, что `url(…)` лежит в ней самой |
 | `lisi--v` | `list-style-image:var(--v)` |
-| `maski--v` | `mask-image:var(--v)` |
+| `mki--v` | `mask-image:var(--v)` |
 
 ### Свойства-картинки: что заворачивается в `url()`
 
-`bgi`, `lisi`, `maski` оборачивают в `url("…")` только **голый путь**:
+`bgi`, `lisi`, `mki` оборачивают в `url("…")` только **голый путь**:
 
 | Токен | CSS |
 |-------|-----|
@@ -662,9 +662,9 @@ Text-align — тег `ta` + буква (`taC`/`taR`/`taL`/`taJ`/`taE`/`taS`), �
 собиралось в градиент из мусора (`linear-gradient(180deg,100% 0%,20px 100%)`).
 Стопы градиента обязаны быть цветами или переменными.
 
-**`maskbg` цвета не принимает.** `mask-image` по грамматике это картинка или
-градиент, поэтому `maskbgF00` бракуется — маска задаётся градиентом
-(`maskbgF00-00F`) или переменной.
+**`mk` цвета не принимает.** `mask-image` по грамматике это картинка или
+градиент, поэтому `mkF00` бракуется — маска задаётся градиентом
+(`mkF00-00F`) или переменной.
 
 
 По умолчанию `altColor` включён — background/color-хендлеры выводят **и** hex, **и**
@@ -2196,8 +2196,26 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 | `bgcpT` | `background-clip:text` |
 | `bgbkC` | `background-break:continuous` |
 | `bgoPB` | `background-origin:padding-box` |
-| `maskmL` | `mask-mode:luminance` |
-| `masktA` | `mask-type:alpha` |
+
+#### Маски — семейство `mk…` (E2, D-097)
+
+Зеркало `bg…`: `mk` — градиент (как `bg`), `mki` — url (как `bgi`), остальные — как `bgs`/`bgr`/`bgo`/`bgcp`.
+
+| Токен | CSS | Буквы |
+|-------|-----|-------|
+| `mkF00-00F` | `mask-image:linear-gradient(180deg,#f00 0%,#00f 100%)` | цвета не принимает: `mkF00` — ошибка |
+| `mki_a\.png`, `mkiN` | `mask-image:url("a.png")`, `none` | как `bgi` |
+| `mksCV`, `mks50%_auto` | `mask-size:cover`, `50% auto` | `A`, `CT` contain, `CV` cover; длины — с единицей |
+| `mkpTL`, `mkpR_10_B_20` | `mask-position:top left`, `right 10px bottom 20px` | разбор позиции как у `op` |
+| `mkrN` | `mask-repeat:no-repeat` | `R`, `N`, `X`, `Y`, `SP` space, `RD` round; пусто — `repeat` |
+| `mkoCB` | `mask-origin:content-box` | `BB`, `PB`, `CB`, `FB`, `SB`, `VB` |
+| `mkcpNC` | `mask-clip:no-clip` | рамки `mko` и `NC` no-clip |
+| `mkcI` | `mask-composite:intersect` | `A` add, `S` subtract, `I` intersect, `E` exclude |
+| `mktA` | `mask-type:alpha` | `L` luminance, `A` alpha |
+| `mkmMS` | `mask-mode:match-source` | `L`, `A`, `MS` match-source |
+
+Старые имена `maskbg`, `maski`, `maskt`, `maskm` CSS не дают и отвечают новым — `"maskbgF00-00F" was renamed: write
+"mkF00-00F" (D-097)`; убираются через выпуск.
 
 ### `border-image` и его стороны
 

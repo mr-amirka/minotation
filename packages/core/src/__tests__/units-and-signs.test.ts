@@ -1470,7 +1470,7 @@ describe('свойства-картинки оборачивают в url() то
       'list-style-image:none',
     ],
     [
-      'maskiN',
+      'mkiN',
       'mask-image:none',
     ],
   ])('%s → %s — ключевое слово не заворачивается', (token, expected) => {
@@ -2644,11 +2644,11 @@ describe('фон и маска: только цвет, градиент или �
       'background:radial-gradient(circle,#f00 0%,#00f 100%)',
     ],
     [
-      'maskbgF00-00F',
+      'mkF00-00F',
       'mask-image:linear-gradient(180deg,#f00 0%,#00f 100%)',
     ],
     [
-      'maskbg--v',
+      'mk--v',
       'mask-image:var(--v)',
     ],
   ])('%s → %s — мини-язык не задет', (token, expected) => {
@@ -2689,9 +2689,9 @@ describe('фон и маска: только цвет, градиент или �
   });
 
   test.each([
-    'maskbgF00',
-    'maskbg10px',
-    'maskbg',
+    'mkF00',
+    'mk10px',
+    'mk',
   ])('%s бракуется — mask-image цвета не принимает', (token) => {
     expect(lexer.matchProperty('mask-image', '#f00').matched).toBeFalsy();
     expect(compile([token]).css).toBe('');
@@ -2867,8 +2867,8 @@ describe('последние пограничные случаи', () => {
   });
 
   test.each([
-    'maskbg1.5',
-    'maskbg10.5',
+    'mk1.5',
+    'mk10.5',
   ])('%s бракуется — дробь разбиралась как цвет с альфой', (token) => {
     // Давало `mask-image:rgba(17,17,17,.5)`, а цвет `mask-image` не принимает.
     expect(compile([token]).css).toBe('');

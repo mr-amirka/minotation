@@ -5,7 +5,7 @@
  *
  * Зачем сплошная: правки по месту дважды подряд оставляли целые группы
  * хендлеров со своим путём разбора (`border-style` — голый `toKebabCase`,
- * `page-break` — массивная форма `synonymProvider`, `bgi`/`lisi`/`maski` —
+ * `page-break` — массивная форма `synonymProvider`, `bgi`/`lisi`/`mki` —
  * безусловная обёртка в `url(…)`). Имена не перечисляются вручную: собираются
  * с самого пресета через Proxy, поэтому новый хендлер попадает под проверку
  * автоматически.
@@ -129,7 +129,7 @@ function unquoted(decls: string): string {
  *   нельзя: хендлеры свободного значения принимают его как обычное значение
  *   (`ac10` → `align-content:10`) и ложно попадают в выборку.
  * - `gradient` — строит ли `F00-00F` градиент. У таких разделитель значений —
- *   дефис, а не `_` (`bg`, `maskbg`).
+ *   дефис, а не `_` (`bg`, `mk`).
  * - `multipart` — собирает ли `_aa_bb` значение из ДВУХ частей. `url`-свойства
  *   и `font-family` принимают одно значение, и `_` внутри него разделителем не
  *   является.
@@ -245,10 +245,10 @@ describe('все хендлеры стандартного пресета: пе�
       'coi',
       'cor',
     ]));
-    // Градиент строят ровно `bg` и `maskbg` — оба через backgroundProvider.
+    // Градиент строят ровно `bg` и `mk` — оба через backgroundProvider.
     expect(GRADIENT_HANDLERS).toEqual([
       'bg',
-      'maskbg',
+      'mk',
     ]);
   });
 
@@ -414,7 +414,7 @@ describe('представители классов разбора — точн�
           'list-style-image:var(--v)',
         ],
         [
-          'maski--v',
+          'mki--v',
           'mask-image:var(--v)',
         ],
       ],
@@ -478,12 +478,12 @@ describe('представители классов разбора — точн�
 });
 
 /**
- * Градиенты (`bg`/`maskbg`): разделитель значений — ДЕФИС, а не `_`; `;`
+ * Градиенты (`bg`/`mk`): разделитель значений — ДЕФИС, а не `_`; `;`
  * закрывает имя переменной. До 2026-09-23 каждый градиент для `background`
  * молча отбраковывался валидатором (`cssGrammar`: `'background': isColorValue`),
  * хотя ядро строило его правильно — правило не доходило до CSS вообще.
  */
-describe('градиенты: bg / maskbg', () => {
+describe('градиенты: bg / mk', () => {
   function cssOf(token: string): string {
     const m = cssOfTokens([token]).match(/\{([^}]*)\}\s*$/);
     return m ? m[1] : '';
@@ -531,13 +531,13 @@ describe('градиенты: bg / maskbg', () => {
       'bgF00-00F_rpt',
       'background:repeating-linear-gradient(180deg,#f00 0%,#00f 100%)',
     ],
-    // maskbg — тот же backgroundProvider, свойство mask-image.
+    // mk — тот же backgroundProvider, свойство mask-image.
     [
-      'maskbg0F0-00F',
+      'mk0F0-00F',
       'mask-image:linear-gradient(180deg,#0f0 0%,#00f 100%)',
     ],
     [
-      'maskbg--a;-F00-324',
+      'mk--a;-F00-324',
       'mask-image:linear-gradient(180deg,var(--a) 0%,#f00 50%,#324 100%)',
     ],
   ])('%s → %s', (token, expected) => {

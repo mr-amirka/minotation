@@ -289,7 +289,12 @@ export const REGEXP_MATCH_VAR = /^(--[^=]+)=(.*)$/;
 export const REGEXP_MATCH_NAME = /^([a-z]+)(.*)$/;
 export const REGEXP_MATCH_IMPORTANT = /^(.*)(-i)$/;
 export const REGEXP_MATCH_VALUE = /^((([A-Z][A-Za-z]*)|((-)?[0-9.]+))([a-z%]+)?)?(.*)?$/;
-export const REGEXP_BROWSER_PREFIX = /((::-?|:-)([a-z]+-)?)/;
+/**
+ * Вендорный псевдоэлемент или псевдокласс (`::-moz-focus-inner`, `:-webkit-autofill`): в списке селекторов
+ * такой — отдельным правилом, чтобы чужой браузер не отбросил весь список. Стандартный `::before` — не вендорный
+ * и список не делит (D-108, F2): `*,::before,::after` — одно правило. Группа 1 — вендор.
+ */
+export const REGEXP_BROWSER_PREFIX = /::?-([a-z]+)-/;
 export const REGEXP_MEDIA_PRIORITY = /^(.*)\^(-?[0-9]+)$/;
 export const REGEXP_IMPORTANT = /-i$/;
 /**
@@ -983,7 +988,7 @@ export function getEessenceSelectors(selectorsMap: Record<string, Record<string,
   for (selector in selectorsMap) {
     matchs = REGEXP_BROWSER_PREFIX.exec(selector);
     if (matchs) {
-      prefix = matchs[3];
+      prefix = matchs[1];
       push(specifics[prefix] || (specifics[prefix] = []), selector);
     } else {
       push(other, selector);

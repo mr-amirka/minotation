@@ -1,7 +1,7 @@
 // @ts-nocheck
 /* eslint-disable */
 /**
- * Смоук-тесты presetMain и полной связки с presetNormalize.
+ * Смоук-тесты presetMain и полной связки с presetNormalize8_0_1 (D-108).
  *
  * mn.assign в пресетах ссылается на эссенции (lh115%, bxzBB, bgTransparent
  * и т.п.), зарегистрированные presetStandard, а presetMain — ещё и на медиа `@mouse`
@@ -13,7 +13,7 @@ const mnProvider = require('../../..').default || require('../../..').minotation
 const presetStandard = require('../../standard').default || require('../../standard');
 const presetSynonyms = require('../../synonyms').default || require('../../synonyms');
 const presetMedias = require('../../medias').default || require('../../medias');
-const presetNormalize = require('../../normalize').default || require('../../normalize');
+const { presetNormalize8_0_1: presetNormalize } = require('../../normalize');
 const presetMain = require('..').default || require('..');
 
 function compile(presets) {
@@ -52,7 +52,7 @@ describe('presetMain', () => {
 });
 
 describe('Полная связка (как в реальном использовании)', () => {
-  test('presetStandard + presetSynonyms + presetMedias + presetNormalize + presetMain — без ошибок', () => {
+  test('presetStandard + presetSynonyms + presetMedias + presetNormalize8_0_1 + presetMain — без ошибок', () => {
     const { errors, css } = compile([
       presetStandard,
       presetSynonyms,

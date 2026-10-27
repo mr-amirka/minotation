@@ -111,8 +111,14 @@ export interface MnEntity {
   childs?: Record<string, MnEntity>;
 }
 
-/** Объявления `mn.css` (D-071): свойство (`marginTop`, `margin-top`, `--var`) → значение как есть. */
-export type MnCssDeclarations = Record<string, string | number>;
+/**
+ * Объявления `mn.css` (D-071): свойство (`marginTop`, `margin-top`, `--var`) → значение как есть;
+ * массив — повтор объявления по порядку (D-108 F1).
+ */
+export type MnCssDeclarations = Record<string, string | number | Array<string | number>>;
+
+/** Запись списка `mn.css` (D-108 F3): своё правило, правила — в порядке списка. */
+export type MnCssEntry = [selector: string, declarations: MnCssDeclarations];
 
 /** Запись в mn.assign() */
 export type MnAssignMap = Record<string, string>;
@@ -153,6 +159,7 @@ export interface MnInstance {
    */
   css(selector: string, declarations: MnCssDeclarations): MnInstance;
   css(map: Record<string, MnCssDeclarations>): MnInstance;
+  css(entries: MnCssEntry[]): MnInstance;
   synonyms(map: MnSynonymsMap): void;
   // selectors: произвольная вложенная форма, см. baseSetSynonyms/normalizeSelectors в core/index.ts.
   synonyms(synonym: string, selectors: string | Record<string, any>): void; // eslint-disable-line @typescript-eslint/no-explicit-any

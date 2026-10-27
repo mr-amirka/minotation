@@ -47,7 +47,7 @@ pt---safe-top  → padding-top: env(--safe-top)
 
 ```
 ol3px_solid_--marker  → outline: 3px solid var(--marker)
-tn_all_0.2s_--ease    → transition: all 0.2s var(--ease)
+tnA_0.2s_--ease       → transition: all 0.2s var(--ease)
 ```
 
 Если `_` нужен в самом имени переменной — имя закрывают `;`:
@@ -223,11 +223,38 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 | `presetStandard` | 40+ обработчиков: размеры, отступы, цвета, flex, transform |
 | `presetSynonyms` | Синонимы: `h`→`:hover`, `f`→`:focus`, `a`→`:active` |
 | `presetMedias` | Точки по ширине `m…`/`d…` (`@m4` — до 480px, `@d-` — от 992px, `@m4-d` — между), `mouse`, `dark`, `light`, `print`, `portrait`, `landscape`, `motion-safe`/`motion-reduce`, `contrast-more`/`contrast-less`, `forced-colors`, `pointer-fine`/`pointer-coarse`, `noscript` и другие (D-054, D-057) |
-| `presetNormalize` | Лёгкий сброс (box-sizing, margin, img) |
+| `presetNormalize3_0_3` … `presetNormalize8_0_1`, `presetModernNormalize1_1_0` … `presetModernNormalize3_0_1` | Сброс — эталон normalize.css / modern-normalize один в один, версия — в имени (D-108). В наборы по умолчанию не входит; требований нет — работает и один. См. «Сброс: пресеты normalize» ниже |
 | `presetMain` | Полный CSS-сброс (аналог normalize.css) |
 | `presetHints` | Подсказки вместо молчания: `t0` → «did you mean `st0`?», `mh100vh` → «did you mean `hmin100vh`?» (D-093), `flex` → «в minotation это `dF`», `text-center` → `taC`. Подключать первым — пресет ниже перекрывает его хендлеры. Точечно — фабрикой: `presetHints({ excludeGroups: ['bootstrap'], excludeHandlers: ['flex'] })`; группы — `typos`, `tailwind`, `bootstrap` (D-024, D-042) |
 | `presetPrefixes` | Опциональные `-webkit-`/`-moz-` дубли для заданного списка свойств (`transform`, `flexDirection`, `appearance`, …) |
 | `presetTw4` | Клон Tailwind 4 (подмножество) — **вместо** `presetStandard`, запись `'tw4-compatible'`, тема Tailwind 4.3.3 (D-068). См. «Клон Tailwind 4» ниже |
+
+### Сброс: пресеты normalize (D-108)
+
+У каждого эталона — свой пресет, версия — в имени: пресет воспроизводит CSS эталона из npm один в один
+(селекторы, объявления, их порядок). Приложение выбирает версию под свои браузеры и подключает сам —
+в наборах по умолчанию (плагины, CLI, рантайм) сброса нет.
+
+| Пресет | Эталон | Браузеры эталона |
+|--------|--------|------------------|
+| `presetNormalize3_0_3` | normalize.css 3.0.3 | Chrome, Firefox, Opera (последние), Firefox ESR, Safari 6+, IE 8+ |
+| `presetNormalize4_2_0` | normalize.css 4.2.0 | Chrome, Edge, Firefox, Opera (две последние), Firefox ESR, Safari 6+, IE 8+ |
+| `presetNormalize5_0_0` | normalize.css 5.0.0 | то же, что 4.2.0 |
+| `presetNormalize6_0_0` | normalize.css 6.0.0 | то же + iOS Safari (две последние) |
+| `presetNormalize7_0_0` | normalize.css 7.0.0 | то же, что 6.0.0 |
+| `presetNormalize8_0_1` | normalize.css 8.0.1 | Chrome, Edge, Opera, Firefox ESR+, Safari 8+, IE 10+ |
+| `presetModernNormalize1_1_0` | modern-normalize 1.1.0 | последние Chrome, Firefox, Safari |
+| `presetModernNormalize2_0_0` | modern-normalize 2.0.0 | последние Chrome, Firefox, Safari |
+| `presetModernNormalize3_0_1` | modern-normalize 3.0.1 | последние Chrome, Firefox, Safari |
+
+```ts
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetNormalize8_0_1 } from 'minotation';
+
+mnVite({ presets: [presetHints, presetStandard, presetSynonyms, presetMedias, presetNormalize8_0_1] });
+```
+
+Лицензии эталонов (MIT) — в `THIRD_PARTY_NOTICES.md` пакета и в шапке каждого файла пресета; в CSS
+результата баннер не пишется.
 
 ### Режим синтаксиса `notationMode` (D-045, D-046)
 
@@ -319,8 +346,8 @@ mn.setPresets([presetApp]);
 // Error: [minotation] presetApp requires "presetStandard", which is not connected. Connected presets: presetApp
 ```
 
-Стандартные пресеты — объекты с именами; `presetNormalize` требует `presetStandard`,
-`presetMain` — `presetStandard` и `presetMedias`. `presetHints({ … })` возвращает объект
+Стандартные пресеты — объекты с именами; `presetMain` требует `presetStandard` и `presetMedias`,
+пресеты normalize (D-108) не требуют ничего. `presetHints({ … })` возвращает объект
 с именем `presetHints`.
 
 ### Как ядро находит хендлер: домены (D-063)
@@ -648,6 +675,10 @@ mn.css({ '::selection': { background: 'yellow' } });
 - значения — как есть, без записи нотации (`'oklch(62.3% 0.214 259.815)'`);
 - объявления одного селектора копятся в **одно** правило, в том числе при вызове из хендлера во
   время компиляции;
+- значение-массив — то же свойство несколько раз подряд, в его порядке (D-108 F1):
+  `mn.css('button', { cursor: ['pointer', 'hand'] })` → `button{cursor:pointer;cursor:hand}`;
+- список `mn.css([[селектор, объявления], …])` — каждая запись своим правилом, без слияния с правилами
+  того же селектора (D-108 F3): так пресет повторяет таблицу стилей, где один селектор встречается дважды;
 - приоритет и блок — `^N`: правила одного медиа и приоритета — один блок (`:root@^-3000` — раньше
   утилит с их −2000).
 

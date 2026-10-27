@@ -16,7 +16,9 @@ import {
 import presetStandard from '../presets/standard';
 import presetSynonyms from '../presets/synonyms';
 import presetMedias from '../presets/medias';
-import presetNormalize from '../presets/normalize';
+import {
+  presetNormalize8_0_1,
+} from '../presets/normalize';
 import presetMain from '../presets/main';
 
 /** Пара «токен → ожидаемые CSS-объявления» из таблиц HANDLERS.md. */
@@ -54,7 +56,7 @@ function compileAll(tokens: string[]): string {
     presetStandard,
     presetSynonyms,
     presetMedias,
-    presetNormalize,
+    presetNormalize8_0_1,
     presetMain,
   ]);
   // Описания из примера раздела «`@supports` и `@container`» HANDLERS.md (D-057).

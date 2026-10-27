@@ -25,8 +25,8 @@ import type {
   MnWarning,
 } from '../../../core/types';
 
-/** Правило темы: `:root{--…}` или начальные значения `*{--tw-…}`, `::before,…{--tw-…}`. */
-const REGEXP_THEME_RULE = /(?::root|\*|::before,::after,::backdrop)\{--[^}]*\}/g;
+/** Правило темы: `:root{--…}` или начальные значения `*,::before,::after,::backdrop{--tw-…}` — одним правилом (D-108 F2). */
+const REGEXP_THEME_RULE = /(?::root|\*,::before,::after,::backdrop)\{--[^}]*\}/g;
 
 function compile(tokens: string, options: MnOptions = {}) {
   const warnings: MnWarning[] = [];
@@ -441,7 +441,7 @@ describe('рамки и скругления', () => {
     expect(css).toContain('.border{border-style:var(--tw-border-style);border-width:1px}');
     expect(css).toContain('.border-dashed{--tw-border-style:dashed;border-style:dashed}');
     // Начальное значение — на всех элементах, с нулевой специфичностью: `.border-dashed` его перебивает.
-    expect(root).toBe('::before,::after,::backdrop{--tw-border-style:solid}*{--tw-border-style:solid}');
+    expect(root).toBe('*,::before,::after,::backdrop{--tw-border-style:solid}');
   });
 
   test.each([

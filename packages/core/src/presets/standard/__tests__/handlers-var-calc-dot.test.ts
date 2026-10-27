@@ -347,11 +347,11 @@ describe('представители классов разбора — точн�
           'transition:var(--a) var(--b)',
         ],
         [
-          'tnAll_0.2s_--ease',
+          'tnA_0.2s_--ease',
           'transition:all 0.2s var(--ease)',
         ],
         [
-          'tn_all_0.2s_---safe',
+          'tn_A_0.2s_---safe',
           'transition:all 0.2s env(--safe)',
         ],
         [
@@ -436,7 +436,7 @@ describe('представители классов разбора — точн�
       'multi-value свойства',
       [
         [
-          'tn_all_0.2s_--ease',
+          'tn_A_0.2s_--ease',
           'transition:all 0.2s var(--ease)',
         ],
         [

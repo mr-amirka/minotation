@@ -46,7 +46,6 @@ import {
   isObject,
   isPlainObject,
   isString,
-  keys,
   noop,
   push,
   values,
@@ -152,6 +151,7 @@ import {
 } from './types';
 import type {
   MnCssDeclarations,
+  MnCssEntry,
   MnEntity,
   MnHandler,
   MnInstance,
@@ -319,9 +319,18 @@ function uniqueConditions(queries: string[]): string[] {
 /** Ключ домена — первые строчные буквы имени, остальное — префикс записи (D-063). */
 const REGEXP_DOMAIN = /^([a-z]*)(.*)$/;
 
-/** Значение объявления `mn.css`: строка или число. */
-function isCssValue(value: unknown): boolean {
+/** Одно значение объявления `mn.css`: строка или число. */
+function isCssScalar(value: unknown): boolean {
   return typeof value === 'string' || typeof value === 'number';
+}
+
+/**
+ * Значение объявления `mn.css`: строка, число или непустой их массив — повтор объявления
+ * (`text-decoration: underline; text-decoration: underline dotted`, D-108 F1).
+ */
+function isCssValue(value: unknown): boolean {
+  return isCssScalar(value) || isArray(value) && (value as unknown[]).length > 0
+    && (value as unknown[]).every(isCssScalar);
 }
 
 /**
@@ -1608,33 +1617,62 @@ function minotationProvider(options?: MnOptions) {
   // selectors/comboNames: произвольная вложенная форма (строка/массив/объект), см. normalizeSelectors/normalizeComboNames.
   /** Селектор `mn.css` → имя его статики (`\u0004` + номер): объявления копятся в одну статику. */
   const $$cssRules: Record<string, string> = {};
+  /** Сколько статик `mn.css` создано — номер следующей: у записи списка своя статика, вне `$$cssRules`. */
+  let cssRuleCount = 0;
   /** Имя статики `mn.css` → разобранный селектор (селектор CSS → медиа): для обновления правила. */
   const $$cssTargets: Record<string, Record<string, string>> = {};
 
   /**
    * Правило CSS для селектора (D-071). Селектор — элемент и контекст в записи классов
    * (`'.x(:h|.active)@d^3'`), разбор — тот же, что у `mn.assign`; значения — как есть.
-   * Повторный вызов с тем же селектором дописывает объявления в то же правило.
+   * Повторный вызов с тем же селектором дописывает объявления в то же правило. Массив значений —
+   * повтор объявления (D-108 F1). Список записей `[селектор, объявления]` — правила по порядку, каждое
+   * своё: два правила одного селектора не сливаются (D-108 F3) — так пишется эталонный CSS один в один.
    *
    * @example
    * mn.css(':root@^-100', { '--brand': '#f00' });
    * mn.css('.selector(:h|.active)@d', { '--some-color': '#F00' });
+   * mn.css('abbr[title]', { textDecoration: ['underline', 'underline dotted'] });
+   * mn.css([
+   *   ['b,strong', { fontWeight: 'inherit' }],
+   *   ['b,strong', { fontWeight: 'bolder' }],
+   * ]);
    */
-  mn.css = (selector: string | Record<string, MnCssDeclarations>, declarations?: MnCssDeclarations): any => {
-    isPlainObject(selector)
-      ? forIn(selector as Record<string, MnCssDeclarations>, cssRule)
-      : cssRule(declarations as MnCssDeclarations, selector as string);
+  mn.css = (selector: string | Record<string, MnCssDeclarations> | MnCssEntry[], declarations?: MnCssDeclarations): any => {
+    isArray(selector)
+      ? (selector as unknown[]).forEach(cssEntry)
+      : isPlainObject(selector)
+        ? forIn(selector as Record<string, MnCssDeclarations>, cssMapRule)
+        : cssRule(declarations as MnCssDeclarations, selector as string);
     return mn;
   };
 
-  function cssRule(declarations: MnCssDeclarations, selector: string): void {
+  /** Запись карты `mn.css` — дописывается к правилу своего селектора (третий аргумент `forIn` — не `own`). */
+  function cssMapRule(declarations: MnCssDeclarations, selector: string): void {
+    cssRule(declarations, selector);
+  }
+
+  /** Запись списка `mn.css` — своё правило, к правилу того же селектора не дописывается. */
+  function cssEntry(entry: unknown, index: number): void {
+    isArray(entry) && (entry as unknown[]).length === 2
+      || fail('mn.css: entry ' + index + ' of the list expects [selector, declarations], got '
+        + describeValue(entry));
+    cssRule(
+      (entry as MnCssEntry)[1], (entry as MnCssEntry)[0], 1,
+    );
+  }
+
+  function cssRule(
+    declarations: MnCssDeclarations, selector: string, own?: number,
+  ): void {
     typeof selector === 'string' && selector.trim()
       || fail('mn.css: the selector expects a non-empty string, got ' + describeValue(selector));
     isPlainObject(declarations) && values(declarations).every(isCssValue)
-      || fail('mn.css: declarations of "' + selector + '" expect an object of strings or numbers, got '
-        + describeValue(declarations));
-    const known = $$cssRules[selector];
-    const name = known || ($$cssRules[selector] = MN_CSS_RULE + keys($$cssRules).length);
+      || fail('mn.css: declarations of "' + selector + '" expect an object of strings, numbers or '
+        + 'non-empty arrays of them, got ' + describeValue(declarations));
+    const known = own ? '' : $$cssRules[selector];
+    const name = known || MN_CSS_RULE + cssRuleCount++;
+    own || ($$cssRules[selector] = name);
     const parsed = $$cssTargets[name] || ($$cssTargets[name] = parseSelectors(selector));
     let target: string;
     let media: string;

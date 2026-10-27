@@ -7,7 +7,9 @@ import {
 } from '../core/presetOrder';
 import presetStandard from '../presets/standard';
 import presetMedias from '../presets/medias';
-import presetNormalize from '../presets/normalize';
+import {
+  presetNormalize8_0_1,
+} from '../presets/normalize';
 import presetMain from '../presets/main';
 import presetHints from '../presets/hints';
 import type {
@@ -172,13 +174,13 @@ describe('orderPresets — устойчивая топологическая с�
 });
 
 describe('mn.setPresets с пресет-объектами', () => {
-  test('порядок списка не важен: normalize/main после standard и medias', () => {
+  test('порядок списка не важен: main после standard и medias', () => {
     const mn = minotationProvider({
       warningMode: 'silent',
     });
     const presets: MnPreset[] = [
       presetMain,
-      presetNormalize,
+      presetNormalize8_0_1,
       presetHints,
       presetMedias,
       presetStandard,
@@ -194,8 +196,11 @@ describe('mn.setPresets с пресет-объектами', () => {
     const mn = minotationProvider({
       warningMode: 'silent',
     });
-    mn.setPresets([presetStandard]);
-    expect(() => mn.setPresets([presetNormalize])).not.toThrow();
+    mn.setPresets([
+      presetStandard,
+      presetMedias,
+    ]);
+    expect(() => mn.setPresets([presetMain])).not.toThrow();
   });
 
   test('ошибка зависимости — до выполнения любого пресета', () => {

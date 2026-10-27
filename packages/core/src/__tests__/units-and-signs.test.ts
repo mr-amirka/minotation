@@ -1873,19 +1873,19 @@ describe('transition: слоты в фиксированном порядке', 
       'transition:200ms',
     ],
     [
-      'tnAll',
+      'tnA',
       'transition:all',
     ],
     [
-      'tn_all_0.2s',
+      'tn_A_0.2s',
       'transition:all 0.2s',
     ],
     [
-      'tn_color_0.2s_ease',
+      'tn_color_0.2s_E',
       'transition:color 0.2s ease',
     ],
     [
-      'tn_color_0.2s_ease_0.1s',
+      'tn_color_0.2s_E_0.1s',
       'transition:color 0.2s ease 0.1s',
     ],
     [
@@ -1911,11 +1911,11 @@ describe('transition: слоты в фиксированном порядке', 
 
   test.each([
     [
-      'tn_0.2s_all',
+      'tn_0.2s_A',
       'свойство идёт перед длительностью',
     ],
     [
-      'tn_ease_0.2s',
+      'tn_E_0.2s',
       'длительность идёт перед плавностью',
     ],
   ])('%s бракуется — %s', (token) => {
@@ -1934,7 +1934,7 @@ describe('transition: слоты в фиксированном порядке', 
   test('несколько переходов через запятую — то, ради чего shorthand остался', () => {
     // Атомарные `tp`/`dn`/`ttf`/`delay` пишут по одному значению на все
     // свойства сразу, поэтому разные параметры разным свойствам ими не задать.
-    const css = compile(['tn_color_0.2s_ease,transform_0.4s_linear']).css;
+    const css = compile(['tn_color_0.2s_E,transform_0.4s_L']).css;
     expect(css).toContain('transition:color 0.2s ease,transform 0.4s linear');
     expect(lexer.matchProperty('transition', 'color 0.2s ease,transform 0.4s linear').matched).toBeTruthy();
   });
@@ -1946,7 +1946,7 @@ describe('transition: слоты в фиксированном порядке', 
 
   test('подстановка годится в любой слот', () => {
     expect(compile(['tn--v']).css).toContain('transition:var(--v)');
-    expect(compile(['tn_all_--ease']).css).toContain('transition:all var(--ease)');
+    expect(compile(['tn_A_--ease']).css).toContain('transition:all var(--ease)');
   });
 });
 

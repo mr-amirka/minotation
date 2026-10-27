@@ -34,6 +34,7 @@ const HINT_OPEN = ' (';
 const SPACE = ' ';
 const SEMICOLON = ';';
 const N = 'N';
+const A = 'A';
 const NONE = 'none';
 const ALL = 'all';
 const AUTO = 'auto';
@@ -1247,7 +1248,7 @@ const OFFSET_LENGTH: LengthRule = {
 /** Старое `apcNone` → новое `apN` (D-094): полное слово — сразу краткой записью. */
 const APPEARANCE_RENAMED: Record<string, string> = {
   None: N,
-  Auto: 'A',
+  Auto: A,
 };
 
 /** Краткая запись у `border-image`: `biN`. */
@@ -1635,7 +1636,7 @@ const REGEXP_TIME = /^[0-9]*\.?[0-9]+(m?s)?$/;
  * разделитель списка, а не терминатор имени переменной: имя переменной
  * начинается с `--`, и до этой проверки оно уже развёрнуто в `var(…)`. Имя — от
  * двух знаков: свойства из одной буквы в CSS нет, а `tnA_200` давало
- * `transition:a 200ms` (D-106).
+ * `transition:a 200ms` (D-106); теперь `A` — буква `all` ({@link TRANSITION_LETTERS}, D-109).
  */
 const REGEXP_PROPERTY_LIST = /^-?[a-z][a-z0-9-]+(?:;-?[a-z][a-z0-9-]+)*;?$/;
 /**
@@ -1648,6 +1649,33 @@ function lowerItemStart(
   _match: string, separator: string, letter: string,
 ): string {
   return separator + letter.toLowerCase();
+}
+/**
+ * Буквы у `tn` (D-109): плавность — те же, что у `ttf`/`atf` ({@link TIMING_FUNCTION_SYNONYMS}), `A` — `all` в слоте
+ * свойства, как у `tp`. Слот: 1 — свойство, 3 — плавность. Ключ — в обеих формах части: как написана (сырой режим
+ * `tn_opacity_200_EI`) и после кебаба (`tnOpacity_200_EI` → `e-i`, `tnA_200` → `a`). Одна буква или буквы через
+ * дефис другим не бывают: имя свойства — от двух знаков, буквы в нём не разделены дефисами.
+ */
+const TRANSITION_LETTERS: Record<string, [slot: number, value: string]> = {};
+/** Длинное слово → его буква: `tn_opacity_200_ease-in` отвечает «пиши "EI"» (D-015, D-109). */
+const TRANSITION_LONG_WORDS: Record<string, string> = {};
+function addTransitionLetter(
+  letters: string, slot: number, value: string,
+): void {
+  TRANSITION_LETTERS[letters] = TRANSITION_LETTERS[letters.toLowerCase().split('').join(DASH)] = [
+    slot,
+    value,
+  ];
+  TRANSITION_LONG_WORDS[value] = letters;
+}
+addTransitionLetter(
+  A, 1, ALL,
+);
+for (const letters in TIMING_FUNCTION_SYNONYMS) {
+  // `EaseIn` → `ease-in`: слова таблицы — CamelCase без цифр.
+  addTransitionLetter(
+    letters, 3, TIMING_FUNCTION_SYNONYMS[letters].replace(/(?!^)[A-Z]/g, '-$&').toLowerCase(),
+  );
 }
 /** Одно имя CSS-свойства — от двух знаков, как в {@link REGEXP_PROPERTY_LIST}. */
 const REGEXP_PROPERTY_NAME = /^-?[a-z][a-z0-9-]+$/;
@@ -1699,6 +1727,7 @@ function transitionValue(parts: string[], raw: string): string[] {
   let at: number;
   let time: RegExpExecArray | null;
   let names: string[] | 0 = 0;
+  let letter: [number, string] | undefined;
   const prefix = MSG_VALUE + raw + '" is invalid for "tn": the order is ';
   for (; i < l; i++) {
     part = parts[i];
@@ -1707,7 +1736,12 @@ function transitionValue(parts: string[], raw: string): string[] {
       out[i] = part;
       continue;
     }
-    if (time = REGEXP_TIME.exec(part)) {
+    TRANSITION_LONG_WORDS[part] && throwInvalid(MSG_VALUE + raw + '" is invalid for "tn": write it shorter — "'
+      + TRANSITION_LONG_WORDS[part] + '" instead of "' + part + DOUBLE_QUOTE);
+    if (letter = TRANSITION_LETTERS[part]) {
+      at = letter[0];
+      out[i] = letter[1];
+    } else if (time = REGEXP_TIME.exec(part)) {
       // Первое время — длительность, второе — задержка. После плавности может
       // идти только задержка: место длительности — перед плавностью.
       at = hasDuration ? 4 : 2;
@@ -1715,8 +1749,7 @@ function transitionValue(parts: string[], raw: string): string[] {
         + 'easing, delay — duration goes before easing');
       hasDuration = 1;
       out[i] = time[1] ? part : part + MS;
-    } else if (ENUM_KEYWORDS.transitionTimingFunction[part]
-      || REGEXP_EASING_FUNCTION.test(part)) {
+    } else if (REGEXP_EASING_FUNCTION.test(part)) {
       at = 3;
       out[i] = part;
     } else if (REGEXP_PROPERTY_LIST.test(part)) {
@@ -4218,7 +4251,7 @@ export default {
      */
     mn('sbc', (p) => {
       const suffix = p.suffix;
-      if (suffix === 'A') {
+      if (suffix === A) {
         return styleWrap({
           scrollbarColor: AUTO,
         });

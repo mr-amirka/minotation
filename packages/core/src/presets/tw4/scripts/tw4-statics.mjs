@@ -29,7 +29,7 @@ import {
 } from 'node:child_process';
 import {
   repeatedConstants,
-} from './repeated-constants.mjs';
+} from '../../shared/scripts/repeated-constants.mjs';
 
 const PARENT_DIR = '..';
 const NEWLINE = '\n';

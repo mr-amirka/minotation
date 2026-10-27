@@ -2,6 +2,7 @@
  * D-106: `tp` — список через запятую, как в CSS и в старой версии; буквы у `tp`/`ttf`/`mbm`; `ww` → `owr`;
  * опция `overflowWrapMode` для старого имени `word-wrap`; имя свойства из одной буквы у `tp`/`wc`/`tn` — ошибка.
  * D-107: заглавная после `,`/`;` не принимается — у элемента списка одно написание, со строчной.
+ * D-109: `tn` берёт буквы плавности `ttf` и `A` — `all`; длинное слово отвечает буквой.
  */
 import {
   lexer,
@@ -207,8 +208,8 @@ describe('ttf and mbm take letters, as atf and bgbm (D-106)', () => {
   });
 
   test('ttf outranks tn, as before', () => {
-    const css = compile('tn_opacity_200_ease ttfEI').css;
-    expect(css.indexOf('.tn_opacity_200_ease')).toBeLessThan(css.indexOf('.ttfEI'));
+    const css = compile('tn_opacity_200_E ttfEI').css;
+    expect(css.indexOf('.tn_opacity_200_E')).toBeLessThan(css.indexOf('.ttfEI'));
   });
 });
 
@@ -371,8 +372,95 @@ describe('a one-letter property name is an error (D-106)', () => {
       'property names separated by commas',
     ],
     [
+      'tn_b_200',
+      '"b" fits none of them',
+    ],
+  ])('%s gives no CSS: %s', (token, message) => {
+    const result = compile(token);
+    expect(result.css).toBe('');
+    expect(result.warnings).toContain(message);
+  });
+});
+
+describe('tn takes the letters of ttf and A for all (D-109)', () => {
+  test.each([
+    [
+      'tn_opacity_200_EI',
+      'transition:opacity 200ms ease-in',
+    ],
+    [
+      'tnOpacity_200_EIO',
+      'transition:opacity 200ms ease-in-out',
+    ],
+    [
+      'tn_opacity_200_L_100',
+      'transition:opacity 200ms linear 100ms',
+    ],
+    [
+      'tn_opacity_200_SS,color_100_SE',
+      'transition:opacity 200ms step-start,color 100ms step-end',
+    ],
+    [
+      'tnColor;opacity_200_EO',
+      'transition:color 200ms ease-out,opacity 200ms ease-out',
+    ],
+    [
       'tnA_200',
-      '"a" fits none of them',
+      'transition:all 200ms',
+    ],
+    [
+      'tnA_200_E',
+      'transition:all 200ms ease',
+    ],
+    [
+      'tnA',
+      'transition:all',
+    ],
+    [
+      'tn_opacity_200_steps\\(4,jump-end\\)',
+      'transition:opacity 200ms steps(4,jump-end)',
+    ],
+  ])('%s → %s', (token, expected) => {
+    expect(lexer.matchProperty('transition', expected.slice(expected.indexOf(':') + 1)).matched).toBeTruthy();
+    expect(declaration(token)).toBe(expected);
+  });
+
+  test.each([
+    [
+      'tn_opacity_200_ease-in',
+      'write it shorter — "EI" instead of "ease-in"',
+    ],
+    [
+      'tnOpacity_200_easeOut',
+      'write it shorter — "EO" instead of "ease-out"',
+    ],
+    [
+      'tn_opacity_200_linear',
+      'write it shorter — "L" instead of "linear"',
+    ],
+    [
+      'tn_opacity_200_step-start',
+      'write it shorter — "SS" instead of "step-start"',
+    ],
+    [
+      'tn_all_200',
+      'write it shorter — "A" instead of "all"',
+    ],
+    [
+      'tnAll_200',
+      'write it shorter — "A" instead of "all"',
+    ],
+    [
+      'tn_opacity_200_A',
+      '"A" is out of place',
+    ],
+    [
+      'tn_EI_opacity',
+      '"opacity" is out of place',
+    ],
+    [
+      'tn_opacity_200_EX',
+      '"EX" fits none of them',
     ],
   ])('%s gives no CSS: %s', (token, message) => {
     const result = compile(token);

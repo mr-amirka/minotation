@@ -14,7 +14,7 @@ const mnProvider = require('../index').default || require('../index').minotation
 const presetStandard = require('../presets/standard').default || require('../presets/standard');
 const presetSynonyms = require('../presets/synonyms').default || require('../presets/synonyms');
 const presetMedias = require('../presets/medias').default || require('../presets/medias');
-const presetNormalize = require('../presets/normalize').default || require('../presets/normalize');
+const { presetNormalize8_0_1: presetNormalize } = require('../presets/normalize');
 const presetMain = require('../presets/main').default || require('../presets/main');
 
 function make(presets) {

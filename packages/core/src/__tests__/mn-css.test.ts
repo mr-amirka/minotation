@@ -151,7 +151,7 @@ describe('mn.css', () => {
         '.x',
         'color:red',
       ],
-      'mn.css: declarations of ".x" expect an object of strings or numbers, got string "color:red"',
+      'mn.css: declarations of ".x" expect an object of strings, numbers or non-empty arrays of them, got string "color:red"',
     ],
     [
       [
@@ -160,13 +160,162 @@ describe('mn.css', () => {
           color: {},
         },
       ],
-      'mn.css: declarations of ".x" expect an object of strings or numbers, got object',
+      'mn.css: declarations of ".x" expect an object of strings, numbers or non-empty arrays of them, got object',
+    ],
+    [
+      [
+        '.x',
+        {
+          color: [],
+        },
+      ],
+      'non-empty arrays of them, got object',
+    ],
+    [
+      [
+        '.x',
+        {
+          color: [
+            'red',
+            {},
+          ],
+        },
+      ],
+      'non-empty arrays of them, got object',
+    ],
+    [
+      [
+        [
+          [
+            '.x',
+            {
+              color: 'red',
+            },
+          ],
+          '.y',
+        ],
+      ],
+      'mn.css: entry 1 of the list expects [selector, declarations], got string ".y"',
+    ],
+    [
+      [[['.x']]],
+      'mn.css: entry 0 of the list expects [selector, declarations], got array',
+    ],
+    [
+      [
+        [
+          [
+            '',
+            {},
+          ],
+        ],
+      ],
+      'mn.css: the selector expects a non-empty string, got string ""',
     ],
   ])('%j — ошибка', (args, message) => {
     const {
       mn,
     } = create();
     expect(() => (mn.css as (...a: unknown[]) => unknown)(...args)).toThrow(message);
+  });
+});
+
+describe('mn.css: повтор объявления, свои правила, псевдоэлемент в списке (D-108)', () => {
+  test('F1: массив — повтор объявления по порядку', () => {
+    const {
+      mn, styles,
+    } = create();
+    mn.css('abbr[title]', {
+      borderBottom: 'none',
+      textDecoration: [
+        'underline',
+        'underline dotted',
+      ],
+    });
+    mn.css('.n', {
+      lineHeight: [
+        1,
+        '1.2',
+      ],
+    });
+    mn.compile();
+    expect(styles()).toEqual([
+      [
+        -2000,
+        'abbr[title]{border-bottom:none;text-decoration:underline;text-decoration:underline dotted}'
+          + '.n{line-height:1;line-height:1.2}',
+      ],
+    ]);
+  });
+
+  test('F3: записи списка — свои правила по порядку; строка и карта дописывают в своё', () => {
+    const {
+      mn, styles,
+    } = create();
+    mn.css([
+      [
+        'b,strong',
+        {
+          fontWeight: 'inherit',
+        },
+      ],
+      [
+        'b,strong',
+        {
+          fontWeight: 'bolder',
+        },
+      ],
+    ]);
+    mn.css('b,strong', {
+      color: 'red',
+    });
+    mn.css({
+      'b,strong': {
+        fontStyle: 'italic',
+      },
+    });
+    mn.compile();
+    expect(styles()).toEqual([
+      [
+        -2000,
+        'b,strong{font-weight:inherit}b,strong{font-weight:bolder}b,strong{color:red;font-style:italic}',
+      ],
+    ]);
+    mn.recompile();
+    expect(styles()[0][1]).toBe('b,strong{font-weight:inherit}b,strong{font-weight:bolder}b,strong{color:red;font-style:italic}');
+  });
+
+  test.each([
+    [
+      '*,::before,::after',
+      '*,::before,::after{x:1}',
+    ],
+    [
+      'html,::selection',
+      'html,::selection{x:1}',
+    ],
+    // Вендорный — своим правилом: чужой браузер отбросил бы весь список.
+    [
+      'a,button::-moz-focus-inner',
+      'button::-moz-focus-inner{x:1}a{x:1}',
+    ],
+    [
+      'input:-webkit-autofill,input::-moz-placeholder,a',
+      'input:-webkit-autofill{x:1}input::-moz-placeholder{x:1}a{x:1}',
+    ],
+    [
+      'a::-webkit-scrollbar,b::-webkit-scrollbar-thumb',
+      'a::-webkit-scrollbar,b::-webkit-scrollbar-thumb{x:1}',
+    ],
+  ])('F2: %s → %s', (selector, css) => {
+    const {
+      mn, styles,
+    } = create();
+    mn.css(selector, {
+      x: 1,
+    });
+    mn.compile();
+    expect(styles().map((s) => s[1]).join('')).toBe(css);
   });
 });
 

@@ -1,7 +1,8 @@
 /**
  * The constants of a generated table (lab/no-repeated-string, lab D-017.3): a value the table writes 3+ times becomes
- * `const NAME = "value";`, written once above the table; the table writes `NAME`. Shared by `tw4-statics.mjs` and
- * `tw4-theme.mjs`.
+ * `const NAME = "value";`, written once above the table; the table writes `NAME`. Shared by the generators of
+ * `presetTw4` (`tw4/scripts/tw4-statics.mjs`, `tw4-theme.mjs`) and of the normalize presets
+ * (`normalize/scripts/normalize-presets.mjs`, D-108).
  */
 
 /** How many times a value may be written before it is a constant (the rule's threshold). */

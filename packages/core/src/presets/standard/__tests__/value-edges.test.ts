@@ -884,7 +884,7 @@ describe('незнакомое слово у хендлера со словар�
       'background-position-x:50%',
     ],
     [
-      'tn_all_0.2s_ease',
+      'tn_A_0.2s_E',
       'transition:all 0.2s ease',
     ],
   ])('%s → %s — переменные, числа и свободная форма не задеты', (token, expected) => {

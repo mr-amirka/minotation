@@ -74,7 +74,17 @@ import {
 import presetStandardDefault from './presets/standard';
 import presetSynonymsDefault from './presets/synonyms';
 import presetMediasDefault from './presets/medias';
-import presetNormalizeDefault from './presets/normalize';
+import {
+  presetNormalize3_0_3 as presetNormalize3_0_3Impl,
+  presetNormalize4_2_0 as presetNormalize4_2_0Impl,
+  presetNormalize5_0_0 as presetNormalize5_0_0Impl,
+  presetNormalize6_0_0 as presetNormalize6_0_0Impl,
+  presetNormalize7_0_0 as presetNormalize7_0_0Impl,
+  presetNormalize8_0_1 as presetNormalize8_0_1Impl,
+  presetModernNormalize1_1_0 as presetModernNormalize1_1_0Impl,
+  presetModernNormalize2_0_0 as presetModernNormalize2_0_0Impl,
+  presetModernNormalize3_0_1 as presetModernNormalize3_0_1Impl,
+} from './presets/normalize';
 import presetMainDefault from './presets/main';
 import presetPrefixesDefault from './presets/prefixes';
 import presetHintsDefault from './presets/hints';
@@ -187,6 +197,8 @@ export type {
   OptionSchema,
 } from './checkOptions';
 export type {
+  MnCssDeclarations,
+  MnCssEntry,
   MnInstance,
 } from './types';
 
@@ -222,7 +234,20 @@ export const MnForbiddenTokenError = MnForbiddenTokenErrorImpl;
 export const presetStandard = presetStandardDefault;
 export const presetSynonyms = presetSynonymsDefault;
 export const presetMedias = presetMediasDefault;
-export const presetNormalize = presetNormalizeDefault;
+/**
+ * Пресеты normalize (D-108): версия эталона — в имени, эталон воспроизводится один в один. В наборах по умолчанию
+ * сброса нет — приложение перечисляет нужный: normalize.css 3.0.3 (IE 8+), 4.2.0–7.0.0, 8.0.1 (IE 10+, Safari 8+),
+ * modern-normalize 1.1.0, 2.0.0, 3.0.1 (последние Chrome, Firefox, Safari).
+ */
+export const presetNormalize3_0_3 = presetNormalize3_0_3Impl;
+export const presetNormalize4_2_0 = presetNormalize4_2_0Impl;
+export const presetNormalize5_0_0 = presetNormalize5_0_0Impl;
+export const presetNormalize6_0_0 = presetNormalize6_0_0Impl;
+export const presetNormalize7_0_0 = presetNormalize7_0_0Impl;
+export const presetNormalize8_0_1 = presetNormalize8_0_1Impl;
+export const presetModernNormalize1_1_0 = presetModernNormalize1_1_0Impl;
+export const presetModernNormalize2_0_0 = presetModernNormalize2_0_0Impl;
+export const presetModernNormalize3_0_1 = presetModernNormalize3_0_1Impl;
 export const presetMain = presetMainDefault;
 export const presetPrefixes = presetPrefixesDefault;
 /** Подсказки о классах, которых нет в нотации (`t0` → `st0`, `flex` → `dF`) — D-024. */

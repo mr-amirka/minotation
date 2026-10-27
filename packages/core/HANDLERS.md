@@ -49,10 +49,10 @@
 
 | Токен | CSS |
 |-------|-----|
-| `tnAll_0.2s_--ease` | `transition:all 0.2s var(--ease)` |
-| `tn_all_0.2s_--ease` | `transition:all 0.2s var(--ease)` |
+| `tnA_0.2s_--ease` | `transition:all 0.2s var(--ease)` |
+| `tn_opacity_0.2s_--ease` | `transition:opacity 0.2s var(--ease)` |
 | `bxsh10c--shadow` | `box-shadow:0px 0px 10px 0px var(--shadow)` |
-| `tn_all_0.2s_---safe` | `transition:all 0.2s env(--safe)` |
+| `tnA_0.2s_---safe` | `transition:all 0.2s env(--safe)` |
 | `ff--mono,serif` | `font-family:var(--mono,serif)` (с 2026-09-23; раньше `"-mono",serif`) |
 
 Имя переменной сохраняется как есть и не переводится в kebab-case: `c--myInk` →
@@ -65,11 +65,11 @@
 
 | Токен | CSS |
 |-------|-----|
-| `tn--border_size;_all_--ease` | `transition:var(--border_size) all var(--ease)` |
+| `tn--border_size;_A_--ease` | `transition:var(--border_size) all var(--ease)` |
 | `w--my_width;` | `width:var(--my_width)` |
 | `p--gap_size;` | `padding:var(--gap_size)` |
 | `w--my_w;+5` | `width:calc(var(--my_w) + 5px)` |
-| `tn--a_b;_all_--c_d;` | `transition:var(--a_b) all var(--c_d)` |
+| `tn--a_b;_A_--c_d;` | `transition:var(--a_b) all var(--c_d)` |
 
 Терминатор необязателен: для имени без `_` (`w--gap` и `w--gap;`) результат одинаков —
 его можно ставить всегда, не разбираясь, каким путём разбирается конкретный хендлер.
@@ -173,7 +173,7 @@ fallback и сам градиент.
 написано.
 
 ```
-tn_all_0.2s_--ease  →  transition:all 0.2s var(--ease)
+tnA_0.2s_--ease     →  transition:all 0.2s var(--ease)
 ff_Times_New_Roman  →  font-family:"Times New Roman"
 ```
 
@@ -884,15 +884,21 @@ tn{свойство}_{длительность}_{плавность}_{задер
 |-------|-----|
 | `tn200` | `transition:200ms` — голое число получает `ms`, как у `dn` |
 | `tn0.2s` | `transition:0.2s` |
-| `tnAll` | `transition:all` |
-| `tn_all_0.2s` | `transition:all 0.2s` |
-| `tn_color_0.2s_ease` | `transition:color 0.2s ease` |
-| `tn_color_0.2s_ease_0.1s` | `transition:color 0.2s ease 0.1s` |
+| `tnA` | `transition:all` |
+| `tnA_0.2s` | `transition:all 0.2s` |
+| `tn_color_0.2s_E` | `transition:color 0.2s ease` |
+| `tn_color_0.2s_EIO_0.1s` | `transition:color 0.2s ease-in-out 0.1s` |
 | `tn_0.2s_0.1s` | `transition:0.2s 0.1s` — первое время длительность, второе задержка |
 | `tn_cubic-bezier\(0,0,1,1\)` | `transition:cubic-bezier(0,0,1,1)` |
 
-Каждый слот необязателен, но **порядок обязателен**: `tn_0.2s_all` и
-`tn_ease_0.2s` бракуются, хотя CSS их принимает. Грамматика
+**Буквы** (D-109) — те же, что у `tp` и `ttf`: `A` — `all` в слоте свойства; плавность — `L` (`linear`),
+`E` (`ease`), `EI`, `EO`, `EIO` (`ease-in`, `ease-out`, `ease-in-out`), `SS`, `SE` (`step-start`, `step-end`).
+Длинное слово отвечает буквой (D-015): `tn_A_0.2s` → «write it shorter — "A" instead of "all"»,
+`tn_color_0.2s_ease-in` → «"EI" instead of "ease-in"». Функции плавности (`cubic-bezier(…)`, `steps(…)`,
+`linear(…)`) пишутся как в CSS.
+
+Каждый слот необязателен, но **порядок обязателен**: `tn_0.2s_A` и
+`tn_E_0.2s` бракуются, хотя CSS их принимает. Грамматика
 `<single-transition>` — набор `||`, порядок в ней свободный; нотация
 фиксирует один, чтобы одно и то же не записывалось по-разному, а ошибка
 называлась словами.
@@ -915,7 +921,7 @@ tn_color;background;border-color_0.2s
 **Несколько переходов через запятую** — то, ради чего shorthand остался:
 
 ```
-tn_color_0.2s_ease,transform_0.4s_linear
+tn_color_0.2s_E,transform_0.4s_L
 → transition:color 0.2s ease,transform 0.4s linear
 ```
 
@@ -2051,7 +2057,7 @@ export function presetApp(mn: MnInstance): void {
 mnVite({
   attr: 'className',
   extensions: ['.tsx', '.jsx'],
-  presets: [presetStandard, presetSynonyms, presetMedias, presetNormalize, presetMain],
+  presets: [presetStandard, presetSynonyms, presetMedias, presetNormalize8_0_1, presetMain],
   // presetExtensions: ['.mn.ts', '.mn.js', '.mn.tsx'],  // дефолт — менять не нужно
 })
 ```
@@ -2299,7 +2305,7 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 **Шорткаты, которые остались**, — те, у которых атомарного аналога нет:
 
 - `tn` — разные параметры для разных свойств в одном значении
-  (`tn_color_0.2s_ease,transform_0.4s_linear`);
+  (`tn_color_0.2s_E,transform_0.4s_L`);
 - `bxsh`/`tsh` — тень это одно значение из пяти частей, отдельных свойств для
   них в CSS не существует;
 - `fx` — `flex: 1 1 auto` задаёт три свойства сразу, и браузер трактует
@@ -2325,7 +2331,7 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 ### Чего действительно нет
 
 - **Именованные цвета** (`red`, `tomato`) — см. выше.
-- **Свой порядок частей** в составных значениях. `tn_0.2s_all` бракуется,
+- **Свой порядок частей** в составных значениях. `tn_0.2s_A` бракуется,
   хотя CSS такую запись принимает: грамматика там свободная (`||`), а нотация
   фиксирует один порядок, чтобы ошибка называлась словами.
 - **Проприетарные значения**, которых нет в стандарте: `bsW` → `wave`,

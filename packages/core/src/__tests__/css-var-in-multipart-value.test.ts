@@ -1,5 +1,5 @@
 /**
- * Развёртка CSS-переменных в СОСТАВНОМ значении (`tn_all_0.2s_--ease`).
+ * Развёртка CSS-переменных в СОСТАВНОМ значении (`tn_A_0.2s_--ease`).
  *
  * До 2026-09-23 подстановка `--name` → `var(--name)` работала только там, где
  * значение разбиралось общим `getVal`. Хендлеры со «свободным» значением
@@ -33,12 +33,12 @@ describe('CSS-переменные в составном значении', () =
     // Регрессия, с которой всё началось: суффикс начинается с `_`, поэтому
     // целиком уходил в «сырой» режим и давал `outline:3px solid --marker`.
     [
-      'tn_all_0.2s_--ease',
+      'tn_A_0.2s_--ease',
       'transition:all 0.2s var(--ease)',
     ],
     // Та же форма без ведущего `_` — другой путь внутри хендлера, тот же итог.
     [
-      'tnAll_0.2s_--ease',
+      'tnA_0.2s_--ease',
       'transition:all 0.2s var(--ease)',
     ],
     // Одиночная переменная у хендлера свободного значения тоже не работала.
@@ -47,7 +47,7 @@ describe('CSS-переменные в составном значении', () =
       'transition:var(--ease)',
     ],
     [
-      'tn_all_0.2s_--ease',
+      'tn_A_0.2s_--ease',
       'transition:all 0.2s var(--ease)',
     ],
     [
@@ -56,7 +56,7 @@ describe('CSS-переменные в составном значении', () =
     ],
     // Несколько переменных в одном значении.
     [
-      'tn_all_0.2s_--ease',
+      'tn_A_0.2s_--ease',
       'transition:all 0.2s var(--ease)',
     ],
     [
@@ -68,13 +68,13 @@ describe('CSS-переменные в составном значении', () =
   });
 
   test('тройной дефис в составном значении даёт env(), как и в одиночном', () => {
-    expect(cssOf('tn_all_0.2s_---safe')).toBe('transition:all 0.2s env(--safe)');
+    expect(cssOf('tn_A_0.2s_---safe')).toBe('transition:all 0.2s env(--safe)');
   });
 
   test('имя переменной не кебабится — camelCase сохраняется', () => {
     // Иначе `--myInk` превратилось бы в `var(--my-ink)` и ссылалось бы
     // на несуществующую переменную. `getVal`-путь так себя и вёл всегда.
-    expect(cssOf('tn_all_0.2s_--myInk')).toBe('transition:all 0.2s var(--myInk)');
+    expect(cssOf('tn_A_0.2s_--myInk')).toBe('transition:all 0.2s var(--myInk)');
     expect(cssOf('c--myInk')).toBe('color:var(--myInk)');
   });
 
@@ -101,7 +101,7 @@ describe('`;` — явный конец имени переменной', () => 
   test('кейс, ради которого терминатор доведён до конца', () => {
     // `_` внутри `--border_size;` — часть
     // имени, снаружи — по-прежнему разделитель частей значения.
-    expect(cssOf('tn--border_size;_all_--ease'))
+    expect(cssOf('tn--border_size;_A_--ease'))
       .toBe('transition:var(--border_size) all var(--ease)');
   });
 
@@ -126,7 +126,7 @@ describe('`;` — явный конец имени переменной', () => 
       'font-family:var(--my_font)',
     ],
     [
-      'tn_all_--ease;',
+      'tn_A_--ease;',
       'transition:all var(--ease)',
     ],
     // Цветовой путь: `_` там и так был доступен, но `;` не должен ломать.
@@ -148,7 +148,7 @@ describe('`;` — явный конец имени переменной', () => 
     ],
     // Несколько имён с `_` в одном значении.
     [
-      'tn--a_b;_all_--c_d;',
+      'tn--a_b;_A_--c_d;',
       'transition:var(--a_b) all var(--c_d)',
     ],
   ])('%s → %s', (token, expected) => {
@@ -253,15 +253,15 @@ describe('хендлеры со своим путём разбора — спл�
 describe('составные значения без переменных не затронуты', () => {
   test.each([
     [
-      'tn_all_0.2s_ease',
+      'tn_A_0.2s_E',
       'transition:all 0.2s ease',
     ],
     [
-      'tnAll',
+      'tnA',
       'transition:all',
     ],
     [
-      'tn_all_0.2s_ease',
+      'tn_A_0.2s_E',
       'transition:all 0.2s ease',
     ],
     [

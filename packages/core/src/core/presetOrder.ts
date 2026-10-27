@@ -5,6 +5,7 @@
  */
 import {
   checkOptions,
+  describeValue,
   isFunction,
   isString,
   isStringArray,
@@ -33,7 +34,7 @@ const PRESET_SCHEMA: OptionSchema = {
 
 /** Проверяет пресет-объект: обязательные `name`, `setup` и схема полей (D-038). */
 function checkPreset(preset: MnPresetObject): void {
-  const named = typeof preset.name === 'string';
+  const named = Boolean(preset) && typeof preset.name === 'string';
   const where = 'preset ' + (named ? DOUBLE_QUOTE + preset.name + DOUBLE_QUOTE : 'object');
   checkOptions(
     preset, PRESET_SCHEMA, where,
@@ -55,13 +56,15 @@ function fail(message: string): never {
  * @param presets — список, как его передали в `setPresets`
  * @param connected — пресеты, подключённые прошлыми вызовами `setPresets`, по имени
  * @returns пресеты в порядке подключения; уже подключённые объекты пропущены
- * @throws {Error} нет зависимости, взаимная зависимость, два разных пресета с одним именем
+ * @throws {Error} не массив, не пресет, нет зависимости, взаимная зависимость, два разных пресета с одним именем
  *
  * @example
  * orderPresets([presetMain, presetHints, presetStandard], {});
  * // => [presetHints, presetStandard, presetMain]
  */
 export function orderPresets(presets: MnPreset[], connected: Record<string, MnPresetObject>): MnPreset[] {
+  // Набор пресетов передаётся явно (D-110): забытый набор — ошибка с ответом, а не «presets is not iterable».
+  Array.isArray(presets) || fail('setPresets expects an array of presets, got ' + describeValue(presets));
   const byName: Record<string, MnPresetObject> = {};
   let preset: MnPreset;
   let known: MnPresetObject | undefined;

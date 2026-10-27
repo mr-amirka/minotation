@@ -24,7 +24,7 @@
  * `.mjs` — чтобы файлы читались как ESM независимо от `"type"` пакета.
  */
 import { build } from 'esbuild';
-import { rmSync } from 'fs';
+import { readdirSync, rmSync } from 'fs';
 import { fileURLToPath } from 'url';
 
 /** Сообщение заглушки — его увидит `syntax: true` в браузерной сборке. */
@@ -82,14 +82,30 @@ async function buildEsm(outdir, entryPoints, plugins) {
   });
 }
 
-await buildEsm('dist/esm', {
-  index: 'src/index.ts',
-  mne: 'src/mne.ts',
-  syntaxScan: 'src/syntaxScan.ts',
-}, []);
+/**
+ * Каждый модуль исходников — своя точка входа (D-110): с `splitting` у каждого свой файл, и бандлер потребителя по
+ * `"sideEffects": false` выбрасывает неимпортированный модуль целиком, как при сборке из исходников. В общем чанке он
+ * резал только по операторам и оставлял таблицы, собранные вызовами (`wordsSet(…)`, циклы): `import
+ * { minotationProvider }` тянул таблицы `presetStandard`, `presetHints`, словари синонимов и правила всех normalize.
+ * Публичными входами пакета эти файлы не становятся — `exports` их не называет.
+ *
+ * @param skip — модули, которых в сборке нет (браузерная заменяет `syntaxScan` заглушкой)
+ */
+function moduleEntries(skip) {
+  const src = fileURLToPath(new URL('../src', import.meta.url));
+  const entries = {};
+  for (const file of readdirSync(src, {
+    recursive: true,
+  })) {
+    if (/\.tsx?$/.test(file) && !/(?:^|\/)__(?:tests|benchmarks)__\/|\.d\.ts$|\.(?:test|spec)\.tsx?$/.test(file)
+      && !skip.includes(file)) {
+      entries[file.replace(/\.tsx?$/, '')] = 'src/' + file;
+    }
+  }
+  return entries;
+}
+
+await buildEsm('dist/esm', moduleEntries([]), []);
 
 // `minotation/syntax` в браузере не нужен: он и есть парсер.
-await buildEsm('dist/browser', {
-  index: 'src/index.ts',
-  mne: 'src/mne.ts',
-}, [browserSyntaxStub]);
+await buildEsm('dist/browser', moduleEntries(['syntaxScan.ts']), [browserSyntaxStub]);

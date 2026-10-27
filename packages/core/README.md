@@ -218,12 +218,17 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 
 ## Пресеты
 
+Пресеты подключаются только явно (D-110): набора по умолчанию нет ни у плагинов и CLI, ни у
+`<MnIframe>` — без `presets` они сообщают об ошибке, а не собирают пустой CSS. Ядро тянет в
+сборку только те пресеты, что импортированы: `import { minotationProvider }` не приносит кода
+ни одного из них.
+
 | Пресет | Описание |
 |--------|----------|
 | `presetStandard` | 40+ обработчиков: размеры, отступы, цвета, flex, transform |
 | `presetSynonyms` | Синонимы: `h`→`:hover`, `f`→`:focus`, `a`→`:active` |
 | `presetMedias` | Точки по ширине `m…`/`d…` (`@m4` — до 480px, `@d-` — от 992px, `@m4-d` — между), `mouse`, `dark`, `light`, `print`, `portrait`, `landscape`, `motion-safe`/`motion-reduce`, `contrast-more`/`contrast-less`, `forced-colors`, `pointer-fine`/`pointer-coarse`, `noscript` и другие (D-054, D-057) |
-| `presetNormalize3_0_3` … `presetNormalize8_0_1`, `presetModernNormalize1_1_0` … `presetModernNormalize3_0_1` | Сброс — эталон normalize.css / modern-normalize один в один, версия — в имени (D-108). В наборы по умолчанию не входит; требований нет — работает и один. См. «Сброс: пресеты normalize» ниже |
+| `presetNormalize3_0_3` … `presetNormalize8_0_1`, `presetModernNormalize1_1_0` … `presetModernNormalize3_0_1` | Сброс — эталон normalize.css / modern-normalize один в один, версия — в имени (D-108). Требований нет — работает и один. См. «Сброс: пресеты normalize» ниже |
 | `presetMain` | Полный CSS-сброс (аналог normalize.css) |
 | `presetHints` | Подсказки вместо молчания: `t0` → «did you mean `st0`?», `mh100vh` → «did you mean `hmin100vh`?» (D-093), `flex` → «в minotation это `dF`», `text-center` → `taC`. Подключать первым — пресет ниже перекрывает его хендлеры. Точечно — фабрикой: `presetHints({ excludeGroups: ['bootstrap'], excludeHandlers: ['flex'] })`; группы — `typos`, `tailwind`, `bootstrap` (D-024, D-042) |
 | `presetPrefixes` | Опциональные `-webkit-`/`-moz-` дубли для заданного списка свойств (`transform`, `flexDirection`, `appearance`, …) |
@@ -232,8 +237,8 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 ### Сброс: пресеты normalize (D-108)
 
 У каждого эталона — свой пресет, версия — в имени: пресет воспроизводит CSS эталона из npm один в один
-(селекторы, объявления, их порядок). Приложение выбирает версию под свои браузеры и подключает сам —
-в наборах по умолчанию (плагины, CLI, рантайм) сброса нет.
+(селекторы, объявления, их порядок). Приложение выбирает версию под свои браузеры и перечисляет её в
+`presets`, как любой пресет (D-110).
 
 | Пресет | Эталон | Браузеры эталона |
 |--------|--------|------------------|

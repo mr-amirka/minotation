@@ -21,214 +21,219 @@ const FONT_FAMILY = 'font-family';
 const FONT_SIZE = 'font-size';
 const LINE_HEIGHT = 'line-height';
 
-/** The reference's rules in its order: 19. */
-const RULES: MnCssEntry[] = [
-  /*
-     Document
-     ========
-   */
-  /**
-     Use a better box model (opinionated).
-   */
-  [
-    '*, ::before, ::after',
-    {
-      'box-sizing': 'border-box',
-    },
-  ],
-  [
-    'html',
-    {
-      // Improve consistency of default fonts in all browsers. (https://github.com/sindresorhus/modern-normalize/issues/3)
-      [FONT_FAMILY]: "system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'",
-      [LINE_HEIGHT]: '1.15', // 1. Correct the line height in all browsers.
-      '-webkit-text-size-adjust': '100%', // 2. Prevent adjustments of font size after orientation changes in iOS.
-      'tab-size': '4', // 3. Use a more readable tab size (opinionated).
-    },
-  ],
-  /*
-     Sections
-     ========
-   */
-  [
-    'body',
-    {
-      'margin': V_0, // Remove the margin in all browsers.
-    },
-  ],
-  /*
-     Text-level semantics
-     ====================
-   */
-  /**
-     Add the correct font weight in Chrome and Safari.
-   */
-  [
-    'b, strong',
-    {
-      'font-weight': 'bolder',
-    },
-  ],
-  /**
-     1. Improve consistency of default fonts in all browsers. (https://github.com/sindresorhus/modern-normalize/issues/3)
-     2. Correct the odd 'em' font sizing in all browsers.
-   */
-  [
-    'code, kbd, samp, pre',
-    {
-      [FONT_FAMILY]: "ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace", // 1
-      [FONT_SIZE]: '1em', // 2
-    },
-  ],
-  /**
-     Add the correct font size in all browsers.
-   */
-  [
-    'small',
-    {
-      [FONT_SIZE]: '80%',
-    },
-  ],
-  /**
-     Prevent 'sub' and 'sup' elements from affecting the line height in all browsers.
-   */
-  [
-    'sub, sup',
-    {
-      [FONT_SIZE]: '75%',
-      [LINE_HEIGHT]: V_0,
-      'position': 'relative',
-      'vertical-align': 'baseline',
-    },
-  ],
-  [
-    'sub',
-    {
-      'bottom': '-0.25em',
-    },
-  ],
-  [
-    'sup',
-    {
-      'top': '-0.5em',
-    },
-  ],
-  /*
-     Tabular data
-     ============
-   */
-  /**
-     Correct table border color inheritance in Chrome and Safari. (https://issues.chromium.org/issues/40615503, https://bugs.webkit.org/show_bug.cgi?id=195016)
-   */
-  [
-    'table',
-    {
-      'border-color': 'currentcolor',
-    },
-  ],
-  /*
-     Forms
-     =====
-   */
-  /**
-     1. Change the font styles in all browsers.
-     2. Remove the margin in Firefox and Safari.
-   */
-  [
-    'button, input, optgroup, select, textarea',
-    {
-      [FONT_FAMILY]: 'inherit', // 1
-      [FONT_SIZE]: '100%', // 1
-      [LINE_HEIGHT]: '1.15', // 1
-      'margin': V_0, // 2
-    },
-  ],
-  /**
-     Correct the inability to style clickable types in iOS and Safari.
-   */
-  [
-    "button, [type='button'], [type='reset'], [type='submit']",
-    {
-      [WEBKIT_APPEARANCE]: 'button',
-    },
-  ],
-  /**
-     Remove the padding so developers are not caught out when they zero out 'fieldset' elements in all browsers.
-   */
-  [
-    'legend',
-    {
-      'padding': V_0,
-    },
-  ],
-  /**
-     Add the correct vertical alignment in Chrome and Firefox.
-   */
-  [
-    'progress',
-    {
-      'vertical-align': 'baseline',
-    },
-  ],
-  /**
-     Correct the cursor style of increment and decrement buttons in Safari.
-   */
-  [
-    '::-webkit-inner-spin-button, ::-webkit-outer-spin-button',
-    {
-      'height': 'auto',
-    },
-  ],
-  /**
-     1. Correct the odd appearance in Chrome and Safari.
-     2. Correct the outline style in Safari.
-   */
-  [
-    "[type='search']",
-    {
-      [WEBKIT_APPEARANCE]: 'textfield', // 1
-      'outline-offset': '-2px', // 2
-    },
-  ],
-  /**
-     Remove the inner padding in Chrome and Safari on macOS.
-   */
-  [
-    '::-webkit-search-decoration',
-    {
-      [WEBKIT_APPEARANCE]: 'none',
-    },
-  ],
-  /**
-     1. Correct the inability to style clickable types in iOS and Safari.
-     2. Change font properties to 'inherit' in Safari.
-   */
-  [
-    '::-webkit-file-upload-button',
-    {
-      [WEBKIT_APPEARANCE]: 'button', // 1
-      'font': 'inherit', // 2
-    },
-  ],
-  /*
-     Interactive
-     ===========
-   */
-  /*
-     Add the correct display in Chrome and Safari.
-   */
-  [
-    'summary',
-    {
-      'display': 'list-item',
-    },
-  ],
-];
+/**
+ * The reference's rules in its order: 19. A function, not a module-level table: the keys are computed
+ * (`[BORDER]`), and a bundler keeps such a table even when the preset isn't imported (D-110).
+ */
+function rules(): MnCssEntry[] {
+  return [
+    /*
+       Document
+       ========
+     */
+    /**
+       Use a better box model (opinionated).
+     */
+    [
+      '*, ::before, ::after',
+      {
+        'box-sizing': 'border-box',
+      },
+    ],
+    [
+      'html',
+      {
+        // Improve consistency of default fonts in all browsers. (https://github.com/sindresorhus/modern-normalize/issues/3)
+        [FONT_FAMILY]: "system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'",
+        [LINE_HEIGHT]: '1.15', // 1. Correct the line height in all browsers.
+        '-webkit-text-size-adjust': '100%', // 2. Prevent adjustments of font size after orientation changes in iOS.
+        'tab-size': '4', // 3. Use a more readable tab size (opinionated).
+      },
+    ],
+    /*
+       Sections
+       ========
+     */
+    [
+      'body',
+      {
+        'margin': V_0, // Remove the margin in all browsers.
+      },
+    ],
+    /*
+       Text-level semantics
+       ====================
+     */
+    /**
+       Add the correct font weight in Chrome and Safari.
+     */
+    [
+      'b, strong',
+      {
+        'font-weight': 'bolder',
+      },
+    ],
+    /**
+       1. Improve consistency of default fonts in all browsers. (https://github.com/sindresorhus/modern-normalize/issues/3)
+       2. Correct the odd 'em' font sizing in all browsers.
+     */
+    [
+      'code, kbd, samp, pre',
+      {
+        [FONT_FAMILY]: "ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace", // 1
+        [FONT_SIZE]: '1em', // 2
+      },
+    ],
+    /**
+       Add the correct font size in all browsers.
+     */
+    [
+      'small',
+      {
+        [FONT_SIZE]: '80%',
+      },
+    ],
+    /**
+       Prevent 'sub' and 'sup' elements from affecting the line height in all browsers.
+     */
+    [
+      'sub, sup',
+      {
+        [FONT_SIZE]: '75%',
+        [LINE_HEIGHT]: V_0,
+        'position': 'relative',
+        'vertical-align': 'baseline',
+      },
+    ],
+    [
+      'sub',
+      {
+        'bottom': '-0.25em',
+      },
+    ],
+    [
+      'sup',
+      {
+        'top': '-0.5em',
+      },
+    ],
+    /*
+       Tabular data
+       ============
+     */
+    /**
+       Correct table border color inheritance in Chrome and Safari. (https://issues.chromium.org/issues/40615503, https://bugs.webkit.org/show_bug.cgi?id=195016)
+     */
+    [
+      'table',
+      {
+        'border-color': 'currentcolor',
+      },
+    ],
+    /*
+       Forms
+       =====
+     */
+    /**
+       1. Change the font styles in all browsers.
+       2. Remove the margin in Firefox and Safari.
+     */
+    [
+      'button, input, optgroup, select, textarea',
+      {
+        [FONT_FAMILY]: 'inherit', // 1
+        [FONT_SIZE]: '100%', // 1
+        [LINE_HEIGHT]: '1.15', // 1
+        'margin': V_0, // 2
+      },
+    ],
+    /**
+       Correct the inability to style clickable types in iOS and Safari.
+     */
+    [
+      "button, [type='button'], [type='reset'], [type='submit']",
+      {
+        [WEBKIT_APPEARANCE]: 'button',
+      },
+    ],
+    /**
+       Remove the padding so developers are not caught out when they zero out 'fieldset' elements in all browsers.
+     */
+    [
+      'legend',
+      {
+        'padding': V_0,
+      },
+    ],
+    /**
+       Add the correct vertical alignment in Chrome and Firefox.
+     */
+    [
+      'progress',
+      {
+        'vertical-align': 'baseline',
+      },
+    ],
+    /**
+       Correct the cursor style of increment and decrement buttons in Safari.
+     */
+    [
+      '::-webkit-inner-spin-button, ::-webkit-outer-spin-button',
+      {
+        'height': 'auto',
+      },
+    ],
+    /**
+       1. Correct the odd appearance in Chrome and Safari.
+       2. Correct the outline style in Safari.
+     */
+    [
+      "[type='search']",
+      {
+        [WEBKIT_APPEARANCE]: 'textfield', // 1
+        'outline-offset': '-2px', // 2
+      },
+    ],
+    /**
+       Remove the inner padding in Chrome and Safari on macOS.
+     */
+    [
+      '::-webkit-search-decoration',
+      {
+        [WEBKIT_APPEARANCE]: 'none',
+      },
+    ],
+    /**
+       1. Correct the inability to style clickable types in iOS and Safari.
+       2. Change font properties to 'inherit' in Safari.
+     */
+    [
+      '::-webkit-file-upload-button',
+      {
+        [WEBKIT_APPEARANCE]: 'button', // 1
+        'font': 'inherit', // 2
+      },
+    ],
+    /*
+       Interactive
+       ===========
+     */
+    /*
+       Add the correct display in Chrome and Safari.
+     */
+    [
+      'summary',
+      {
+        'display': 'list-item',
+      },
+    ],
+  ];
+}
 
 /** modern-normalize 3.0.1 — the latest Chrome, Firefox, Safari. */
 export const presetModernNormalize3_0_1: MnPresetObject = {
   name: 'presetModernNormalize3_0_1',
   setup: (mn: MnInstance) => {
-    mn.css(RULES);
+    mn.css(rules());
   },
 };

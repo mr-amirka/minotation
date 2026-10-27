@@ -30,447 +30,452 @@ const NONE = 'none';
 const OVERFLOW = 'overflow';
 const PADDING = 'padding';
 
-/** The reference's rules in its order: 41. */
-const RULES: MnCssEntry[] = [
-  /* Document
-     ========================================================================== */
-  /**
-   * 1. Correct the line height in all browsers.
-   * 2. Prevent adjustments of font size after orientation changes in
-   *    IE on Windows Phone and in iOS.
-   */
-  [
-    'html',
-    {
-      'line-height': '1.15', // 1
-      '-ms-text-size-adjust': V_100_PERCENT, // 2
-      '-webkit-text-size-adjust': V_100_PERCENT, // 2
-    },
-  ],
-  /* Sections
-     ========================================================================== */
-  /**
-   * Add the correct display in IE 9-.
-   */
-  [
-    'article, aside, footer, header, nav, section',
-    {
-      [DISPLAY]: BLOCK,
-    },
-  ],
-  /**
-   * Correct the font size and margin on `h1` elements within `section` and
-   * `article` contexts in Chrome, Firefox, and Safari.
-   */
-  [
-    'h1',
-    {
-      [FONT_SIZE]: '2em',
-      [MARGIN]: '0.67em 0',
-    },
-  ],
-  /* Grouping content
-     ========================================================================== */
-  /**
-   * Add the correct display in IE 9-.
-   * 1. Add the correct display in IE.
-   */
-  [
-    'figcaption, figure, main',
-    {
-      // 1
-      [DISPLAY]: BLOCK,
-    },
-  ],
-  /**
-   * Add the correct margin in IE 8.
-   */
-  [
-    'figure',
-    {
-      [MARGIN]: '1em 40px',
-    },
-  ],
-  /**
-   * 1. Add the correct box sizing in Firefox.
-   * 2. Show the overflow in Edge and IE.
-   */
-  [
-    'hr',
-    {
-      [BOX_SIZING]: 'content-box', // 1
-      [HEIGHT]: V_0, // 1
-      [OVERFLOW]: 'visible', // 2
-    },
-  ],
-  /**
-   * 1. Correct the inheritance and scaling of font size in all browsers.
-   * 2. Correct the odd `em` font sizing in all browsers.
-   */
-  [
-    'pre',
-    {
-      'font-family': 'monospace, monospace', // 1
-      [FONT_SIZE]: '1em', // 2
-    },
-  ],
-  /* Text-level semantics
-     ========================================================================== */
-  /**
-   * 1. Remove the gray background on active links in IE 10.
-   * 2. Remove gaps in links underline in iOS 8+ and Safari 8+.
-   */
-  [
-    'a',
-    {
-      'background-color': 'transparent', // 1
-      '-webkit-text-decoration-skip': 'objects', // 2
-    },
-  ],
-  /**
-   * 1. Remove the bottom border in Chrome 57- and Firefox 39-.
-   * 2. Add the correct text decoration in Chrome, Edge, IE, Opera, and Safari.
-   */
-  [
-    'abbr[title]',
-    {
-      'border-bottom': NONE, // 1
-      'text-decoration': [
-        'underline',
-        'underline dotted',
-      ], // 2
-    },
-  ],
-  /**
-   * Prevent the duplicate application of `bolder` by the next rule in Safari 6.
-   */
-  [
-    'b, strong',
-    {
-      'font-weight': INHERIT,
-    },
-  ],
-  /**
-   * Add the correct font weight in Chrome, Edge, and Safari.
-   */
-  [
-    'b, strong',
-    {
-      'font-weight': 'bolder',
-    },
-  ],
-  /**
-   * 1. Correct the inheritance and scaling of font size in all browsers.
-   * 2. Correct the odd `em` font sizing in all browsers.
-   */
-  [
-    'code, kbd, samp',
-    {
-      'font-family': 'monospace, monospace', // 1
-      [FONT_SIZE]: '1em', // 2
-    },
-  ],
-  /**
-   * Add the correct font style in Android 4.3-.
-   */
-  [
-    'dfn',
-    {
-      'font-style': 'italic',
-    },
-  ],
-  /**
-   * Add the correct background and color in IE 9-.
-   */
-  [
-    'mark',
-    {
-      'background-color': '#ff0',
-      'color': '#000',
-    },
-  ],
-  /**
-   * Add the correct font size in all browsers.
-   */
-  [
-    'small',
-    {
-      [FONT_SIZE]: '80%',
-    },
-  ],
-  /**
-   * Prevent `sub` and `sup` elements from affecting the line height in
-   * all browsers.
-   */
-  [
-    'sub, sup',
-    {
-      [FONT_SIZE]: '75%',
-      'line-height': V_0,
-      'position': 'relative',
-      'vertical-align': 'baseline',
-    },
-  ],
-  [
-    'sub',
-    {
-      'bottom': '-0.25em',
-    },
-  ],
-  [
-    'sup',
-    {
-      'top': '-0.5em',
-    },
-  ],
-  /* Embedded content
-     ========================================================================== */
-  /**
-   * Add the correct display in IE 9-.
-   */
-  [
-    'audio, video',
-    {
-      [DISPLAY]: INLINE_BLOCK,
-    },
-  ],
-  /**
-   * Add the correct display in iOS 4-7.
-   */
-  [
-    'audio:not([controls])',
-    {
-      [DISPLAY]: NONE,
-      [HEIGHT]: V_0,
-    },
-  ],
-  /**
-   * Remove the border on images inside links in IE 10-.
-   */
-  [
-    'img',
-    {
-      'border-style': NONE,
-    },
-  ],
-  /**
-   * Hide the overflow in IE.
-   */
-  [
-    'svg:not(:root)',
-    {
-      [OVERFLOW]: 'hidden',
-    },
-  ],
-  /* Forms
-     ========================================================================== */
-  /**
-   * Remove the margin in Firefox and Safari.
-   */
-  [
-    'button, input, optgroup, select, textarea',
-    {
-      [MARGIN]: V_0,
-    },
-  ],
-  /**
-   * Show the overflow in IE.
-   * 1. Show the overflow in Edge.
-   */
-  [
-    'button, input',
-    {
-      // 1
-      [OVERFLOW]: 'visible',
-    },
-  ],
-  /**
-   * Remove the inheritance of text transform in Edge, Firefox, and IE.
-   * 1. Remove the inheritance of text transform in Firefox.
-   */
-  [
-    'button, select',
-    {
-      // 1
-      'text-transform': NONE,
-    },
-  ],
-  /**
-   * 1. Prevent a WebKit bug where (2) destroys native `audio` and `video`
-   *    controls in Android 4.
-   * 2. Correct the inability to style clickable types in iOS and Safari.
-   */
-  [
-    'button, html [type="button"], /* 1 */ [type="reset"], [type="submit"]',
-    {
-      [WEBKIT_APPEARANCE]: 'button', // 2
-    },
-  ],
-  /**
-   * Remove the inner border and padding in Firefox.
-   */
-  [
-    'button::-moz-focus-inner, [type="button"]::-moz-focus-inner, [type="reset"]::-moz-focus-inner, [type="submit"]::-moz-focus-inner',
-    {
-      'border-style': NONE,
-      [PADDING]: V_0,
-    },
-  ],
-  /**
-   * Restore the focus styles unset by the previous rule.
-   */
-  [
-    'button:-moz-focusring, [type="button"]:-moz-focusring, [type="reset"]:-moz-focusring, [type="submit"]:-moz-focusring',
-    {
-      'outline': '1px dotted ButtonText',
-    },
-  ],
-  /**
-   * 1. Correct the text wrapping in Edge and IE.
-   * 2. Correct the color inheritance from `fieldset` elements in IE.
-   * 3. Remove the padding so developers are not caught out when they zero out
-   *    `fieldset` elements in all browsers.
-   */
-  [
-    'legend',
-    {
-      [BOX_SIZING]: 'border-box', // 1
-      'color': INHERIT, // 2
-      [DISPLAY]: 'table', // 1
-      'max-width': V_100_PERCENT, // 1
-      [PADDING]: V_0, // 3
-      'white-space': 'normal', // 1
-    },
-  ],
-  /**
-   * 1. Add the correct display in IE 9-.
-   * 2. Add the correct vertical alignment in Chrome, Firefox, and Opera.
-   */
-  [
-    'progress',
-    {
-      [DISPLAY]: INLINE_BLOCK, // 1
-      'vertical-align': 'baseline', // 2
-    },
-  ],
-  /**
-   * Remove the default vertical scrollbar in IE.
-   */
-  [
-    'textarea',
-    {
-      [OVERFLOW]: 'auto',
-    },
-  ],
-  /**
-   * 1. Add the correct box sizing in IE 10-.
-   * 2. Remove the padding in IE 10-.
-   */
-  [
-    '[type="checkbox"], [type="radio"]',
-    {
-      [BOX_SIZING]: 'border-box', // 1
-      [PADDING]: V_0, // 2
-    },
-  ],
-  /**
-   * Correct the cursor style of increment and decrement buttons in Chrome.
-   */
-  [
-    '[type="number"]::-webkit-inner-spin-button, [type="number"]::-webkit-outer-spin-button',
-    {
-      [HEIGHT]: 'auto',
-    },
-  ],
-  /**
-   * 1. Correct the odd appearance in Chrome and Safari.
-   * 2. Correct the outline style in Safari.
-   */
-  [
-    '[type="search"]',
-    {
-      [WEBKIT_APPEARANCE]: 'textfield', // 1
-      'outline-offset': '-2px', // 2
-    },
-  ],
-  /**
-   * Remove the inner padding and cancel buttons in Chrome and Safari on macOS.
-   */
-  [
-    '[type="search"]::-webkit-search-cancel-button, [type="search"]::-webkit-search-decoration',
-    {
-      [WEBKIT_APPEARANCE]: NONE,
-    },
-  ],
-  /**
-   * 1. Correct the inability to style clickable types in iOS and Safari.
-   * 2. Change font properties to `inherit` in Safari.
-   */
-  [
-    '::-webkit-file-upload-button',
-    {
-      [WEBKIT_APPEARANCE]: 'button', // 1
-      'font': INHERIT, // 2
-    },
-  ],
-  /* Interactive
-     ========================================================================== */
-  /*
-   * Add the correct display in IE 9-.
-   * 1. Add the correct display in Edge, IE, and Firefox.
-   */
-  [
-    'details, /* 1 */ menu',
-    {
-      [DISPLAY]: BLOCK,
-    },
-  ],
-  /*
-   * Add the correct display in all browsers.
-   */
-  [
-    'summary',
-    {
-      [DISPLAY]: 'list-item',
-    },
-  ],
-  /* Scripting
-     ========================================================================== */
-  /**
-   * Add the correct display in IE 9-.
-   */
-  [
-    'canvas',
-    {
-      [DISPLAY]: INLINE_BLOCK,
-    },
-  ],
-  /**
-   * Add the correct display in IE.
-   */
-  [
-    'template',
-    {
-      [DISPLAY]: NONE,
-    },
-  ],
-  /* Hidden
-     ========================================================================== */
-  /**
-   * Add the correct display in IE 10-.
-   */
-  [
-    '[hidden]',
-    {
-      [DISPLAY]: NONE,
-    },
-  ],
-];
+/**
+ * The reference's rules in its order: 41. A function, not a module-level table: the keys are computed
+ * (`[BORDER]`), and a bundler keeps such a table even when the preset isn't imported (D-110).
+ */
+function rules(): MnCssEntry[] {
+  return [
+    /* Document
+       ========================================================================== */
+    /**
+     * 1. Correct the line height in all browsers.
+     * 2. Prevent adjustments of font size after orientation changes in
+     *    IE on Windows Phone and in iOS.
+     */
+    [
+      'html',
+      {
+        'line-height': '1.15', // 1
+        '-ms-text-size-adjust': V_100_PERCENT, // 2
+        '-webkit-text-size-adjust': V_100_PERCENT, // 2
+      },
+    ],
+    /* Sections
+       ========================================================================== */
+    /**
+     * Add the correct display in IE 9-.
+     */
+    [
+      'article, aside, footer, header, nav, section',
+      {
+        [DISPLAY]: BLOCK,
+      },
+    ],
+    /**
+     * Correct the font size and margin on `h1` elements within `section` and
+     * `article` contexts in Chrome, Firefox, and Safari.
+     */
+    [
+      'h1',
+      {
+        [FONT_SIZE]: '2em',
+        [MARGIN]: '0.67em 0',
+      },
+    ],
+    /* Grouping content
+       ========================================================================== */
+    /**
+     * Add the correct display in IE 9-.
+     * 1. Add the correct display in IE.
+     */
+    [
+      'figcaption, figure, main',
+      {
+        // 1
+        [DISPLAY]: BLOCK,
+      },
+    ],
+    /**
+     * Add the correct margin in IE 8.
+     */
+    [
+      'figure',
+      {
+        [MARGIN]: '1em 40px',
+      },
+    ],
+    /**
+     * 1. Add the correct box sizing in Firefox.
+     * 2. Show the overflow in Edge and IE.
+     */
+    [
+      'hr',
+      {
+        [BOX_SIZING]: 'content-box', // 1
+        [HEIGHT]: V_0, // 1
+        [OVERFLOW]: 'visible', // 2
+      },
+    ],
+    /**
+     * 1. Correct the inheritance and scaling of font size in all browsers.
+     * 2. Correct the odd `em` font sizing in all browsers.
+     */
+    [
+      'pre',
+      {
+        'font-family': 'monospace, monospace', // 1
+        [FONT_SIZE]: '1em', // 2
+      },
+    ],
+    /* Text-level semantics
+       ========================================================================== */
+    /**
+     * 1. Remove the gray background on active links in IE 10.
+     * 2. Remove gaps in links underline in iOS 8+ and Safari 8+.
+     */
+    [
+      'a',
+      {
+        'background-color': 'transparent', // 1
+        '-webkit-text-decoration-skip': 'objects', // 2
+      },
+    ],
+    /**
+     * 1. Remove the bottom border in Chrome 57- and Firefox 39-.
+     * 2. Add the correct text decoration in Chrome, Edge, IE, Opera, and Safari.
+     */
+    [
+      'abbr[title]',
+      {
+        'border-bottom': NONE, // 1
+        'text-decoration': [
+          'underline',
+          'underline dotted',
+        ], // 2
+      },
+    ],
+    /**
+     * Prevent the duplicate application of `bolder` by the next rule in Safari 6.
+     */
+    [
+      'b, strong',
+      {
+        'font-weight': INHERIT,
+      },
+    ],
+    /**
+     * Add the correct font weight in Chrome, Edge, and Safari.
+     */
+    [
+      'b, strong',
+      {
+        'font-weight': 'bolder',
+      },
+    ],
+    /**
+     * 1. Correct the inheritance and scaling of font size in all browsers.
+     * 2. Correct the odd `em` font sizing in all browsers.
+     */
+    [
+      'code, kbd, samp',
+      {
+        'font-family': 'monospace, monospace', // 1
+        [FONT_SIZE]: '1em', // 2
+      },
+    ],
+    /**
+     * Add the correct font style in Android 4.3-.
+     */
+    [
+      'dfn',
+      {
+        'font-style': 'italic',
+      },
+    ],
+    /**
+     * Add the correct background and color in IE 9-.
+     */
+    [
+      'mark',
+      {
+        'background-color': '#ff0',
+        'color': '#000',
+      },
+    ],
+    /**
+     * Add the correct font size in all browsers.
+     */
+    [
+      'small',
+      {
+        [FONT_SIZE]: '80%',
+      },
+    ],
+    /**
+     * Prevent `sub` and `sup` elements from affecting the line height in
+     * all browsers.
+     */
+    [
+      'sub, sup',
+      {
+        [FONT_SIZE]: '75%',
+        'line-height': V_0,
+        'position': 'relative',
+        'vertical-align': 'baseline',
+      },
+    ],
+    [
+      'sub',
+      {
+        'bottom': '-0.25em',
+      },
+    ],
+    [
+      'sup',
+      {
+        'top': '-0.5em',
+      },
+    ],
+    /* Embedded content
+       ========================================================================== */
+    /**
+     * Add the correct display in IE 9-.
+     */
+    [
+      'audio, video',
+      {
+        [DISPLAY]: INLINE_BLOCK,
+      },
+    ],
+    /**
+     * Add the correct display in iOS 4-7.
+     */
+    [
+      'audio:not([controls])',
+      {
+        [DISPLAY]: NONE,
+        [HEIGHT]: V_0,
+      },
+    ],
+    /**
+     * Remove the border on images inside links in IE 10-.
+     */
+    [
+      'img',
+      {
+        'border-style': NONE,
+      },
+    ],
+    /**
+     * Hide the overflow in IE.
+     */
+    [
+      'svg:not(:root)',
+      {
+        [OVERFLOW]: 'hidden',
+      },
+    ],
+    /* Forms
+       ========================================================================== */
+    /**
+     * Remove the margin in Firefox and Safari.
+     */
+    [
+      'button, input, optgroup, select, textarea',
+      {
+        [MARGIN]: V_0,
+      },
+    ],
+    /**
+     * Show the overflow in IE.
+     * 1. Show the overflow in Edge.
+     */
+    [
+      'button, input',
+      {
+        // 1
+        [OVERFLOW]: 'visible',
+      },
+    ],
+    /**
+     * Remove the inheritance of text transform in Edge, Firefox, and IE.
+     * 1. Remove the inheritance of text transform in Firefox.
+     */
+    [
+      'button, select',
+      {
+        // 1
+        'text-transform': NONE,
+      },
+    ],
+    /**
+     * 1. Prevent a WebKit bug where (2) destroys native `audio` and `video`
+     *    controls in Android 4.
+     * 2. Correct the inability to style clickable types in iOS and Safari.
+     */
+    [
+      'button, html [type="button"], /* 1 */ [type="reset"], [type="submit"]',
+      {
+        [WEBKIT_APPEARANCE]: 'button', // 2
+      },
+    ],
+    /**
+     * Remove the inner border and padding in Firefox.
+     */
+    [
+      'button::-moz-focus-inner, [type="button"]::-moz-focus-inner, [type="reset"]::-moz-focus-inner, [type="submit"]::-moz-focus-inner',
+      {
+        'border-style': NONE,
+        [PADDING]: V_0,
+      },
+    ],
+    /**
+     * Restore the focus styles unset by the previous rule.
+     */
+    [
+      'button:-moz-focusring, [type="button"]:-moz-focusring, [type="reset"]:-moz-focusring, [type="submit"]:-moz-focusring',
+      {
+        'outline': '1px dotted ButtonText',
+      },
+    ],
+    /**
+     * 1. Correct the text wrapping in Edge and IE.
+     * 2. Correct the color inheritance from `fieldset` elements in IE.
+     * 3. Remove the padding so developers are not caught out when they zero out
+     *    `fieldset` elements in all browsers.
+     */
+    [
+      'legend',
+      {
+        [BOX_SIZING]: 'border-box', // 1
+        'color': INHERIT, // 2
+        [DISPLAY]: 'table', // 1
+        'max-width': V_100_PERCENT, // 1
+        [PADDING]: V_0, // 3
+        'white-space': 'normal', // 1
+      },
+    ],
+    /**
+     * 1. Add the correct display in IE 9-.
+     * 2. Add the correct vertical alignment in Chrome, Firefox, and Opera.
+     */
+    [
+      'progress',
+      {
+        [DISPLAY]: INLINE_BLOCK, // 1
+        'vertical-align': 'baseline', // 2
+      },
+    ],
+    /**
+     * Remove the default vertical scrollbar in IE.
+     */
+    [
+      'textarea',
+      {
+        [OVERFLOW]: 'auto',
+      },
+    ],
+    /**
+     * 1. Add the correct box sizing in IE 10-.
+     * 2. Remove the padding in IE 10-.
+     */
+    [
+      '[type="checkbox"], [type="radio"]',
+      {
+        [BOX_SIZING]: 'border-box', // 1
+        [PADDING]: V_0, // 2
+      },
+    ],
+    /**
+     * Correct the cursor style of increment and decrement buttons in Chrome.
+     */
+    [
+      '[type="number"]::-webkit-inner-spin-button, [type="number"]::-webkit-outer-spin-button',
+      {
+        [HEIGHT]: 'auto',
+      },
+    ],
+    /**
+     * 1. Correct the odd appearance in Chrome and Safari.
+     * 2. Correct the outline style in Safari.
+     */
+    [
+      '[type="search"]',
+      {
+        [WEBKIT_APPEARANCE]: 'textfield', // 1
+        'outline-offset': '-2px', // 2
+      },
+    ],
+    /**
+     * Remove the inner padding and cancel buttons in Chrome and Safari on macOS.
+     */
+    [
+      '[type="search"]::-webkit-search-cancel-button, [type="search"]::-webkit-search-decoration',
+      {
+        [WEBKIT_APPEARANCE]: NONE,
+      },
+    ],
+    /**
+     * 1. Correct the inability to style clickable types in iOS and Safari.
+     * 2. Change font properties to `inherit` in Safari.
+     */
+    [
+      '::-webkit-file-upload-button',
+      {
+        [WEBKIT_APPEARANCE]: 'button', // 1
+        'font': INHERIT, // 2
+      },
+    ],
+    /* Interactive
+       ========================================================================== */
+    /*
+     * Add the correct display in IE 9-.
+     * 1. Add the correct display in Edge, IE, and Firefox.
+     */
+    [
+      'details, /* 1 */ menu',
+      {
+        [DISPLAY]: BLOCK,
+      },
+    ],
+    /*
+     * Add the correct display in all browsers.
+     */
+    [
+      'summary',
+      {
+        [DISPLAY]: 'list-item',
+      },
+    ],
+    /* Scripting
+       ========================================================================== */
+    /**
+     * Add the correct display in IE 9-.
+     */
+    [
+      'canvas',
+      {
+        [DISPLAY]: INLINE_BLOCK,
+      },
+    ],
+    /**
+     * Add the correct display in IE.
+     */
+    [
+      'template',
+      {
+        [DISPLAY]: NONE,
+      },
+    ],
+    /* Hidden
+       ========================================================================== */
+    /**
+     * Add the correct display in IE 10-.
+     */
+    [
+      '[hidden]',
+      {
+        [DISPLAY]: NONE,
+      },
+    ],
+  ];
+}
 
 /** normalize.css 6.0.0 — Chrome (last two), Edge (last two), Firefox (last two), Firefox ESR, Internet Explorer 8+, iOS Safari (last two), Opera (last two), Safari 6+. */
 export const presetNormalize6_0_0: MnPresetObject = {
   name: 'presetNormalize6_0_0',
   setup: (mn: MnInstance) => {
-    mn.css(RULES);
+    mn.css(rules());
   },
 };

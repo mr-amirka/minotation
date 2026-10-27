@@ -119,6 +119,53 @@ async function checkBrowser() {
   check('browser scanner says why', warnings.join(''), 'runs in Node only');
 }
 
+// ── Неимпортированный пресет в бандл не попадает (D-110, 2026-10-27) ──────────
+// Компилятор не тянет за собой пресеты: `import { minotationProvider }` не несёт их кода. Сборка из
+// исходников — эталон: там бандлер выбрасывает неимпортированный модуль целиком. Пресет обязан добавлять к
+// бандлу из `dist` столько же, сколько к бандлу из исходников; если часть его кода уже сидит в бандле без
+// него, прибавка меньше. Так ловился общий чанк `dist/browser`: таблицы `presetStandard`, `presetHints`,
+// синонимов и правила всех normalize ехали с одним `minotationProvider` (+27 КБ).
+
+/** Доля прибавки из исходников, ниже которой прибавка из `dist` — признак утечки. */
+const TREE_SHAKE_SHARE = 0.95;
+
+/**
+ * Размер минифицированного бандла, импортирующего `names` из `entry`.
+ *
+ * @param entry — путь от корня пакета
+ * @param names — импортируемые имена
+ */
+async function bundleSize(entry, names) {
+  const result = await require('esbuild').build({
+    stdin: {
+      contents: 'import { ' + names.join(', ') + " } from './" + entry + "';\nconsole.log(" + names.join(', ') + ');',
+      resolveDir: require('path').join(__dirname, '..'),
+      loader: 'ts',
+    },
+    bundle: true,
+    minify: true,
+    format: 'esm',
+    platform: 'browser',
+    write: false,
+    logLevel: 'silent',
+  });
+  return result.outputFiles[0].contents.length;
+}
+
+async function checkTreeShake() {
+  const provider = ['minotationProvider'];
+  for (const build of ['dist/browser/index.mjs', 'dist/esm/index.mjs']) {
+    const baseDist = await bundleSize(build, provider);
+    const baseSrc = await bundleSize('src/index.ts', provider);
+    for (const name of Object.keys(cjs).filter((key) => /^preset[A-Z]/.test(key))) {
+      const fromSrc = await bundleSize('src/index.ts', provider.concat(name)) - baseSrc;
+      const fromDist = await bundleSize(build, provider.concat(name)) - baseDist;
+      check(build + ' ' + name + ' only when imported (+' + fromDist + ' of +' + fromSrc + ')',
+        String(fromDist >= fromSrc * TREE_SHAKE_SHARE), 'true');
+    }
+  }
+}
+
 // ── Разрешение `exports` (2026-10-26, письмо web-games) ──────────────────────
 // jest в окружении jsdom ставит условие `browser` и грузит модули через `require`: ему нельзя
 // отдать `.mjs`. Свой `require` Node 22+ грузит `.mjs` и этого не ловит, поэтому разрешаем
@@ -165,7 +212,7 @@ function checkExports() {
 
 checkExports();
 
-checkEsm().then(checkBrowser).then(() => {
+checkEsm().then(checkBrowser).then(checkTreeShake).then(() => {
   if (failed) {
     console.error('\nDist smoke-test FAILED.');
     process.exit(1);

@@ -235,8 +235,8 @@ export const presetStandard = presetStandardDefault;
 export const presetSynonyms = presetSynonymsDefault;
 export const presetMedias = presetMediasDefault;
 /**
- * Пресеты normalize (D-108): версия эталона — в имени, эталон воспроизводится один в один. В наборах по умолчанию
- * сброса нет — приложение перечисляет нужный: normalize.css 3.0.3 (IE 8+), 4.2.0–7.0.0, 8.0.1 (IE 10+, Safari 8+),
+ * Пресеты normalize (D-108): версия эталона — в имени, эталон воспроизводится один в один. Наборов по умолчанию нет
+ * (D-110) — приложение перечисляет нужный: normalize.css 3.0.3 (IE 8+), 4.2.0–7.0.0, 8.0.1 (IE 10+, Safari 8+),
  * modern-normalize 1.1.0, 2.0.0, 3.0.1 (последние Chrome, Firefox, Safari).
  */
 export const presetNormalize3_0_3 = presetNormalize3_0_3Impl;

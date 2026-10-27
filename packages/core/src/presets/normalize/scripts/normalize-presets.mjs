@@ -210,7 +210,7 @@ for (const [name, alias, file, browsers] of PRESETS) {
   const {
     value, body,
   } = repeatedConstants(rules.flatMap(([rule, props]) => [rule.selector, ...props.flatMap((p) => [p[0], ...p[1]])]), [
-    'RULES',
+    'rules',
   ]);
   const lines = [];
   let r = 0;
@@ -253,16 +253,21 @@ import type {
 
 ${body}
 
-/** The reference's rules in its order: ${rules.length}. */
-const RULES: MnCssEntry[] = [
-${lines.join(NEWLINE)}
-];
+/**
+ * The reference's rules in its order: ${rules.length}. A function, not a module-level table: the keys are computed
+ * (\`[BORDER]\`), and a bundler keeps such a table even when the preset isn't imported (D-110).
+ */
+function rules(): MnCssEntry[] {
+  return [
+${lines.join(NEWLINE).split(NEWLINE).map((line) => (line ? '  ' + line : line)).join(NEWLINE)}
+  ];
+}
 
 /** ${title} — ${browsers}. */
 export const ${name}: MnPresetObject = {
   name: '${name}',
   setup: (mn: MnInstance) => {
-    mn.css(RULES);
+    mn.css(rules());
   },
 };
 `);

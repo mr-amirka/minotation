@@ -174,6 +174,13 @@ describe('orderPresets — устойчивая топологическая с�
 });
 
 describe('mn.setPresets с пресет-объектами', () => {
+  test('не массив и не пресет — ошибка «что ждали, что пришло» (D-110)', () => {
+    const mn = minotationProvider();
+    expect(() => mn.setPresets(undefined as never)).toThrow('[minotation] setPresets expects an array of presets, got'
+      + ' undefined');
+    expect(() => mn.setPresets([undefined] as never)).toThrow('[minotation] preset object:');
+  });
+
   test('порядок списка не важен: main после standard и medias', () => {
     const mn = minotationProvider({
       warningMode: 'silent',

@@ -9,6 +9,10 @@ import { join } from 'path';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { mnEsbuild } from '../src/index';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 /** Создаёт временный проект: ключ — относительный путь файла, значение — содержимое. */
 function makeProject(files: Record<string, string>): string {
@@ -37,6 +41,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       bundle: true,
       outdir: outDir,
       plugins: [mnEsbuild({
+        presets: PRESETS,
         attrs: 'data-cls:class',
         extensions: ['.vue'],
         presetExtensions: ['.mnjs'],
@@ -68,6 +73,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       bundle: true,
       outdir: outDir,
       plugins: [mnEsbuild({
+        presets: PRESETS,
         root,
         include: /\.tpl$/,
         exclude: /skip/,
@@ -96,7 +102,7 @@ describe('minotation-esbuild — опции и граничные случаи',
         entryPoints: [join(root, 'src/main.js')],
         bundle: true,
         outdir: outDir,
-        plugins: [mnEsbuild({ root })],
+        plugins: [mnEsbuild({ presets: PRESETS, root })],
       });
     } finally {
       // снимок до mockRestore(): он сбрасывает накопленные вызовы
@@ -124,7 +130,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outdir: outDir,
-      plugins: [mnEsbuild({ root })],
+      plugins: [mnEsbuild({ presets: PRESETS, root })],
     });
 
     expect(readFileSync(join(outDir, 'mn.css'), 'utf-8')).toContain('padding:10px');
@@ -141,7 +147,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outfile: outFile,
-      plugins: [mnEsbuild({ root })],
+      plugins: [mnEsbuild({ presets: PRESETS, root })],
     });
 
     expect(readFileSync(join(root, 'dist', 'mn.css'), 'utf-8')).toContain('margin-top:4px');
@@ -157,7 +163,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       write: false,
-      plugins: [mnEsbuild({ root })],
+      plugins: [mnEsbuild({ presets: PRESETS, root })],
     });
 
     expect(readFileSync(join(root, 'mn.css'), 'utf-8')).toContain('font-weight:500');
@@ -193,7 +199,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outdir: join(root, 'out'),
-      plugins: [mnEsbuild({ root })],
+      plugins: [mnEsbuild({ presets: PRESETS, root })],
     });
 
     expect(result.warnings.map((w) => w.text).join('\n')).toContain('[minotation] w10zz');
@@ -211,7 +217,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outdir: join(root, 'out'),
-      plugins: [mnEsbuild({ root, warningMode: 'silent' })],
+      plugins: [mnEsbuild({ presets: PRESETS, root, warningMode: 'silent' })],
     });
 
     expect(result.warnings).toEqual([]);
@@ -228,7 +234,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outdir: join(root, 'out'),
-      plugins: [mnEsbuild({ root, onWarning: (w) => { seen.push(w.token); } })],
+      plugins: [mnEsbuild({ presets: PRESETS, root, onWarning: (w) => { seen.push(w.token); } })],
     });
 
     expect(seen).toEqual(['w10zz']);
@@ -236,7 +242,7 @@ describe('minotation-esbuild — опции и граничные случаи',
   });
 
   test('onLoad для несуществующего пресет-файла: заглушка возвращается, ошибки нет', () => {
-    const plugin = mnEsbuild({ root: mkdtempSync(join(tmpdir(), 'mn-esbuild-empty-')) });
+    const plugin = mnEsbuild({ presets: PRESETS, root: mkdtempSync(join(tmpdir(), 'mn-esbuild-empty-')) });
     const loadCallbacks: Array<(args: { path: string }) => unknown> = [];
     plugin.setup({
       onStart: () => undefined,
@@ -266,7 +272,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outdir: outDir,
-      plugins: [mnEsbuild({ root })],
+      plugins: [mnEsbuild({ presets: PRESETS, root })],
     });
 
     const css = readFileSync(join(outDir, 'mn.css'), 'utf-8');
@@ -289,7 +295,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outdir: outDir,
-      plugins: [mnEsbuild({ root })],
+      plugins: [mnEsbuild({ presets: PRESETS, root })],
     });
     expect(readFileSync(join(outDir, 'mn.css'), 'utf-8')).toContain('font-weight:700');
 
@@ -315,7 +321,7 @@ describe('minotation-esbuild — пересборка тем же инстанс
     root: string, between: () => void,
   ): Promise<[string, string]> {
     const outDir = join(root, 'out');
-    const plugin = mnEsbuild({ root });
+    const plugin = mnEsbuild({ presets: PRESETS, root });
 
     const run = async (): Promise<string> => {
       await build({
@@ -374,7 +380,7 @@ describe('minotation-esbuild — CSS через граф esbuild (D-031)', () =>
       bundle: true,
       outdir: outDir,
       entryNames: '[name]-[hash]',
-      plugins: [mnEsbuild({ root })],
+      plugins: [mnEsbuild({ presets: PRESETS, root })],
     });
 
     const names = readdirSync(outDir);
@@ -399,7 +405,7 @@ describe('minotation-esbuild — CSS через граф esbuild (D-031)', () =>
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outdir: outDir,
-      plugins: [mnEsbuild({ root, entry })],
+      plugins: [mnEsbuild({ presets: PRESETS, root, entry })],
     });
     const css = readFileSync(join(outDir, 'main.css'), 'utf-8');
     expect(css).toMatch(/margin:\s*20px/);
@@ -411,7 +417,7 @@ describe('minotation-esbuild — CSS через граф esbuild (D-031)', () =>
       bundle: true,
       outdir: outDir,
       logLevel: 'silent',
-      plugins: [mnEsbuild({ root, entry })],
+      plugins: [mnEsbuild({ presets: PRESETS, root, entry })],
     })).rejects.toThrow('no such entry; declared: site, admin');
   });
 
@@ -428,6 +434,7 @@ describe('minotation-esbuild — CSS через граф esbuild (D-031)', () =>
       bundle: true,
       outdir: outDir,
       plugins: [mnEsbuild({
+        presets: PRESETS,
         root,
         fileName: 'css/[name].[hash].css',
         entry: { site: { include: /site/ }, admin: { include: /admin/, fileName: 'admin.css' } },
@@ -452,7 +459,7 @@ describe('minotation-esbuild — CSS через граф esbuild (D-031)', () =>
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outdir: outDir,
-      plugins: [mnEsbuild({ root, manifest: false, metrics: false })],
+      plugins: [mnEsbuild({ presets: PRESETS, root, manifest: false, metrics: false })],
     });
 
     expect(readdirSync(outDir).sort()).toEqual(['main.js', 'mn.css']);
@@ -471,7 +478,7 @@ describe('minotation-esbuild — статистика употребления �
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outdir: outDir,
-      plugins: [mnEsbuild({ root })],
+      plugins: [mnEsbuild({ presets: PRESETS, root })],
     });
 
     const metrics = JSON.parse(readFileSync(join(outDir, 'mn-metrics.json'), 'utf-8'));

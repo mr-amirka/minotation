@@ -9,7 +9,10 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os';
 import { mnVite, type MnViteOptions } from '../src/index';
 import { scopeClassName } from 'minotation-build';
-import { presetTw4 } from 'minotation';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain, presetTw4 } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -26,7 +29,7 @@ function makeProject(files: Record<string, string>): string {
 
 /** Плагин с уже применённым configResolved — как его настраивает сам Vite. */
 function makePlugin(root: string, command: 'serve' | 'build', options: MnViteOptions = {}) {
-  const plugin = mnVite(options) as any;
+  const plugin = mnVite({ presets: PRESETS, ...options }) as any;
   plugin.configResolved({ root, command });
   return plugin;
 }

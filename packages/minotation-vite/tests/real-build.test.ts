@@ -8,6 +8,10 @@ import { join } from 'path';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { mnVite, type MnViteOptions } from '../src/index';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 jest.setTimeout(120_000);
 
@@ -36,7 +40,7 @@ async function runBuild(root: string, options: MnViteOptions = {}): Promise<void
       // configFile: false — не подхватывать чужой vite.config из дерева лаборатории
       configFile: false,
       logLevel: 'silent',
-      plugins: [mnVite(options)],
+      plugins: [mnVite({ presets: PRESETS, ...options })],
       build: { outDir: 'dist', emptyOutDir: true },
     });
   } finally {
@@ -222,7 +226,7 @@ describe('minotation-vite — предупреждения ядра', () => {
         root,
         configFile: false,
         customLogger: logger,
-        plugins: [mnVite(options)],
+        plugins: [mnVite({ presets: PRESETS, ...options })],
         build: { outDir: 'dist', emptyOutDir: true },
       });
     } finally {

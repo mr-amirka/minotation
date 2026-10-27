@@ -8,6 +8,10 @@ import { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { presetStandard } from 'minotation';
 import { MnIframe } from '../src/index';
+import type { MnIframeProps } from '../src/index';
+
+/** Набор передаётся явно (D-110): по умолчанию iframe не подключает ни одного пресета. */
+const PRESETS = [presetStandard];
 
 function flushMicrotasks(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
@@ -31,7 +35,7 @@ describe('MnIframe — изоляция стилей между инстанса
     root = createRoot(container);
     await act(async () => {
       root.render(
-        <MnIframe title="widget">
+        <MnIframe title="widget" presets={PRESETS}>
           <div className="p10 bgF" data-testid="inner">внутри iframe</div>
         </MnIframe>,
       );
@@ -56,10 +60,10 @@ describe('MnIframe — изоляция стилей между инстанса
     await act(async () => {
       root.render(
         <>
-          <MnIframe title="widget-1">
+          <MnIframe title="widget-1" presets={PRESETS}>
             <div className="c0">A</div>
           </MnIframe>
-          <MnIframe title="widget-2">
+          <MnIframe title="widget-2" presets={PRESETS}>
             <div className="bgF">B</div>
           </MnIframe>
         </>,
@@ -97,7 +101,7 @@ describe('MnIframe — изоляция стилей между инстанса
     try {
       await act(async () => {
         root = createRoot(container);
-        root.render(<MnIframe title="ready"><div className="p10">готов сразу</div></MnIframe>);
+        root.render(<MnIframe title="ready" presets={PRESETS}><div className="p10">готов сразу</div></MnIframe>);
       });
       await flushMicrotasks();
 
@@ -117,7 +121,7 @@ describe('MnIframe — изоляция стилей между инстанса
     try {
       await act(async () => {
         root = createRoot(container);
-        root.render(<MnIframe title="cross-origin"><div className="p10">не смонтируется</div></MnIframe>);
+        root.render(<MnIframe title="cross-origin" presets={PRESETS}><div className="p10">не смонтируется</div></MnIframe>);
       });
       const iframe = container.querySelector('iframe') as HTMLIFrameElement;
       await act(async () => {
@@ -131,11 +135,11 @@ describe('MnIframe — изоляция стилей между инстанса
     }
   });
 
-  test('кастомные presets и attr применяются вместо умолчаний', async () => {
+  test('attr применяется вместо умолчания', async () => {
     await act(async () => {
       root = createRoot(container);
       root.render(
-        <MnIframe title="custom" presets={[presetStandard]} attr="data-mn">
+        <MnIframe title="custom" presets={PRESETS} attr="data-mn">
           <div data-mn="p10 c0">через data-mn</div>
         </MnIframe>,
       );
@@ -149,5 +153,15 @@ describe('MnIframe — изоляция стилей между инстанса
     const css = iframe.contentDocument!.querySelector('style[data-mn-runtime]')?.textContent || '';
     expect(css).toContain('[data-mn~="p10"]{padding:10px}');
     expect(css).toContain('[data-mn~="c0"]{color:#000}');
+  });
+});
+
+describe('MnIframe — presets только явно (D-110)', () => {
+  test('без presets — ошибка с ответом, а не пустой CSS', () => {
+    // Вызов функции-компонента напрямую: проверка стоит до хуков, рендерер для неё не нужен.
+    expect(() => MnIframe({ title: 'forgotten' } as MnIframeProps)).toThrow(
+      '[minotation] MnIframe: "presets" is required — no preset is connected by default (D-110).'
+        + ' List them: presets={[presetStandard, presetSynonyms, presetMedias]}',
+    );
   });
 });

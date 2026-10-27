@@ -1,12 +1,5 @@
 import type { Loader, Plugin, PluginBuild } from 'esbuild';
 import type { MnWarning } from 'minotation';
-import {
-  presetHints,
-  presetStandard,
-  presetSynonyms,
-  presetMedias,
-  presetMain,
-} from 'minotation';
 import type { MnInstance } from 'minotation';
 import type { MnPreset } from 'minotation';
 import { asPreset } from 'minotation-build';
@@ -156,18 +149,7 @@ export function mnEsbuild(code: MnEsbuildOptions = {}): Plugin {
   // Учёт токенов, пресеты, компиляция, кеш и предупреждения — общий каркас
   // (`minotation-build`). До 2026-09-29 каждый плагин вёл это сам, и четыре
   // копии расходились между собой.
-  const collector = createBuildCollector({
-    // Опции целиком; ниже — то, что плагин подставляет сам.
-    ...options,
-    presets: options.presets || [
-      // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
-      presetHints,
-      presetStandard,
-      presetSynonyms,
-      presetMedias,
-      presetMain,
-    ],
-  }, root);
+  const collector = createBuildCollector(options, root);
   /** Подключён ли CSS импортом в этой сборке — тогда отдельный файл не нужен. */
   let imported = false;
 

@@ -8,6 +8,7 @@
     "dev": "next dev"
   },
   "dependencies": {
+    "minotation": "workspace:*",
     "minotation-next": "workspace:*",
     "next": "^15",
     "react": "^18.3.1",

@@ -35,8 +35,22 @@ import {
   scopeClassName,
 } from 'minotation-build';
 import {
+  presetHints,
+  presetMain,
+  presetMedias,
+  presetStandard,
+  presetSynonyms,
   presetTw4,
 } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [
+  presetHints,
+  presetStandard,
+  presetSynonyms,
+  presetMedias,
+  presetMain,
+];
 
 let dir: string;
 /**
@@ -96,7 +110,10 @@ function run(pattern: string, options: MnGulpOptions = {}): Promise<Record<strin
     // `gulp.dest` — duplex: без `resume()` его читаемую сторону никто не
     // потребляет, и событие `end` не наступает вовсе.
     gulp.src(join(dir, pattern))
-      .pipe(mnGulp(options))
+      .pipe(mnGulp({
+        presets: PRESETS,
+        ...options,
+      }))
       .pipe(gulp.dest(out))
       .on('error', reject)
       .resume()
@@ -131,7 +148,9 @@ describe('mnGulp — реальный пайп', () => {
 
     const files = await new Promise<Record<string, string>>((resolve, reject) => {
       gulp.src(join(dir, '*.html'))
-        .pipe(mnGulp())
+        .pipe(mnGulp({
+          presets: PRESETS,
+        }))
         .pipe(gulp.dest(dest))
         .on('error', reject)
         .resume()

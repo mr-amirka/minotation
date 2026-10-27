@@ -247,6 +247,7 @@ describe('scopePresets — опция плагина', () => {
       scopePresets: 1,
     } as never, 'mnVite')).toThrow('option "scopePresets" expects');
     expect(() => checkBuildOptions({
+      presets: [],
       entry: {
         ui: {
           scopePresets: [presetTw4],

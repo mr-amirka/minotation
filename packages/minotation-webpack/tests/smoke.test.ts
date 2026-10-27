@@ -5,6 +5,10 @@
  */
 
 import { MN_CSS_REQUEST, MnWebpackPlugin, loader } from '../src/index';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 describe('minotation-webpack — smoke', () => {
   test('MnWebpackPlugin — класс', () => {
@@ -12,13 +16,13 @@ describe('minotation-webpack — smoke', () => {
   });
 
   test('MnWebpackPlugin — инстанцируется', () => {
-    const plugin = new MnWebpackPlugin({ fileName: 'test.css' });
+    const plugin = new MnWebpackPlugin({ presets: PRESETS, fileName: 'test.css' });
     expect(plugin).toHaveProperty('apply');
     expect(typeof plugin.apply).toBe('function');
   });
 
   test('MnWebpackPlugin — с дефолтными опциями', () => {
-    const plugin = new MnWebpackPlugin({});
+    const plugin = new MnWebpackPlugin({ presets: PRESETS,});
     expect(plugin).toBeDefined();
   });
 

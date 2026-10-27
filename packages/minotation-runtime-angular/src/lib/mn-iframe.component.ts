@@ -38,16 +38,14 @@ import { createApplication } from '@angular/platform-browser';
 import { DOCUMENT } from '@angular/common';
 import {
   minotationProvider,
-  presetStandard,
-  presetSynonyms,
-  presetMedias,
-  presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
 import type { MnPreset } from 'minotation';
 import { createMnRuntime, type MnRuntimeHandle } from 'minotation-runtime';
 
-const DEFAULT_PRESETS = [presetStandard, presetSynonyms, presetMedias, presetMain];
+/** Сообщение о забытом `presets`: набора по умолчанию нет (D-110). */
+const MSG_PRESETS_REQUIRED = '[minotation] mn-iframe: "presets" is required — no preset is connected by default'
+  + ' (D-110). List them: [presets]="[presetStandard, presetSynonyms, presetMedias]"';
 
 /**
  * @example
@@ -58,10 +56,11 @@ const DEFAULT_PRESETS = [presetStandard, presetSynonyms, presetMedias, presetMai
  * @Component({
  *   standalone: true,
  *   imports: [MnIframeComponent],
- *   template: `<mn-iframe [component]="widget" title="Виджет 1" />`,
+ *   template: `<mn-iframe [component]="widget" [presets]="presets" title="Виджет 1" />`,
  * })
  * class Host {
  *   widget = WidgetContent;
+ *   presets = [presetStandard];
  * }
  * ```
  */
@@ -75,8 +74,8 @@ export class MnIframeComponent implements AfterViewInit, OnDestroy {
 
   /** Класс компонента, монтируемый как корень ОТДЕЛЬНОГО `ApplicationRef` внутри iframe. */
   @Input({ required: true }) component!: Type<unknown>;
-  /** @default [presetStandard, presetSynonyms, presetMedias, presetMain] */
-  @Input() presets?: MnPreset[];
+  /** Пресеты инстанса iframe — обязательно (D-110): набора по умолчанию нет, `[]` — явный пустой набор. */
+  @Input({ required: true }) presets!: MnPreset[];
   /** Атрибут `class` внутри iframe. @default 'class' */
   @Input() attr?: string;
   /** Обязателен для доступности — у `<iframe>` без `title` нет осмысленного имени для screen reader'ов. */
@@ -86,6 +85,8 @@ export class MnIframeComponent implements AfterViewInit, OnDestroy {
   private runtime?: MnRuntimeHandle;
 
   ngAfterViewInit(): void {
+    // `required` проверяет только шаблон; компонент, созданный кодом, без набора — ошибка, а не пустой CSS.
+    if (!this.presets) throw new Error(MSG_PRESETS_REQUIRED);
     const iframe = this.iframeElRef.nativeElement;
     const handleLoad = (): void => {
       const iframeDoc = iframe.contentDocument;
@@ -108,7 +109,7 @@ export class MnIframeComponent implements AfterViewInit, OnDestroy {
     this.childApp.bootstrap(this.component, rootEl);
 
     const mn = minotationProvider();
-    mn.setPresets(this.presets ?? DEFAULT_PRESETS);
+    mn.setPresets(this.presets);
     this.runtime = createMnRuntime(mn, { root: iframeDoc, attr: this.attr });
   }
 

@@ -44,13 +44,6 @@ import {
 import type {
   MnBuildOptions,
 } from 'minotation-build';
-import {
-  presetHints,
-  presetStandard,
-  presetSynonyms,
-  presetMedias,
-  presetMain,
-} from 'minotation';
 
 const ENCODING = 'utf8';
 
@@ -70,14 +63,6 @@ const ENCODING = 'utf8';
  */
 export type MnGulpOptions = MnBuildOptions;
 
-const DEFAULT_PRESETS = [
-  // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
-  presetHints,
-  presetStandard,
-  presetSynonyms,
-  presetMedias,
-  presetMain,
-];
 
 /**
  * Поток-трансформер для gulp.
@@ -104,10 +89,7 @@ export function mnGulp(code: MnGulpOptions = {}): Transform {
     ...options,
     extensions: options.extensions || [''],
   }, process.cwd());
-  const collector = createBuildCollector({
-    ...options,
-    presets: options.presets || DEFAULT_PRESETS,
-  }, process.cwd());
+  const collector = createBuildCollector(options, process.cwd());
   // Общая база для CSS-файла: gulp считает относительный путь от `base`, и без
   // него результат лёг бы в `dest` по абсолютному пути исходника.
   let base = process.cwd();

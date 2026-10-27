@@ -81,7 +81,7 @@ for (const warning of collector.takeWarnings()) {
 | `include` | `MnFileMatcher` | — | какие файлы сканировать вместо `extensions`: RegExp, путь, функция или массив |
 | `exclude` | `MnFileMatcher` | — | какие файлы пропускать; важнее `include` |
 | `skipPartials` | `boolean` | `false` | пропускать файлы-партиалы `_*` (D-027) |
-| `presets` | `MnPreset[]` | стандартный набор | статические пресеты; стандартный набор начинается с `presetHints` (D-024) |
+| `presets` | `MnPreset[]` | — (обязательно) | статические пресеты; набора по умолчанию нет (D-110): без `presets` — ошибка, `[]` — явно пустой; подсказки — `presetHints` первым в списке (D-024) |
 | `scopePresets` | `MnPreset[]` | `[]` | пресеты, которые могут потребовать пакеты: пакет с чужим семейством — своя область (D-078) |
 | `isolateMode` | `'none' \| 'class' \| 'where'` | `'none'` | изоляция областей пакетов: класс области в их разметку и правила (D-075…D-077) |
 | `unreachableClassMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | класс задан из JS в файле изолированной области (D-076) |
@@ -158,9 +158,12 @@ mnGulp({ entry: { admin: { incude: /admin/ } } });
 
 ```js
 // minotation.config.js
+const { presetStandard, presetSynonyms, presetMedias, presetTw4 } = require('minotation');
+
 module.exports = {
   attrs: 'class, className:class',
-  scopePresets: [require('minotation').presetTw4],
+  presets: [presetStandard, presetSynonyms, presetMedias], // обязательно — в файле или в коде (D-110)
+  scopePresets: [presetTw4],
   metrics: false,
 };
 ```

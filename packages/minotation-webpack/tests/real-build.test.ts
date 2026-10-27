@@ -13,8 +13,12 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os';
 import { MnWebpackPlugin, loader, presetLoader } from '../src/index';
 import { scopeClassName } from 'minotation-build';
-import { presetTw4 } from 'minotation';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain, presetTw4 } from 'minotation';
 import { getState } from '../src/state';
+
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 jest.setTimeout(60_000);
 
@@ -99,7 +103,7 @@ describe('minotation-webpack — скан проекта и ассет без и
       'src/page.html': '<div class="p10 mt4"></div>',
     });
 
-    const result = await runBuild(root, new MnWebpackPlugin());
+    const result = await runBuild(root, new MnWebpackPlugin({ presets: PRESETS }));
 
     expect(result.assets['mn.css']).toContain('.p10{padding:10px}');
     expect(result.assets['mn.css']).toContain('margin-top:4px');
@@ -114,7 +118,7 @@ describe('minotation-webpack — скан проекта и ассет без и
       'src/page.html': '<div class="p10"></div>',
     });
 
-    const result = await runBuild(root, new MnWebpackPlugin(), {
+    const result = await runBuild(root, new MnWebpackPlugin({ presets: PRESETS }), {
       output: { path: join(root, 'dist'), filename: '[name].[contenthash].js' },
     });
 
@@ -131,6 +135,7 @@ describe('minotation-webpack — скан проекта и ассет без и
     });
 
     const result = await runBuild(root, new MnWebpackPlugin({
+      presets: PRESETS,
       fileName: 'css/[name].css',
       manifest: false,
       metrics: false,
@@ -150,13 +155,13 @@ describe('minotation-webpack — скан проекта и ассет без и
       'templates/a.html': '<div class="h40"></div>',
     });
 
-    const custom = await runBuild(root, new MnWebpackPlugin({ root: join(root, 'templates') }));
+    const custom = await runBuild(root, new MnWebpackPlugin({ presets: PRESETS, root: join(root, 'templates') }));
     expect(custom.assets['mn.css']).toContain('height:40px');
     expect(custom.assets['mn.css']).not.toContain('width:30px');
 
     rmSync(join(root, 'src'), { recursive: true });
     writeFileSync(join(root, 'main.js'), 'export const x = 1;\n');
-    const whole = await runBuild(root, new MnWebpackPlugin(), { entry: join(root, 'main.js') });
+    const whole = await runBuild(root, new MnWebpackPlugin({ presets: PRESETS }), { entry: join(root, 'main.js') });
     expect(whole.assets['mn.css']).toContain('width:30px');
     expect(whole.assets['mn.css']).toContain('height:40px');
   });
@@ -171,7 +176,7 @@ describe('minotation-webpack — скан проекта и ассет без и
       'other/leak.html': '<div class="leak w20"></div>',
     });
 
-    const result = await runBuild(root, new MnWebpackPlugin({ root: [join(root, 'src'), join(root, 'shared')] }));
+    const result = await runBuild(root, new MnWebpackPlugin({ presets: PRESETS, root: [join(root, 'src'), join(root, 'shared')] }));
 
     expect(result.assets['mn.css']).toContain('.p10{padding:10px}');
     expect(result.assets['mn.css']).toContain('.m10{margin:10px}');
@@ -195,7 +200,7 @@ describe('minotation-webpack — импорт minotation-webpack/mn.css (D-031)'
       'src/page.html': '<div class="p10"></div>',
     });
 
-    const result = await runBuild(root, new MnWebpackPlugin(), {
+    const result = await runBuild(root, new MnWebpackPlugin({ presets: PRESETS }), {
       experiments: { css: true },
       output: { path: join(root, 'dist'), filename: '[name].js', cssFilename: '[name].[contenthash].css' },
     });
@@ -216,14 +221,14 @@ describe('minotation-webpack — импорт minotation-webpack/mn.css (D-031)'
     const entry = { site: { include: /site/ }, admin: { include: /admin/ } };
     const extra: Configuration = { experiments: { css: true } };
 
-    const result = await runBuild(root, new MnWebpackPlugin({ entry }), extra);
+    const result = await runBuild(root, new MnWebpackPlugin({ presets: PRESETS, entry }), extra);
     const css = Object.entries(result.assets).filter(([name]) => name.endsWith('.css')).map(([, v]) => v).join('');
     expect(css).toContain('margin:20px');
     expect(css).not.toContain('padding:10px');
     expect(result.warnings.join('\n')).toContain('[minotation] w10zz');
 
     writeFileSync(join(root, 'src/main.js'), "import 'minotation-webpack/mn.css?entry=nope';\n");
-    await expect(runBuild(root, new MnWebpackPlugin({ entry }), extra)).rejects.toThrow('no such entry; declared: site, admin');
+    await expect(runBuild(root, new MnWebpackPlugin({ presets: PRESETS, entry }), extra)).rejects.toThrow('no such entry; declared: site, admin');
   });
 });
 
@@ -238,7 +243,7 @@ describe('minotation-webpack — пресеты, лоадеры и предуп�
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
     try {
-      const result = await runBuild(root, new MnWebpackPlugin());
+      const result = await runBuild(root, new MnWebpackPlugin({ presets: PRESETS }));
       expect(result.assets['mn.css']).toContain('.wpToken{color:#f00}');
       // До `mockRestore`: он заодно стирает записанные вызовы.
       expect(errorSpy).toHaveBeenCalledWith('[minotation] Failed to evaluate preset file:', expect.stringContaining('broken.mn.ts'), expect.anything());
@@ -250,7 +255,7 @@ describe('minotation-webpack — пресеты, лоадеры и предуп�
   test('токен-лоадер и preset-лоадер отдают файл всем плагинам процесса', () => {
     const root = makeProject({ 'src/main.js': 'export const x = 1;\n' });
     // Стандартный набор нужен: пресет ниже раскрывается через хендлер `c`.
-    const plugin = new MnWebpackPlugin();
+    const plugin = new MnWebpackPlugin({ presets: PRESETS });
     plugin.apply(webpack(configOf(root, plugin)) as any);
     const handle = getState().plugins.values().next().value!;
 
@@ -282,6 +287,7 @@ describe('minotation-webpack — пресеты, лоадеры и предуп�
     const seen: string[] = [];
 
     const loud = await runBuild(root, new MnWebpackPlugin({
+      presets: PRESETS,
       altColor: true,
       media: { wide: { query: '(width >= 1200px)' } },
       onWarning: (w) => seen.push(w.token),
@@ -290,7 +296,7 @@ describe('minotation-webpack — пресеты, лоадеры и предуп�
     expect(loud.assets['mn.css']).toContain('.cF00\\.5{color:#f00;color:rgba(255,0,0,.5)}');
     expect(seen).toEqual(['w10zz']);
 
-    const quiet = await runBuild(root, new MnWebpackPlugin({ warningMode: 'silent' }));
+    const quiet = await runBuild(root, new MnWebpackPlugin({ presets: PRESETS, warningMode: 'silent' }));
     expect(quiet.warnings.join('\n')).not.toContain('[minotation]');
   });
 
@@ -306,7 +312,7 @@ describe('minotation-webpack — watch: изменения учитываютс�
       'src/theme.mn.ts': "export default (mn) => { mn('wToken', 'cF00'); };\n",
       'src/keep.html': '<div class="wToken"></div>',
     });
-    const compiler = webpack(configOf(root, new MnWebpackPlugin()));
+    const compiler = webpack(configOf(root, new MnWebpackPlugin({ presets: PRESETS })));
     let first = '';
     let edited = false;
 
@@ -355,7 +361,7 @@ describe('minotation-webpack — watchRun: точечное пересканир
       'src/theme.mn.ts': "export default (mn) => { mn('wrToken', 'cF00'); };\n",
       'src/c.html': '<div class="wrToken"></div>',
     });
-    const plugin = new MnWebpackPlugin();
+    const plugin = new MnWebpackPlugin({ presets: PRESETS });
     const compiler = webpack(configOf(root, plugin));
     const handle = getState().plugins.values().next().value!;
     const css = (): string => handle.build.outputs()[0].css;
@@ -394,7 +400,7 @@ describe('minotation-webpack — watchRun: точечное пересканир
       'src/page.html': '<div class="h40"></div>',
     });
 
-    const result = await runBuild(root, new MnWebpackPlugin({ include: /\.tpl$/ }));
+    const result = await runBuild(root, new MnWebpackPlugin({ presets: PRESETS, include: /\.tpl$/ }));
 
     expect(result.assets['mn.css']).toContain('width:30px');
     expect(result.assets['mn.css']).not.toContain('height:40px');
@@ -408,7 +414,7 @@ describe('minotation-webpack — статистика употребления �
       'src/page.html': '<div class="p10 p10"></div>',
     });
 
-    const result = await runBuild(root, new MnWebpackPlugin(), { experiments: { css: true } });
+    const result = await runBuild(root, new MnWebpackPlugin({ presets: PRESETS }), { experiments: { css: true } });
 
     expect(JSON.parse(result.assets['mn-metrics.json']).tokens).toEqual([{ name: 'p10', count: 2 }]);
   });
@@ -421,6 +427,7 @@ describe('minotation-webpack — изоляция областей пакето�
       'ui/package.json': JSON.stringify({ name: '@acme/ui', minotation: { requires: ['presetTw4'], notationMode: 'tw4-compatible' } }),
     });
     const plugin = new MnWebpackPlugin({
+      presets: PRESETS,
       attrs: 'class, className:class',
       scopePresets: [presetTw4],
       isolateMode: 'class',

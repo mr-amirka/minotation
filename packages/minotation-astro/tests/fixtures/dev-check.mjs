@@ -9,6 +9,10 @@
 import { dev } from 'astro';
 import { fileURLToPath } from 'url';
 import { mnAstro } from '../../src/index.ts';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 const root = fileURLToPath(new URL('./dev-site/', import.meta.url));
 const port = Number(process.argv[2]);
@@ -18,7 +22,7 @@ const server = await dev({
   root,
   logLevel: 'error',
   server: { port },
-  integrations: [mnAstro({ attrs: 'class' })],
+  integrations: [mnAstro({ presets: PRESETS, attrs: 'class' })],
 });
 try {
   const page = await fetch(origin + '/');

@@ -2,6 +2,10 @@
  * Smoke-тесты для minotation-esbuild.
  */
 import { mnEsbuild } from '../src/index';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 describe('minotation-esbuild — smoke', () => {
   test('mnEsbuild — функция', () => {
@@ -9,17 +13,17 @@ describe('minotation-esbuild — smoke', () => {
   });
 
   test('mnEsbuild() — возвращает объект с name=minotation', () => {
-    const plugin = mnEsbuild();
+    const plugin = mnEsbuild({ presets: PRESETS });
     expect(plugin.name).toBe('minotation');
   });
 
   test('mnEsbuild() — имеет функцию setup', () => {
-    const plugin = mnEsbuild();
+    const plugin = mnEsbuild({ presets: PRESETS });
     expect(typeof plugin.setup).toBe('function');
   });
 
   test('setup(build) — регистрирует onStart, onResolve (virtual:mn.css), onLoad x3 (модуль CSS, пресеты, файлы приложения), onEnd', () => {
-    const plugin = mnEsbuild({ attrs: 'className:class' });
+    const plugin = mnEsbuild({ presets: PRESETS, attrs: 'className:class' });
     const onStart = jest.fn();
     const onResolve = jest.fn();
     const onLoad = jest.fn();

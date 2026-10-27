@@ -1,12 +1,5 @@
 import type { Plugin, PluginContext } from 'rollup';
 import type { MnWarning } from 'minotation';
-import {
-  presetHints,
-  presetStandard,
-  presetSynonyms,
-  presetMedias,
-  presetMain,
-} from 'minotation';
 import type { MnInstance } from 'minotation';
 import type { MnPreset } from 'minotation';
 import { asPreset } from 'minotation-build';
@@ -117,18 +110,7 @@ export function mnRollup(code: MnRollupOptions = {}): Plugin {
   const walkExts = options.include ? [''] : files.extensions;
   // Учёт токенов, пресеты, компиляция, кеш и предупреждения — общий каркас
   // ядра. До 2026-09-29 каждый плагин вёл это сам, и четыре копии расходились.
-  const collector = createBuildCollector({
-    // Опции целиком; ниже — то, что плагин подставляет сам.
-    ...options,
-    presets: options.presets || [
-      // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
-      presetHints,
-      presetStandard,
-      presetSynonyms,
-      presetMedias,
-      presetMain,
-    ],
-  }, root);
+  const collector = createBuildCollector(options, root);
 
   function isPresetFile(id: string): boolean {
     return files.isPreset(id);

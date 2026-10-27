@@ -11,6 +11,9 @@ import { TestBed } from '@angular/core/testing';
 import { presetStandard } from 'minotation';
 import { MnIframeComponent } from './mn-iframe.component';
 
+/** Набор передаётся явно (D-110): по умолчанию iframe не подключает ни одного пресета. */
+const PRESETS = [presetStandard];
+
 function flushMicrotasks(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
@@ -30,10 +33,11 @@ class WidgetB {}
 @Component({
   standalone: true,
   imports: [MnIframeComponent],
-  template: `<mn-iframe [component]="component" [title]="title" />`,
+  template: `<mn-iframe [component]="component" [presets]="presets" [title]="title" />`,
 })
 class HostComponent {
   component: unknown = WidgetA;
+  presets = PRESETS;
   title = 'widget';
 }
 
@@ -98,6 +102,7 @@ describe('MnIframeComponent', () => {
 
     const cmp = new MnIframeComponent();
     cmp.component = WidgetA;
+    cmp.presets = PRESETS;
     cmp.title = 'deferred';
     (cmp as unknown as { iframeElRef: { nativeElement: HTMLIFrameElement } }).iframeElRef = { nativeElement: iframe };
 
@@ -123,6 +128,7 @@ describe('MnIframeComponent', () => {
 
     const cmp = new MnIframeComponent();
     cmp.component = WidgetA;
+    cmp.presets = PRESETS;
     cmp.title = 'never-loads';
     (cmp as unknown as { iframeElRef: { nativeElement: HTMLIFrameElement } }).iframeElRef = { nativeElement: iframe };
 
@@ -139,7 +145,7 @@ describe('MnIframeComponent', () => {
     iframe.remove();
   });
 
-  it('кастомные presets и attr применяются вместо умолчаний', async () => {
+  it('attr применяется вместо умолчания', async () => {
     @Component({
       standalone: true,
       template: `<div data-mn="p10 c0">через data-mn</div>`,
@@ -153,7 +159,7 @@ describe('MnIframeComponent', () => {
     })
     class CustomHost {
       widget = WidgetAttr;
-      presets = [presetStandard];
+      presets = PRESETS;
     }
 
     const fixture = TestBed.createComponent(CustomHost);
@@ -175,13 +181,14 @@ describe('MnIframeComponent', () => {
       standalone: true,
       imports: [MnIframeComponent],
       template: `
-        <mn-iframe [component]="widgetA" title="widget-1" />
-        <mn-iframe [component]="widgetB" title="widget-2" />
+        <mn-iframe [component]="widgetA" [presets]="presets" title="widget-1" />
+        <mn-iframe [component]="widgetB" [presets]="presets" title="widget-2" />
       `,
     })
     class DualHost {
       widgetA = WidgetA;
       widgetB = WidgetB;
+      presets = PRESETS;
     }
 
     const fixture = TestBed.createComponent(DualHost);
@@ -200,5 +207,22 @@ describe('MnIframeComponent', () => {
 
     fixture.destroy();
     fixture.nativeElement.remove();
+  });
+
+  it('без presets — ошибка с ответом, а не пустой CSS (D-110)', () => {
+    // Шаблон без [presets] не соберётся (required input); компонент, созданный кодом, проверяется при старте.
+    const iframe = document.createElement('iframe');
+    document.body.appendChild(iframe);
+    const cmp = new MnIframeComponent();
+    cmp.component = WidgetA;
+    cmp.title = 'forgotten';
+    (cmp as unknown as { iframeElRef: { nativeElement: HTMLIFrameElement } }).iframeElRef = { nativeElement: iframe };
+
+    expect(() => {
+      cmp.ngAfterViewInit();
+    }).toThrow('[minotation] mn-iframe: "presets" is required — no preset is connected by default (D-110).'
+      + ' List them: [presets]="[presetStandard, presetSynonyms, presetMedias]"');
+    expect(iframe.contentDocument!.querySelector('style[data-mn-runtime]')).toBeNull();
+    iframe.remove();
   });
 });

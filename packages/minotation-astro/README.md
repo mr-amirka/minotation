@@ -14,9 +14,11 @@ npm install minotation-astro
 // astro.config.mjs
 import { defineConfig } from 'astro/config';
 import { mnAstro } from 'minotation-astro';
+import { presetStandard, presetSynonyms, presetMedias } from 'minotation';
 
 export default defineConfig({
-  integrations: [mnAstro({ attrs: 'class' })],
+  // Пресеты — явно: по умолчанию не подключается ни один (D-110).
+  integrations: [mnAstro({ attrs: 'class', presets: [presetStandard, presetSynonyms, presetMedias] })],
 });
 ```
 
@@ -111,7 +113,7 @@ const thClass = 'py12 px14 bb1 bsS';
 | `include` | — | какие файлы сканировать: RegExp, путь, функция или массив |
 | `exclude` | — | какие файлы пропускать; важнее `include` |
 | `skipPartials` | `false` | пропускать файлы-партиалы `_*` |
-| `presets` | стандартный набор | статические пресеты; в стандартном наборе первым — `presetHints` (подсказки о `t0`, `flex`, `text-center`, D-024); точечно — `presetHints({ excludeGroups, excludeHandlers })` в своём списке (D-042); свой список заменяет набор целиком |
+| `presets` | — (обязательно) | статические пресеты; набора по умолчанию нет (D-110): без `presets` — ошибка, `[]` — явно пустой. Подсказки о `t0`, `flex`, `text-center` — `presetHints` первым в списке (D-024), точечно — `presetHints({ excludeGroups, excludeHandlers })` (D-042) |
 | `scopePresets` | `[]` | пресеты, которые могут потребовать пакеты (`requires`); пакет с чужим семейством собирается в своей области ([minotation-build](../minotation-build/README.md#области-семейств-пресетов-d-076-d-078), D-078) |
 | `scopes` | `[]` | правила для пакетов и путей без своей декларации — `{ match: '@acme/ui' \| 'src/**' \| /re/, requires, notationMode }`; своя декларация пакета важнее, аварийно — `override: true` (D-082) |
 | `isolateMode` | `'none'` | изоляция областей пакетов: `'class'` — `.p-4._4`, `'where'` — `.p-4:where(._4)`; класс области сборка пишет в разметку файлов пакета ([minotation-build](../minotation-build/README.md#изоляция-областей-пакетов--isolatemode-d-075d-077)) |

@@ -10,7 +10,10 @@ import { readFileSync, mkdtempSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { mnEsbuild } from '../src/index';
 import { scopeClassName } from 'minotation-build';
-import { presetTw4 } from 'minotation';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain, presetTw4 } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 const FIXTURES_DIR = join(__dirname, 'fixtures');
 
@@ -35,7 +38,7 @@ describe('minotation-esbuild — реальная сборка', () => {
       bundle: true,
       outdir: outDir,
       jsx: 'preserve',
-      plugins: [mnEsbuild({ attrs: 'class', root: [join(repo, 'src'), join(repo, 'shared')] })],
+      plugins: [mnEsbuild({ presets: PRESETS, attrs: 'class', root: [join(repo, 'src'), join(repo, 'shared')] })],
     });
 
     const css = readFileSync(join(outDir, 'mn.css'), 'utf-8');
@@ -52,7 +55,7 @@ describe('minotation-esbuild — реальная сборка', () => {
       entryPoints: [join(FIXTURES_DIR, 'app.tsx')],
       bundle: true,
       outdir: outDir,
-      plugins: [mnEsbuild({ attrs: 'class', root: FIXTURES_DIR })],
+      plugins: [mnEsbuild({ presets: PRESETS, attrs: 'class', root: FIXTURES_DIR })],
     });
 
     const js = readFileSync(join(outDir, 'app.js'), 'utf-8');
@@ -82,6 +85,7 @@ describe('mnEsbuild — изоляция областей пакетов (D-075,
       outdir,
       jsx: 'preserve',
       plugins: [mnEsbuild({
+        presets: PRESETS,
         root: [join(root, 'src'), join(root, 'ui')],
         attrs: 'class, className:class',
         scopePresets: [presetTw4],

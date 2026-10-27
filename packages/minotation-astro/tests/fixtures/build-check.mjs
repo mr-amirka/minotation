@@ -10,6 +10,10 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { mnAstro } from '../../src/index.ts';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 const root = fileURLToPath(new URL('./dev-site/', import.meta.url));
 const outDir = mkdtempSync(join(tmpdir(), 'mn-astro-build-'));
@@ -21,7 +25,7 @@ await build({
   outDir,
   logLevel: 'error',
   ...args.astro,
-  integrations: [mnAstro({ attrs: 'class', ...args.mn })],
+  integrations: [mnAstro({ presets: PRESETS, attrs: 'class', ...args.mn })],
 });
 
 const css = {};

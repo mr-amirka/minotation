@@ -25,11 +25,25 @@ import {
   compile,
 } from '../src/compile';
 import {
+  presetHints,
+  presetMain,
+  presetMedias,
+  presetStandard,
+  presetSynonyms,
   presetTw4,
 } from 'minotation';
 import type {
   MnPreset,
 } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [
+  presetHints,
+  presetStandard,
+  presetSynonyms,
+  presetMedias,
+  presetMain,
+];
 
 let dir: string;
 
@@ -157,10 +171,23 @@ describe('collectFiles', () => {
 });
 
 describe('compile', () => {
+  test('без presets — ошибка: набора по умолчанию нет (D-110)', () => {
+    write('a.html', '<div class="p10">');
+    expect(() => compile({
+      input: dir,
+    })).toThrow('[minotation] compile: "presets" is required — no preset is connected by default (D-110).');
+    // Явный пустой набор — допустим: токены без хендлеров, CSS пустой.
+    expect(compile({
+      presets: [],
+      input: dir,
+    }).css).toBe('');
+  });
+
   test('собирает токены из атрибута и переменных', () => {
     write('a.html', '<div class="p10 dF">');
     write('b.tsx', "const aClass = 'm5';");
     const result = compile({
+      presets: PRESETS,
       input: dir,
     });
     expect(result.files).toBe(2);
@@ -172,6 +199,7 @@ describe('compile', () => {
   test('токены из комментариев не попадают в CSS', () => {
     write('a.html', '<!-- class="p99" --><div class="p10">');
     const css = compile({
+      presets: PRESETS,
       input: dir,
     }).css;
     expect(css).toContain('padding:10px');
@@ -180,6 +208,7 @@ describe('compile', () => {
 
   test('настройки compile проверяются, как конфиг (D-038)', () => {
     expect(() => compile({
+      presets: PRESETS,
       input: dir,
       atrs: 'class',
     } as never)).toThrow('[minotation] compile: unknown option "atrs". Did you mean "attrs"?');
@@ -188,6 +217,7 @@ describe('compile', () => {
   test('атрибут разворачивается в class — className:class', () => {
     write('a.tsx', '<div className="p10">');
     expect(compile({
+      presets: PRESETS,
       input: dir,
       attrs: 'className:class',
     }).css).toContain('.p10{padding:10px}');
@@ -196,6 +226,7 @@ describe('compile', () => {
   test('атрибут без цели разворачивается в себя — [m~="p10"], как в v1', () => {
     write('a.html', '<div class="w20" m="p10">');
     const result = compile({
+      presets: PRESETS,
       input: dir,
       attrs: 'class, m',
     });
@@ -207,6 +238,7 @@ describe('compile', () => {
   test('поля ядра — плоско: altColor, warningMode (D-034, D-035)', () => {
     write('a.html', '<div class="p10 cF00.5">');
     const css = compile({
+      presets: PRESETS,
       input: dir,
       altColor: true,
     }).css;
@@ -214,6 +246,7 @@ describe('compile', () => {
     expect(css).toContain('.cF00\\.5{color:#f00;color:rgba(255,0,0,.5)}');
     write('b.html', '<div class="w10zz">');
     expect(() => compile({
+      presets: PRESETS,
       input: dir,
       warningMode: 'error',
     })).toThrow(/warningMode: 'error'/);
@@ -222,6 +255,7 @@ describe('compile', () => {
   test('маркер @mn добавляет токены, которых нет в атрибутах (D-083)', () => {
     write('a.html', '<div class="p10"><!-- @mn m20 -->');
     expect(compile({
+      presets: PRESETS,
       input: dir,
     }).css).toContain('margin:20px');
   });
@@ -230,6 +264,7 @@ describe('compile', () => {
     // Что с ним делать — решает вызывающий: у CLI это зависит от `--strict`.
     write('a.html', '<div class="w10zz">');
     const result = compile({
+      presets: PRESETS,
       input: dir,
     });
     expect(result.warnings.length).toBe(1);
@@ -240,6 +275,7 @@ describe('compile', () => {
     // регулярного литерала его сбивает — парсеру это безразлично.
     write('a.tsx', 'const re = /"/;\n// class="p99"\n<div class="p10" />;');
     const parsed = compile({
+      presets: PRESETS,
       input: dir,
     });
     expect(parsed.css).toContain('padding:10px');
@@ -249,6 +285,7 @@ describe('compile', () => {
   test('`syntax: false` возвращает текстовый разбор со всеми его промахами', () => {
     write('a.tsx', 'const re = /"/;\n// class="p99"\n<div class="p10" />;');
     const plain = compile({
+      presets: PRESETS,
       input: dir,
       syntax: false,
     });
@@ -259,9 +296,11 @@ describe('compile', () => {
   test('прочие форматы сканируются текстом при любом значении', () => {
     write('a.html', '<div class="p10">');
     expect(compile({
+      presets: PRESETS,
       input: dir,
     }).css).toContain('padding:10px');
     expect(compile({
+      presets: PRESETS,
       input: dir,
       syntax: true,
     }).css).toContain('padding:10px');
@@ -269,6 +308,7 @@ describe('compile', () => {
 
   test('пустая директория даёт пустой набор токенов', () => {
     const result = compile({
+      presets: PRESETS,
       input: dir,
     });
     expect(result.files).toBe(0);
@@ -289,6 +329,7 @@ describe('метрики', () => {
     write('b.html', '<div class="p10"></div>');
 
     const metrics = compile({
+      presets: PRESETS,
       input: dir,
     }).metrics;
 
@@ -320,6 +361,7 @@ describe('метрики', () => {
     write('a.html', '<div class="w50 m20 p10"></div>');
 
     const names = compile({
+      presets: PRESETS,
       input: dir,
     }).metrics.tokens.map((t) => t.name);
 
@@ -335,6 +377,7 @@ describe('метрики', () => {
     write('empty.html', '<div></div>');
 
     const files = compile({
+      presets: PRESETS,
       input: dir,
     }).metrics.files;
 
@@ -350,6 +393,7 @@ describe('scopes и scopePresets в CLI (D-078, D-081)', () => {
     }));
     write('ui/Button.html', '<b class="p-4">');
     const css = compile({
+      presets: PRESETS,
       input: dir,
       scopePresets: [presetTw4 as MnPreset],
       scopes: [

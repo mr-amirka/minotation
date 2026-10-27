@@ -6,13 +6,6 @@ import { existsSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import type { Compiler } from 'webpack';
 import { Compilation } from 'webpack';
-import {
-  presetHints,
-  presetStandard,
-  presetSynonyms,
-  presetMedias,
-  presetMain,
-} from 'minotation';
 import type { MnInstance } from 'minotation';
 import type { MnPreset } from 'minotation';
 import {
@@ -41,15 +34,6 @@ export type MnWebpackPluginOptions = MnBuildOptions;
 export const MN_CSS_REQUEST = 'minotation-webpack/mn.css';
 /** Заглушки `mn.css` этого пакета и `minotation-next`: содержимое даёт CSS-лоадер. */
 const REGEXP_MN_CSS = /[\\/]minotation-(?:webpack|next)[\\/]mn\.css$/;
-
-const DEFAULT_PRESETS: MnPreset[] = [
-  // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
-  presetHints,
-  presetStandard,
-  presetSynonyms,
-  presetMedias,
-  presetMain,
-];
 
 /** Номер следующего плагина в общем реестре. */
 let nextId = 0;
@@ -106,10 +90,7 @@ export class MnWebpackPlugin {
     const roots = scanRoots(options.root, existsSync(join(context, 'src')) ? join(context, 'src') : context);
     const root = typeof options.root === 'string' || options.root === undefined ? roots[0] : context;
     const handle: MnPluginHandle = this.handle = {
-      build: createBuildCollector({
-        ...options,
-        presets: options.presets || DEFAULT_PRESETS,
-      }, root),
+      build: createBuildCollector(options, root),
       files: createFileFilter(options, root),
       roots,
       imported: false,

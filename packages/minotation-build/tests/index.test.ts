@@ -22,6 +22,7 @@ import {
 } from 'node:os';
 import {
   asPreset,
+  assertPresets,
   checkBuildOptions,
   createAttrsScanner,
   createBuildCollector,
@@ -1049,6 +1050,7 @@ describe('checkBuildOptions — проверка опций плагина (D-03
     expect(() => checkBuildOptions(
       {
         inject: 'link',
+        presets: [],
       }, 'mnVite', {
         inject: (value) => (value === 'link' ? undefined : '"link"'),
       },
@@ -1134,16 +1136,37 @@ describe('scanRoots — несколько корней скана (web-games, �
   });
 });
 
+describe('presets — только явно (D-110)', () => {
+  test('без presets — ошибка с подсказкой: набора по умолчанию нет', () => {
+    expect(() => checkBuildOptions({
+      attrs: 'class',
+    }, 'mnVite')).toThrow('[minotation] mnVite: "presets" is required — no preset is connected by default (D-110).'
+      + ' List them in the options or in minotation.config.js: presets: [presetStandard, presetSynonyms, presetMedias]');
+    expect(() => assertPresets({}, 'compile')).toThrow('compile: "presets" is required');
+  });
+
+  test('явный набор, в том числе пустой, проходит', () => {
+    expect(() => checkBuildOptions({
+      presets: [presetStandard],
+    }, 'mnVite')).not.toThrow();
+    expect(() => assertPresets({
+      presets: [],
+    }, 'compile')).not.toThrow();
+  });
+});
+
 describe('checkBuildOptions — root', () => {
   test('строка и массив строк — допустимы; иное — ошибка', () => {
     expect(() => checkBuildOptions({
       root: '/a',
+      presets: [],
     }, 'mnRollup')).not.toThrow();
     expect(() => checkBuildOptions({
       root: [
         '/a',
         '/b',
       ],
+      presets: [],
     }, 'mnRollup')).not.toThrow();
     expect(() => checkBuildOptions({
       root: [

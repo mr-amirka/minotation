@@ -55,6 +55,8 @@ CSS сами — включая разметку, пришедшую с серв
 стилями — они не пересекаются ни с host-страницей, ни с соседними виджетами.
 
 ```ts
+import { presetStandard, presetSynonyms, presetMedias } from 'minotation';
+
 @Component({
   standalone: true,
   template: `<div class="p10 bgF r8">Изолированный виджет</div>`,
@@ -64,10 +66,11 @@ class WidgetContent {}
 @Component({
   standalone: true,
   imports: [MnIframeComponent],
-  template: `<mn-iframe [component]="widget" title="Превью темы" />`,
+  template: `<mn-iframe [component]="widget" [presets]="presets" title="Превью темы" />`,
 })
 class Host {
   widget = WidgetContent;
+  presets = [presetStandard, presetSynonyms, presetMedias];
 }
 ```
 
@@ -75,8 +78,12 @@ class Host {
 |------|--------------|------------|
 | `component` | — | класс компонента, который рендерится внутри iframe |
 | `title` | — (обязателен) | имя iframe для screen reader'ов |
-| `presets` | стандартный набор | пресеты для инстанса внутри iframe |
+| `presets` | — (обязателен, `required` input) | пресеты для инстанса внутри iframe; набора по умолчанию нет (D-110), `[]` — явно пустой |
 | `attr` | `'class'` | атрибут с токенами внутри iframe |
+
+Пресеты передаются явно: компонент не подключает ни одного сам и не тянет в
+сборку код наборов, которые не перечислены. Без `presets` — ошибка с подсказкой,
+а не пустой CSS.
 
 Внутри поднимается отдельное приложение через `createApplication` с
 переопределённым `DOCUMENT` — поэтому передаётся класс компонента, а не

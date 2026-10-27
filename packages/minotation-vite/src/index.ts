@@ -1,10 +1,5 @@
 import type { ModuleNode, Plugin, ViteDevServer } from 'vite';
 import {
-  presetHints,
-  presetStandard,
-  presetSynonyms,
-  presetMedias,
-  presetMain,
   oneOf,
 } from 'minotation';
 import type { MnInstance, MnWarning } from 'minotation';
@@ -168,14 +163,6 @@ export function mnVite(code: MnViteOptions = {}): Plugin {
   const options = withBuildConfig(code, 'mnVite', own);
   checkBuildOptions(options, 'mnVite', own);
   const rewriteScope = createScopeRewriter(options);
-  const staticPresets = options.presets || [
-    // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
-    presetHints,
-    presetStandard,
-    presetSynonyms,
-    presetMedias,
-    presetMain,
-  ];
   const inject = options.inject === undefined ? 'inline' : options.inject;
 
   let root = process.cwd();
@@ -187,10 +174,7 @@ export function mnVite(code: MnViteOptions = {}): Plugin {
    * Пересоздаётся в `configResolved`: пути в `include` записей считаются от корня.
    */
   function createCollector(): BuildCollector {
-    return createBuildCollector({
-      ...options,
-      presets: staticPresets,
-    }, root);
+    return createBuildCollector(options, root);
   }
   let build = createCollector();
   /** Отбор файлов — общий для всех плагинов; корень известен после `configResolved`. */

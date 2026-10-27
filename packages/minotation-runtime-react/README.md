@@ -59,7 +59,11 @@ function Widget() {
 стилями — они не пересекаются ни с host-страницей, ни с соседними виджетами.
 
 ```tsx
-<MnIframe title="Превью темы">
+import { presetStandard, presetSynonyms, presetMedias } from 'minotation';
+
+const PRESETS = [presetStandard, presetSynonyms, presetMedias];
+
+<MnIframe title="Превью темы" presets={PRESETS}>
   <div className="p10 bgF r8">Изолированный виджет</div>
 </MnIframe>
 ```
@@ -67,9 +71,13 @@ function Widget() {
 | Проп | По умолчанию | Что делает |
 |------|--------------|------------|
 | `title` | — (обязателен) | имя iframe для screen reader'ов |
-| `presets` | стандартный набор | пресеты для инстанса внутри iframe |
+| `presets` | — (обязателен) | пресеты для инстанса внутри iframe; набора по умолчанию нет (D-110), `[]` — явно пустой |
 | `attr` | `'class'` | атрибут с токенами внутри iframe |
 | `className`, `style` | — | оформление самого элемента `<iframe>` |
+
+Пресеты передаются явно: компонент не подключает ни одного сам и не тянет в
+сборку код наборов, которые не перечислены. Без `presets` — ошибка с подсказкой,
+а не пустой CSS.
 
 Дети рендерятся в `contentDocument.body` через `createPortal`, то есть остаются
 частью дерева React: контекст, состояние и обработчики работают как обычно.

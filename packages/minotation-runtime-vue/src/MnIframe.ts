@@ -27,19 +27,17 @@ import { defineComponent, h, onBeforeUnmount, onMounted, ref, watch, type PropTy
 import { createApp } from 'vue';
 import {
   minotationProvider,
-  presetStandard,
-  presetSynonyms,
-  presetMedias,
-  presetMain,
 } from 'minotation';
 import type { MnPreset } from 'minotation';
 import { createMnRuntime, type MnRuntimeHandle } from 'minotation-runtime';
 
-const DEFAULT_PRESETS = [presetStandard, presetSynonyms, presetMedias, presetMain];
+/** Сообщение о забытом `presets`: набора по умолчанию нет (D-110). */
+const MSG_PRESETS_REQUIRED = '[minotation] MnIframe: "presets" is required — no preset is connected by default'
+  + ' (D-110). List them: :presets="[presetStandard, presetSynonyms, presetMedias]"';
 
 /**
  * @example
- * <MnIframe title="Виджет 1">
+ * <MnIframe title="Виджет 1" :presets="[presetStandard]">
  *   <template #default>
  *     <div class="p10 bgF r8">Изолированный виджет</div>
  *   </template>
@@ -48,13 +46,16 @@ const DEFAULT_PRESETS = [presetStandard, presetSynonyms, presetMedias, presetMai
 export const MnIframe = defineComponent({
   name: 'MnIframe',
   props: {
-    presets: { type: Array as PropType<MnPreset[]>, default: undefined },
+    /** Пресеты инстанса iframe — обязательно (D-110): набора по умолчанию нет, `[]` — явный пустой набор. */
+    presets: { type: Array as PropType<MnPreset[]>, required: true },
     /** Атрибут `class` внутри iframe. @default 'class' */
     attr: { type: String, default: undefined },
     /** Обязателен для доступности — у `<iframe>` без `title` нет осмысленного имени для screen reader'ов. */
     title: { type: String, required: true },
   },
   setup(props, { slots }) {
+    // `required` у Vue — только предупреждение в dev: забытый набор — ошибка, а не пустой CSS.
+    if (!props.presets) throw new Error(MSG_PRESETS_REQUIRED);
     const iframeRef = ref<HTMLIFrameElement | null>(null);
     const doc = ref<Document | null>(null);
     let childApp: ReturnType<typeof createApp> | null = null;
@@ -89,7 +90,7 @@ export const MnIframe = defineComponent({
       childApp.mount(iframeDoc.body);
 
       const mn = minotationProvider();
-      mn.setPresets(props.presets ?? DEFAULT_PRESETS);
+      mn.setPresets(props.presets);
       runtime = createMnRuntime(mn, { root: iframeDoc, attr: props.attr });
     });
 

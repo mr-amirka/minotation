@@ -264,6 +264,7 @@ Usage: mn [path] [options]
 
   Builds CSS from Minimalist Notation tokens found in files.
   The default path is the current directory.
+  Presets come from the config file only: no preset is connected by default.
 
 Options:
   -o, --output <file>    where to write CSS (default ./mn.css);

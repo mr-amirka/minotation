@@ -280,6 +280,7 @@ describe('scopes — проверка опции', () => {
 
   test('допустимые правила', () => {
     expect(() => checkBuildOptions({
+      presets: [],
       scopes: [
         {
           match: [

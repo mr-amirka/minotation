@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "esbuild": "^0.28.0",
+    "minotation": "workspace:*",
     "minotation-esbuild": "workspace:*"
   }
 }

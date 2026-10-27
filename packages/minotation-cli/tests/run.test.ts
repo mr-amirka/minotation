@@ -27,6 +27,11 @@ import {
   scopeClassName,
 } from 'minotation-build';
 import {
+  presetHints,
+  presetMain,
+  presetMedias,
+  presetStandard,
+  presetSynonyms,
   presetTw4,
 } from 'minotation';
 import type {
@@ -46,6 +51,15 @@ import type {
   Reporter,
   RunSettings,
 } from '../src/run';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [
+  presetHints,
+  presetStandard,
+  presetSynonyms,
+  presetMedias,
+  presetMain,
+];
 
 let dir: string;
 let logs: string[];
@@ -309,6 +323,7 @@ describe('build', () => {
       dir, 'out', 'app.css',
     );
     const result = build({
+      presets: PRESETS,
       input: dir,
       output: out,
     }, report);
@@ -323,6 +338,7 @@ describe('build', () => {
       dir, 'глубоко', 'внутри', 'app.css',
     );
     build({
+      presets: PRESETS,
       input: dir,
       output: out,
     }, report);
@@ -332,6 +348,7 @@ describe('build', () => {
   test('предупреждения печатаются, но сборку не останавливают', () => {
     write('a.html', '<div class="w10zz p10">');
     build({
+      presets: PRESETS,
       input: dir,
       output: join(dir, 'out.css'),
     }, report);
@@ -377,6 +394,7 @@ describe('build — имя файла, entry и манифест (D-030, D-031)'
   test('по умолчанию — манифест рядом с CSS', () => {
     write('src/a.html', '<div class="p10">');
     build({
+      presets: PRESETS,
       input: join(dir, 'src'),
       output: join(
         dir, 'out', 'mn.css',
@@ -393,6 +411,7 @@ describe('build — имя файла, entry и манифест (D-030, D-031)'
   test('[name] и [hash] в --output; манифест знает фактическое имя', () => {
     write('src/a.html', '<div class="p10">');
     build({
+      presets: PRESETS,
       input: join(dir, 'src'),
       output: join(
         dir, 'out', '[name].[hash].css',
@@ -411,6 +430,7 @@ describe('build — имя файла, entry и манифест (D-030, D-031)'
     write('src/site/a.html', '<div class="p10">');
     write('src/admin/b.html', '<div class="m20">');
     build({
+      presets: PRESETS,
       input: join(dir, 'src'),
       output: join(
         dir, 'out', '[name].css',
@@ -455,6 +475,7 @@ describe('build — имя файла, entry и манифест (D-030, D-031)'
     write('src/site/a.html', '<div class="p10">');
     write('src/admin/b.html', '<div class="m20">');
     expect(() => build({
+      presets: PRESETS,
       input: join(dir, 'src'),
       output: join(
         dir, 'out', 'mn.css',
@@ -473,6 +494,7 @@ describe('build — имя файла, entry и манифест (D-030, D-031)'
   test('manifest: false и --no-manifest — без манифеста; нет токенов — нет файлов', () => {
     write('src/a.html', '<div class="p10">');
     build({
+      presets: PRESETS,
       input: join(dir, 'src'),
       output: join(
         dir, 'out', 'mn.css',
@@ -510,6 +532,7 @@ describe('метрики (D-032)', () => {
   test('по умолчанию — mn-metrics.json рядом с CSS', () => {
     write('src/a.html', '<div class="p10 p10 m20">');
     build({
+      presets: PRESETS,
       input: join(dir, 'src'),
       output: join(
         dir, 'out', 'app.css',
@@ -541,6 +564,7 @@ describe('метрики (D-032)', () => {
       dir, 'отчёт', 'metrics.json',
     );
     build({
+      presets: PRESETS,
       input: join(dir, 'src'),
       output: join(
         dir, 'out', 'app.css',
@@ -550,6 +574,7 @@ describe('метрики (D-032)', () => {
     expect(JSON.parse(readFileSync(custom, 'utf8')).occurrences).toBe(1);
 
     build({
+      presets: PRESETS,
       input: join(dir, 'src'),
       output: join(
         dir, 'none', 'app.css',
@@ -586,6 +611,7 @@ describe('startWatch', () => {
       write('a.html', '<div class="p10">');
       const out = join(dir, 'out.css');
       const stop = startWatch({
+        presets: PRESETS,
         input: dir,
         output: out,
       }, report);
@@ -610,6 +636,7 @@ describe('startWatch', () => {
       // Запись внутрь файла — гарантированная ошибка (ENOTDIR): наблюдение
       // должно её напечатать и продолжить, а не оборвать процесс.
       const stop = startWatch({
+        presets: PRESETS,
         input: dir,
         output: join(file, 'out.css'),
       }, report);
@@ -644,6 +671,7 @@ describe('изоляция: --isolate-out, --isolate-copy (D-079, D-081)', () =>
 
   function isolate(extra: Partial<RunSettings>): CompileResult {
     return build({
+      presets: PRESETS,
       input: dir,
       output: join(
         dir, 'dist', 'app.css',
@@ -722,6 +750,7 @@ describe('изоляция: --isolate-out, --isolate-copy (D-079, D-081)', () =>
     ))).toBe(false);
     const single = join(dir, 'single');
     build({
+      presets: PRESETS,
       input: join(
         dir, 'ui', 'Button.tsx',
       ),
@@ -739,6 +768,7 @@ describe('изоляция: --isolate-out, --isolate-copy (D-079, D-081)', () =>
       isolateCopy: 5 as never,
     })).toThrow('option "isolateCopy" expects true, false, a path or glob, a RegExp, a function or an array of them');
     expect(() => build({
+      presets: PRESETS,
       input: dir,
       output: join(
         dir, 'dist', 'x.css',

@@ -12,9 +12,21 @@ pnpm add -D minotation-cli minotation
 
 ## Быстрый старт
 
+Пресеты перечисляются явно — набора по умолчанию нет (D-110). Флага для них у команды нет,
+их место — конфиг:
+
+```js
+// minotation.config.js
+const { presetStandard, presetSynonyms, presetMedias } = require('minotation');
+
+module.exports = { presets: [presetStandard, presetSynonyms, presetMedias] };
+```
+
 ```bash
 mn ./src -o ./dist/app.css
 ```
+
+Без `presets` в конфиге команда завершается с кодом 1 и печатает, что вписать и в какой файл.
 
 Команда обходит путь, находит токены во всех подходящих файлах и пишет один
 CSS-файл. Путь по умолчанию — текущая директория, вывод — `./mn.css`.
@@ -170,6 +182,8 @@ mn ./src -o ./app.css -m ./metrics.json
 
 ```js
 // minotation.config.js
+const { presetStandard, presetSynonyms, presetMedias } = require('minotation');
+
 module.exports = {
   input: './src',
   output: './dist/app.css',
@@ -179,7 +193,7 @@ module.exports = {
   metrics: './metrics.json',      // то же, что -m; false — как --no-metrics
   include: /\.(html|tsx)$/,
   exclude: /[\\/]vendor[\\/]/,
-  presets: [/* свои пресеты вместо стандартного набора */],
+  presets: [presetStandard, presetSynonyms, presetMedias], // обязательно (D-110); [] — явно пустой набор
   altColor: true,                 // как --alt-color
   warningMode: 'error',           // как --warning-mode error
   specificityMode: 'strict',      // как --specificity-mode strict: f10*2 — ошибка
@@ -226,7 +240,7 @@ Error: [minotation] minotation.config.js: option "metrics" expects a boolean or 
 | Код | Когда |
 |-----|-------|
 | 0 | CSS собран |
-| 1 | неизвестная опция, нечитаемый конфиг, с `--warning-mode error` — битый токен, в режиме `strict` — запрещённый токен (`*N`, `-i`, глубина) |
+| 1 | неизвестная опция, нечитаемый конфиг, в конфиге нет `presets` (D-110), с `--warning-mode error` — битый токен, в режиме `strict` — запрещённый токен (`*N`, `-i`, глубина) |
 
 Без `--warning-mode error` битые токены печатаются предупреждением, но сборку не роняют:
 чужие классы в разметке (`sr-only`, `mt-auto`) — обычное дело.
@@ -238,9 +252,11 @@ Error: [minotation] minotation.config.js: option "metrics" expects a boolean or 
 
 ```js
 const { compile } = require('minotation-cli');
+const { presetStandard, presetSynonyms, presetMedias } = require('minotation');
 
 const { css, files, tokens, warnings } = compile({
   input: './src',
+  presets: [presetStandard, presetSynonyms, presetMedias], // обязательно (D-110)
   altColor: true,                 // как --alt-color
 });
 ```

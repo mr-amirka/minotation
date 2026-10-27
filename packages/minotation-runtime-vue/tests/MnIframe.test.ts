@@ -7,6 +7,9 @@ import { createApp, h } from 'vue';
 import { presetStandard } from 'minotation';
 import { MnIframe } from '../src/index';
 
+/** Набор передаётся явно (D-110): по умолчанию iframe не подключает ни одного пресета. */
+const PRESETS = [presetStandard];
+
 function flushMicrotasks(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
@@ -27,7 +30,7 @@ describe('MnIframe (Vue) — изоляция стилей между инста
 
   test('контент рендерится внутри contentDocument, стили — в contentDocument.head', async () => {
     app = createApp({
-      render: () => h(MnIframe, { title: 'widget' }, {
+      render: () => h(MnIframe, { title: 'widget', presets: PRESETS }, {
         default: () => h('div', { class: 'p10 bgF', 'data-testid': 'inner' }, 'внутри iframe'),
       }),
     });
@@ -49,8 +52,8 @@ describe('MnIframe (Vue) — изоляция стилей между инста
   test('два MnIframe изолированы друг от друга — уникальный токен одного не течёт в другой', async () => {
     app = createApp({
       render: () => h('div', [
-        h(MnIframe, { title: 'widget-1' }, { default: () => h('div', { class: 'c0' }, 'A') }),
-        h(MnIframe, { title: 'widget-2' }, { default: () => h('div', { class: 'bgF' }, 'B') }),
+        h(MnIframe, { title: 'widget-1', presets: PRESETS }, { default: () => h('div', { class: 'c0' }, 'A') }),
+        h(MnIframe, { title: 'widget-2', presets: PRESETS }, { default: () => h('div', { class: 'bgF' }, 'B') }),
       ]),
     });
     app.mount(container);
@@ -67,7 +70,7 @@ describe('MnIframe (Vue) — изоляция стилей между инста
   });
 
   test('без слота: iframe монтируется пустым, ошибки нет', async () => {
-    app = createApp({ render: () => h(MnIframe, { title: 'empty' }) });
+    app = createApp({ render: () => h(MnIframe, { title: 'empty', presets: PRESETS }) });
     app.mount(container);
     await flushMicrotasks();
 
@@ -76,9 +79,9 @@ describe('MnIframe (Vue) — изоляция стилей между инста
     expect(iframe.contentDocument!.body.textContent).toBe('');
   });
 
-  test('кастомные presets и attr применяются вместо умолчаний', async () => {
+  test('attr применяется вместо умолчания', async () => {
     app = createApp({
-      render: () => h(MnIframe, { title: 'custom', presets: [presetStandard], attr: 'data-mn' }, {
+      render: () => h(MnIframe, { title: 'custom', presets: PRESETS, attr: 'data-mn' }, {
         default: () => h('div', { 'data-mn': 'p10 c0' }, 'через data-mn'),
       }),
     });
@@ -93,7 +96,7 @@ describe('MnIframe (Vue) — изоляция стилей между инста
 
   test('cross-origin iframe (contentDocument === null после load): монтирования нет, ошибки нет', async () => {
     app = createApp({
-      render: () => h(MnIframe, { title: 'cross-origin' }, { default: () => h('div', { class: 'p10' }) }),
+      render: () => h(MnIframe, { title: 'cross-origin', presets: PRESETS }, { default: () => h('div', { class: 'p10' }) }),
     });
     app.mount(container);
     await flushMicrotasks();
@@ -109,5 +112,22 @@ describe('MnIframe (Vue) — изоляция стилей между инста
     await flushMicrotasks();
 
     expect(realDoc.querySelector('style[data-mn-runtime]')).toBeTruthy();
+  });
+
+  test('без presets — ошибка с ответом, а не пустой CSS (D-110)', () => {
+    const errors: Error[] = [];
+    app = createApp({ render: () => h(MnIframe, { title: 'forgotten' } as never) });
+    // Предупреждение Vue о пропущенном required-пропе — не предмет теста: оно только в dev и не останавливает рендер.
+    app.config.warnHandler = () => undefined;
+    app.config.errorHandler = (error) => {
+      errors.push(error as Error);
+    };
+    app.mount(container);
+
+    expect(errors.map((e) => e.message)).toEqual([
+      '[minotation] MnIframe: "presets" is required — no preset is connected by default (D-110).'
+        + ' List them: :presets="[presetStandard, presetSynonyms, presetMedias]"',
+    ]);
+    expect(container.querySelector('iframe')).toBeNull();
   });
 });

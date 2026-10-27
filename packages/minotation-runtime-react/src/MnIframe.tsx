@@ -21,22 +21,20 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   minotationProvider,
-  presetStandard,
-  presetSynonyms,
-  presetMedias,
-  presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
 import type { MnPreset } from 'minotation';
 import { createMnRuntime } from 'minotation-runtime';
 
-const DEFAULT_PRESETS = [presetStandard, presetSynonyms, presetMedias, presetMain];
+/** Сообщение о забытом `presets`: набора по умолчанию нет (D-110). */
+const MSG_PRESETS_REQUIRED = '[minotation] MnIframe: "presets" is required — no preset is connected by default'
+  + ' (D-110). List them: presets={[presetStandard, presetSynonyms, presetMedias]}';
 
 export interface MnIframeProps {
   /** Рендерится внутрь `contentDocument.body` iframe (через `createPortal`). */
   children: ReactNode;
-  /** @default [presetStandard, presetSynonyms, presetMedias, presetMain] */
-  presets?: MnPreset[];
+  /** Пресеты инстанса iframe — обязательно (D-110): набора по умолчанию нет, `[]` — явный пустой набор. */
+  presets: MnPreset[];
   /** Атрибут `class` внутри iframe. @default 'class' */
   attr?: string;
   className?: string;
@@ -47,15 +45,17 @@ export interface MnIframeProps {
 
 /**
  * @example
- * <MnIframe title="Виджет 1">
+ * <MnIframe title="Виджет 1" presets={[presetStandard]}>
  *   <div className="p10 bgF r8">Изолированный виджет</div>
  * </MnIframe>
- * <MnIframe title="Виджет 2">
+ * <MnIframe title="Виджет 2" presets={[presetStandard]}>
  *   {// свой собственный mn-инстанс — стили не пересекаются с виджетом 1}
  *   <div className="p10 bg0 r8">Второй, независимый виджет</div>
  * </MnIframe>
  */
 export function MnIframe({ children, presets, attr, className, style, title }: MnIframeProps) {
+  // Без TypeScript обязательность не видна: забытый набор — ошибка при первом рендере, а не пустой CSS.
+  if (!presets) throw new Error(MSG_PRESETS_REQUIRED);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [doc, setDoc] = useState<Document | null>(null);
 
@@ -77,7 +77,7 @@ export function MnIframe({ children, presets, attr, className, style, title }: M
   useEffect(() => {
     if (!doc) return undefined;
     const mn = minotationProvider();
-    mn.setPresets(presets ?? DEFAULT_PRESETS);
+    mn.setPresets(presets);
     const runtime = createMnRuntime(mn, { root: doc, attr });
     return () => runtime.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps

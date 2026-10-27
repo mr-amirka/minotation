@@ -30,6 +30,8 @@ let dir: string;
 let logs: string[];
 let errors: string[];
 let report: Reporter;
+/** Конфиг с пресетами: набора по умолчанию у команды нет (D-110). */
+let config: string;
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'mn-cli-main-'));
@@ -39,6 +41,9 @@ beforeEach(() => {
     log: (m: string) => logs.push(m),
     error: (m: string) => errors.push(m),
   };
+  // Путь к ядру — абсолютный: временный каталог лежит вне дерева пакетов.
+  config = write('minotation.config.cjs', 'const m = require(' + JSON.stringify(require.resolve('minotation')) + ');\n'
+    + 'module.exports = { presets: [m.presetHints, m.presetStandard, m.presetSynonyms, m.presetMedias, m.presetMain] };\n');
 });
 
 afterEach(() => {
@@ -61,6 +66,8 @@ describe('main', () => {
     write('a.html', '<div class="p10">');
     const out = join(dir, 'app.css');
     expect(main([
+      '-c',
+      config,
       dir,
       '-o',
       out,
@@ -90,6 +97,8 @@ describe('main', () => {
     // Чужие классы в разметке обычное дело, ронять из-за них сборку незачем.
     write('a.html', '<div class="w10zz p10">');
     expect(main([
+      '-c',
+      config,
       dir,
       '-o',
       join(dir, 'app.css'),
@@ -101,6 +110,8 @@ describe('main', () => {
     // Печатает его `cli.ts`, превращая в код возврата 1.
     write('a.html', '<div class="w10zz">');
     expect(() => main([
+      '-c',
+      config,
       dir,
       '-o',
       join(dir, 'app.css'),
@@ -113,12 +124,38 @@ describe('main', () => {
     // `sr-only`, `mt-auto` и прочее из чужих фреймворков — не битые токены.
     write('a.html', '<div class="sr-only mt-auto p10">');
     expect(main([
+      '-c',
+      config,
       dir,
       '-o',
       join(dir, 'app.css'),
       '--warning-mode',
       'error',
     ], report)).toBe(0);
+  });
+
+  test('без presets — ошибка с подсказкой, что написать в конфиге (D-110)', () => {
+    write('a.html', '<div class="p10">');
+    const out = join(dir, 'app.css');
+    const hint = ':\n  const { presetStandard, presetSynonyms, presetMedias } = require(\'minotation\');\n'
+      + '  module.exports = { presets: [presetStandard, presetSynonyms, presetMedias] };';
+    // Без конфига — имя по умолчанию.
+    expect(() => main([
+      dir,
+      '-o',
+      out,
+    ], report)).toThrow('"presets" is required — no preset is connected by default (D-110).'
+      + ' List them in ./minotation.config.js' + hint);
+    // Конфиг без presets — его имя.
+    const bare = write('bare.config.cjs', 'module.exports = { altColor: true };\n');
+    expect(() => main([
+      '-c',
+      bare,
+      dir,
+      '-o',
+      out,
+    ], report)).toThrow('List them in ' + bare + hint);
+    expect(existsSync(out)).toBe(false);
   });
 
   test('нечитаемый конфиг обрывает работу', () => {
@@ -138,6 +175,8 @@ describe('main', () => {
     const watching = jest.spyOn(run, 'startWatch').mockReturnValue(() => {});
     try {
       expect(main([
+        '-c',
+        config,
         dir,
         '-o',
         out,
@@ -157,6 +196,8 @@ describe('main', () => {
     const watching = jest.spyOn(run, 'startWatch');
     try {
       main([
+        '-c',
+        config,
         dir,
         '-o',
         join(dir, 'app.css'),

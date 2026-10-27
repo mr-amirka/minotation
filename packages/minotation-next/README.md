@@ -14,8 +14,10 @@ npm install minotation-next
 ```ts
 // next.config.ts
 import { withMn } from 'minotation-next';
+import { presetStandard, presetSynonyms, presetMedias } from 'minotation';
 
-export default withMn({});
+// Пресеты — явно: по умолчанию не подключается ни один (D-110).
+export default withMn({}, { presets: [presetStandard, presetSynonyms, presetMedias] });
 ```
 
 Подключите CSS в корневом layout — дальше его ведёт Next.js, как любой глобальный
@@ -90,7 +92,7 @@ export function presetApp(mn: MnFn): void {
 | `include` | — | какие файлы сканировать: RegExp, путь, функция или массив |
 | `exclude` | — | какие файлы пропускать; важнее `include` |
 | `skipPartials` | `false` | пропускать файлы-партиалы `_*` |
-| `presets` | стандартный набор | статические пресеты; в стандартном наборе первым — `presetHints` (подсказки о `t0`, `flex`, `text-center`, D-024); точечно — `presetHints({ excludeGroups, excludeHandlers })` в своём списке (D-042); свой список заменяет набор целиком |
+| `presets` | — (обязательно) | статические пресеты; набора по умолчанию нет (D-110): без `presets` — ошибка, `[]` — явно пустой. Подсказки о `t0`, `flex`, `text-center` — `presetHints` первым в списке (D-024), точечно — `presetHints({ excludeGroups, excludeHandlers })` (D-042) |
 | `scopePresets` | `[]` | пресеты, которые могут потребовать пакеты (`requires`); пакет с чужим семейством собирается в своей области ([minotation-build](../minotation-build/README.md#области-семейств-пресетов-d-076-d-078), D-078) |
 | `scopes` | `[]` | правила для пакетов и путей без своей декларации — `{ match: '@acme/ui' \| 'src/**' \| /re/, requires, notationMode }`; своя декларация пакета важнее, аварийно — `override: true` (D-082) |
 | `isolateMode` | `'none'` | изоляция областей пакетов: `'class'` — `.p-4._4`, `'where'` — `.p-4:where(._4)`; класс области сборка пишет в разметку файлов пакета ([minotation-build](../minotation-build/README.md#изоляция-областей-пакетов--isolatemode-d-075d-077)) |

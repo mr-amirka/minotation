@@ -3,6 +3,10 @@
  */
 import { jest } from '@jest/globals';
 import { mnAstro } from '../src/index';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 describe('minotation-astro — smoke', () => {
   test('mnAstro — функция', () => {
@@ -10,17 +14,17 @@ describe('minotation-astro — smoke', () => {
   });
 
   test('mnAstro() — возвращает интеграцию с name=minotation', () => {
-    const integration = mnAstro();
+    const integration = mnAstro({ presets: PRESETS });
     expect(integration.name).toBe('minotation');
   });
 
   test('mnAstro() — имеет хук astro:config:setup', () => {
-    const integration = mnAstro();
+    const integration = mnAstro({ presets: PRESETS });
     expect(typeof integration.hooks?.['astro:config:setup']).toBe('function');
   });
 
   test('astro:config:setup — вызывает updateConfig с vite.plugins', () => {
-    const integration = mnAstro({ attrs: 'class' });
+    const integration = mnAstro({ presets: PRESETS, attrs: 'class' });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateConfig = jest.fn<(cfg: any) => void>();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,6 +42,11 @@ describe('mnAstro — проверка опций (D-038)', () => {
       .toThrow('[minotation] mnAstro: option "inject" expects a boolean, got string "link"');
     expect(() => mnAstro({ warningMod: 'error' } as never))
       .toThrow('[minotation] mnAstro: unknown option "warningMod". Did you mean "warningMode"?');
-    expect(() => mnAstro({ inject: false })).not.toThrow();
+    expect(() => mnAstro({ presets: PRESETS, inject: false })).not.toThrow();
+  });
+
+  test('без presets — ошибка: набора по умолчанию нет (D-110)', () => {
+    expect(() => mnAstro({ inject: false }))
+      .toThrow('[minotation] mnAstro: "presets" is required — no preset is connected by default');
   });
 });

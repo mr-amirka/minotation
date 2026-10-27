@@ -19,11 +19,6 @@ import {
   resolve,
 } from 'node:path';
 import {
-  presetHints,
-  presetStandard,
-  presetSynonyms,
-  presetMedias,
-  presetMain,
   checkOptions,
   isString,
   isStringArray,
@@ -34,6 +29,7 @@ import type {
   MnPreset,
 } from 'minotation';
 import {
+  assertPresets,
   BUILD_OPTIONS_SCHEMA,
   CORE_OPTION_KEYS,
   createBuildCollector,
@@ -163,7 +159,7 @@ export interface CompileSettings extends MnCoreOptions {
    * расширение `.js` и иначе сканировался бы как исходник.
    */
   ignore?: string[];
-  /** Пресеты; по умолчанию стандартный набор. */
+  /** Пресеты — обязательно (D-110): набора по умолчанию нет, `[]` — явный пустой набор. */
   presets?: MnPreset[];
   /** Пресеты, которые могут потребовать пакеты (D-078). */
   scopePresets?: MnPreset[];
@@ -300,6 +296,7 @@ export function compile(settings: CompileSettings): CompileResult {
   checkOptions(
     settings, CONFIG_SCHEMA, 'compile',
   );
+  assertPresets(settings, 'compile');
   const files = collectFiles(
     settings.input, settings, settings.ignore,
   );
@@ -314,14 +311,7 @@ export function compile(settings: CompileSettings): CompileResult {
     isolateMode: settings.isolateMode,
     unreachableClassMode: settings.unreachableClassMode,
     notationConflictMode: settings.notationConflictMode,
-    presets: settings.presets || [
-      // Подсказки — первыми: любой пресет ниже перекрывает их хендлеры (D-024).
-      presetHints,
-      presetStandard,
-      presetSynonyms,
-      presetMedias,
-      presetMain,
-    ],
+    presets: settings.presets,
     ...coreOf(settings),
   }, resolve(settings.input));
   settings.isolateOut && (settings.isolateMode || 'none') === 'none'

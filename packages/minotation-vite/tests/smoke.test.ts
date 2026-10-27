@@ -3,6 +3,10 @@
  */
 
 import { mnVite } from '../src/index';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 describe('minotation-vite — smoke', () => {
   test('mnVite — функция', () => {
@@ -10,27 +14,27 @@ describe('minotation-vite — smoke', () => {
   });
 
   test('mnVite() — возвращает объект с name=minotation', () => {
-    const plugin: any = mnVite();
+    const plugin: any = mnVite({ presets: PRESETS });
     expect(plugin.name).toBe('minotation');
   });
 
   test('mnVite() — имеет хук transform', () => {
-    const plugin: any = mnVite();
+    const plugin: any = mnVite({ presets: PRESETS });
     expect(typeof plugin.transform).toBe('function');
   });
 
   test('mnVite() — имеет хук handleHotUpdate', () => {
-    const plugin: any = mnVite();
+    const plugin: any = mnVite({ presets: PRESETS });
     expect(typeof plugin.handleHotUpdate).toBe('function');
   });
 
   test('mnVite() — имеет хук buildStart (подстраховка для сборщиков без transformIndexHtml, напр. Astro)', () => {
-    const plugin: any = mnVite();
+    const plugin: any = mnVite({ presets: PRESETS });
     expect(typeof plugin.buildStart).toBe('function');
   });
 
   test('mnVite({ attrs: "className:class" }) — принимает опции', () => {
-    const plugin: any = mnVite({ attrs: 'className:class' });
+    const plugin: any = mnVite({ presets: PRESETS, attrs: 'className:class' });
     expect(plugin.name).toBe('minotation');
   });
 });
@@ -43,7 +47,7 @@ describe('minotation-vite — маркер @mn (D-083)', () => {
   }
 
   test('токены из маркера попадают в CSS без class="…"', () => {
-    const css = bundleCss(mnVite(), 'export const A = () => <div className={someVar} />; {/* @mn w777 taL */}');
+    const css = bundleCss(mnVite({ presets: PRESETS }), 'export const A = () => <div className={someVar} />; {/* @mn w777 taL */}');
     expect(css).toContain('width:777px');
     expect(css).toContain('text-align:left');
   });
@@ -56,7 +60,7 @@ describe('minotation-vite — classVarSuffixes (2026-09-22)', () => {
    * `Class`) трактуется как список MN-токенов.
    */
   function cssOf(source: string, options?: any): string {
-    const plugin: any = mnVite(options);
+    const plugin: any = mnVite({ presets: PRESETS, ...options });
     plugin.transform(source, '/proj/src/App.tsx');
     return plugin.load.call({ warn: () => undefined }, plugin.resolveId('virtual:mn.css')).code;
   }
@@ -121,7 +125,7 @@ describe('minotation-vite — mergeFnNames (2026-09-25)', () => {
    * потеряли `pb6`, `bg--ink` и `c--bg` ровно так.
    */
   function cssOf(source: string, options?: any): string {
-    const plugin: any = mnVite(options);
+    const plugin: any = mnVite({ presets: PRESETS, ...options });
     plugin.transform(source, '/proj/src/App.tsx');
     return plugin.load.call({ warn: () => undefined }, plugin.resolveId('virtual:mn.css')).code;
   }

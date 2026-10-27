@@ -4,7 +4,11 @@
  */
 import type { Configuration } from 'webpack';
 import { MnWebpackPlugin } from 'minotation-webpack';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain } from 'minotation';
 import { withMn } from '../src/index';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 /** Минимальный webpack-конфиг в том виде, в каком его передаёт Next.js. */
 function makeConfig(): Configuration {
@@ -13,7 +17,7 @@ function makeConfig(): Configuration {
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function callWebpackHook(config: any, nextConfig = {}, mnOptions = {}): any {
-  const result = withMn(nextConfig, mnOptions);
+  const result = withMn(nextConfig, { presets: PRESETS, ...mnOptions });
   return (result.webpack as any)(config, {} as any);
 }
 
@@ -36,6 +40,7 @@ describe('minotation-next — webpack-хук', () => {
     expect(out.plugins[0].options).toEqual({
       attrs: 'class, className:class',
       fileName: 'static/[name].css',
+      presets: PRESETS,
     });
   });
 
@@ -50,7 +55,7 @@ describe('minotation-next — webpack-хук', () => {
     const userWebpack = jest.fn((cfg: any, ctx: any) => { void cfg; void ctx; return userResult; });
     const context = { isServer: true };
 
-    const result = withMn({ webpack: userWebpack as any });
+    const result = withMn({ webpack: userWebpack as any }, { presets: PRESETS });
     const out = (result.webpack as any)(config, context);
 
     expect(userWebpack).toHaveBeenCalledTimes(1);
@@ -66,12 +71,8 @@ describe('minotation-next — webpack-хук', () => {
     expect(out).toEqual({});
   });
 
-  test('withMn() без аргументов: дефолтные nextConfig и опции', () => {
-    const config = makeConfig();
-    const result = withMn();
-    const out = (result.webpack as any)(config, {} as any);
-
-    expect(out.plugins[0]).toBeInstanceOf(MnWebpackPlugin);
+  test('withMn() без аргументов — ошибка: пресеты только явно (D-110)', () => {
+    expect(() => withMn()).toThrow('[minotation] withMn: "presets" is required');
   });
 
   test('кастомные опции доходят до MnWebpackPlugin', () => {
@@ -83,6 +84,7 @@ describe('minotation-next — webpack-хук', () => {
       attrs: 'class, className:class',
       fileName: 'custom/[name].[hash].css',
       altColor: true,
+      presets: PRESETS,
     });
   });
 });

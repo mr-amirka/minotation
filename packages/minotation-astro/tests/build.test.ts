@@ -10,6 +10,10 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { mnAstro, type MnAstroOptions } from '../src/index';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 const SCRIPT = fileURLToPath(new URL('./fixtures/build-check.mjs', import.meta.url));
 
@@ -51,7 +55,7 @@ describe('minotation-astro — сканирование .astro', () => {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   /** Вытаскивает vite-плагин из интеграции и прогоняет через него исходник. */
   function tokensOf(source: string, options: MnAstroOptions = {}): string[] {
-    const integration = mnAstro(options);
+    const integration = mnAstro({ presets: PRESETS, ...options });
     let captured: any;
     (integration.hooks?.['astro:config:setup'] as any)({
       updateConfig: (cfg: any) => { captured = cfg; },

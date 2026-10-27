@@ -65,16 +65,28 @@ useMnRuntime(mn, { rootRef: widget });
 стилями — они не пересекаются ни с host-страницей, ни с соседними виджетами.
 
 ```vue
-<MnIframe title="Превью темы">
-  <div class="p10 bgF r8">Изолированный виджет</div>
-</MnIframe>
+<script setup lang="ts">
+import { presetStandard, presetSynonyms, presetMedias } from 'minotation';
+
+const presets = [presetStandard, presetSynonyms, presetMedias];
+</script>
+
+<template>
+  <MnIframe title="Превью темы" :presets="presets">
+    <div class="p10 bgF r8">Изолированный виджет</div>
+  </MnIframe>
+</template>
 ```
 
 | Проп | По умолчанию | Что делает |
 |------|--------------|------------|
 | `title` | — (обязателен) | имя iframe для screen reader'ов |
-| `presets` | стандартный набор | пресеты для инстанса внутри iframe |
+| `presets` | — (обязателен) | пресеты для инстанса внутри iframe; набора по умолчанию нет (D-110), `[]` — явно пустой |
 | `attr` | `'class'` | атрибут с токенами внутри iframe |
+
+Пресеты передаются явно: компонент не подключает ни одного сам и не тянет в
+сборку код наборов, которые не перечислены. Без `presets` — ошибка с подсказкой,
+а не пустой CSS.
 
 Содержимое монтируется отдельным `createApp()`-инстансом прямо в
 `contentDocument.body` — это не портал: у Vue портал (`<Teleport>`) остаётся в

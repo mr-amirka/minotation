@@ -10,7 +10,10 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { mnRollup, type MnRollupOptions } from '../src/index';
 import { scopeClassName } from 'minotation-build';
-import { presetTw4 } from 'minotation';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain, presetTw4 } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 /** Создаёт временный проект: ключ — относительный путь файла, значение — содержимое. */
 function makeProject(files: Record<string, string>): string {
@@ -34,7 +37,7 @@ interface RunResult {
 async function runBuild(root: string, options: MnRollupOptions): Promise<RunResult> {
   const bundle = await rollup({
     input: join(root, 'src/main.js'),
-    plugins: [mnRollup({ root, ...options })],
+    plugins: [mnRollup({ presets: PRESETS, root, ...options })],
     onwarn: () => undefined,
   });
   const { output } = await bundle.generate({ format: 'es' });
@@ -229,7 +232,7 @@ describe('minotation-rollup — реальная сборка', () => {
   });
 
   test('load для несуществующего пресет-файла: заглушка возвращается, ошибки нет', () => {
-    const plugin = mnRollup();
+    const plugin = mnRollup({ presets: PRESETS });
     /* eslint-disable @typescript-eslint/no-explicit-any */
     const load = plugin.load as any;
     const result = load.call({} as any, join(tmpdir(), 'no-such-dir-4a8e', 'ghost.mn.ts'));
@@ -252,6 +255,7 @@ describe('проброс предупреждений в rollup (Q-07)', () => {
     const bundle = await rollup({
       input: join(root, 'src/main.js'),
       plugins: [mnRollup({
+        presets: PRESETS,
         root,
         ...options,
       })],
@@ -357,7 +361,7 @@ describe('minotation-rollup — пересборка тем же инстанс�
     root: string, options: MnRollupOptions, between: () => void,
   ): Promise<[Record<string, string>, Record<string, string>]> {
     // Постоянное имя — так проверяется и явный `fileName` (D-031).
-    const plugin = mnRollup({ root, fileName: 'mn.css', ...options });
+    const plugin = mnRollup({ presets: PRESETS, root, fileName: 'mn.css', ...options });
 
     const run = async (): Promise<Record<string, string>> => {
       const bundle = await rollup({

@@ -9,6 +9,10 @@
 import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { mnAstro, PAGE_IMPORT } from '../src/index';
+import { presetHints, presetStandard, presetSynonyms, presetMedias, presetMain } from 'minotation';
+
+/** Набор, который раньше подключался по умолчанию; теперь пресеты — только явно (D-110). */
+const PRESETS = [presetHints, presetStandard, presetSynonyms, presetMedias, presetMain];
 
 const SCRIPT = fileURLToPath(new URL('./fixtures/dev-check.mjs', import.meta.url));
 
@@ -35,7 +39,7 @@ describe('minotation-astro — astro dev', () => {
 describe('minotation-astro — подключение CSS в страницы', () => {
   function setup(options: Parameters<typeof mnAstro>[0]): Array<[string, string]> {
     const scripts: Array<[string, string]> = [];
-    const hook = mnAstro(options).hooks['astro:config:setup'] as unknown as (p: unknown) => void;
+    const hook = mnAstro({ presets: PRESETS, ...options }).hooks['astro:config:setup'] as unknown as (p: unknown) => void;
     hook({
       updateConfig: () => undefined,
       injectScript: (stage: string, content: string) => scripts.push([stage, content]),

@@ -5,7 +5,6 @@ import {
   presetStandard,
   presetSynonyms,
   presetMedias,
-  presetNormalize,
   presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
@@ -127,7 +126,6 @@ export function mnRollup(code: MnRollupOptions = {}): Plugin {
       presetStandard,
       presetSynonyms,
       presetMedias,
-      presetNormalize,
       presetMain,
     ],
   }, root);

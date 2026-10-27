@@ -49,7 +49,6 @@ import {
   presetStandard,
   presetSynonyms,
   presetMedias,
-  presetNormalize,
   presetMain,
 } from 'minotation';
 
@@ -77,7 +76,6 @@ const DEFAULT_PRESETS = [
   presetStandard,
   presetSynonyms,
   presetMedias,
-  presetNormalize,
   presetMain,
 ];
 

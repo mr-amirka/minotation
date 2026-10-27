@@ -10,7 +10,7 @@ import {
   presetStandard,
   presetSynonyms,
   presetMedias,
-  presetNormalize,
+  presetNormalize8_0_1,
   presetMain,
 } from 'minotation';
 import { ESSENCES, MnDocEntry } from './essences';
@@ -27,7 +27,7 @@ export interface DocEntry extends MnDocEntry {
 
 function compileToken(token: string): string {
   const mn = minotationProvider();
-  mn.setPresets([presetStandard, presetSynonyms, presetMedias, presetNormalize, presetMain]);
+  mn.setPresets([presetStandard, presetSynonyms, presetMedias, presetNormalize8_0_1, presetMain]);
   const compile = mn.getCompiler('class');
   compile(token);
   mn.compile();

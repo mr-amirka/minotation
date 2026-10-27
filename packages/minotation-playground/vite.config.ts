@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { mnVite } from 'minotation-vite';
-import { presetStandard, presetSynonyms, presetMedias, presetNormalize, presetMain } from 'minotation';
+import { presetStandard, presetSynonyms, presetMedias, presetNormalize8_0_1, presetMain } from 'minotation';
 
 export default defineConfig({
   plugins: [
@@ -9,7 +9,7 @@ export default defineConfig({
     mnVite({
       attrs: 'className:class',
       extensions: ['.tsx', '.jsx'],
-      presets: [presetStandard, presetSynonyms, presetMedias, presetNormalize, presetMain],
+      presets: [presetStandard, presetSynonyms, presetMedias, presetNormalize8_0_1, presetMain],
     }),
   ],
   // См. minotation-docs/vite.config.ts — тот же обходной путь для linked-пакетов

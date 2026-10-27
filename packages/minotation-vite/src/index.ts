@@ -4,7 +4,6 @@ import {
   presetStandard,
   presetSynonyms,
   presetMedias,
-  presetNormalize,
   presetMain,
   oneOf,
 } from 'minotation';
@@ -175,7 +174,6 @@ export function mnVite(code: MnViteOptions = {}): Plugin {
     presetStandard,
     presetSynonyms,
     presetMedias,
-    presetNormalize,
     presetMain,
   ];
   const inject = options.inject === undefined ? 'inline' : options.inject;

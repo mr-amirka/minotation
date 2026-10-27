@@ -30,13 +30,12 @@ import {
   presetStandard,
   presetSynonyms,
   presetMedias,
-  presetNormalize,
   presetMain,
 } from 'minotation';
 import type { MnPreset } from 'minotation';
 import { createMnRuntime, type MnRuntimeHandle } from 'minotation-runtime';
 
-const DEFAULT_PRESETS = [presetStandard, presetSynonyms, presetMedias, presetNormalize, presetMain];
+const DEFAULT_PRESETS = [presetStandard, presetSynonyms, presetMedias, presetMain];
 
 /**
  * @example

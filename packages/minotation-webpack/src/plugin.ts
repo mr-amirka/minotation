@@ -11,7 +11,6 @@ import {
   presetStandard,
   presetSynonyms,
   presetMedias,
-  presetNormalize,
   presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
@@ -49,7 +48,6 @@ const DEFAULT_PRESETS: MnPreset[] = [
   presetStandard,
   presetSynonyms,
   presetMedias,
-  presetNormalize,
   presetMain,
 ];
 

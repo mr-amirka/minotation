@@ -242,7 +242,7 @@ describe('mnGulp — особые файлы потока', () => {
   function pipeThrough(file: Vinyl): Promise<Vinyl[]> {
     const out: Vinyl[] = [];
     // Без пресетов CSS пустой, и в потоке остаётся ровно то, что в него
-    // положили: стандартный набор дал бы normalize даже без единого токена.
+    // положили: стандартный набор дал бы правила presetMain даже без единого токена.
     const stream = mnGulp({
       presets: [],
     });

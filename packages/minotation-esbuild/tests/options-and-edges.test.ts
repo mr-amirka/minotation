@@ -174,7 +174,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       entryPoints: [join(root, 'src/main.js')],
       bundle: true,
       outdir: outDir,
-      // пустой набор пресетов: без него normalize/main дают CSS даже без токенов
+      // пустой набор пресетов: без него presetMain даёт CSS даже без токенов
       plugins: [mnEsbuild({ root, presets: [] })],
     });
 

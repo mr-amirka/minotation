@@ -41,14 +41,13 @@ import {
   presetStandard,
   presetSynonyms,
   presetMedias,
-  presetNormalize,
   presetMain,
 } from 'minotation';
 import type { MnInstance } from 'minotation';
 import type { MnPreset } from 'minotation';
 import { createMnRuntime, type MnRuntimeHandle } from 'minotation-runtime';
 
-const DEFAULT_PRESETS = [presetStandard, presetSynonyms, presetMedias, presetNormalize, presetMain];
+const DEFAULT_PRESETS = [presetStandard, presetSynonyms, presetMedias, presetMain];
 
 /**
  * @example
@@ -76,7 +75,7 @@ export class MnIframeComponent implements AfterViewInit, OnDestroy {
 
   /** Класс компонента, монтируемый как корень ОТДЕЛЬНОГО `ApplicationRef` внутри iframe. */
   @Input({ required: true }) component!: Type<unknown>;
-  /** @default [presetStandard, presetSynonyms, presetMedias, presetNormalize, presetMain] */
+  /** @default [presetStandard, presetSynonyms, presetMedias, presetMain] */
   @Input() presets?: MnPreset[];
   /** Атрибут `class` внутри iframe. @default 'class' */
   @Input() attr?: string;

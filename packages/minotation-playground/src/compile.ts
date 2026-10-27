@@ -10,22 +10,22 @@ import {
   presetStandard,
   presetSynonyms,
   presetMedias,
-  presetNormalize,
+  presetNormalize8_0_1,
   presetMain,
 } from 'minotation';
-import type { MnInstance } from 'minotation';
+import type { MnPreset } from 'minotation';
 
 export interface PresetOption {
   id: string;
   label: string;
-  preset: (mn: MnInstance) => void;
+  preset: MnPreset;
 }
 
 export const PRESET_OPTIONS: PresetOption[] = [
   { id: 'standard', label: 'standard', preset: presetStandard },
   { id: 'synonyms', label: 'synonyms', preset: presetSynonyms },
   { id: 'medias', label: 'medias', preset: presetMedias },
-  { id: 'normalize', label: 'normalize', preset: presetNormalize },
+  { id: 'normalize', label: 'normalize 8.0.1', preset: presetNormalize8_0_1 },
   { id: 'main', label: 'main', preset: presetMain },
 ];
 

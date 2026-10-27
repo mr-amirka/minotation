@@ -56,7 +56,7 @@ describe('masks: the mk… family (E2)', () => {
       'mask-size:contain',
     ],
     [
-      'mks50%_auto',
+      'mks50%_A',
       'mask-size:50% auto',
     ],
     [

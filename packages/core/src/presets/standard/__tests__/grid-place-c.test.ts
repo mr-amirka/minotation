@@ -47,8 +47,8 @@ describe('grid lines (group C)', () => {
       '.greA{grid-row-end:auto}',
     ],
     [
-      'grsSpan_2',
-      '.grsSpan_2{grid-row-start:span 2}',
+      'grsS_2',
+      '.grsS_2{grid-row-start:span 2}',
     ],
     [
       'gcsHeader',
@@ -59,20 +59,20 @@ describe('grid lines (group C)', () => {
       '.gcs2_Header{grid-column-start:2 header}',
     ],
     [
-      'gceSpan_2_Header',
-      '.gceSpan_2_Header{grid-column-end:span 2 header}',
+      'gceS_2_Header',
+      '.gceS_2_Header{grid-column-end:span 2 header}',
     ],
     [
-      'gceSpan_Side',
-      '.gceSpan_Side{grid-column-end:span side}',
+      'gceS_Side',
+      '.gceS_Side{grid-column-end:span side}',
     ],
     [
       'gcs--l',
       '.gcs--l{grid-column-start:var(--l)}',
     ],
     [
-      'gcsSpan_Calc\\(1+1\\)',
-      '.gcsSpan_Calc\\\\\\(1\\+1\\\\\\){grid-column-start:span calc(1+1)}',
+      'gcsS_Calc\\(1+1\\)',
+      '.gcsS_Calc\\\\\\(1\\+1\\\\\\){grid-column-start:span calc(1+1)}',
     ],
     [
       'grsInherit',
@@ -93,11 +93,11 @@ describe('grid lines (group C)', () => {
   test.each([
     [
       'gcsAuto',
-      'Write "gcsA" instead of "gcsAuto" — same value',
+      'Write it shorter: "gcsA" instead of "gcsAuto" — same value',
     ],
     [
       'gcAuto',
-      'Write "gcA" instead of "gcAuto" — same value',
+      'Write it shorter: "gcA" instead of "gcAuto" — same value',
     ],
     [
       'gcs1/3',
@@ -116,7 +116,7 @@ describe('grid lines (group C)', () => {
       'a line is "A" (auto), a number (not 0), a name or "span"',
     ],
     [
-      'gcs2_Auto',
+      'gcs2_A',
       'a line is "A" (auto), a number (not 0), a name or "span"',
     ],
     [
@@ -124,19 +124,19 @@ describe('grid lines (group C)', () => {
       'at most one number, one name and one "span"',
     ],
     [
-      'grsA_B',
+      'grsHeader_Side',
       'at most one number, one name and one "span"',
     ],
     [
-      'grsSpan_Span_2',
+      'grsS_S_2',
       'at most one number, one name and one "span"',
     ],
     [
-      'gcsSpan',
-      '"span" needs a number or a name — "gcsSpan_2"',
+      'gcsS',
+      '"span" needs a number or a name — "gcsS_2"',
     ],
     [
-      'gcsSpan_-2',
+      'gcsS_-2',
       'a "span" counts lines forward — its number is positive',
     ],
   ])('%s is rejected', (token, message) => {

@@ -126,7 +126,7 @@ describe('паритет с v1: shorthand с несколькими значен
       'padding:1px 2px 3px 4px!important',
     ],
     [
-      'm0_auto',
+      'm0_A',
       'margin:0 auto',
     ],
     [

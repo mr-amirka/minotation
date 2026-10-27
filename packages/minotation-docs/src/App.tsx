@@ -23,7 +23,7 @@ export function App() {
         <div className="fx1 f16 fw6">minotation — handlers docs</div>
         <Search value={query} onChange={setQuery} />
       </div>
-      <div className="abs st56 sl0 sr0 sb0 ovyAuto p16">
+      <div className="abs st56 sl0 sr0 sb0 ovyA p16">
         {filtered.length ? (
           filtered.map((entry) => (
             <EntryCard key={entry.name} entry={entry} query={q} />

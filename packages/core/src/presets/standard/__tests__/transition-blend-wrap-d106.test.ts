@@ -120,15 +120,15 @@ describe('tp — a list with commas, letters for all/none (D-106)', () => {
   test.each([
     [
       'tpAll',
-      'Write "tpA" instead of "tpAll" — same value',
+      'Write it shorter: "tpA" instead of "tpAll" — same value',
     ],
     [
       'tp_all',
-      'Write "tpA" instead of "tp_all" — same value',
+      'Write it shorter: "tpA" instead of "tp_all" — same value',
     ],
     [
       'tpNone',
-      'Write "tpN" instead of "tpNone" — same value',
+      'Write it shorter: "tpN" instead of "tpNone" — same value',
     ],
   ])('%s — the long form is rejected (D-015)', (token, message) => {
     const result = compile(token);
@@ -479,11 +479,11 @@ describe('tnN is transition:none (D-111)', () => {
   test.each([
     [
       'tnNone',
-      'Write "tnN" instead of "tnNone" — same value',
+      'Write it shorter: "tnN" instead of "tnNone" — same value',
     ],
     [
       'tn_none',
-      'Write "tnN" instead of "tn_none" — same value',
+      'Write it shorter: "tnN" instead of "tn_none" — same value',
     ],
   ])('%s — the long form is rejected (D-015)', (token, message) => {
     const result = compile(token);

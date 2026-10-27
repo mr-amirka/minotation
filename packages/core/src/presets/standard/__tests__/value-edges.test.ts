@@ -540,7 +540,7 @@ describe('сокращённые записи значений', () => {
 
   test('свободное значение продолжает работать там, где были карты', () => {
     // `op` остался общим: атомарных object-position-x/y в CSS нет.
-    expect(cssOf('op_left_top')).toBe('object-position:left top');
+    expect(cssOf('opL_T')).toBe('object-position:left top');
     expect(cssOf('bgpx50%')).toBe('background-position-x:50%');
   });
 
@@ -784,15 +784,15 @@ describe('auto-repeat: gtcAF240 вместо gtcRepeat\\(auto-fit,minmax\\(240px
       'grid-template-columns:none',
     ],
     [
-      'gtcAuto',
+      'gtcA',
       'grid-template-columns:auto',
     ],
     [
-      'gtc1fr_auto',
+      'gtc1fr_A',
       'grid-template-columns:1fr auto',
     ],
     [
-      'gtcSubgrid',
+      'gtcS',
       'grid-template-columns:subgrid',
     ],
   ])('%s — обычные значения не задеты', (token, expected) => {
@@ -923,7 +923,6 @@ describe('голое слово у свойства-длины', () => {
     'tiA',
     'tiN',
     'wosA',
-    'wosN',
     'bspA',
     'bspN',
     'fxbZzz',
@@ -939,7 +938,7 @@ describe('голое слово у свойства-длины', () => {
       'text-indent:10px',
     ],
     [
-      'wosNormal',
+      'wosN',
       'word-spacing:normal',
     ],
     [
@@ -947,11 +946,11 @@ describe('голое слово у свойства-длины', () => {
       'flex-basis:auto',
     ],
     [
-      'fxbFitContent',
+      'fxbFC',
       'flex-basis:fit-content',
     ],
     [
-      'tdtFromFont',
+      'tdtFF',
       'text-decoration-thickness:from-font',
     ],
     [
@@ -981,7 +980,7 @@ describe('голое слово у свойства-длины', () => {
       'appearance:none',
     ],
     [
-      'irPixelated',
+      'irP',
       'image-rendering:pixelated',
     ],
   ])('%s → %s — не-длины в том же блоке не задеты', (token, expected) => {

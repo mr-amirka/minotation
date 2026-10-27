@@ -354,9 +354,9 @@ describe('MnInstance — полный пайплайн', () => {
     ]);
 
     // Типичная карточка
-    mn.getCompiler('class')('p20 mb10 bgF r8 fx1 fxaCenter fyaCenter w200 h100');
+    mn.getCompiler('class')('p20 mb10 bgF r8 fx1 fxaC fyaC w200 h100');
     // Текст с hover и медиа
-    mn.getCompiler('class')('f14 c3 fwBold:h crPointer:h w300@m p10@m');
+    mn.getCompiler('class')('f14 c3 fwB:h crP:h w300@m p10@m');
     // Проценты и отрицательные
     mn.getCompiler('class')('w50% m-5');
 

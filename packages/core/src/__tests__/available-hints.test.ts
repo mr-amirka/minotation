@@ -56,12 +56,15 @@ describe('подсказка: какие записи у хендлера ест
     expect(compile('d10').warnings[0].message).toContain('Available: dB (block)');
   });
 
-  test('перечисление — в записи нотации и без алиасов', () => {
+  test('перечисление — буквами и без алиасов', () => {
     const message = compile('irQ').warnings[0].message;
     expect(message).toContain('Available: ');
-    expect(suggestions(message)).toContain('irCrispEdges');
-    // `optimizespeed` — алиас `optimizeSpeed`: в подсказке только каноническое.
-    expect(suggestions(message)).not.toContain('irOptimizespeed');
+    // Слово с буквой предлагается буквой (D-113), вендорное — тоже.
+    expect(suggestions(message)).toContain('irCE');
+    expect(suggestions(message)).toContain('irMCE');
+    expect(suggestions(message)).not.toContain('irCrispEdges');
+    // `optimizespeed` — алиас `optimizeSpeed`: в подсказке одна строка, `irOS`.
+    expect(suggestions(message).filter((token) => token === 'irOS')).toHaveLength(1);
     const unique = new Set(suggestions(message));
     expect(unique.size).toBe(suggestions(message).length);
   });

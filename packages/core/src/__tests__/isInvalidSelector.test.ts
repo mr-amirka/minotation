@@ -544,7 +544,7 @@ describe('классы вне нотации: молчат, только есл�
     ['w10-5', 'width:calc(10px - 5px)'],
     ['w-5', ''],
     ['bgF00-00F', 'background:linear-gradient'],
-    ['tupFrom-font', 'text-underline-position:from-font'],
+    ['tupFF', 'text-underline-position:from-font'],
   ])('%s — формы нотации с дефисом не задеты', (token, expected) => {
     const r = compile(token);
     expected ? expect(r.css).toContain(expected) : expect(r.css).toBe('');

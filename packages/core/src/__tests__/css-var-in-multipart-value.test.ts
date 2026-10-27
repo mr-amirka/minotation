@@ -234,7 +234,7 @@ describe('хендлеры со своим путём разбора — спл�
       'border-style:solid',
     ],
     [
-      'bsDotted',
+      'bsDT',
       'border-style:dotted',
     ],
     [
@@ -269,12 +269,12 @@ describe('составные значения без переменных не �
       'box-shadow:0px 0px 10px 0px #f00',
     ],
     [
-      'posSticky',
+      'posSK',
       'position:sticky',
     ],
     // Посегментный kebab: склеенная строка дала бы `0_1_-auto`.
     [
-      'fx0_1_Auto',
+      'fx0_1_A',
       'flex:0 1 auto',
     ],
     // Ведущий `_` означает «дальше текст», а текста нет — пустая строка.

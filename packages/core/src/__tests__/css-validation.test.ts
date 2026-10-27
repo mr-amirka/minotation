@@ -129,9 +129,9 @@ describe('CSS validation', () => {
       'cF00<.p:h',
       'bgF',
       'fx1',
-      'fxdColumn',
-      'fxaCenter',
-      'jcSpaceBetween',
+      'fxdC',
+      'fxaC',
+      'jcSB',
       'r5',
       'o70',
       'break',
@@ -229,13 +229,13 @@ describe('размерные свойства: none, auto и внутренни�
   test.each([
     // `none` — только у max-*, и это их initial value.
     ['wmaxN', 'max-width:none'],
-    ['wmaxNone', 'max-width:none'],
+    ['wmaxN', 'max-width:none'],
     ['hmaxN', 'max-height:none'],
     // Внутренние размеры валидны у всех размерных свойств.
-    ['wFitContent', 'width:fit-content'],
+    ['wFC', 'width:fit-content'],
     ['wMinContent', 'width:min-content'],
     ['wMaxContent', 'width:max-content'],
-    ['wmaxFitContent', 'max-width:fit-content'],
+    ['wmaxFC', 'max-width:fit-content'],
     ['hminMinContent', 'min-height:min-content'],
     // Обычные формы не задеты.
     ['wmax100', 'max-width:100px'],

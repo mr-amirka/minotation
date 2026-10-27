@@ -96,11 +96,11 @@ describe('positions: op, pspo, tfo (group D)', () => {
       'object-position:bottom 20% right 10px',
     ],
     [
-      'op_left_top',
+      'opL_T',
       'object-position:left top',
     ],
     [
-      'op_right_10px_top_20px',
+      'opR_10px_T_20px',
       'object-position:right 10px top 20px',
     ],
     [
@@ -348,7 +348,7 @@ describe('psp, tfb, bfv (group D)', () => {
     ],
     [
       'pspNone',
-      'Write "pspN" instead of "pspNone"',
+      'Write it shorter: "pspN" instead of "pspNone"',
     ],
     [
       'pspA',

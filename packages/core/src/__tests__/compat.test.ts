@@ -100,8 +100,11 @@ describe('Flex-wrap fxw — только краткая форма', () => {
 // триггерила camelCase-детектор через границу '_' и добавляла лишний '-'.
 // ================================================================
 describe('fx-shorthand — multi-value через _', () => {
-  test('fx0_1_Auto → flex:0 1 auto', () => expect(css('fx0_1_Auto')).toContain('flex:0 1 auto'));
-  test('fx0_1_auto (уже строчными) → flex:0 1 auto', () => expect(css('fx0_1_auto')).toContain('flex:0 1 auto'));
+  test('fx0_1_A → flex:0 1 auto', () => expect(css('fx0_1_A')).toContain('flex:0 1 auto'));
+  test('fx0_1_Auto и fx0_1_auto бракуются — пишется fx0_1_A (D-113)', () => {
+    expect(css('fx0_1_Auto')).not.toContain('flex:0 1 auto');
+    expect(css('fx0_1_auto')).not.toContain('flex:0 1 auto');
+  });
   test('fx1_1_0% → flex:1 1 0%', () => expect(css('fx1_1_0%')).toContain('flex:1 1 0%'));
 });
 
@@ -109,8 +112,8 @@ describe('fx-shorthand — multi-value через _', () => {
 // Flex-align (переименованы: fha→fxa, fva→fya)
 //
 // Реально зарегистрированы только буквы из карт в presets/standard/index.ts:
-// fxa — S/C/E/A/B (start/center/end/around/between, автогенерируются из
-// первой буквы длинной формы), fya — S/C/E/A/ST. Токены вида fxaF/fxaL/fxaV,
+// fxa — S/C/E/A/B (start/center/end/around/between), fya — S/C/E/ST; полные
+// слова (`fxaCenter`) бракуются с подсказкой (D-113). Токены вида fxaF/fxaL/fxaV,
 // fyaF/fyaL/fyaB/fyaT из исходного v2-теста не существуют — убраны (не баг,
 // а несовпадение с фактической картой синонимов).
 // ================================================================
@@ -120,7 +123,7 @@ describe('Flex-align fxa — новое имя (justify-content)', () => {
   test('fxaE → justify-content:flex-end', () => expect(css('fxaE')).toContain('justify-content:flex-end'));
   test('fxaA → justify-content:space-around', () => expect(css('fxaA')).toContain('justify-content:space-around'));
   test('fxaB → justify-content:space-between', () => expect(css('fxaB')).toContain('justify-content:space-between'));
-  test('fxaCenter → justify-content:center (длинная форма)', () => expect(css('fxaCenter')).toContain('justify-content:center'));
+  test('fxaCenter бракуется — пишется fxaC (D-113)', () => expect(css('fxaCenter')).not.toContain('justify-content:center'));
 });
 
 describe('Flex-align fya — новое имя (align-items + align-content)', () => {
@@ -144,7 +147,7 @@ describe('Flex-align fya — новое имя (align-items + align-content)', (
     expect(out).toContain('align-items:stretch');
     expect(out).toContain('align-content:stretch');
   });
-  test('fyaCenter → align-items:center (длинная форма)', () => expect(css('fyaCenter')).toContain('align-items:center'));
+  test('fyaCenter бракуется — пишется fyaC (D-113)', () => expect(css('fyaCenter')).not.toContain('align-items:center'));
 });
 
 // Независимые шорткаты (jc / ai / as / ac) — синонимы FE/FS/SA/SB, не B/E/etc.

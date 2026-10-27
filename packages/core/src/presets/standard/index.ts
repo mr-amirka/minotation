@@ -4,6 +4,8 @@ const NAME_HIDDEN = 'Hidden';
 const NAME_DOTTED = 'Dotted';
 const NAME_DASHED = 'Dashed';
 const NAME_SOLID = 'Solid';
+const SOLID = 'solid';
+const RELATIVE = 'relative';
 const NAME_DOUBLE = 'Double';
 const NAME_LEFT = 'Left';
 const NAME_CENTER = 'Center';
@@ -38,6 +40,16 @@ const A = 'A';
 const NONE = 'none';
 const ALL = 'all';
 const AUTO = 'auto';
+const SPAN = 'span';
+const SIDE_LEFT = 'left';
+const SIDE_RIGHT = 'right';
+const PRESERVE_3D = 'preserve-3d';
+const MOZ_CRISP_EDGES = '-moz-crisp-edges';
+const O_CRISP_EDGES = '-o-crisp-edges';
+const WEBKIT_OPTIMIZE_CONTRAST = '-webkit-optimize-contrast';
+const OPTIMIZE_SPEED = 'optimizeSpeed';
+const OPTIMIZE_QUALITY = 'optimizeQuality';
+const NORMAL = 'normal';
 const DOUBLE_QUOTE = '"';
 const DASH = '-';
 const LIST_SEPARATOR = ', ';
@@ -61,7 +73,6 @@ const FLEX_START = 'flex-start';
 const CENTER = 'center';
 const FLEX_END = 'flex-end';
 const STRETCH = 'stretch';
-const FYA = 'fya';
 const NAME_START = 'Start';
 const NAME_END = 'End';
 const NAME_STRETCH = 'Stretch';
@@ -161,6 +172,7 @@ const REGEXP_TRIM_KEBAB_LEFT = /^-+/g;
 const REGEXP_FILTER_NAME = /^([A-Za-z]+)([0-9]*)(.*)$/;
 const REGEXP_FILTER_SEP = /_+/;
 const REGEXP_DOTS = /\./g;
+const REGEXP_DASHES = /-/g;
 const REGEXP_UNESCAPED_UNDERSCORE = /(?<!\\)_/;
 
 
@@ -359,24 +371,27 @@ const POSITION_AXES: Record<string, number> = {
 const POSITION_CORNERS: Record<string, string[]> = {
   TL: [
     'top',
-    'left',
+    SIDE_LEFT,
   ],
   TR: [
     'top',
-    'right',
+    SIDE_RIGHT,
   ],
   BL: [
     'bottom',
-    'left',
+    SIDE_LEFT,
   ],
   BR: [
     'bottom',
-    'right',
+    SIDE_RIGHT,
   ],
 };
 const SIZE_SYNONYMS = {
   A: NAME_AUTO,
   N: NAME_NONE,
+  FC: 'FitContent',
+  // `ST`, как у выравнивания (`aiST`): `S` там — `start`.
+  ST: NAME_STRETCH,
 };
 
 /** Внутренние размеры — общая часть для `width`/`height` и их min/max. */
@@ -436,7 +451,7 @@ const FONT_WEIGHT_SYNONYMS: Record<string, string> = {
   BR: 'Bolder',
   LR: 'Lighter',
 };
-/** Те же слова полной записью: `fwBolder` работает наравне с `fwBR`. */
+/** Слова `font-weight`; пишутся буквами (`fwBR`, а `fwBolder` бракуется, D-113). */
 const FONT_WEIGHT_KEYWORDS: Record<string, 1> = {
   normal: 1,
   bold: 1,
@@ -461,12 +476,12 @@ const OUTLINE_STYLE_SYNONYMS = {
   TK: NAME_THICK,
 };
 const POSITION_SYNONYMS: Record<string, string> = {
-  '': 'Relative',
   R: 'Relative',
   A: 'Absolute',
   F: NAME_FIXED,
   S: 'Static',
   SK: 'Sticky',
+  WS: '-webkit-sticky',
 };
 
 const OVERSCROLL_BEHAVIOR_PRIORITIES = {
@@ -643,28 +658,49 @@ const FONT_VARIANT_NUMERIC_GROUPS: Record<string, string>[] = [
   },
 ];
 /**
- * `font-variant-numeric` (группа F): слово или пара из РАЗНЫХ групп в порядке спецификации — `fvnTN`,
- * `fvnTN_SZ` → `tabular-nums slashed-zero`. Обратный порядок (`fvnSZ_TN`) не порождается: то же значение второй
- * записью дало бы второе правило. Три слова и больше — словами CSS: `fvn_lining-nums_tabular-nums_slashed-zero`.
+ * `font-variant-numeric` (группа F): буквы через `_`, по одной из группы и в порядке спецификации — `fvnTN`,
+ * `fvnTN_SZ` → `tabular-nums slashed-zero`, `fvnLN_TN_SZ`. Порядок проверяет {@link assertFontVariantNumericOrder}:
+ * `fvnSZ_TN` дало бы то же значение второй записью, а значит второе правило (D-113).
  */
-const FONT_VARIANT_NUMERIC_SYNONYMS = fontVariantNumericSynonyms();
-function fontVariantNumericSynonyms(): Record<string, string> {
-  const groups = FONT_VARIANT_NUMERIC_GROUPS;
-  const count = groups.length;
-  let out: Record<string, string> = {
-    N: NAME_NORMAL,
-    ...groups[count - 1],
-  };
-  let i = 0;
-  let j: number;
-  for (; i < count; i++) {
-    for (j = i + 1; j < count; j++) {
-      out = withPairs(
-        out, groups[i], groups[j],
-      );
-    }
+const FONT_VARIANT_NUMERIC_SYNONYMS: Record<string, string> = Object.assign({
+  N: NAME_NORMAL,
+}, ...FONT_VARIANT_NUMERIC_GROUPS);
+/** Номер группы каждой буквы `font-variant-numeric`. */
+const FONT_VARIANT_NUMERIC_GROUP_OF: Record<string, number> = {};
+FONT_VARIANT_NUMERIC_GROUPS.forEach((group, index) => {
+  for (const letter of Object.keys(group)) {
+    FONT_VARIANT_NUMERIC_GROUP_OF[letter] = index;
   }
-  return out;
+});
+
+/**
+ * Порядок букв `font-variant-numeric`: по одной из группы, группы — в порядке спецификации, `N` стоит одна.
+ * Незнакомую часть пропускает: её бракует общий разбор («no such abbreviation» или «write it shorter»).
+ */
+function assertFontVariantNumericOrder(name: string, suffix: string): void {
+  const parts = suffix.split(UNDERSCORE);
+  const l = parts.length;
+  const groupOf = FONT_VARIANT_NUMERIC_GROUP_OF;
+  const prefix = MSG_VALUE + suffix + MSG_IS_INVALID_FOR + name + MSG_COLON;
+  let i = 0;
+  let group: number | undefined;
+  let last = -1;
+  let used = 0;
+  let unordered = 0;
+  let unknown = 0;
+  for (; i < l; i++) {
+    parts[i] === N && throwInvalid(prefix + '"N" (normal) stands alone');
+    if ((group = groupOf[parts[i]]) === undefined) {
+      unknown = 1;
+      continue;
+    }
+    used & (1 << group) && throwInvalid(prefix + 'one letter of a group — "'
+      + Object.keys(FONT_VARIANT_NUMERIC_GROUPS[group]).join('" or "') + DOUBLE_QUOTE);
+    used |= 1 << group;
+    group < last ? (unordered = 1) : (last = group);
+  }
+  unordered && !unknown && throwInvalid('Write "' + name + parts.sort((a, b) => groupOf[a] - groupOf[b])
+    .join(UNDERSCORE) + MSG_INSTEAD_OF + name + suffix + MSG_SAME_VALUE + ': the order of the specification');
 }
 
 /**
@@ -1179,6 +1215,11 @@ const FONT_SIZE_ADJUST_KEYWORDS: Record<string, 1> = {
   none: 1,
   'from-font': 1,
 };
+/** Краткие записи `fsa`: `fsaN` → `none`, `fsaFF` → `from-font` (как `tdFF`, D-113). */
+const FONT_SIZE_ADJUST_SYNONYMS: Record<string, string> = {
+  N: NAME_NONE,
+  FF: 'FromFont',
+};
 /**
  * Строка слов через пробел → множество для проверки значения.
  *
@@ -1256,34 +1297,85 @@ const NONE_ABBREVIATIONS: Record<string, string> = {
   N: NONE,
 };
 
+/** Буквы `text-emphasis-style` (и шортката `tem`): `temsF_C` → `filled circle`. */
+const TEXT_EMPHASIS_LETTERS: Record<string, string> = {
+  N: NONE,
+  F: 'filled',
+  O: 'open',
+  D: 'dot',
+  C: 'circle',
+  DC: 'double-circle',
+  T: 'triangle',
+  S: 'sesame',
+};
+
 const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
   // `tpA`/`tpN` давали `transition-property:a`/`n` (D-106).
   transitionProperty: {
     A: ALL,
     N: NONE,
   },
+  // Буквы виджетов (D-113); `textarea`/`textfield` и `menulist`/`meter` ждут решения владельца — RESEARCH/22, Q3.
   appearance: {
     N: NONE,
     A: AUTO,
+    S: 'searchfield',
+    C: 'checkbox',
+    R: 'radio',
+    L: 'listbox',
+    PB: 'progress-bar',
+    B: 'button',
+    MB: 'menulist-button',
   },
   flex: {
     N: NONE,
     A: AUTO,
+    C: 'content',
+    FC: 'fit-content',
   },
   flexBasis: {
     A: AUTO,
+    C: 'content',
+    FC: 'fit-content',
   },
   grid: {
     N: NONE,
+    A: AUTO,
+    AF: 'auto-flow',
+    D: 'dense',
   },
   gridTemplate: {
     N: NONE,
+    A: AUTO,
+  },
+  gridAutoFlow: {
+    R: 'row',
+    C: 'column',
+    D: 'dense',
+  },
+  // Как у `fxd` и `fxw`: `fxfR_W` → `row wrap`.
+  flexFlow: {
+    R: 'row',
+    RR: 'row-reverse',
+    C: 'column',
+    CR: 'column-reverse',
+    NW: 'nowrap',
+    W: 'wrap',
+    WR: 'wrap-reverse',
+  },
+  transformStyle: {
+    F: 'flat',
+    P: PRESERVE_3D,
   },
   gridTemplateColumns: {
     N: NONE,
+    A: AUTO,
+    S: 'subgrid',
   },
   gridTemplateRows: {
     N: NONE,
+    A: AUTO,
+    S: 'subgrid',
   },
   gridAutoColumns: {
     A: AUTO,
@@ -1294,6 +1386,7 @@ const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
   // `gcA` давало `grid-column:a` — линию с именем `a`; `A` у остальных хендлеров — `auto`.
   gridRow: {
     A: AUTO,
+    S: SPAN,
   },
   perspective: {
     N: NONE,
@@ -1317,18 +1410,23 @@ const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
   },
   gridColumn: {
     A: AUTO,
+    S: SPAN,
   },
   gridRowStart: {
     A: AUTO,
+    S: SPAN,
   },
   gridRowEnd: {
     A: AUTO,
+    S: SPAN,
   },
   gridColumnStart: {
     A: AUTO,
+    S: SPAN,
   },
   gridColumnEnd: {
     A: AUTO,
+    S: SPAN,
   },
   aspectRatio: {
     A: AUTO,
@@ -1338,13 +1436,22 @@ const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
   },
   textDecorationSkip: {
     N: NONE,
+    O: 'objects',
+    S: 'spaces',
+    LS: 'leading-spaces',
+    TS: 'trailing-spaces',
+    E: 'edges',
+    BD: 'box-decoration',
   },
+  // `AL` — как у `user-select` (`usAL`): `A` здесь — `auto`.
   textDecorationSkipInk: {
     N: NONE,
     A: AUTO,
+    AL: ALL,
   },
   textDecorationThickness: {
     A: AUTO,
+    FF: 'from-font',
   },
   textDecorationStyle: {
     S: 'solid',
@@ -1358,18 +1465,38 @@ const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
   },
   textUnderlinePosition: {
     A: AUTO,
+    FF: 'from-font',
+    U: 'under',
+    L: SIDE_LEFT,
+    R: SIDE_RIGHT,
   },
-  textEmphasis: {
-    N: NONE,
-  },
-  textEmphasisStyle: {
-    N: NONE,
-  },
+  textEmphasis: TEXT_EMPHASIS_LETTERS,
+  textEmphasisStyle: TEXT_EMPHASIS_LETTERS,
   textEmphasisPosition: {
     A: AUTO,
+    O: 'over',
+    U: 'under',
+    R: SIDE_RIGHT,
+    L: SIDE_LEFT,
   },
   imageRendering: {
     A: AUTO,
+    CE: 'crisp-edges',
+    P: 'pixelated',
+    S: 'smooth',
+    OC: 'optimize-contrast',
+    OS: OPTIMIZE_SPEED,
+    OQ: OPTIMIZE_QUALITY,
+    MCE: MOZ_CRISP_EDGES,
+    OCE: O_CRISP_EDGES,
+    WOC: WEBKIT_OPTIMIZE_CONTRAST,
+  },
+  wordSpacing: {
+    N: NORMAL,
+  },
+  zoom: {
+    N: NORMAL,
+    R: 'reset',
   },
 };
 
@@ -1406,9 +1533,9 @@ const ENUM_KEYWORDS: Record<string, Record<string, 1 | string>> = {
   textUnderlinePosition: wordsSet('auto from-font under left right'),
   transformStyle: {
     ...wordsSet('flat preserve-3d'),
-    // Обе естественные записи цифры: `tsPreserve3d` и `tsPreserve3D`.
-    preserve3d: 'preserve-3d',
-    'preserve3-d': 'preserve-3d',
+    // Другие записи слова — для подсказки «Write it shorter: "tsP"» (D-113): `tsPreserve3d`, `tsPreserve3D`.
+    preserve3d: PRESERVE_3D,
+    'preserve3-d': PRESERVE_3D,
   },
   // Группа F: геометрические рамки `clip-path`; фигура (`circle(…)`) — функция и проходит мимо списка.
   clipPath: wordsSet('none border-box padding-box content-box margin-box fill-box stroke-box view-box'),
@@ -1426,18 +1553,18 @@ const ENUM_KEYWORDS: Record<string, Record<string, 1 | string>> = {
   },
   imageRendering: {
     ...wordsSet('auto crisp-edges pixelated smooth optimize-contrast'),
-    'moz-crisp-edges': '-moz-crisp-edges',
-    '-moz-crisp-edges': '-moz-crisp-edges',
-    'o-crisp-edges': '-o-crisp-edges',
-    '-o-crisp-edges': '-o-crisp-edges',
-    'webkit-optimize-contrast': '-webkit-optimize-contrast',
-    '-webkit-optimize-contrast': '-webkit-optimize-contrast',
+    'moz-crisp-edges': MOZ_CRISP_EDGES,
+    '-moz-crisp-edges': MOZ_CRISP_EDGES,
+    'o-crisp-edges': O_CRISP_EDGES,
+    '-o-crisp-edges': O_CRISP_EDGES,
+    'webkit-optimize-contrast': WEBKIT_OPTIMIZE_CONTRAST,
+    '-webkit-optimize-contrast': WEBKIT_OPTIMIZE_CONTRAST,
     // `optimizeSpeed`/`optimizeQuality` записаны в спецификации camelCase —
     // это legacy из SVG. Кебабизация суффикса их ломает, поэтому возвращаем.
-    'optimize-speed': 'optimizeSpeed',
-    optimizespeed: 'optimizeSpeed',
-    'optimize-quality': 'optimizeQuality',
-    optimizequality: 'optimizeQuality',
+    'optimize-speed': OPTIMIZE_SPEED,
+    optimizespeed: OPTIMIZE_SPEED,
+    'optimize-quality': OPTIMIZE_QUALITY,
+    optimizequality: OPTIMIZE_QUALITY,
   },
 };
 /**
@@ -1478,10 +1605,15 @@ function availableHint(items: string[]): string {
   return '. Available: ' + items.join(LIST_SEPARATOR);
 }
 
+/** Слово без регистра и дефисов: `-webkit-sticky`, `WebkitSticky` и `webkit-sticky` совпадают. */
+function squashWord(word: string): string {
+  return word.toLowerCase().replace(REGEXP_DASHES, '');
+}
+
 /**
- * Допустимые значения перечисления в записи нотации. Только канонические слова
- * (`1`): записи со строкой — это алиасы, которые заменяются на каноническое, и
- * в подсказке они дали бы дубли (`optimizeSpeed` и `optimizespeed`).
+ * Допустимые значения перечисления в записи нотации — каждое каноническое слово один раз. Запись со строкой — алиас:
+ * в подсказку идёт каноническое (`optimizeSpeed`, а не `optimizespeed`), и только если алиас пишет то же слово
+ * (без регистра и дефисов): `optimize-speed` → `optimizeSpeed` — да, `contrast` → `optimize-contrast` — нет.
  */
 function enumHint(
   words: Record<string, 1 | string>, essenceName: string, abbreviations?: Record<string, string>,
@@ -1489,18 +1621,27 @@ function enumHint(
   const items: string[] = [];
   const short: Record<string, string> = {};
   let abbr: string;
+  // Словари букв пишут слово по-разному (`Solid`, `-webkit-sticky`, `optimizeSpeed`), поэтому сверка — без регистра
+  // и дефисов.
   for (abbr in abbreviations) { // eslint-disable-line
-    short[(abbreviations as Record<string, string>)[abbr]] = abbr;
+    short[squashWord((abbreviations as Record<string, string>)[abbr])] = abbr;
   }
-  // Слово с краткой записью предлагается краткой (D-094): `apN (none)`, а не `apNone`.
+  const seen: Record<string, 1> = {};
+  let canon: string;
+  let key: string;
+  // Слово с краткой записью предлагается краткой (D-094): `apN (none)`, а не `apNone`. Алиас, который пишет то же
+  // слово иначе (`optimizespeed` → `optimizeSpeed`), даёт одну строку, а не две.
   for (const word of Object.keys(words)) {
-    words[word] === 1 && items.push(short[word] ? essenceName + short[word] + HINT_OPEN + word + CLOSE_PAREN : essenceName + notationWord(word));
+    canon = words[word] === 1 ? word : words[word] as string;
+    key = squashWord(canon);
+    key === squashWord(word) && !seen[key] && (seen[key] = 1, items.push((abbr = short[key])
+      ? essenceName + abbr + HINT_OPEN + canon + CLOSE_PAREN : essenceName + notationWord(canon)));
   }
   return availableHint(items);
 }
 
 /**
- * Полное слово, у которого есть краткая запись (D-094), бракуется с подсказкой: `fxNone` → «Write "fxN"». Иное
+ * Полное слово, у которого есть краткая запись (D-094), бракуется с подсказкой: `fxNone` → «Write it shorter: "fxN"». Иное
  * значение возвращается как есть.
  */
 function assertNotLongForm(
@@ -1508,10 +1649,30 @@ function assertNotLongForm(
 ): string {
   let abbr: string;
   for (abbr in abbreviations) { // eslint-disable-line
-    abbreviations[abbr] === value && throwInvalid('Write "' + essenceName + abbr + MSG_INSTEAD_OF + essenceName
+    abbreviations[abbr] === value && throwInvalid(MSG_WRITE_SHORTER + essenceName + abbr + MSG_INSTEAD_OF + essenceName
       + raw + MSG_SAME_VALUE);
   }
   return value;
+}
+
+/**
+ * Суффикс с буквой на месте полного слова — для подсказки (D-113): `1_Auto` → `1_A`, `_1_auto` → `1_A`. Ведущий `_`
+ * сырого режима снимается: буквы пишутся без него. Заменяется первая часть, записанная этим словом.
+ */
+function shorterSuffix(
+  suffix: string, written: string, abbr: string,
+): string {
+  const parts = suffix.split(UNDERSCORE);
+  const l = parts.length;
+  let i = 0;
+  for (; i < l; i++) {
+    if (parts[i] === written) {
+      parts[i] = abbr;
+      break;
+    }
+  }
+  const out = parts.join(UNDERSCORE);
+  return out[0] === UNDERSCORE ? out.slice(1) : out;
 }
 
 function assertEnumValue(
@@ -1583,23 +1744,6 @@ const VALUE_PATTERNS: Record<string, RegExp> = {
   aspectRatio: REGEXP_VALUE_RATIO,
 };
 /**
- * Ключевые слова свойств-картинок (`background-image`, `list-style-image`,
- * `mask-image`) и их краткие записи.
- *
- * Значение таких свойств — либо `none`, либо `<image>`; голый путь хендлер сам
- * заворачивает в `url("…")`. Краткой записи `N` не было вовсе, а `none`
- * заворачивался как имя файла.
- */
-const IMAGE_KEYWORDS: Record<string, string> = {
-  n: NONE,
-  none: NONE,
-  inherit: 'inherit',
-  initial: 'initial',
-  unset: 'unset',
-  revert: 'revert',
-  'revert-layer': 'revert-layer',
-};
-/**
  * Значения `font`, которые нельзя выразить атомарными тегами.
  *
  * Системные шрифты задают весь набор шрифтовых свойств одним словом — так же,
@@ -1613,6 +1757,15 @@ const FONT_KEYWORDS: Record<string, 1> = {
   'message-box': 1,
   'small-caption': 1,
   'status-bar': 1,
+};
+/** Буквы системных шрифтов (D-113): `fontMB` → `font:message-box`. */
+const FONT_SYNONYMS: Record<string, string> = {
+  C: 'caption',
+  I: 'icon',
+  M: 'menu',
+  MB: 'message-box',
+  SC: 'small-caption',
+  SB: 'status-bar',
 };
 /**
  * Слоты `transition` в фиксированном порядке:
@@ -1920,12 +2073,6 @@ function shadowJoin(parts: string[], unit: string): string {
   }
   return out.join(SPACE);
 }
-/** Краткие записи «тени нет»: `bxshN` наравне с голым `bxsh`. */
-const SHADOW_KEYWORDS: Record<string, 1> = {
-  N: 1,
-  None: 1,
-  none: 1,
-};
 /**
  * Разбор составных значений по слотам — по одному описанию на свойство.
  *
@@ -2173,6 +2320,18 @@ function gridValue(
 
 /** Повтор рамочной картинки. */
 const BORDER_IMAGE_REPEAT = wordsSet('stretch repeat round space none fill');
+/**
+ * Буквы слов `border-image` (D-113) — те же, что у повтора фона (`bgrRD`) и у `stretch` (`aiST`): `biN`,
+ * `biUrl\(a.png\)_30_F_RD`.
+ */
+const BORDER_IMAGE_LETTERS: Record<string, string> = {
+  N: NONE,
+  F: 'fill',
+  ST: 'stretch',
+  R: 'repeat',
+  RD: 'round',
+  SP: 'space',
+};
 /** Слайс рамки: число без единицы или процент. */
 const REGEXP_BORDER_SLICE = /^[0-9]*\.?[0-9]+%?$/;
 /**
@@ -2276,7 +2435,7 @@ function gridLineValue(
   const prefix = MSG_VALUE + raw + MSG_IS_INVALID_FOR + essenceName + MSG_COLON;
   // Две позиции разделяются `/`, а не пробелом: `gr10_20` давало
   // `grid-row:10 20` — по грамматике там `<grid-line> [ / <grid-line> ]?`.
-  (l < 2 || parts.indexOf(SLASH) > -1 || parts[0] === 'span')
+  (l < 2 || parts.indexOf(SLASH) > -1 || parts[0] === SPAN)
     || throwInvalid(prefix + 'the second position goes after "/" — `gr1/3`');
   let i = 0;
   let part: string;
@@ -2372,7 +2531,7 @@ function gridLineSingleValue(
     }
     part.indexOf(SLASH) < 0 || throwInvalid(prefix + 'one line only — both ends are written with "'
       + essenceName.slice(0, 2) + raw + DOUBLE_QUOTE);
-    part === 'span'
+    part === SPAN
       ? span++
       : REGEXP_GRID_LINE_NUMBER.test(part)
         ? (numbers++, part[0] === '-' && (negative = 1))
@@ -2384,7 +2543,7 @@ function gridLineSingleValue(
   (span < 2 && numbers < 2 && names < 2)
     || throwInvalid(prefix + 'at most one number, one name and one "span"');
   (!span || numbers || names || functions)
-    || throwInvalid(prefix + '"span" needs a number or a name — "' + essenceName + 'Span_2"');
+    || throwInvalid(prefix + '"span" needs a number or a name — "' + essenceName + 'S_2"');
   span && negative && throwInvalid(prefix + 'a "span" counts lines forward — its number is positive');
   return parts.join(SPACE);
 }
@@ -2501,6 +2660,11 @@ function quoteEscape(v: string): string {
 const CONTENT_SYNONYMS: Record<string, string> = {
   S: '" "',
   N: NONE,
+  // Кавычки по `quotes` (D-113): `cntOQ` → `open-quote`.
+  OQ: 'open-quote',
+  CQ: 'close-quote',
+  NOQ: 'no-open-quote',
+  NCQ: 'no-close-quote',
 };
 /** Ключевые слова `content` — всё, что пишется без кавычек и не функция. */
 const CONTENT_KEYWORDS: Record<string, 1> = {
@@ -2888,7 +3052,6 @@ export default {
       filter,
       forIn,
       forEach,
-      upperFirst,
       lowerFirst,
       toUpper,
       camelToKebabCase,
@@ -2928,6 +3091,97 @@ export default {
    * Поворот измеряется только углом, поэтому список короткий и закрытый;
    * умолчание `deg` сохраняется (`rx45` → `rotateX(45deg)`).
    */
+    /** Обратные индексы словарей кратких записей: слово CSS → буква. Строятся при первом обращении к словарю. */
+    const lettersByWord = new WeakMap<Record<string, any>, Record<string, string>>();
+    /**
+     * Буква, которой словарь хендлера записывает слово CSS (`auto` → `A`), или `undefined`. Словарь задаёт слова в
+     * любой форме (`Auto`, `NoRepeat`, `scroll-position`) — сравниваются нормализованные.
+     * @param aliases — перечень свойства с другими записями слов (`optimizespeed` → `optimizeSpeed`)
+     */
+    function letterOf(
+      word: string, symonyms: Record<string, any>, aliases?: Record<string, 1 | string>,
+    ): string | undefined {
+      let index = lettersByWord.get(symonyms);
+      if (!index) {
+        const built: Record<string, string> = index = {};
+        forIn(symonyms, (w: any, abbr: string) => {
+          let v: string;
+          abbr && typeof w === 'string' && !built[v = valueNormalize(w)] && (built[v] = abbr);
+        });
+        lettersByWord.set(symonyms, index);
+      }
+      // Другая запись того же слова в перечне (`moz-crisp-edges` → `-moz-crisp-edges`) — то же слово.
+      const alias = aliases && aliases[word];
+      return index[word] || (typeof alias === 'string' ? index[valueNormalize(alias)] : undefined);
+    }
+    /**
+     * Бракует полное слово, у которого в словаре хендлера есть буква (D-113): две записи одного значения дают в CSS
+     * два правила. Подсказка — тот же токен с буквой на месте слова: `m1_Auto` → «Write it shorter: "m1_A"».
+     * @param word — слово CSS (`auto`)
+     * @param written — как оно записано в суффиксе (`Auto`, `auto`)
+     */
+    function assertNoLetter(
+      word: string, written: string, symonyms: Record<string, any>, name: string, suffix: string,
+    ): void {
+      const abbr = letterOf(word, symonyms);
+      abbr && throwInvalid(MSG_WRITE_SHORTER + name + shorterSuffix(
+        suffix, written, abbr,
+      )
+        + MSG_INSTEAD_OF + name + suffix + MSG_SAME_VALUE);
+    }
+    /**
+     * Значение из нескольких частей через буквы хендлера (D-113): буква работает в любой части (`bsS_DT` →
+     * `solid dotted`, `fx1_1_A` → `1 1 auto`), полное слово с буквой бракуется в любой части и в любом режиме
+     * (`bs_solid`, `fx1_1_Auto`). Подсказка переписывает весь токен буквами: `bs_solid_dotted` → «Write it shorter:
+     * "bsS_DT"». Остальное нормализуется, как {@link valueNormalize}: переменные, кавычки, сырой режим.
+     * @param aliases — перечень свойства с другими записями слов: они тоже полные записи
+     * @returns значение CSS, части через пробел (проверка по перечню свойства — за вызывающим)
+     */
+    function lettersValue(
+      p: MnEssenceParams, letters: Record<string, any>, aliases?: Record<string, 1 | string>,
+    ): string {
+      const suffix = p.suffix;
+      const raw = suffix[0] == UNDERSCORE;
+      const parts = splitValueParts(
+        raw ? snakeLeftTrim(suffix) : suffix, 1, 1,
+      );
+      const l = parts.length;
+      const shorter: string[] = new Array(l);
+      let i = 0;
+      let part: string;
+      let letter: any;
+      let word: string;
+      let abbr: string | undefined;
+      let long = 0;
+      // Открытая кавычка: строка (`g"a_N_b"` — имена областей) букв не содержит.
+      let quote = '';
+      for (; i < l; i++) {
+        shorter[i] = part = parts[i];
+        if (quote || part[0] === DOUBLE_QUOTE || part[0] === QUOTE) {
+          quote || (quote = part[0], part = part.slice(1));
+          part[part.length - 1] === quote && (quote = '');
+          parts[i] = valueNormalize(raw ? UNDERSCORE + parts[i] : parts[i]);
+          continue;
+        }
+        // Буква — только в обычном режиме: сырой оставляет текст как написан (`_A` — это `A`).
+        if (part && !raw && typeof (letter = letters[part]) === 'string') {
+          parts[i] = valueNormalize(letter);
+          continue;
+        }
+        parts[i] = word = valueNormalize(raw ? UNDERSCORE + part : part);
+        if (abbr = letterOf(
+          word.toLowerCase(), letters, aliases,
+        )) {
+          long = 1;
+          shorter[i] = abbr;
+        } else {
+          shorter[i] = REGEXP_BARE_WORD.test(word) ? notationWord(word) : part;
+        }
+      }
+      long && throwInvalid(MSG_WRITE_SHORTER + p.name + shorter.join(UNDERSCORE)
+        + MSG_INSTEAD_OF + p.name + suffix + MSG_SAME_VALUE);
+      return parts.join(SPACE);
+    }
     function assertAngle(
       value: string, unit: string | undefined, raw: string,
     ): string {
@@ -2951,17 +3205,27 @@ export default {
    * `min-width:none` — нет. Поэтому список приходит от места регистрации,
    * а не берётся общим на всё семейство.
    *
+   * Слово, у которого в словаре хендлера есть буква, полной записью бракуется (D-113): `mAuto`, `m1_Auto`,
+   * `bThin`, `fwBold` — вторые записи `mA`, `m1_A`, `bTN`, `fwB`.
+   *
    * @param value — уже кебабнутое значение
    * @param raw — как оно записано в токене (для сообщения и поиска по словарю)
    * @param symonyms — словарь кратких записей хендлера
    * @param keywords — допустимые ключевые слова конкретного свойства
+   * @param name — имя хендлера (для подсказки с буквой)
+   * @param suffix — суффикс токена целиком (для подсказки с буквой)
    */
     function assertKnownWord(
       value: string,
       raw: string,
       symonyms?: Record<string, any>,
       keywords?: Record<string, 1>,
+      name?: string,
+      suffix?: string,
     ): string {
+      symonyms && !symonyms[raw] && assertNoLetter(
+        value, raw, symonyms, name as string, suffix as string,
+      );
       if (GLOBAL_KEYWORDS[value]
       || (symonyms && symonyms[raw])
       || (keywords && keywords[value])) {
@@ -3009,7 +3273,7 @@ export default {
       if (camel) {
         return assertKnownWord(
           toKebabCase(symonyms && symonyms[camel] || camel),
-          camel, symonyms, keywords,
+          camel, symonyms, keywords, p.name, p.suffix,
         );
       }
       const num = p.num;
@@ -3071,6 +3335,7 @@ export default {
       symonyms?: Record<string, any>,
       keywords?: Record<string, 1>,
       noPercent?: number,
+      name?: string,
     ): [string, number] {
     // Все 6 вызовов getVal в этом файле передают defaultUnit='px' явно —
     // фолбэк недостижим (подтверждено и в v1, 2026-09-23). Параметр остаётся
@@ -3099,7 +3364,7 @@ export default {
           noOtherName && throwInvalid();
           output[i] = assertKnownWord(
             toKebabCase(symonyms && symonyms[otherName] || otherName),
-            otherName, symonyms, keywords,
+            otherName, symonyms, keywords, name, '' + suffix,
           );
           continue;
         }
@@ -3152,7 +3417,7 @@ export default {
      */
     function toKebabCase(v: string): string {
       REGEXP_LIST_ITEM_CAPITAL.test(v) && throwInvalid(MSG_VALUE + v + '": after "," and ";" a list item starts with a '
-        + 'lower-case letter — write "' + v.replace(REGEXP_LIST_ITEM_CAPITALS, lowerItemStart) + '"');
+        + 'lower-case letter — write "' + v.replace(REGEXP_LIST_ITEM_CAPITALS, lowerItemStart) + DOUBLE_QUOTE);
       return camelToKebabCase(lowerFirst(v));
     }
     /**
@@ -3410,7 +3675,9 @@ export default {
           if (!s) {
             return _style ? styleWrap(_style, priority) : 0;
           }
-          s = valueNormalize(s);
+          // Составное значение: буквы — в каждой части (`td1_U_W`, `bgs10_A`), полное слово с буквой бракуется в
+          // любой части (D-113).
+          s = composite ? lettersValue(p, synonyms) : valueNormalize(s);
           numeric && (s = defaultUnitNormalize(s));
           assertSynonymAbbr(p, s);
           style = {};
@@ -3778,22 +4045,21 @@ export default {
       ): MnHandler {
       // Словарь задан на семейство, а не общий на все размеры: `mA` →
       // `margin:auto` валиден, а `pA` → `padding:auto` — нет. Допустимые слова
-      // выводятся из значений словаря, поэтому длинная форма (`bThin`) работает
-      // наравне с краткой (`bTN`).
+      // выводятся из значений словаря; полная запись слова с буквой (`bThin`)
+      // бракуется в пользу краткой (`bTN`, D-113). Буква разбирается тем же
+      // `getVal`, что и любая часть, — значение сразу, а не алиас на полную
+      // запись (алиас делал полную запись несущей).
         const keywords: Record<string, 1> = {};
         forIn(symonyms as Record<string, string>, (word: string) => {
           keywords[toKebabCase(word)] = 1;
         });
         return (p: MnEssenceParams) => {
-          let suffix: string; let synonym: any;
+          let suffix: string;
           if (!(suffix = p.suffix)) {
             return normalizeDefault(p, 0);
           }
-          if (synonym = (symonyms as Record<string, string>)[suffix]) {
-            return normalizeDefault(p, synonym);
-          }
           const v = getVal(
-            suffix, nosign, one, PX, 0, symonyms, keywords, noPercent,
+            suffix, nosign, one, PX, 0, symonyms, keywords, noPercent, p.name,
           );
           return styleWrap(sidesSet(v[0]), priority + v[1]);
         };
@@ -3885,22 +4151,19 @@ export default {
         ), '', 1,
       );
       mn('bs' + suffix, (p) => {
-        let s, synonym;
-        return (synonym = BORDER_STYLE_SYNONYMS[s = p.suffix])
-          ? normalizeDefault(p, synonym)
-          : (
-            s
-            // Стиль границы — закрытый перечень (`<line-style>`), но
-            // проверки не было вовсе: `bs10` давало `border-style:10`,
-            // `bsF00` — `border-style:f00`, `bsZzz` — `border-style:zzz`.
-            // Без стороны свойство берёт до четырёх значений
-            // (`border-style: solid dotted`), со стороной — одно.
-              ? styleWrap(bsSidesSet(assertEnumValue(
-                valueNormalize(s), BORDER_STYLE_KEYWORDS,
-                suffix ? 0 : 1, 'bs' + suffix, s,
-              )), priority + 1)
-              : normalizeDefault(p, NAME_SOLID)
-          );
+        const s = p.suffix;
+        return styleWrap(bsSidesSet(s
+        // Стиль границы — закрытый перечень (`<line-style>`), но
+        // проверки не было вовсе: `bs10` давало `border-style:10`,
+        // `bsF00` — `border-style:f00`, `bsZzz` — `border-style:zzz`.
+        // Без стороны свойство берёт до четырёх значений
+        // (`border-style: solid dotted`), со стороной — одно. Буквы — в каждой
+        // части (`bsS_DT`), полные слова бракуются (D-113).
+          ? assertEnumValue(
+            lettersValue(p, BORDER_STYLE_SYNONYMS), BORDER_STYLE_KEYWORDS,
+            suffix ? 0 : 1, 'bs' + suffix, s, BORDER_STYLE_SYNONYMS,
+          )
+          : SOLID), priority + 1);
       });
       mn(
         'bc' + suffix, (p) => {
@@ -3932,17 +4195,11 @@ export default {
       // У `border-image` нет логических сторон (`border-inline-start-image` в CSS нет) — `bis`/`bie` заняты
       // шириной (K3, D-103).
       logicalSide || mn(BI + suffix, (p) => {
-        let s;
-        if (!(s = p.suffix) || s === N) {
-          return styleWrap(biSidesSet(NONE), priority + 1);
-        }
-        // `biNone` → «Write "biN"» (D-094), как у остальных слов с краткой записью.
-        const value = assertNotLongForm(
-          valueNormalize(s), NONE_ABBREVIATIONS, BI + suffix, s,
-        );
-        return styleWrap(biSidesSet(borderImageValue(
-          value.split(SPACE), s, BI + suffix,
-        )), priority + 1);
+        const s = p.suffix;
+        // Слова — буквами в любой части (`biN`, `bi_1_ST`), полные бракуются (D-094, D-113).
+        return styleWrap(biSidesSet(s ? borderImageValue(
+          lettersValue(p, BORDER_IMAGE_LETTERS).split(SPACE), s, BI + suffix,
+        ) : NONE), priority + 1);
       });
     });
 
@@ -3985,12 +4242,8 @@ export default {
             if (!suffix) {
               return normalizeDefault(p, HUNDRED_PERCENT);
             }
-            const synonym = symonyms[suffix];
-            if (synonym) {
-              return normalizeDefault(p, synonym);
-            }
             const v = getVal(
-              suffix, 1, 1, PX, 0, symonyms, keywords,
+              suffix, 1, 1, PX, 0, symonyms, keywords, 0, p.name,
             );
             const [value] = v;
             const style: Record<string, any> = {};
@@ -4015,12 +4268,9 @@ export default {
           return normalizeDefault(p, HUNDRED_PERCENT);
         }
         // `normal` — initial value у gap-семейства; размерам (`w`/`h`/`p`/`m`)
-        // оно не подходит, поэтому словарь здесь свой.
-        if (suffix === N) {
-          return normalizeDefault(p, NAME_NORMAL);
-        }
+        // оно не подходит, поэтому словарь здесь свой (`gapN`).
         const v = getVal(
-          suffix, 1, 1, PX, 0, GAP_SYNONYMS, KEYWORDS_NORMAL,
+          suffix, 1, 1, PX, 0, GAP_SYNONYMS, KEYWORDS_NORMAL, 0, p.name,
         );
         // 1 CSS-свойство — priority = 2 - 1, как у соседних w/h (props.length === 1)
         const priority = 1;
@@ -4050,69 +4300,107 @@ export default {
       },
     });
 
-    // flex horizontal align
-    forIn({
-      start: {
-        boxPack: 'start',
-        justifyContent: FLEX_START,
-      },
-      center: {
-        boxPack: CENTER,
-        justifyContent: CENTER,
-      },
-      end: {
-        boxPack: 'end',
-        justifyContent: FLEX_END,
-      },
-      around: {
-        justifyContent: 'space-around',
-      },
-      between: {
-        boxPack: 'justify',
-        justifyContent: 'space-between',
-      },
-    }, (style, essenceName) => {
-      const capitalized = upperFirst(essenceName);
-      const name = 'fxa' + capitalized;
-      mn(name, styleWrap(style, 1));
-      mn('fxa' + capitalized[0], name);
-    });
+    /**
+     * Флекс-выравнивание буквами — `fxaC`, `fyaST`: объявление с префиксной парой старого `box-*`. Полное слово
+     * (`fxaCenter`, `fya_stretch`) — вторая запись того же правила, бракуется с подсказкой (D-113); незнакомая буква —
+     * со списком букв.
+     */
+    function flexAlignProvider(name: string, styles: Record<string, [string, Record<string, string>]>): MnHandler {
+      const words: Record<string, string> = {};
+      const items: string[] = [];
+      forIn(styles, (entry: [string, Record<string, string>], letter: string) => {
+        words[letter] = entry[0];
+        items.push(name + letter + HINT_OPEN + valueNormalize(entry[0]) + CLOSE_PAREN);
+      });
+      return (p) => {
+        const s = p.suffix;
+        const entry = styles[s];
+        if (entry) {
+          return styleWrap(entry[1], 1);
+        }
+        if (!s) {
+          return 0;
+        }
+        assertNoLetter(
+          valueNormalize(s).toLowerCase(), snakeLeftTrim(s), words, name, s,
+        );
+        throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + name + '": no such abbreviation' + availableHint(items));
+      };
+    }
 
-    // flex vertical align
-    forIn({
-      start: {
-        boxAlign: 'start',
-        alignItems: FLEX_START,
-        alignContent: FLEX_START,
-      },
-      center: {
-        boxAlign: CENTER,
-        alignItems: CENTER,
-        alignContent: CENTER,
-      },
-      end: {
-        boxAlign: 'end',
-        alignItems: FLEX_END,
-        alignContent: FLEX_END,
-      },
-      stretch: {
-        boxAlign: STRETCH,
-        alignItems: STRETCH,
-        alignContent: STRETCH,
-      },
-    }, (style, essenceName) => {
-      mn(FYA + upperFirst(essenceName), styleWrap(style, 1));
-    });
-
-    // `A` (Around) у `fya` нет: `fyaAround` не существует, псевдоним молча давал пустой класс
-    // (найдено сторожем «хендлер без стиля», когда тот стал обходить и статику, 2026-10-13).
-    forIn({
-      S: NAME_START,
-      C: NAME_CENTER,
-      E: NAME_END,
-      ST: NAME_STRETCH,
-    }, (essenceName, abbr) => {
-      mn(FYA + abbr, FYA + essenceName);
+    mn({
+      // По горизонтали; `A` и `B` — `space-around` и `space-between`.
+      fxa: flexAlignProvider('fxa', {
+        S: [
+          NAME_START,
+          {
+            boxPack: 'start',
+            justifyContent: FLEX_START,
+          },
+        ],
+        C: [
+          NAME_CENTER,
+          {
+            boxPack: CENTER,
+            justifyContent: CENTER,
+          },
+        ],
+        E: [
+          NAME_END,
+          {
+            boxPack: 'end',
+            justifyContent: FLEX_END,
+          },
+        ],
+        A: [
+          'Around',
+          {
+            justifyContent: 'space-around',
+          },
+        ],
+        B: [
+          'Between',
+          {
+            boxPack: 'justify',
+            justifyContent: 'space-between',
+          },
+        ],
+      }),
+      // По вертикали. `A` (Around) нет: у `align-items` такого значения не бывает.
+      fya: flexAlignProvider('fya', {
+        S: [
+          NAME_START,
+          {
+            boxAlign: 'start',
+            alignItems: FLEX_START,
+            alignContent: FLEX_START,
+          },
+        ],
+        C: [
+          NAME_CENTER,
+          {
+            boxAlign: CENTER,
+            alignItems: CENTER,
+            alignContent: CENTER,
+          },
+        ],
+        E: [
+          NAME_END,
+          {
+            boxAlign: 'end',
+            alignItems: FLEX_END,
+            alignContent: FLEX_END,
+          },
+        ],
+        ST: [
+          NAME_STRETCH,
+          {
+            boxAlign: STRETCH,
+            alignItems: STRETCH,
+            alignContent: STRETCH,
+          },
+        ],
+      }),
     });
 
     forIn({
@@ -4433,7 +4721,8 @@ export default {
           return styleWrap(style, priority);
         }
         const prefix = MSG_VALUE + suffix + MSG_IS_INVALID_FOR + name + MSG_COLON;
-        // Ведущий `_` — слова CSS как есть: `op_right_10px_top_20px`. Буквы в этой записи не разворачиваются.
+        // Ведущий `_` — слова CSS как есть, но у каждого слова позиции есть буква, поэтому слово в этой записи —
+        // вторая запись (D-113): `op_right_10px_top_20px` → «Write it shorter: "opR_10px_T_20px"».
         const raw = suffix[0] === UNDERSCORE;
         const written = splitValueParts(raw ? suffix.slice(1) : suffix);
         const writtenCount = written.length;
@@ -4444,10 +4733,13 @@ export default {
         let corner: string[];
         let abbr: string;
         let j = 0;
+        let long = 0;
         for (; j < writtenCount; j++) {
           part = written[j];
           if (raw) {
             if (POSITION_AXES[part]) {
+              long = 1;
+              written[j] = byWord[part];
               words.push(part);
               kinds.push(POSITION_AXES[part]);
               continue;
@@ -4489,7 +4781,7 @@ export default {
           if (abbr) {
             written[j] = abbr;
             throwInvalid(MSG_WRITE_SHORTER + name + written.join(UNDERSCORE) + MSG_INSTEAD_OF + name + suffix
-            + DOUBLE_QUOTE);
+            + MSG_SAME_VALUE);
           }
           REGEXP_BARE_WORD.test(word) || !word
             ? throwInvalid(prefix + (raw
@@ -4497,6 +4789,8 @@ export default {
               : 'a part is a side letter, a length or a percent' + positionHint(name, j ? '' : 1)))
             : throwInvalid(prefix + 'expected a length or a percent');
         }
+        long && throwInvalid(MSG_WRITE_SHORTER + name + written.join(UNDERSCORE) + MSG_INSTEAD_OF + name + suffix
+          + MSG_SAME_VALUE);
         positionAssert(
           kinds, words, prefix, name, z,
         );
@@ -4606,9 +4900,13 @@ export default {
         A: NAME_AUTO,
       }),
       owr: overflowWrapProvider(),
-      fvn: synonymProvider(
+      fvn: ((base: MnHandler) => (p: MnEssenceParams) => {
+        // Буквы — по одной из группы и в порядке спецификации; сырой режим (`fvn_…`) бракует полные слова сам.
+        p.suffix.indexOf(UNDERSCORE) > 0 && assertFontVariantNumericOrder(p.name, p.suffix);
+        return base(p);
+      })(synonymProvider(
         'fontVariantNumeric', FONT_VARIANT_NUMERIC_SYNONYMS, 0, 0 as any, 0 as any, 1,
-      ),
+      )),
       // Safari понимает только префиксное свойство, поэтому пишутся оба.
       bdb: synonymProvider([
         'WebkitBoxDecorationBreak',
@@ -4673,12 +4971,18 @@ export default {
         // `url("none")`, `bgiN` — `url("N")`, а градиент превращался в имя файла
         // (`url("linear-gradient(red,blue)")`). Оборачивается только голый путь
         // (2026-09-26).
-        style[propName] = (url = snakeLeftTrim(p.suffix))
+        //
+        // Значение — `none` (буквой: `bgiN`; `bgiNone`, `bgi_none` бракуются, D-113), CSS-wide keyword или
+        // `<image>`.
+        const s = p.suffix;
+        let word: string;
+        style[propName] = s === N ? NONE : (url = snakeLeftTrim(s))
           ? (cssVarValue(url)
-          // Ключ ищется в нижнем регистре: и краткая запись (`bgiN`), и
-          // полная (`bgiNone`, `bgiInherit`) — одно и то же слово.
-          || (IMAGE_KEYWORDS[url.toLowerCase()]
-            || (url.indexOf(OPEN_PAREN) > -1 ? url : 'url("' + url + '")')))
+          // Слово ищется в нижнем регистре: ключевые слова CSS регистронезависимы.
+          || (GLOBAL_KEYWORDS[word = assertNotLongForm(
+            url.toLowerCase(), NONE_ABBREVIATIONS, name, s,
+          )] && word)
+          || (url.indexOf(OPEN_PAREN) > -1 ? url : 'url("' + url + '")'))
           : NONE;
         return styleWrap(style, 1);
       });
@@ -4725,6 +5029,9 @@ export default {
 
     mn('spnr', (p) => {
       let v;
+      // Суффикс без числа молча давал спиннер по умолчанию: `spnr_linear`, `spnrZzz` — `3000ms` (D-113, аудит).
+      p.suffix && !p.value && throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR
+        + 'spnr": expected a period in milliseconds, as "spnr2000"');
       return isNaN(v = (v = p.value) ? parseInt(v) : 3000) || v < 1 ? 0 : (
         setKeyframes(
           'spinner-animate', {
@@ -4830,10 +5137,14 @@ export default {
       mn(pfx, (p) => {
         const suffix = p.suffix;
         const style: Record<string, any> = {};
-        if (SHADOW_KEYWORDS[suffix]) {
+        // «Тени нет» — `bxshN` (наравне с голым `bxsh`); `bxshNone`, `bxsh_none` бракуются (D-113).
+        if (suffix === N) {
           style[propName] = NONE;
           return styleWrap(style);
         }
+        assertNotLongForm(
+          snakeLeftTrim(suffix).toLowerCase(), NONE_ABBREVIATIONS, pfx, suffix,
+        );
         // Несколько РАЗНЫХ теней — через запятую. Модификатор `m` повторяет одну
         // и ту же, а сырой режим на списке ломался: запятая уходила внутрь
         // `var(…)` и давала `var(--shadow,0) 1px 2px var(--shadow2)`.
@@ -4982,25 +5293,21 @@ export default {
       const synonyms = options[4] || {};
       const noPercent = options[5];
       // Допустимые слова выводятся из значений самого словаря: если хендлер
-      // объявил `N: 'Normal'`, то `normal` валиден и полной записью. Отдельная
-      // таблица здесь не нужна — словарь уже задан на свойство, а не на семейство.
+      // объявил `N: 'Normal'`, то `normal` — слово этого свойства, и пишется оно
+      // буквой (`ggcN`; `ggcNormal` бракуется, D-113). Отдельная таблица здесь
+      // не нужна — словарь уже задан на свойство, а не на семейство.
       const keywords: Record<string, 1> = {};
       forIn(synonyms, (word: string) => {
         keywords[toKebabCase(word)] = 1;
       });
       mn(pfx, (p) => {
-        let style, suffix, synonym, v;
-        return (synonym = synonyms[suffix = p.suffix])
-          ? normalizeDefault(p, synonym)
-          : (
-            v = getVal(
-              suffix || defaultValue,
-              1, one, PX, 0, synonyms, keywords, noPercent,
-            ),
-            style = {} as Record<string, any>,
-            style[propName] = v[0],
-            styleWrap(style, priority + v[1])
-          );
+        const v = getVal(
+          p.suffix || defaultValue,
+          1, one, PX, 0, synonyms, keywords, noPercent, p.name,
+        );
+        const style: Record<string, any> = {};
+        style[propName] = v[0];
+        return styleWrap(style, priority + v[1]);
       });
     });
 
@@ -5041,25 +5348,18 @@ export default {
     });
 
     mn(POS, (p) => {
-      let s, synonym, v;
-      return (synonym = POSITION_SYNONYMS[s = p.suffix])
-        ? normalizeDefault(p, synonym)
-        : (
-        /* istanbul ignore next — ветка `0` недостижима: пустой суффикс
-           разбирает `POSITION_SYNONYMS['']` выше (голый `pos` → `relative`).
-           Оставлена как страховка на случай правки карты синонимов. */
-          s ? (
-          // Перечень у `position` закрыт, поэтому сюда доходит либо слово из
-          // него, либо ошибка: `pos10` давало `position:10`, `posZzz` —
-          // `position:zzz`.
-            v = assertEnumValue(
-              valueNormalize(s), ENUM_KEYWORDS.position, 0, POS, s,
-            ),
-            styleWrap({
-              position: v,
-            }, POSITION_PRIORITIES[v] || 0)
-          ) : 0
-        );
+      const s = p.suffix;
+      // Перечень у `position` закрыт, поэтому значение — буква или ошибка:
+      // `pos10` давало `position:10`, `posZzz` — `position:zzz`, `posAbsolute`
+      // и `pos_absolute` — вторые записи `posA` (D-113). Голый `pos` — `relative`.
+      const v = s ? assertEnumValue(
+        lettersValue(
+          p, POSITION_SYNONYMS, ENUM_KEYWORDS.position,
+        ), ENUM_KEYWORDS.position, 0, POS, s, POSITION_SYNONYMS,
+      ) : RELATIVE;
+      return styleWrap({
+        position: v,
+      }, POSITION_PRIORITIES[v] || 0);
     });
 
     mn({
@@ -5086,18 +5386,19 @@ export default {
       // font-weight
       fw: (p) => {
         const camel = p.camel;
-        const synonym = camel && FONT_WEIGHT_SYNONYMS[camel];
         // `fw6` → 600 (цифра-сокращение) и `fw600` → 600 (значение CSS как есть).
         // До 2026-09-22 второе молча давало 900: число всегда умножалось на 100
         // и зажималось в 1..9, то есть самая естественная запись была неверной.
         const num = p.num;
-        return synonym ? normalizeDefault(p, synonym) : p.negative ? 0 : styleWrap({
+        return p.negative ? 0 : styleWrap({
           fontWeight: camel
           // Слово не проверялось: `fwZzz` давало `font-weight:zzz`, `fwA` —
           // `font-weight:a`, `fwF00` — `font-weight:f`. Список закрытый,
-          // выводится из того же словаря кратких записей.
+          // выводится из того же словаря кратких записей; слово пишется буквой
+          // (`fwB`, а `fwBold` бракуется, D-113).
             ? assertKnownWord(
-              toKebabCase(camel), camel, FONT_WEIGHT_SYNONYMS, FONT_WEIGHT_KEYWORDS,
+              toKebabCase(FONT_WEIGHT_SYNONYMS[camel] || camel), camel, FONT_WEIGHT_SYNONYMS,
+              FONT_WEIGHT_KEYWORDS, p.name, p.suffix,
             )
           // `num` приходит из разбора строкой; сравнение и деление ведём
           // числом явно, а не полагаясь на приведение оператором.
@@ -5119,7 +5420,7 @@ export default {
       sticky: 'posSK',
 
     'break': styleWrap({ // eslint-disable-line
-        whiteSpace: 'normal',
+        whiteSpace: NORMAL,
         wordBreak: 'break-word',
       }),
       z: (p) => {
@@ -5206,18 +5507,14 @@ export default {
           (v = cssVarValue(p.suffix || '')) ? styleWrap({
             fontSizeAdjust: v,
           }) : (p.value ? styleWrap({
-          // `N` здесь — краткая запись `none`, а не начало слова: она разобрана
-          // до общего пути, поэтому остаётся отдельной веткой.
-            fontSizeAdjust: p.camel == N
-              ? NONE
-            // Значение безразмерное (`font-size-adjust:0.5`): единицы по
-            // умолчанию нет, и явная тоже недопустима — `fsa10px` давало
-            // `font-size-adjust:10px`.
-              : (p.unit && throwInvalid(MSG_VALUE + p.suffix
-              + '" is invalid: font-size-adjust is a unitless number'),
-              lengthOrWord(
-                p, FONT_SIZE_ADJUST_KEYWORDS, 0, '',
-              )),
+          // Значение безразмерное (`font-size-adjust:0.5`): единицы по
+          // умолчанию нет, и явная тоже недопустима — `fsa10px` давало
+          // `font-size-adjust:10px`. Слова — буквами: `fsaN`, `fsaFF`.
+            fontSizeAdjust: (p.unit && throwInvalid(MSG_VALUE + p.suffix
+            + '" is invalid: font-size-adjust is a unitless number'),
+            lengthOrWord(
+              p, FONT_SIZE_ADJUST_KEYWORDS, 0, '', FONT_SIZE_ADJUST_SYNONYMS,
+            )),
           }) : 0)
         );
       },
@@ -5687,17 +5984,15 @@ export default {
      */
       lts: (p) => {
         let v;
-        return p.suffix === N
-          ? normalizeDefault(p, NAME_NORMAL)
-          : ((v = cssVarValue(p.suffix || '')) ? styleWrap({
-            letterSpacing: v,
-          }) : (
-            (p.camel || p.num != null) ? styleWrap({
-              letterSpacing: lengthOrWord(
-                p, LETTER_SPACING_KEYWORDS, LENGTH_PERCENT, PX,
-              ),
-            }) : 0
-          ));
+        return (v = cssVarValue(p.suffix || '')) ? styleWrap({
+          letterSpacing: v,
+        }) : (
+          (p.camel || p.num != null) ? styleWrap({
+            letterSpacing: lengthOrWord(
+              p, LETTER_SPACING_KEYWORDS, LENGTH_PERCENT, PX, GAP_SYNONYMS,
+            ),
+          }) : 0
+        );
       },
       // Контейнер для запросов `@…:имя` (D-088): имя — как записано, как и в запросе (D-091): `cnMainNav` →
       // `container-name: MainNav`, `cn_main-nav` → `main-nav`, несколько — через `_` (`cn_side_main`), `cn--c` —
@@ -6023,6 +6318,11 @@ export default {
         if (!(s = p.suffix)) {
           return 0;
         }
+        if (v = FONT_SYNONYMS[s]) {
+          return styleWrap({
+            font: v,
+          });
+        }
         v = valueNormalize(s);
         // Пробел в значении означает составную форму (`16px/1.55 var(--font)`) —
         // её и убираем, даже когда внутри есть подстановка. Целиком подстановка
@@ -6033,8 +6333,9 @@ export default {
         return styleWrap({
           font: v.indexOf(OPEN_PAREN) > -1
             ? v
+            // Слово — буквой: `fontMenu` → «Write it shorter: "fontM"» (D-113).
             : assertKnownWord(
-              v, s, 0 as any, FONT_KEYWORDS,
+              v, s, FONT_SYNONYMS, FONT_KEYWORDS, p.name, s,
             ),
         });
       },
@@ -6059,7 +6360,10 @@ export default {
             animation: NONE,
           });
         }
-        const list = splitTopLevel(valueNormalize(s));
+        // `anNone`, `an_none` — вторые записи `anN` (D-113).
+        const list = splitTopLevel(assertNotLongForm(
+          valueNormalize(s), NONE_ABBREVIATIONS, p.name, s,
+        ));
         const l = list.length;
         const out: string[] = new Array(l);
         let parts: string[];
@@ -6167,8 +6471,9 @@ export default {
               '""'))
             : (v.indexOf(OPEN_PAREN) > -1
               ? v
+              // Слово с буквой полной записью бракуется: `cntNone` → `cntN` (D-113).
               : assertKnownWord(
-                v, s, 0 as any, CONTENT_KEYWORDS,
+                v, s, CONTENT_SYNONYMS, CONTENT_KEYWORDS, p.name, s,
               )),
         });
       },
@@ -6414,14 +6719,13 @@ export default {
           style[propName] = repeated;
           return styleWrap(style, stylePriority);
         }
-        abbreviations = VALUE_ABBREVIATIONS[propName];
-        if (abbreviations) {
-          s = abbreviations[s] || assertNotLongForm(
-            valueNormalize(s), abbreviations, essenceName, p.suffix,
-          );
-        } else {
-          s = valueNormalize(s);
-        }
+        // Буквы — в каждой части составного значения (`fx1_1_A`, `arA_16/9`), полное слово с буквой бракуется в
+        // любой части (D-113).
+        s = (abbreviations = VALUE_ABBREVIATIONS[propName])
+          ? lettersValue(
+            p, abbreviations, enumWords,
+          )
+          : valueNormalize(s);
         // У свойства-длины голое слово почти всегда ошибка: `tiA` давало
         // `text-indent:a`, `wosN` — `word-spacing:n`. Список слов задан на
         // свойство; у остальных хендлеров блока значения произвольны

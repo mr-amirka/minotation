@@ -39,7 +39,7 @@ test.each([
     'animation:fade 200ms 300ms 2 alternate forwards paused',
   ],
   [
-    'an_none',
+    'anN',
     'animation:none',
   ],
   [

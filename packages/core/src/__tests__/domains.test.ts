@@ -126,6 +126,19 @@ describe('поиск (D-063)', () => {
     });
   });
 
+  test('префикс на заглавной букве тоже не режет слово: `bxC` не подходит к `bxCenter`', () => {
+    expect(compile('bxC bxCenter', (mn) => {
+      mn('bxC', {
+        style: {
+          boxSizing: 'content-box',
+        },
+      });
+    })).toMatchObject({
+      css: '.bxC{box-sizing:content-box}',
+      warnings: [],
+    });
+  });
+
   test('префикс на дефисе подходит к слову (уточнение правила 3)', () => {
     expect(compile('text-muted text-x', (mn) => {
       mn(

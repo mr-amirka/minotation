@@ -516,7 +516,7 @@ describe('одиночные свойства-длины со своим раз�
       'letter-spacing:normal',
     ],
     [
-      'ltsNormal',
+      'ltsN',
       'letter-spacing:normal',
     ],
     [
@@ -544,7 +544,7 @@ describe('одиночные свойства-длины со своим раз�
       'font-size-adjust:none',
     ],
     [
-      'fsaFromFont',
+      'fsaFF',
       'font-size-adjust:from-font',
     ],
   ])('%s → %s', (token, expected) => {
@@ -666,11 +666,11 @@ describe('line-height, z-index, font-weight', () => {
       'font-weight:lighter',
     ],
     [
-      'fwBold',
+      'fwB',
       'font-weight:bold',
     ],
     [
-      'fwBolder',
+      'fwBR',
       'font-weight:bolder',
     ],
     [
@@ -811,11 +811,11 @@ describe('свойства с закрытым перечнем значений
   // знал (permissive pass-through), поэтому мусор уходил в CSS молча.
   const OK: Array<[string, string]> = [
     [
-      'irPixelated',
+      'irP',
       'image-rendering:pixelated',
     ],
     [
-      'irCrispEdges',
+      'irCE',
       'image-rendering:crisp-edges',
     ],
     [
@@ -823,7 +823,7 @@ describe('свойства с закрытым перечнем значений
       'appearance:none',
     ],
     [
-      'apMenulistButton',
+      'apMB',
       'appearance:menulist-button',
     ],
     [
@@ -835,15 +835,15 @@ describe('свойства с закрытым перечнем значений
       'transition-timing-function:step-end',
     ],
     [
-      'gafRow',
+      'gafR',
       'grid-auto-flow:row',
     ],
     [
-      'tdsEdges',
+      'tdsE',
       'text-decoration-skip:edges',
     ],
     [
-      'tdsiAll',
+      'tdsiAL',
       'text-decoration-skip-ink:all',
     ],
     [
@@ -851,11 +851,11 @@ describe('свойства с закрытым перечнем значений
       'text-decoration-style:wavy',
     ],
     [
-      'tupFromFont',
+      'tupFF',
       'text-underline-position:from-font',
     ],
     [
-      'tsFlat',
+      'tsF',
       'transform-style:flat',
     ],
     [
@@ -863,11 +863,11 @@ describe('свойства с закрытым перечнем значений
       'mix-blend-mode:plus-lighter',
     ],
     [
-      'temsSesame',
+      'temsS',
       'text-emphasis-style:sesame',
     ],
     [
-      'tempOver',
+      'tempO',
       'text-emphasis-position:over',
     ],
   ];
@@ -910,32 +910,27 @@ describe('свойства с закрытым перечнем значений
 
   test.each([
     [
-      'tems_Filled_Dot',
-      'text-emphasis-style:Filled Dot',
-    ],
-    [
-      'tems_filled_dot',
+      'temsF_D',
       'text-emphasis-style:filled dot',
     ],
     [
-      'tempOver_Right',
+      'tempO_R',
       'text-emphasis-position:over right',
     ],
     [
-      'tdsObjects_Spaces',
+      'tdsO_S',
       'text-decoration-skip:objects spaces',
     ],
     [
-      'gafRow_Dense',
+      'gafR_D',
       'grid-auto-flow:row dense',
     ],
     [
-      'tupUnder_Left',
+      'tupU_L',
       'text-underline-position:under left',
     ],
   ])('%s → %s — свойство берёт несколько слов', (token, expected) => {
-    // Регистр не важен: ключевые слова в CSS регистронезависимы, а сырой режим
-    // (`tems_Filled_Dot`) оставляет их как написано.
+    // Буква — в каждой части; полные слова (`tems_filled_dot`) бракуются (D-113).
     expect(compile([token]).css).toContain(expected);
   });
 
@@ -962,45 +957,57 @@ describe('свойства с закрытым перечнем значений
   });
 
   test('второе слово проверяется наравне с первым', () => {
-    expect(compile(['tems_Filled_Zzz']).css).toBe('');
-    expect(compile(['gafRow_Zzz']).css).toBe('');
+    expect(compile(['temsF_Zzz']).css).toBe('');
+    expect(compile(['gafR_Zzz']).css).toBe('');
   });
 
   test.each([
     [
       'tsPreserve3d',
+      'tsP',
       'transform-style:preserve-3d',
     ],
     [
       'tsPreserve3D',
+      'tsP',
       'transform-style:preserve-3d',
     ],
     [
       'irOptimizeSpeed',
+      'irOS',
       'image-rendering:optimizeSpeed',
     ],
     [
       'irOptimizeQuality',
+      'irOQ',
       'image-rendering:optimizeQuality',
     ],
     [
       'irMozCrispEdges',
+      'irMCE',
       'image-rendering:-moz-crisp-edges',
     ],
     [
       'irWebkitOptimizeContrast',
+      'irWOC',
       'image-rendering:-webkit-optimize-contrast',
     ],
-  ])('%s → %s — запись, которую camelCase иначе ломает', (token, expected) => {
-    // Цифра не даёт дефиса (`preserve3d` вместо `preserve-3d`), ведущий дефис
-    // вендорной формы теряется, а `optimizeSpeed` записан camelCase в самой
-    // спецификации — это legacy из SVG.
+  ])('%s бракуется в пользу %s — буква даёт точное написание %s', (
+    long, short, expected,
+  ) => {
+    // camelCase ломает эти слова: цифра не даёт дефиса (`preserve3d` вместо `preserve-3d`), ведущий дефис вендорной
+    // формы теряется, а `optimizeSpeed` записан camelCase в самой спецификации — это legacy из SVG. Буква пишет
+    // слово точно, а длинную форму разбор всё равно узнаёт, чтобы подсказать букву (D-113).
     const [
       prop,
       value,
     ] = expected.split(':');
     expect(lexer.matchProperty(prop, value).matched).toBeTruthy();
-    expect(compile([token]).css).toContain(expected);
+    expect(compile([short]).css).toContain(expected);
+    const result = compile([long]);
+    expect(result.css).toBe('');
+    expect(result.warnings.map((w) => w.message).join('\n'))
+      .toContain('Write it shorter: "' + short + '" instead of "' + long + '"');
   });
 
   test('подстановка проходит: её содержимое здесь разбирать нечем', () => {
@@ -1092,11 +1099,11 @@ describe('у свойства с перечнем число недопусти�
       'position:absolute',
     ],
     [
-      'posSticky',
+      'posSK',
       'position:sticky',
     ],
     [
-      'posWebkitSticky',
+      'posWS',
       'position:-webkit-sticky',
     ],
     [
@@ -1142,7 +1149,7 @@ describe('стиль границы — закрытый перечень', () =
       'border-style:dotted',
     ],
     [
-      'bsSolid',
+      'bsS',
       'border-style:solid',
     ],
     [
@@ -1182,9 +1189,10 @@ describe('стиль границы — закрытый перечень', () =
 
   test('без стороны берёт несколько значений, со стороной — одно', () => {
     expect(lexer.matchProperty('border-style', 'solid dotted').matched).toBeTruthy();
-    expect(compile(['bsSolid_Dotted']).css).toContain('border-style:solid dotted');
+    expect(compile(['bsS_DT']).css).toContain('border-style:solid dotted');
     expect(lexer.matchProperty('border-top-style', 'solid dotted').matched).toBeFalsy();
     expect(compile(['bst10_20']).css).toBe('');
+    expect(compile(['bstS_DT']).css).toBe('');
   });
 });
 
@@ -1233,11 +1241,11 @@ describe('свойства, которые берут безразмерное �
       'zoom:150%',
     ],
     [
-      'zmNormal',
+      'zmN',
       'zoom:normal',
     ],
     [
-      'zmReset',
+      'zmR',
       'zoom:reset',
     ],
     [
@@ -1418,7 +1426,7 @@ describe('голое число у свойств-длин со словарём
       'vertical-align:-2px',
     ],
     [
-      'td_underline_2',
+      'tdU_2',
       'text-decoration:underline 2px',
     ],
     [
@@ -1470,13 +1478,13 @@ describe('голое число у свойств-длин со словарём
       'at most 2 lengths',
     ],
     [
-      'bgs_cover_10',
+      'bgsCV_10',
       'background-size',
       'cover 10px',
       '"cover" stands alone',
     ],
     [
-      'td_underline_2_3',
+      'tdU_2_3',
       'text-decoration',
       'underline 2px 3px',
       'at most 1 length',
@@ -1493,8 +1501,8 @@ describe('голое число у свойств-длин со словарём
 
   test('`auto` в паре с длиной и `auto auto` — законные размеры', () => {
     expect(lexer.matchProperty('background-size', 'auto auto').matched).toBeTruthy();
-    expect(compile(['bgs_auto_auto']).css).toContain('background-size:auto auto');
-    expect(compile(['bgs_auto_10']).css).toContain('background-size:auto 10px');
+    expect(compile(['bgsA_A']).css).toContain('background-size:auto auto');
+    expect(compile(['bgsA_10']).css).toContain('background-size:auto 10px');
   });
 });
 
@@ -1573,7 +1581,7 @@ describe('свойства-картинки оборачивают в url() то
       'background-image:none',
     ],
     [
-      'bgi_none',
+      'bgiN',
       'background-image:none',
     ],
     [
@@ -1623,10 +1631,11 @@ describe('свойства-картинки оборачивают в url() то
   });
 });
 
-describe('сырой режим только там, где значение составное', () => {
-  // Ведущий `_` означает «значение уже готово» и отключает проверку. У
-  // свойства с закрытым перечнем готового значения, которого автор нотации не
-  // предусмотрел, не бывает — там выход только пропускал мусор.
+describe('сырой режим не пропускает слов, у которых есть буква', () => {
+  // Ведущий `_` означает «значение уже готово». У свойства с закрытым перечнем
+  // готового значения, которого автор нотации не предусмотрел, не бывает — там
+  // выход только пропускал мусор. У составного значения буквы пишутся в каждой
+  // части (`dI_FR`), а полные слова бракуются с подсказкой (D-113).
   test.each([
     [
       'ov_solid',
@@ -1667,38 +1676,74 @@ describe('сырой режим только там, где значение с�
 
   const COMPOSITE: Array<[string, string]> = [
     [
-      'd_inline_flow-root',
+      'dI_FR',
       'display:inline flow-root',
     ],
     [
-      'lis_disc_inside',
+      'lisD_I',
       'list-style:disc inside',
     ],
     [
-      'ovb_contain_auto',
+      'ovbCT_A',
       'overscroll-behavior:contain auto',
     ],
     // Цвет в shorthand не выражается — он задаётся атомарным `tdc`
     // (`tdU tdcF00`), как и решено по `ol`: один способ на одно значение.
     [
-      'td_underline_wavy',
+      'tdU_W',
       'text-decoration:underline wavy',
     ],
     [
-      'tcha_pan-x_pan-y',
+      'tchaPX_PY',
       'touch-action:pan-x pan-y',
     ],
     [
-      'op_left_top',
+      'opL_T',
       'object-position:left top',
     ],
   ];
 
-  test.each(COMPOSITE)('%s → %s — составное значение, выход остаётся', (token, expected) => {
+  test.each(COMPOSITE)('%s → %s — составное значение, буква в каждой части', (token, expected) => {
     const at = expected.indexOf(':');
     expect(lexer.matchProperty(expected.slice(0, at), expected.slice(at + 1)).matched)
       .toBeTruthy();
     expect(compile([token]).css).toContain(expected);
+  });
+
+  test.each([
+    [
+      'd_inline_flow-root',
+      'dI_FR',
+    ],
+    [
+      'lis_disc_inside',
+      'lisD_I',
+    ],
+    [
+      'ovb_contain_auto',
+      'ovbCT_A',
+    ],
+    [
+      'td_underline_wavy',
+      'tdU_W',
+    ],
+    [
+      'tcha_pan-x_pan-y',
+      'tchaPX_PY',
+    ],
+    [
+      'op_left_top',
+      'opL_T',
+    ],
+    [
+      'dI_flow-root',
+      'dI_FR',
+    ],
+  ])('%s бракуется — полные слова, есть "%s" (D-113)', (token, short) => {
+    const result = compile([token]);
+    expect(result.css).toBe('');
+    expect(result.warnings.map((w) => w.message).join('\n'))
+      .toContain('Write it shorter: "' + short + '" instead of "' + token + '"');
   });
 
   test.each([
@@ -1784,7 +1829,7 @@ describe('content: кавычки ставит хендлер', () => {
       'content:none',
     ],
     [
-      'cntNone',
+      'cntN',
       'content:none',
     ],
     [
@@ -1792,11 +1837,11 @@ describe('content: кавычки ставит хендлер', () => {
       'content:normal',
     ],
     [
-      'cntOpenQuote',
+      'cntOQ',
       'content:open-quote',
     ],
     [
-      'cntNoCloseQuote',
+      'cntNCQ',
       'content:no-close-quote',
     ],
     [
@@ -2014,7 +2059,7 @@ describe('тени: список и переменная вместо сырог
       'box-shadow:none',
     ],
     [
-      'bxshNone',
+      'bxshN',
       'box-shadow:none',
     ],
     [
@@ -2214,7 +2259,7 @@ describe('составные значения по слотам: fx, col, tem, c
       'flex:1 1',
     ],
     [
-      'fx_1_1_auto',
+      'fx1_1_A',
       'flex:1 1 auto',
     ],
     [
@@ -2230,7 +2275,7 @@ describe('составные значения по слотам: fx, col, tem, c
       'flex:auto',
     ],
     [
-      'fxContent',
+      'fxC',
       'flex:content',
     ],
     [
@@ -2246,11 +2291,11 @@ describe('составные значения по слотам: fx, col, tem, c
       'columns:auto',
     ],
     [
-      'temFilled',
+      'temF',
       'text-emphasis:filled',
     ],
     [
-      'tem_filled_dot',
+      'temF_D',
       'text-emphasis:filled dot',
     ],
     [
@@ -2346,7 +2391,7 @@ describe('составные значения по слотам: fx, col, tem, c
 
   test('функция внутри составного значения тоже проходит', () => {
     // Содержимое функции слотами не описать, а валидна она в любом из них.
-    expect(compile(['fx_--g_1_auto']).css).toContain('flex:var(--g) 1 auto');
+    expect(compile(['fx--g_1_A']).css).toContain('flex:var(--g) 1 auto');
     expect(compile(['coi_--name_2']).css).toContain('counter-increment:var(--name) 2');
     expect(compile(['col_--n_30em']).css).toContain('columns:var(--n) 30em');
   });
@@ -2367,7 +2412,7 @@ describe('дорожки и позиции сетки', () => {
       'grid-template-columns:none',
     ],
     [
-      'gtcAuto',
+      'gtcA',
       'grid-template-columns:auto',
     ],
     [
@@ -2375,7 +2420,7 @@ describe('дорожки и позиции сетки', () => {
       'grid-template-columns:min-content',
     ],
     [
-      'gtcSubgrid',
+      'gtcS',
       'grid-template-columns:subgrid',
     ],
     [
@@ -2474,15 +2519,15 @@ describe('дорожки и позиции сетки', () => {
 describe('flex-flow, transition-property, font-family', () => {
   test.each([
     [
-      'fxfRow',
+      'fxfR',
       'flex-flow:row',
     ],
     [
-      'fxf_row_wrap',
+      'fxfR_W',
       'flex-flow:row wrap',
     ],
     [
-      'fxfColumnReverse',
+      'fxfCR',
       'flex-flow:column-reverse',
     ],
     [
@@ -2574,27 +2619,27 @@ describe('составное значение проверяется по час
 
   test.each([
     [
-      'd_inline_flow-root',
+      'dI_FR',
       'display:inline flow-root',
     ],
     [
-      'lis_disc_inside',
+      'lisD_I',
       'list-style:disc inside',
     ],
     [
-      'ovb_contain_auto',
+      'ovbCT_A',
       'overscroll-behavior:contain auto',
     ],
     [
-      'tcha_pan-x_pan-y',
+      'tchaPX_PY',
       'touch-action:pan-x pan-y',
     ],
     [
-      'op_left_top',
+      'opL_T',
       'object-position:left top',
     ],
     [
-      'td_underline_2px',
+      'tdU_2px',
       'text-decoration:underline 2px',
     ],
   ])('%s → %s — законные части не задеты', (token, expected) => {
@@ -2712,7 +2757,7 @@ describe('фильтры, text-size-adjust, позиции сетки', () => {
       'grid-column:1/-1',
     ],
     [
-      'gr_span_2',
+      'grS_2',
       'grid-row:span 2',
     ],
     [
@@ -2832,11 +2877,11 @@ describe('border-image: источник, слайсы, ширина после 
       'border-image:url(a.png) 30 / 1px',
     ],
     [
-      'biStretch',
+      'biST',
       'border-image:stretch',
     ],
     [
-      'bi_30_round',
+      'bi30_RD',
       'border-image:30 round',
     ],
     [
@@ -2897,11 +2942,11 @@ describe('grid и grid-template', () => {
       'grid:"a" 1fr',
     ],
     [
-      'g_auto-flow_1fr_/_1fr',
+      'gAF_1fr_/_1fr',
       'grid:auto-flow 1fr / 1fr',
     ],
     [
-      'g_auto-flow_/_1fr',
+      'gAF_/_1fr',
       'grid:auto-flow / 1fr',
     ],
     [
@@ -2909,7 +2954,7 @@ describe('grid и grid-template', () => {
       'grid-template:"a b" 1fr',
     ],
     [
-      'gt_"a_b"_1fr_/_auto',
+      'gt"a_b"_1fr_/_A',
       'grid-template:"a b" 1fr / auto',
     ],
   ];
@@ -3011,11 +3056,11 @@ describe('свойства, принимающие числа и несколь�
       'background-size:cover',
     ],
     [
-      'ov_hidden_auto',
+      'ovH_A',
       'overflow:hidden auto',
     ],
     [
-      'tov_ellipsis_clip',
+      'tovE_C',
       'text-overflow:ellipsis clip',
     ],
     [
@@ -3023,7 +3068,7 @@ describe('свойства, принимающие числа и несколь�
       'object-position:50% 50%',
     ],
     [
-      'op_left_top',
+      'opL_T',
       'object-position:left top',
     ],
   ])('%s → %s', (token, expected) => {

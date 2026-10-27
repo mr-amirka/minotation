@@ -316,7 +316,7 @@ describe('ключевые слова семейств совпадают с г�
       'auto',
     ],
     [
-      'wFitContent',
+      'wFC',
       'width',
       'fit-content',
     ],

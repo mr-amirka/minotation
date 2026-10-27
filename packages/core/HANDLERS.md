@@ -4,7 +4,7 @@
 >
 > ```bash
 > cd packages/minotation/packages/core
-> pnpm try 'gtc1fr_auto'
+> pnpm try 'gtc1fr_A'
 > pnpm try 'cr' 'r0_10_10_0' 'gtc1fr@760'
 > pnpm try 'gtcRepeat\(auto-fit,minmax\(240px,1fr\)\)'   # скобки экранируются
 > ```
@@ -119,14 +119,15 @@ fallback и сам градиент.
 |-------|-----|
 | `bgi_a\.png` | `background-image:url("a.png")` |
 | `bgi_images/a\.png` | `background-image:url("images/a.png")` |
-| `bgiN`, `bgi_none`, `bgi` | `background-image:none` |
+| `bgiN`, `bgi` | `background-image:none` |
 | `bgiInherit` | `background-image:inherit` |
 | `bgi_url\(a\.png\)` | `background-image:url(a.png)` — уже функция, проходит как есть |
 | `bgi_linear-gradient\(red,blue\)` | `background-image:linear-gradient(red,blue)` |
 
 До 2026-09-26 обёртка была безусловной, поэтому `bgi_url\(a\.png\)` давало
 `url("url(a.png)")`, `bgi_none` — `url("none")`, а градиент превращался в имя
-файла. Краткой записи `bgiN` не было вовсе.
+файла. Краткой записи `bgiN` не было вовсе; с D-113 `bgi_none` и `bgiNone` бракуются с подсказкой «Write it
+shorter: "bgiN"».
 
 ### Список переменных через запятую
 
@@ -177,21 +178,23 @@ tnA_0.2s_--ease     →  transition:all 0.2s var(--ease)
 ff_Times_New_Roman  →  font-family:"Times New Roman"
 ```
 
-**Доступен только там, где значение составное.** У свойства с закрытым перечнем
-готового значения, которого нотация не предусмотрела, не бывает, поэтому такой
-выход там только пропускал мусор: до 2026-09-26 `ov_solid` давал
-`overflow:solid`, `of_solid` — `object-fit:solid`, `d_solid` — `display:solid`.
+**Доступен только там, где значение составное, и не для слов, у которых есть буква.** У свойства с закрытым
+перечнем готового значения, которого нотация не предусмотрела, не бывает, поэтому такой выход там только пропускал
+мусор: до 2026-09-26 `ov_solid` давал `overflow:solid`, `of_solid` — `object-fit:solid`, `d_solid` — `display:solid`.
+Слово CSS с буквой пишется буквой и в составном значении — в каждой части (D-113): `d_inline_flow-root` бракуется с
+подсказкой «Write it shorter: "dI_FR"». Сырой режим остаётся для того, что буквами не пишется: имён, переменных,
+функций, чисел.
 
 Составные среди свойств со словарём — пять, плюс позиция объекта:
 
 | Тег | Свойство | Пример |
 |-----|----------|--------|
-| `d` | `display` | `d_inline_flow-root` → `display:inline flow-root` |
-| `lis` | `list-style` | `lis_disc_inside` → `list-style:disc inside` |
-| `ovb` | `overscroll-behavior` | `ovb_contain_auto` |
-| `td` | `text-decoration` | `td_underline_wavy_red` |
-| `tcha` | `touch-action` | `tcha_pan-x_pan-y` |
-| `op` | `object-position` | `op_left_top` (буквами — `opL_T`, см. «Позиция и трансформация») |
+| `d` | `display` | `dI_FR` → `display:inline flow-root` |
+| `lis` | `list-style` | `lisD_I` → `list-style:disc inside` |
+| `ovb` | `overscroll-behavior` | `ovbCT_A` |
+| `td` | `text-decoration` | `tdU_W_Red` |
+| `tcha` | `touch-action` | `tchaPX_PY` |
+| `op` | `object-position` | `opL_T` (см. «Позиция и трансформация») |
 
 У остальных пишите краткую или полную запись: `ovA`, `dB`, `ofCT`.
 
@@ -216,9 +219,10 @@ ff_Times_New_Roman  →  font-family:"Times New Roman"
 псевдоэлемент (обычный приём для `::before`/`::after` с оформлением),
 `content:none` не создаёт его вовсе.
 
-Без `_` ожидается ключевое слово свойства: `cnt` и `cntNone` → `none`,
-`cntNormal`, `cntOpenQuote`, `cntCloseQuote`, `cntNoOpenQuote`,
-`cntNoCloseQuote`, плюс CSS-wide (`cntInherit`).
+Без `_` ожидается ключевое слово свойства, буквой: `cnt` и `cntN` → `none`, `cntOQ` / `cntCQ` → `open-quote` /
+`close-quote`, `cntNOQ` / `cntNCQ` → `no-open-quote` / `no-close-quote`; `cntNormal` (буквы пока нет —
+RESEARCH/22, Q7) и CSS-wide (`cntInherit`). Полные слова с буквой (`cntNone`, `cntOpenQuote`) бракуются с подсказкой
+(D-113).
 
 Текст без `_` бракуется: `cntHello` — ошибка с подсказкой, потому что
 `content:hello` браузер отбрасывает (текст в `content` требует кавычек).
@@ -477,7 +481,7 @@ mn.setOptions({ axisMode: 'logical' }); mn.recompile(); // живой инста
 
 `fx` — только `flex`-shorthand (`fx1` → `flex:1`), **не** `display:flex` (для этого — `dF`,
 см. Типографику/Display ниже). Без аргумента (`fx` без числа) хендлер не срабатывает —
-**всегда указывайте значение** (`fx1`, `fx0_1_Auto`, …).
+**всегда указывайте значение** (`fx1`, `fx0_1_A`, …).
 
 | Токен | CSS |
 |-------|-----|
@@ -539,11 +543,8 @@ mn.setOptions({ axisMode: 'logical' }); mn.recompile(); // живой инста
 (`jcQ` дал бы `justify-content:q`) — такое значение бракуется с предупреждением
 `invalid-css-value`, см. `isUnresolvedSynonym` в `cssGrammar.ts`.
 
-⚠️ **Известная проблема** (не входит в эту документацию, зафиксировано в `PLAN.md`):
-`fx0_1_Auto` и подобные значения с заглавной буквой внутри multi-value ломаются —
-`toKebabCase` вставляет `-` перед заглавной буквой, считая её началом camelCase, а не
-началом отдельного ключевого слова. Не используйте заглавные буквы в multi-value
-аргументах `fx`/`fxw` до починки.
+Слова в составном значении `fx` пишутся буквами в каждой части (D-113): `fx0_1_A` → `flex:0 1 auto`, `fx1_1_C` →
+`flex:1 1 content`; `fx0_1_Auto` и `fx0_1_auto` бракуются с подсказкой «Write it shorter: "fx0_1_A"».
 
 ---
 
@@ -554,12 +555,12 @@ mn.setOptions({ axisMode: 'logical' }); mn.recompile(); // живой инста
 | Токен | CSS |
 |-------|-----|
 | `fontInherit` | `font:inherit` |
-| `fontCaption` | `font:caption` |
-| `fontIcon` | `font:icon` |
-| `fontMenu` | `font:menu` |
-| `fontMessageBox` | `font:message-box` |
-| `fontSmallCaption` | `font:small-caption` |
-| `fontStatusBar` | `font:status-bar` |
+| `fontC` | `font:caption` |
+| `fontI` | `font:icon` |
+| `fontM` | `font:menu` |
+| `fontMB` | `font:message-box` |
+| `fontSC` | `font:small-caption` |
+| `fontSB` | `font:status-bar` |
 
 Эти значения задают **весь набор шрифтовых свойств разом** — family, size,
 line-height, weight, style, variant, stretch. Атомарными тегами их не собрать:
@@ -584,7 +585,7 @@ font12px_Arial         →   f12 ffArial
 | `f22` | `font-size:22px` |
 | `fw5` | `font-weight:500` |
 | `fw600` | `font-weight:600` (значение CSS как есть; с 2026-09-22 — раньше давало `900`) |
-| `fwBold` | `font-weight:bold` |
+| `fwB` | `font-weight:bold` |
 | `lh1.5` | `line-height:1.5` — безразмерный множитель, как в CSS |
 | `lh1` | `line-height:1` |
 | `lh20px` | `line-height:20px` — единица указывается явно |
@@ -640,11 +641,11 @@ Text-align — тег `ta` + буква (`taC`/`taR`/`taL`/`taJ`/`taE`/`taS`), �
 | `tdsiA` | `text-decoration-skip-ink:auto` |
 | `tdt2px` | `text-decoration-thickness:2px` |
 | `tuo2px` | `text-underline-offset:2px` — добавлено 2026-09-22 |
-| `tupFromFont` | `text-underline-position:from-font` — добавлено 2026-09-22 |
+| `tupFF` | `text-underline-position:from-font` — добавлено 2026-09-22 |
 | `temN` | `text-emphasis:none` (значение — суффикс целиком, passthrough; без суффикса хендлер не срабатывает) |
 | `temcF00` | `text-emphasis-color:#f00` |
-| `tempOver` | `text-emphasis-position:over` |
-| `tems_Filled_Dot` | `text-emphasis-style:Filled Dot` — ведущий `_` даёт пробелы вместо дефисов (без него `temsFilledDot` даст ошибочное `filled-dot`) |
+| `tempO` | `text-emphasis-position:over` |
+| `temsF_D` | `text-emphasis-style:filled dot` — буква в каждой части (D-113) |
 
 `td`/`tdl` — **не пишите произвольное значение**, только буквы из `TD_SYNONYMS` (`N`/`U`/`O`/`L`);
 остальные хендлеры этой группы (`tdc`, `tds…`, `tem…`) — обычный camelCase/snakeCase passthrough
@@ -661,8 +662,8 @@ Text-align — тег `ta` + буква (`taC`/`taR`/`taL`/`taJ`/`taE`/`taS`), �
 `bgs10` → `background-size:10px`, `bgs10_20` → `10px 20px`, `bgpy-10` → `background-position-y:-10px`. Размер
 отрицательным не бывает: `bgs-10px`, `mks-5` — ошибка «expected a length, zero or positive» (раньше `bgs-10px` давало
 `background-size:-10px`, и браузер отбрасывал правило). Длин в размере не больше двух, `cover`/`contain` стоят
-одни: `bgs10_20_30` — «at most 2 lengths», `bgs_cover_10` — «"cover" stands alone»; у `td` толщина одна
-(`td_underline_2_3` — «at most 1 length»). Раньше все три давали CSS, который браузер отбрасывал.
+одни: `bgs10_20_30` — «at most 2 lengths», `bgsCV_10` — «"cover" stands alone»; у `td` толщина одна
+(`tdU_2_3` — «at most 1 length»). Раньше все три давали CSS, который браузер отбрасывал.
 
 Числовые формы бракуются с 2026-09-27: `bg10zz` давало `background:10zz`,
 `bg1/2` — `background:1/2`, `bg10_20` — `background:10_20`, а `bg100%-20px`
@@ -897,7 +898,7 @@ tn{свойство}_{длительность}_{плавность}_{задер
 Длинное слово отвечает буквой (D-015): `tn_A_0.2s` → «write it shorter — "A" instead of "all"»,
 `tn_color_0.2s_ease-in` → «"EI" instead of "ease-in"». Функции плавности (`cubic-bezier(…)`, `steps(…)`,
 `linear(…)`) пишутся как в CSS. `none` — буквой, как у `tp` и `an` (D-111): `tnN`; `tnNone` и `tn_none` →
-«Write "tnN" instead of "tnNone" — same value».
+«Write it shorter: "tnN" instead of "tnNone" — same value».
 
 Каждый слот необязателен, но **порядок обязателен**: `tn_0.2s_A` и
 `tn_E_0.2s` бракуются, хотя CSS их принимает. Грамматика
@@ -959,7 +960,7 @@ an_{имя}_{длительность}_{плавность}_{задержка}_{
 | `an_spin_1s_L_infinite` | `animation:spin 1s linear infinite` |
 | `an_fade_200` | `animation:fade 200ms` — голое число получает `ms`, как у `tn` |
 | `an_fade_200_300_2_alternate_forwards_paused` | `animation:fade 200ms 300ms 2 alternate forwards paused` |
-| `an_none` | `animation:none` |
+| `anN` | `animation:none` (`anNone` и `an_none` бракуются с подсказкой, D-113) |
 | `an_a_1s,b_2s` | `animation:a 1s,b 2s` — несколько анимаций через запятую |
 
 Как у `tn`: каждый слот необязателен, порядок — обязателен (`an_1s_fade` — предупреждение с
@@ -1324,9 +1325,9 @@ mn.assign({ 'button:not(.plain)': 'p10' })    → button:not(.plain){padding:10p
 
 | Тег | Слоты | Примеры |
 |-----|-------|---------|
-| `fx` | `рост сжатие база` | `fx1`, `fx_1_1`, `fx_1_1_auto`, `fx_1_1_0%`, `fxN`, `fxA`, `fxContent` |
+| `fx` | `рост сжатие база` | `fx1`, `fx_1_1`, `fx1_1_A`, `fx_1_1_0%`, `fxN`, `fxA`, `fxC` |
 | `col` | `число-колонок ширина` | `col3`, `col_3_30em`, `colA` |
-| `tem` | `стиль цвет` | `temFilled`, `tem_filled_dot`, `temN` |
+| `tem` | `стиль цвет` | `temF`, `temF_D`, `temN` |
 | `coi`, `cor` | пары `имя значение` | `coi_n_2`, `cor_n_0`, `coiNone` |
 
 До 2026-09-27 все пять были permissive pass-through — значение кебабилось и
@@ -1343,7 +1344,7 @@ coi10   →  counter-increment:10
 проверяется: `col_30em_3` (ширина перед числом колонок) и `coi_2_n` (значение
 перед именем) — ошибки.
 
-Подстановка проходит в любом слоте: `fx_--g_1_auto`, `coi_--name_2`.
+Подстановка проходит в любом слоте: `fx--g_1_A`, `coi_--name_2`. Слова — буквами в каждой части (D-113).
 
 ## Grid
 
@@ -1354,8 +1355,8 @@ coi10   →  counter-increment:10
 | `gN` | `grid:none` |
 | `g_1fr_/_1fr` | `grid:1fr / 1fr` — строки / столбцы |
 | `g_"a"_1fr` | `grid:"a" 1fr` — область и размер |
-| `gt_"a_b"_1fr_/_auto` | `grid-template:"a b" 1fr / auto` |
-| `g_auto-flow_1fr_/_1fr` | `grid:auto-flow 1fr / 1fr` |
+| `gt"a_b"_1fr_/_A` | `grid-template:"a b" 1fr / auto` |
+| `gAF_1fr_/_1fr` | `grid:auto-flow 1fr / 1fr` — `AF` auto-flow, `D` dense |
 
 **`g_1fr_1fr` бракуется** — работало, но по грамматике невалидно: `grid` это
 либо `none`, либо области в кавычках, либо «строки / столбцы». Один список
@@ -1372,7 +1373,7 @@ coi10   →  counter-increment:10
 |-------|-----|
 | `gtc1fr_1fr` | `grid-template-columns:1fr 1fr` |
 | `gtc50%` | `grid-template-columns:50%` |
-| `gtcN`, `gtcAuto`, `gtcMinContent`, `gtcSubgrid` | соответствующее слово |
+| `gtcN`, `gtcA`, `gtcMinContent`, `gtcS` | `none`, `auto`, `min-content` (буквы пока нет — RESEARCH/22, Q1), `subgrid` |
 | `gtc_repeat\(3,1fr\)` | `repeat(3,1fr)` |
 | `gtr_minmax\(100px,1fr\)` | `minmax(100px,1fr)` |
 | `gtc_\[a\]_1fr` | `[a] 1fr` — имя линии, скобки экранируются |
@@ -1393,13 +1394,13 @@ coi10   →  counter-increment:10
 Здесь проверяется немногое: по грамматике `<grid-line>` допускает почти любой
 идентификатор, так что `grSpan2` и `grZzz` — законные имена линий. Бракуется
 только длина: `gr10px`. `A` — `auto` (2026-10-26, группа C): раньше `gcA` давало `grid-column:a`, линию с именем
-`a`; `grAuto` теперь отвечает «Write "grA"». Одна линия — `grs`/`gre`/`gcs`/`gce`, см. «Сетка и выравнивание».
+`a`; `grAuto` теперь отвечает «Write it shorter: "grA"». Одна линия — `grs`/`gre`/`gcs`/`gce`, см. «Сетка и выравнивание».
 
 
 | Токен | CSS |
 |-------|-----|
-| `gtc1fr_auto` | `grid-template-columns:1fr auto` |
-| `gtcN` / `gtcAuto` / `gtcSubgrid` | `grid-template-columns:none` / `auto` / `subgrid` |
+| `gtc1fr_A` | `grid-template-columns:1fr auto` |
+| `gtcN` / `gtcA` / `gtcS` | `grid-template-columns:none` / `auto` / `subgrid` |
 | `gtcAF240` | `grid-template-columns:repeat(auto-fit, minmax(240px, 1fr))` |
 | `gtcAF240_300` | `grid-template-columns:repeat(auto-fit, minmax(240px, 300px))` |
 | `gtcAF15em` | `grid-template-columns:repeat(auto-fit, minmax(15em, 1fr))` |
@@ -1478,12 +1479,13 @@ coi10   →  counter-increment:10
 | `gcs2` | `grid-column-start:2` |
 | `gce-1` | `grid-column-end:-1` |
 | `greA` | `grid-row-end:auto` |
-| `grsSpan_2` | `grid-row-start:span 2` |
+| `grsS_2` | `grid-row-start:span 2` — `S` span |
 | `gcs2_Header` | `grid-column-start:2 header` |
-| `gceSpan_2_Header` | `grid-column-end:span 2 header` |
+| `gceS_2_Header` | `grid-column-end:span 2 header` |
 
 Бракуются: пара через `/` (`gcs1/3` → «both ends are written with "gc1/3"»), `0`, дробь, два номера (`grs2_3`),
-`Span` без номера и имени, `Span` с отрицательным номером, длинное `gcsAuto` (→ «"gcsA"»).
+`S` без номера и имени, `S` с отрицательным номером, длинные `gcsAuto` и `gcsSpan_2` (→ «Write it shorter: "gcsA"»,
+«"gcsS_2"»).
 
 **Пары выравнивания:** `plc` (`place-content`), `pli` (`place-items`), `pls` (`place-self`). Первая часть — `align-*`,
 вторая через `_` — `justify-*`; буквы те же, что у одиночных хендлеров: `plc` = `ac` + `jc`, `pli` = `ai` + `ji`,
@@ -1507,8 +1509,8 @@ justify-items. Available: pliC_N (normal), …»); длинное слово —
 
 **Позиция** — один разбор у `op` (`object-position`), `pspo` (`perspective-origin`) и `tfo` (`transform-origin`).
 Части через `_`: буквы `L`/`C`/`R`/`T`/`B`, длина или процент (голое число — `px`), переменная, функция. Угол
-`TL`/`TR`/`BL`/`BR` — первой частью, разворачивается в два слова. Ведущий `_` — запись словами CSS, как раньше:
-`op_left_top`, `op_right_10px_top_20px`.
+`TL`/`TR`/`BL`/`BR` — первой частью, разворачивается в два слова. Слова CSS — только буквами (D-113): `op_left_top`
+бракуется с подсказкой «Write it shorter: "opL_T"», `op_right_10px_top_20px` — «"opR_10px_T_20px"».
 
 | Токен | CSS |
 |-------|-----|
@@ -1549,7 +1551,7 @@ justify-items. Available: pliC_N (normal), …»); длинное слово —
 | `hyA` | `hyphens:auto` | `N` none, `M` manual, `A` auto |
 | `owrA` | `overflow-wrap:anywhere` | `N` normal, `BW` break-word (как у `wb`), `A` anywhere; старое имя `word-wrap` — опцией `overflowWrapMode` (ниже) |
 | `tbs4`, `tbs2em` | `tab-size:4`, `2em` | целое число пробелов без `px` или длина; не отрицательное, без `%` |
-| `fvnTN_SZ` | `font-variant-numeric:tabular-nums slashed-zero` | `N`, `LN`/`ON`, `PN`/`TN`, `DF`/`SF`, `O`, `SZ`; пара — из разных групп в порядке спецификации; три слова и больше — словами CSS: `fvn_lining-nums_tabular-nums_slashed-zero` |
+| `fvnTN_SZ` | `font-variant-numeric:tabular-nums slashed-zero` | `N`, `LN`/`ON`, `PN`/`TN`, `DF`/`SF`, `O`, `SZ`; по одной из группы, в порядке спецификации: `fvnLN_TN_SZ`; `fvnSZ_TN` → «Write "fvnTN_SZ"», `fvnLN_ON` и `fvnN_TN` бракуются |
 | `bdbC` | `-webkit-box-decoration-break:clone; box-decoration-break:clone` | `S` slice, `C` clone; префикс нужен Safari |
 | `lcl3` | `overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3` | целое от 1 или переменная; `lclN` снимает обрезку |
 | `fszC` | `field-sizing:content` | `F` fixed, `C` content |
@@ -1583,7 +1585,7 @@ mn.setOptions({ overflowWrapMode: 'standard' }); mn.recompile(); // живой �
 |-------|-----|
 | `ov` | `overflow:hidden` |
 | `ovyA` | `-webkit-overflow-scrolling:touch;overflow-y:auto` |
-| `irOptimizeContrast` | `image-rendering:optimize-contrast;image-rendering:-webkit-optimize-contrast` (бывший `contrast`, D-094) |
+| `irOC` | `image-rendering:optimize-contrast;image-rendering:-webkit-optimize-contrast` (бывший `contrast`, D-094) |
 | `ratio3x2` | `padding-top:66.67%` + `>*{position:absolute;top:0;right:0;bottom:0;left:0}` (было `66.66%` до фикса `toFixed`, RESEARCH/05, 2026-09-23) |
 
 ---
@@ -1595,29 +1597,29 @@ mn.setOptions({ overflowWrapMode: 'standard' }); mn.recompile(); // живой �
 `irZzz`, `apF00`, `gafZzz` в CSS не попадают. До 2026-09-26 проходило
 любое слово: `irF00` давал `image-rendering:f00`.
 
-| Тег | Свойство | Значения |
-|-----|----------|----------|
-| `ir` | `image-rendering` | `auto` `crisp-edges` `pixelated` `smooth` `optimize-contrast` `optimizeSpeed` `optimizeQuality` + вендорные |
-| `ap` | `appearance` | `none` `auto` `button` `textfield` `menulist-button` `checkbox` `radio` `listbox` `menulist` `meter` `progress-bar` `searchfield` `textarea` |
-| `gaf` | `grid-auto-flow` | `row` `column` `dense` |
-| `tds` | `text-decoration-skip` | `none` `objects` `spaces` `leading-spaces` `trailing-spaces` `edges` `box-decoration` |
-| `tdsi` | `text-decoration-skip-ink` | `auto` `all` `none` |
-| `tdst` | `text-decoration-style` | `solid` `double` `dotted` `dashed` `wavy` |
-| `tup` | `text-underline-position` | `auto` `from-font` `under` `left` `right` |
-| `ts` | `transform-style` | `flat` `preserve-3d` |
-| `tems` | `text-emphasis-style` | `none` `filled` `open` `dot` `circle` `double-circle` `triangle` `sesame` |
-| `temp` | `text-emphasis-position` | `auto` `over` `under` `right` `left` |
+Значения пишутся буквами (D-113); полное слово (`irPixelated`, `ir_pixelated`) бракуется с подсказкой «Write it
+shorter: "irP"».
 
-**Несколько слов** берут `tems`, `temp`, `tds`, `tup`, `gaf` — через `_`:
-`temsFilled_Dot`, `gafRow_Dense`, `tempOver_Right`. Остальные принимают ровно
-одно, `irA_Pixelated` бракуется.
+| Тег | Свойство | Буквы |
+|-----|----------|-------|
+| `ir` | `image-rendering` | `A` auto, `CE` crisp-edges, `P` pixelated, `S` smooth, `OC` optimize-contrast, `OS` optimizeSpeed, `OQ` optimizeQuality; вендорные `MCE` -moz-crisp-edges, `OCE` -o-crisp-edges, `WOC` -webkit-optimize-contrast |
+| `ap` | `appearance` | `N` none, `A` auto, `B` button, `MB` menulist-button, `C` checkbox, `R` radio, `L` listbox, `PB` progress-bar, `S` searchfield; `textfield`, `textarea`, `menulist`, `meter` — пока словами (RESEARCH/22, Q3) |
+| `gaf` | `grid-auto-flow` | `R` row, `C` column, `D` dense |
+| `tds` | `text-decoration-skip` | `N` none, `O` objects, `S` spaces, `LS` leading-spaces, `TS` trailing-spaces, `E` edges, `BD` box-decoration |
+| `tdsi` | `text-decoration-skip-ink` | `A` auto, `AL` all, `N` none |
+| `tdst` | `text-decoration-style` | `S` solid, `D` double, `DT` dotted, `DS` dashed, `W` wavy |
+| `tup` | `text-underline-position` | `A` auto, `FF` from-font, `U` under, `L` left, `R` right |
+| `ts` | `transform-style` | `F` flat, `P` preserve-3d |
+| `tems` | `text-emphasis-style` | `N` none, `F` filled, `O` open, `D` dot, `C` circle, `DC` double-circle, `T` triangle, `S` sesame |
+| `temp` | `text-emphasis-position` | `A` auto, `O` over, `U` under, `R` right, `L` left |
 
-**Записи, которые camelCase иначе ломает**, распознаются отдельно: `tsPreserve3d`
-и `tsPreserve3D` (цифра не даёт дефиса), `irMozCrispEdges` (ведущий дефис
-теряется), `irOptimizeSpeed` (в спецификации оно camelCase — legacy из SVG).
+**Несколько слов** берут `tems`, `temp`, `tds`, `tup`, `gaf` — через `_`, буква в каждой части: `temsF_D`, `gafR_D`,
+`tempO_R`. Остальные принимают ровно одно, `irA_P` бракуется.
 
-Регистр значения не важен: `tems_Filled_Dot` и `tems_filled_dot` дают одно и то
-же, как и положено ключевым словам CSS.
+**Слова, которые camelCase ломает** (`preserve-3d` — цифра не даёт дефиса, `-moz-crisp-edges` — ведущий дефис
+теряется, `optimizeSpeed` — в спецификации оно camelCase, legacy из SVG), буква пишет точно: `tsP`, `irMCE`, `irOS`.
+Длинную запись разбор всё равно узнаёт — `tsPreserve3d`, `tsPreserve3D`, `irMozCrispEdges`, `irOptimizeSpeed` отвечают
+подсказкой с буквой.
 
 ---
 
@@ -2082,7 +2084,7 @@ mnVite({
 |-------|-----|
 | `p10_20` | `padding:10px 20px` |
 | `p1_2_3_4` | `padding:1px 2px 3px 4px` |
-| `m0_auto` | `margin:0 auto` |
+| `m0_A` | `margin:0 auto` |
 | `p10_20-5` | `padding:10px calc(20px - 5px)` |
 | `r4_8_12_16` | `border-radius:4px 8px 12px 16px` |
 | `b1_2` | `border-width:1px 2px` |
@@ -2250,7 +2252,7 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 |-------|-----|-------|
 | `mkF00-00F` | `mask-image:linear-gradient(180deg,#f00 0%,#00f 100%)` | цвета не принимает: `mkF00` — ошибка |
 | `mki_a\.png`, `mkiN` | `mask-image:url("a.png")`, `none` | как `bgi` |
-| `mksCV`, `mks50%_auto`, `mks10` | `mask-size:cover`, `50% auto`, `10px` | `A`, `CT` contain, `CV` cover; голое число — `px` |
+| `mksCV`, `mks50%_A`, `mks10` | `mask-size:cover`, `50% auto`, `10px` | `A`, `CT` contain, `CV` cover; голое число — `px` |
 | `mkpTL`, `mkpR_10_B_20` | `mask-position:top left`, `right 10px bottom 20px` | разбор позиции как у `op` |
 | `mkrN` | `mask-repeat:no-repeat` | `R`, `N`, `X`, `Y`, `SP` space, `RD` round; пусто — `repeat` |
 | `mkoCB` | `mask-origin:content-box` | `BB`, `PB`, `CB`, `FB`, `SB`, `VB` |
@@ -2279,8 +2281,8 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 | `cpA` | `clip:auto` |
 | `dirRTL` | `direction:rtl` |
 | `lispI` | `list-style-position:inside` |
-| `fxfRow` | `flex-flow:row` |
-| `fxf_row_wrap` | `flex-flow:row wrap` |
+| `fxfR` | `flex-flow:row` — `R` row, `RR` row-reverse, `C` column, `CR` column-reverse, `NW` nowrap, `W` wrap, `WR` wrap-reverse |
+| `fxfR_W` | `flex-flow:row wrap` |
 | `olo3` | `outline-offset:3px` |
 | `stroke2` | `stroke:#222` |
 | `spnr1` | `animation:spinner-animate 1ms infinite linear` |
@@ -2329,9 +2331,11 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 `jcSpaceBetween`. Полная форма у этих значений **бракуется** — иначе одно и
 то же попадало бы в CSS двумя правилами.
 
-Там, где краткой записи нет, работает полная: `irPixelated`, `apMenulistButton`,
-`temsDoubleCircle`. Многословные значения пишутся camelCase и кебабятся сами —
-справочник аббревиатур для них не нужен.
+Слово CSS пишется буквой везде, в любой части значения и в любом режиме (D-113): `irP`, `apMB`, `temsDC`,
+`dI_FR`; `irPixelated`, `ir_pixelated` и `d_inline_flow-root` бракуются с подсказкой. Полностью пишутся только
+имена (анимации, шрифта, линии сетки, счётчика), функции и числа. Слова, буква которых ждёт решения (совпадение
+букв, `min-content`/`max-content`, ключевые слова `an`), перечислены в RESEARCH/22 и в тесте
+`abbreviation-sweep.test.ts` (`PENDING`): до решения они пишутся словом.
 
 Цвет задаётся кодом, а не именем: `cF00`, не `cRed`. По той же причине —
 `red` и `#f00` дали бы два правила для одного цвета.

@@ -152,8 +152,12 @@ describe('single properties (group F)', () => {
       'font-variant-numeric:ordinal',
     ],
     [
-      'fvn_lining-nums_tabular-nums_slashed-zero',
+      'fvnLN_TN_SZ',
       'font-variant-numeric:lining-nums tabular-nums slashed-zero',
+    ],
+    [
+      'fvnLN_PN_DF_O_SZ',
+      'font-variant-numeric:lining-nums proportional-nums diagonal-fractions ordinal slashed-zero',
     ],
     [
       'fszC',
@@ -241,7 +245,7 @@ describe('single properties (group F)', () => {
     ],
     [
       'wcTransform',
-      'Write "wcT" instead of "wcTransform" — same value',
+      'Write it shorter: "wcT" instead of "wcTransform" — same value',
     ],
     [
       'wc10',
@@ -273,7 +277,7 @@ describe('single properties (group F)', () => {
     ],
     [
       'cpthBorderBox',
-      'Write "cpthBB" instead of "cpthBorderBox"',
+      'Write it shorter: "cpthBB" instead of "cpthBorderBox"',
     ],
     [
       'hyAuto',
@@ -297,11 +301,27 @@ describe('single properties (group F)', () => {
     ],
     [
       'fvnSZ_TN',
-      'no such abbreviation',
+      'Write "fvnTN_SZ" instead of "fvnSZ_TN" — same value: the order of the specification',
+    ],
+    [
+      'fvnSZ_LN_TN',
+      'Write "fvnLN_TN_SZ" instead of "fvnSZ_LN_TN" — same value: the order of the specification',
     ],
     [
       'fvnLN_ON',
+      'one letter of a group — "LN" or "ON"',
+    ],
+    [
+      'fvnN_TN',
+      '"N" (normal) stands alone',
+    ],
+    [
+      'fvnTN_Q',
       'no such abbreviation',
+    ],
+    [
+      'fvn_lining-nums_tabular-nums',
+      'Write it shorter: "fvnLN_TN" instead of "fvn_lining-nums_tabular-nums" — same value',
     ],
     [
       'lcl0',

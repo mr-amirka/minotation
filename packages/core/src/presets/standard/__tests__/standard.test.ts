@@ -226,15 +226,15 @@ describe('Standard preset — шрифт', () => {
 // ================================================================
 describe('Standard preset — text-emphasis', () => {
   test('tem_filled_circle → text-emphasis:filled circle', () => {
-    expect(css('tem_filled_circle')).toContain('text-emphasis:filled circle');
+    expect(css('temF_C')).toContain('text-emphasis:filled circle');
   });
 
   test('tempOver → text-emphasis-position:over', () => {
-    expect(css('tempOver')).toContain('text-emphasis-position:over');
+    expect(css('tempO')).toContain('text-emphasis-position:over');
   });
 
   test('temsCircle → text-emphasis-style:circle', () => {
-    expect(css('temsCircle')).toContain('text-emphasis-style:circle');
+    expect(css('temsC')).toContain('text-emphasis-style:circle');
   });
 });
 
@@ -312,7 +312,7 @@ describe('Standard preset — aspect-ratio, image-rendering', () => {
   });
 
   test('irPixelated → image-rendering:pixelated', () => {
-    expect(css('irPixelated')).toContain('image-rendering:pixelated');
+    expect(css('irP')).toContain('image-rendering:pixelated');
   });
 });
 
@@ -504,7 +504,7 @@ describe('Standard preset — предсказуемость значений', 
     ['fw900', 'font-weight:900'],
     ['fw100', 'font-weight:100'],
     ['fw1', 'font-weight:100'],
-    ['fwBold', 'font-weight:bold'],
+    ['fwB', 'font-weight:bold'],
   ])('%s → %s', (token, expected) => {
     expect(css(token)).toContain(expected);
   });
@@ -591,8 +591,8 @@ describe('Standard preset — предсказуемость значений', 
 
   test.each([
     ['fontInherit', 'font:inherit'],
-    ['fontMenu', 'font:menu'],
-    ['fontStatusBar', 'font:status-bar'],
+    ['fontM', 'font:menu'],
+    ['fontSB', 'font:status-bar'],
   ])('%s → %s — набор свойств одним словом', (token, expected) => {
     expect(css(token)).toContain(expected);
   });
@@ -630,8 +630,8 @@ describe('Standard preset — свойства, добавленные при а
     expect(css(token)).toContain(expected);
   });
   test.each([
-    ['tup_under', 'text-underline-position:under'],
-    ['tupFromFont', 'text-underline-position:from-font'],
+    ['tupU', 'text-underline-position:under'],
+    ['tupFF', 'text-underline-position:from-font'],
   ])('%s → %s', (token, expected) => {
     expect(css(token)).toContain(expected);
   });

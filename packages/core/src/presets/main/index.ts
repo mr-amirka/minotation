@@ -62,7 +62,7 @@ export default {
      * Add the correct font weight in Chrome, Edge, and Safari.
      */
 
-      'b, strong': 'fwBolder',
+      'b, strong': 'fwBR',
 
       /**
      * 1. Correct the inheritance and scaling of font size in all browsers.
@@ -111,7 +111,7 @@ export default {
       /**
      * Correct the inability to style clickable types in iOS and Safari.
      */
-      'button, [type=(button|reset|submit)]': 'apButton',
+      'button, [type=(button|reset|submit)]': 'apB',
 
       /**
      * Remove the inner border and padding in Firefox.
@@ -174,7 +174,7 @@ export default {
      * 1. Correct the inability to style clickable types in iOS and Safari.
      * 2. Change font properties to `inherit` in Safari.
      */
-      '::-webkit-file-upload-button': 'apButton fontInherit',
+      '::-webkit-file-upload-button': 'apB fontInherit',
 
 
       /* Interactive

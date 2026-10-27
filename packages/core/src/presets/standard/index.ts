@@ -1251,8 +1251,8 @@ const APPEARANCE_RENAMED: Record<string, string> = {
   Auto: A,
 };
 
-/** Краткая запись у `border-image`: `biN`. */
-const BORDER_IMAGE_ABBREVIATIONS: Record<string, string> = {
+/** Краткая запись `none` у свойств, где других букв нет: `biN`, `tnN` (D-111). */
+const NONE_ABBREVIATIONS: Record<string, string> = {
   N: NONE,
 };
 
@@ -1841,6 +1841,10 @@ const NAMED_ANIMATIONS: Record<string, [string, Record<string, Record<string, st
  * `имя длительность плавность задержка повторы направление заполнение состояние`. Любой слот
  * можно пропустить, порядок — не убывает. Голое число в слоте времени — `ms`; голое число после
  * задержки — число повторов. `none` до длительности — имя, после — заполнение.
+ *
+ * Плавность — буквами, как у `tn` и `atf` (D-111): `an_fade_0.2s_EO`. Буква — плавность только после имени или
+ * длительности: первая часть — всегда имя (`an_e_1s` — анимация `e`: значение до кебаба одно и то же, что `anE_1s`).
+ * Длинное слово (`ease-out`) — ошибка с буквой, как у `tn` (D-015, D-109).
  */
 function animationValue(parts: string[], raw: string): string {
   const l = parts.length;
@@ -1853,18 +1857,26 @@ function animationValue(parts: string[], raw: string): string {
   let part: string;
   let at: number;
   let time: RegExpExecArray | null;
+  let letter: [number, string] | undefined;
   for (; i < l; i++) {
     part = parts[i];
     if (REGEXP_SUBSTITUTION.test(part)) {
       out[i] = part;
       continue;
     }
-    if (times < 2 && slot < 5 && (time = REGEXP_TIME.exec(part))) {
+    (letter = TRANSITION_LETTERS[TRANSITION_LONG_WORDS[part]]) && letter[0] === 3
+      && throwInvalid(MSG_VALUE + raw + '" is invalid for "an": write it shorter — "' + TRANSITION_LONG_WORDS[part]
+        + MSG_INSTEAD_OF + part + DOUBLE_QUOTE + (slot ? '' : '; easing goes after the name or the duration'));
+    if (slot && (letter = TRANSITION_LETTERS[part]) && letter[0] === 3) {
+      at = 3;
+      out[i] = letter[1];
+    } else if (times < 2 && slot < 5 && (time = REGEXP_TIME.exec(part))) {
       // Первое время — длительность, второе — задержка (после плавности — только задержка).
       at = times || slot === 3 ? 4 : 2;
       times = at === 4 ? 2 : 1;
       out[i] = time[1] ? part : part + MS;
-    } else if (ENUM_KEYWORDS.transitionTimingFunction[part] || REGEXP_EASING_FUNCTION.test(part)) {
+    } else if (REGEXP_EASING_FUNCTION.test(part)) {
+      // Слова плавности сюда не доходят — у каждого есть буква (D-111); остались функции.
       at = 3;
       out[i] = part;
     } else if (REGEXP_ITERATION_COUNT.test(part)) {
@@ -3926,7 +3938,7 @@ export default {
         }
         // `biNone` → «Write "biN"» (D-094), как у остальных слов с краткой записью.
         const value = assertNotLongForm(
-          valueNormalize(s), BORDER_IMAGE_ABBREVIATIONS, BI + suffix, s,
+          valueNormalize(s), NONE_ABBREVIATIONS, BI + suffix, s,
         );
         return styleWrap(biSidesSet(borderImageValue(
           value.split(SPACE), s, BI + suffix,
@@ -6035,8 +6047,8 @@ export default {
      * но задать РАЗНЫЕ параметры разным свойствам ими нельзя — они пишут по
      * одному значению на все сразу. Ради этого случая shorthand и остаётся.
      */
-      // `an_fade_0.2s_ease-out_0.3s_both` → `animation:fade 0.2s ease-out 0.3s both`; ключевые
-      // кадры — из пресета (`mn.setKeyframes`). Несколько анимаций — через `,`.
+      // `an_fade_0.2s_EO_0.3s_both` → `animation:fade 0.2s ease-out 0.3s both` (плавность — буквами, D-111);
+      // ключевые кадры — из пресета (`mn.setKeyframes`). Несколько анимаций — через `,`.
       an: (p) => {
         let s, i;
         if (!(s = p.suffix)) {
@@ -6071,7 +6083,15 @@ export default {
         if (!(s = p.suffix)) {
           return 0;
         }
-        const value = valueNormalize(s);
+        // `tnN` — `transition:none`, как `tpN` и `anN` (D-111); длинная запись — с подсказкой (D-015).
+        if (s === N) {
+          return styleWrap({
+            transition: NONE,
+          });
+        }
+        const value = assertNotLongForm(
+          valueNormalize(s), NONE_ABBREVIATIONS, p.name, s,
+        );
         // `,` разделяет переходы, пробел — части одного перехода. Запятые
         // внутри скобок (`cubic-bezier(0,0,1,1)`) разделителем не считаются.
         const list = splitTopLevel(value);

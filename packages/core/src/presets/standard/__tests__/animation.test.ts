@@ -1,6 +1,6 @@
 /**
  * `an` — анимация, слоты в фиксированном порядке, как у `tn` (запрос трека web-games, 2026-10-14); именованные
- * анимации с кадрами по использованию — группа G (D-097).
+ * анимации с кадрами по использованию — группа G (D-097); плавность — буквами, как у `tn` (D-111).
  */
 import minotationProvider from '../../../core';
 import presetStandard from '..';
@@ -23,11 +23,11 @@ function compile(tokens: string, setup?: (mn: ReturnType<typeof minotationProvid
 
 test.each([
   [
-    'an_wg-appear_0.2s_ease-out_0.3s_both',
+    'an_wg-appear_0.2s_EO_0.3s_both',
     'animation:wg-appear 0.2s ease-out 0.3s both',
   ],
   [
-    'an_spin_1s_linear_infinite',
+    'an_spin_1s_L_infinite',
     'animation:spin 1s linear infinite',
   ],
   [
@@ -89,7 +89,7 @@ test.each([
 });
 
 test('ключевые кадры — из пресета, анимация — токеном', () => {
-  expect(compile('an_wg-appear_0.2s_ease-out_0.3s_both', (mn) => {
+  expect(compile('an_wg-appear_0.2s_EO_0.3s_both', (mn) => {
     mn.setKeyframes('wg-appear', {
       from: {
         opacity: '0',
@@ -99,7 +99,77 @@ test('ключевые кадры — из пресета, анимация — 
       },
     });
   }).css).toBe('@keyframes wg-appear{from{opacity:0}to{opacity:1}}'
-    + '.an_wg-appear_0\\.2s_ease-out_0\\.3s_both{animation:wg-appear 0.2s ease-out 0.3s both}');
+    + '.an_wg-appear_0\\.2s_EO_0\\.3s_both{animation:wg-appear 0.2s ease-out 0.3s both}');
+});
+
+describe('easing letters, as tn and atf (D-111)', () => {
+  test.each([
+    [
+      'an_fade_L',
+      'animation:fade linear',
+    ],
+    [
+      'an_fade_1s_E',
+      'animation:fade 1s ease',
+    ],
+    [
+      'an_fade_1s_EI_2',
+      'animation:fade 1s ease-in 2ms',
+    ],
+    [
+      'an_fade_1s_EIO_infinite',
+      'animation:fade 1s ease-in-out infinite',
+    ],
+    [
+      'an_a_1s_SS,b_2s_SE',
+      'animation:a 1s step-start,b 2s step-end',
+    ],
+    // Кебаб-форма: `EO` → `e-o`.
+    [
+      'anFade_200_EO',
+      'animation:fade 200ms ease-out',
+    ],
+    // Первая часть — имя: `an_e_1s` и `anE_1s` — одна и та же анимация `e`.
+    [
+      'an_e_1s',
+      'animation:e 1s',
+    ],
+    [
+      'anE_1s',
+      'animation:e 1s',
+    ],
+  ])('%s → %s', (token, declaration) => {
+    const result = compile(token);
+    expect(result.css).toContain('{' + declaration + '}');
+    expect(result.warnings).toEqual([]);
+  });
+
+  test.each([
+    [
+      'an_fade_1s_ease-out',
+      '"_fade_1s_ease-out" is invalid for "an": write it shorter — "EO" instead of "ease-out"',
+    ],
+    [
+      'an_spin_1s_linear_infinite',
+      'write it shorter — "L" instead of "linear"',
+    ],
+    [
+      'anFade_1s_easeInOut',
+      'write it shorter — "EIO" instead of "ease-in-out"',
+    ],
+    [
+      'an_ease_1s',
+      'write it shorter — "E" instead of "ease"; easing goes after the name or the duration',
+    ],
+    [
+      'an_fade_1s_EO_EI',
+      '"EI" is out of place',
+    ],
+  ])('%s — предупреждение', (token, message) => {
+    const result = compile(token);
+    expect(result.css).toBe('');
+    expect(result.warnings[0]).toContain(message);
+  });
 });
 
 const KEYFRAMES_SPIN = '@keyframes spin{to{transform:rotate(360deg)}}';

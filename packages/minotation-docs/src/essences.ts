@@ -324,8 +324,8 @@ export const ESSENCES: MnDocEntry[] = [
 
   // --- Переходы (доп.) ---
   { name: 'delay', props: 'transition-delay', keywords: ['transition', 'delay'], examples: ['delay150'] },
-  { name: 'tn', props: 'transition', keywords: ['transition'], description: '_ = пробел между значениями', examples: ['tnA_1s_E_0s'] },
-  { name: 'an', props: 'animation, @keyframes', keywords: ['animation', 'keyframes', 'spin', 'ping', 'pulse', 'bounce'], description: 'Spin/Ping/Pulse/Bounce — с кадрами при использовании; _ = пробел между значениями', examples: ['anSpin', 'anPulse', 'an_spin_2s', 'anN'] },
+  { name: 'tn', props: 'transition', keywords: ['transition'], description: '_ = пробел между значениями', examples: ['tnA_1s_E_0s', 'tnN'] },
+  { name: 'an', props: 'animation, @keyframes', keywords: ['animation', 'keyframes', 'spin', 'ping', 'pulse', 'bounce'], description: 'Spin/Ping/Pulse/Bounce — с кадрами при использовании; _ = пробел между значениями', examples: ['anSpin', 'anPulse', 'an_spin_2s', 'an_fade_1s_EO', 'anN'] },
   { name: 'tp', props: 'transition-property', keywords: ['transition'], examples: ['tpA', 'tp_color,opacity'] },
   { name: 'ttf', props: 'transition-timing-function', keywords: ['transition'], examples: ['ttfEI'] },
 

@@ -3,6 +3,7 @@
  * опция `overflowWrapMode` для старого имени `word-wrap`; имя свойства из одной буквы у `tp`/`wc`/`tn` — ошибка.
  * D-107: заглавная после `,`/`;` не принимается — у элемента списка одно написание, со строчной.
  * D-109: `tn` берёт буквы плавности `ttf` и `A` — `all`; длинное слово отвечает буквой.
+ * D-111: `tnN` — `transition:none`, длинная запись `none` — с подсказкой.
  */
 import {
   lexer,
@@ -463,6 +464,28 @@ describe('tn takes the letters of ttf and A for all (D-109)', () => {
       '"EX" fits none of them',
     ],
   ])('%s gives no CSS: %s', (token, message) => {
+    const result = compile(token);
+    expect(result.css).toBe('');
+    expect(result.warnings).toContain(message);
+  });
+});
+
+describe('tnN is transition:none (D-111)', () => {
+  test('tnN', () => {
+    expect(lexer.matchProperty('transition', 'none').matched).toBeTruthy();
+    expect(declaration('tnN')).toBe('transition:none');
+  });
+
+  test.each([
+    [
+      'tnNone',
+      'Write "tnN" instead of "tnNone" — same value',
+    ],
+    [
+      'tn_none',
+      'Write "tnN" instead of "tn_none" — same value',
+    ],
+  ])('%s — the long form is rejected (D-015)', (token, message) => {
     const result = compile(token);
     expect(result.css).toBe('');
     expect(result.warnings).toContain(message);

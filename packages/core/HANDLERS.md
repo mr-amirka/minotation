@@ -885,6 +885,7 @@ tn{свойство}_{длительность}_{плавность}_{задер
 | `tn200` | `transition:200ms` — голое число получает `ms`, как у `dn` |
 | `tn0.2s` | `transition:0.2s` |
 | `tnA` | `transition:all` |
+| `tnN` | `transition:none` (D-111) |
 | `tnA_0.2s` | `transition:all 0.2s` |
 | `tn_color_0.2s_E` | `transition:color 0.2s ease` |
 | `tn_color_0.2s_EIO_0.1s` | `transition:color 0.2s ease-in-out 0.1s` |
@@ -895,7 +896,8 @@ tn{свойство}_{длительность}_{плавность}_{задер
 `E` (`ease`), `EI`, `EO`, `EIO` (`ease-in`, `ease-out`, `ease-in-out`), `SS`, `SE` (`step-start`, `step-end`).
 Длинное слово отвечает буквой (D-015): `tn_A_0.2s` → «write it shorter — "A" instead of "all"»,
 `tn_color_0.2s_ease-in` → «"EI" instead of "ease-in"». Функции плавности (`cubic-bezier(…)`, `steps(…)`,
-`linear(…)`) пишутся как в CSS.
+`linear(…)`) пишутся как в CSS. `none` — буквой, как у `tp` и `an` (D-111): `tnN`; `tnNone` и `tn_none` →
+«Write "tnN" instead of "tnNone" — same value».
 
 Каждый слот необязателен, но **порядок обязателен**: `tn_0.2s_A` и
 `tn_E_0.2s` бракуются, хотя CSS их принимает. Грамматика
@@ -953,8 +955,8 @@ an_{имя}_{длительность}_{плавность}_{задержка}_{
 
 | Токен | CSS |
 |-------|-----|
-| `an_wg-appear_0.2s_ease-out_0.3s_both` | `animation:wg-appear 0.2s ease-out 0.3s both` |
-| `an_spin_1s_linear_infinite` | `animation:spin 1s linear infinite` |
+| `an_wg-appear_0.2s_EO_0.3s_both` | `animation:wg-appear 0.2s ease-out 0.3s both` |
+| `an_spin_1s_L_infinite` | `animation:spin 1s linear infinite` |
 | `an_fade_200` | `animation:fade 200ms` — голое число получает `ms`, как у `tn` |
 | `an_fade_200_300_2_alternate_forwards_paused` | `animation:fade 200ms 300ms 2 alternate forwards paused` |
 | `an_none` | `animation:none` |
@@ -963,6 +965,12 @@ an_{имя}_{длительность}_{плавность}_{задержка}_{
 Как у `tn`: каждый слот необязателен, порядок — обязателен (`an_1s_fade` — предупреждение с
 перечнем слотов). Первое время — длительность, второе — задержка; голое число после задержки —
 число повторов; `none` до длительности — имя, после — заполнение.
+
+**Плавность — буквами**, как у `tn` и `atf` (D-111): `L`, `E`, `EI`, `EO`, `EIO`, `SS`, `SE`. Буква — плавность
+только после имени или длительности: первая часть — всегда имя (`an_e_1s` — анимация `e`, как и `anE_1s`).
+Длинное слово отвечает буквой: `an_fade_1s_ease-out` → «write it shorter — "EO" instead of "ease-out"»; в первой
+части — с напоминанием о месте: `an_ease_1s` → «… "E" instead of "ease"; easing goes after the name or the
+duration». Функции плавности (`cubic-bezier(…)`, `steps(…)`) пишутся как в CSS.
 
 **Ключевые кадры — в пресете проекта** (`mn.setKeyframes`), сама анимация — токеном:
 
@@ -981,11 +989,11 @@ export default function presetLoadingScreen(mn: MnInstance): void {
 // LoadingScreen.tsx
 import './loadingScreen.mn';
 
-<div className="an_wg-appear_0.2s_ease-out_0.3s_both" />
+<div className="an_wg-appear_0.2s_EO_0.3s_both" />
 ```
 ```css
 @keyframes wg-appear{from{opacity:0}to{opacity:1}}
-.an_wg-appear_0\.2s_ease-out_0\.3s_both{animation:wg-appear 0.2s ease-out 0.3s both}
+.an_wg-appear_0\.2s_EO_0\.3s_both{animation:wg-appear 0.2s ease-out 0.3s both}
 ```
 
 Отдельного хендлера на анимацию в пресете больше не нужно: раньше её приходилось заводить своим

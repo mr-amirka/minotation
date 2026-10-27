@@ -14,6 +14,13 @@
  * при загрузке бросает «только в Node»: сканер ловит это так же, как отсутствие `typescript`, и
  * разбирает файлы текстом. Исходник один, сборок две — разница только в том, куда ведёт этот `require`.
  *
+ * Почему `typescript` в Node-сборке грузится через модуль-обёртку (2026-10-28). Тот же подъём импорта в
+ * ESM-сборке для Node: `dist/esm/index.mjs` тянул `typescript` при каждом `import 'minotation'` (~190 мс), а без
+ * установленного `typescript` — необязательной peer-зависимости — падал с `ERR_MODULE_NOT_FOUND`, хотя
+ * `require('minotation')` работал. Здесь `import ts from 'typescript'` ведёт в модуль, который сам грузит парсер
+ * через `createRequire`; esbuild оборачивает его вместе с `syntaxScan` в ленивую инициализацию, и парсер
+ * загружается при первом разборе файла, а его отсутствие сканер ловит, как в CommonJS-сборке.
+ *
  * Почему esbuild с бандлом, а не второй прогон `tsc`. ESM, который грузит сам
  * Node, требует расширений в относительных импортах — `tsc` их не дописывает.
  * А `fundamentool` публикует ESM только для бандлеров (импорты без расширений,
@@ -40,6 +47,34 @@ const browserSyntaxStub = {
     }));
     builder.onLoad({ filter: /.*/, namespace: 'minotation-node-only' }, () => ({
       contents: 'throw new Error(' + JSON.stringify(NODE_ONLY) + ');',
+      loader: 'js',
+    }));
+  },
+};
+
+/** Сообщение, если Node не даёт `process.getBuiltinModule` — сканер покажет его и разберёт файлы текстом. */
+const NO_BUILTIN_MODULE = 'loading typescript from the ESM build of minotation needs process.getBuiltinModule'
+  + ' (Node 20.16+, 22.3+)';
+
+/**
+ * В Node-сборке `import ts from 'typescript'` ведёт в модуль, который грузит парсер сам. Статического импорта
+ * нет — ни `typescript`, ни `node:module`: первый поднялся бы в начало общего чанка, второй не нашёлся бы у
+ * бандлера, собирающего `dist/esm` под браузер. `createRequire` от адреса чанка ищет `typescript` там же, где
+ * его нашёл бы статический импорт.
+ */
+const nodeLazyTypescript = {
+  name: 'minotation-node-lazy-typescript',
+  setup(builder) {
+    builder.onResolve({ filter: /^typescript$/ }, () => ({
+      path: 'typescript',
+      namespace: 'minotation-lazy-typescript',
+    }));
+    builder.onLoad({ filter: /.*/, namespace: 'minotation-lazy-typescript' }, () => ({
+      contents: 'const getBuiltinModule = globalThis.process && globalThis.process.getBuiltinModule;\n'
+        + 'if (!getBuiltinModule) {\n'
+        + '  throw new Error(' + JSON.stringify(NO_BUILTIN_MODULE) + ');\n'
+        + '}\n'
+        + "export default getBuiltinModule('module').createRequire(import.meta.url)('typescript');\n",
       loader: 'js',
     }));
   },
@@ -105,7 +140,7 @@ function moduleEntries(skip) {
   return entries;
 }
 
-await buildEsm('dist/esm', moduleEntries([]), []);
+await buildEsm('dist/esm', moduleEntries([]), [nodeLazyTypescript]);
 
 // `minotation/syntax` в браузере не нужен: он и есть парсер.
 await buildEsm('dist/browser', moduleEntries(['syntaxScan.ts']), [browserSyntaxStub]);

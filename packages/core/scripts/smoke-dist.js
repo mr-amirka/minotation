@@ -66,6 +66,8 @@ checkBuild('cjs', cjs);
 async function checkEsm() {
   const esm = await import('../dist/esm/index.mjs');
   const mne = await import('../dist/esm/mne.mjs');
+  // До `syntaxScan.mjs`: этот вход грузит парсер сам.
+  checkEsmTypescript(esm);
   const syntax = await import('../dist/esm/syntaxScan.mjs');
   const cjsKeys = Object.keys(cjs).filter((k) => k !== '__esModule').sort().join(',');
   check('esm exports = cjs exports', Object.keys(esm).sort().join(','), cjsKeys);
@@ -75,6 +77,56 @@ async function checkEsm() {
   const mixed = compile(cjs, 'p10 fx', [esm.presetStandard]);
   check('cjs instance + esm preset', mixed.css, '.p10{padding:10px}');
   check('cross-copy parse-error', mixed.warnings, 'parse-error fx');
+}
+
+// ── Парсер в ESM-сборке грузится лениво (2026-10-28) ─────────────────────────
+// `import 'minotation'` в Node грузил `typescript` сразу (~190 мс), а без него — необязательной
+// peer-зависимости — падал с `ERR_MODULE_NOT_FOUND`: esbuild поднимал `import ts from "typescript"`
+// в начало общего чанка. Теперь парсер грузится при первом разборе файла, а без него сканер
+// разбирает текстом и говорит почему — как CommonJS-сборка.
+
+/** Загружен ли `typescript` в этот процесс: `createRequire` ESM-сборки кладёт его в общий кэш CommonJS. */
+function typescriptLoaded() {
+  return Object.keys(require.cache).some((file) => /[\\/]node_modules[\\/]typescript[\\/]/.test(file));
+}
+
+/** Скрипт отдельного процесса: ESM-сборка там, откуда `typescript` не найти. */
+const NO_TYPESCRIPT_SCRIPT = "const m = await import('./index.mjs');\n"
+  + 'const warnings = [];\n'
+  + "const scan = m.createScanner({ attr: 'class', syntax: true, onWarning: (w) => warnings.push(w) });\n"
+  + "console.log(scan('<div class=\"p10\"></div>', 'App.tsx').join(',') + ' ' + warnings.join(''));\n";
+
+/** Вывод `NO_TYPESCRIPT_SCRIPT` в копии `dist/esm` вне пакета (своих внешних импортов у сборки нет). */
+function runWithoutTypescript(esmDir) {
+  const fs = require('fs');
+  const path = require('path');
+  const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'minotation-esm-'));
+  try {
+    fs.cpSync(esmDir, dir, { recursive: true });
+    return require('child_process').execFileSync(process.execPath, ['--input-type=module', '-e', NO_TYPESCRIPT_SCRIPT], {
+      cwd: dir,
+      encoding: 'utf8',
+    });
+  } catch (ex) {
+    return String(ex.stdout) + String(ex.stderr);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+function checkEsmTypescript(esm) {
+  const fs = require('fs');
+  const path = require('path');
+  const esmDir = path.join(__dirname, '..', 'dist', 'esm');
+  const staticImports = fs.readdirSync(esmDir).filter((file) => file.endsWith('.mjs')
+    && /from\s*["']typescript["']/.test(fs.readFileSync(path.join(esmDir, file), 'utf8')));
+  check('esm without a static typescript import', staticImports.join(',') || 'none', 'none');
+  check('esm import leaves typescript unloaded', String(typescriptLoaded()), 'false');
+  const scan = esm.createScanner({ attr: 'className', syntax: true });
+  check('esm syntax scan', scan('<div className="p10"></div>', 'App.tsx').join(','), 'p10');
+  check('esm loads typescript on the first syntax scan', String(typescriptLoaded()), 'true');
+  check('esm without typescript: imports, scans as text, says why', runWithoutTypescript(esmDir),
+    'p10 [minotation] syntax: true, but the parser is unavailable');
 }
 
 // ── Браузерная сборка (dist/browser, 2026-10-26) ─────────────────────────────

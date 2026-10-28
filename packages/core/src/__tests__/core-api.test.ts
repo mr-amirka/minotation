@@ -127,6 +127,24 @@ describe('mn — обход значений атрибутов', () => {
 
     expect(cssOf(mn)).toContain('*{box-sizing:border-box}');
   });
+
+  test('setStyle типизирован в MnInstance: возвращает mn, тот же ключ заменяет блок, порядок — по приоритету', () => {
+    const mn = makeMn();
+    const chained = mn.setStyle(
+      'late', '.late{color:red}', 100,
+    ).setStyle(
+      'early', '.early{color:blue}', -100,
+    );
+    mn.setStyle(
+      'early', '.early{color:green}', -100,
+    );
+    mn.compile();
+    const css = cssOf(mn);
+
+    expect(chained).toBe(mn);
+    expect(css).not.toContain('color:blue');
+    expect(css.indexOf('.early{color:green}')).toBeLessThan(css.indexOf('.late{color:red}'));
+  });
 });
 
 describe('mn — предупреждения и maxDepth', () => {

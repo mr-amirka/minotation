@@ -197,6 +197,17 @@ export interface MnInstance {
   // необязательными, строгий режим требовал проверки на каждом обращении —
   // то есть защиты от состояния, которого не бывает.
   utils: MnUtils;
+  /**
+   * Именованный блок готового CSS в выводе (SPEC 08 §12) — то, что классом не выразить: `@property`, `@font-face`,
+   * сброс. `name` — ключ, не селектор: тот же ключ заменяет блок. Блоки идут по возрастанию `priority` (по умолчанию
+   * `MN_DEFAULT_OTHER_CSS_PRIORITY` — раньше стилей токенов). Выводится всегда, используют его токены или нет.
+   *
+   * @example
+   * mn.setStyle('reset', '*{box-sizing:border-box}');
+   */
+  setStyle: (
+    name: string, content: string, priority?: number,
+  ) => MnInstance;
   setKeyframes: (
     name: string, body: string | Record<string, string | Record<string, string | number>>,
     ifEmpty?: number,

@@ -242,7 +242,7 @@ describe('хендлеры со своим путём разбора — спл�
       'page-break-after:avoid;break-after:avoid',
     ],
     [
-      'bgi',
+      'bgiN',
       'background-image:none',
     ],
   ])('%s → %s (без переменной)', (token, expected) => {

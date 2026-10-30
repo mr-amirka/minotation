@@ -376,7 +376,7 @@ const TWIN_PROBES = [
  * `mki` и `mk` — одно свойство `mask-image` в двух хендлерах: слить ли `mki` в `mk` — вопрос владельцу (RESEARCH/25 § 5).
  */
 const TWINS_PENDING = [
-  'mki = mkN',
+  'mkiN = mkN',
   'pos = rlv',
   'posA = abs',
   'posF = fixed',

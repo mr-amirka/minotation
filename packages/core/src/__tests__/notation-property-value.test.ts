@@ -194,9 +194,11 @@ describe("'property-value' — селекторы", () => {
       'c:F00.active',
       '.c\\:F00\\.active.active{color:#f00}',
     ],
+    // Скобки и запятые в значении экранируются в селекторе. Функция — из закрытого списка `ttf`: цвет функцией не
+    // пишется (D-121, `c:rgba(…)` бракуется хендлером `c`).
     [
-      'c:rgba(0,0,0,.5)',
-      '.c\\:rgba\\(0\\,0\\,0\\,\\.5\\){color:rgba(0,0,0,.5)}',
+      'ttf:cubic-bezier(0,0,1,1)',
+      '.ttf\\:cubic-bezier\\(0\\,0\\,1\\,1\\){transition-timing-function:cubic-bezier(0,0,1,1)}',
     ],
   ])('%s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);

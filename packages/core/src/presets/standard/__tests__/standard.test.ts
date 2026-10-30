@@ -745,7 +745,7 @@ describe('канонизация цвета: одна запись на знач
  * Прозрачность переменной и цветовые функции (
  * «нужно решение, а не обходной путь» — про `color-mix` в `tokens.css`).
  */
-describe('цвет: переменная с альфой и функции', () => {
+describe('цвет: переменная с альфой; функции бракуются', () => {
   test.each([
     ['bc--warn.3', 'border-color:color-mix(in srgb, var(--warn) 30%, transparent)'],
     ['c--ink.5', 'color:color-mix(in srgb, var(--ink) 50%, transparent)'],
@@ -757,18 +757,14 @@ describe('цвет: переменная с альфой и функции', () 
     expect(css(token)).toContain(expected);
   });
 
+  // Функции в цвете не пишутся (D-121, вместо D-016 п. 2): `cOklch\\(…\\)`, `bcColor-mix\\(…\\)` бракуются — проверки и
+  // сообщения в `border-image.test.ts` («a function is not written in a class»).
   test.each([
-    ['cOklch\\(0.7_0.1_200\\)', 'color:oklch(0.7 0.1 200)'],
-    ['cLight-dark\\(white,black\\)', 'color:light-dark(white,black)'],
-  ])('функция пропускается насквозь: %s', (token, expected) => {
-    expect(css(token)).toContain(expected);
-  });
-
-  test('живой случай: color-mix целиком в токене', () => {
-    // `.uBcWarn { border-color: color-mix(in srgb, var(--warn) 30%, transparent) }`
-    // из tokens.css проекта affiliate — то, ради чего это заводилось.
-    expect(css('bcColor-mix\\(in_srgb,var\\(--warn\\)_30%,transparent\\)'))
-      .toContain('border-color:color-mix(in srgb,var(--warn) 30%,transparent)');
+    'cOklch\\(0.7_0.1_200\\)',
+    'cLight-dark\\(white,black\\)',
+    'bcColor-mix\\(in_srgb,var\\(--warn\\)_30%,transparent\\)',
+  ])('функция в цвете бракуется: %s', (token) => {
+    expect(css(token)).toBe('');
   });
 
   test('обычные формы цвета не задеты', () => {

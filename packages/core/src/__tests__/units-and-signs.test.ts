@@ -1568,18 +1568,11 @@ describe('border-style: только то, что есть в специфика
   });
 });
 
-describe('свойства-картинки оборачивают в url() только голый путь', () => {
-  // Обёртка была безусловной, поэтому готовое значение заворачивалось второй
-  // раз, а ключевое слово превращалось в имя файла.
+describe('свойства-картинки: одна запись на значение (D-122)', () => {
+  // `bgi`, `lisi`, `mki`: путь — только `_`-формой, переменная — `--x`, `none` — `N`, CSS-wide keyword — словом. До
+  // D-122 обёртка в `url()` применялась ко всему, что не узнано: `bgiF00-00F` → `url("F00-00F")`, `bgi10px` →
+  // `url("10px")`, а готовая функция (`bgi_url\\(a\\.png\\)`) проходила как есть.
   test.each([
-    [
-      'bgi',
-      'background-image:none',
-    ],
-    [
-      'bgiN',
-      'background-image:none',
-    ],
     [
       'bgiN',
       'background-image:none',
@@ -1589,6 +1582,10 @@ describe('свойства-картинки оборачивают в url() то
       'background-image:inherit',
     ],
     [
+      'bgiRevertLayer',
+      'background-image:revert-layer',
+    ],
+    [
       'lisiN',
       'list-style-image:none',
     ],
@@ -1596,11 +1593,10 @@ describe('свойства-картинки оборачивают в url() то
       'mkiN',
       'mask-image:none',
     ],
-  ])('%s → %s — ключевое слово не заворачивается', (token, expected) => {
-    expect(compile([token]).css).toContain(expected);
-  });
-
-  test.each([
+    [
+      'bgi--v',
+      'background-image:var(--v)',
+    ],
     [
       'bgi_a\\.png',
       'background-image:url("a.png")',
@@ -1609,25 +1605,84 @@ describe('свойства-картинки оборачивают в url() то
       'bgi_images/a\\.png',
       'background-image:url("images/a.png")',
     ],
-  ])('%s → %s — голый путь заворачивается', (token, expected) => {
+    [
+      'lisi_dot\\.svg',
+      'list-style-image:url("dot.svg")',
+    ],
+    [
+      'mki_a\\.png',
+      'mask-image:url("a.png")',
+    ],
+  ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
 
   test.each([
     [
+      'bgiF00-00F',
+      'Value "F00-00F" is invalid for "bgi": a picture is its path (`bgi_a\\.png`), a variable (`bgi--x`) or `bgiN`;'
+        + ' a gradient is written in `bg` (`bgF00-00F`)',
+    ],
+    [
+      'mkiF00-00F',
+      'a gradient is written in `mk` (`mkF00-00F`)',
+    ],
+    [
+      'bgi10px',
+      'Value "10px" is invalid for "bgi": a picture is its path',
+    ],
+    [
+      'bgiUrl\\(a\\.png\\)',
+      'Value "Url(a.png)" is invalid for "bgi": a picture is its path',
+    ],
+    [
       'bgi_url\\(a\\.png\\)',
-      'background-image:url(a.png)',
+      'Value "_url(a.png)" is invalid for "bgi": a function is not written in a class — the path alone, as "bgi_a\\.png"',
     ],
     [
       'bgi_linear-gradient\\(red,blue\\)',
-      'background-image:linear-gradient(red,blue)',
+      'is invalid for "bgi": a function is not written in a class',
     ],
-  ])('%s → %s — готовая функция проходит как есть', (token, expected) => {
-    expect(compile([token]).css).toContain(expected);
+    [
+      'bgi_--v',
+      'Write the variable without "_": "bgi--v" instead of "bgi_--v" — same value',
+    ],
+    [
+      'bgi_none',
+      'Write it shorter: "bgiN" instead of "bgi_none" — same value',
+    ],
+    [
+      'bgiNone',
+      'Write it shorter: "bgiN" instead of "bgiNone" — same value',
+    ],
+    [
+      'bgi_inherit',
+      'Write the keyword as a word: "bgiInherit" instead of "bgi_inherit" — same value',
+    ],
+    [
+      'bgi_',
+      'the path after "_" is empty',
+    ],
+    [
+      'bi_url\\(a\\.png\\)',
+      'is invalid for "bi": a function is not written in a class — the path alone, as "bi_a\\.png"',
+    ],
+  ])('%s бракуется', (token, message) => {
+    const {
+      css, warnings,
+    } = compile([token]);
+    expect(css).toBe('');
+    expect(warnings.map((w) => w.message).join(' ')).toContain(message);
   });
 
-  test('переменная подставляется целиком, а не как путь', () => {
-    expect(compile(['bgi--v']).css).toContain('background-image:var(--v)');
+  test('у list-style-image нет хендлера градиента — подсказки на него нет', () => {
+    const message = compile(['lisiF00-00F']).warnings.map((w) => w.message).join(' ');
+    expect(message).toContain('a picture is its path (`lisi_a\\.png`)');
+    expect(message).not.toContain('a gradient is written in');
+  });
+
+  test('без значения правила нет', () => {
+    expect(compile(['bgi']).css).toBe('');
   });
 });
 

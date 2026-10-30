@@ -111,23 +111,34 @@ fallback и сам градиент.
 | `lisi--v` | `list-style-image:var(--v)` |
 | `mki--v` | `mask-image:var(--v)` |
 
-### Свойства-картинки: что заворачивается в `url()`
+### Свойства-картинки: одна запись на значение
 
-`bgi`, `lisi`, `mki` оборачивают в `url("…")` только **голый путь**:
+`bgi`, `lisi`, `mki` — картинка без остальных частей свойства: `bg3 bgi_hero\.jpg` — серый остаётся под картинкой
+(D-120). У каждого значения одна запись (D-122):
 
 | Токен | CSS |
 |-------|-----|
 | `bgi_a\.png` | `background-image:url("a.png")` |
 | `bgi_images/a\.png` | `background-image:url("images/a.png")` |
-| `bgiN`, `bgi` | `background-image:none` |
+| `bgi--hero` | `background-image:var(--hero)` |
+| `bgiN` | `background-image:none` |
 | `bgiInherit` | `background-image:inherit` |
-| `bgi_url\(a\.png\)` | `background-image:url(a.png)` — уже функция, проходит как есть |
-| `bgi_linear-gradient\(red,blue\)` | `background-image:linear-gradient(red,blue)` |
+| `lisi_dot\.svg` | `list-style-image:url("dot.svg")` |
+| `mki_a\.png` | `mask-image:url("a.png")` |
 
-До 2026-09-26 обёртка была безусловной, поэтому `bgi_url\(a\.png\)` давало
-`url("url(a.png)")`, `bgi_none` — `url("none")`, а градиент превращался в имя
-файла. Краткой записи `bgiN` не было вовсе; с D-113 `bgi_none` и `bgiNone` бракуются с подсказкой «Write it
-shorter: "bgiN"».
+Бракуется с подсказкой:
+
+| Токен | Почему |
+|-------|--------|
+| `bgiF00-00F` | градиент пишется в `bg` (`bgF00-00F`), у маски — в `mk` |
+| `bgi10px`, `bgiF00` | не путь: путь пишется через `_` — `bgi_a\.png` |
+| `bgi_url\(a\.png\)`, `bgiUrl\(a\.png\)` | функция в токене не пишется (D-121): `bgi_a\.png` |
+| `bgi_--hero` | переменная — без `_`: `bgi--hero` |
+| `bgi_none`, `bgiNone` | `bgiN` |
+| `bgi_inherit` | `bgiInherit` |
+
+До D-122 (2026-10-30) в `url("…")` заворачивалось всё неузнанное: `bgiF00-00F` давало `url("F00-00F")`, `bgi10px` —
+`url("10px")`, а готовая функция (`bgi_url\(a\.png\)`) проходила как есть.
 
 ### Список переменных через запятую
 
@@ -2267,21 +2278,22 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 ### `border-image`
 
 По частям (D-119): у каждой части своё свойство и свой тег, как `olw`/`ols`/`olc` у `outline`. Картинка (`bi`)
-читается тем же разбором, что у `bg` и `mk`: градиент через дефис с `_g90`, `_r`, `_rpt`, `Url\(…\)`, переменная,
-`N`.
+читается тем же разбором, что у `bg` и `mk`: градиент через дефис с `_g90`, `_r`, `_rpt`, переменная, `N`; картинка
+по пути — `_`-формой самого `bi` (`bi_a\.png`, D-122).
 
 | Токен | CSS |
 |-------|-----|
 | `bi8D5524-6D3504` | `border-image-source:linear-gradient(180deg,#8d5524 0%,#6d3504 100%)` |
 | `bi8D5524-6D3504_g90` | `border-image-source:linear-gradient(270deg,#8d5524 0%,#6d3504 100%)` |
 | `biF00-00F_r_rpt` | `border-image-source:repeating-radial-gradient(circle,#f00 0%,#00f 100%)` |
-| `biUrl\(a\.png\)` | `border-image-source:url(a.png)` |
+| `bi_a\.png` | `border-image-source:url("a.png")` |
 | `bi--img` | `border-image-source:var(--img)` |
 | `biN` | `border-image-source:none` |
 | `bis1` | `border-image-slice:1` |
 | `bis30_F` | `border-image-slice:30 fill` |
 | `bis10_20_30_40` | `border-image-slice:10 20 30 40` |
-| `biw10` | `border-image-width:10px` |
+| `biw2` | `border-image-width:2` |
+| `biw10px` | `border-image-width:10px` |
 | `biwA` | `border-image-width:auto` |
 | `bio5` | `border-image-outset:5px` |
 | `birRD` | `border-image-repeat:round` |
@@ -2289,8 +2301,11 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 
 - `bis` — слайс: где резать картинку на девять частей, числа **без единицы** (пиксели картинки) или проценты, до
   четырёх; `F` — `fill` (середина картинки заливает блок), только рядом со слайсом.
-- `biw` — толщина кольца картинки (голое число — `px`, как у `b`; `A` — auto), `bio` — вынос за рамку (длина, без
-  процентов), `bir` — повтор сторон: `ST` stretch, `R` repeat, `RD` round, `SP` space, до двух.
+- `biw` — толщина кольца картинки: длина с единицей (`biw10px`), процент, `A` — auto или **голое число — кратное
+  ширины рамки**, без `px` (D-123, исключение из «число = px»): `biw2` при `b10` — кольцо 20px. По умолчанию кольцо
+  равно рамке (`1`), класс для этого не нужен.
+- `bio` — вынос за рамку (длина, без процентов), `bir` — повтор сторон: `ST` stretch, `R` repeat, `RD` round, `SP`
+  space, до двух.
 
 Картинка рисуется в полосе рамки, поэтому видна, только если у рамки есть ширина и стиль. Слайс по умолчанию 100%:
 вся картинка уходит в каждый угол, стороны пусты, и градиент виден только в углах — рамке градиентом нужен `bis1`:
@@ -2304,8 +2319,8 @@ bi8D5524-6D3504 bis1 b6 bsS
 | Токен | Почему |
 |-------|--------|
 | `biF00` | одиночный цвет картинкой не бывает: градиент (`biF00-00F`) или цвет рамки `bcF00` |
-| `bi10px` | длина — не картинка; толщина рамки — `b10`, кольца картинки — `biw10` |
-| `biUrl\(a\.png\)_30` | одно значение на класс: слайс — `bis30` |
+| `bi10px` | длина — не картинка; толщина рамки — `b10`, кольца картинки — `biw10px` |
+| `biUrl\(a\.png\)` | функция в токене не пишется (D-121): `bi_a\.png` |
 | `bis30px` | слайс — число без единицы или процент |
 | `bisF` | `fill` — только рядом со слайсом: `bis1_F` |
 | `bio5%` | вынос процентов не принимает |

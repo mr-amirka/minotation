@@ -1179,13 +1179,16 @@ function defaultUnitNormalize(v: string): string {
 }
 /**
  * Готовая длина: `0` либо число со знаком и одной из единиц. Одна сборка на все проверки длин: длина, длина без
- * процента, размер дорожки (`1fr`) не разъезжаются в записи числа.
+ * процента, размер дорожки (`1fr`), длина или число (`border-image-width`) не разъезжаются в записи числа.
  * @param units допустимые единицы
+ * @param unitOptional число без единицы тоже годится (`2` — кратное, как у `border-image-width`)
  * @returns регулярное выражение на часть значения целиком
  * @example lengthPartRegExp(['px', 'em']).test('-1.5em') // true
+ * @example lengthPartRegExp(['px'], 1).test('2') // true
  */
-function lengthPartRegExp(units: string[]): RegExp {
-  return new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:' + units.join(PIPE) + '))$');
+function lengthPartRegExp(units: string[], unitOptional?: 1): RegExp {
+  return new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:' + units.join(PIPE) + ')' + (unitOptional ? '?' : '')
+    + ')$');
 }
 /**
  * Готовая длина: `0`, либо число с единицей из {@link UNITS}.
@@ -1679,6 +1682,38 @@ function assertNotLongForm(
 }
 
 /**
+ * Записи картинки у читателя `bg` / `mk` / `bi` — для сообщений об ошибке: одна строка на все три места.
+ * @param name имя хендлера
+ * @returns «a gradient (`bgF00-00F`), a variable or `bgN`»
+ */
+function imageForms(name: string): string {
+  return 'a gradient (`' + name + 'F00-00F`), a variable or `' + name + 'N`';
+}
+/**
+ * Картинка по пути — `_`-форма `bgi`, `lisi`, `mki` и `bi` (D-122): `bgi_hero\.jpg` → `url("hero.jpg")`. Одна запись на
+ * значение: у переменной (`bgi_--x`) и ключевого слова (`bgi_none`, `bgi_inherit`) своя запись без `_`, функция в токене
+ * не пишется (`bgi_url\(a\.png\)`, D-121), пустой путь — ошибка; каждый случай бракуется с подсказкой.
+ * @param path путь без ведущего `_`, как написан
+ * @param name имя хендлера — для сообщений
+ * @returns `url("…")`
+ * @example imagePathValue('img/a.png', 'bgi') // 'url("img/a.png")'
+ */
+function imagePathValue(path: string, name: string): string {
+  const word = path.toLowerCase();
+  const written = name + UNDERSCORE + path;
+  const head = MSG_VALUE + UNDERSCORE + path + MSG_IS_INVALID_FOR + name + '": ';
+  path || throwInvalid(head + 'the path after "_" is empty — as "' + name + '_a\\.png"');
+  cssVarValue(path) && throwInvalid('Write the variable without "_": "' + name + path + MSG_INSTEAD_OF + written
+    + MSG_SAME_VALUE);
+  word === NONE && throwInvalid(MSG_WRITE_SHORTER + name + N + MSG_INSTEAD_OF + written + MSG_SAME_VALUE);
+  GLOBAL_KEYWORDS[word] && throwInvalid('Write the keyword as a word: "' + name + notationWord(word) + MSG_INSTEAD_OF
+    + written + MSG_SAME_VALUE);
+  path.indexOf(OPEN_PAREN) > -1 && throwInvalid(head + 'a function is not written in a class — the path alone, as "'
+    + name + '_a\\.png"');
+  return 'url("' + path + '")';
+}
+
+/**
  * Суффикс с буквой на месте полного слова — для подсказки (D-113): `1_Auto` → `1_A`, `_1_auto` → `1_A`. Ведущий `_`
  * сырого режима снимается: буквы пишутся без него. Заменяется первая часть, записанная этим словом.
  */
@@ -1865,11 +1900,10 @@ const REGEXP_SUBSTITUTION = /^(?:var|env)\(/;
  * `cubic-bezier(0,0,1,1)` иначе распадается на четыре куска, и переход
  * бракуется на ровном месте.
  * @param v значение
- * @param separator разделитель верхнего уровня — запятая или пробел (`url(a) 30` — две части, градиент — одна)
  * @returns части по порядку
  * @example splitTopLevel('a(1,2),b') // ['a(1,2)', 'b']
  */
-function splitTopLevel(v: string, separator: string = COMMA): string[] {
+function splitTopLevel(v: string): string[] {
   const out: string[] = [];
   const l = v.length;
   let depth = 0;
@@ -1882,7 +1916,7 @@ function splitTopLevel(v: string, separator: string = COMMA): string[] {
       depth++;
     } else if (c === CLOSE_PAREN) {
       depth--;
-    } else if (c === separator && !depth) {
+    } else if (c === COMMA && !depth) {
       out.push(v.slice(from, i));
       from = i + 1;
     }
@@ -2366,10 +2400,17 @@ const BORDER_IMAGE_SLICES: LengthRule = {
   expected: 'a slice: a number without a unit (pixels of the image) or a percentage',
   noun: 'slice',
 };
-/** `border-image-width`: до четырёх длин или процентов (голое число — `px`, как у `b`). */
+/**
+ * `border-image-width`: до четырёх длин, процентов или чисел. Голое число остаётся числом — в CSS это кратное ширины
+ * рамки (`biw2` → `border-image-width:2`: при `b10` кольцо 20px), `px` к нему не приписывается (D-123, исключение из
+ * D-013); пиксели — с единицей, `biw10px`.
+ */
 const BORDER_IMAGE_WIDTHS: LengthRule = {
   signed: false,
   max: 4,
+  part: lengthPartRegExp(UNITS, 1),
+  unitless: 1,
+  expected: 'a length with a unit (`10px`), a percentage or a number — multiples of the border width (`2`)',
 };
 /** `border-image-outset`: до четырёх длин, без процентов. */
 const BORDER_IMAGE_OUTSETS: LengthRule = {
@@ -3815,42 +3856,38 @@ export default {
       return hex.slice(0, hex.length - form[0]) + '.'
       + toFixed(alpha / form[1]).replace(REGEXP_LEADING_ZERO, '');
     }
-    /** Значение-функция: `color-mix(…)`, `oklch(…)`, `light-dark(…)`. */
+    /** Функция, записанная в токене: `Rgb\(0,0,0\)`, `Url\(a\.png\)` — в цвете и картинке не принимается (D-121). */
     const REGEXP_COLOR_FUNCTION = /^[a-z][a-z0-9-]*\(/i;
     /** CSS-переменная с альфой: `--warn.3` → 30% непрозрачности. */
     const REGEXP_VAR_WITH_ALPHA = /^(---?[^.;\s]+)\.([0-9]+)$/;
     /**
-   * Значение цвета, которое НЕ разбирается как код: функция или переменная
-   * с альфой. Возвращает готовый CSS или `undefined`, если это обычный цвет.
+   * Значение цвета, которое НЕ разбирается как код, — переменная с альфой: `bc--warn.3` → `color-mix(in srgb,
+   * var(--warn) 30%, transparent)` (D-016 п. 1). Точка-альфа уже работает для кодов (`cF00.5` → `rgba(…,.5)`), здесь
+   * то же правило распространено на переменные. Возвращает готовый CSS или `undefined`, если это обычный цвет.
    *
-   * Два случая, ради которых заведено:
+   * Функция в токене (`cRgb\(0,0,0\)`, `bgUrl\(a\.png\)`) бракуется (D-121): цвет пишется кодом, буквой или
+   * переменной, картинка по пути — `_`-формой своего хендлера (`bgi_a\.png`, `mki_a\.png`, `bi_a\.png`). До D-121
+   * любая функция уходила в CSS как есть (D-016 п. 2), и проходили `rgba(1,2)`, `foo(1)`.
    *
-   * 1. `bc--warn.3` → `color-mix(in srgb, var(--warn) 30%, transparent)`.
-   *    Точка-альфа уже работает для кодов (`cF00.5` → `rgba(…,.5)`), здесь
-   *    то же правило распространено на переменные. До этого `bc--warn.3`
-   *    молча давал `var(--warn.3)` — переменной с точкой в имени не бывает,
-   *    то есть это был битый CSS.
-   * 2. `bcColor-mix\(in_srgb,var\(--warn\)_30%,transparent\)` — любая
-   *    функция отдаётся как есть. Запасной выход для `oklch`/`light-dark`
-   *    и прочего, чего нет отдельным хендлером.
-   *
-   * Разбирается СЫРОЙ суффикс: `PATTERN_COLOR` обрезает функцию на первой
-   * скобке (`Color-mix(a,b)` → `camel: 'Color'`), поэтому по разобранным
-   * полям её не восстановить.
+   * Разбирается СЫРОЙ суффикс: `PATTERN_COLOR` обрезает функцию на первой скобке (`Color-mix(a,b)` → `camel:
+   * 'Color'`), поэтому по разобранным полям её не распознать.
+   * @param suffix сырой суффикс токена
+   * @param name имя хендлера — для сообщения
+   * @param imageHint для картинки: запись по пути, на которую указывает ошибка (`bgi_a\.png`); без него — цвет
+   * @returns готовый CSS или `undefined`
    */
-    function rawColorValue(suffix: string, name: string): string | undefined {
-      let value: string;
+    function rawColorValue(
+      suffix: string, name: string, imageHint?: string,
+    ): string | undefined {
       if (!suffix) {
         return;
       }
-      if (REGEXP_COLOR_FUNCTION.test(suffix)) {
-        // Функция — одно значение: хвост за ней проходил насквозь — `bgUrl\(a\.png\)_zz` давало
-        // `background:url(a.png) zz`, `biUrl\(a\.png\)_30_RD` — `border-image-source:url(a.png) 30 r-d` (до D-119).
-        splitTopLevel(value = valueNormalize(suffix), SPACE).length > 1 && throwInvalid(MSG_VALUE + suffix
-          + MSG_IS_INVALID_FOR + name + '": one value per class — nothing may follow the function; size, repeat, '
-          + 'slice… are classes of their own');
-        return value;
-      }
+      REGEXP_COLOR_FUNCTION.test(suffix) && throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + name
+        + '": a function is not written in a class — ' + (imageHint
+        ? 'an image is ' + imageForms(name) + '; a picture by its path is `'
+          + imageHint + '`'
+        : 'a color is a code (`' + name + '0`, `' + name + 'F00.5`), a letter (`' + name + 'T`) or a variable (`'
+          + name + '--x`, `' + name + '--x.3`)'));
       const withAlpha = REGEXP_VAR_WITH_ALPHA.exec(suffix);
       if (withAlpha) {
       // `.3` → 30%, `.67` → 67% — как у кодов.
@@ -3933,21 +3970,33 @@ export default {
     const REGEXP_PLAIN_HEX = /^[0-9A-Fa-f]+$/;
 
     /**
-     * Фон или картинка: цвет (`bgF00`), градиент (`bgF00-00F`, `bg--a;--b`), `Url\(…\)`, переменная, `N` — `none`.
-     * Один читатель на `bg`, `mk` и `bi` (D-119): исправление формы сразу у всех.
+     * Фон или картинка: цвет (`bgF00`), градиент (`bgF00-00F`, `bg--a;--b`), переменная, `N` — `none`. Один читатель
+     * на `bg`, `mk` и `bi` (D-119): исправление формы сразу у всех. Функция в токене не пишется (D-121): картинка по
+     * пути — `_`-форма (D-122), у `bg` и `mk` — в своём хендлере картинки (`bgi_a\.png`, `mki_a\.png`), у `bi` — в нём
+     * самом (`bi_a\.png`).
      * @param propName свойство (`background`, `maskImage`, `borderImageSource`)
      * @param imageOnly свойство принимает только картинку: одиночный цвет бракуется, цвет-fallback `altColor` не
      *   выводится (`mask-image`, `border-image-source`)
+     * @param pathHandler хендлер, где пишется картинка по пути (`bgi`); не задан — путь берёт сам хендлер (`bi_a\.png`)
      * @returns хендлер
      */
-    function backgroundProvider(propName: string, imageOnly?: 1): MnHandler {
+    function backgroundProvider(
+      propName: string, imageOnly?: 1, pathHandler?: string,
+    ): MnHandler {
       const property = toKebabCase(propName);
+      const pathHint = (p: MnEssenceParams): string => '; a picture by its path is `' + (pathHandler || p.name)
+        + '_a\\.png`';
       const notColor = (p: MnEssenceParams, v: string): never => throwInvalid(MSG_VALUE + v + MSG_IS_INVALID_FOR
-        + p.name + '": an image is a gradient (`' + p.name + 'F00-00F`), `' + p.name + 'Url\\(a\\.png\\)` or a '
-        + 'variable, `' + property + '` does not accept a single color');
+        + p.name + '": an image is ' + imageForms(p.name)
+        + pathHint(p) + '; `' + property + '` does not accept a single color');
       return (p: MnEssenceParams) => {
         let v: string; let style: Record<string, any>;
         p.negative && throwInvalid();
+        if (!pathHandler && p.suffix[0] === UNDERSCORE) {
+          style = {};
+          style[propName] = imagePathValue(p.suffix.slice(1), p.name);
+          return styleWrap(style);
+        }
         // `none` — буквой, как у остальных хендлеров (D-113): `bgN`, `mkN` бракувались как «not a color».
         if (p.suffix === 'N') {
           style = {};
@@ -3961,7 +4010,9 @@ export default {
         // Синонимы проверяем ДО разбора как цвета: буквы аббревиатур бывают
         // валидными hex-цифрами, и без этого `bgAC` (AccentColor) уходил в
         // `#aaa`, `bgBB` (ButtonBorder) — в `#bb` (2026-09-24).
-        const raw = rawColorValue(p.suffix, p.name);
+        const raw = rawColorValue(
+          p.suffix, p.name, (pathHandler || p.name) + '_a\\.png',
+        );
         if (raw) {
           style = {};
           style[propName] = raw;
@@ -4002,9 +4053,8 @@ export default {
         // `background:10_20`.
         REGEXP_BACKGROUND_RESULT.test(first)
         || throwInvalid(MSG_VALUE + v + MSG_IS_INVALID_FOR + p.name + (imageOnly
-          ? '": expected a gradient (`' + p.name + 'F00-00F`), an image (`' + p.name + 'Url\\(a\\.png\\)`), a '
-            + 'variable or `' + p.name + 'N`'
-          : '": expected a color (`F00`), a gradient (`F00-00F`) or a variable'));
+          ? '": expected ' + imageForms(p.name)
+          : '": expected a color (`F00`), a gradient (`F00-00F`) or a variable') + pathHint(p));
         // Проверки формы результата мало: мусор ВНУТРИ градиента в неё
         // укладывается — `bg100%-20px` собиралось в
         // `linear-gradient(180deg,100% 0%,20px 100%)`. Поэтому у градиента
@@ -5028,39 +5078,42 @@ export default {
       },
     });
 
+    // Картинка отдельно от цвета (D-120): `bg3 bgi_hero\.jpg` — серый остаётся под картинкой. Одна запись на значение
+    // (D-122): путь — только `_`-формой (`bgi_hero\.jpg` → `url("hero.jpg")`, {@link imagePathValue}), переменная —
+    // `bgi--hero`, `none` — `bgiN`, CSS-wide keyword — словом (`bgiInherit`). Градиент пишется в `bg` / `mk`, функция в
+    // токене не пишется (D-121). До D-122 проходило всё подряд: градиент становился именем файла (`bgiF00-00F` →
+    // `url("F00-00F")`), `bgi10px` — `url("10px")`, `bgiUrl\(a\.png\)` — `Url(a.png)`, `bgi_url\(a\.png\)` — `url(a.png)`.
     forIn({
-    // backgroundImage: url(...)
-      bgi: 'backgroundImage',
-      // listStyleImage: url(...)
-      lisi: 'listStyleImage',
-      mki: MASK_IMAGE,
-    }, (propName, name) => {
+      bgi: [
+        'backgroundImage',
+        'bg',
+      ],
+      lisi: ['listStyleImage'],
+      mki: [
+        MASK_IMAGE,
+        'mk',
+      ],
+    }, (options: string[], name: string) => {
+      const propName = options[0];
+      // Где пишется градиент для этого свойства — для подсказки; у `list-style-image` такого хендлера нет.
+      const gradientIn = options[1];
       mn(name, (p) => {
-        const style: Record<string, any> = {};
-        let url: string;
-        // Переменная подставляется как значение целиком, а не заворачивается в
-        // url: `bgi--hero` — это `background-image:var(--hero)` (сама
-        // переменная и содержит `url(…)`), а не `url("--hero")`, которое
-        // ссылалось бы на файл с таким именем (2026-09-23).
-        //
-        // Готовое значение тоже не заворачивается: обёртка была безусловной, и
-        // `bgi_url\(a\.png\)` давало `url("url(a.png)")`, `bgi_none` —
-        // `url("none")`, `bgiN` — `url("N")`, а градиент превращался в имя файла
-        // (`url("linear-gradient(red,blue)")`). Оборачивается только голый путь
-        // (2026-09-26).
-        //
-        // Значение — `none` (буквой: `bgiN`; `bgiNone`, `bgi_none` бракуются, D-113), CSS-wide keyword или
-        // `<image>`.
         const s = p.suffix;
+        const style: Record<string, any> = {};
         let word: string;
-        style[propName] = s === N ? NONE : (url = snakeLeftTrim(s))
-          ? (cssVarValue(url)
-          // Слово ищется в нижнем регистре: ключевые слова CSS регистронезависимы.
-          || (GLOBAL_KEYWORDS[word = assertNotLongForm(
-            url.toLowerCase(), NONE_ABBREVIATIONS, name, s,
-          )] && word)
-          || (url.indexOf(OPEN_PAREN) > -1 ? url : 'url("' + url + '")'))
-          : NONE;
+        if (!s) {
+          return 0;
+        }
+        style[propName] = s === N ? NONE
+          : s[0] === UNDERSCORE ? imagePathValue(s.slice(1), name)
+            : cssVarValue(s)
+            || (GLOBAL_KEYWORDS[word = assertNotLongForm(
+              toKebabCase(s), NONE_ABBREVIATIONS, name, s,
+            )] && word)
+            || throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + name + '": a picture is its path (`' + name
+              + '_a\\.png`), a variable (`' + name + '--x`) or `' + name + 'N`' + (gradientIn
+              ? '; a gradient is written in `' + gradientIn + '` (`' + gradientIn + 'F00-00F`)'
+              : ''));
         return styleWrap(style, 1);
       });
     });
@@ -5458,7 +5511,9 @@ export default {
       },
 
       // background: (...)
-      bg: backgroundProvider('background'),
+      bg: backgroundProvider(
+        'background', undefined, 'bgi',
+      ),
 
       // font-weight
       fw: (p) => {
@@ -5718,7 +5773,9 @@ export default {
         MS: 'MatchSource',
       }),
 
-      mk: backgroundProvider(MASK_IMAGE, 1),
+      mk: backgroundProvider(
+        MASK_IMAGE, 1, 'mki',
+      ),
       mks: synonymProvider(
         'maskSize', {
           A: NAME_AUTO,

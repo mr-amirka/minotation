@@ -291,7 +291,7 @@ export const ESSENCES: MnDocEntry[] = [
 
   // --- Маски, семейство mk… (E2, D-097) ---
   { name: 'mk', props: 'mask-image', keywords: ['mask', 'gradient', 'fade'], description: 'градиент, как у bg', examples: ['mkF00-00F'] },
-  { name: 'mki', props: 'mask-image', keywords: ['mask', 'image', 'url'], examples: ['mki--v', 'mkiN'] },
+  { name: 'mki', props: 'mask-image', keywords: ['mask', 'image', 'url'], description: 'картинка маски по пути — только через _ (D-122); градиент — mk', examples: ['mki_a\\.png', 'mki--v', 'mkiN'] },
   { name: 'mks', props: 'mask-size', keywords: ['mask', 'size', 'cover', 'contain'], examples: ['mksCV', 'mks50%_auto', 'mks10'] },
   { name: 'mkp', props: 'mask-position', keywords: ['mask', 'position'], examples: ['mkpC', 'mkpR_10_B_20'] },
   { name: 'mkr', props: 'mask-repeat', keywords: ['mask', 'repeat'], examples: ['mkrN', 'mkrX'] },
@@ -302,9 +302,9 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'mkm', props: 'mask-mode', keywords: ['mask', 'mode'], examples: ['mkmMS', 'mkmA'] },
 
   // --- Границы (доп.) — портировано из старого 1.x essences.js, проверено live-компиляцией ---
-  { name: 'bi', props: 'border-image-source', keywords: ['border', 'image', 'gradient'], description: 'картинка рамки, как у bg: градиент, Url\\(…\\), переменная, N; рамке градиентом нужен bis1 (D-119)', examples: ['bi8D5524-6D3504 bis1 b6 bsS', 'biUrl\\(a\\.png\\)', 'biN'] },
+  { name: 'bi', props: 'border-image-source', keywords: ['border', 'image', 'gradient'], description: 'картинка рамки, как у bg: градиент, переменная, N; по пути — bi_a\\.png (D-122); рамке градиентом нужен bis1 (D-119)', examples: ['bi8D5524-6D3504 bis1 b6 bsS', 'bi_a\\.png', 'biN'] },
   { name: 'bis', props: 'border-image-slice', keywords: ['border', 'image', 'slice', 'fill'], description: 'числа без единицы или %, до четырёх; F — fill', examples: ['bis1', 'bis30_F', 'bis10_20'] },
-  { name: 'biw', props: 'border-image-width', keywords: ['border', 'image', 'width'], description: 'толщина кольца картинки; A — auto', examples: ['biw10', 'biwA'] },
+  { name: 'biw', props: 'border-image-width', keywords: ['border', 'image', 'width'], description: 'толщина кольца картинки: длина с единицей, процент, A — auto; голое число — кратное ширины рамки, без px (D-123)', examples: ['biw2', 'biw10px', 'biwA'] },
   { name: 'bio', props: 'border-image-outset', keywords: ['border', 'image', 'outset'], examples: ['bio5', 'bio1_2'] },
   { name: 'bir', props: 'border-image-repeat', keywords: ['border', 'image', 'repeat', 'round'], description: 'ST stretch, R repeat, RD round, SP space', examples: ['birRD', 'birR_ST'] },
   { name: 'bdcl', props: 'border-collapse', keywords: ['border', 'collapse', 'table'], examples: ['bdclC', 'bdclS'] },
@@ -346,7 +346,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'tdc', props: 'text-decoration-color', keywords: ['text', 'decoration', 'color'], examples: ['tdcF'] },
 
   // --- Фон (доп.) ---
-  { name: 'bgi', props: 'background-image', keywords: ['background', 'image'], description: 'без аргумента — none; url — camelCase/snakeCase путь', examples: ['bgi'] },
+  { name: 'bgi', props: 'background-image', keywords: ['background', 'image'], description: 'картинка поверх цвета bg (D-120): путь — только через _ (D-122), переменная, N; градиент — bg', examples: ['bg3 bgi_hero\\.jpg', 'bgi--hero', 'bgiN'] },
   { name: 'bgp', props: 'background-position', keywords: ['background', 'position'], examples: ['bgpTop'] },
   { name: 'bgpx', props: 'background-position-x', keywords: ['background', 'position'], examples: ['bgpxRight_32px'] },
   { name: 'bgpy', props: 'background-position-y', keywords: ['background', 'position'], examples: ['bgpyBottom_32px'] },
@@ -435,7 +435,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'lis', props: 'list-style', keywords: ['list', 'style'], examples: ['lisSquare'] },
   { name: 'lisp', props: 'list-style-position', keywords: ['list', 'style', 'position'], examples: ['lispInside'] },
   { name: 'list', props: 'list-style-type', keywords: ['list', 'style', 'type'], examples: ['listCircle'] },
-  { name: 'lisi', props: 'list-style-image', description: 'без аргумента — none', keywords: ['list', 'style', 'image'], examples: ['lisi'] },
+  { name: 'lisi', props: 'list-style-image', description: 'картинка маркера: путь — только через _ (D-122), переменная, N', keywords: ['list', 'style', 'image'], examples: ['lisi_dot\\.svg', 'lisiN'] },
 
   // --- Page-break ---
   { name: 'pgbb', props: 'page-break-before, break-before', keywords: ['page', 'break'], examples: ['pgbbAlways'] },

@@ -80,9 +80,10 @@ describe('bi is border-image-source, read as bg reads its image', () => {
       'bi--a;--b',
       'border-image-source:linear-gradient(180deg,var(--a) 0%,var(--b) 100%)',
     ],
+    // Картинка по пути — `_`-форма самого `bi` (D-122); `biUrl\\(a\\.png\\)` бракуется (D-121).
     [
-      'biUrl\\(a\\.png\\)',
-      'border-image-source:url(a.png)',
+      'bi_a\\.png',
+      'border-image-source:url("a.png")',
     ],
     [
       'bi--img',
@@ -143,9 +144,22 @@ describe('the other parts of border-image are their own handlers', () => {
       'bis--s',
       'border-image-slice:var(--s)',
     ],
+    // Голое число у `biw` — кратное ширины рамки, без `px` (D-123): `biw2` при `b10` — кольцо 20px.
     [
-      'biw10',
+      'biw2',
+      'border-image-width:2',
+    ],
+    [
+      'biw0.5',
+      'border-image-width:0.5',
+    ],
+    [
+      'biw10px',
       'border-image-width:10px',
+    ],
+    [
+      'biw1rem',
+      'border-image-width:1rem',
     ],
     [
       'biw10%',
@@ -157,7 +171,11 @@ describe('the other parts of border-image are their own handlers', () => {
     ],
     [
       'biw1_A',
-      'border-image-width:1px auto',
+      'border-image-width:1 auto',
+    ],
+    [
+      'biw10px_2',
+      'border-image-width:10px 2',
     ],
     [
       'bio5',
@@ -202,8 +220,8 @@ describe('border-image: errors say what is accepted', () => {
   test.each([
     [
       'biF00',
-      'Value "F00" is invalid for "bi": an image is a gradient (`biF00-00F`), `biUrl\\(a\\.png\\)` or a variable,'
-        + ' `border-image-source` does not accept a single color',
+      'Value "F00" is invalid for "bi": an image is a gradient (`biF00-00F`), a variable or `biN`; a picture by its'
+        + ' path is `bi_a\\.png`; `border-image-source` does not accept a single color',
     ],
     [
       'biT',
@@ -211,8 +229,8 @@ describe('border-image: errors say what is accepted', () => {
     ],
     [
       'bi10px',
-      'Value "10px" is invalid for "bi": expected a gradient (`biF00-00F`), an image (`biUrl\\(a\\.png\\)`),'
-        + ' a variable or `biN`',
+      'Value "10px" is invalid for "bi": expected a gradient (`biF00-00F`), a variable or `biN`; a picture by its'
+        + ' path is `bi_a\\.png`',
     ],
     [
       'bi100%-20px',
@@ -245,7 +263,8 @@ describe('border-image: errors say what is accepted', () => {
     ],
     [
       'biw-1',
-      'Value "-1" is invalid for "biw": expected a length, zero or positive',
+      'Value "-1" is invalid for "biw": expected a length with a unit (`10px`), a percentage or a number — multiples'
+        + ' of the border width (`2`), zero or positive',
     ],
     [
       'bio5%',
@@ -289,30 +308,57 @@ describe('border-image: errors say what is accepted', () => {
     expect(compile(token).css).toBe('');
   });
 
+  // Функция в токене не пишется (D-121): ни цвет (`cRgb\\(0,0,0\\)` — это `c0`), ни картинка (`bgUrl\\(a\\.png\\)` —
+  // это `bgi_a\\.png`). Ошибка называет запись, которой пишется то же самое.
   test.each([
     [
-      'biUrl\\(a\\.png\\)_30',
-      'bi',
+      'cRgb\\(0,0,0\\)',
+      'Value "Rgb(0,0,0)" is invalid for "c": a function is not written in a class — a color is a code (`c0`, `cF00.5`),'
+        + ' a letter (`cT`) or a variable (`c--x`, `c--x.3`)',
     ],
     [
-      'bgUrl\\(a\\.png\\)_zz',
-      'bg',
+      'cOklch\\(0.7_0.1_200\\)',
+      'is invalid for "c": a function is not written in a class',
     ],
     [
-      'mkUrl\\(a\\.png\\)_1',
-      'mk',
+      'bcColor-mix\\(in_srgb,var\\(--warn\\)_30%,transparent\\)',
+      'is invalid for "bc": a function is not written in a class',
     ],
-    // Цвет-функция читается тем же `rawColorValue`.
     [
-      'cRgb\\(0,0,0\\)_1',
-      'c',
+      'bctRgb\\(0,0,0\\)',
+      'is invalid for "bct": a function is not written in a class',
     ],
-  ])('%s — nothing may follow the function (the shared reader, D-119)', (token, name) => {
+    [
+      'bgcRgb\\(0,0,0\\)',
+      'is invalid for "bgc": a function is not written in a class',
+    ],
+    [
+      'sbcRgb\\(0,0,0\\)_0',
+      'is invalid for "sbc": a function is not written in a class',
+    ],
+    [
+      'bgUrl\\(a\\.png\\)',
+      'Value "Url(a.png)" is invalid for "bg": a function is not written in a class — an image is a gradient'
+        + ' (`bgF00-00F`), a variable or `bgN`; a picture by its path is `bgi_a\\.png`',
+    ],
+    [
+      'mkUrl\\(a\\.png\\)',
+      'a picture by its path is `mki_a\\.png`',
+    ],
+    [
+      'biUrl\\(a\\.png\\)',
+      'a picture by its path is `bi_a\\.png`',
+    ],
+    [
+      'bgLinear-gradient\\(red,blue\\)',
+      'is invalid for "bg": a function is not written in a class',
+    ],
+  ])('%s — a function is not written in a class (D-121)', (token, message) => {
     const {
       css, warnings,
     } = compile(token);
     expect(css).toBe('');
-    expect(warnings).toContain('is invalid for "' + name + '": one value per class');
+    expect(warnings).toContain(message);
   });
 
   test('the old one-token outputs were invalid or are now other classes', () => {

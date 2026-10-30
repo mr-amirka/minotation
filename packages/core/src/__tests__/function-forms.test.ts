@@ -661,3 +661,100 @@ describe('функции content в нативной форме: cnt (D-124)', (
     expect(rejected(token)).toBe(message);
   });
 });
+
+describe('курсор-картинка: cr, запятая владельца (D-124)', () => {
+  test.each([
+    [
+      'cr_a\\.png',
+      'cursor:url("a.png"),auto',
+    ],
+    [
+      'cr_a\\.png,P',
+      'cursor:url("a.png"),pointer',
+    ],
+    [
+      'cr_a\\.svg,b\\.png,P',
+      'cursor:url("a.svg"),url("b.png"),pointer',
+    ],
+    [
+      'cr_a\\.png_4_4,P',
+      'cursor:url("a.png") 4 4,pointer',
+    ],
+    [
+      'cr_a\\.png_4_4',
+      'cursor:url("a.png") 4 4,auto',
+    ],
+    // `_` в имени файла — как написан; пробел — как в URL.
+    [
+      'cr_my_img\\.png',
+      'cursor:url("my_img.png"),auto',
+    ],
+    [
+      'cr_my%20icon\\.png,HA',
+      'cursor:url("my%20icon.png"),hand',
+    ],
+    [
+      'cr_img/hand\\.svg,b\\.png_2_2,G',
+      'cursor:url("img/hand.svg"),url("b.png") 2 2,grab',
+    ],
+    [
+      'crNWR',
+      'cursor:nw-resize',
+    ],
+    [
+      'cr--x',
+      'cursor:var(--x)',
+    ],
+  ])('%s → %s', (token, declaration) => {
+    const out = compile([token]);
+    expect(out.warnings).toEqual([]);
+    expect(out.css).toContain('{' + declaration + '}');
+  });
+
+  test.each([
+    [
+      'crUrl\\(a\\.png\\)',
+      'Value "Url(a.png)" is invalid for "cr": a function is not written in a class — the picture by its path, as'
+      + ' "cr_a\\.png,P"',
+    ],
+    [
+      'cr_url\\(a\\.png\\)',
+      'Value "_url(a.png)" is invalid for "cr": a function is not written in a class — the path alone, as "cr_a\\.png"',
+    ],
+    [
+      'cr_a\\.png,pointer',
+      'Write it shorter: "cr_a.png,P" instead of "cr_a.png,pointer" — same value',
+    ],
+    [
+      'cr_a\\.png,NotAllowed',
+      'Write it shorter: "cr_a.png,NA" instead of "cr_a.png,NotAllowed" — same value',
+    ],
+    [
+      'cr_pointer',
+      'Write it shorter: "crP" instead of "cr_pointer" — same value',
+    ],
+    [
+      'cr_none',
+      'Write it shorter: "crN" instead of "cr_none" — same value',
+    ],
+    [
+      'cr_a\\.png,ZZ',
+      'Value "_a.png,ZZ" is invalid for "cr": "ZZ" is not a cursor letter — as "cr_a\\.png,P"',
+    ],
+    [
+      'cr_P',
+      'Value "_P" is invalid for "cr": a picture goes before the fallback — as "cr_a\\.png,P", or the letter alone,'
+      + ' "crP"',
+    ],
+    [
+      'cr_a\\.png_4,P',
+      'Value "_a.png_4,P" is invalid for "cr": the hot spot is two numbers, x and y — as "cr_a\\.png_4_4,P"',
+    ],
+    [
+      'cr_--x',
+      'Write the variable without "_": "cr--x" instead of "cr_--x" — same value',
+    ],
+  ])('%s', (token, message) => {
+    expect(rejected(token)).toBe(message);
+  });
+});

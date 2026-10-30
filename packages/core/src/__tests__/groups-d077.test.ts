@@ -147,10 +147,6 @@ describe("c) groupMode: 'css' — скобки это CSS", () => {
       ':not(.a){color:#fff}',
     ],
     [
-      'crUrl(a\\.png)',
-      '{cursor:url(a.png)}',
-    ],
-    [
       'gtcRepeat(auto-fit,minmax(240px,1fr))',
       '{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}',
     ],
@@ -158,6 +154,16 @@ describe("c) groupMode: 'css' — скобки это CSS", () => {
     expect(compile(token, {
       groupMode: 'css',
     }).css).toContain(expected);
+  });
+
+  test('скобка в значении доходит до хендлера целиком — и бракуется с нативной формой (D-124)', () => {
+    const {
+      css, warnings,
+    } = compile('crUrl(a\\.png)', {
+      groupMode: 'css',
+    });
+    expect(css).toBe('');
+    expect(warnings.join()).toContain('Value "Url(a.png)" is invalid for "cr": a function is not written in a class');
   });
 
   test('групп нет: `w(|max)150` не разворачивается', () => {
@@ -204,11 +210,12 @@ describe('настройки разбора компилятора: getCompiler(
     mn.getCompiler('class', {
       contextWhere: true,
     })('cF00<.card');
-    mn.getCompiler('class')('crUrl(a\\.png)');
+    // В 'css' группы нет: `p(|t)7` не разворачивается в `padding-top`, как развернулся бы в 'groups'.
+    mn.getCompiler('class')('p(|t)7');
     const css = cssOf(mn);
     expect(css).toContain('max-width:150px');
     expect(css).toContain(':is(:where(.card) *){color:#f00}');
-    expect(css).toContain('{cursor:url(a.png)}');
+    expect(css).not.toContain('padding-top:7px');
   });
 
   test('пустые настройки — общий компилятор экземпляра', () => {

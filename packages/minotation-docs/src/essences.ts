@@ -126,7 +126,7 @@ export const ESSENCES: MnDocEntry[] = [
     examples: ['taC', 'taR', 'taL'],
   },
   { name: 'd', props: 'display', keywords: ['display'], params: 'B(block) N(none) F(flex) I(inline) IB(inline-block)', examples: ['dB', 'dN', 'dF'] },
-  { name: 'cr', props: 'cursor', keywords: ['cursor', 'pointer'], examples: ['crP'] },
+  { name: 'cr', props: 'cursor', keywords: ['cursor', 'pointer'], examples: ['crP', 'cr_hand\\.svg,P'] },
   { name: 'us', props: 'user-select', keywords: ['user', 'select'], examples: ['usN'] },
 
   // --- Цвет ---
@@ -430,7 +430,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'tal', props: 'text-align-last', keywords: ['text', 'align'], examples: ['talCenter'] },
 
   // --- Контент / списки ---
-  { name: 'cnt', props: 'content', examples: ['cntNormal'] },
+  { name: 'cnt', props: 'content', examples: ['cntNormal', 'cntAttr_href', 'cntCounter_item_UR'] },
   { name: 'lis', props: 'list-style', keywords: ['list', 'style'], examples: ['lisSquare'] },
   { name: 'lisp', props: 'list-style-position', keywords: ['list', 'style', 'position'], examples: ['lispInside'] },
   { name: 'list', props: 'list-style-type', keywords: ['list', 'style', 'type'], examples: ['listCircle'] },

@@ -23,6 +23,7 @@ const PERCENT = '%';
 const CONTRAST = 'contrast';
 const DEG = 'deg';
 const COMMA = ',';
+const DOT = '.';
 const PIPE = '|';
 const UNDERSCORE = '_';
 const VAR_OPEN = 'var(';
@@ -3355,6 +3356,55 @@ function throwSuspect(p: MnEssenceParams): never {
 /** Подсказка в ошибке хендлера: значение подходит другому свойству (D-094). */
 type CrossHint = [test: (suffix: string) => boolean, tag: string, property: string];
 
+/**
+ * Буквы `cursor`. Однобуквенные заняты исторически (`C` — crosshair, `P` — pointer, `A` — auto), поэтому добавленные
+ * 2026-09-24 значения берут по две буквы. Курсоры изменения размера — направление + `R`: `crER` (e-resize), `crNWR`
+ * (nw-resize), `crNSR` (ns-resize). Те же буквы — запасной курсор после картинки: `cr_a\.png,P`.
+ */
+const CURSOR_SYNONYMS: Record<string, string> = {
+  '': 'Pointer',
+  A: NAME_AUTO,
+  D: 'Default',
+  C: 'Crosshair',
+  HA: 'Hand',
+  HE: 'Help',
+  M: 'Move',
+  P: 'Pointer',
+  T: NAME_TEXT,
+  N: NAME_NONE,
+  NA: 'NotAllowed',
+  W: 'Wait',
+  PR: 'Progress',
+  CM: 'ContextMenu',
+  CE: 'Cell',
+  VT: 'VerticalText',
+  AL: 'Alias',
+  CO: 'Copy',
+  ND: 'NoDrop',
+  G: 'Grab',
+  GG: 'Grabbing',
+  ZI: 'ZoomIn',
+  ZO: 'ZoomOut',
+  AS: 'AllScroll',
+  CR: 'ColResize',
+  RR: 'RowResize',
+  ER: 'EResize',
+  NR: 'NResize',
+  SR: 'SResize',
+  WR: 'WResize',
+  NER: 'NeResize',
+  NWR: 'NwResize',
+  SER: 'SeResize',
+  SWR: 'SwResize',
+  EWR: 'EwResize',
+  NSR: 'NsResize',
+  NESWR: 'NeswResize',
+  NWSER: 'NwseResize',
+};
+/** Горячая точка курсора — число: `cr_a\.png_4_4,P`. */
+const REGEXP_HOT_SPOT = /^\d*\.?\d+$/;
+/** Часть из одних заглавных — буква, а не имя файла: `cr_a\.png,ZZ`. */
+const REGEXP_CAPITALS = /^[A-Z]+$/;
 /** Значения курсора, которые не цвет: `cP` — не `#P`, а, видимо, `crP`. */
 const CURSOR_WORDS: Record<string, 1> = {
   P: 1,
@@ -4291,7 +4341,7 @@ export default {
    */
     function canonicalAlpha(hex: string): string | undefined {
     // Уже десятичная — ничего не меняем.
-      if (hex.indexOf('.') > -1) {
+      if (hex.indexOf(DOT) > -1) {
         return;
       }
       const form = HEX_ALPHA_FORM[hex.length];
@@ -4299,7 +4349,7 @@ export default {
         return;
       }
       const alpha = parseInt(hex.slice(hex.length - form[0]), 16);
-      return hex.slice(0, hex.length - form[0]) + '.'
+      return hex.slice(0, hex.length - form[0]) + DOT
       + toFixed(alpha / form[1]).replace(REGEXP_LEADING_ZERO, '');
     }
     /** Функция, записанная в токене: `Rgb\(0,0,0\)`, `Url\(a\.png\)` — в цвете и картинке не принимается (D-121). */
@@ -6298,52 +6348,8 @@ export default {
         BL: NAME_BLOCK,
         IL: NAME_INLINE,
       }),
-      /**
-     * `cursor`. Однобуквенные заняты исторически (`C` — crosshair, `P` — pointer,
-     * `A` — auto), поэтому добавленные 2026-09-24 значения берут по две буквы.
-     * Курсоры изменения размера — направление + `R`: `crER` (e-resize),
-     * `crNWR` (nw-resize), `crNSR` (ns-resize).
-     */
-      cr: synonymProvider('cursor', {
-        '': 'Pointer',
-        A: NAME_AUTO,
-        D: 'Default',
-        C: 'Crosshair',
-        HA: 'Hand',
-        HE: 'Help',
-        M: 'Move',
-        P: 'Pointer',
-        T: NAME_TEXT,
-        N: NAME_NONE,
-        NA: 'NotAllowed',
-        W: 'Wait',
-        PR: 'Progress',
-        CM: 'ContextMenu',
-        CE: 'Cell',
-        VT: 'VerticalText',
-        AL: 'Alias',
-        CO: 'Copy',
-        ND: 'NoDrop',
-        G: 'Grab',
-        GG: 'Grabbing',
-        ZI: 'ZoomIn',
-        ZO: 'ZoomOut',
-        AS: 'AllScroll',
-        CR: 'ColResize',
-        RR: 'RowResize',
-        ER: 'EResize',
-        NR: 'NResize',
-        SR: 'SResize',
-        WR: 'WResize',
-        NER: 'NeResize',
-        NWR: 'NwResize',
-        SER: 'SeResize',
-        SWR: 'SwResize',
-        EWR: 'EwResize',
-        NSR: 'NsResize',
-        NESWR: 'NeswResize',
-        NWSER: 'NwseResize',
-      }),
+      // `cursor`: буквы ({@link CURSOR_SYNONYMS}) и картинки по пути с запасным курсором (D-124).
+      cr: cursorProvider(),
       jc: synonymProvider('justifyContent', {
         '': NAME_CENTER,
         ...JUSTIFY_CONTENT_WORDS,
@@ -7164,6 +7170,69 @@ export default {
         },
       }, 'a content function', 1,
     );
+
+    /**
+     * `cursor` (D-124, запятая владельца): буквы — как у остальных хендлеров (`crP`), картинка — по пути в `_`-форме.
+     * Запятая разделяет то, что разделяет CSS: `cr_a\.png` → `url("a.png"),auto`, `cr_a\.svg,b\.png,P` →
+     * `url("a.svg"),url("b.png"),pointer`. Последняя часть — буква запасного курсора, без неё — `auto`: CSS требует
+     * ключевое слово, а `auto` ничего не меняет. Два числа в конце пути — горячая точка: `cr_a\.png_4_4,P` →
+     * `url("a.png") 4 4,pointer`. Пробел в классе невозможен, запятая — разделитель: в имени файла они пишутся как в
+     * URL, `my%20icon\.png`, `%2C`.
+     * @returns хендлер `cr`
+     */
+    function cursorProvider(): MnHandler {
+      const words = synonymProvider('cursor', CURSOR_SYNONYMS);
+      return (p: MnEssenceParams) => {
+        const s = p.suffix;
+        const name = p.name;
+        if (s[0] !== UNDERSCORE) {
+          s.indexOf(OPEN_PAREN) > -1 && throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + name + MSG_COLON
+            + 'a function is not written in a class — the picture by its path, as "' + name + '_a\\.png,P"');
+          return words(p);
+        }
+        const items = s.slice(1).split(COMMA);
+        const l = items.length;
+        const last = items[l - 1];
+        const word = last && CURSOR_SYNONYMS[last];
+        const n = word ? l - 1 : l;
+        const out: string[] = [];
+        let i = 0;
+        let parts: string[];
+        let k: number;
+        let spot: boolean;
+        let key: string;
+        n || throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + name + '": a picture goes before the fallback — as "'
+          + name + '_a\\.png,' + last + '", or the letter alone, "' + name + last + DOUBLE_QUOTE);
+        if (!word && REGEXP_FUNCTION_NAME_ANY.test(last) && last.indexOf(DOT) < 0) {
+          // Курсор словом: `cr_a\.png,pointer` давал бы картинку `pointer`; без картинки — `crP`.
+          for (key in CURSOR_SYNONYMS) { // eslint-disable-line
+            key && toKebabCase(CURSOR_SYNONYMS[key]) === toKebabCase(last) && throwInvalid(MSG_WRITE_SHORTER + name
+              + (l > 1 ? s.slice(0, s.length - last.length) : '') + key + MSG_INSTEAD_OF + name + s + MSG_SAME_VALUE);
+          }
+          // Заглавные — буква, а не путь: `cr_a\.png,ZZ` давал картинку `ZZ`.
+          REGEXP_CAPITALS.test(last) && throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + name + '": "' + last
+            + '" is not a cursor letter — as "' + name + '_a\\.png,P"');
+        }
+        for (; i < n; i++) {
+          parts = items[i].split(UNDERSCORE);
+          k = parts.length;
+          spot = k > 1 && REGEXP_HOT_SPOT.test(parts[k - 1]);
+          if (!spot) {
+            out.push(imagePathValue(items[i], name));
+            continue;
+          }
+          // Одно число в конце — горячая точка без второй координаты, а не часть имени файла.
+          k > 2 && REGEXP_HOT_SPOT.test(parts[k - 2]) || throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + name
+            + '": the hot spot is two numbers, x and y — as "' + name + '_a\\.png_4_4,P"');
+          out.push(imagePathValue(parts.slice(0, k - 2).join(UNDERSCORE), name) + SPACE + parts[k - 2] + SPACE
+            + parts[k - 1]);
+        }
+        out.push(word ? toKebabCase(word) : AUTO);
+        return styleWrap({
+          cursor: out.join(COMMA),
+        });
+      };
+    }
 
     function ftProvider(propName: string): MnHandler {
       return (p: MnEssenceParams) => {

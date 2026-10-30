@@ -937,13 +937,16 @@ tn{свойство}_{длительность}_{плавность}_{задер
 | `tn_color_0.2s_E` | `transition:color 0.2s ease` |
 | `tn_color_0.2s_EIO_0.1s` | `transition:color 0.2s ease-in-out 0.1s` |
 | `tn_0.2s_0.1s` | `transition:0.2s 0.1s` — первое время длительность, второе задержка |
-| `tn_cubic-bezier\(0,0,1,1\)` | `transition:cubic-bezier(0,0,1,1)` |
+| `tn_color_0.2s_CubicBezier0.4_0_0.2_1` | `transition:color 0.2s cubic-bezier(0.4,0,0.2,1)` — функция нативной формой (D-124) |
+| `tn_opacity_200_Steps4_JE_100` | `transition:opacity 200ms steps(4,jump-end) 100ms` — `JE` ещё аргумент, `100` уже задержка |
 
 **Буквы** (D-109) — те же, что у `tp` и `ttf`: `A` — `all` в слоте свойства; плавность — `L` (`linear`),
 `E` (`ease`), `EI`, `EO`, `EIO` (`ease-in`, `ease-out`, `ease-in-out`), `SS`, `SE` (`step-start`, `step-end`).
 Длинное слово отвечает буквой (D-015): `tn_A_0.2s` → «write it shorter — "A" instead of "all"»,
-`tn_color_0.2s_ease-in` → «"EI" instead of "ease-in"». Функции плавности (`cubic-bezier(…)`, `steps(…)`,
-`linear(…)`) пишутся как в CSS. `none` — буквой, как у `tp` и `an` (D-111): `tnN`; `tnNone` и `tn_none` →
+`tn_color_0.2s_ease-in` → «"EI" instead of "ease-in"». Функции плавности — нативной формой, как у `ttf` (D-124):
+`CubicBezier` берёт ровно четыре части, `Steps` — число и, если следующая часть — буквы позиции, её. Скобка
+бракуется с подсказкой: `tn_cubic-bezier\(0,0,1,1\)` → «write "CubicBezier0.4_0_0.2_1"»; у `linear(…)` с точками
+короткой записи нет — переменная: `tn_color_0.2s_--ease`. `none` — буквой, как у `tp` и `an` (D-111): `tnN`; `tnNone` и `tn_none` →
 «Write it shorter: "tnN" instead of "tnNone" — same value».
 
 Каждый слот необязателен, но **порядок обязателен**: `tn_0.2s_A` и
@@ -1017,7 +1020,8 @@ an_{имя}_{длительность}_{плавность}_{задержка}_{
 только после имени или длительности: первая часть — всегда имя (`an_e_1s` — анимация `e`, как и `anE_1s`).
 Длинное слово отвечает буквой: `an_fade_1s_ease-out` → «write it shorter — "EO" instead of "ease-out"»; в первой
 части — с напоминанием о месте: `an_ease_1s` → «… "E" instead of "ease"; easing goes after the name or the
-duration». Функции плавности (`cubic-bezier(…)`, `steps(…)`) пишутся как в CSS.
+duration». Функции плавности — нативной формой, как у `tn` (D-124): `an_fade_1s_Steps4_infinite` →
+`animation:fade 1s steps(4) infinite`; как и буква, только после имени (`an_steps4_1s` — анимация `steps4`).
 
 **Ключевые кадры — в пресете проекта** (`mn.setKeyframes`), сама анимация — токеном:
 
@@ -1111,6 +1115,7 @@ import './loadingScreen.mn';
 | `ftBlur\(2px\)` | «a function is not written in a class — write "ftBlur2"» |
 | `ftGrayscale100`, `ftBrightness150`, `ftHueRotate90` | «Write it shorter: "ftGray100"» (`ftBright150`, `ftHue90`) |
 | `ft_blur5`, `ftBlur5_gray50` | «Write "ftBlur5"» (`ftBlur5_Gray50`) — имя в CamelCase |
+| `ftBlur_5`, `ftDropShadow_2_4` | «Write "ftBlur5"» (`ftDropShadow2_4`) — первый аргумент слитно; `ftBlur_Gray50` — две функции |
 
 ---
 
@@ -1625,15 +1630,26 @@ justify-items. Available: pliC_N (normal), …»); длинное слово —
 | `lcl3` | `overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3` | целое от 1 или переменная; `lclN` снимает обрезку |
 | `fszC` | `field-sizing:content` | `F` fixed, `C` content |
 | `tnbAD` | `transition-behavior:allow-discrete` | `N` normal, `AD` allow-discrete |
-| `atfL`, `atfSteps\(4\)` | `animation-timing-function:linear`, `steps(4)` | `L`, `E`, `EI`, `EO`, `EIO`, `SS` step-start, `SE` step-end; функции как есть |
+| `atfL`, `atfSteps4` | `animation-timing-function:linear`, `steps(4)` | `L`, `E`, `EI`, `EO`, `EIO`, `SS` step-start, `SE` step-end; функции — нативной формой (ниже) |
 | `bgbmM` | `background-blend-mode:multiply` | `N`, `M`, `S` screen, `O` overlay, `D`, `L`, `CD`, `CB`, `HL`, `SL`, `DF` difference, `E` exclusion, `H` hue, `ST` saturation, `C` color, `LM` luminosity |
-| `ttfEI`, `ttfSteps\(4\)` | `transition-timing-function:ease-in`, `steps(4)` | буквы `atf` (D-106) |
+| `ttfEI`, `ttfSteps4` | `transition-timing-function:ease-in`, `steps(4)` | буквы и функции `atf` (D-106) |
 | `mbmM` | `mix-blend-mode:multiply` | буквы `bgbm` и `PD` plus-darker, `PL` plus-lighter (D-106) |
 
 Длинное слово при наличии буквы — «Write it shorter: "hyA" instead of "hyAuto"».
 
-`jump-start`/`jump-end`/`jump-none`/`jump-both` у `ttf`/`atf` — аргументы `steps()`, а не значения свойства;
-пишутся функцией: `ttfSteps\(4,jump-end\)`.
+**Функции плавности** у `ttf`/`atf` — нативной формой (D-124): имя в CamelCase, первый аргумент слитно, остальные
+через `_`, одна функция на значение.
+
+| Токен | CSS |
+|-------|-----|
+| `ttfSteps4_JE` | `transition-timing-function:steps(4,jump-end)` — позиция буквами: `JS`, `JE`, `JN`, `JB` (`jump-start` … `jump-both`) |
+| `atfSteps--n` | `animation-timing-function:steps(var(--n))` |
+| `ttfCubicBezier0.4_0_0.2_1` | `transition-timing-function:cubic-bezier(0.4,0,0.2,1)` — x1 и x2 от 0 до 1 |
+| `ttfCubicBezier0.4_-0.5_0.2_1.5` | `transition-timing-function:cubic-bezier(0.4,-0.5,0.2,1.5)` — y любые: «отскок» |
+
+`start` и `end` — то же, что `jump-start` и `jump-end`, своих букв не получают (одна запись на значение, D-122).
+`ttfSteps\(4,jump-end\)` → «a function is not written in a class — write "ttfSteps4_JE"»; `ttf_linear\(…\)` →
+«"linear" has no short form, write it through a variable — "ttf--x"».
 
 **`word-wrap` — старое имя `overflow-wrap`** (D-106). `ww…` даёт ошибку «"wwBW" was renamed: write "owrBW"»
 (`wwB` → `owrBW`, `wwNM` → `owrN`) и убирается через выпуск. Для браузеров, что знают только старое имя (IE, Edge

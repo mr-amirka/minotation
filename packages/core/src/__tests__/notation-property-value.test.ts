@@ -194,14 +194,22 @@ describe("'property-value' — селекторы", () => {
       'c:F00.active',
       '.c\\:F00\\.active.active{color:#f00}',
     ],
-    // Скобки и запятые в значении экранируются в селекторе. Функция — из закрытого списка `ttf`: цвет функцией не
-    // пишется (D-121, `c:rgba(…)` бракуется хендлером `c`).
+    // Запятая в значении экранируется в селекторе. Скобок в значении нет: функция пишется нативной формой (D-124),
+    // скобка бракуется хендлером (тест ниже).
     [
-      'ttf:cubic-bezier(0,0,1,1)',
-      '.ttf\\:cubic-bezier\\(0\\,0\\,1\\,1\\){transition-timing-function:cubic-bezier(0,0,1,1)}',
+      'tn:color,opacity:hover',
+      '.tn\\:color\\,opacity\\:hover:hover{transition:color,opacity}',
     ],
   ])('%s → %s', (token, css) => {
     expect(compile(token).css).toBe(css);
+  });
+
+  test('скобка в значении читается до парной — с точками и запятыми внутри; хендлер бракует её (D-124)', () => {
+    const {
+      css, warnings,
+    } = compile('ttf:cubic-bezier(0.4,0,0.2,1).active');
+    expect(css).toBe('');
+    expect(warnings.map((w) => w.arg)).toEqual(['cubic-bezier(0.4,0,0.2,1)']);
   });
 
   test('дочерний селектор — childSelectorMode (по умолчанию warn)', () => {

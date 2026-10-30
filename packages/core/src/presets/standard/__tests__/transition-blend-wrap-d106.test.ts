@@ -152,7 +152,7 @@ describe('ttf and mbm take letters, as atf and bgbm (D-106)', () => {
       'transition-timing-function:step-end',
     ],
     [
-      'ttfSteps\\(4,jump-end\\)',
+      'ttfSteps4_JE',
       'transition-timing-function:steps(4,jump-end)',
     ],
     [
@@ -357,7 +357,7 @@ describe('a list item starts with a lower-case letter (D-107)', () => {
     ],
     [
       'ttfSteps\\(4,JumpEnd\\)',
-      'write "Steps(4,jumpEnd)"',
+      'Value "Steps(4,JumpEnd)" is invalid for "ttf": a function is not written in a class — write "ttfSteps4_JE"',
     ],
   ])('%s gives no CSS: %s', (token, message) => {
     const result = compile(token);
@@ -418,7 +418,7 @@ describe('tn takes the letters of ttf and A for all (D-109)', () => {
       'transition:all',
     ],
     [
-      'tn_opacity_200_steps\\(4,jump-end\\)',
+      'tn_opacity_200_Steps4_JE',
       'transition:opacity 200ms steps(4,jump-end)',
     ],
   ])('%s → %s', (token, expected) => {

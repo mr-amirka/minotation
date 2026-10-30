@@ -56,6 +56,8 @@ const OPEN_PAREN = '(';
 const MSG_VALUE = 'Value "';
 const MSG_IS_INVALID_FOR = '" is invalid for "';
 const MSG_COLON = '": ';
+/** Пример записи в конце сообщения: `… — as "ftBlur2"`. */
+const MSG_AS = ' — as "';
 /** Начало цитаты слова после двоеточия: `…for "bgs": "cover" stands alone`. */
 const MSG_COLON_QUOTE = MSG_COLON + DOUBLE_QUOTE;
 const MS = 'ms';
@@ -1161,6 +1163,48 @@ interface FunctionForm {
   example: string;
   /** Аргументы → содержимое скобок; на части, которую не принимает, зовёт `call.fail`. */
   args: (args: string[], call: FunctionCall) => string;
+  /**
+   * Часть, которая продолжает функцию сверх `min`, — для слотов, где за функцией идут другие части (`tn`, `an`):
+   * `tn_opacity_200_Steps4_JE_100` — `JE` ещё аргумент `Steps`, `100` уже задержка. Без неё там берётся ровно `min`.
+   */
+  more?: RegExp;
+}
+/**
+ * Функции одного хендлера для {@link functionsValue}: собирается один раз, на регистрации.
+ */
+interface FunctionSet {
+  forms: Record<string, FunctionForm>;
+  /** Длинное имя → короткое (`Grayscale` → `Gray`): вторая запись того же значения (D-122). */
+  longNames: Record<string, string>;
+  /** Что за функции — для сообщения: `a filter function`. */
+  what: string;
+  /** Значение — одна функция (`ttf`), а не список через `_` (`ft`). */
+  single: boolean;
+  /** Первая форма — пример в подсказках. */
+  first: FunctionForm;
+  /** Имена через запятую — для сообщения «expected …». */
+  names: string;
+}
+/**
+ * Собирает {@link FunctionSet}.
+ * @param forms функции по имени в нотации, первая — пример в подсказках
+ * @param what что за функции — для сообщения
+ * @param single значение — одна функция
+ * @param longNames длинное имя → короткое
+ * @returns набор для {@link functionsValue}
+ */
+function functionSet(
+  forms: Record<string, FunctionForm>, what: string, single?: 1, longNames?: Record<string, string>,
+): FunctionSet {
+  const names = Object.keys(forms);
+  return {
+    forms,
+    longNames: longNames || {},
+    what,
+    single: !!single,
+    first: forms[names[0]],
+    names: names.join(LIST_SEPARATOR),
+  };
 }
 /** Что видит читатель аргументов одной функции {@link FunctionForm}. */
 interface FunctionCall {
@@ -1181,6 +1225,8 @@ const REGEXP_FUNCTION_NAME = /^((?:[A-Z][a-z]+)+)(.*)$/;
 const REGEXP_FUNCTION_NAME_ANY = /^([A-Za-z][a-z]*(?:[A-Z][a-z]+)*)(.*)$/;
 /** Функция со скобкой, как в CSS: `blur(`, `drop-shadow(`, `Blur(`. */
 const REGEXP_FUNCTION_HEAD = /^([A-Za-z][A-Za-z-]*)\(/;
+/** Начало первого аргумента — число, длина, угол или переменная: `5`, `-2`, `.5`, `--x`. */
+const REGEXP_FUNCTION_FIRST_ARG = /^[-.\d]/;
 const REGEXP_KEBAB_LETTER = /-([a-z])/g;
 /** Длина без процента — у `blur` и `drop-shadow` процента нет. */
 const REGEXP_FUNCTION_LENGTH = lengthPartRegExp(UNITS.filter((unit) => unit !== PERCENT));
@@ -1253,36 +1299,175 @@ const FILTER_LONG_NAMES: Record<string, string> = {
   HueRotate: 'Hue',
 };
 /**
- * Исправленная запись суффикса, когда имя функции написано не той формой (D-122 «одна форма на значение»): строчное
- * (`ft_blur5` → `ftBlur5`) или длинное там, где есть короткое (`ftGrayscale100` → `ftGray100`).
+ * Позиции шага `steps()` буквами (D-124): `ttfSteps4_JE` → `steps(4,jump-end)`. `start` и `end` — то же, что
+ * `jump-start` и `jump-end`, поэтому своих букв не получают: одна запись на значение (D-122).
+ */
+const STEP_POSITIONS: Record<string, string> = {
+  JS: 'jump-start',
+  JE: 'jump-end',
+  JN: 'jump-none',
+  JB: 'jump-both',
+};
+const REGEXP_STEP_POSITION = /^J[SENB]$/;
+/** Число шагов — целое от 1. */
+const REGEXP_STEP_COUNT = /^[1-9]\d*$/;
+/**
+ * Функции плавности в нативной форме (D-124) — у `ttf`, `atf` и в слоте плавности `tn`/`an`: `ttfSteps4_JE` →
+ * `steps(4,jump-end)`, `ttfCubicBezier0.4_0_0.2_1` → `cubic-bezier(0.4,0,0.2,1)`. Слова плавности — буквами
+ * ({@link TIMING_FUNCTION_SYNONYMS}); у `linear(…)` с точками короткой записи нет — она пишется переменной.
+ */
+const EASING_FUNCTIONS = functionSet(
+  {
+    Steps: {
+      css: 'steps',
+      min: 1,
+      max: 2,
+      example: 'Steps4_JE',
+      more: REGEXP_STEP_POSITION,
+      args: (args, call) => {
+        const count = cssVarValue(args[0]) || (REGEXP_STEP_COUNT.test(args[0]) ? args[0]
+          : call.fail('a whole number of steps from 1'));
+        if (args.length < 2) {
+          return count;
+        }
+        const position = STEP_POSITIONS[args[1]] || call.fail('a step position: JS (jump-start), JE (jump-end),'
+        + ' JN (jump-none) or JB (jump-both)');
+        // `steps(1, jump-none)` невалиден: без прыжков на концах один шаг — ни одного перехода.
+        (+count !== 1 || args[1] !== 'JN') || call.fail('two steps or more with JN (jump-none)');
+        return count + COMMA + position;
+      },
+    },
+    CubicBezier: {
+      css: 'cubic-bezier',
+      min: 4,
+      max: 4,
+      example: 'CubicBezier0.4_0_0.2_1',
+      args: (args, call) => {
+        const out: string[] = new Array(4);
+        let i = 0;
+        let v: string;
+        for (; i < 4; i++) {
+          v = args[i];
+          // x1 и x2 — время, от 0 до 1; y — любое число (выход за 0…1 — «отскок»).
+          out[i] = cssVarValue(v) || (REGEXP_BARE_NUMBER.test(v) && (i % 2 || (+v >= 0 && +v <= 1)) ? v
+            : call.fail(i % 2 ? 'four numbers' : 'x1 and x2 from 0 to 1'));
+        }
+        return out.join(COMMA);
+      },
+    },
+  }, 'an easing function', 1,
+);
+/**
+ * Функция плавности в части слота `tn`/`an`: после кебаба `cubic-bezier0.4`, `steps4`, в сыром режиме —
+ * как написана (`CubicBezier0.4`).
+ */
+const REGEXP_EASING_PART = /^(cubic-bezier|steps|CubicBezier|Steps)(.*)$/;
+/** Буквы после кебаба: `j-e` (из `JE`). */
+const REGEXP_KEBAB_LETTERS = /^[a-z](?:-[a-z])+$/;
+/**
+ * Буквы части слота — как в токене: кебаб превратил `JE` в `j-e`.
+ * @param part часть слота
+ * @returns буквы заглавными, прочее — как есть
+ */
+function slotLetters(part: string): string {
+  return REGEXP_KEBAB_LETTERS.test(part) ? part.split(DASH).join('').toUpperCase() : part;
+}
+/**
+ * Функция плавности в слотах `tn`/`an` (D-124): `tn_color_0.2s_CubicBezier0.4_0_0.2_1`. Берёт ровно `min` частей и
+ * сверх них — те, что подходят под `more` (`Steps4_JE`, а `100` после него — уже задержка), и читает их общим
+ * читателем {@link functionsValue}.
+ * @param parts части одного перехода или анимации
+ * @param i номер части, которая, может быть, начинает функцию
+ * @param name имя хендлера — для сообщения
+ * @returns `[CSS, номер последней взятой части]`, или `undefined` — часть не функция плавности
+ * @example easingInSlot(['color', '0.2s', 'steps4', 'j-e'], 2, 'tn') // ['steps(4,jump-end)', 3]
+ */
+function easingInSlot(
+  parts: string[], i: number, name: string,
+): [css: string, last: number] | undefined {
+  const m = REGEXP_EASING_PART.exec(parts[i]);
+  if (!m) {
+    return;
+  }
+  const key = m[1] === 'steps' ? 'Steps' : m[1] === 'cubic-bezier' ? 'CubicBezier' : m[1];
+  const form = EASING_FUNCTIONS.forms[key];
+  const more = form.more;
+  const l = parts.length;
+  const args: string[] = m[2] ? [m[2]] : [];
+  let j = i + 1;
+  let part: string;
+  for (; args.length < form.min && j < l; j++) {
+    args.push(slotLetters(parts[j]));
+  }
+  for (; args.length < form.max && j < l && more && more.test(part = slotLetters(parts[j])); j++) {
+    args.push(part);
+  }
+  return [
+    functionsValue(
+      {
+        name,
+        // Части — как написаны: `Steps_4` бракуется читателем с записью `Steps4`.
+        suffix: key + (m[2] || !args.length ? '' : UNDERSCORE) + args.join(UNDERSCORE),
+      } as MnEssenceParams, EASING_FUNCTIONS, false, true,
+    ),
+    j - 1,
+  ];
+}
+/**
+ * Начинается ли суффикс функцией из набора — в любой форме имени, со скобкой тоже: хендлер со словарём (`ttf`)
+ * отдаёт такой суффикс {@link functionsValue}, а остальное читает сам.
+ * @param suffix суффикс токена
+ * @param set функции хендлера
+ * @returns суффикс — для читателя функций
+ */
+function functionsStart(suffix: string, set: FunctionSet): boolean {
+  if (suffix.indexOf(OPEN_PAREN) > -1) {
+    return true;
+  }
+  const m = REGEXP_FUNCTION_NAME_ANY.exec(suffix[0] === UNDERSCORE ? suffix.slice(1) : suffix);
+  const key = m ? m[1][0].toUpperCase() + m[1].slice(1) : '';
+  return !!(m && set.forms[set.longNames[key] || key]);
+}
+/**
+ * Исправленная запись суффикса, когда функция написана не той формой (D-122 «одна форма на значение»): строчное
+ * имя (`ft_blur5` → `ftBlur5`), длинное там, где есть короткое (`ftGrayscale100` → `ftGray100`), или первый аргумент
+ * отдельной частью (`ftBlur_5` → `ftBlur5`).
  * @param parts части суффикса
- * @param forms функции хендлера
- * @param longNames длинное имя → короткое
+ * @param set функции хендлера
  * @returns `[запись, только короче]`, или `undefined`, когда исправлять нечего
  */
-function functionsFix(
-  parts: string[], forms: Record<string, FunctionForm>, longNames: Record<string, string>,
-): [fixed: string, shorter: boolean] | undefined {
+function functionsFix(parts: string[], set: FunctionSet): [fixed: string, shorter: boolean] | undefined {
+  const forms = set.forms;
+  const longNames = set.longNames;
   const l = parts.length;
-  const out: string[] = new Array(l);
+  const out: string[] = [];
   let shorter = true;
   let fixed = false;
   let i = 0;
   let m: RegExpExecArray | null;
+  let part: string;
   let key: string;
   let short: string;
   for (; i < l; i++) {
-    out[i] = parts[i];
-    if ((m = REGEXP_FUNCTION_NAME_ANY.exec(parts[i]))) {
+    part = parts[i];
+    if ((m = REGEXP_FUNCTION_NAME_ANY.exec(part))) {
       key = m[1][0].toUpperCase() + m[1].slice(1);
       short = longNames[key] || key;
-      if (forms[short] && short !== m[1]) {
-        out[i] = short + m[2];
-        fixed = true;
-        // Короче — только замена длинного имени; строчное имя исправляется без сокращения.
-        short === key && (shorter = false);
+      if (forms[short]) {
+        part = short + m[2];
+        if (short !== m[1]) {
+          fixed = true;
+          // Короче — только замена длинного имени; строчное имя исправляется без сокращения.
+          short === key && (shorter = false);
+        }
+        if (!m[2] && i + 1 < l && REGEXP_FUNCTION_FIRST_ARG.test(parts[i + 1])) {
+          part += parts[++i];
+          fixed = true;
+          shorter = false;
+        }
       }
     }
+    out.push(part);
   }
   // Ведущий `_` перед функцией лишний: `ft_Blur5` — то же, что `ftBlur5`.
   if (l > 1 && !parts[0] && (m = REGEXP_FUNCTION_NAME.exec(out[1])) && forms[m[1]]) {
@@ -1303,24 +1488,22 @@ function functionsFix(
  * больше `max`. Скобка (`ftBlur\(2px\)`) бракуется с подсказкой нативной формы (D-121); имя — одной формой (D-122):
  * строчное и длинное бракуются с исправленной записью.
  * @param p параметры токена
- * @param forms функции хендлера по имени в нотации
- * @param longNames длинное имя → короткое (`Grayscale` → `Gray`)
- * @param what что за функции — для сообщения: `a filter function`
+ * @param set функции хендлера
  * @param fallback проход с запасным цветом (см. {@link FunctionCall.fallback})
+ * @param bare функция — часть слота (`tn`), и пример записи в подсказке — без имени хендлера: `CubicBezier0.4_0_0.2_1`
  * @returns вызовы через пробел; пустая строка — функций нет
- * @example functionsValue(p, FILTER_FORMS, FILTER_LONG_NAMES, 'a filter function') // ftBlur3_Invert20 → 'blur(3px) invert(20%)'
+ * @example functionsValue(p, FILTER_FUNCTIONS) // ftBlur3_Invert20 → 'blur(3px) invert(20%)'
  */
 function functionsValue(
-  p: MnEssenceParams, forms: Record<string, FunctionForm>, longNames: Record<string, string>, what: string,
-  fallback?: boolean,
+  p: MnEssenceParams, set: FunctionSet, fallback?: boolean, bare?: boolean,
 ): string {
   const suffix = p.suffix;
-  const name = p.name;
-  const head = MSG_VALUE + suffix + MSG_IS_INVALID_FOR + name + MSG_COLON;
+  const name = bare ? '' : p.name;
+  const forms = set.forms;
+  const head = MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name + MSG_COLON;
   const parts = splitValueParts(suffix);
   const l = parts.length;
   const out: string[] = [];
-  const first = (Object.keys(forms) as string[])[0];
   let form: FunctionForm | undefined;
   let key = '';
   let args: string[] = [];
@@ -1333,23 +1516,20 @@ function functionsValue(
     parts,
     index,
     fallback: !!fallback,
-    fail: (expected: string) => throwInvalid(head + DOUBLE_QUOTE + key + '" expects ' + expected + ' — as "' + name
+    fail: (expected: string) => throwInvalid(head + DOUBLE_QUOTE + key + '" expects ' + expected + MSG_AS + name
       + (form as FunctionForm).example + DOUBLE_QUOTE),
   };
-  if (suffix.indexOf(OPEN_PAREN) > -1) {
-    throwInvalid(head + 'a function is not written in a class — write "' + name
-      + parenForm(
-        parts, forms, longNames,
-      ).example + DOUBLE_QUOTE);
-  }
-  const fix = functionsFix(
-    parts, forms, longNames,
+  suffix.indexOf(OPEN_PAREN) > -1 && throwParen(
+    head, name, parts, set,
   );
+  const fix = functionsFix(parts, set);
   fix && throwInvalid((fix[1] ? MSG_WRITE_SHORTER : 'Write "') + name + fix[0] + MSG_INSTEAD_OF + name + suffix
     + MSG_SAME_VALUE);
   for (; i < l; i++) {
     part = parts[i];
     if ((m = REGEXP_FUNCTION_NAME.exec(part)) && forms[m[1]]) {
+      form && set.single && throwInvalid(head + 'one function is expected — as "' + name + set.first.example
+        + DOUBLE_QUOTE);
       form && out.push(functionCall(
         form, key, args, call, head, name,
       ));
@@ -1364,11 +1544,11 @@ function functionsValue(
       i && throwInvalid(head + 'an empty part — one "_" between parts');
       continue;
     }
-    form || throwInvalid(head + 'expected ' + what + ' by its name, as "' + name + forms[first].example + MSG_COLON
-      + Object.keys(forms).join(LIST_SEPARATOR));
+    form || throwInvalid(head + 'expected ' + set.what + ' by its name, as "' + name + set.first.example + MSG_COLON
+      + set.names);
     args.length < (form as FunctionForm).max || throwInvalid(head + DOUBLE_QUOTE + part + '" is extra: "' + key
       + '" takes at most ' + (form as FunctionForm).max + ((form as FunctionForm).max > 1 ? ' parts' : ' part')
-      + ' — as "' + name + (form as FunctionForm).example + DOUBLE_QUOTE);
+      + MSG_AS + name + (form as FunctionForm).example + DOUBLE_QUOTE);
     args.push(part);
     index.push(i);
   }
@@ -1378,13 +1558,18 @@ function functionsValue(
   return out.join(SPACE);
 }
 /**
- * Функция, на нативную форму которой указывает подсказка к скобке: названная перед скобкой (`blur(` →
- * `Blur`, `hue-rotate(` → `Hue`), иначе та, внутри которой скобка (`DropShadow2_4_rgba(…)`), иначе первая.
- * @returns форма для примера записи
+ * Скобка в суффиксе (D-121) — ошибка с нативной формой: функции, названной перед скобкой (`blur(` → `ftBlur2`,
+ * `hue-rotate(` → `ftHue90`), иначе той, внутри которой скобка (`DropShadow2_4_rgba(…)`), иначе первой. У функции
+ * без нативной формы (`linear(…)`, `url(…)`) выход — переменная.
+ * @param head начало сообщения
+ * @param name имя хендлера
+ * @param parts части суффикса
+ * @param set функции хендлера
  */
-function parenForm(
-  parts: string[], forms: Record<string, FunctionForm>, longNames: Record<string, string>,
-): FunctionForm {
+function throwParen(
+  head: string, name: string, parts: string[], set: FunctionSet,
+): never {
+  const forms = set.forms;
   let i = 0;
   for (; parts[i].indexOf(OPEN_PAREN) < 0;) {
     i++;
@@ -1392,12 +1577,16 @@ function parenForm(
   const m = REGEXP_FUNCTION_HEAD.exec(parts[i]);
   let key = m ? m[1].replace(REGEXP_KEBAB_LETTER, (_s: string, c: string) => c.toUpperCase()) : '';
   key = key && key[0].toUpperCase() + key.slice(1);
-  key = longNames[key] || key;
+  key = set.longNames[key] || key;
   let back: RegExpExecArray | null;
-  for (; !forms[key] && i > -1; i--) {
-    (back = REGEXP_FUNCTION_NAME.exec(parts[i])) && (key = back[1]);
+  let inside = '';
+  for (; !forms[key] && !inside && i > -1; i--) {
+    (back = REGEXP_FUNCTION_NAME.exec(parts[i])) && forms[back[1]] && (inside = back[1]);
   }
-  return forms[key] || forms[Object.keys(forms)[0]];
+  const form = forms[key] || forms[inside];
+  return throwInvalid(head + 'a function is not written in a class — ' + (form || !m
+    ? 'write "' + name + (form || set.first).example + DOUBLE_QUOTE
+    : DOUBLE_QUOTE + m[1] + '" has no short form, write it through a variable — "' + name + '--x"'));
 }
 /**
  * Один вызов из {@link functionsValue}: проверка числа частей и чтение аргументов.
@@ -1406,7 +1595,7 @@ function parenForm(
 function functionCall(
   form: FunctionForm, key: string, args: string[], call: FunctionCall, head: string, name: string,
 ): string {
-  args.length < form.min && throwInvalid(head + DOUBLE_QUOTE + key + '" takes at least ' + form.min + ' parts — as "'
+  args.length < form.min && throwInvalid(head + DOUBLE_QUOTE + key + '" takes at least ' + form.min + (form.min > 1 ? ' parts' : ' part') + MSG_AS
     + name + form.example + DOUBLE_QUOTE);
   return form.css + OPEN_PAREN + form.args(args, call) + CLOSE_PAREN;
 }
@@ -2103,8 +2292,6 @@ for (const letters in TIMING_FUNCTION_SYNONYMS) {
 }
 /** Одно имя CSS-свойства — от двух знаков, как в {@link REGEXP_PROPERTY_LIST}. */
 const REGEXP_PROPERTY_NAME = /^-?[a-z][a-z0-9-]+$/;
-/** Функции плавности: `cubic-bezier(…)`, `steps(…)`, `linear(…)`. */
-const REGEXP_EASING_FUNCTION = /^(?:cubic-bezier|steps|linear)\(/;
 /** Подстановка — годится в любой слот, что внутри неё, здесь не видно. */
 const REGEXP_SUBSTITUTION = /^(?:var|env)\(/;
 /**
@@ -2145,8 +2332,8 @@ function splitTopLevel(v: string): string[] {
  * времени получает `ms` — как у `dn`/`delay`.
  */
 function transitionValue(parts: string[], raw: string): string[] {
-  const l = parts.length;
-  const out: string[] = new Array(l);
+  let l = parts.length;
+  const out: string[] = [];
   let i = 0;
   let slot = 0;
   let hasDuration = 0;
@@ -2155,6 +2342,7 @@ function transitionValue(parts: string[], raw: string): string[] {
   let time: RegExpExecArray | null;
   let names: string[] | 0 = 0;
   let letter: [number, string] | undefined;
+  let easing: [string, number] | undefined;
   const prefix = MSG_VALUE + raw + '" is invalid for "tn": the order is ';
   for (; i < l; i++) {
     part = parts[i];
@@ -2163,6 +2351,9 @@ function transitionValue(parts: string[], raw: string): string[] {
       out[i] = part;
       continue;
     }
+    part.indexOf(OPEN_PAREN) > -1 && throwParen(
+      MSG_VALUE + raw + '" is invalid for "tn": ', '', [part], EASING_FUNCTIONS,
+    );
     TRANSITION_LONG_WORDS[part] && throwInvalid(MSG_VALUE + raw + '" is invalid for "tn": write it shorter — "'
       + TRANSITION_LONG_WORDS[part] + '" instead of "' + part + DOUBLE_QUOTE);
     if (letter = TRANSITION_LETTERS[part]) {
@@ -2176,9 +2367,14 @@ function transitionValue(parts: string[], raw: string): string[] {
         + 'easing, delay — duration goes before easing');
       hasDuration = 1;
       out[i] = time[1] ? part : part + MS;
-    } else if (REGEXP_EASING_FUNCTION.test(part)) {
+    } else if (easing = easingInSlot(
+      parts, i, 'tn',
+    )) {
+      // Функция плавности — нативной формой (D-124), её части уже взяты.
       at = 3;
-      out[i] = part;
+      out[i] = easing[0];
+      parts = parts.slice(0, i + 1).concat(parts.slice(easing[1] + 1));
+      l = parts.length;
     } else if (REGEXP_PROPERTY_LIST.test(part)) {
       at = 1;
       // Несколько свойств с одними параметрами — через `;`. В CSS такого
@@ -2274,8 +2470,8 @@ const NAMED_ANIMATIONS: Record<string, [string, Record<string, Record<string, st
  * Длинное слово (`ease-out`) — ошибка с буквой, как у `tn` (D-015, D-109).
  */
 function animationValue(parts: string[], raw: string): string {
-  const l = parts.length;
-  const out: string[] = new Array(l);
+  let l = parts.length;
+  const out: string[] = [];
   const prefix = MSG_VALUE + raw + '" is invalid for "an": the order is name, duration, easing, delay,'
     + ' iteration count, direction, fill mode, play state';
   let i = 0;
@@ -2285,12 +2481,16 @@ function animationValue(parts: string[], raw: string): string {
   let at: number;
   let time: RegExpExecArray | null;
   let letter: [number, string] | undefined;
+  let easing: [string, number] | undefined;
   for (; i < l; i++) {
     part = parts[i];
     if (REGEXP_SUBSTITUTION.test(part)) {
       out[i] = part;
       continue;
     }
+    part.indexOf(OPEN_PAREN) > -1 && throwParen(
+      MSG_VALUE + raw + '" is invalid for "an": ', '', [part], EASING_FUNCTIONS,
+    );
     (letter = TRANSITION_LETTERS[TRANSITION_LONG_WORDS[part]]) && letter[0] === 3
       && throwInvalid(MSG_VALUE + raw + '" is invalid for "an": write it shorter — "' + TRANSITION_LONG_WORDS[part]
         + MSG_INSTEAD_OF + part + DOUBLE_QUOTE + (slot ? '' : '; easing goes after the name or the duration'));
@@ -2302,10 +2502,14 @@ function animationValue(parts: string[], raw: string): string {
       at = times || slot === 3 ? 4 : 2;
       times = at === 4 ? 2 : 1;
       out[i] = time[1] ? part : part + MS;
-    } else if (REGEXP_EASING_FUNCTION.test(part)) {
-      // Слова плавности сюда не доходят — у каждого есть буква (D-111); остались функции.
+    } else if (slot && (easing = easingInSlot(
+      parts, i, 'an',
+    ))) {
+      // Функция плавности — нативной формой (D-124), как буква: только после имени (первая часть — всегда имя).
       at = 3;
-      out[i] = part;
+      out[i] = easing[0];
+      parts = parts.slice(0, i + 1).concat(parts.slice(easing[1] + 1));
+      l = parts.length;
     } else if (REGEXP_ITERATION_COUNT.test(part)) {
       at = 5;
       out[i] = part;
@@ -3791,6 +3995,9 @@ export default {
       // Значение свойства составное (`display: inline flow-root`), поэтому у
       // него остаётся сырой режим — перечислить такие сочетания словарём нельзя.
       composite?: 1,
+      // Функции свойства в нативной форме (D-124): `ttfSteps4_JE`. Суффикс, который начинается их именем (или
+      // содержит скобку), читает {@link functionsValue}; остальное — словарь, как раньше.
+      functions?: FunctionSet,
     ): MnHandler {
       let props: Record<string, number>;
       const signed = numeric && numeric.signed;
@@ -3952,6 +4159,11 @@ export default {
           }
           if (!s) {
             return _style ? styleWrap(_style, priority) : 0;
+          }
+          if (functions && functionsStart(s, functions)) {
+            style = {};
+            style[propName as string] = functionsValue(p, functions);
+            return styleWrap(style, priority);
           }
           // Составное значение: буквы — в каждой части (`td1_U_W`, `bgs10_A`), полное слово с буквой бракуется в
           // любой части (D-113).
@@ -5269,11 +5481,14 @@ export default {
         N: NAME_NORMAL,
         AD: 'AllowDiscrete',
       }),
-      // Функции (`atfCubicBezier\(…\)`, `atfSteps\(4\)`) проходят как есть.
-      atf: synonymProvider('animationTimingFunction', TIMING_FUNCTION_SYNONYMS),
+      // Функции — нативной формой (D-124): `atfSteps4_JE`, `atfCubicBezier0.4_0_0.2_1`.
+      atf: synonymProvider(
+        'animationTimingFunction', TIMING_FUNCTION_SYNONYMS, undefined, undefined, undefined, undefined,
+        EASING_FUNCTIONS,
+      ),
       // Буквы `atf` (D-106); приоритет выше `tn`, как у прочих полных свойств перехода.
       ttf: synonymProvider(
-        'transitionTimingFunction', TIMING_FUNCTION_SYNONYMS, 1,
+        'transitionTimingFunction', TIMING_FUNCTION_SYNONYMS, 1, undefined, undefined, undefined, EASING_FUNCTIONS,
       ),
       bgbm: synonymProvider('backgroundBlendMode', BLEND_MODE_SYNONYMS),
       mbm: synonymProvider('mixBlendMode', MIX_BLEND_MODE_SYNONYMS),
@@ -6900,19 +7115,20 @@ export default {
         args: dropShadowArgs,
       },
     };
+    const FILTER_FUNCTIONS = functionSet(
+      FILTER_FORMS, 'a filter function', undefined, FILTER_LONG_NAMES,
+    );
 
     function ftProvider(propName: string): MnHandler {
       return (p: MnEssenceParams) => {
         const s: Record<string, any> = {};
         const whole = cssVarValue(p.suffix);
-        const main = whole || functionsValue(
-          p, FILTER_FORMS, FILTER_LONG_NAMES, 'a filter function',
-        );
+        const main = whole || functionsValue(p, FILTER_FUNCTIONS);
         if (!main) {
           return 0;
         }
         const fallback = whole || functionsValue(
-          p, FILTER_FORMS, FILTER_LONG_NAMES, 'a filter function', true,
+          p, FILTER_FUNCTIONS, true,
         );
         s[propName] = fallback === main ? main : [
           fallback,

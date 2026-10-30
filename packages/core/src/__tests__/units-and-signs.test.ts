@@ -1993,7 +1993,7 @@ describe('transition: слоты в фиксированном порядке', 
       'transition:0.2s 0.1s',
     ],
     [
-      'tn_cubic-bezier\\(0,0,1,1\\)',
+      'tn_CubicBezier0_0_1_1',
       'transition:cubic-bezier(0,0,1,1)',
     ],
   ];
@@ -2039,9 +2039,9 @@ describe('transition: слоты в фиксированном порядке', 
     expect(lexer.matchProperty('transition', 'color 0.2s ease,transform 0.4s linear').matched).toBeTruthy();
   });
 
-  test('запятая внутри скобок не делит переходы', () => {
-    expect(compile(['tn_0.2s_cubic-bezier\\(0,0,1,1\\)']).css)
-      .toContain('transition:0.2s cubic-bezier(0,0,1,1)');
+  test('части функции плавности не путаются со слотами: за четырьмя числами — задержка (D-124)', () => {
+    expect(compile(['tn_0.2s_CubicBezier0_0_1_1_0.1s']).css)
+      .toContain('transition:0.2s cubic-bezier(0,0,1,1) 0.1s');
   });
 
   test('подстановка годится в любой слот', () => {

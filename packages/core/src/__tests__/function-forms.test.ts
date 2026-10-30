@@ -70,6 +70,11 @@ describe('функции фильтра в нативной форме (D-124)',
       'ftBlur',
       'filter:blur(4px)',
     ],
+    // Функция без аргумента — значение по умолчанию; следующая часть с именем — уже другая функция.
+    [
+      'ftBlur_Gray50',
+      'filter:blur(4px) grayscale(50%)',
+    ],
     [
       'ftGray50',
       'filter:grayscale(50%)',
@@ -313,6 +318,19 @@ describe('имя функции — одной формой (D-122)', () => {
       'ftBlur5_gray50',
       'Write "ftBlur5_Gray50" instead of "ftBlur5_gray50" — same value',
     ],
+    // Первый аргумент — слитно с именем; отдельной частью за именем идёт только следующая функция (`ftBlur_Gray50`).
+    [
+      'ftBlur_5',
+      'Write "ftBlur5" instead of "ftBlur_5" — same value',
+    ],
+    [
+      'ftBlur_--x',
+      'Write "ftBlur--x" instead of "ftBlur_--x" — same value',
+    ],
+    [
+      'ftDropShadow_2_4',
+      'Write "ftDropShadow2_4" instead of "ftDropShadow_2_4" — same value',
+    ],
   ])('%s', (token, message) => {
     expect(rejected(token)).toBe(message);
   });
@@ -328,5 +346,230 @@ describe('ключевые слова и голое имя', () => {
 
   test('голое ft — значения нет', () => {
     expect(compile(['ft']).warnings).toEqual(['"ft" produced no CSS: handler "ft" needs a value here']);
+  });
+});
+
+describe('функции плавности в нативной форме: ttf, atf (D-124)', () => {
+  test.each([
+    [
+      'ttfSteps4',
+      '.ttfSteps4{transition-timing-function:steps(4)}',
+    ],
+    [
+      'ttfSteps4_JE',
+      '.ttfSteps4_JE{transition-timing-function:steps(4,jump-end)}',
+    ],
+    [
+      'atfSteps4_JS',
+      '.atfSteps4_JS{animation-timing-function:steps(4,jump-start)}',
+    ],
+    [
+      'atfSteps2_JN',
+      '.atfSteps2_JN{animation-timing-function:steps(2,jump-none)}',
+    ],
+    [
+      'ttfSteps4_JB',
+      '.ttfSteps4_JB{transition-timing-function:steps(4,jump-both)}',
+    ],
+    [
+      'ttfSteps--n_JE',
+      '.ttfSteps--n_JE{transition-timing-function:steps(var(--n),jump-end)}',
+    ],
+    [
+      'ttfCubicBezier0.4_0_0.2_1',
+      '.ttfCubicBezier0\\.4_0_0\\.2_1{transition-timing-function:cubic-bezier(0.4,0,0.2,1)}',
+    ],
+    [
+      'ttfCubicBezier0.4_-0.5_0.2_1.5',
+      '.ttfCubicBezier0\\.4_-0\\.5_0\\.2_1\\.5{transition-timing-function:cubic-bezier(0.4,-0.5,0.2,1.5)}',
+    ],
+    [
+      'ttfCubicBezier--a_0_1_1',
+      '.ttfCubicBezier--a_0_1_1{transition-timing-function:cubic-bezier(var(--a),0,1,1)}',
+    ],
+    [
+      'ttfEIO',
+      '.ttfEIO{transition-timing-function:ease-in-out}',
+    ],
+    [
+      'ttfINH',
+      '.ttfINH{transition-timing-function:inherit}',
+    ],
+  ])('%s → %s', (token, css) => {
+    expect(compile([token])).toEqual({
+      css,
+      warnings: [],
+    });
+  });
+
+  test.each([
+    [
+      'ttfSteps',
+      'Value "Steps" is invalid for "ttf": "Steps" takes at least 1 part — as "ttfSteps4_JE"',
+    ],
+    [
+      'ttfSteps0',
+      'Value "Steps0" is invalid for "ttf": "Steps" expects a whole number of steps from 1 — as'
+      + ' "ttfSteps4_JE"',
+    ],
+    [
+      'ttfSteps4_JX',
+      'Value "Steps4_JX" is invalid for "ttf": "Steps" expects a step position: JS (jump-start),'
+      + ' JE (jump-end), JN (jump-none) or JB (jump-both) — as "ttfSteps4_JE"',
+    ],
+    // `steps(1, jump-none)` невалиден: один шаг без прыжков на концах — ни одного перехода.
+    [
+      'ttfSteps1_JN',
+      'Value "Steps1_JN" is invalid for "ttf": "Steps" expects two steps or more with JN (jump-none)'
+      + ' — as "ttfSteps4_JE"',
+    ],
+    [
+      'ttfCubicBezier1.5_0_0.2_1',
+      'Value "CubicBezier1.5_0_0.2_1" is invalid for "ttf": "CubicBezier" expects x1 and'
+      + ' x2 from 0 to 1 — as "ttfCubicBezier0.4_0_0.2_1"',
+    ],
+    [
+      'ttfCubicBezier0.4_a_0.2_1',
+      'Value "CubicBezier0.4_a_0.2_1" is invalid for "ttf": "CubicBezier" expects four'
+      + ' numbers — as "ttfCubicBezier0.4_0_0.2_1"',
+    ],
+    [
+      'ttfCubicBezier0.4_0_0.2',
+      'Value "CubicBezier0.4_0_0.2" is invalid for "ttf": "CubicBezier" takes at least 4'
+      + ' parts — as "ttfCubicBezier0.4_0_0.2_1"',
+    ],
+    [
+      'ttfSteps4_CubicBezier0_0_1_1',
+      'Value "Steps4_CubicBezier0_0_1_1" is invalid for "ttf": one function is'
+      + ' expected — as "ttfSteps4_JE"',
+    ],
+    [
+      'ttfSteps\\(4,jump-end\\)',
+      'Value "Steps(4,jump-end)" is invalid for "ttf": a function is not written in a'
+      + ' class — write "ttfSteps4_JE"',
+    ],
+    [
+      'atf_cubic-bezier\\(0,0,1,1\\)',
+      'Value "_cubic-bezier(0,0,1,1)" is invalid for "atf": a function is not'
+      + ' written in a class — write "atfCubicBezier0.4_0_0.2_1"',
+    ],
+    // У `linear(…)` с точками короткой записи нет — выход переменная.
+    [
+      'ttf_linear\\(0,1\\)',
+      'Value "_linear(0,1)" is invalid for "ttf": a function is not written in a class —'
+      + ' "linear" has no short form, write it through a variable — "ttf--x"',
+    ],
+    [
+      'ttf_steps4',
+      'Write "ttfSteps4" instead of "ttf_steps4" — same value',
+    ],
+    [
+      'ttfSteps_4',
+      'Write "ttfSteps4" instead of "ttfSteps_4" — same value',
+    ],
+    [
+      'ttfEaseIn',
+      'Write it shorter: "ttfEI" instead of "ttfEaseIn" — same value',
+    ],
+  ])('%s', (token, message) => {
+    expect(rejected(token)).toBe(message);
+  });
+
+  test('у фильтра функция без нативной формы — тоже переменная', () => {
+    expect(rejected('ft_url\\(a\\.svg\\)')).toBe('Value "_url(a.svg)" is invalid for "ft": a function is not written in'
+      + ' a class — "url" has no short form, write it through a variable — "ft--x"');
+  });
+});
+
+describe('функции плавности в слотах tn и an (D-124)', () => {
+  test.each([
+    [
+      'tn_color_0.2s_CubicBezier0.4_0_0.2_1',
+      'transition:color 0.2s cubic-bezier(0.4,0,0.2,1)',
+    ],
+    [
+      'tnColor_0.2s_CubicBezier0.4_0_0.2_1',
+      'transition:color 0.2s cubic-bezier(0.4,0,0.2,1)',
+    ],
+    // `JE` — ещё аргумент `Steps`, `100` — уже задержка.
+    [
+      'tn_opacity_200_Steps4_JE_100',
+      'transition:opacity 200ms steps(4,jump-end) 100ms',
+    ],
+    [
+      'tnOpacity_200_Steps4_JE',
+      'transition:opacity 200ms steps(4,jump-end)',
+    ],
+    [
+      'tnOpacity_200_Steps4_100',
+      'transition:opacity 200ms steps(4) 100ms',
+    ],
+    [
+      'tn_color_0.2s_CubicBezier0.4_0_0.2_1,transform_0.4s_L',
+      'transition:color 0.2s cubic-bezier(0.4,0,0.2,1),transform 0.4s linear',
+    ],
+    [
+      'an_fade_1s_Steps4_infinite',
+      'animation:fade 1s steps(4) infinite',
+    ],
+    [
+      'an_fade_1s_CubicBezier0.4_0_0.2_1_2',
+      'animation:fade 1s cubic-bezier(0.4,0,0.2,1) 2ms',
+    ],
+    [
+      'an_fade_Steps4_JE',
+      'animation:fade steps(4,jump-end)',
+    ],
+    // Первая часть — всегда имя, как у букв.
+    [
+      'an_steps4_1s',
+      'animation:steps4 1s',
+    ],
+  ])('%s → %s', (token, declaration) => {
+    const out = compile([token]);
+    expect(out.warnings).toEqual([]);
+    expect(out.css).toContain('{' + declaration + '}');
+  });
+
+  test.each([
+    [
+      'tn_cubic-bezier\\(0,0,1,1\\)',
+      'Value "_cubic-bezier(0,0,1,1)" is invalid for "tn": a function is not written'
+      + ' in a class — write "CubicBezier0.4_0_0.2_1"',
+    ],
+    [
+      'tn_0.2s_linear\\(0,1\\)',
+      'Value "_0.2s_linear(0,1)" is invalid for "tn": a function is not written in a'
+      + ' class — "linear" has no short form, write it through a variable — "--x"',
+    ],
+    [
+      'an_fade_1s_steps\\(4\\)',
+      'Value "_fade_1s_steps(4)" is invalid for "an": a function is not written in a'
+      + ' class — write "Steps4_JE"',
+    ],
+    [
+      'tn_color_0.2s_CubicBezier0.4_0',
+      'Value "CubicBezier0.4_0" is invalid for "tn": "CubicBezier" takes at least 4'
+      + ' parts — as "CubicBezier0.4_0_0.2_1"',
+    ],
+    [
+      'tn_color_0.2s_Steps0',
+      'Value "Steps0" is invalid for "tn": "Steps" expects a whole number of steps from 1 — as'
+      + ' "Steps4_JE"',
+    ],
+    [
+      'tn_opacity_Steps_4',
+      'Write "Steps4" instead of "Steps_4" — same value',
+    ],
+    [
+      'tn_opacity_Steps',
+      'Value "Steps" is invalid for "tn": "Steps" takes at least 1 part — as "Steps4_JE"',
+    ],
+  ])('%s', (token, message) => {
+    expect(rejected(token)).toBe(message);
+  });
+
+  test('подстановка в слоте по-прежнему проходит', () => {
+    expect(compile(['tn_A_--ease']).css).toContain('{transition:all var(--ease)}');
   });
 });

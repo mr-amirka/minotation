@@ -176,7 +176,7 @@ describe('single properties (group F)', () => {
       'animation-timing-function:ease-in-out',
     ],
     [
-      'atfSteps\\(4\\)',
+      'atfSteps4',
       'animation-timing-function:steps(4)',
     ],
     [

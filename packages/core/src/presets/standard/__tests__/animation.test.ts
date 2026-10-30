@@ -55,11 +55,11 @@ test.each([
     'animation:var(--anim)',
   ],
   [
-    'an_fade_1s_cubic-bezier\\(0.4,0,0.2,1\\)',
+    'an_fade_1s_CubicBezier0.4_0_0.2_1',
     'animation:fade 1s cubic-bezier(0.4,0,0.2,1)',
   ],
   [
-    'an_fade_1s_steps\\(4\\)_infinite',
+    'an_fade_1s_Steps4_infinite',
     'animation:fade 1s steps(4) infinite',
   ],
 ])('%s → %s', (token, declaration) => {

@@ -216,7 +216,7 @@ describe('хендлеры со своим путём разбора — спл�
       'list-style-image:var(--v)',
     ],
     [
-      'mki--v',
+      'mk--v',
       'mask-image:var(--v)',
     ],
   ])('%s → %s', (token, expected) => {

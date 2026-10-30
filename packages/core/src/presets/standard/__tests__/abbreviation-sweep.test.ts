@@ -373,10 +373,8 @@ const TWIN_PROBES = [
 
 /**
  * Двойники, которые ждут решения владельца (RESEARCH/22, Q8): у `position` рядом с буквами `pos` есть хендлеры-слова.
- * `mki` и `mk` — одно свойство `mask-image` в двух хендлерах: слить ли `mki` в `mk` — вопрос владельцу (RESEARCH/25 § 5).
  */
 const TWINS_PENDING = [
-  'mkiN = mkN',
   'pos = rlv',
   'posA = abs',
   'posF = fixed',
@@ -473,6 +471,7 @@ describe('Аудит кратких записей (D-113)', () => {
       'ftb',
       'jt',
       'lt',
+      'mki',
       'rt',
       'tbl.cell',
       'ww',

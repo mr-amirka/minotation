@@ -1529,7 +1529,7 @@ const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
 /**
  * Старая запись после переименования: сообщение с новой, CSS нет. Убирается через один выпуск — задача
  * в PLAN; это сообщение, а не вторая реализация.
- * @param decision решение, которым переименовано: D-094 (по умолчанию) или D-106 (`ww` → `owr`)
+ * @param decision решение, которым переименовано: D-094 (по умолчанию), D-106 (`ww` → `owr`) или D-127 (`mki` → `mk`)
  */
 function throwRenamed(
   token: string, replacement: string, decision?: string,
@@ -1690,7 +1690,7 @@ function imageForms(name: string): string {
   return 'a gradient (`' + name + 'F00-00F`), a variable or `' + name + 'N`';
 }
 /**
- * Картинка по пути — `_`-форма `bgi`, `lisi`, `mki` и `bi` (D-122): `bgi_hero\.jpg` → `url("hero.jpg")`. Одна запись на
+ * Картинка по пути — `_`-форма `bgi`, `lisi`, `mk` и `bi` (D-122, D-127): `bgi_hero\.jpg` → `url("hero.jpg")`. Одна запись на
  * значение: у переменной (`bgi_--x`) и ключевого слова (`bgi_none`, `bgi_inherit`) своя запись без `_`, функция в токене
  * не пишется (`bgi_url\(a\.png\)`, D-121), пустой путь — ошибка; каждый случай бракуется с подсказкой.
  * @param path путь без ведущего `_`, как написан
@@ -3868,7 +3868,7 @@ export default {
    * то же правило распространено на переменные. Возвращает готовый CSS или `undefined`, если это обычный цвет.
    *
    * Функция в токене (`cRgb\(0,0,0\)`, `bgUrl\(a\.png\)`) бракуется (D-121): цвет пишется кодом, буквой или
-   * переменной, картинка по пути — `_`-формой своего хендлера (`bgi_a\.png`, `mki_a\.png`, `bi_a\.png`). До D-121
+   * переменной, картинка по пути — `_`-формой своего хендлера (`bgi_a\.png`, `mk_a\.png`, `bi_a\.png`). До D-121
    * любая функция уходила в CSS как есть (D-016 п. 2), и проходили `rgba(1,2)`, `foo(1)`.
    *
    * Разбирается СЫРОЙ суффикс: `PATTERN_COLOR` обрезает функцию на первой скобке (`Color-mix(a,b)` → `camel:
@@ -3974,8 +3974,8 @@ export default {
     /**
      * Фон или картинка: цвет (`bgF00`), градиент (`bgF00-00F`, `bg--a;--b`), переменная, `N` — `none`. Один читатель
      * на `bg`, `mk` и `bi` (D-119): исправление формы сразу у всех. Функция в токене не пишется (D-121): картинка по
-     * пути — `_`-форма (D-122), у `bg` и `mk` — в своём хендлере картинки (`bgi_a\.png`, `mki_a\.png`), у `bi` — в нём
-     * самом (`bi_a\.png`).
+     * пути — `_`-форма (D-122): у `bg` — в своём хендлере картинки (`bgi_a\.png`, D-120), у `mk` и `bi` — в них самих
+     * (`mk_a\.png`, `bi_a\.png`; `mki` слит в `mk`, D-127).
      * @param propName свойство (`background`, `maskImage`, `borderImageSource`)
      * @param imageOnly свойство принимает только картинку: одиночный цвет бракуется, цвет-fallback `altColor` не
      *   выводится (`mask-image`, `border-image-source`)
@@ -5091,10 +5091,6 @@ export default {
         'bg',
       ],
       lisi: ['listStyleImage'],
-      mki: [
-        MASK_IMAGE,
-        'mk',
-      ],
     }, (options: string[], name: string) => {
       const propName = options[0];
       // Где пишется градиент для этого свойства — для подсказки; у `list-style-image` такого хендлера нет.
@@ -5120,6 +5116,14 @@ export default {
       });
     });
 
+    // Слито (D-127): `mki` — то же свойство `mask-image`, что `mk`; путь — `mk_a\.png`.
+    // Точка в пути пишется экранированной (`mk_a\.png`) — так же и в подсказке.
+    mn('mki', (p) => {
+      const suffix = p.suffix.replace(REGEXP_DOTS, '\\.');
+      return throwRenamed(
+        'mki' + suffix, 'mk' + suffix, 'D-127',
+      );
+    });
     // Переименовано (D-094): `lt`/`rt`/`jt` → `flL`/`flR`/`flN`, `apc` → `ap`.
     forIn({
       lt: 'flL',
@@ -5755,7 +5759,8 @@ export default {
         SB: 'Stable_BothEdges',
       }),
 
-      // Маски (E2, D-097): семейство `mk…` зеркалит `bg…` — `mk` градиент, `mki` url, `mks`, `mkr`, `mko`, `mkcp`.
+      // Маски (E2, D-097): семейство `mk…` зеркалит `bg…` — `mk` картинка (градиент, путь `mk_a\.png` — D-127), `mks`,
+      // `mkr`, `mko`, `mkcp`.
       mkt: synonymProvider('maskType', {
         L: 'Luminance',
         A: 'Alpha',
@@ -5775,9 +5780,7 @@ export default {
         MS: 'MatchSource',
       }),
 
-      mk: backgroundProvider(
-        MASK_IMAGE, 1, 'mki',
-      ),
+      mk: backgroundProvider(MASK_IMAGE, 1),
       mks: synonymProvider(
         'maskSize', {
           A: NAME_AUTO,

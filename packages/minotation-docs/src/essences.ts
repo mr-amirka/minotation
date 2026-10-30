@@ -290,8 +290,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'bgbm', props: 'background-blend-mode', keywords: ['background', 'blend', 'mode'], examples: ['bgbmM', 'bgbmS'] },
 
   // --- Маски, семейство mk… (E2, D-097) ---
-  { name: 'mk', props: 'mask-image', keywords: ['mask', 'gradient', 'fade'], description: 'градиент, как у bg', examples: ['mkF00-00F'] },
-  { name: 'mki', props: 'mask-image', keywords: ['mask', 'image', 'url'], description: 'картинка маски по пути — только через _ (D-122); градиент — mk', examples: ['mki_a\\.png', 'mki--v', 'mkiN'] },
+  { name: 'mk', props: 'mask-image', keywords: ['mask', 'image', 'gradient', 'url', 'fade'], description: 'картинка маски: градиент, как у bg, или путь через _ (mki слит в mk, D-127)', examples: ['mkF00-00F', 'mk_a\\.png', 'mk--v', 'mkN'] },
   { name: 'mks', props: 'mask-size', keywords: ['mask', 'size', 'cover', 'contain'], examples: ['mksCV', 'mks50%_auto', 'mks10'] },
   { name: 'mkp', props: 'mask-position', keywords: ['mask', 'position'], examples: ['mkpC', 'mkpR_10_B_20'] },
   { name: 'mkr', props: 'mask-repeat', keywords: ['mask', 'repeat'], examples: ['mkrN', 'mkrX'] },

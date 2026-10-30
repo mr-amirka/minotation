@@ -1569,7 +1569,7 @@ describe('border-style: только то, что есть в специфика
 });
 
 describe('свойства-картинки: одна запись на значение (D-122)', () => {
-  // `bgi`, `lisi`, `mki`: путь — только `_`-формой, переменная — `--x`, `none` — `N`, CSS-wide keyword — словом. До
+  // `bgi`, `lisi`, `mk` (`mki` слит в `mk`, D-127): путь — только `_`-формой, переменная — `--x`, `none` — `N`, CSS-wide keyword — словом. До
   // D-122 обёртка в `url()` применялась ко всему, что не узнано: `bgiF00-00F` → `url("F00-00F")`, `bgi10px` →
   // `url("10px")`, а готовая функция (`bgi_url\\(a\\.png\\)`) проходила как есть.
   test.each([
@@ -1590,7 +1590,7 @@ describe('свойства-картинки: одна запись на знач
       'list-style-image:none',
     ],
     [
-      'mkiN',
+      'mkN',
       'mask-image:none',
     ],
     [
@@ -1610,7 +1610,7 @@ describe('свойства-картинки: одна запись на знач
       'list-style-image:url("dot.svg")',
     ],
     [
-      'mki_a\\.png',
+      'mk_a\\.png',
       'mask-image:url("a.png")',
     ],
   ])('%s → %s', (token, expected) => {
@@ -1624,8 +1624,8 @@ describe('свойства-картинки: одна запись на знач
         + ' a gradient is written in `bg` (`bgF00-00F`)',
     ],
     [
-      'mkiF00-00F',
-      'a gradient is written in `mk` (`mkF00-00F`)',
+      'mki_a\\.png',
+      '"mki_a\\.png" was renamed: write "mk_a\\.png" (D-127)',
     ],
     [
       'bgi10px',

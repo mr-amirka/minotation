@@ -246,8 +246,8 @@ describe('Standard preset — object-fit / mask', () => {
     expect(css('ofCV')).toContain('object-fit:cover');
   });
 
-  test('mki_a\\.png → mask-image:url("a.png") (точка в значении требует экранирования)', () => {
-    expect(css('mki_a\\.png')).toContain('mask-image:url("a.png")');
+  test('mk_a\\.png → mask-image:url("a.png") (точка в значении требует экранирования)', () => {
+    expect(css('mk_a\\.png')).toContain('mask-image:url("a.png")');
   });
 
   test('mkF00 бракуется — mask-image цвета не принимает', () => {

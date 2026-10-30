@@ -1,5 +1,5 @@
 /**
- * Маски, E2 (D-097, RESEARCH/17 § 5.6): семейство `mk…` зеркалит `bg…` — `mk` градиент, `mki` url, `mks`, `mkp`,
+ * Маски, E2 (D-097, RESEARCH/17 § 5.6): семейство `mk…` зеркалит `bg…` — `mk` картинка (градиент, путь `mk_a\.png`, D-127), `mks`, `mkp`,
  * `mkr`, `mko`, `mkcp`, `mkc`, `mkt`, `mkm`; старых `maskbg`/`maski`/`maskt`/`maskm` больше нет (D-104).
  */
 import {
@@ -40,11 +40,11 @@ describe('masks: the mk… family (E2)', () => {
       'mask-image:linear-gradient(180deg,#f00 0%,#00f 100%)',
     ],
     [
-      'mki_a\\.png',
+      'mk_a\\.png',
       'mask-image:url("a.png")',
     ],
     [
-      'mkiN',
+      'mkN',
       'mask-image:none',
     ],
     [
@@ -147,10 +147,6 @@ describe('masks: the mk… family (E2)', () => {
       'mask-image:var(--v)',
     ],
     [
-      'mki--v',
-      'mask-image:var(--v)',
-    ],
-    [
       'mkp--x_T',
       'mask-position:var(--x) top',
     ],
@@ -161,7 +157,7 @@ describe('masks: the mk… family (E2)', () => {
   test.each([
     [
       'mkF00',
-      'an image is a gradient (`mkF00-00F`), a variable or `mkN`; a picture by its path is `mki_a\\.png`; `mask-image`'
+      'an image is a gradient (`mkF00-00F`), a variable or `mkN`; a picture by its path is `mk_a\\.png`; `mask-image`'
         + ' does not accept a single color',
     ],
     [

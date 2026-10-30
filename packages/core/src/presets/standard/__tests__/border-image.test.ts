@@ -354,7 +354,7 @@ describe('border-image: errors say what is accepted', () => {
     ],
     [
       'mkUrl\\(a\\.png\\)',
-      'a picture by its path is `mki_a\\.png`',
+      'a picture by its path is `mk_a\\.png`',
     ],
     [
       'biUrl\\(a\\.png\\)',

@@ -302,7 +302,11 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'mkm', props: 'mask-mode', keywords: ['mask', 'mode'], examples: ['mkmMS', 'mkmA'] },
 
   // --- Границы (доп.) — портировано из старого 1.x essences.js, проверено live-компиляцией ---
-  { name: 'bi', props: 'border-image', keywords: ['border', 'image', 'gradient'], description: 'градиент как у bg (слайс 1 подставляется), Url\\(…\\), переменная; затем слайсы, / ширина, повтор (ST, R, RD, SP); без аргумента — none', examples: ['bi8D5524-6D3504', 'biF00-00F_30_RD', 'biUrl\\(a\\.png\\)_30_F_RD', 'bi'] },
+  { name: 'bi', props: 'border-image-source', keywords: ['border', 'image', 'gradient'], description: 'картинка рамки, как у bg: градиент, Url\\(…\\), переменная, N; рамке градиентом нужен bis1 (D-119)', examples: ['bi8D5524-6D3504 bis1 b6 bsS', 'biUrl\\(a\\.png\\)', 'biN'] },
+  { name: 'bis', props: 'border-image-slice', keywords: ['border', 'image', 'slice', 'fill'], description: 'числа без единицы или %, до четырёх; F — fill', examples: ['bis1', 'bis30_F', 'bis10_20'] },
+  { name: 'biw', props: 'border-image-width', keywords: ['border', 'image', 'width'], description: 'толщина кольца картинки; A — auto', examples: ['biw10', 'biwA'] },
+  { name: 'bio', props: 'border-image-outset', keywords: ['border', 'image', 'outset'], examples: ['bio5', 'bio1_2'] },
+  { name: 'bir', props: 'border-image-repeat', keywords: ['border', 'image', 'repeat', 'round'], description: 'ST stretch, R repeat, RD round, SP space', examples: ['birRD', 'birR_ST'] },
   { name: 'bdcl', props: 'border-collapse', keywords: ['border', 'collapse', 'table'], examples: ['bdclC', 'bdclS'] },
   { name: 'bsp', props: 'border-spacing', keywords: ['border', 'spacing', 'table'], description: '_ = пробел между двумя значениями', examples: ['bsp0', 'bsp5px_1rem'] },
 

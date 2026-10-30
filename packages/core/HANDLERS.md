@@ -2250,7 +2250,7 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 
 | Токен | CSS | Буквы |
 |-------|-----|-------|
-| `mkF00-00F` | `mask-image:linear-gradient(180deg,#f00 0%,#00f 100%)` | цвета не принимает: `mkF00` — ошибка |
+| `mkF00-00F` | `mask-image:linear-gradient(180deg,#f00 0%,#00f 100%)` | цвета не принимает: `mkF00` — ошибка; `mkN` — none |
 | `mki_a\.png`, `mkiN` | `mask-image:url("a.png")`, `none` | как `bgi` |
 | `mksCV`, `mks50%_A`, `mks10` | `mask-size:cover`, `50% auto`, `10px` | `A`, `CT` contain, `CV` cover; голое число — `px` |
 | `mkpTL`, `mkpR_10_B_20` | `mask-position:top left`, `right 10px bottom 20px` | разбор позиции как у `op` |
@@ -2266,39 +2266,54 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 
 ### `border-image`
 
-Порядок частей — как в CSS: источник, слайсы, `/` ширина, `/` отступ, повтор. Градиент пишется как у `bg`
-(цвета через дефис, модификаторы `_g90`, `_r`, `_rpt` — строчными); если слайса нет, за градиентом встаёт `1` —
-без него `border-image-slice` по умолчанию 100% и градиент виден только в углах.
+По частям (D-119): у каждой части своё свойство и свой тег, как `olw`/`ols`/`olc` у `outline`. Картинка (`bi`)
+читается тем же разбором, что у `bg` и `mk`: градиент через дефис с `_g90`, `_r`, `_rpt`, `Url\(…\)`, переменная,
+`N`.
 
 | Токен | CSS |
 |-------|-----|
-| `bi8D5524-6D3504` | `border-image:linear-gradient(180deg,#8d5524 0%,#6d3504 100%) 1` |
-| `bi8D5524-6D3504_g90` | `border-image:linear-gradient(270deg,#8d5524 0%,#6d3504 100%) 1` |
-| `biF00-00F_r_rpt` | `border-image:repeating-radial-gradient(circle,#f00 0%,#00f 100%) 1` |
-| `biF00-00F_30_RD` | `border-image:linear-gradient(180deg,#f00 0%,#00f 100%) 30 round` |
-| `biF00-00F_/_4px` | `border-image:linear-gradient(180deg,#f00 0%,#00f 100%) 1 / 4px` |
-| `biUrl\(a\.png\)_30_F_RD` | `border-image:url(a.png) 30 fill round` |
-| `bi--img_30` | `border-image:var(--img) 30` |
-| `bi`, `biN` | `border-image:none` |
-| `bi10` | `border-image:10` |
+| `bi8D5524-6D3504` | `border-image-source:linear-gradient(180deg,#8d5524 0%,#6d3504 100%)` |
+| `bi8D5524-6D3504_g90` | `border-image-source:linear-gradient(270deg,#8d5524 0%,#6d3504 100%)` |
+| `biF00-00F_r_rpt` | `border-image-source:repeating-radial-gradient(circle,#f00 0%,#00f 100%)` |
+| `biUrl\(a\.png\)` | `border-image-source:url(a.png)` |
+| `bi--img` | `border-image-source:var(--img)` |
+| `biN` | `border-image-source:none` |
+| `bis1` | `border-image-slice:1` |
+| `bis30_F` | `border-image-slice:30 fill` |
+| `bis10_20_30_40` | `border-image-slice:10 20 30 40` |
+| `biw10` | `border-image-width:10px` |
+| `biwA` | `border-image-width:auto` |
+| `bio5` | `border-image-outset:5px` |
+| `birRD` | `border-image-repeat:round` |
+| `birR_ST` | `border-image-repeat:repeat stretch` |
 
-Буквы: `N` none, `F` fill, `ST` stretch, `R` repeat, `RD` round, `SP` space. `R` — повтор рамки; радиальный
-градиент — строчное `_r`, как у `bg`.
+- `bis` — слайс: где резать картинку на девять частей, числа **без единицы** (пиксели картинки) или проценты, до
+  четырёх; `F` — `fill` (середина картинки заливает блок), только рядом со слайсом.
+- `biw` — толщина кольца картинки (голое число — `px`, как у `b`; `A` — auto), `bio` — вынос за рамку (длина, без
+  процентов), `bir` — повтор сторон: `ST` stretch, `R` repeat, `RD` round, `SP` space, до двух.
 
-Рамка с картинкой видна, только если у неё есть ширина и стиль: `bi8D5524-6D3504 b2 bsS`.
+Картинка рисуется в полосе рамки, поэтому видна, только если у рамки есть ширина и стиль. Слайс по умолчанию 100%:
+вся картинка уходит в каждый угол, стороны пусты, и градиент виден только в углах — рамке градиентом нужен `bis1`:
+
+```
+bi8D5524-6D3504 bis1 b6 bsS
+```
 
 Бракуется с объяснением:
 
 | Токен | Почему |
 |-------|--------|
 | `biF00` | одиночный цвет картинкой не бывает: градиент (`biF00-00F`) или цвет рамки `bcF00` |
-| `bi10px` | длина — это ширина, она идёт после `/`; ошибка перечисляет, что принимается |
-| `biF00-00F_1_round` | «Write it shorter: "biF00-00F_1_RD"» |
+| `bi10px` | длина — не картинка; толщина рамки — `b10`, кольца картинки — `biw10` |
+| `biUrl\(a\.png\)_30` | одно значение на класс: слайс — `bis30` |
+| `bis30px` | слайс — число без единицы или процент |
+| `bisF` | `fill` — только рядом со слайсом: `bis1_F` |
+| `bio5%` | вынос процентов не принимает |
 
-Сторон у `border-image` нет: `border-left-image` в CSS не существует. До 2026-10-30 `bil5` давало
-`border-left-image:5`, которое браузер отбрасывал; теперь `bil`, `bit`, `bilt`… не регистрируются. До того же
-дня `bi8D5524-6D3504` бракувался невнятным «expected an image» — градиент проходил только функцией
-(`biLinearGradient\(…\)`) или переменной.
+До D-119 (2026-10-30) `bi` писал сокращение `border-image` одним токеном (`biF00-00F_30_RD`) и находил градиент
+своим регулярным выражением, которое с записью `bg` уже разошлось (`bi--a;--b`). Сторон у `border-image` нет:
+`border-left-image` в CSS не существует, `bil5` давало `border-left-image:5`; `bil`, `bit`, `bilt`… не
+регистрируются.
 
 ### Остальное
 

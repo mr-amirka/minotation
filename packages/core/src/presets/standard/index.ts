@@ -60,6 +60,8 @@ const OPEN_PAREN = '(';
 const MSG_VALUE = 'Value "';
 const MSG_IS_INVALID_FOR = '" is invalid for "';
 const MSG_COLON = '": ';
+/** Начало цитаты слова после двоеточия: `…for "bgs": "cover" stands alone`. */
+const MSG_COLON_QUOTE = MSG_COLON + DOUBLE_QUOTE;
 const MS = 'ms';
 const SLASH = '/';
 const QUOTE = '\'';
@@ -67,8 +69,7 @@ const S = 's';
 const POS = 'pos';
 const MASK_IMAGE = 'maskImage';
 const BORDER = 'border';
-const BI = 'bi';
-const BORDER_IMAGE = 'border-image';
+const BORDER_IMAGE_SOURCE = 'borderImageSource';
 const HUNDRED_PERCENT = '100%';
 const FLEX_START = 'flex-start';
 const CENTER = 'center';
@@ -77,6 +78,7 @@ const STRETCH = 'stretch';
 const NAME_START = 'Start';
 const NAME_END = 'End';
 const NAME_STRETCH = 'Stretch';
+const NAME_FILL = 'Fill';
 const R = 'r';
 const NAME_VISIBLE = 'Visible';
 const NAME_COVER = 'Cover';
@@ -1176,13 +1178,22 @@ function defaultUnitNormalize(v: string): string {
   return parts.join(SPACE);
 }
 /**
+ * Готовая длина: `0` либо число со знаком и одной из единиц. Одна сборка на все проверки длин: длина, длина без
+ * процента, размер дорожки (`1fr`) не разъезжаются в записи числа.
+ * @param units допустимые единицы
+ * @returns регулярное выражение на часть значения целиком
+ * @example lengthPartRegExp(['px', 'em']).test('-1.5em') // true
+ */
+function lengthPartRegExp(units: string[]): RegExp {
+  return new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:' + units.join(PIPE) + '))$');
+}
+/**
  * Готовая длина: `0`, либо число с единицей из {@link UNITS}.
  *
  * Собирается из того же списка, чтобы не разъехаться с ним при правке:
  * добавили единицу — проверка узнала сама.
  */
-const REGEXP_LENGTH_PART = new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:'
-  + UNITS.join(PIPE) + '))$');
+const REGEXP_LENGTH_PART = lengthPartRegExp(UNITS);
 /**
  * Что именно принимает свойство-длина — флаги, третья позиция в таблице ниже.
  *
@@ -1246,6 +1257,16 @@ interface LengthRule {
   signed: boolean;
   max: number;
   solo?: Record<string, 1>;
+  /** Форма числовой части, если не любая длина ({@link REGEXP_LENGTH_PART}): без процента, число без единицы. */
+  part?: RegExp;
+  /** Голое число остаётся без единицы, а не получает `px`: слайс `border-image` — пиксели картинки. */
+  unitless?: 1;
+  /** Буква одна значением не бывает: `fill` — только рядом со слайсом (`bis30_F`, а не `bisF`). */
+  needsNumber?: 1;
+  /** Что ожидалось на месте числовой части — для ошибки (по умолчанию `a length`). */
+  expected?: string;
+  /** Одна числовая часть — для «at most N …» (по умолчанию `length`). */
+  noun?: string;
 }
 /**
  * `background-size`, `mask-size`: ширина и высота — не отрицательные, не больше двух, `cover`/`contain` — только
@@ -1843,8 +1864,12 @@ const REGEXP_SUBSTITUTION = /^(?:var|env)\(/;
  *
  * `cubic-bezier(0,0,1,1)` иначе распадается на четыре куска, и переход
  * бракуется на ровном месте.
+ * @param v значение
+ * @param separator разделитель верхнего уровня — запятая или пробел (`url(a) 30` — две части, градиент — одна)
+ * @returns части по порядку
+ * @example splitTopLevel('a(1,2),b') // ['a(1,2)', 'b']
  */
-function splitTopLevel(v: string): string[] {
+function splitTopLevel(v: string, separator: string = COMMA): string[] {
   const out: string[] = [];
   const l = v.length;
   let depth = 0;
@@ -1857,7 +1882,7 @@ function splitTopLevel(v: string): string[] {
       depth++;
     } else if (c === CLOSE_PAREN) {
       depth--;
-    } else if (c === COMMA && !depth) {
+    } else if (c === separator && !depth) {
       out.push(v.slice(from, i));
       from = i + 1;
     }
@@ -2320,82 +2345,42 @@ function gridValue(
   return parts.join(SPACE);
 }
 
-/** Повтор рамочной картинки. */
-const BORDER_IMAGE_REPEAT = wordsSet('stretch repeat round space none fill');
-/**
- * Буквы слов `border-image` (D-113) — те же, что у повтора фона (`bgrRD`) и у `stretch` (`aiST`): `biN`,
- * `biUrl\(a.png\)_30_F_RD`.
- */
-const BORDER_IMAGE_LETTERS: Record<string, string> = {
-  N: NONE,
-  F: 'fill',
-  ST: 'stretch',
-  R: 'repeat',
-  RD: 'round',
-  SP: 'space',
+/** Повтор рамочной картинки (`border-image-repeat`) — те же буквы, что у повтора фона (`bgrRD`) и `stretch` (`aiST`). */
+const BORDER_IMAGE_REPEAT_SYNONYMS: Record<string, string> = {
+  ST: NAME_STRETCH,
+  R: NAME_REPEAT,
+  RD: 'Round',
+  SP: 'Space',
 };
 /** Слайс рамки: число без единицы или процент. */
 const REGEXP_BORDER_SLICE = /^[0-9]*\.?[0-9]+%?$/;
-/**
- * Градиент в начале суффикса `bi` — та же запись, что у `bg`: цвета через дефис (`8D5524-6D3504`), затем
- * модификаторы `_g90` (угол), `_r` / `_rEllipse` (радиальный), `_rpt` (повторяющийся) — строчными, чтобы не
- * спутать их с буквами повтора рамки (`R` repeat, `RD` round).
- *
- * Дефис обязателен: одиночный цвет картинкой не бывает, а `bi30` — это слайс.
- */
-const REGEXP_BORDER_GRADIENT = /^[0-9A-Fa-f][^_]*-[^_]+(?:_g-?[0-9]+|_r(?!pt(?:_|$))[A-Za-z]*)?(?:_rpt)?(?=_|$)/;
+/** Длина без процента: `border-image-outset` процентов не принимает. */
+const REGEXP_LENGTH_NO_PERCENT = lengthPartRegExp(UNITS.filter((unit) => unit !== PERCENT));
+/** `border-image-slice`: до четырёх слайсов — чисел без единицы (пиксели картинки) или процентов. */
+const BORDER_IMAGE_SLICES: LengthRule = {
+  signed: false,
+  max: 4,
+  part: REGEXP_BORDER_SLICE,
+  unitless: 1,
+  needsNumber: 1,
+  expected: 'a slice: a number without a unit (pixels of the image) or a percentage',
+  noun: 'slice',
+};
+/** `border-image-width`: до четырёх длин или процентов (голое число — `px`, как у `b`). */
+const BORDER_IMAGE_WIDTHS: LengthRule = {
+  signed: false,
+  max: 4,
+};
+/** `border-image-outset`: до четырёх длин, без процентов. */
+const BORDER_IMAGE_OUTSETS: LengthRule = {
+  signed: false,
+  max: 4,
+  part: REGEXP_LENGTH_NO_PERCENT,
+  expected: 'a length without a percentage',
+};
 /** Готовое значение — градиент (а не цвет-fallback из `colorGetBackground`). */
 function isGradientValue(v: string): boolean {
   return REGEXP_GRADIENT_HEAD.test(v);
-}
-/**
- * Одиночный цвет на месте источника `border-image` (`F00`, `8D5524`, `F00.5`) — проверяется по суффиксу как написан:
- * разбор букв кебабит `8D5524` в `8-d5524`.
- */
-const REGEXP_BORDER_COLOR = /^[0-9A-Fa-f]{1,8}(?:\.[0-9]+)?(?:_|$)/;
-/** Что принимает `bi` — для сообщения об ошибке. */
-const MSG_BORDER_IMAGE_FORMS = ': expected a gradient ("bi8D5524-6D3504"), an image ("biUrl\\(a\\.png\\)")'
-  + ' or a variable ("bi--img"), then slices (numbers), "/" and a width, a repeat ("ST", "R", "RD", "SP")';
-/**
- * `border-image`: источник, слайсы, ширина, отступ, повтор.
- *
- * Был permissive pass-through, поэтому `bi10px` давало `border-image:10px`,
- * `biZzz` — `border-image:zzz`, `biF00` — `border-image:f00`. Одна длина
- * значением `border-image` быть не может: там либо картинка, либо `none`,
- * либо слайсы (числа без единицы).
- *
- * Содержимое функций (`url()`, градиенты) здесь не разбирается: по грамматике
- * они валидны как источник.
- */
-function borderImageValue(
-  parts: string[], raw: string, essenceName: string,
-): string {
-  const l = parts.length;
-  let i = 0;
-  let part: string;
-  let afterSlash = 0;
-  for (; i < l; i++) {
-    part = parts[i];
-    if (part === SLASH) {
-      afterSlash = 1;
-      continue;
-    }
-    // Длина — это ширина рамки, она идёт ПОСЛЕ `/`. До него допустимы только
-    // картинка, слайсы (числа без единицы) и повтор: одна длина значением
-    // `border-image` быть не может (`bi10px` давало `border-image:10px`).
-    (part.indexOf(OPEN_PAREN) > -1
-      || BORDER_IMAGE_REPEAT[part]
-      || REGEXP_BORDER_SLICE.test(part)
-      || (afterSlash && REGEXP_LENGTH_PART.test(part)))
-      || throwInvalid(MSG_VALUE + raw + MSG_IS_INVALID_FOR + essenceName + (
-        // Цвет на месте источника — самая частая ошибка: `bg` его принимает, а `border-image` — нет.
-        !i && REGEXP_BORDER_COLOR.test(raw)
-          ? '": a single color is not an image — write a gradient ("' + essenceName
-            + 'F00-00F") or set the border color with "bc"'
-          : '"' + MSG_BORDER_IMAGE_FORMS
-      ));
-  }
-  return parts.join(SPACE);
 }
 /**
  * Ключевые слова дорожек.
@@ -2407,8 +2392,7 @@ function borderImageValue(
 const TRACK_KEYWORDS = wordsSet('auto min-content max-content');
 const TEMPLATE_TRACK_KEYWORDS = wordsSet('none auto min-content max-content subgrid');
 /** Размер дорожки: длина, процент или доля свободного места (`1fr`). */
-const REGEXP_TRACK_SIZE = new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:'
-  + UNITS.join(PIPE) + '|fr))$');
+const REGEXP_TRACK_SIZE = lengthPartRegExp(UNITS.concat('fr'));
 /**
  * Номер линии сетки: целое со знаком, возможно с `/` для второй границы —
  * `1`, `-1`, `1/3`.
@@ -2873,7 +2857,7 @@ import {
 const REGEXP_SUSPECT_VALUE = /^-[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 function throwSuspect(p: MnEssenceParams): never {
-  throw new MnParseError(DOUBLE_QUOTE + p.name + p.suffix + '": "' + p.suffix + '" is not a value of "' + p.name
+  throw new MnParseError(DOUBLE_QUOTE + p.name + p.suffix + MSG_COLON_QUOTE + p.suffix + '" is not a value of "' + p.name
     + '" — this looks like a class of another CSS framework, it gives no CSS', {
     token: p.name + p.suffix,
     handler: p.name,
@@ -3553,7 +3537,9 @@ export default {
     ): MnHandler {
       let props: Record<string, number>;
       const signed = numeric && numeric.signed;
-      const lengthExpected = signed ? '": expected a length' : '": expected a length, zero or positive';
+      const lengthExpected = '": expected ' + (numeric && numeric.expected || 'a length')
+        + (signed ? '' : ', zero or positive');
+      const numericPart = numeric && numeric.part || REGEXP_LENGTH_PART;
       // Обратный индекс: длинное слово → краткая запись, строится из самого
       // словаря, поэтому новый синоним сразу начинает бракать свою длинную форму.
       const byWord: Record<string, string> = {};
@@ -3563,8 +3549,11 @@ export default {
       // Допустимые слова — значения самого словаря: словарь задан на свойство,
       // поэтому отдельная таблица не нужна.
       const keywords: Record<string, 1> = {};
+      // Есть ли у хендлера буквы: у `bio` (только длины) их нет.
+      let lettered = 0;
       forIn(synonyms, (word: string) => {
         keywords[valueNormalize(word)] = 1;
+        lettered = 1;
       });
       /**
      * Проверяет значение, которого нет в словаре кратких записей.
@@ -3623,8 +3612,10 @@ export default {
       /** Список сокращений хендлера: `aiC (center), aiFE (flex-end), …`. */
       function abbrHint(name: string): string {
         const items: string[] = [];
+        // Буква, которая одна значением не бывает, показывается с числом: `bis1_F`, а не `bisF` (тот бракуется).
+        const head = numeric && numeric.needsNumber ? name + '1' + UNDERSCORE : name;
         forIn(synonyms, (word: string, abbr: string) => {
-          abbr && items.push(name + abbr + HINT_OPEN + valueNormalize(word) + CLOSE_PAREN);
+          abbr && items.push(head + abbr + HINT_OPEN + valueNormalize(word) + CLOSE_PAREN);
         });
         return availableHint(items);
       }
@@ -3638,9 +3629,9 @@ export default {
         const solo = rule.solo;
         let i = parts.length;
         lengths > rule.max && throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR + p.name
-          + '": at most ' + rule.max + (rule.max > 1 ? ' lengths' : ' length'));
+          + '": at most ' + rule.max + SPACE + (rule.noun || 'length') + (rule.max > 1 ? S : ''));
         while (solo && i--) {
-          solo[parts[i]] && throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR + p.name + '": "'
+          solo[parts[i]] && throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR + p.name + MSG_COLON_QUOTE
             + parts[i] + '" stands alone');
         }
       }
@@ -3656,7 +3647,8 @@ export default {
         || GLOBAL_KEYWORDS[value] || keywords[value]) {
           return 0;
         }
-        REGEXP_BARE_WORD.test(value)
+        // У хендлера без букв (`bio` — только длины) слово бракуется тем, что ожидалось: «expected a length…».
+        REGEXP_BARE_WORD.test(value) && (lettered || !numeric)
           ? throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR + p.name
           + '": no such abbreviation, and it is not a keyword' + abbrHint(p.name))
           : (numeric
@@ -3664,7 +3656,7 @@ export default {
           // `bgpx10zz` давало `background-position-x:10zz`, `va10s` —
           // `vertical-align:10s`. Размер не бывает отрицательным: `bgs-10px`
           // давало `background-size:-10px`, которое браузер отбрасывает.
-            ? (REGEXP_LENGTH_PART.test(value) && (signed || value[0] !== DASH)
+            ? (numericPart.test(value) && (signed || value[0] !== DASH)
             || throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR + p.name + lengthExpected))
             : throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR
             + p.name + '": the set of values is closed, a number is not allowed'
@@ -3695,6 +3687,8 @@ export default {
         : ((p: MnEssenceParams) => {
           let s: string; let style: Record<string, any>; let synonym: any;
           if (synonym = synonyms[s = p.suffix]) {
+            numeric && numeric.needsNumber && throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + p.name + MSG_COLON_QUOTE
+              + valueNormalize(synonym) + '" does not stand alone — add ' + numeric.expected);
             style = {};
             style[propName as string] = valueNormalize(synonym);
             return styleWrap(style, priority);
@@ -3705,7 +3699,7 @@ export default {
           // Составное значение: буквы — в каждой части (`td1_U_W`, `bgs10_A`), полное слово с буквой бракуется в
           // любой части (D-113).
           s = composite ? lettersValue(p, synonyms) : valueNormalize(s);
-          numeric && (s = defaultUnitNormalize(s));
+          numeric && !numeric.unitless && (s = defaultUnitNormalize(s));
           assertSynonymAbbr(p, s);
           style = {};
           style[propName as string] = s;
@@ -3844,12 +3838,18 @@ export default {
    * скобке (`Color-mix(a,b)` → `camel: 'Color'`), поэтому по разобранным
    * полям её не восстановить.
    */
-    function rawColorValue(suffix: string): string | undefined {
+    function rawColorValue(suffix: string, name: string): string | undefined {
+      let value: string;
       if (!suffix) {
         return;
       }
       if (REGEXP_COLOR_FUNCTION.test(suffix)) {
-        return valueNormalize(suffix);
+        // Функция — одно значение: хвост за ней проходил насквозь — `bgUrl\(a\.png\)_zz` давало
+        // `background:url(a.png) zz`, `biUrl\(a\.png\)_30_RD` — `border-image-source:url(a.png) 30 r-d` (до D-119).
+        splitTopLevel(value = valueNormalize(suffix), SPACE).length > 1 && throwInvalid(MSG_VALUE + suffix
+          + MSG_IS_INVALID_FOR + name + '": one value per class — nothing may follow the function; size, repeat, '
+          + 'slice… are classes of their own');
+        return value;
       }
       const withAlpha = REGEXP_VAR_WITH_ALPHA.exec(suffix);
       if (withAlpha) {
@@ -3932,11 +3932,28 @@ export default {
     /** Одиночный hex без альфы/градиента — только цифры. */
     const REGEXP_PLAIN_HEX = /^[0-9A-Fa-f]+$/;
 
-    function backgroundProvider(propName: string): MnHandler {
-      const isMask = propName === MASK_IMAGE;
+    /**
+     * Фон или картинка: цвет (`bgF00`), градиент (`bgF00-00F`, `bg--a;--b`), `Url\(…\)`, переменная, `N` — `none`.
+     * Один читатель на `bg`, `mk` и `bi` (D-119): исправление формы сразу у всех.
+     * @param propName свойство (`background`, `maskImage`, `borderImageSource`)
+     * @param imageOnly свойство принимает только картинку: одиночный цвет бракуется, цвет-fallback `altColor` не
+     *   выводится (`mask-image`, `border-image-source`)
+     * @returns хендлер
+     */
+    function backgroundProvider(propName: string, imageOnly?: 1): MnHandler {
+      const property = toKebabCase(propName);
+      const notColor = (p: MnEssenceParams, v: string): never => throwInvalid(MSG_VALUE + v + MSG_IS_INVALID_FOR
+        + p.name + '": an image is a gradient (`' + p.name + 'F00-00F`), `' + p.name + 'Url\\(a\\.png\\)` or a '
+        + 'variable, `' + property + '` does not accept a single color');
       return (p: MnEssenceParams) => {
         let v: string; let style: Record<string, any>;
         p.negative && throwInvalid();
+        // `none` — буквой, как у остальных хендлеров (D-113): `bgN`, `mkN` бракувались как «not a color».
+        if (p.suffix === 'N') {
+          style = {};
+          style[propName] = NONE;
+          return styleWrap(style);
+        }
         if (REGEXP_LEADING_HASH_HEX.test(p.suffix)) {
           throwInvalid('Redundant "#": write the color without it — "'
           + p.name + p.suffix.slice(1) + MSG_INSTEAD_OF + p.name + p.suffix + DOUBLE_QUOTE);
@@ -3944,13 +3961,15 @@ export default {
         // Синонимы проверяем ДО разбора как цвета: буквы аббревиатур бывают
         // валидными hex-цифрами, и без этого `bgAC` (AccentColor) уходил в
         // `#aaa`, `bgBB` (ButtonBorder) — в `#bb` (2026-09-24).
-        const raw = rawColorValue(p.suffix);
+        const raw = rawColorValue(p.suffix, p.name);
         if (raw) {
           style = {};
           style[propName] = raw;
           return styleWrap(style);
         }
         const synonym = COLOR_SYNONYMS[p.suffix];
+        // `mkT`, `biCT` — тоже одиночный цвет.
+        synonym && imageOnly && notColor(p, p.suffix);
         if (synonym) {
         // Значение НАПРЯМУЮ, без алиаса на длинную форму (`bgCurrentColor`):
         // иначе длинная форма нужна как цель ссылки и её нельзя забраковать,
@@ -3965,7 +3984,9 @@ export default {
         assertColorAbbr(p);
         REGEXP_PLAIN_HEX.test(p.suffix) && assertShortestHex(p, p.suffix);
         if (!(v = p.suffix)) {
-          return normalizeDefault(p);
+          // Значение по умолчанию (`0`) — цвет, картинкой оно не бывает: голый `mk`, `bi` — «needs a value», а не
+          // «Value "0" is invalid».
+          return imageOnly ? 0 : normalizeDefault(p);
         }
         // `colorGetBackground` возвращает СПИСОК значений (браузерные варианты
         // одного фона), поэтому проверяется первое — форма у них одна.
@@ -3980,8 +4001,10 @@ export default {
         // `background:10zz`, `bg1/2` — `background:1/2`, `bg10_20` —
         // `background:10_20`.
         REGEXP_BACKGROUND_RESULT.test(first)
-        || throwInvalid(MSG_VALUE + v + MSG_IS_INVALID_FOR + p.name
-          + '": expected a color (`F00`), a gradient (`F00-00F`) or a variable');
+        || throwInvalid(MSG_VALUE + v + MSG_IS_INVALID_FOR + p.name + (imageOnly
+          ? '": expected a gradient (`' + p.name + 'F00-00F`), an image (`' + p.name + 'Url\\(a\\.png\\)`), a '
+            + 'variable or `' + p.name + 'N`'
+          : '": expected a color (`F00`), a gradient (`F00-00F`) or a variable'));
         // Проверки формы результата мало: мусор ВНУТРИ градиента в неё
         // укладывается — `bg100%-20px` собиралось в
         // `linear-gradient(180deg,100% 0%,20px 100%)`. Поэтому у градиента
@@ -3992,17 +4015,15 @@ export default {
         forEach(gradients, (gradient: string) => assertGradientStops(
           gradient, v, p.name,
         ));
-        // `mask-image` цвета не принимает вовсе — маска задаётся градиентом или
-        // картинкой. Одиночный цвет там давал заведомо нерабочее правило
-        // (`maskbgF00` → `mask-image:#f00`). Цвет-fallback из `altColor` маске
+        // `mask-image` и `border-image-source` цвета не принимают вовсе — только
+        // картинку. Одиночный цвет там давал заведомо нерабочее правило
+        // (`maskbgF00` → `mask-image:#f00`). Цвет-fallback из `altColor` им
         // тоже не годится — остаются одни градиенты; раньше по этому fallback
         // бракувался любой `mk` с `altColor`.
-        isMask && (first[0] === '#' || first.indexOf('rgba(') === 0)
-        && !gradients.length && throwInvalid(MSG_VALUE + v + MSG_IS_INVALID_FOR + p.name
-          + '": a mask is a gradient (`mkF00-00F`) or a variable, '
-          + '`mask-image` does not accept a single color');
+        imageOnly && (first[0] === '#' || first.indexOf('rgba(') === 0)
+        && !gradients.length && notColor(p, v);
         style = {};
-        style[propName] = isMask && gradients.length ? gradients : result;
+        style[propName] = imageOnly && gradients.length ? gradients : result;
         return styleWrap(style);
       };
     }
@@ -4200,7 +4221,7 @@ export default {
       mn(
         'bc' + suffix, (p) => {
           let v: string | undefined; let synonym: any;
-          const raw = rawColorValue(p.suffix);
+          const raw = rawColorValue(p.suffix, p.name);
           if (raw) {
             return styleWrap(bcSidesSet(raw), priority + 1);
           }
@@ -4227,56 +4248,38 @@ export default {
     });
 
     /**
-     * `border-image` — одно свойство, сторон у него нет.
+     * `border-image` по частям (D-119): у каждой части своё свойство и свой хендлер, как `olw`/`ols`/`olc` у
+     * `outline` — атомарный класс переиспользуется, а сборный давал по классу на каждое сочетание.
      *
-     * До 2026-10-30 `bi` регистрировался на каждую сторону, как ширина и цвет рамки, и `bil5` давало
-     * `border-left-image:5` — такого свойства в CSS нет, браузер правило отбрасывал. Логических сторон нет тем
-     * более: ширина по ним — `bisw`/`biew` (K3, D-103, D-117).
+     * - `bi` — `border-image-source`: тот же читатель картинки, что у `bg` и `mk` (`bi8D5524-6D3504`, `biUrl\(a\.png\)`,
+     *   `bi--img`, `biN`). До D-119 (2026-10-30) `bi` писал сокращение `border-image` и находил градиент своим регулярным
+     *   выражением, а оно с записью `bg` уже разошлось: `bi--a;--b` давало `border-image:var(--a) var(--b)`.
+     * - `bis` — слайс: числа без единицы (пиксели картинки) или проценты, `F` — `fill` (`bis30`, `bis30_F`).
+     *   По умолчанию слайс 100%, и градиент виден только в углах — для рамки градиентом нужен `bis1`.
+     * - `biw` — ширина кольца картинки (`biw10` → `10px`, `biwA`), `bio` — вынос за рамку (`bio5`), `bir` — повтор
+     *   (`birRD`, `birR_ST`).
      *
-     * Источник-градиент пишется как у `bg` (`bi8D5524-6D3504`, `biF00-00F_g90_30_RD`): раньше градиент
-     * проходил только через `url\(…\)`-подобную функцию в сыром виде или через переменную, а `bi8D5524-6D3504`
-     * бракувался невнятным «expected an image». Без слайса градиент рисуется только в углах
-     * (`border-image-slice` по умолчанию 100%), поэтому за ним подставляется `1` — рамка целиком.
+     * Сторон у свойства нет: до 2026-10-30 `bil5` давало `border-left-image:5` — такого свойства в CSS нет.
      */
-    mn(BI, (p) => {
-      const s = p.suffix;
-      if (!s) {
-        return styleWrap({
-          [BORDER_IMAGE]: NONE,
-        }, 1);
-      }
-      const gradient = REGEXP_BORDER_GRADIENT.exec(s);
-      if (!gradient) {
-        // Слова — буквами в любой части (`biN`, `bi_1_ST`), полные бракуются (D-094, D-113).
-        return styleWrap({
-          [BORDER_IMAGE]: borderImageValue(
-            lettersValue(p, BORDER_IMAGE_LETTERS).split(SPACE), s, BI,
-          ),
-        }, 1);
-      }
-      const head = gradient[0];
-      // `colorGetBackground` с `altColor` отдаёт и первый цвет как fallback фона: картинкой рамки он не
-      // бывает, остаются только градиенты (rgb и, при прозрачности, rgba).
-      const sources = filter(colorGetBackground(head), isGradientValue);
-      forEach(sources, (source: string) => assertGradientStops(
-        source, head, BI,
-      ));
-      const rest = s.slice(head.length + 1);
-      // Буквы и «Write it shorter» — по остатку, но с градиентом в имени: подсказка повторяет токен целиком.
-      const parts = rest ? lettersValue({
-        ...p,
-        name: BI + head + UNDERSCORE,
-        suffix: rest,
-      }, BORDER_IMAGE_LETTERS).split(SPACE) : [];
-      REGEXP_BORDER_SLICE.test(parts[0]) || parts.unshift('1');
-      const tail = SPACE + borderImageValue(
-        parts, s, BI,
-      );
-      return styleWrap({
-        [BORDER_IMAGE]: map(sources, (source) => source + tail),
-      }, 1);
+    mn({
+      bi: backgroundProvider(BORDER_IMAGE_SOURCE, 1),
+      bis: synonymProvider(
+        'borderImageSlice', {
+          F: NAME_FILL,
+        }, 0, 0 as any, BORDER_IMAGE_SLICES, 1,
+      ),
+      biw: synonymProvider(
+        'borderImageWidth', {
+          A: NAME_AUTO,
+        }, 0, 0 as any, BORDER_IMAGE_WIDTHS, 1,
+      ),
+      bio: synonymProvider(
+        'borderImageOutset', {}, 0, 0 as any, BORDER_IMAGE_OUTSETS, 1,
+      ),
+      bir: synonymProvider(
+        'borderImageRepeat', BORDER_IMAGE_REPEAT_SYNONYMS, 0, 0 as any, undefined, 1,
+      ),
     });
-
 
     forIn({
       sq: [
@@ -4547,7 +4550,7 @@ export default {
             s[propName] = word;
             return styleWrap(s, priority);
           }
-          const raw = rawColorValue(p.suffix);
+          const raw = rawColorValue(p.suffix, p.name);
           if (raw) {
             s = {};
             s[propName] = raw;
@@ -4596,7 +4599,7 @@ export default {
       if (synonym) {
         return getColor(synonym);
       }
-      const raw = rawColorValue(part) || cssVarValue(part);
+      const raw = rawColorValue(part, p.name) || cssVarValue(part);
       if (raw) {
         return [raw];
       }
@@ -5607,7 +5610,7 @@ export default {
 
       of: synonymProvider('objectFit', {
         '': NAME_COVER,
-        F: 'Fill',
+        F: NAME_FILL,
         CT: NAME_CONTAIN,
         CV: NAME_COVER,
         N: NAME_NONE,
@@ -5715,7 +5718,7 @@ export default {
         MS: 'MatchSource',
       }),
 
-      mk: backgroundProvider(MASK_IMAGE),
+      mk: backgroundProvider(MASK_IMAGE, 1),
       mks: synonymProvider(
         'maskSize', {
           A: NAME_AUTO,
@@ -6266,7 +6269,7 @@ export default {
         VF: '_visibleFill',
         VS: '_visibleStroke',
         P: 'Painted',
-        F: 'Fill',
+        F: NAME_FILL,
         S: 'Stroke',
         // `A` занято `auto`, поэтому `all` — `AL`.
         AL: 'All',

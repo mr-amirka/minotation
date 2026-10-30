@@ -161,7 +161,7 @@ describe('masks: the mk… family (E2)', () => {
   test.each([
     [
       'mkF00',
-      'a mask is a gradient (`mkF00-00F`) or a variable, `mask-image` does not accept a single color',
+      'an image is a gradient (`mkF00-00F`), `mkUrl\\(a\\.png\\)` or a variable, `mask-image` does not accept a single color',
     ],
     [
       'mksCover',

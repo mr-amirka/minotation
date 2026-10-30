@@ -2858,74 +2858,7 @@ describe('фон и маска: только цвет, градиент или �
   });
 });
 
-describe('border-image: источник, слайсы, ширина после «/»', () => {
-  test.each([
-    [
-      'bi',
-      'border-image:none',
-    ],
-    [
-      'biN',
-      'border-image:none',
-    ],
-    [
-      'bi_url\\(a\\.png\\)_30',
-      'border-image:url(a.png) 30',
-    ],
-    [
-      'bi_url\\(a\\.png\\)_30_/_1px',
-      'border-image:url(a.png) 30 / 1px',
-    ],
-    [
-      'biST',
-      'border-image:stretch',
-    ],
-    [
-      'bi30_RD',
-      'border-image:30 round',
-    ],
-    [
-      'bi--v',
-      'border-image:var(--v)',
-    ],
-  ])('%s → %s', (token, expected) => {
-    expect(compile([token]).css).toContain(expected);
-  });
-
-  test.each([
-    [
-      'bi10px',
-      'border-image:10px',
-    ],
-    [
-      'bi10zz',
-      'border-image:10zz',
-    ],
-    [
-      'biF00',
-      'border-image:f00',
-    ],
-    [
-      'biZzz',
-      'border-image:zzz',
-    ],
-    [
-      'bi-5',
-      'border-image:-5',
-    ],
-    [
-      'bi10s',
-      'border-image:10s',
-    ],
-  ])('%s больше не даёт "%s"', (token, wasGiving) => {
-    // Одна длина значением `border-image` быть не может: там либо картинка,
-    // либо `none`, либо слайсы. Длина — это ширина рамки, она идёт после «/».
-    const at = wasGiving.indexOf(':');
-    expect(lexer.matchProperty(wasGiving.slice(0, at), wasGiving.slice(at + 1)).matched)
-      .toBeFalsy();
-    expect(compile([token]).css).toBe('');
-  });
-});
+// `border-image` — `presets/standard/__tests__/border-image.test.ts` (D-119: по частям, свои хендлеры).
 
 describe('grid и grid-template', () => {
   const OK: Array<[string, string]> = [

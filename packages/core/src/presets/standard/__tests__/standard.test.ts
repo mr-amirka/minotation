@@ -126,14 +126,13 @@ describe('Standard preset — filter', () => {
     expect(css('ftbBlur5')).toContain('backdrop-filter:blur(5px)');
   });
 
-  test('ftBlur5_gray50 → комбинация фильтров', () => {
-    const result = css('ftBlur5_gray50');
-    expect(result).toContain('blur(5px)');
-    expect(result).toContain('grayscale(50%)');
+  test('ftBlur5_Gray50 → комбинация фильтров', () => {
+    expect(css('ftBlur5_Gray50')).toContain('filter:blur(5px) grayscale(50%)');
   });
 
-  test('ft_blur5 (альтернативный синтаксис с подчёркиванием) → тот же результат', () => {
-    expect(css('ft_blur5')).toContain('filter:blur(5px)');
+  test('строчное имя (ft_blur5, ftBlur5_gray50) — вторая запись того же значения, бракуется (D-122)', () => {
+    expect(css('ft_blur5')).toBe('');
+    expect(css('ftBlur5_gray50')).toBe('');
   });
 });
 

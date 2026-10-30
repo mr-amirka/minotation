@@ -2724,10 +2724,6 @@ describe('фильтры, text-size-adjust, позиции сетки', () => {
       'ftBlur3_Invert20',
       'filter:blur(3px) invert(20%)',
     ],
-    [
-      'ft_blur5',
-      'filter:blur(5px)',
-    ],
   ])('%s → %s', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });

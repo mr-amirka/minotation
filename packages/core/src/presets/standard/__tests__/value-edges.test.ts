@@ -120,10 +120,10 @@ describe('сдвиги, стороны и производные значени�
   test('известный фильтр без аргумента берёт значение по умолчанию из реестра', () => {
     const css = compile([
       'ftBlur',
-      'ftGrayscale',
+      'ftGray',
     ]).css;
     expect(css).toContain('filter:blur(4px)');
-    expect(css).toContain('filter:grayscale()');
+    expect(css).toContain('filter:grayscale(100%)');
   });
 
   test('ratio задаёт пропорцию и растягивает потомков', () => {

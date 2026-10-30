@@ -202,9 +202,9 @@ export const ESSENCES: MnDocEntry[] = [
 
   // --- Фильтры ---
   {
-    name: 'ft', props: 'filter', keywords: ['filter', 'blur', 'grayscale', 'brightness'],
-    params: '{CamelCase имя функции}{число}[единица], несколько через _',
-    examples: ['ftBlur10', 'ftBlur4', 'ftGrayscale100', 'ftBrightness150'],
+    name: 'ft', props: 'filter', keywords: ['filter', 'blur', 'grayscale', 'brightness', 'drop-shadow'],
+    params: 'функция по имени в CamelCase, первый аргумент слитно, остальные и следующие функции через _ (D-124)',
+    examples: ['ftBlur10', 'ftBlur4', 'ftGray100', 'ftBright150', 'ftDropShadow2_4_6_000.5'],
   },
   { name: 'ftb', props: 'backdrop-filter', keywords: ['filter', 'backdrop', 'blur'], examples: ['ftbBlur8', 'ftbBlur10', 'ftbBlur12'] },
 

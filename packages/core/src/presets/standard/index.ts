@@ -168,8 +168,6 @@ const MASK_BOX_SYNONYMS: Record<string, string> = {
 const REGEXP_COMMA = /(?:\s*,\s*)+/;
 const REGEXP_TRIM_SNAKE_LEFT = /^_+/g;
 const REGEXP_TRIM_KEBAB_LEFT = /^-+/g;
-const REGEXP_FILTER_NAME = /^([A-Za-z]+)([0-9]*)(.*)$/;
-const REGEXP_FILTER_SEP = /_+/;
 const REGEXP_DOTS = /\./g;
 const REGEXP_DASHES = /-/g;
 const REGEXP_UNESCAPED_UNDERSCORE = /(?<!\\)_/;
@@ -842,48 +840,6 @@ const SHADOW_HANDLERS: Record<string, [string, (x: any, y: any, value: any, r: a
     },
   ],
 };
-const FILTER_MAP: Record<string, Array<string | number>> = {
-  blur: [
-    'blur',
-    4,
-    PX,
-  ],
-  gray: [
-    'grayscale',
-    100,
-    PERCENT,
-  ],
-  bright: [
-    'brightness',
-    100,
-    PERCENT,
-  ],
-  contrast: [
-    CONTRAST,
-    100,
-    PERCENT,
-  ],
-  hue: [
-    'hue-rotate',
-    180,
-    DEG,
-  ],
-  invert: [
-    'invert',
-    100,
-    PERCENT,
-  ],
-  saturate: [
-    'saturate',
-    100,
-    PERCENT,
-  ],
-  sepia: [
-    'sepia',
-    100,
-    PERCENT,
-  ],
-};
 /**
  * Единицы длины, которые принимает нотация, плюс `%`.
  *
@@ -1188,6 +1144,272 @@ function lengthPartRegExp(units: string[], unitOptional?: 1): RegExp {
  * добавили единицу — проверка узнала сама.
  */
 const REGEXP_LENGTH_PART = lengthPartRegExp(UNITS);
+/**
+ * Функция нативной формы `Name…` (D-124): имя в CamelCase, первый аргумент — слитно с ним, остальные — частями через
+ * `_`. Скобки в токене не пишутся (D-121): `ftBlur2` → `blur(2px)`, `ftDropShadow2_4_6_000.5` →
+ * `drop-shadow(2px 4px 6px rgba(0,0,0,.5))`. Хендлер объявляет свои функции таблицей и читает суффикс
+ * {@link functionsValue}.
+ */
+interface FunctionForm {
+  /** Имя в CSS: `drop-shadow`. */
+  css: string;
+  /** Частей не меньше: у `drop-shadow` x и y обязательны. Голое имя (`ftBlur`) — ноль частей. */
+  min: number;
+  /** Частей не больше: следующая часть — уже новая функция, иначе ошибка. */
+  max: number;
+  /** Запись для подсказок, без имени хендлера: `Blur2`. */
+  example: string;
+  /** Аргументы → содержимое скобок; на части, которую не принимает, зовёт `call.fail`. */
+  args: (args: string[], call: FunctionCall) => string;
+}
+/** Что видит читатель аргументов одной функции {@link FunctionForm}. */
+interface FunctionCall {
+  /** Параметры токена. */
+  p: MnEssenceParams;
+  /** Части всего суффикса — для подсказок, которые называют токен целиком (`colorPart`). */
+  parts: string[];
+  /** Номер части суффикса у каждого аргумента: первый слит с именем функции. */
+  index: number[];
+  /** Проход с запасным цветом `altColor`: цвет с альфой даёт свойству два значения, как у `sbc`. */
+  fallback: boolean;
+  /** Бросает «функция ждёт …» с примером записи. */
+  fail: (expected: string) => never;
+}
+/** Имя функции в части: слова в CamelCase, дальше — первый аргумент. */
+const REGEXP_FUNCTION_NAME = /^((?:[A-Z][a-z]+)+)(.*)$/;
+/** Имя, написанное не той формой: строчное (`blur5`, `hueRotate90`) или в CamelCase — для подсказки. */
+const REGEXP_FUNCTION_NAME_ANY = /^([A-Za-z][a-z]*(?:[A-Z][a-z]+)*)(.*)$/;
+/** Функция со скобкой, как в CSS: `blur(`, `drop-shadow(`, `Blur(`. */
+const REGEXP_FUNCTION_HEAD = /^([A-Za-z][A-Za-z-]*)\(/;
+const REGEXP_KEBAB_LETTER = /-([a-z])/g;
+/** Длина без процента — у `blur` и `drop-shadow` процента нет. */
+const REGEXP_FUNCTION_LENGTH = lengthPartRegExp(UNITS.filter((unit) => unit !== PERCENT));
+/** Угол с единицей: `1turn`, `-90deg`. */
+const REGEXP_FUNCTION_ANGLE = lengthPartRegExp(ANGLE_UNITS);
+/** Доля: число не меньше нуля, с `%` или без. */
+const REGEXP_FUNCTION_RATIO = /^(?:\d+\.?\d*|\.\d+)%?$/;
+/**
+ * Аргумент-длина функции: голое число — пиксели (`2` → `2px`, `0` остаётся `0`), с единицей — как написано,
+ * переменная — `var()`.
+ * @param v аргумент
+ * @param call вызов — для ошибки
+ * @param signed отрицательная длина допустима (сдвиг тени), иначе — нет (размытие)
+ * @returns длина CSS
+ * @example functionLength('2', call) // '2px'
+ */
+function functionLength(
+  v: string, call: FunctionCall, signed?: 1,
+): string {
+  const whole = cssVarValue(v);
+  if (whole) {
+    return whole;
+  }
+  (signed || v[0] !== DASH) || call.fail('a length of zero or more');
+  return REGEXP_BARE_NUMBER.test(v) ? (v === ZERO ? v : v + PX)
+    : REGEXP_FUNCTION_LENGTH.test(v) ? v : call.fail('a length');
+}
+/**
+ * Аргумент-доля функции: голое число — проценты (`50` → `50%`), переменная — `var()`. Число не меньше нуля.
+ * @param v аргумент
+ * @param call вызов — для ошибки
+ * @returns доля CSS
+ * @example functionRatio('50', call) // '50%'
+ */
+function functionRatio(v: string, call: FunctionCall): string {
+  return cssVarValue(v) || (REGEXP_FUNCTION_RATIO.test(v)
+    ? (v[v.length - 1] === PERCENT ? v : v + PERCENT) : call.fail('a percentage of zero or more'));
+}
+/**
+ * Аргумент-угол функции: голое число — градусы (`90` → `90deg`), с единицей угла — как написано, переменная —
+ * `var()`.
+ * @param v аргумент
+ * @param call вызов — для ошибки
+ * @returns угол CSS
+ * @example functionAngle('90', call) // '90deg'
+ */
+function functionAngle(v: string, call: FunctionCall): string {
+  return cssVarValue(v) || (REGEXP_BARE_NUMBER.test(v) ? v + DEG
+    : REGEXP_FUNCTION_ANGLE.test(v) ? v : call.fail('an angle'));
+}
+/**
+ * Функция-доля из одной части: `ftGray50` → `grayscale(50%)`, голое имя — `100%`.
+ * @param css имя в CSS
+ * @param example запись для подсказок
+ * @returns форма функции
+ */
+function ratioForm(css: string, example: string): FunctionForm {
+  return {
+    css,
+    min: 0,
+    max: 1,
+    example,
+    args: (args, call) => (args.length ? functionRatio(args[0], call) : HUNDRED_PERCENT),
+  };
+}
+/** Полные имена функций фильтра там, где есть короткое: одна форма на значение (D-122). */
+const FILTER_LONG_NAMES: Record<string, string> = {
+  Grayscale: 'Gray',
+  Brightness: 'Bright',
+  HueRotate: 'Hue',
+};
+/**
+ * Исправленная запись суффикса, когда имя функции написано не той формой (D-122 «одна форма на значение»): строчное
+ * (`ft_blur5` → `ftBlur5`) или длинное там, где есть короткое (`ftGrayscale100` → `ftGray100`).
+ * @param parts части суффикса
+ * @param forms функции хендлера
+ * @param longNames длинное имя → короткое
+ * @returns `[запись, только короче]`, или `undefined`, когда исправлять нечего
+ */
+function functionsFix(
+  parts: string[], forms: Record<string, FunctionForm>, longNames: Record<string, string>,
+): [fixed: string, shorter: boolean] | undefined {
+  const l = parts.length;
+  const out: string[] = new Array(l);
+  let shorter = true;
+  let fixed = false;
+  let i = 0;
+  let m: RegExpExecArray | null;
+  let key: string;
+  let short: string;
+  for (; i < l; i++) {
+    out[i] = parts[i];
+    if ((m = REGEXP_FUNCTION_NAME_ANY.exec(parts[i]))) {
+      key = m[1][0].toUpperCase() + m[1].slice(1);
+      short = longNames[key] || key;
+      if (forms[short] && short !== m[1]) {
+        out[i] = short + m[2];
+        fixed = true;
+        // Короче — только замена длинного имени; строчное имя исправляется без сокращения.
+        short === key && (shorter = false);
+      }
+    }
+  }
+  // Ведущий `_` перед функцией лишний: `ft_Blur5` — то же, что `ftBlur5`.
+  if (l > 1 && !parts[0] && (m = REGEXP_FUNCTION_NAME.exec(out[1])) && forms[m[1]]) {
+    out.shift();
+    fixed = true;
+    shorter = false;
+  }
+  return fixed ? [
+    out.join(UNDERSCORE),
+    shorter,
+  ] : undefined;
+}
+/**
+ * Читает суффикс из функций нативной формы `Name…` (D-124) — общая точка расширения: хендлер объявляет свои функции
+ * таблицей {@link FunctionForm}, разбор и сообщения — здесь.
+ *
+ * Часть, которая начинается известным именем, открывает новую функцию; остальные части — её аргументы, пока их не
+ * больше `max`. Скобка (`ftBlur\(2px\)`) бракуется с подсказкой нативной формы (D-121); имя — одной формой (D-122):
+ * строчное и длинное бракуются с исправленной записью.
+ * @param p параметры токена
+ * @param forms функции хендлера по имени в нотации
+ * @param longNames длинное имя → короткое (`Grayscale` → `Gray`)
+ * @param what что за функции — для сообщения: `a filter function`
+ * @param fallback проход с запасным цветом (см. {@link FunctionCall.fallback})
+ * @returns вызовы через пробел; пустая строка — функций нет
+ * @example functionsValue(p, FILTER_FORMS, FILTER_LONG_NAMES, 'a filter function') // ftBlur3_Invert20 → 'blur(3px) invert(20%)'
+ */
+function functionsValue(
+  p: MnEssenceParams, forms: Record<string, FunctionForm>, longNames: Record<string, string>, what: string,
+  fallback?: boolean,
+): string {
+  const suffix = p.suffix;
+  const name = p.name;
+  const head = MSG_VALUE + suffix + MSG_IS_INVALID_FOR + name + MSG_COLON;
+  const parts = splitValueParts(suffix);
+  const l = parts.length;
+  const out: string[] = [];
+  const first = (Object.keys(forms) as string[])[0];
+  let form: FunctionForm | undefined;
+  let key = '';
+  let args: string[] = [];
+  let index: number[] = [];
+  let part: string;
+  let m: RegExpExecArray | null;
+  let i = 0;
+  const call: FunctionCall = {
+    p,
+    parts,
+    index,
+    fallback: !!fallback,
+    fail: (expected: string) => throwInvalid(head + DOUBLE_QUOTE + key + '" expects ' + expected + ' — as "' + name
+      + (form as FunctionForm).example + DOUBLE_QUOTE),
+  };
+  if (suffix.indexOf(OPEN_PAREN) > -1) {
+    throwInvalid(head + 'a function is not written in a class — write "' + name
+      + parenForm(
+        parts, forms, longNames,
+      ).example + DOUBLE_QUOTE);
+  }
+  const fix = functionsFix(
+    parts, forms, longNames,
+  );
+  fix && throwInvalid((fix[1] ? MSG_WRITE_SHORTER : 'Write "') + name + fix[0] + MSG_INSTEAD_OF + name + suffix
+    + MSG_SAME_VALUE);
+  for (; i < l; i++) {
+    part = parts[i];
+    if ((m = REGEXP_FUNCTION_NAME.exec(part)) && forms[m[1]]) {
+      form && out.push(functionCall(
+        form, key, args, call, head, name,
+      ));
+      form = forms[key = m[1]];
+      call.index = index = [];
+      args = [];
+      m[2] && (args.push(m[2]), index.push(i));
+      continue;
+    }
+    if (!part) {
+      // Ведущий `_` — запасная форма хендлера (D-126); пустая часть в середине — описка.
+      i && throwInvalid(head + 'an empty part — one "_" between parts');
+      continue;
+    }
+    form || throwInvalid(head + 'expected ' + what + ' by its name, as "' + name + forms[first].example + MSG_COLON
+      + Object.keys(forms).join(LIST_SEPARATOR));
+    args.length < (form as FunctionForm).max || throwInvalid(head + DOUBLE_QUOTE + part + '" is extra: "' + key
+      + '" takes at most ' + (form as FunctionForm).max + ((form as FunctionForm).max > 1 ? ' parts' : ' part')
+      + ' — as "' + name + (form as FunctionForm).example + DOUBLE_QUOTE);
+    args.push(part);
+    index.push(i);
+  }
+  form && out.push(functionCall(
+    form, key, args, call, head, name,
+  ));
+  return out.join(SPACE);
+}
+/**
+ * Функция, на нативную форму которой указывает подсказка к скобке: названная перед скобкой (`blur(` →
+ * `Blur`, `hue-rotate(` → `Hue`), иначе та, внутри которой скобка (`DropShadow2_4_rgba(…)`), иначе первая.
+ * @returns форма для примера записи
+ */
+function parenForm(
+  parts: string[], forms: Record<string, FunctionForm>, longNames: Record<string, string>,
+): FunctionForm {
+  let i = 0;
+  for (; parts[i].indexOf(OPEN_PAREN) < 0;) {
+    i++;
+  }
+  const m = REGEXP_FUNCTION_HEAD.exec(parts[i]);
+  let key = m ? m[1].replace(REGEXP_KEBAB_LETTER, (_s: string, c: string) => c.toUpperCase()) : '';
+  key = key && key[0].toUpperCase() + key.slice(1);
+  key = longNames[key] || key;
+  let back: RegExpExecArray | null;
+  for (; !forms[key] && i > -1; i--) {
+    (back = REGEXP_FUNCTION_NAME.exec(parts[i])) && (key = back[1]);
+  }
+  return forms[key] || forms[Object.keys(forms)[0]];
+}
+/**
+ * Один вызов из {@link functionsValue}: проверка числа частей и чтение аргументов.
+ * @returns `name(аргументы)`
+ */
+function functionCall(
+  form: FunctionForm, key: string, args: string[], call: FunctionCall, head: string, name: string,
+): string {
+  args.length < form.min && throwInvalid(head + DOUBLE_QUOTE + key + '" takes at least ' + form.min + ' parts — as "'
+    + name + form.example + DOUBLE_QUOTE);
+  return form.css + OPEN_PAREN + form.args(args, call) + CLOSE_PAREN;
+}
 /**
  * Что именно принимает свойство-длина — флаги, третья позиция в таблице ниже.
  *
@@ -2246,15 +2468,6 @@ function counterValue(
   }
   return parts.join(SPACE);
 }
-/**
- * Функции фильтра — список закрыт спецификацией (`<filter-function>`).
- *
- * Неизвестное имя раньше прокидывалось как есть, и `ftbF00` давало
- * `backdrop-filter:f(00)` (`F00` разбиралось как имя `f` с аргументом `00`),
- * `ftb_solid` — `solid()`. Ни одна из этих записей не работает.
- */
-const FILTER_FUNCTIONS = wordsSet('blur brightness contrast drop-shadow grayscale'
-  + ' hue-rotate invert opacity saturate sepia');
 /**
  * Что может получиться у `bg`/`maskbg`: цвет, вызов функции (градиент,
  * `rgba`, `var`) или ключевое слово цвета.
@@ -6609,26 +6822,103 @@ export default {
       ftb: ftProvider('backdropFilter'),
     });
 
+    /**
+     * Цвет-аргумент функции: те же записи и проверки, что у цвета в части значения ({@link colorPart}). С `altColor`
+     * у кода с альфой цветов два — основной и запасной; какой взять, решает проход {@link FunctionCall.fallback}.
+     */
+    function functionColor(
+      v: string, call: FunctionCall, k: number,
+    ): string {
+      const parts = call.parts.slice();
+      // Первый аргумент слит с именем функции: в подсказку цвета идёт сам аргумент.
+      parts[call.index[k]] = v;
+      const colors = colorPart(
+        call.p, parts, call.index[k],
+      );
+      return colors[call.fallback ? 0 : colors.length - 1];
+    }
+
+    /**
+     * `drop-shadow`: x и y, затем размытие и цвет — по порядку CSS (`ftDropShadow2_4_6_000.5` →
+     * `drop-shadow(2px 4px 6px rgba(0,0,0,.5))`). Из трёх частей третья — размытие, если это число или длина, иначе
+     * цвет: `ftDropShadow2_4_F00`. Размытие из переменной пишется вместе с цветом: `ftDropShadow2_4_--b_0`.
+     */
+    function dropShadowArgs(args: string[], call: FunctionCall): string {
+      const l = args.length;
+      const third = l > 2 ? args[2] : '';
+      const blur = l > 3 || REGEXP_BARE_NUMBER.test(third) || REGEXP_FUNCTION_LENGTH.test(third);
+      return functionLength(
+        args[0], call, 1,
+      ) + SPACE + functionLength(
+        args[1], call, 1,
+      )
+        + (blur ? SPACE + functionLength(third, call) : '')
+        + (l > (blur ? 3 : 2) ? SPACE + functionColor(
+          args[l - 1], call, l - 1,
+        ) : '');
+    }
+
+    /**
+     * Функции фильтра в нативной форме (D-124) — список закрыт спецификацией (`<filter-function>`): `ftBlur2`,
+     * `ftGray50`, `ftHue90`, `ftDropShadow2_4_6_000.5`. Голое число — единица функции: пиксели у размытия, проценты
+     * у долей, градусы у поворота тона. Голое имя — значение по умолчанию: `ftBlur` → `blur(4px)`, `ftGray` →
+     * `grayscale(100%)`.
+     *
+     * Раньше имя прокидывалось как есть и хвост приклеивался без проверки: `ftBlur\(2px\)` давало `blur(4(2px))`,
+     * `ftBlur.5` — `blur(4.5)`, `ftBlur--a` — `blur(4--a)`, `ftHueRotate90` — `hue-rotate(90)` без единицы,
+     * `ftDropShadow2` — `drop-shadow(2)`, а `ftBrightness150` — `brightness(150)`, то есть в сто раз ярче, чем
+     * `ftBright150` (полное имя шло без процентов). Ещё раньше (2026-09-27) закрыт сам список: `ftbF00` давало
+     * `backdrop-filter:f(00)`, `ftb_solid` — `solid()`.
+     */
+    const FILTER_FORMS: Record<string, FunctionForm> = {
+      Blur: {
+        css: 'blur',
+        min: 0,
+        max: 1,
+        example: 'Blur2',
+        args: (args, call) => (args.length ? functionLength(args[0], call) : '4px'),
+      },
+      Gray: ratioForm('grayscale', 'Gray50'),
+      Bright: ratioForm('brightness', 'Bright150'),
+      Contrast: ratioForm(CONTRAST, 'Contrast150'),
+      Hue: {
+        css: 'hue-rotate',
+        min: 0,
+        max: 1,
+        example: 'Hue90',
+        args: (args, call) => (args.length ? functionAngle(args[0], call) : '180deg'),
+      },
+      Invert: ratioForm('invert', 'Invert20'),
+      Opacity: ratioForm('opacity', 'Opacity50'),
+      Saturate: ratioForm('saturate', 'Saturate200'),
+      Sepia: ratioForm('sepia', 'Sepia50'),
+      DropShadow: {
+        css: 'drop-shadow',
+        min: 2,
+        max: 4,
+        example: 'DropShadow2_4_6_000.5',
+        args: dropShadowArgs,
+      },
+    };
+
     function ftProvider(propName: string): MnHandler {
       return (p: MnEssenceParams) => {
-        let v: string; let s: Record<string, any>;
-        return (v = cssVarValue(p.suffix) || filter(map(p.suffix.split(REGEXP_FILTER_SEP),
-          (v: string) => {
-            let matchs: RegExpExecArray | null; let name: string; let options: any;
-            if (!v || !(matchs = REGEXP_FILTER_NAME.exec(v))) {
-              return 0;
-            }
-            options = FILTER_MAP[name = lowerFirst(matchs[1])];
-            const fn = camelToKebabCase(options && options[0] || name);
-            FILTER_FUNCTIONS[fn] || throwInvalid(MSG_VALUE + p.suffix
-            + '" is invalid: "' + fn + '" is not a filter function');
-            return fn + OPEN_PAREN + (matchs[2] || options && options[1] || '')
-            + (matchs[3] || options && options[2] || '') + CLOSE_PAREN;
-          }), Boolean).join(SPACE)) ? (
-            s = {},
-            s[propName] = v,
-            styleWrap(s)
-          ) : 0;
+        const s: Record<string, any> = {};
+        const whole = cssVarValue(p.suffix);
+        const main = whole || functionsValue(
+          p, FILTER_FORMS, FILTER_LONG_NAMES, 'a filter function',
+        );
+        if (!main) {
+          return 0;
+        }
+        const fallback = whole || functionsValue(
+          p, FILTER_FORMS, FILTER_LONG_NAMES, 'a filter function', true,
+        );
+        s[propName] = fallback === main ? main : [
+          fallback,
+          main,
+        ];
+        return styleWrap(s);
       };
     }
 

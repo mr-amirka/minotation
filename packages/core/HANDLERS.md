@@ -1067,28 +1067,50 @@ import './loadingScreen.mn';
 
 ## Фильтры
 
-Формат аргумента: `{CamelCase имя функции}{число}[единица]`
+Функция фильтра пишется нативной формой (D-124): имя в CamelCase, первый аргумент — слитно с именем, остальные —
+через `_`. Скобки не пишутся. Несколько функций — подряд через `_`: часть, которая начинается именем функции,
+открывает следующую.
+
+| Функция | CSS | Голое число | Голое имя |
+|---------|-----|-------------|-----------|
+| `Blur` | `blur` | пиксели: `ftBlur2` → `blur(2px)` | `ftBlur` → `blur(4px)` |
+| `Gray` | `grayscale` | проценты: `ftGray50` → `grayscale(50%)` | `100%` |
+| `Bright` | `brightness` | проценты: `ftBright150` → `brightness(150%)` | `100%` |
+| `Contrast` | `contrast` | проценты | `100%` |
+| `Invert` | `invert` | проценты | `100%` |
+| `Opacity` | `opacity` | проценты | `100%` |
+| `Saturate` | `saturate` | проценты | `100%` |
+| `Sepia` | `sepia` | проценты | `100%` |
+| `Hue` | `hue-rotate` | градусы: `ftHue90` → `hue-rotate(90deg)` | `ftHue` → `hue-rotate(180deg)` |
+| `DropShadow` | `drop-shadow` | пиксели | — (x и y обязательны) |
 
 | Токен | CSS |
 |-------|-----|
 | `ftBlur10` | `filter:blur(10px)` |
-| `ftBlur4` | `filter:blur(4px)` |
-| `ftGrayscale100` | `filter:grayscale(100)` (без `%`) |
-| `ftBrightness150` | `filter:brightness(150)` (без `%`) |
+| `ftBlur2em` | `filter:blur(2em)` — единица, как написана |
+| `ftBlur--a` | `filter:blur(var(--a))` — переменная в аргументе |
+| `ftHue1turn` | `filter:hue-rotate(1turn)` |
+| `ftBlur3_Invert20` | `filter:blur(3px) invert(20%)` |
+| `ftDropShadow2_4_6_000.5` | `filter:drop-shadow(2px 4px 6px rgba(0,0,0,.5))` — x, y, размытие, цвет |
+| `ftDropShadow2_4_F00` | `filter:drop-shadow(2px 4px #f00)` — третья часть не длина, значит цвет |
+| `ftDropShadow2_4_--b_0` | `filter:drop-shadow(2px 4px var(--b) #000)` — размытие из переменной — вместе с цветом |
+| `ft--v` | `filter:var(--v)` — значение целиком |
+| `ftINH` | `filter:inherit` |
 
-Тег `ftb` = `backdrop-filter`:
+Тег `ftb` = `backdrop-filter`, те же функции:
 
 | Токен | CSS |
 |-------|-----|
 | `ftbBlur8` | `backdrop-filter:blur(8px)` |
-| `ftbBlur10` | `backdrop-filter:blur(10px)` |
 | `ftbBlur12` | `backdrop-filter:blur(12px)` |
 
-Единицы по умолчанию: `blur` → `px`, `hue-rotate` → `deg`, остальное — **без единицы**
-для одиночного вызова (см. `ftGrayscale100`/`ftBrightness150` выше).
+Одна запись на значение (D-122):
 
-Несколько функций через `_` — в этой форме единица `%` уже появляется:
-`ftBlur3_Invert20` → `filter:blur(3px) invert(20%)`.
+| Токен | Ответ |
+|-------|-------|
+| `ftBlur\(2px\)` | «a function is not written in a class — write "ftBlur2"» |
+| `ftGrayscale100`, `ftBrightness150`, `ftHueRotate90` | «Write it shorter: "ftGray100"» (`ftBright150`, `ftHue90`) |
+| `ft_blur5`, `ftBlur5_gray50` | «Write "ftBlur5"» (`ftBlur5_Gray50`) — имя в CamelCase |
 
 ---
 

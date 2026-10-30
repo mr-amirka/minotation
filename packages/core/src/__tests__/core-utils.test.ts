@@ -11,7 +11,7 @@
  */
 
 import {
-  asError, normalizeSelectors, normalizeComboNames, observableProvider,
+  asError, normalizeSelectors, normalizeComboNames, observableProvider, REGEXP_INVALID_CSS_VALUE,
 } from '../core/utils';
 
 describe('normalizeSelectors', () => {
@@ -115,5 +115,27 @@ describe('asError', () => {
     }, '[object Object]'],
   ])('%p описывается как %p', (value, expected) => {
     expect(asError(value).message).toBe(expected);
+  });
+});
+
+describe('REGEXP_INVALID_CSS_VALUE — эвристика битого значения', () => {
+  test.each([
+    '0px 0px Rpx 3px #000',
+    'NaNpx',
+    'undefined',
+    'calc(Rem + 1px)',
+  ])('%p — битое', (value) => {
+    expect(REGEXP_INVALID_CSS_VALUE.test(value)).toBe(true);
+  });
+
+  // Буквы в токене заглавные (D-113), имя в CSS — строчное: `it` + `em` не утечка буквы (D-124, cntCounter_item).
+  test.each([
+    'counter(item)',
+    'item 1s',
+    'stem',
+    'attr(poem)',
+    '10px 2em',
+  ])('%p — не битое', (value) => {
+    expect(REGEXP_INVALID_CSS_VALUE.test(value)).toBe(false);
   });
 });

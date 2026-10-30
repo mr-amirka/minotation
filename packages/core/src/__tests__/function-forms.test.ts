@@ -573,3 +573,91 @@ describe('функции плавности в слотах tn и an (D-124)', (
     expect(compile(['tn_A_--ease']).css).toContain('{transition:all var(--ease)}');
   });
 });
+
+describe('функции content в нативной форме: cnt (D-124)', () => {
+  test.each([
+    [
+      'cntAttr_href',
+      'content:attr(href)',
+    ],
+    [
+      'cntAttr_data-label',
+      'content:attr(data-label)',
+    ],
+    // `item` — `it` + `em`: эвристика битого значения в ядре браковала такие имена до 2026-10-31.
+    [
+      'cntCounter_item',
+      'content:counter(item)',
+    ],
+    [
+      'cntCounter_item_UR',
+      'content:counter(item,upper-roman)',
+    ],
+    [
+      'cntCounter_item_N',
+      'content:counter(item,none)',
+    ],
+    [
+      'cntCounter_item_--s',
+      'content:counter(item,var(--s))',
+    ],
+    // `_` — текст: имя функции после него — слово текста.
+    [
+      'cnt_Attr_href',
+      'content:"Attr href"',
+    ],
+  ])('%s → %s', (token, declaration) => {
+    const out = compile([token]);
+    expect(out.warnings).toEqual([]);
+    expect(out.css).toContain('{' + declaration + '}');
+  });
+
+  test.each([
+    [
+      'cnt_attr\\(href\\)',
+      'Value "_attr(href)" is invalid for "cnt": a function is not written in a class — write "cntAttr_href"',
+    ],
+    [
+      'cntAttr\\(href\\)',
+      'Value "Attr(href)" is invalid for "cnt": a function is not written in a class — write "cntAttr_href"',
+    ],
+    [
+      'cnt_counter\\(n\\)',
+      'Value "_counter(n)" is invalid for "cnt": a function is not written in a class — write'
+      + ' "cntCounter_item_UR"',
+    ],
+    [
+      'cnt_url\\(a\\.png\\)',
+      'Value "_url(a.png)" is invalid for "cnt": a function is not written in a class — "url" has no short'
+      + ' form, write it through a variable — "cnt--x"',
+    ],
+    [
+      'cntAttr',
+      'Value "Attr" is invalid for "cnt": "Attr" takes at least 1 part — as "cntAttr_href"',
+    ],
+    [
+      'cntAttr_a_b',
+      'Value "Attr_a_b" is invalid for "cnt": "b" is extra: "Attr" takes at most 1 part — as "cntAttr_href"',
+    ],
+    // Имя пишется отдельной частью — склеивать его с функцией подсказка не предлагает.
+    [
+      'cntAttr_1a',
+      'Value "Attr_1a" is invalid for "cnt": "Attr" expects an attribute name — as "cntAttr_href"',
+    ],
+    [
+      'cntCounter_1',
+      'Value "Counter_1" is invalid for "cnt": "Counter" expects a counter name — as "cntCounter_item_UR"',
+    ],
+    [
+      'cntCounter_item_UpperRoman',
+      'Value "Counter_item_UpperRoman" is invalid for "cnt": "Counter" expects a list style letter: N, S, D, DC,'
+      + ' DCLZ, LR, UR, C — as "cntCounter_item_UR"',
+    ],
+    [
+      'cntAttr_href_Counter_n',
+      'Value "Attr_href_Counter_n" is invalid for "cnt": one function is expected — as "cntAttr_href"',
+    ],
+  ])('%s', (token, message) => {
+    expect(rejected(token)).toBe(message);
+  });
+});

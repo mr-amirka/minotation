@@ -1920,24 +1920,21 @@ describe('content: кавычки ставит хендлер', () => {
     expect(warnings.length).toBe(1);
   });
 
+  // Функции — нативной формой (`cntAttr_href`, D-124): function-forms.test.ts.
   test.each([
-    [
-      'cnt_attr\\(href\\)',
-      'content:attr(href)',
-    ],
-    [
-      'cnt_counter\\(n\\)',
-      'content:counter(n)',
-    ],
-    [
-      'cnt_url\\(a\\.png\\)',
-      'content:url(a.png)',
-    ],
     [
       'cnt--v',
       'content:var(--v)',
     ],
-  ])('%s → %s — функция и подстановка не кавычатся', (token, expected) => {
+    [
+      'cnt_--v',
+      'content:var(--v)',
+    ],
+    [
+      'cnt_see_\\(note\\)',
+      'content:"see (note)"',
+    ],
+  ])('%s → %s — подстановка не кавычится, скобка в тексте — текст', (token, expected) => {
     expect(compile([token]).css).toContain(expected);
   });
 

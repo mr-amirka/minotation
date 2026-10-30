@@ -346,8 +346,12 @@ export const REGEXP_IMPORTANT = /-i$/;
  * (`flex`, `complex`, `index` → ложно матчат `ex`; `thin`, `within`, `chain` →
  * `in`) — найдено эмпирически: `dF`→`display:flex` ложно браковался при
  * первой версии этого регэкспа (6 упавших тестов).
+ *
+ * Буквы перед юнитом — с заглавной (`Rpx`): буквы в токене заглавные (D-113), а слово, которое хендлер выводит
+ * в CSS, строчное. Со строчными регэксп браковал имена: `counter(item)` — это `it` + `em` (найдено 2026-10-31 на
+ * `cntCounter_item`, D-124), так же `stem`, `poem`.
  */
-export const REGEXP_INVALID_CSS_VALUE = /\b(?:undefined|null|NaN)\b|(?:^|[\s,(])(?:undefined|null|NaN|[A-Za-z]{1,3})(?:px|em|rem|deg|vh|vw|vmin|vmax|pt|pc|cm|mm|fr)(?=[\s,)]|$)/;
+export const REGEXP_INVALID_CSS_VALUE = /\b(?:undefined|null|NaN)\b|(?:^|[\s,(])(?:undefined|null|NaN|[A-Z][A-Za-z]{0,2})(?:px|em|rem|deg|vh|vw|vmin|vmax|pt|pc|cm|mm|fr)(?=[\s,)]|$)/;
 export const JOIN_AND = joinProvider(' and ');
 
 // flatFlags (не fundamentool.flags): та трактует '.'/'[...]' как путь (nested

@@ -279,12 +279,21 @@ RESEARCH/22, Q7) и CSS-wide (`cntINH`, D-125). Полные слова с бу�
 по грамматике невалиден, то есть такое правило оставляло бы дыру ровно там, где
 его и вводили.
 
-Не оборачиваются два случая — распознаются сами:
+Подстановка не оборачивается: `cnt--v` → `content:var(--v)`.
 
-| Токен | CSS | Почему |
-|-------|-----|--------|
-| `cnt_attr\(href\)` | `content:attr(href)` | значение целиком — вызов функции |
-| `cnt--v` | `content:var(--v)` | подстановка |
+**Функции — нативной формой** (D-124), без `_`: имя в CamelCase, имя атрибута или счётчика — отдельной частью.
+
+| Токен | CSS |
+|-------|-----|
+| `cntAttr_href` | `content:attr(href)` |
+| `cntAttr_data-label` | `content:attr(data-label)` |
+| `cntCounter_item` | `content:counter(item)` |
+| `cntCounter_item_UR` | `content:counter(item,upper-roman)` — стиль буквами `list` (`N`, `S`, `D`, `DC`, `DCLZ`, `LR`, `UR`, `C`) или переменной |
+
+Значение — одна функция. Склейка с текстом (`counter(item) ". "`), `counters(…)` и `url(…)` пишутся переменной:
+`cnt--label` с `--label: counter(item) ". "` в CSS. Скобка бракуется с подсказкой: `cnt_attr\(href\)` → «a function is
+not written in a class — write "cntAttr_href"», `cnt_url\(a\.png\)` → «write it through a variable — "cnt--x"».
+Скобки внутри текста — текст: `cnt_see_\(note\)` → `content:"see (note)"`.
 
 ---
 
@@ -2483,8 +2492,8 @@ bi8D5524-6D3504 bis1 b6 bsS
   `bsDTDS` → `dot-dash` убраны 2026-09-26 — это набор старой Mozilla,
   работавший только под `-moz-border-*-style`.
 
-Если нужного действительно нет — значение пишется свободной формой через
-ведущий `_` (`cnt_attr\(href\)`) или через CSS-переменную.
+Если нужного действительно нет — значение пишется CSS-переменной: `f--fluid` с `--fluid: clamp(1rem, 2vw, 2rem)` в
+CSS (D-124). Ведущий `_` — не сырой режим, а запасная форма хендлера (D-126).
 
 ---
 

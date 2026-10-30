@@ -1168,6 +1168,11 @@ interface FunctionForm {
    * `tn_opacity_200_Steps4_JE_100` — `JE` ещё аргумент `Steps`, `100` уже задержка. Без неё там берётся ровно `min`.
    */
   more?: RegExp;
+  /**
+   * Первый аргумент — имя, он пишется отдельной частью: `cntAttr_href` (слитно `Attrhref` читалось бы одним именем).
+   * Без флага первый аргумент — число или длина, слитно с именем: `ftBlur5`, а `ftBlur_5` бракуется.
+   */
+  named?: 1;
 }
 /**
  * Функции одного хендлера для {@link functionsValue}: собирается один раз, на регистрации.
@@ -1460,7 +1465,7 @@ function functionsFix(parts: string[], set: FunctionSet): [fixed: string, shorte
           // Короче — только замена длинного имени; строчное имя исправляется без сокращения.
           short === key && (shorter = false);
         }
-        if (!m[2] && i + 1 < l && REGEXP_FUNCTION_FIRST_ARG.test(parts[i + 1])) {
+        if (!m[2] && !forms[short].named && i + 1 < l && REGEXP_FUNCTION_FIRST_ARG.test(parts[i + 1])) {
           part += parts[++i];
           fixed = true;
           shorter = false;
@@ -3128,6 +3133,19 @@ const CONTENT_SYNONYMS: Record<string, string> = {
   NOQ: 'no-open-quote',
   NCQ: 'no-close-quote',
 };
+/** Типы маркера списка буквами (D-113) — у `list`, `lis` и стиля счётчика `cntCounter_item_UR`. */
+const LIST_STYLE_TYPES: Record<string, string> = {
+  N: NAME_NONE,
+  S: 'Square',
+  D: 'Disc',
+  DC: 'Decimal',
+  DCLZ: 'DecimalLeadingZero',
+  LR: 'LowerRoman',
+  UR: 'UpperRoman',
+  C: 'Circle',
+};
+/** Имя атрибута в `attr()` или счётчика в `counter()`: `href`, `data-label`, `item`. */
+const REGEXP_CSS_NAME = /^[A-Za-z][A-Za-z\d-]*$/;
 /** Ключевые слова `content` — всё, что пишется без кавычек и не функция. */
 const CONTENT_KEYWORDS: Record<string, 1> = {
   none: 1,
@@ -6682,14 +6700,7 @@ export default {
       ),
       lis: synonymProvider(
         'listStyle', {
-          N: NAME_NONE,
-          S: 'Square',
-          D: 'Disc',
-          DC: 'Decimal',
-          DCLZ: 'DecimalLeadingZero',
-          LR: 'LowerRoman',
-          UR: 'UpperRoman',
-          C: 'Circle',
+          ...LIST_STYLE_TYPES,
           I: 'Inside',
           O: 'Outside',
           // `composite`: тип, позиция и картинка в одном значении
@@ -6703,16 +6714,7 @@ export default {
         }, 1,
       ),
       list: synonymProvider(
-        'listStyleType', {
-          N: NAME_NONE,
-          S: 'Square',
-          D: 'Disc',
-          DC: 'Decimal',
-          DCLZ: 'DecimalLeadingZero',
-          LR: 'LowerRoman',
-          UR: 'UpperRoman',
-          C: 'Circle',
-        }, 1,
+        'listStyleType', LIST_STYLE_TYPES, 1,
       ),
       pgbb: synonymProvider([
         'pageBreakBefore',
@@ -6997,8 +6999,9 @@ export default {
      * первая версия этой проверки оставляла дыру ровно там, где её закрывала.
      * `cnt_he_said_"hi"` → `content:"he said \"hi\""`.
      *
-     * Не оборачиваются два случая: значение целиком вызов функции
-     * (`cnt_attr\(href\)`) и подстановка (`cnt--v`).
+     * Не оборачивается подстановка (`cnt--v`). Функции — нативной формой (D-124): `cntAttr_href`,
+     * `cntCounter_item_UR` ({@link CONTENT_FUNCTIONS}); скобка в начале текста (`cnt_attr\(href\)`) бракуется с
+     * подсказкой, а не уходит в кавычки молча. Скобки внутри текста — текст: `cnt_see_\(note\)`.
      */
       cnt: (p) => {
         let s, v;
@@ -7014,17 +7017,25 @@ export default {
             content: v,
           });
         }
+        if (s[0] === UNDERSCORE ? REGEXP_FUNCTION_HEAD.test(s.slice(1)) : functionsStart(s, CONTENT_FUNCTIONS)) {
+          return styleWrap({
+            content: functionsValue(p, CONTENT_FUNCTIONS),
+          });
+        }
         v = valueNormalize(s);
         return styleWrap({
           content: s[0] === UNDERSCORE
           // Текста после `_` нет — пустая строка. Суффикс из НЕСКОЛЬКИХ
           // подчёркиваний бракуется: пробел пишется мнемоникой `cntS`, и
           // двух записей одного значения быть не должно.
+            // Скобка, которой нет в суффиксе, — от подстановки (`cnt_--v`): её не кавычат. Скобка автора — текст.
             ? (v
-              ? (v.indexOf(OPEN_PAREN) > -1 ? v : DOUBLE_QUOTE + quoteEscape(v) + DOUBLE_QUOTE)
+              ? (v.indexOf(OPEN_PAREN) > -1 && s.indexOf(OPEN_PAREN) < 0 ? v
+                : DOUBLE_QUOTE + quoteEscape(v) + DOUBLE_QUOTE)
               : (s.length > 1 && throwInvalid(MSG_VALUE + s
               + '" is invalid: a space is written as "cntS", an empty string as "cnt_"'),
               '""'))
+            // Скобка здесь — только от подстановки (`cnt--v`): скобку автора забрал читатель функций выше.
             : (v.indexOf(OPEN_PAREN) > -1
               ? v
               // Слово с буквой полной записью бракуется: `cntNone` → `cntN` (D-113).
@@ -7117,6 +7128,41 @@ export default {
     };
     const FILTER_FUNCTIONS = functionSet(
       FILTER_FORMS, 'a filter function', undefined, FILTER_LONG_NAMES,
+    );
+    /**
+     * Функции `content` в нативной форме (D-124): `cntAttr_href` → `attr(href)`, `cntCounter_item_UR` →
+     * `counter(item,upper-roman)` — стиль буквами `list` ({@link LIST_STYLE_TYPES}). Значение — одна функция: склейка
+     * с текстом (`counter(item) ". "`) пишется переменной. У `url(…)`, `counters(…)` короткой записи нет — тоже
+     * переменная.
+     */
+    const CONTENT_FUNCTIONS = functionSet(
+      {
+        Attr: {
+          css: 'attr',
+          min: 1,
+          max: 1,
+          named: 1,
+          example: 'Attr_href',
+          args: (args, call) => (REGEXP_CSS_NAME.test(args[0]) ? args[0]
+            : call.fail('an attribute name')),
+        },
+        Counter: {
+          css: 'counter',
+          min: 1,
+          max: 2,
+          named: 1,
+          example: 'Counter_item_UR',
+          args: (args, call) => {
+            const counter = REGEXP_CSS_NAME.test(args[0]) ? args[0] : call.fail('a counter name');
+            if (args.length < 2) {
+              return counter;
+            }
+            const style = cssVarValue(args[1]) || (LIST_STYLE_TYPES[args[1]] ? toKebabCase(LIST_STYLE_TYPES[args[1]])
+              : call.fail('a list style letter: ' + Object.keys(LIST_STYLE_TYPES).join(LIST_SEPARATOR)));
+            return counter + COMMA + style;
+          },
+        },
+      }, 'a content function', 1,
     );
 
     function ftProvider(propName: string): MnHandler {

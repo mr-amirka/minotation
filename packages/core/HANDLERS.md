@@ -723,17 +723,17 @@ border: '1px solid rgba(255,255,255,0.1)'
 | bottom | `bb1` | `bsbS` | `bcbF.08` |
 | ось строки (D-101) | `bx1` | `bsxS` | `bcxF.1` |
 | ось блока (D-101) | `by1` | `bsyS` | `bcyF.1` |
-| начало строки (A2) | `bis1` | `bssS` | `bcsF.1` |
-| конец строки (A2) | `bie1` | `bseS` | `bceF.1` |
+| начало строки (A2) | `bisw1` | `bssS` | `bcsF.1` |
+| конец строки (A2) | `biew1` | `bseS` | `bceF.1` |
 | начало блока (A2) | `bbs1` | `bsbsS` | `bcbsF.1` |
 | конец блока (A2) | `bbe1` | `bsbeS` | `bcbeF.1` |
 
-Ширина по началу/концу строки — **`bis`/`bie`** (K3, D-103): `bs` — `border-style`, `bs1` отвечает
-«did you mean "bis1"». У `border-image` логических сторон нет.
+Ширина по началу/концу строки — **`bisw`/`biew`** (K3, D-103, D-117): `bs` — `border-style`, `bs1` отвечает
+«did you mean "bisw1"»; `bis`/`bie` читались как «border-image-…» и не используются. У `border-image` логических сторон нет.
 
 | Токен | CSS |
 |-------|-----|
-| `bis1` | `border-inline-start-width:1px` |
+| `bisw1` | `border-inline-start-width:1px` |
 | `bbe2` | `border-block-end-width:2px` |
 | `bssS` | `border-inline-start-style:solid` |
 | `bcbeF00` | `border-block-end-color:#f00` |

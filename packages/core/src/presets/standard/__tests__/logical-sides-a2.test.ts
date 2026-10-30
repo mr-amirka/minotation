@@ -1,6 +1,6 @@
 /**
  * Логические стороны A2 (D-097, RESEARCH/17 § 5.2) с именами K3 (D-103): `ps`/`pie`, `ms`/`me`, `ss`/`se`,
- * `bis`/`bie`, `bcs`/`bce`, `bss`/`bse` и `…bs`/`…be` по оси блока; логические углы `rss`…`ree`, `rs`/`re`;
+ * `bisw`/`biew` (D-117), `bcs`/`bce`, `bss`/`bse` и `…bs`/`…be` по оси блока; логические углы `rss`…`ree`, `rs`/`re`;
  * размеры `iz`/`bz` с `min`/`max`. Пишут одно логическое свойство в любом `axisMode`.
  */
 import minotationProvider from '../../../core/index';
@@ -78,12 +78,12 @@ describe('logical sides A2 with K3 (D-097, D-103)', () => {
       '.sbeA{inset-block-end:auto}',
     ],
     [
-      'bis1',
-      '.bis1{border-inline-start-width:1px}',
+      'bisw1',
+      '.bisw1{border-inline-start-width:1px}',
     ],
     [
-      'bie2',
-      '.bie2{border-inline-end-width:2px}',
+      'biew2',
+      '.biew2{border-inline-end-width:2px}',
     ],
     [
       'bbs1',
@@ -181,7 +181,7 @@ describe('logical sides A2 with K3 (D-097, D-103)', () => {
     'ps10',
     'mbe8',
     'ss0',
-    'bis1',
+    'bisw1',
     'bcsF00',
     'bsbsS',
   ])('%s — the same in axisMode: \'physical\'', (token) => {
@@ -202,7 +202,7 @@ describe('logical sides A2 with K3 (D-097, D-103)', () => {
       'padding-block-start:0',
     ],
     [
-      'bx1 bie0',
+      'bx1 biew0',
       'border-inline-width:1px',
       'border-inline-end-width:0',
     ],
@@ -257,7 +257,7 @@ describe('logical sides A2 with K3 (D-097, D-103)', () => {
     ],
     [
       'bs1',
-      'bis1',
+      'bisw1',
       'border-inline-start-width',
     ],
   ])('%s — Tailwind\'s name gives no CSS and points to %s', (
@@ -270,9 +270,16 @@ describe('logical sides A2 with K3 (D-097, D-103)', () => {
 
   test.each([
     'be1',
-    'bisN',
-    'bieN',
+    'biswN',
+    'biewN',
   ])('%s — no border-image side and no `be`', (token) => {
     expect(compile(token).css).not.toContain('image');
+  });
+
+  test.each([
+    'bis1',
+    'bie1',
+  ])('%s — the old name of the width (D-117) gives no width', (token) => {
+    expect(compile(token).css).not.toContain('width');
   });
 });

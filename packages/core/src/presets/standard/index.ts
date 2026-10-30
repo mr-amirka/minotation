@@ -275,12 +275,13 @@ const LOGICAL_SIDES: Record<string, string> = {
 };
 /**
  * K3 (D-103): имена по A2, занятые другими свойствами, — `pe` (pointer-events) и `bs` (border-style); их стороны
- * берут `pie` и `bis`, `be` — `bie` в пару к `bis`.
+ * берут `pie` и `bisw`, `be` — `biew` в пару к `bisw` (D-117: `bis`/`bie` читались как «border-image-…», и `bis`
+ * нужен слайсу `border-image`).
  */
 const LOGICAL_RENAMED: Record<string, string> = {
   pe: 'pie',
-  bs: 'bis',
-  be: 'bie',
+  bs: 'bisw',
+  be: 'biew',
 };
 /**
  * Словесные значения цвета — только те, что кодом не выразить, и каждое
@@ -2949,7 +2950,7 @@ const CROSS_HINTS: Record<string, CrossHint[]> = {
       'transition-duration',
     ],
   ],
-  // `pe10`, `bs1` — привычка Tailwind (A2): эти стороны названы `pie`, `bis` (K3, D-103).
+  // `pe10`, `bs1` — привычка Tailwind (A2): эти стороны названы `pie`, `bisw` (K3, D-103, D-117).
   pe: [
     [
       startsWithDigit,
@@ -2965,7 +2966,7 @@ const CROSS_HINTS: Record<string, CrossHint[]> = {
     ],
     [
       startsWithDigit,
-      'bis',
+      'bisw',
       'border-inline-start-width',
     ],
   ],
@@ -4230,7 +4231,7 @@ export default {
      *
      * До 2026-10-30 `bi` регистрировался на каждую сторону, как ширина и цвет рамки, и `bil5` давало
      * `border-left-image:5` — такого свойства в CSS нет, браузер правило отбрасывал. Логических сторон нет тем
-     * более: `bis`/`bie` заняты шириной (K3, D-103).
+     * более: ширина по ним — `bisw`/`biew` (K3, D-103, D-117).
      *
      * Источник-градиент пишется как у `bg` (`bi8D5524-6D3504`, `biF00-00F_g90_30_RD`): раньше градиент
      * проходил только через `url\(…\)`-подобную функцию в сыром виде или через переменную, а `bi8D5524-6D3504`

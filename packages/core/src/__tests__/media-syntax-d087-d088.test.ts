@@ -501,7 +501,7 @@ describe('D-094: переименования и подсказки на час�
     ],
     [
       'bs1',
-      'bis1',
+      'bisw1',
       'border-inline-start-width',
     ],
   ])('%s — в ошибке подсказка «did you mean "%s" (%s)»', (

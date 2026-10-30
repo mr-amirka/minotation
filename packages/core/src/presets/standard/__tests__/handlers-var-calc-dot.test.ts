@@ -245,9 +245,11 @@ describe('все хендлеры стандартного пресета: пе�
       'coi',
       'cor',
     ]));
-    // Градиент строят ровно `bg` и `mk` — оба через backgroundProvider.
+    // Градиент строят `bg` и `mk` (оба через backgroundProvider) и с 2026-10-30 `bi` — та же запись источника
+    // рамки.
     expect(GRADIENT_HANDLERS).toEqual([
       'bg',
+      'bi',
       'mk',
     ]);
   });

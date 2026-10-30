@@ -68,6 +68,7 @@ const POS = 'pos';
 const MASK_IMAGE = 'maskImage';
 const BORDER = 'border';
 const BI = 'bi';
+const BORDER_IMAGE = 'border-image';
 const HUNDRED_PERCENT = '100%';
 const FLEX_START = 'flex-start';
 const CENTER = 'center';
@@ -2223,16 +2224,16 @@ const REGEXP_GRADIENT_STOP
  * Мини-язык `bg` собирает градиент из частей суффикса, не проверяя их, поэтому
  * `bg100%-20px` давало `linear-gradient(180deg,100% 0%,20px 100%)` — правило
  * синтаксически целое, но нерабочее.
+ *
+ * @param value градиент — вызывающие отбирают его {@link isGradientValue}: цвет-fallback сюда не попадает
  */
 function assertGradientStops(
   value: string, raw: string, name: string,
 ): void {
-  const head = REGEXP_GRADIENT_HEAD.exec(value);
-  if (!head) {
-    return;
-  }
-  // Первый аргумент — направление (`180deg`, `circle`), дальше идут стопы.
-  const stops = value.slice(head[0].length, -1).split(COMMA);
+  // Первый аргумент — направление (`180deg`, `circle`), дальше идут стопы. Запятые — только верхнего уровня:
+  // по всем `rgba(255,0,0,.5)` распадался на `0`, `0`, `.5) 0%`, и градиент с прозрачным стопом
+  // (`bgF00.5-00F`) бракувался целиком (до 2026-10-30).
+  const stops = splitTopLevel(value.slice(value.indexOf(OPEN_PAREN) + 1, -1));
   let i = stops.length;
   while (--i > 0) {
     REGEXP_GRADIENT_STOP.test(stops[i].trim())
@@ -2335,6 +2336,26 @@ const BORDER_IMAGE_LETTERS: Record<string, string> = {
 /** Слайс рамки: число без единицы или процент. */
 const REGEXP_BORDER_SLICE = /^[0-9]*\.?[0-9]+%?$/;
 /**
+ * Градиент в начале суффикса `bi` — та же запись, что у `bg`: цвета через дефис (`8D5524-6D3504`), затем
+ * модификаторы `_g90` (угол), `_r` / `_rEllipse` (радиальный), `_rpt` (повторяющийся) — строчными, чтобы не
+ * спутать их с буквами повтора рамки (`R` repeat, `RD` round).
+ *
+ * Дефис обязателен: одиночный цвет картинкой не бывает, а `bi30` — это слайс.
+ */
+const REGEXP_BORDER_GRADIENT = /^[0-9A-Fa-f][^_]*-[^_]+(?:_g-?[0-9]+|_r(?!pt(?:_|$))[A-Za-z]*)?(?:_rpt)?(?=_|$)/;
+/** Готовое значение — градиент (а не цвет-fallback из `colorGetBackground`). */
+function isGradientValue(v: string): boolean {
+  return REGEXP_GRADIENT_HEAD.test(v);
+}
+/**
+ * Одиночный цвет на месте источника `border-image` (`F00`, `8D5524`, `F00.5`) — проверяется по суффиксу как написан:
+ * разбор букв кебабит `8D5524` в `8-d5524`.
+ */
+const REGEXP_BORDER_COLOR = /^[0-9A-Fa-f]{1,8}(?:\.[0-9]+)?(?:_|$)/;
+/** Что принимает `bi` — для сообщения об ошибке. */
+const MSG_BORDER_IMAGE_FORMS = ': expected a gradient ("bi8D5524-6D3504"), an image ("biUrl\\(a\\.png\\)")'
+  + ' or a variable ("bi--img"), then slices (numbers), "/" and a width, a repeat ("ST", "R", "RD", "SP")';
+/**
  * `border-image`: источник, слайсы, ширина, отступ, повтор.
  *
  * Был permissive pass-through, поэтому `bi10px` давало `border-image:10px`,
@@ -2365,8 +2386,13 @@ function borderImageValue(
       || BORDER_IMAGE_REPEAT[part]
       || REGEXP_BORDER_SLICE.test(part)
       || (afterSlash && REGEXP_LENGTH_PART.test(part)))
-      || throwInvalid(MSG_VALUE + raw + MSG_IS_INVALID_FOR + essenceName
-        + '": expected an image, slices (numbers), then a width after "/"');
+      || throwInvalid(MSG_VALUE + raw + MSG_IS_INVALID_FOR + essenceName + (
+        // Цвет на месте источника — самая частая ошибка: `bg` его принимает, а `border-image` — нет.
+        !i && REGEXP_BORDER_COLOR.test(raw)
+          ? '": a single color is not an image — write a gradient ("' + essenceName
+            + 'F00-00F") or set the border color with "bc"'
+          : '"' + MSG_BORDER_IMAGE_FORMS
+      ));
   }
   return parts.join(SPACE);
 }
@@ -3906,6 +3932,7 @@ export default {
     const REGEXP_PLAIN_HEX = /^[0-9A-Fa-f]+$/;
 
     function backgroundProvider(propName: string): MnHandler {
+      const isMask = propName === MASK_IMAGE;
       return (p: MnEssenceParams) => {
         let v: string; let style: Record<string, any>;
         p.negative && throwInvalid();
@@ -3957,19 +3984,24 @@ export default {
         // Проверки формы результата мало: мусор ВНУТРИ градиента в неё
         // укладывается — `bg100%-20px` собиралось в
         // `linear-gradient(180deg,100% 0%,20px 100%)`. Поэтому у градиента
-        // проверяется каждый стоп.
-        assertGradientStops(
-          first, v, p.name,
-        );
+        // проверяется каждый стоп — у КАЖДОГО градиента списка: с `altColor`
+        // первым идёт цвет-fallback, и проверка одного `first` пропускала
+        // `bgF00-zz` (до 2026-10-30).
+        const gradients = filter(result, isGradientValue);
+        forEach(gradients, (gradient: string) => assertGradientStops(
+          gradient, v, p.name,
+        ));
         // `mask-image` цвета не принимает вовсе — маска задаётся градиентом или
         // картинкой. Одиночный цвет там давал заведомо нерабочее правило
-        // (`maskbgF00` → `mask-image:#f00`).
-        propName === MASK_IMAGE && (first[0] === '#' || first.indexOf('rgba(') === 0)
-        && throwInvalid(MSG_VALUE + v + MSG_IS_INVALID_FOR + p.name
+        // (`maskbgF00` → `mask-image:#f00`). Цвет-fallback из `altColor` маске
+        // тоже не годится — остаются одни градиенты; раньше по этому fallback
+        // бракувался любой `mk` с `altColor`.
+        isMask && (first[0] === '#' || first.indexOf('rgba(') === 0)
+        && !gradients.length && throwInvalid(MSG_VALUE + v + MSG_IS_INVALID_FOR + p.name
           + '": a mask is a gradient (`mkF00-00F`) or a variable, '
           + '`mask-image` does not accept a single color');
         style = {};
-        style[propName] = result;
+        style[propName] = isMask && gradients.length ? gradients : result;
         return styleWrap(style);
       };
     }
@@ -3989,7 +4021,6 @@ export default {
       const logicalSide = LOGICAL_SIDES[suffix];
       const bsSidesSet = axisSetter((side) => BORDER + side + '-style');
       const bcSidesSet = axisSetter((side) => BORDER + side + '-color');
-      const biSidesSet = sidesSetter((side) => BORDER + side + '-image');
 
       function sidesSetter(handle: (side: string) => string): (v: any) => Record<string, any> {
         const propsMap: Record<string, number> = {};
@@ -4192,15 +4223,57 @@ export default {
             );
         }, PATTERN_COLOR, 1,
       );
-      // У `border-image` нет логических сторон (`border-inline-start-image` в CSS нет) — `bis`/`bie` заняты
-      // шириной (K3, D-103).
-      logicalSide || mn(BI + suffix, (p) => {
-        const s = p.suffix;
+    });
+
+    /**
+     * `border-image` — одно свойство, сторон у него нет.
+     *
+     * До 2026-10-30 `bi` регистрировался на каждую сторону, как ширина и цвет рамки, и `bil5` давало
+     * `border-left-image:5` — такого свойства в CSS нет, браузер правило отбрасывал. Логических сторон нет тем
+     * более: `bis`/`bie` заняты шириной (K3, D-103).
+     *
+     * Источник-градиент пишется как у `bg` (`bi8D5524-6D3504`, `biF00-00F_g90_30_RD`): раньше градиент
+     * проходил только через `url\(…\)`-подобную функцию в сыром виде или через переменную, а `bi8D5524-6D3504`
+     * бракувался невнятным «expected an image». Без слайса градиент рисуется только в углах
+     * (`border-image-slice` по умолчанию 100%), поэтому за ним подставляется `1` — рамка целиком.
+     */
+    mn(BI, (p) => {
+      const s = p.suffix;
+      if (!s) {
+        return styleWrap({
+          [BORDER_IMAGE]: NONE,
+        }, 1);
+      }
+      const gradient = REGEXP_BORDER_GRADIENT.exec(s);
+      if (!gradient) {
         // Слова — буквами в любой части (`biN`, `bi_1_ST`), полные бракуются (D-094, D-113).
-        return styleWrap(biSidesSet(s ? borderImageValue(
-          lettersValue(p, BORDER_IMAGE_LETTERS).split(SPACE), s, BI + suffix,
-        ) : NONE), priority + 1);
-      });
+        return styleWrap({
+          [BORDER_IMAGE]: borderImageValue(
+            lettersValue(p, BORDER_IMAGE_LETTERS).split(SPACE), s, BI,
+          ),
+        }, 1);
+      }
+      const head = gradient[0];
+      // `colorGetBackground` с `altColor` отдаёт и первый цвет как fallback фона: картинкой рамки он не
+      // бывает, остаются только градиенты (rgb и, при прозрачности, rgba).
+      const sources = filter(colorGetBackground(head), isGradientValue);
+      forEach(sources, (source: string) => assertGradientStops(
+        source, head, BI,
+      ));
+      const rest = s.slice(head.length + 1);
+      // Буквы и «Write it shorter» — по остатку, но с градиентом в имени: подсказка повторяет токен целиком.
+      const parts = rest ? lettersValue({
+        ...p,
+        name: BI + head + UNDERSCORE,
+        suffix: rest,
+      }, BORDER_IMAGE_LETTERS).split(SPACE) : [];
+      REGEXP_BORDER_SLICE.test(parts[0]) || parts.unshift('1');
+      const tail = SPACE + borderImageValue(
+        parts, s, BI,
+      );
+      return styleWrap({
+        [BORDER_IMAGE]: map(sources, (source) => source + tail),
+      }, 1);
     });
 
 

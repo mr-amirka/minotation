@@ -458,7 +458,9 @@ describe('Аудит кратких записей (D-113)', () => {
   }
 
   test('аудит видит пресет целиком', () => {
-    expect(names.length).toBeGreaterThan(400);
+    // Порог — страховка от пустой выборки. 2026-10-30 ушли стороны `border-image` (`bil`, `bit`, `bilt`…: такого
+    // свойства в CSS нет), имён стало 396.
+    expect(names.length).toBeGreaterThan(390);
     // Хендлер без свойства — переименованный (`e`, `apc`), дочерний (`tbl.cell`) или из одних функций (`ft`:
     // `ftBlur4`), а у функций слов нет.
     expect(names.filter((name) => !props[name].length).sort()).toEqual([

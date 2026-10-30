@@ -2264,15 +2264,41 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 Старых имён `maskbg`, `maski`, `maskt`, `maskm` больше нет — убраны сразу, без ответа «переименовано»: в прошлой
 версии ими почти не пользовались (D-104).
 
-### `border-image` и его стороны
+### `border-image`
+
+Порядок частей — как в CSS: источник, слайсы, `/` ширина, `/` отступ, повтор. Градиент пишется как у `bg`
+(цвета через дефис, модификаторы `_g90`, `_r`, `_rpt` — строчными); если слайса нет, за градиентом встаёт `1` —
+без него `border-image-slice` по умолчанию 100% и градиент виден только в углах.
 
 | Токен | CSS |
 |-------|-----|
+| `bi8D5524-6D3504` | `border-image:linear-gradient(180deg,#8d5524 0%,#6d3504 100%) 1` |
+| `bi8D5524-6D3504_g90` | `border-image:linear-gradient(270deg,#8d5524 0%,#6d3504 100%) 1` |
+| `biF00-00F_r_rpt` | `border-image:repeating-radial-gradient(circle,#f00 0%,#00f 100%) 1` |
+| `biF00-00F_30_RD` | `border-image:linear-gradient(180deg,#f00 0%,#00f 100%) 30 round` |
+| `biF00-00F_/_4px` | `border-image:linear-gradient(180deg,#f00 0%,#00f 100%) 1 / 4px` |
+| `biUrl\(a\.png\)_30_F_RD` | `border-image:url(a.png) 30 fill round` |
+| `bi--img_30` | `border-image:var(--img) 30` |
+| `bi`, `biN` | `border-image:none` |
 | `bi10` | `border-image:10` |
-| `bil5` | `border-left-image:5` |
 
-Суффиксы сторон работают как у остальных рамочных свойств: `bil`, `bir`, `bit`,
-`bib`, плюс углы (`bilt`, `birb`, …).
+Буквы: `N` none, `F` fill, `ST` stretch, `R` repeat, `RD` round, `SP` space. `R` — повтор рамки; радиальный
+градиент — строчное `_r`, как у `bg`.
+
+Рамка с картинкой видна, только если у неё есть ширина и стиль: `bi8D5524-6D3504 b2 bsS`.
+
+Бракуется с объяснением:
+
+| Токен | Почему |
+|-------|--------|
+| `biF00` | одиночный цвет картинкой не бывает: градиент (`biF00-00F`) или цвет рамки `bcF00` |
+| `bi10px` | длина — это ширина, она идёт после `/`; ошибка перечисляет, что принимается |
+| `biF00-00F_1_round` | «Write it shorter: "biF00-00F_1_RD"» |
+
+Сторон у `border-image` нет: `border-left-image` в CSS не существует. До 2026-10-30 `bil5` давало
+`border-left-image:5`, которое браузер отбрасывал; теперь `bil`, `bit`, `bilt`… не регистрируются. До того же
+дня `bi8D5524-6D3504` бракувался невнятным «expected an image» — градиент проходил только функцией
+(`biLinearGradient\(…\)`) или переменной.
 
 ### Остальное
 

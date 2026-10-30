@@ -302,7 +302,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'mkm', props: 'mask-mode', keywords: ['mask', 'mode'], examples: ['mkmMS', 'mkmA'] },
 
   // --- Границы (доп.) — портировано из старого 1.x essences.js, проверено live-компиляцией ---
-  { name: 'bi', props: 'border-image', keywords: ['border', 'image'], description: 'без аргумента — none; url()/gradient() — camelCase/snakeCase строка', examples: ['bi'] },
+  { name: 'bi', props: 'border-image', keywords: ['border', 'image', 'gradient'], description: 'градиент как у bg (слайс 1 подставляется), Url\\(…\\), переменная; затем слайсы, / ширина, повтор (ST, R, RD, SP); без аргумента — none', examples: ['bi8D5524-6D3504', 'biF00-00F_30_RD', 'biUrl\\(a\\.png\\)_30_F_RD', 'bi'] },
   { name: 'bdcl', props: 'border-collapse', keywords: ['border', 'collapse', 'table'], examples: ['bdclC', 'bdclS'] },
   { name: 'bsp', props: 'border-spacing', keywords: ['border', 'spacing', 'table'], description: '_ = пробел между двумя значениями', examples: ['bsp0', 'bsp5px_1rem'] },
 

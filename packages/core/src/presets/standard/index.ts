@@ -1246,11 +1246,12 @@ const REGEXP_FUNCTION_RATIO = /^(?:\d+\.?\d*|\.\d+)%?$/;
  * @param v аргумент
  * @param call вызов — для ошибки
  * @param signed отрицательная длина допустима (сдвиг тени), иначе — нет (размытие)
+ * @param percent процент допустим (фигуры `clip-path`), иначе — нет (`blur`, `drop-shadow`)
  * @returns длина CSS
  * @example functionLength('2', call) // '2px'
  */
 function functionLength(
-  v: string, call: FunctionCall, signed?: 1,
+  v: string, call: FunctionCall, signed?: 1, percent?: 1,
 ): string {
   const whole = cssVarValue(v);
   if (whole) {
@@ -1258,7 +1259,8 @@ function functionLength(
   }
   (signed || v[0] !== DASH) || call.fail('a length of zero or more');
   return REGEXP_BARE_NUMBER.test(v) ? (v === ZERO ? v : v + PX)
-    : REGEXP_FUNCTION_LENGTH.test(v) ? v : call.fail('a length');
+    : (percent ? REGEXP_LENGTH_PART : REGEXP_FUNCTION_LENGTH).test(v) ? v
+      : call.fail(percent ? 'a length or a percent' : 'a length');
 }
 /**
  * Аргумент-доля функции: голое число — проценты (`50` → `50%`), переменная — `var()`. Число не меньше нуля.
@@ -1971,8 +1973,6 @@ const ENUM_KEYWORDS: Record<string, Record<string, 1 | string>> = {
     preserve3d: PRESERVE_3D,
     'preserve3-d': PRESERVE_3D,
   },
-  // Группа F: геометрические рамки `clip-path`; фигура (`circle(…)`) — функция и проходит мимо списка.
-  clipPath: wordsSet('none border-box padding-box content-box margin-box fill-box stroke-box view-box'),
   textEmphasisStyle: wordsSet('none filled open dot circle double-circle'
     + ' triangle sesame'),
   // `right`/`left` валидны только вторым словом (`over right`): грамматика —
@@ -2103,12 +2103,20 @@ function imageForms(name: string): string {
  * не пишется (`bgi_url\(a\.png\)`, D-121), пустой путь — ошибка; каждый случай бракуется с подсказкой.
  * @param path путь без ведущего `_`, как написан
  * @param name имя хендлера — для сообщений
+ * @param letters буквы хендлера → слово CSS: слово путём — вторая запись (`cpth_border-box` → `cpthBB`, D-113)
  * @returns `url("…")`
  * @example imagePathValue('img/a.png', 'bgi') // 'url("img/a.png")'
  */
-function imagePathValue(path: string, name: string): string {
+function imagePathValue(
+  path: string, name: string, letters?: Record<string, string>,
+): string {
   const word = path.toLowerCase();
   const written = name + UNDERSCORE + path;
+  let letter: string;
+  for (letter in letters) { // eslint-disable-line
+    (letters as Record<string, string>)[letter] === word && throwInvalid(MSG_WRITE_SHORTER + name + letter + MSG_INSTEAD_OF + written
+      + MSG_SAME_VALUE);
+  }
   const head = MSG_VALUE + UNDERSCORE + path + MSG_IS_INVALID_FOR + name + '": ';
   path || throwInvalid(head + 'the path after "_" is empty — as "' + name + '_a\\.png"');
   cssVarValue(path) && throwInvalid('Write the variable without "_": "' + name + path + MSG_INSTEAD_OF + written
@@ -5338,91 +5346,111 @@ export default {
     function positionProvider(
       propName: string, priority?: number, z?: 1,
     ): MnHandler {
-      const byWord: Record<string, string> = {};
-      forIn(POSITION_KEYWORDS, (word: string, abbr: string) => {
-        byWord[valueNormalize(word)] = abbr;
-      });
       return (p: MnEssenceParams) => {
-        const name = p.name;
-        const suffix = p.suffix;
         const style: Record<string, string> = {};
-        const prefix = MSG_VALUE + suffix + MSG_IS_INVALID_FOR + name + MSG_COLON;
-        // Ведущий `_` — слова CSS как есть, но у каждого слова позиции есть буква, поэтому слово в этой записи —
-        // вторая запись (D-113): `op_right_10px_top_20px` → «Write it shorter: "opR_10px_T_20px"».
-        const raw = suffix[0] === UNDERSCORE;
-        const written = splitValueParts(raw ? suffix.slice(1) : suffix);
-        const writtenCount = written.length;
-        const words: string[] = [];
-        const kinds: number[] = [];
-        let part: string;
-        let word: string;
-        let corner: string[];
-        let abbr: string;
-        let j = 0;
-        let long = 0;
-        for (; j < writtenCount; j++) {
-          part = written[j];
-          if (raw) {
-            if (POSITION_AXES[part]) {
-              long = 1;
-              written[j] = byWord[part];
-              words.push(part);
-              kinds.push(POSITION_AXES[part]);
-              continue;
-            }
-          } else {
-            corner = POSITION_CORNERS[part];
-            if (corner && !j) {
-              words.push(corner[0], corner[1]);
-              kinds.push(POSITION_Y, POSITION_X);
-              continue;
-            }
-            word = (POSITION_KEYWORDS as Record<string, string>)[part];
-            if (word) {
-              word = valueNormalize(word);
-              words.push(word);
-              kinds.push(POSITION_AXES[word]);
-              continue;
-            }
-          }
-          word = cssVarValue(part) || '';
-          if (word) {
-            words.push(word);
-            kinds.push(POSITION_ANY);
-            continue;
-          }
-          if (part.indexOf(OPEN_PAREN) > -1) {
-            words.push(valueNormalize(part));
-            kinds.push(POSITION_OFFSET);
-            continue;
-          }
-          word = defaultUnitNormalize(part);
-          if (REGEXP_LENGTH_PART.test(word)) {
-            words.push(word);
-            kinds.push(POSITION_OFFSET);
-            continue;
-          }
-          word = valueNormalize(part);
-          abbr = raw ? '' : byWord[word];
-          if (abbr) {
-            written[j] = abbr;
-            throwInvalid(MSG_WRITE_SHORTER + name + written.join(UNDERSCORE) + MSG_INSTEAD_OF + name + suffix
-            + MSG_SAME_VALUE);
-          }
-          REGEXP_BARE_WORD.test(word) || !word
-            ? throwInvalid(prefix + (raw
-              ? 'the "_" form takes CSS words — left, center, right, top, bottom — and lengths'
-              : 'a part is a side letter, a length or a percent' + positionHint(name, j ? '' : 1)))
-            : throwInvalid(prefix + 'expected a length or a percent');
-        }
-        long && throwInvalid(MSG_WRITE_SHORTER + name + written.join(UNDERSCORE) + MSG_INSTEAD_OF + name + suffix
-          + MSG_SAME_VALUE);
-        positionAssert(
-          kinds, words, prefix, name, z,
-        );
-        style[propName] = words.join(SPACE);
+        style[propName] = positionWords(
+          p.name, p.suffix, z,
+        ).join(SPACE);
         return styleWrap(style, priority);
       };
+    }
+
+    /** Слово позиции → буква: `right` → `R` — для подсказки «Write it shorter» (D-113). */
+    const POSITION_BY_WORD: Record<string, string> = {};
+    forIn(POSITION_KEYWORDS, (word: string, abbr: string) => {
+      POSITION_BY_WORD[valueNormalize(word)] = abbr;
+    });
+
+    /**
+     * Части `<position>` (группа D): буквы `L`/`C`/`R`/`T`/`B`, углы первой частью, длины, переменные; ведущий `_` —
+     * слова CSS. Общий читатель {@link positionProvider} (`op`, `pspo`, `tfo`) и позиции фигур `clip-path` после
+     * радиуса (`cpthCircle50%_R_T`, D-124).
+     * @param name имя хендлера — для сообщений
+     * @param suffix часть токена с позицией, как написана
+     * @param z свойство берёт третью часть z (`transform-origin`)
+     * @param bare позиция — часть функции (`cpthCircle50%_R_T`): примеры в подсказках — без имени хендлера, `R_T`
+     * @returns слова CSS по частям: `['right', 'top']`
+     */
+    function positionWords(
+      name: string, suffix: string, z?: 1, bare?: 1,
+    ): string[] {
+      const byWord = POSITION_BY_WORD;
+      const prefix = MSG_VALUE + suffix + MSG_IS_INVALID_FOR + name + MSG_COLON;
+      const hint = bare ? '' : name;
+      // Ведущий `_` — слова CSS как есть, но у каждого слова позиции есть буква, поэтому слово в этой записи —
+      // вторая запись (D-113): `op_right_10px_top_20px` → «Write it shorter: "opR_10px_T_20px"».
+      const raw = suffix[0] === UNDERSCORE;
+      const written = splitValueParts(raw ? suffix.slice(1) : suffix);
+      const writtenCount = written.length;
+      const words: string[] = [];
+      const kinds: number[] = [];
+      let part: string;
+      let word: string;
+      let corner: string[];
+      let abbr: string;
+      let j = 0;
+      let long = 0;
+      for (; j < writtenCount; j++) {
+        part = written[j];
+        if (raw) {
+          if (POSITION_AXES[part]) {
+            long = 1;
+            written[j] = byWord[part];
+            words.push(part);
+            kinds.push(POSITION_AXES[part]);
+            continue;
+          }
+        } else {
+          corner = POSITION_CORNERS[part];
+          if (corner && !j) {
+            words.push(corner[0], corner[1]);
+            kinds.push(POSITION_Y, POSITION_X);
+            continue;
+          }
+          word = (POSITION_KEYWORDS as Record<string, string>)[part];
+          if (word) {
+            word = valueNormalize(word);
+            words.push(word);
+            kinds.push(POSITION_AXES[word]);
+            continue;
+          }
+        }
+        word = cssVarValue(part) || '';
+        if (word) {
+          words.push(word);
+          kinds.push(POSITION_ANY);
+          continue;
+        }
+        if (part.indexOf(OPEN_PAREN) > -1) {
+          words.push(valueNormalize(part));
+          kinds.push(POSITION_OFFSET);
+          continue;
+        }
+        word = defaultUnitNormalize(part);
+        if (REGEXP_LENGTH_PART.test(word)) {
+          words.push(word);
+          kinds.push(POSITION_OFFSET);
+          continue;
+        }
+        word = valueNormalize(part);
+        abbr = raw ? '' : byWord[word];
+        if (abbr) {
+          written[j] = abbr;
+          throwInvalid(MSG_WRITE_SHORTER + hint + written.join(UNDERSCORE) + MSG_INSTEAD_OF + hint + suffix
+          + MSG_SAME_VALUE);
+        }
+        REGEXP_BARE_WORD.test(word) || !word
+          ? throwInvalid(prefix + (raw
+            ? 'the "_" form takes CSS words — left, center, right, top, bottom — and lengths'
+            : 'a part is a side letter, a length or a percent' + positionHint(hint, j ? '' : 1)))
+          : throwInvalid(prefix + 'expected a length or a percent');
+      }
+      long && throwInvalid(MSG_WRITE_SHORTER + hint + written.join(UNDERSCORE) + MSG_INSTEAD_OF + hint + suffix
+        + MSG_SAME_VALUE);
+      positionAssert(
+        kinds, words, prefix, hint, z,
+      );
+      return words;
     }
 
     /** Буквы позиции целыми токенами: `opL (left)`, а первой частью — ещё и углы: `opTL (top left)`. */
@@ -7170,6 +7198,123 @@ export default {
         },
       }, 'a content function', 1,
     );
+    /**
+     * Радиусы и позиция фигуры `circle` / `ellipse`: первые части, которые начинаются числом, — радиусы (не больше
+     * `radii`), остальное — позиция после `at`, тем же читателем, что у `op` ({@link positionWords}): `50%_R_T` →
+     * `50% at right top`.
+     * @param args аргументы функции
+     * @param radii сколько радиусов у фигуры: 1 у круга, 2 у эллипса
+     * @param call вызов — для ошибки и имени хендлера
+     * @returns содержимое скобок
+     */
+    function shapeAt(
+      args: string[], radii: number, call: FunctionCall,
+    ): string {
+      const l = args.length;
+      const out: string[] = [];
+      let i = 0;
+      for (; i < radii && i < l && REGEXP_FUNCTION_FIRST_ARG.test(args[i]); i++) {
+        out.push(functionLength(
+          args[i], call, undefined, 1,
+        ));
+      }
+      // У эллипса радиусов два или ни одного: `ellipse(30%)` невалиден.
+      i && i < radii && call.fail('two radii, x and y');
+      i < l && out.push('at ' + positionWords(
+        call.p.name, args.slice(i).join(UNDERSCORE), undefined, 1,
+      ).join(SPACE));
+      return out.join(SPACE);
+    }
+    /**
+     * Фигуры `clip-path` в нативной форме (D-124): `cpthCircle50%_R_T` → `circle(50% at right top)`,
+     * `cpthEllipse30%_50%_C`, `cpthInset10_20_R5` → `inset(10px 20px round 5px)` (`R` — перед радиусом скругления),
+     * `cpthPolygon50%_0,100%_100%,0_100%` → `polygon(50% 0,100% 100%,0 100%)` (`_` внутри точки, `,` между точками).
+     * Голое число — пиксели. Остальное (`path(…)`, `xywh(…)`, правило заливки) — переменной.
+     */
+    const CLIP_PATH_FUNCTIONS = functionSet({
+      Circle: {
+        css: 'circle',
+        min: 0,
+        max: 5,
+        example: 'Circle50%_R_T',
+        args: (args, call) => shapeAt(
+          args, 1, call,
+        ),
+      },
+      Ellipse: {
+        css: 'ellipse',
+        min: 0,
+        max: 6,
+        example: 'Ellipse30%_50%_C',
+        args: (args, call) => shapeAt(
+          args, 2, call,
+        ),
+      },
+      Inset: {
+        css: 'inset',
+        min: 1,
+        max: 8,
+        example: 'Inset10_20_R5',
+        args: (args, call) => {
+          const l = args.length;
+          const out: string[] = [];
+          let round = -1;
+          let i = 0;
+          let v: string;
+          for (; i < l; i++) {
+            v = args[i];
+            if (v[0] === 'R' && round < 0) {
+              round = i;
+              v = v.slice(1);
+            }
+            // Отступ может быть отрицательным, радиус — нет.
+            out.push(functionLength(
+              v, call, round < 0 ? 1 : undefined, 1,
+            ));
+          }
+          const insets = round < 0 ? l : round;
+          insets && insets < 5 || call.fail('one to four insets, then R and the radius');
+          l - insets < 5 || call.fail('one to four radii after R');
+          return out.slice(0, insets).join(SPACE) + (round < 0 ? '' : ' round ' + out.slice(insets).join(SPACE));
+        },
+      },
+      Polygon: {
+        css: 'polygon',
+        min: 2,
+        max: 64,
+        example: 'Polygon50%_0,100%_100%,0_100%',
+        args: (args, call) => {
+          const points = args.join(SPACE).split(COMMA);
+          const l = points.length;
+          let i = 0;
+          let xy: string[];
+          for (; i < l; i++) {
+            xy = points[i].split(SPACE);
+            xy.length === 2 || call.fail('points of two coordinates, x_y, with "," between points');
+            points[i] = functionLength(
+              xy[0], call, 1, 1,
+            ) + SPACE + functionLength(
+              xy[1], call, 1, 1,
+            );
+          }
+          return points.join(COMMA);
+        },
+      },
+    }, 'a clip-path shape');
+    /**
+     * `clip-path` (группа F): буквы рамки (`cpthN`, `cpthBB` → `border-box`), фигуры нативной формой
+     * ({@link CLIP_PATH_FUNCTIONS}) и `<clipPath>` SVG по пути: `cpth_\#wave` → `url("#wave")`.
+     */
+    const REGEXP_SHAPE_HEAD = /^_(?:circle|ellipse|inset|polygon)\(/i;
+    const clipPathWords = synonymProvider(
+      'clipPath', VALUE_ABBREVIATIONS.clipPath, undefined, undefined, undefined, undefined, CLIP_PATH_FUNCTIONS,
+    );
+    // `_` — путь, но `cpth_circle\(50%\)` — фигура со скобкой: её бракует читатель фигур с нативной формой.
+    mn('cpth', (p) => (p.suffix[0] === UNDERSCORE && !REGEXP_SHAPE_HEAD.test(p.suffix) ? styleWrap({
+      clipPath: imagePathValue(
+        p.suffix.slice(1), p.name, VALUE_ABBREVIATIONS.clipPath,
+      ),
+    }) : clipPathWords(p)));
 
     /**
      * `cursor` (D-124, запятая владельца): буквы — как у остальных хендлеров (`crP`), картинка — по пути в `_`-форме.
@@ -7412,8 +7557,6 @@ export default {
       ],
       // Группа F: `wcT` → `transform`; любое другое свойство — словом (`wcBackgroundColor`).
       wc: ['willChange'],
-      // Группа F: `cpthN`, `cpthBB` → `border-box`, фигура — функцией: `cpthCircle\(50%\)`.
-      cpth: ['clipPath'],
       // Группа F: `tbs4` → `tab-size:4`, `tbs2em`.
       tbs: ['tabSize'],
       // `perspective` (группа D): неотрицательная длина или `none` — `psp500`, `pspN`.

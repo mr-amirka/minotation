@@ -1650,7 +1650,7 @@ justify-items. Available: pliC_N (normal), …»); длинное слово —
 | `ccF00`, `ccAuto` | `caret-color:#f00`, `auto` | то же |
 | `cschL_D` | `color-scheme:light dark` | `N` normal, `L` light, `D` dark; `O` (only) — только второй частью: `cschD_O` |
 | `wcT` | `will-change:transform` | `A` auto, `SP` scroll-position, `C` contents, `T` transform, `O` opacity; другое свойство — словом (`wcBackgroundColor`), список — через запятую: `wc_transform,opacity`; число, `none`, `all` — ошибка |
-| `cpthBB`, `cpthCircle\(50%\)` | `clip-path:border-box`, `circle(50%)` | `N` none, рамки `BB`/`PB`/`CB`/`MB`/`FB`/`SB`/`VB`; фигура — функцией |
+| `cpthBB`, `cpthCircle50%` | `clip-path:border-box`, `circle(50%)` | `N` none, рамки `BB`/`PB`/`CB`/`MB`/`FB`/`SB`/`VB`; фигура — нативной формой (ниже), `<clipPath>` SVG — путём: `cpth_\#wave` |
 | `fcaN` | `forced-color-adjust:none` | `A` auto, `N` none, `PPC` preserve-parent-color |
 | `hyA` | `hyphens:auto` | `N` none, `M` manual, `A` auto |
 | `owrA` | `overflow-wrap:anywhere` | `N` normal, `BW` break-word (как у `wb`), `A` anywhere; старое имя `word-wrap` — опцией `overflowWrapMode` (ниже) |
@@ -1680,6 +1680,21 @@ justify-items. Available: pliC_N (normal), …»); длинное слово —
 `start` и `end` — то же, что `jump-start` и `jump-end`, своих букв не получают (одна запись на значение, D-122).
 `ttfSteps\(4,jump-end\)` → «a function is not written in a class — write "ttfSteps4_JE"»; `ttf_linear\(…\)` →
 «"linear" has no short form, write it through a variable — "ttf--x"».
+
+**Фигуры `clip-path`** — нативной формой (D-124). Голое число — пиксели; позиция после радиуса — буквами `op`
+(`L`/`C`/`R`/`T`/`B`, углы `TL`…, длины) и тем же читателем.
+
+| Токен | CSS |
+|-------|-----|
+| `cpthCircle50%` | `clip-path:circle(50%)` |
+| `cpthCircle50%_R_T` | `clip-path:circle(50% at right top)` |
+| `cpthEllipse30%_50%_C` | `clip-path:ellipse(30% 50% at center)` — радиусов два или ни одного |
+| `cpthInset10_20_R5` | `clip-path:inset(10px 20px round 5px)` — `R` перед радиусом скругления |
+| `cpthPolygon50%_0,100%_100%,0_100%` | `clip-path:polygon(50% 0,100% 100%,0 100%)` — `_` внутри точки, `,` между точками |
+| `cpth_\#wave` | `clip-path:url("#wave")` — `<clipPath id="wave">` по пути, как у `bgi` |
+
+`cpthCircle\(50%\)` → «a function is not written in a class — write "cpthCircle50%_R_T"»; у `path(…)` и `xywh(…)`
+короткой записи нет — переменная, `cpth--shape`.
 
 **`word-wrap` — старое имя `overflow-wrap`** (D-106). `ww…` даёт ошибку «"wwBW" was renamed: write "owrBW"»
 (`wwB` → `owrBW`, `wwNM` → `owrN`) и убирается через выпуск. Для браузеров, что знают только старое имя (IE, Edge

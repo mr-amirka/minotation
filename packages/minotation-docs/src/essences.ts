@@ -276,7 +276,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'cc', props: 'caret-color', keywords: ['caret', 'color', 'cursor', 'input'], examples: ['ccF00', 'ccAuto'] },
   { name: 'csch', props: 'color-scheme', keywords: ['color', 'scheme', 'dark', 'light', 'theme'], examples: ['cschL_D', 'cschD'] },
   { name: 'wc', props: 'will-change', keywords: ['will', 'change', 'performance'], examples: ['wcT', 'wcSP'] },
-  { name: 'cpth', props: 'clip-path', keywords: ['clip', 'path', 'shape'], examples: ['cpthN', 'cpthBB', 'cpthCircle\\(50%\\)'] },
+  { name: 'cpth', props: 'clip-path', keywords: ['clip', 'path', 'shape'], examples: ['cpthN', 'cpthBB', 'cpthCircle50%_C', 'cpthPolygon50%_0,100%_100%,0_100%'] },
   { name: 'fca', props: 'forced-color-adjust', keywords: ['forced', 'color', 'contrast', 'a11y'], examples: ['fcaN', 'fcaA'] },
   { name: 'hy', props: 'hyphens', keywords: ['hyphens', 'text', 'wrap'], examples: ['hyA', 'hyM'] },
   { name: 'owr', props: 'overflow-wrap', keywords: ['overflow', 'wrap', 'break', 'text'], examples: ['owrA', 'owrBW'] },

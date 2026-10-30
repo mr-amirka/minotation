@@ -100,7 +100,7 @@ describe('single properties (group F)', () => {
       'clip-path:border-box',
     ],
     [
-      'cpthInset\\(10px\\)',
+      'cpthInset10',
       'clip-path:inset(10px)',
     ],
     [
@@ -223,7 +223,7 @@ describe('single properties (group F)', () => {
     ],
     // `circle(50%)` валиден, но грамматика `circle()` у арбитра устарела и не принимает его.
     [
-      'cpthCircle\\(50%\\)',
+      'cpthCircle50%',
       'clip-path:circle(50%)',
     ],
   ])('%s → %s — several declarations or past the arbiter', (token, expected) => {
@@ -273,7 +273,7 @@ describe('single properties (group F)', () => {
     ],
     [
       'cpthQ',
-      'the set of values is closed. Available: ',
+      'no such abbreviation, and it is not a keyword. Available: cpthN (none), cpthBB (border-box)',
     ],
     [
       'cpthBorderBox',

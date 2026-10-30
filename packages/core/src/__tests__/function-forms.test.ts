@@ -758,3 +758,139 @@ describe('курсор-картинка: cr, запятая владельца (
     expect(rejected(token)).toBe(message);
   });
 });
+
+describe('фигуры clip-path в нативной форме: cpth (D-124)', () => {
+  test.each([
+    [
+      'cpthCircle50%',
+      'clip-path:circle(50%)',
+    ],
+    [
+      'cpthCircle',
+      'clip-path:circle()',
+    ],
+    // Позиция после радиуса — тот же читатель, что у `op`.
+    [
+      'cpthCircle50%_R_T',
+      'clip-path:circle(50% at right top)',
+    ],
+    [
+      'cpthCircle50%_TL',
+      'clip-path:circle(50% at top left)',
+    ],
+    [
+      'cpthCircle_R_T',
+      'clip-path:circle(at right top)',
+    ],
+    [
+      'cpthCircle20_C',
+      'clip-path:circle(20px at center)',
+    ],
+    [
+      'cpthCircle--r_C',
+      'clip-path:circle(var(--r) at center)',
+    ],
+    [
+      'cpthEllipse30%_50%_C',
+      'clip-path:ellipse(30% 50% at center)',
+    ],
+    [
+      'cpthInset10',
+      'clip-path:inset(10px)',
+    ],
+    [
+      'cpthInset10_20_R5',
+      'clip-path:inset(10px 20px round 5px)',
+    ],
+    [
+      'cpthInset10_R5_10',
+      'clip-path:inset(10px round 5px 10px)',
+    ],
+    [
+      'cpthInset-5',
+      'clip-path:inset(-5px)',
+    ],
+    [
+      'cpthPolygon50%_0,100%_100%,0_100%',
+      'clip-path:polygon(50% 0,100% 100%,0 100%)',
+    ],
+    [
+      'cpth_\\#wave',
+      'clip-path:url("#wave")',
+    ],
+    [
+      'cpthBB',
+      'clip-path:border-box',
+    ],
+  ])('%s → %s', (token, declaration) => {
+    const out = compile([token]);
+    expect(out.warnings).toEqual([]);
+    expect(out.css).toContain('{' + declaration + '}');
+  });
+
+  test.each([
+    [
+      'cpthCircle\\(50%\\)',
+      'Value "Circle(50%)" is invalid for "cpth": a function is not written in a class — write "cpthCircle50%_R_T"',
+    ],
+    [
+      'cpth_circle\\(50%\\)',
+      'Value "_circle(50%)" is invalid for "cpth": a function is not written in a class — write "cpthCircle50%_R_T"',
+    ],
+    [
+      'cpthPath\\(M0\\)',
+      'Value "Path(M0)" is invalid for "cpth": a function is not written in a class — "Path" has no short form, write'
+      + ' it through a variable — "cpth--x"',
+    ],
+    [
+      'cpthCircle_50%',
+      'Write "cpthCircle50%" instead of "cpthCircle_50%" — same value',
+    ],
+    [
+      'cpthCircle-5',
+      'Value "Circle-5" is invalid for "cpth": "Circle" expects a length of zero or more — as "cpthCircle50%_R_T"',
+    ],
+    [
+      'cpthCircle50%_R_Z',
+      'Value "R_Z" is invalid for "cpth": a part is a side letter, a length or a percent. Available: L (left),'
+      + ' C (center), R (right), T (top), B (bottom)',
+    ],
+    [
+      'cpthCircle50%_L_R',
+      'Value "L_R" is invalid for "cpth": both parts are on one axis — one is x (L, C, R), the other y (T, C, B)',
+    ],
+    [
+      'cpthEllipse30%_C',
+      'Value "Ellipse30%_C" is invalid for "cpth": "Ellipse" expects two radii, x and y — as "cpthEllipse30%_50%_C"',
+    ],
+    [
+      'cpthInset10_R-5',
+      'Value "Inset10_R-5" is invalid for "cpth": "Inset" expects a length of zero or more — as "cpthInset10_20_R5"',
+    ],
+    [
+      'cpthInset1_2_3_4_5',
+      'Value "Inset1_2_3_4_5" is invalid for "cpth": "Inset" expects one to four insets, then R and the radius — as'
+      + ' "cpthInset10_20_R5"',
+    ],
+    [
+      'cpthInset1_R1_2_3_4_5',
+      'Value "Inset1_R1_2_3_4_5" is invalid for "cpth": "Inset" expects one to four radii after R — as'
+      + ' "cpthInset10_20_R5"',
+    ],
+    [
+      'cpthInset10zz',
+      'Value "Inset10zz" is invalid for "cpth": "Inset" expects a length or a percent — as "cpthInset10_20_R5"',
+    ],
+    [
+      'cpthPolygon50%_0,100%',
+      'Value "Polygon50%_0,100%" is invalid for "cpth": "Polygon" expects points of two coordinates, x_y, with ","'
+      + ' between points — as "cpthPolygon50%_0,100%_100%,0_100%"',
+    ],
+    [
+      'cpth_border-box',
+      'Write it shorter: "cpthBB" instead of "cpth_border-box" — same value',
+    ],
+  ])('%s', (token, message) => {
+    expect(rejected(token)).toBe(message);
+  });
+});

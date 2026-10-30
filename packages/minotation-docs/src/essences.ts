@@ -380,12 +380,12 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'rsz', props: 'resize', examples: ['rszBoth'] },
 
   // --- Grid ---
-  { name: 'g', props: 'grid', examples: ['gN'] },
-  { name: 'gt', props: 'grid-template', examples: ['gt100px_1fr'] },
-  { name: 'gtc', props: 'grid-template-columns', examples: ['gtc100px_1fr'] },
-  { name: 'gtr', props: 'grid-template-rows', examples: ['gtr100px_1fr'] },
-  { name: 'gac', props: 'grid-auto-columns', examples: ['gacAuto'] },
-  { name: 'gar', props: 'grid-auto-rows', examples: ['garAuto'] },
+  { name: 'g', props: 'grid', examples: ['gN', 'g1fr_/_3x1fr'] },
+  { name: 'gt', props: 'grid-template', examples: ['gt"a_b"_1fr_/_A'] },
+  { name: 'gtc', props: 'grid-template-columns', examples: ['gtc100px_1fr', 'gtc3x1fr', 'gtcAF240'] },
+  { name: 'gtr', props: 'grid-template-rows', examples: ['gtr100px_1fr', 'gtrMinmax100px_1fr'] },
+  { name: 'gac', props: 'grid-auto-columns', examples: ['gacA', 'gacMinmax100px_1fr'] },
+  { name: 'gar', props: 'grid-auto-rows', examples: ['garA', 'garMinmax100_A'] },
   { name: 'gaf', props: 'grid-auto-flow', examples: ['gafRow_dense'] },
   { name: 'gg', props: 'grid-gap', examples: ['gg10px_20px'] },
   { name: 'ggc', props: 'grid-column-gap', examples: ['ggc1em'] },

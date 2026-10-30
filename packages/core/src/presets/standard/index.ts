@@ -37,6 +37,7 @@ const A = 'A';
 const NONE = 'none';
 const ALL = 'all';
 const AUTO = 'auto';
+const FIT_CONTENT = 'fit-content';
 const SPAN = 'span';
 const SIDE_LEFT = 'left';
 const SIDE_RIGHT = 'right';
@@ -1190,6 +1191,11 @@ interface FunctionSet {
   first: FunctionForm;
   /** Имена через запятую — для сообщения «expected …». */
   names: string;
+  /**
+   * Функция CSS, у которой короткая запись — не функция набора: `repeat` → `3x1fr` или `AF240`. Подсказка
+   * {@link throwParen} на её скобку.
+   */
+  hints: Record<string, string[]>;
 }
 /**
  * Собирает {@link FunctionSet}.
@@ -1197,10 +1203,12 @@ interface FunctionSet {
  * @param what что за функции — для сообщения
  * @param single значение — одна функция
  * @param longNames длинное имя → короткое
+ * @param hints функция CSS → её короткие записи вне набора (см. {@link FunctionSet.hints})
  * @returns набор для {@link functionsValue}
  */
 function functionSet(
   forms: Record<string, FunctionForm>, what: string, single?: 1, longNames?: Record<string, string>,
+  hints?: Record<string, string[]>,
 ): FunctionSet {
   const names = Object.keys(forms);
   return {
@@ -1210,6 +1218,7 @@ function functionSet(
     single: !!single,
     first: forms[names[0]],
     names: names.join(LIST_SEPARATOR),
+    hints: hints || {},
   };
 }
 /** Что видит читатель аргументов одной функции {@link FunctionForm}. */
@@ -1433,8 +1442,29 @@ function functionsStart(suffix: string, set: FunctionSet): boolean {
     return true;
   }
   const m = REGEXP_FUNCTION_NAME_ANY.exec(suffix[0] === UNDERSCORE ? suffix.slice(1) : suffix);
-  const key = m ? m[1][0].toUpperCase() + m[1].slice(1) : '';
-  return !!(m && set.forms[set.longNames[key] || key]);
+  return !!(m && functionKey(m[1][0].toUpperCase() + m[1].slice(1), set));
+}
+/** Последнее слово CamelCase-имени: `Content` в `MinmaxMinContent`. */
+const REGEXP_CAMEL_LAST = /[A-Z][a-z]*$/;
+/**
+ * Имя функции набора в начале слова CamelCase: само слово, иначе самое длинное его начало — первый аргумент-слово
+ * пишется слитно, как число: `MinmaxMinContent_1fr` → `Minmax` и `MinContent`. У формы с именем-аргументом
+ * ({@link FunctionForm.named}) он — отдельная часть: слитное `AttrHref` {@link functionsFix} переписывает в
+ * `Attr_href`. Длинное имя узнаётся тоже (`Grayscale`): его заменяет {@link functionsFix}.
+ * @param name слово CamelCase с заглавной
+ * @param set функции хендлера
+ * @returns имя, как оно написано, или пустая строка
+ * @example functionKey('MinmaxMinContent', TRACK_FUNCTIONS) // 'Minmax'
+ */
+function functionKey(name: string, set: FunctionSet): string {
+  const forms = set.forms;
+  const longNames = set.longNames;
+  let key = name;
+  // Самое длинное начало, которое — функция набора.
+  while (key && !forms[longNames[key] || key]) {
+    key = key.replace(REGEXP_CAMEL_LAST, '');
+  }
+  return key;
 }
 /**
  * Исправленная запись суффикса, когда функция написана не той формой (D-122 «одна форма на значение»): строчное
@@ -1456,29 +1486,34 @@ function functionsFix(parts: string[], set: FunctionSet): [fixed: string, shorte
   let part: string;
   let key: string;
   let short: string;
+  let rest: string;
   for (; i < l; i++) {
     part = parts[i];
-    if ((m = REGEXP_FUNCTION_NAME_ANY.exec(part))) {
-      key = m[1][0].toUpperCase() + m[1].slice(1);
+    if ((m = REGEXP_FUNCTION_NAME_ANY.exec(part)) && (key = functionKey(m[1][0].toUpperCase() + m[1].slice(1), set))) {
       short = longNames[key] || key;
-      if (forms[short]) {
-        part = short + m[2];
-        if (short !== m[1]) {
-          fixed = true;
-          // Короче — только замена длинного имени; строчное имя исправляется без сокращения.
-          short === key && (shorter = false);
-        }
-        if (!m[2] && !forms[short].named && i + 1 < l && REGEXP_FUNCTION_FIRST_ARG.test(parts[i + 1])) {
-          part += parts[++i];
-          fixed = true;
-          shorter = false;
-        }
+      rest = m[1].slice(key.length) + m[2];
+      part = short + rest;
+      if (short !== m[1].slice(0, key.length)) {
+        fixed = true;
+        // Короче — только замена длинного имени; строчное имя исправляется без сокращения.
+        short === key && (shorter = false);
+      }
+      // Имя-аргумент слитно (`cntAttrHref`) — отдельной частью, со строчной: `cntAttr_href`.
+      if (forms[short].named && key.length < m[1].length) {
+        part = short + UNDERSCORE + m[1][key.length].toLowerCase() + rest.slice(1);
+        fixed = true;
+        shorter = false;
+      }
+      if (!rest && !forms[short].named && i + 1 < l && REGEXP_FUNCTION_FIRST_ARG.test(parts[i + 1])) {
+        part += parts[++i];
+        fixed = true;
+        shorter = false;
       }
     }
     out.push(part);
   }
   // Ведущий `_` перед функцией лишний: `ft_Blur5` — то же, что `ftBlur5`.
-  if (l > 1 && !parts[0] && (m = REGEXP_FUNCTION_NAME.exec(out[1])) && forms[m[1]]) {
+  if (l > 1 && !parts[0] && (m = REGEXP_FUNCTION_NAME.exec(out[1])) && forms[functionKey(m[1], set)]) {
     out.shift();
     fixed = true;
     shorter = false;
@@ -1518,6 +1553,8 @@ function functionsValue(
   let index: number[] = [];
   let part: string;
   let m: RegExpExecArray | null;
+  let found: string;
+  let first: string;
   let i = 0;
   const call: FunctionCall = {
     p,
@@ -1535,16 +1572,16 @@ function functionsValue(
     + MSG_SAME_VALUE);
   for (; i < l; i++) {
     part = parts[i];
-    if ((m = REGEXP_FUNCTION_NAME.exec(part)) && forms[m[1]]) {
+    if ((m = REGEXP_FUNCTION_NAME.exec(part)) && forms[found = functionKey(m[1], set)]) {
       form && set.single && throwInvalid(head + 'one function is expected — as "' + name + set.first.example
         + DOUBLE_QUOTE);
       form && out.push(functionCall(
         form, key, args, call, head, name,
       ));
-      form = forms[key = m[1]];
+      form = forms[key = found];
       call.index = index = [];
       args = [];
-      m[2] && (args.push(m[2]), index.push(i));
+      (first = m[1].slice(found.length) + m[2]) && (args.push(first), index.push(i));
       continue;
     }
     if (!part) {
@@ -1567,7 +1604,8 @@ function functionsValue(
 }
 /**
  * Скобка в суффиксе (D-121) — ошибка с нативной формой: функции, названной перед скобкой (`blur(` → `ftBlur2`,
- * `hue-rotate(` → `ftHue90`), иначе той, внутри которой скобка (`DropShadow2_4_rgba(…)`), иначе первой. У функции
+ * `hue-rotate(` → `ftHue90`), иначе той, внутри которой скобка (`DropShadow2_4_rgba(…)`), иначе первой. Функция с
+ * короткой записью вне набора ({@link FunctionSet.hints}) получает её: `repeat(` → `gtc3x1fr` или `gtcAF240`. У функции
  * без нативной формы (`linear(…)`, `url(…)`) выход — переменная.
  * @param head начало сообщения
  * @param name имя хендлера
@@ -1592,9 +1630,12 @@ function throwParen(
     (back = REGEXP_FUNCTION_NAME.exec(parts[i])) && forms[back[1]] && (inside = back[1]);
   }
   const form = forms[key] || forms[inside];
-  return throwInvalid(head + 'a function is not written in a class — ' + (form || !m
-    ? 'write "' + name + (form || set.first).example + DOUBLE_QUOTE
-    : DOUBLE_QUOTE + m[1] + '" has no short form, write it through a variable — "' + name + '--x"'));
+  const hint = set.hints[key];
+  return throwInvalid(head + 'a function is not written in a class — ' + (hint
+    ? 'write "' + name + hint.join('" or "' + name) + DOUBLE_QUOTE
+    : form || !m
+      ? 'write "' + name + (form || set.first).example + DOUBLE_QUOTE
+      : DOUBLE_QUOTE + m[1] + '" has no short form, write it through a variable — "' + name + '--x"'));
 }
 /**
  * Один вызов из {@link functionsValue}: проверка числа частей и чтение аргументов.
@@ -1767,12 +1808,12 @@ const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
     N: NONE,
     A: AUTO,
     C: 'content',
-    FC: 'fit-content',
+    FC: FIT_CONTENT,
   },
   flexBasis: {
     A: AUTO,
     C: 'content',
-    FC: 'fit-content',
+    FC: FIT_CONTENT,
   },
   grid: {
     N: NONE,
@@ -2776,8 +2817,19 @@ function gridValue(
   let i = 0;
   let part: string;
   let hasShape = 0;
+  let repeated: string | undefined;
+  // Скобка автора (D-124): повтор — нативной формой, прочие функции — переменной. Скобка в части — от подстановки.
+  const gridExample = essenceName + '1fr_/_3x1fr';
+  raw.indexOf(OPEN_PAREN) > -1 && throwInvalid(prefix + 'a function is not written in a class — a repeat of tracks is '
+    + '"3x1fr", as "' + gridExample + '"; another function goes through a variable');
   for (; i < l; i++) {
     part = parts[i];
+    if ((repeated = trackRepeat(
+      part, prefix, gridExample,
+    ))) {
+      parts[i] = repeated;
+      continue;
+    }
     if (part === SLASH || REGEXP_GRID_AREA.test(part)) {
       // И то, и другое задаёт форму сетки: `строки / столбцы` либо области.
       hasShape = 1;
@@ -2867,6 +2919,43 @@ const REGEXP_GRID_LINE = /^[-+]?\d+(?:\/[-+]?\d+)?$/;
 const REGEXP_LINE_NAME = /^\[[^\]]*\]$/;
 
 /**
+ * Повтор дорожек нативной формой (D-124): число повторов, `x`, дорожки через `;` — `3x1fr` → `repeat(3, 1fr)`,
+ * `2x1fr;2fr` → `repeat(2, 1fr 2fr)`. Так говорят дизайнеры («3 × 1fr»); `x` — ещё и единица разрешения (`dppx`), но
+ * дорожка разрешением не бывает, и в шаблоне сетки запись однозначна. Повтор — часть списка: `gtc3x1fr_200px` →
+ * `repeat(3, 1fr) 200px`. Повторы `auto-fit`/`auto-fill` — сокращение `AF240` ({@link autoRepeatValue}).
+ */
+const REGEXP_TRACK_REPEAT = /^(\d+)x(.*)$/;
+/**
+ * Часть шаблона сетки — повтор `3x1fr`, если она так записана. Повторяется размер или переменная; слово, `minmax()` и
+ * прочее внутри повтора — через переменную.
+ * @param part часть значения после нормализации: переменная внутри повтора ещё не развёрнута (`3x--w`)
+ * @param prefix начало сообщения об ошибке
+ * @param example запись для подсказки: `gtc3x1fr`, у `g` — `g1fr_/_3x1fr`
+ * @returns `repeat(…)`, или `undefined`, когда часть — не повтор
+ * @example trackRepeat('2x1fr;2fr', prefix, 'gtc3x1fr') // 'repeat(2, 1fr 2fr)'
+ */
+function trackRepeat(
+  part: string, prefix: string, example: string,
+): string | undefined {
+  const m = REGEXP_TRACK_REPEAT.exec(part);
+  if (!m) {
+    return;
+  }
+  example = MSG_AS + example + DOUBLE_QUOTE;
+  parseInt(m[1], 10) > 0 || throwInvalid(prefix + 'the count of a repeat is a whole number from 1' + example);
+  const tracks = m[2].split(SEMICOLON);
+  let i = tracks.length;
+  let track: string;
+  while (i--) {
+    track = tracks[i];
+    tracks[i] = cssVarValue(track) || (REGEXP_TRACK_SIZE.test(track) ? track
+      : throwInvalid(prefix + 'a repeated track is a size (length, percent, fr) or a variable, ";" between tracks'
+        + example));
+  }
+  return 'repeat(' + m[1] + LIST_SEPARATOR + tracks.join(SPACE) + CLOSE_PAREN;
+}
+
+/**
  * Дорожки сетки: `gtc`, `gtr`, `gac`, `gar`.
  *
  * Были permissive pass-through: `gtcZzz` давало
@@ -2874,9 +2963,9 @@ const REGEXP_LINE_NAME = /^\[[^\]]*\]$/;
  * дорожки без единицы невалиден, в отличие от голого числа в других местах
  * нотации).
  *
- * Функции (`repeat()`, `minmax()`, `fit-content()`) и имена линий (`[a]`)
- * проходят как есть: их содержимое здесь не разобрать, а валидны они по
- * грамматике.
+ * Повтор — нативной формой `3x1fr` ({@link trackRepeat}), только у явных шаблонов: у `gac`/`gar` грамматика — список
+ * размеров. Функции дорожек (`Minmax`, `FitContent`) — значение целиком ({@link TRACK_FUNCTIONS}), скобка автора сюда
+ * не доходит: её бракует читатель функций. Скобка в части — от подстановки (`gtc1fr_--x` → `var(--x)`).
  */
 function trackValue(
   parts: string[], raw: string, essenceName: string,
@@ -2884,20 +2973,96 @@ function trackValue(
   const l = parts.length;
   // У явных шаблонов (`gtc`/`gtr`) список слов шире, чем у неявных
   // (`gac`/`gar`) — см. TRACK_KEYWORDS. Различает вторая буква тега.
-  const words = essenceName[1] === 't' ? TEMPLATE_TRACK_KEYWORDS : TRACK_KEYWORDS;
+  const template = essenceName[1] === 't';
+  const words = template ? TEMPLATE_TRACK_KEYWORDS : TRACK_KEYWORDS;
+  const prefix = MSG_VALUE + raw + MSG_IS_INVALID_FOR + essenceName + MSG_COLON;
   let i = 0;
   let part: string;
+  let repeated: string | undefined;
   for (; i < l; i++) {
     part = parts[i];
+    if (template && (repeated = trackRepeat(
+      part, prefix, essenceName + '3x1fr',
+    ))) {
+      parts[i] = repeated;
+      continue;
+    }
     (part.indexOf(OPEN_PAREN) > -1
       || words[part]
       || REGEXP_TRACK_SIZE.test(part)
       || REGEXP_LINE_NAME.test(part))
-      || throwInvalid(MSG_VALUE + raw + MSG_IS_INVALID_FOR + essenceName
-        + '": a track is a size (length, percent, fr), a keyword or a function');
+      || throwInvalid(prefix + 'a track is a size (length, percent, fr), a keyword'
+        + (template ? ', a repeat as "' + essenceName + '3x1fr"' : '') + ' or a variable; a function is the whole value, as "'
+        + essenceName + TRACK_FUNCTIONS.first.example + DOUBLE_QUOTE);
   }
   return parts.join(SPACE);
 }
+
+/** Слово-аргумент функций дорожек: `A` — как у `gacA`, внутренние размеры — словом, как у `gacMinContent`. */
+const TRACK_ARG_WORDS: Record<string, string> = {
+  A: AUTO,
+  MinContent: 'min-content',
+  MaxContent: 'max-content',
+};
+/** Доля свободного места: `1fr` — только верхняя граница `minmax()`. */
+const REGEXP_FLEX = /^(?:\d+\.?\d*|\.\d+)fr$/;
+/**
+ * Аргумент функции дорожки: длина (голое число — пиксели, как у других функций и у `AF240`), процент, слово
+ * {@link TRACK_ARG_WORDS} или переменная; доля `fr` — где её допускает грамматика.
+ * @param v аргумент
+ * @param call вызов — для ошибки
+ * @param flex доля допустима (верхняя граница `minmax()`)
+ * @returns размер CSS
+ * @example trackArg('100', call) // '100px'
+ */
+function trackArg(
+  v: string, call: FunctionCall, flex?: 1,
+): string {
+  return cssVarValue(v) || TRACK_ARG_WORDS[v]
+    || (v[0] !== DASH && (flex && REGEXP_FLEX.test(v) ? v
+      : REGEXP_BARE_NUMBER.test(v) ? (v === ZERO ? v : v + PX)
+        : REGEXP_LENGTH_PART.test(v) && v))
+    || call.fail('a length, a percent' + (flex ? ', a fraction ("1fr")' : '') + ', "A" (auto), "MinContent" or '
+      + '"MaxContent"');
+}
+/** Функции дорожки — значение целиком (D-124): внутри списка дорожек функция пишется переменной. */
+const TRACK_FORMS: Record<string, FunctionForm> = {
+  Minmax: {
+    css: 'minmax',
+    min: 2,
+    max: 2,
+    example: 'Minmax100px_1fr',
+    args: (args, call) => trackArg(args[0], call) + LIST_SEPARATOR + trackArg(
+      args[1], call, 1,
+    ),
+  },
+  FitContent: {
+    css: FIT_CONTENT,
+    min: 1,
+    max: 1,
+    example: 'FitContent200px',
+    args: (args, call) => functionLength(
+      args[0], call, undefined, 1,
+    ),
+  },
+};
+/**
+ * Функции неявных дорожек `gac`/`gar`: `garMinmax100px_A` → `grid-auto-rows:minmax(100px, auto)`.
+ */
+const TRACK_FUNCTIONS = functionSet(
+  TRACK_FORMS, 'a track function', 1,
+);
+/**
+ * Функции шаблонов `gtc`/`gtr` — те же; на скобку `repeat(` — повтор нативной формой: `gtc3x1fr`, `gtcAF240`.
+ */
+const TEMPLATE_TRACK_FUNCTIONS = functionSet(
+  TRACK_FORMS, 'a track function', 1, undefined, {
+    Repeat: [
+      '3x1fr',
+      'AF240',
+    ],
+  },
+);
 
 /**
  * Позиция в сетке: `gr`, `gc`. По грамматике это `<grid-line>`, то есть почти
@@ -3085,6 +3250,16 @@ function assertFontNames(parts: string[], raw: string): void {
  * Свойство → разбор его значения по слотам. Ключ — имя свойства, как и у
  * {@link ENUM_KEYWORDS}: сам факт наличия означает «здесь слоты».
  */
+/**
+ * Функции нативной формы у одиночных свойств (D-124): значение, которое начинается функцией набора (или содержит
+ * скобку), читает {@link functionsValue}. Таблица ищется по имени свойства, как {@link SLOT_VALIDATORS}.
+ */
+const VALUE_FUNCTIONS: Record<string, FunctionSet> = {
+  gridTemplateColumns: TEMPLATE_TRACK_FUNCTIONS,
+  gridTemplateRows: TEMPLATE_TRACK_FUNCTIONS,
+  gridAutoColumns: TRACK_FUNCTIONS,
+  gridAutoRows: TRACK_FUNCTIONS,
+};
 const SLOT_VALIDATORS: Record<string, (
   parts: string[], raw: string, essenceName: string,
 ) => string> = {
@@ -7597,6 +7772,7 @@ export default {
       const enumWords = ENUM_KEYWORDS[propName];
       const valuePattern = VALUE_PATTERNS[propName];
       const slots = SLOT_VALIDATORS[propName];
+      const functions = VALUE_FUNCTIONS[propName];
       mn(essenceName, (p) => {
         let s, repeated, abbreviations;
         let style: Record<string, any>;
@@ -7609,6 +7785,10 @@ export default {
         }
         if (autoRepeat && (repeated = autoRepeatValue(s, essenceName))) {
           style[propName] = repeated;
+          return styleWrap(style, stylePriority);
+        }
+        if (functions && functionsStart(s, functions)) {
+          style[propName] = functionsValue(p, functions);
           return styleWrap(style, stylePriority);
         }
         // Буквы — в каждой части составного значения (`fx1_1_A`, `arA_16/9`), полное слово с буквой бракуется в

@@ -6,7 +6,7 @@
 > cd packages/minotation/packages/core
 > pnpm try 'gtc1fr_A'
 > pnpm try 'cr' 'r0_10_10_0' 'gtc1fr@760'
-> pnpm try 'gtcRepeat\(auto-fit,minmax\(240px,1fr\)\)'   # скобки экранируются
+> pnpm try 'gtc_\[a\]_1fr'   # квадратные скобки экранируются
 > ```
 >
 > Скрипт компилирует токен и печатает получившийся CSS вместе с предупреждениями.
@@ -1344,9 +1344,9 @@ olwTN olsDT olcBT          толщина, стиль и системный цв
 
 **Скобки как CSS везде — `groupMode: 'css'`** (по умолчанию `'groups'`): групп нет, скобки после
 функционального псевдокласса — аргумент, остальные — часть значения или селектора без экранирования:
-`gtcRepeat(auto-fit,minmax(240px,1fr))` (точку в значении экранировать по-прежнему — она граница класса),
-`mn.assign('li:nth-child(2n)', …)`. Функция в значении бракуется хендлером с нативной формой (D-124):
-`crUrl(a\.png)` → «the picture by its path, as "cr_a\.png,P"». Цена — `(a|b)`, `w(|max)150` и `p10:h(.x)` недоступны.
+`cF:not(.a)`, `mn.assign('li:nth-child(2n)', …)` (точку в значении экранировать по-прежнему — она граница класса).
+Функция в значении бракуется хендлером с нативной формой (D-124): `crUrl(a\.png)` → «the picture by its path, as
+"cr_a\.png,P"», `gtcRepeat(3,1fr)` → «write "gtc3x1fr" or "gtcAF240"». Цена — `(a|b)`, `w(|max)150` и `p10:h(.x)` недоступны.
 
 В значении (до первого контекстного символа) скобки **без `|` группой не являются** и с 2026-09-25
 бракуются (в режиме `'groups'`). Раньше такая запись молча теряла сами скобки:
@@ -1400,11 +1400,11 @@ olwTN olsDT olcBT          толщина, стиль и системный цв
 
 ```
 cr_a\.png,P                                 → cursor:url("a.png"),pointer   (без функции, D-124; точка — экранируется)
-gtcRepeat\(auto-fit,minmax\(240px,1fr\)\)    → grid-template-columns:repeat(auto-fit,minmax(240px,1fr))
+gtc3x1fr                                    → grid-template-columns:repeat(3, 1fr)   (без функции, D-124)
 mn.assign({ 'button:not(.plain)': 'p10' })    → button:not(.plain){padding:10px}   (аргумент, D-077)
 ```
 
-Для сетки короче обойтись без скобок вовсе — `gtcAF240` (раздел **Grid** ниже).
+Сетка пишется без скобок: `gtc3x1fr`, `gtcAF240`, `gtcMinmax100px_1fr` (раздел **Grid** ниже).
 
 **Скобки ПОСЛЕ контекстного символа не задеты** — там они часть scope-грамматики,
 а не группа (кроме аргумента функционального псевдокласса, см. выше): `p10:h(.x)` даёт `:hover.x` (содержимое дописывается к тому же селектору),
@@ -1461,6 +1461,7 @@ coi10   →  counter-increment:10
 | `g_"a"_1fr` | `grid:"a" 1fr` — область и размер |
 | `gt"a_b"_1fr_/_A` | `grid-template:"a b" 1fr / auto` |
 | `gAF_1fr_/_1fr` | `grid:auto-flow 1fr / 1fr` — `AF` auto-flow, `D` dense |
+| `g1fr_/_3x1fr` | `grid:1fr / repeat(3, 1fr)` — повтор, как у `gtc` |
 
 **`g_1fr_1fr` бракуется** — работало, но по грамматике невалидно: `grid` это
 либо `none`, либо области в кавычках, либо «строки / столбцы». Один список
@@ -1470,17 +1471,29 @@ coi10   →  counter-increment:10
 
 ### Дорожки: `gtc`, `gtr`, `gac`, `gar`
 
-Часть дорожки — размер (длина, процент, `fr`), ключевое слово, функция или имя
-линии:
+Часть дорожки — размер (длина, процент, `fr`), ключевое слово, повтор, переменная или имя
+линии; функция дорожки — значение целиком:
 
 | Токен | CSS |
 |-------|-----|
 | `gtc1fr_1fr` | `grid-template-columns:1fr 1fr` |
 | `gtc50%` | `grid-template-columns:50%` |
 | `gtcN`, `gtcA`, `gtcMinContent`, `gtcS` | `none`, `auto`, `min-content` (буквы пока нет — RESEARCH/22, Q1), `subgrid` |
-| `gtc_repeat\(3,1fr\)` | `repeat(3,1fr)` |
-| `gtr_minmax\(100px,1fr\)` | `minmax(100px,1fr)` |
+| `gtc3x1fr` | `repeat(3, 1fr)` — число повторов, `x`, дорожка |
+| `gtc3x1fr_200px` | `repeat(3, 1fr) 200px` — повтор — часть списка |
+| `gtc2x1fr;2fr` | `repeat(2, 1fr 2fr)` — дорожки повтора через `;` |
+| `gtr2x--row` | `repeat(2, var(--row))` |
+| `gtcMinmax100px_1fr` | `minmax(100px, 1fr)` |
+| `garMinmax100_A` | `grid-auto-rows:minmax(100px, auto)` — голое число в функции — `px`, `A` — `auto` |
+| `gacMinmaxMinContent_MaxContent` | `minmax(min-content, max-content)` — слово слитно с именем, как число |
+| `gtcFitContent200px` | `fit-content(200px)` |
 | `gtc_\[a\]_1fr` | `[a] 1fr` — имя линии, скобки экранируются |
+
+**Функции без скобок** (D-124): `gtc_repeat\(3,1fr\)` и `gtcRepeat\(…\)` бракуются с подсказкой «write "gtc3x1fr"
+or "gtcAF240"», `gtr_minmax\(100px,1fr\)` — с «write "gtrMinmax100px_1fr"». Повтор — только у явных шаблонов
+`gtc`/`gtr` (и в `g`/`gt`): у `gac`/`gar` грамматика — список размеров. В повторе — размер с единицей или переменная
+(`gtc3x200` бракуется, как `gtc200`); слово или `minmax()` внутри повтора и функция внутри списка дорожек — через
+переменную: `gtc3x--col` при `--col: minmax(0, 1fr)`. Число повторов — целое от 1.
 
 **Размер дорожки без единицы невалиден**, в отличие от голого числа в остальной
 нотации: `gtc10` бракуется, нужно `gtc10px` или `gtc10fr`. До 2026-09-27
@@ -1521,9 +1534,9 @@ coi10   →  counter-increment:10
 `gtcAF` и `gtcAFL` без размера **бракуются**: до появления сокращения они молча давали
 `grid-template-columns:a-f`.
 
-Сокращение не отменяет полную форму — `minmax()` без auto-repeat, именованные линии
-и прочее по-прежнему пишутся экранированными скобками:
-`gtcRepeat\(auto-fit,minmax\(240px,1fr\)\)`.
+Скобками сетка не пишется (D-124): повтор с числом — `gtc3x1fr`, `minmax()` целиком — `gtcMinmax100px_1fr`,
+`gtcRepeat\(auto-fit,minmax\(240px,1fr\)\)` бракуется с подсказкой `gtcAF240`. Именованные линии — в экранированных
+квадратных скобках: `gtc_\[a\]_1fr`.
 
 ---
 

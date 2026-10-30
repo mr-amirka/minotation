@@ -146,10 +146,6 @@ describe("c) groupMode: 'css' — скобки это CSS", () => {
       'cF:not(.a)',
       ':not(.a){color:#fff}',
     ],
-    [
-      'gtcRepeat(auto-fit,minmax(240px,1fr))',
-      '{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}',
-    ],
   ])('%s', (token, expected) => {
     expect(compile(token, {
       groupMode: 'css',
@@ -164,6 +160,9 @@ describe("c) groupMode: 'css' — скобки это CSS", () => {
     });
     expect(css).toBe('');
     expect(warnings.join()).toContain('Value "Url(a.png)" is invalid for "cr": a function is not written in a class');
+    expect(compile('gtcRepeat(auto-fit,minmax(240px,1fr))', {
+      groupMode: 'css',
+    }).warnings.join()).toContain('a function is not written in a class — write "gtc3x1fr" or "gtcAF240"');
   });
 
   test('групп нет: `w(|max)150` не разворачивается', () => {

@@ -3,6 +3,9 @@
  * скобок. Общий читатель (`functionsValue`) — здесь на фильтрах `ft`/`ftb`, первых его потребителях.
  */
 import {
+  lexer,
+} from 'css-tree';
+import {
   minotationProvider,
 } from '../core/index';
 import presetStandard from '../presets/standard';
@@ -889,6 +892,194 @@ describe('фигуры clip-path в нативной форме: cpth (D-124)', 
     [
       'cpth_border-box',
       'Write it shorter: "cpthBB" instead of "cpth_border-box" — same value',
+    ],
+  ])('%s', (token, message) => {
+    expect(rejected(token)).toBe(message);
+  });
+});
+
+describe('повтор и функции дорожек сетки в нативной форме: gtc, gtr, gac, gar, g (D-124)', () => {
+  test.each([
+    [
+      'gtc3x1fr',
+      'grid-template-columns:repeat(3, 1fr)',
+    ],
+    [
+      'gtc3x1fr_200px',
+      'grid-template-columns:repeat(3, 1fr) 200px',
+    ],
+    [
+      'gtc2x1fr;2fr',
+      'grid-template-columns:repeat(2, 1fr 2fr)',
+    ],
+    [
+      'gtc200px_4x10%_A',
+      'grid-template-columns:200px repeat(4, 10%) auto',
+    ],
+    [
+      'gtr2x--row',
+      'grid-template-rows:repeat(2, var(--row))',
+    ],
+    [
+      'gtcMinmax100px_1fr',
+      'grid-template-columns:minmax(100px, 1fr)',
+    ],
+    [
+      'gtcMinmax0_1fr',
+      'grid-template-columns:minmax(0, 1fr)',
+    ],
+    [
+      'garMinmax100_A',
+      'grid-auto-rows:minmax(100px, auto)',
+    ],
+    [
+      'gacMinmaxMinContent_MaxContent',
+      'grid-auto-columns:minmax(min-content, max-content)',
+    ],
+    [
+      'gtcMinmax--min_1fr',
+      'grid-template-columns:minmax(var(--min), 1fr)',
+    ],
+    [
+      'gtcFitContent200px',
+      'grid-template-columns:fit-content(200px)',
+    ],
+    [
+      'gacFitContent50%',
+      'grid-auto-columns:fit-content(50%)',
+    ],
+    [
+      'g1fr_/_3x1fr',
+      'grid:1fr / repeat(3, 1fr)',
+    ],
+    // Не задеты: слово, сокращение auto-repeat, переменная.
+    [
+      'gacMinContent',
+      'grid-auto-columns:min-content',
+    ],
+    [
+      'gtcAF240',
+      'grid-template-columns:repeat(auto-fit, minmax(240px, 1fr))',
+    ],
+    [
+      'gtc1fr_--x',
+      'grid-template-columns:1fr var(--x)',
+    ],
+  ])('%s → %s', (token, declaration) => {
+    const out = compile([token]);
+    expect(out.warnings).toEqual([]);
+    expect(out.css).toContain('{' + declaration + '}');
+    // Переменную арбитр (css-tree) не разбирает — для неё сверяется только вывод.
+    const at = declaration.indexOf(':');
+    declaration.indexOf('var(') > -1
+      || expect(lexer.matchProperty(declaration.slice(0, at), declaration.slice(at + 1)).matched).toBeTruthy();
+  });
+
+  test.each([
+    [
+      'gtc_repeat\\(3,1fr\\)',
+      'Value "_repeat(3,1fr)" is invalid for "gtc": a function is not written in a class — write "gtc3x1fr"'
+      + ' or "gtcAF240"',
+    ],
+    [
+      'gtcRepeat\\(auto-fit,minmax\\(240px,1fr\\)\\)',
+      'Value "Repeat(auto-fit,minmax(240px,1fr))" is invalid for "gtc": a function is not written in a'
+      + ' class — write "gtc3x1fr" or "gtcAF240"',
+    ],
+    [
+      'gtr_minmax\\(100px,1fr\\)',
+      'Value "_minmax(100px,1fr)" is invalid for "gtr": a function is not written in a class — write'
+      + ' "gtrMinmax100px_1fr"',
+    ],
+    [
+      'gac_repeat\\(3,1fr\\)',
+      'Value "_repeat(3,1fr)" is invalid for "gac": a function is not written in a class — "repeat" has no'
+      + ' short form, write it through a variable — "gac--x"',
+    ],
+    [
+      'gtc_fit-content\\(100px\\)',
+      'Value "_fit-content(100px)" is invalid for "gtc": a function is not written in a class — write'
+      + ' "gtcFitContent200px"',
+    ],
+    [
+      'gtc_minmax100px_1fr',
+      'Write "gtcMinmax100px_1fr" instead of "gtc_minmax100px_1fr" — same value',
+    ],
+    [
+      'gtcMinmax_100px_1fr',
+      'Write "gtcMinmax100px_1fr" instead of "gtcMinmax_100px_1fr" — same value',
+    ],
+    [
+      'gtcMinmax1fr_1fr',
+      'Value "Minmax1fr_1fr" is invalid for "gtc": "Minmax" expects a length, a percent, "A" (auto),'
+      + ' "MinContent" or "MaxContent" — as "gtcMinmax100px_1fr"',
+    ],
+    [
+      'gtcMinmax100px',
+      'Value "Minmax100px" is invalid for "gtc": "Minmax" takes at least 2 parts — as "gtcMinmax100px_1fr"',
+    ],
+    [
+      'gtcMinmax100px_1fr_200px',
+      'Value "Minmax100px_1fr_200px" is invalid for "gtc": "200px" is extra: "Minmax" takes at most 2 parts'
+      + ' — as "gtcMinmax100px_1fr"',
+    ],
+    [
+      'gtcMinmax-5_1fr',
+      'Value "Minmax-5_1fr" is invalid for "gtc": "Minmax" expects a length, a percent, "A" (auto),'
+      + ' "MinContent" or "MaxContent" — as "gtcMinmax100px_1fr"',
+    ],
+    [
+      'gtcMinmax100px_zz',
+      'Value "Minmax100px_zz" is invalid for "gtc": "Minmax" expects a length, a percent, a fraction ("1fr"), "A"'
+      + ' (auto), "MinContent" or "MaxContent" — as "gtcMinmax100px_1fr"',
+    ],
+    [
+      'cntAttrHref',
+      'Write "cntAttr_href" instead of "cntAttrHref" — same value',
+    ],
+    [
+      'gtcMinmaxAuto_1fr',
+      'Value "MinmaxAuto_1fr" is invalid for "gtc": "Minmax" expects a length, a percent, "A" (auto),'
+      + ' "MinContent" or "MaxContent" — as "gtcMinmax100px_1fr"',
+    ],
+    [
+      'gtc0x1fr',
+      'Value "0x1fr" is invalid for "gtc": the count of a repeat is a whole number from 1 — as "gtc3x1fr"',
+    ],
+    [
+      'gtc3x200',
+      'Value "3x200" is invalid for "gtc": a repeated track is a size (length, percent, fr) or a variable,'
+      + ' ";" between tracks — as "gtc3x1fr"',
+    ],
+    [
+      'gtc3xA',
+      'Value "3xA" is invalid for "gtc": a repeated track is a size (length, percent, fr) or a variable,'
+      + ' ";" between tracks — as "gtc3x1fr"',
+    ],
+    [
+      'gtc3x',
+      'Value "3x" is invalid for "gtc": a repeated track is a size (length, percent, fr) or a variable, ";"'
+      + ' between tracks — as "gtc3x1fr"',
+    ],
+    [
+      'gac3x1fr',
+      'Value "3x1fr" is invalid for "gac": a track is a size (length, percent, fr), a keyword or a'
+      + ' variable; a function is the whole value, as "gacMinmax100px_1fr"',
+    ],
+    [
+      'gtc1fr_minmax100px',
+      'Value "1fr_minmax100px" is invalid for "gtc": a track is a size (length, percent, fr), a keyword, a'
+      + ' repeat as "gtc3x1fr" or a variable; a function is the whole value, as "gtcMinmax100px_1fr"',
+    ],
+    [
+      'g_repeat\\(2,1fr\\)_/_1fr',
+      'Value "_repeat(2,1fr)_/_1fr" is invalid for "g": a function is not written in a class — a repeat of'
+      + ' tracks is "3x1fr", as "g1fr_/_3x1fr"; another function goes through a variable',
+    ],
+    [
+      'g1fr_/_3x2',
+      'Value "1fr_/_3x2" is invalid for "g": a repeated track is a size (length, percent, fr) or a'
+      + ' variable, ";" between tracks — as "g1fr_/_3x1fr"',
     ],
   ])('%s', (token, message) => {
     expect(rejected(token)).toBe(message);

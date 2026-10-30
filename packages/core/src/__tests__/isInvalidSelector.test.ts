@@ -199,7 +199,8 @@ describe('вырожденная группа вариантов в значен
     ['p10@(sm|md)', '@media sm{'],
     ['p10:h(.x)', ':h.x{padding:10px}'],  // без presetMedias `:h` не раскрывается в hover
     ['cF00:not[.a]', ':not(.a){color:#f00}'],
-    ['gtcRepeat\\(auto-fit,minmax\\(240px,1fr\\)\\)', 'repeat(auto-fit,minmax(240px,1fr))'],
+    // Экранированные скобки — не группа: доходят до хендлера как текст (функции в значении бракуются хендлером, D-124).
+    ['cnt_see_\\(note\\)', 'content:"see (note)"'],
     ['ftBlur4', 'filter:blur(4px)'],
   ])('%s не задет', (token, expected) => {
     expect(compileToken(token).css).toContain(expected);

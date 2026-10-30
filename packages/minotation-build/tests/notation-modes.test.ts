@@ -343,12 +343,13 @@ describe('настройки разбора по файлу: groupMode, contextW
       groupMode: 'css',
       warningMode: 'silent',
     });
-    collector.add(join(dir, 'App.html'), '<div class="gtcRepeat(auto-fit,minmax(240px,1fr)) p10">');
+    // Скобка в значении без экранирования — текст `content` (функции в значении бракуются хендлером, D-124).
+    collector.add(join(dir, 'App.html'), '<div class="cnt_see_(note) p10">');
     collector.add(join(
       dir, 'ui', 'Card.html',
     ), '<div class="w(|max)150 p10">');
     const css = collector.css();
-    expect(css).toContain('{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}');
+    expect(css).toContain('{content:"see (note)"}');
     expect(css).toContain('.w\\(\\|max\\)150{width:150px}');
     // `p10` одинаков в обоих — одно правило.
     expect(css.match(/\.p10\{/g)).toHaveLength(1);

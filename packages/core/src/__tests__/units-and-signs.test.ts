@@ -2475,13 +2475,14 @@ describe('дорожки и позиции сетки', () => {
       'gtcS',
       'grid-template-columns:subgrid',
     ],
+    // Функции — нативной формой, без скобок (D-124).
     [
-      'gtc_repeat\\(3,1fr\\)',
-      'grid-template-columns:repeat(3,1fr)',
+      'gtc3x1fr',
+      'grid-template-columns:repeat(3, 1fr)',
     ],
     [
-      'gtr_minmax\\(100px,1fr\\)',
-      'grid-template-rows:minmax(100px,1fr)',
+      'gtrMinmax100px_1fr',
+      'grid-template-rows:minmax(100px, 1fr)',
     ],
     [
       'gtc_\\[a\\]_1fr',

@@ -799,11 +799,9 @@ describe('auto-repeat: gtcAF240 вместо gtcRepeat\\(auto-fit,minmax\\(240px
     expect(cssOf(token)).toBe(expected);
   });
 
-  test('полная экранированная форма продолжает работать', () => {
-    // Сокращение её не отменяет: `minmax(200px, 300px)` без auto-repeat,
-    // именованные линии и прочее по-прежнему пишутся скобками.
-    expect(cssOf('gtcRepeat\\(auto-fit,minmax\\(240px,1fr\\)\\)'))
-      .toBe('grid-template-columns:repeat(auto-fit,minmax(240px,1fr))');
+  test('полная форма со скобками — вторая запись того же значения, бракуется (D-122, D-124)', () => {
+    // Повтор с числом — `gtc3x1fr`, `minmax()` целиком — `gtcMinmax100px_1fr`.
+    expect(cssOf('gtcRepeat\\(auto-fit,minmax\\(240px,1fr\\)\\)')).toBe('');
   });
 });
 

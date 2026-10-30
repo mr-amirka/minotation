@@ -192,13 +192,6 @@ export interface MnData {
   keyframes: [Record<string, string>, number];
 }
 
-/**
- * Ошибка разбора аргумента/токена — бросается точечно (утилитой или движком),
- * ловится централизованно в `withCatchParseComboNameDecorate`/`__initEssence`
- * (`core/index.ts`) и конвертируется в {@link MnWarning}, а не пробрасывается
- * пользователю: токен, вызвавший `MnParseError`, просто не даёт CSS-правила в
- * этом цикле компиляции.md`.
- */
 /** Системный потолок множителя специфичности `*N` (D-089): `maxSpecificity` выше не задать. */
 export const MN_MAX_SPECIFICITY = 16;
 
@@ -213,6 +206,20 @@ export const MN_MAX_SPECIFICITY = 16;
  */
 const MN_PARSE_ERROR_BRAND = Symbol.for('minotation.MnParseError');
 
+/**
+ * Ошибка разбора аргумента/токена — бросается точечно (утилитой или движком),
+ * ловится централизованно в `withCatchParseComboNameDecorate`/`__initEssence`
+ * (`core/index.ts`) и конвертируется в {@link MnWarning}, а не пробрасывается
+ * пользователю: токен, вызвавший `MnParseError`, просто не даёт CSS-правила в
+ * этом цикле компиляции.
+ *
+ * @param message — текст предупреждения: что ожидалось и что пришло
+ * @param context — токен, хендлер и аргумент, на котором разбор остановился
+ * @example
+ * throw new MnParseError('Value "x" is invalid for "c": expected a colour', {
+ *   token: 'cx', handler: 'c', arg: 'x',
+ * });
+ */
 export class MnParseError extends Error {
   /** `instanceof` по метке, а не по прототипу — см. {@link MN_PARSE_ERROR_BRAND}. */
   static [Symbol.hasInstance](value: unknown): boolean {

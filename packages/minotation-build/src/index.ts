@@ -900,16 +900,25 @@ export interface FileFilter {
 }
 
 /**
- * Матчер v1 ({@link MnFileMatcher}) в функцию; `undefined` — матчера нет.
+ * Корни скана списком (запрос web-games 3, 2026-10-14): `root` — строка, массив или нет его.
  *
- * @param matcher — RegExp, путь, функция или массив из них
- * @param root — корень для путей, заданных строкой
+ * @param root — корень или корни из опций
+ * @param fallback — корень, когда `root` не задан
+ * @returns непустой список корней
  */
-/** Корни скана списком (запрос web-games 3, 2026-10-14): `root` — строка, массив или нет его. */
 export function scanRoots(root: string | string[] | undefined, fallback: string): string[] {
   return root === undefined ? [fallback] : typeof root === 'string' ? [root] : root;
 }
 
+/**
+ * Матчер v1 ({@link MnFileMatcher}) в функцию; `undefined` — матчера нет.
+ *
+ * @param matcher — RegExp, путь, функция или массив из них
+ * @param root — корень для путей, заданных строкой
+ * @returns проверка пути; `undefined`, если матчера нет
+ * @example
+ * createMatcher([/\.tsx$/, './src/app.ts'], root)?.(root + '/src/app.ts'); // true
+ */
 export function createMatcher(matcher: MnFileMatcher | undefined, root: string): ((path: string) => boolean) | undefined {
   if (matcher === undefined || matcher === null) {
     return undefined;
@@ -945,6 +954,14 @@ export function createFileFilter(options: MnBuildOptions, root: string): FileFil
   const include = createMatcher(options.include, root);
   const exclude = createMatcher(options.exclude, root);
   const skipPartials = !!options.skipPartials;
+  /**
+   * Пресет ли файл (`*.mn.ts` и другие `presetExtensions`): пресет не сканируется на токены.
+   *
+   * @param path — путь файла
+   * @returns `true` — пресет
+   * @example
+   * filter.isPreset('/app/theme.mn.ts'); // true
+   */
   function isPreset(path: string): boolean {
     return presetExtensions.some((ext) => path.endsWith(ext));
   }
@@ -952,6 +969,15 @@ export function createFileFilter(options: MnBuildOptions, root: string): FileFil
     extensions,
     presetExtensions,
     isPreset,
+    /**
+     * Сканировать ли файл на токены: не пресет, не `_partial` при `skipPartials`, не `exclude`, затем `include` или
+     * `extensions`.
+     *
+     * @param path — путь файла
+     * @returns `true` — сканировать
+     * @example
+     * createFileFilter({ exclude: /vendor/ }, root).accepts('/app/vendor/a.tsx'); // false
+     */
     accepts(path: string): boolean {
       if (isPreset(path)) {
         return false;
@@ -1753,6 +1779,15 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
   }
   return {
     names,
+    /**
+     * Сканирует исходник файла один раз на каждый набор `attrs` и раздаёт токены записям `entry`.
+     *
+     * @param id — путь файла
+     * @param source — текст файла
+     * @returns `true` — CSS какой-то записи изменился
+     * @example
+     * collector.add('/app/a.tsx', '<div className="p10" />'); // true
+     */
     add(id: string, source: string): boolean {
       const scanned: Record<string, string[]> = {};
       const scan = (key: string): string[] => scanned[key] || (scanned[key] = scanners[key](source, id));
@@ -1762,6 +1797,16 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
         id, scan, readFileNotation(source, id),
       );
     },
+    /**
+     * Готовые записи сканера (webpack: сканирует лоадер) — раздать записям `entry`.
+     *
+     * @param id — путь файла
+     * @param found — найденные записи
+     * @param notation — директива нотации файла, если есть
+     * @returns `true` — CSS какой-то записи изменился
+     * @example
+     * collector.set('/app/a.tsx', ['p10', 'cF00']);
+     */
     set(
       id: string, found: Iterable<string>, notation?: MnNotationDirective,
     ): boolean {
@@ -1771,6 +1816,14 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
         id, () => list, notation,
       );
     },
+    /**
+     * Забывает файл во всех записях и в статистике.
+     *
+     * @param id — путь файла
+     * @returns `true` — CSS какой-то записи изменился
+     * @example
+     * collector.remove('/app/a.tsx');
+     */
     remove(id: string): boolean {
       counts.delete(id);
       let changed = false;
@@ -1779,18 +1832,50 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
       }
       return changed;
     },
+    /**
+     * Учтён ли файл хоть одной записью.
+     *
+     * @param id — путь файла
+     * @returns `true` — учтён
+     * @example
+     * collector.has('/app/a.tsx'); // true после add
+     */
     has(id: string): boolean {
       return parts.some((part) => part.collector.has(id));
     },
+    /**
+     * Класс области файла — {@link TokenCollector.scopeClassOf}; по первой записи, где файл учтён.
+     *
+     * @param id — путь файла
+     * @returns класс области или `undefined`
+     * @example
+     * collector.scopeClassOf('/app/card.tsx');
+     */
     scopeClassOf(id: string): string | undefined {
       const part = parts.find((item) => item.collector.has(id));
       return part && part.collector.scopeClassOf(id);
     },
+    /**
+     * Ставит пресет из файла `*.mn.ts` во все записи.
+     *
+     * @param id — путь файла пресета
+     * @param preset — пресет
+     * @example
+     * collector.setPreset('/app/theme.mn.ts', themePreset);
+     */
     setPreset(id: string, preset: MnPreset): void {
       for (const part of parts) {
         part.collector.setPreset(id, preset);
       }
     },
+    /**
+     * Убирает пресет файла из всех записей.
+     *
+     * @param id — путь файла пресета
+     * @returns `true` — CSS какой-то записи изменился
+     * @example
+     * collector.removePreset('/app/theme.mn.ts');
+     */
     removePreset(id: string): boolean {
       let changed = false;
       for (const part of parts) {
@@ -1798,12 +1883,25 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
       }
       return changed;
     },
+    /**
+     * Забывает все файлы и статистику.
+     *
+     * @example
+     * collector.clear();
+     */
     clear(): void {
       counts.clear();
       for (const part of parts) {
         part.collector.clear();
       }
     },
+    /**
+     * Статистика употребления токенов по учтённым файлам (D-032).
+     *
+     * @returns файлов, уникальных токенов, вхождений и списки по убыванию
+     * @example
+     * collector.metrics().tokensTotal; // 2
+     */
     metrics(): Metrics {
       const total: Record<string, number> = {};
       const files: Record<string, TokenCount[]> = {};
@@ -1835,12 +1933,26 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
         files,
       };
     },
+    /**
+     * CSS каждой записи `entry`; кешируется накопителем записи.
+     *
+     * @returns `{ name, css }` в порядке объявления записей
+     * @example
+     * collector.outputs(); // [{ name: 'mn', css: '.p10{padding:10px}' }]
+     */
     outputs(): BuildOutput[] {
       return parts.map((part, i) => ({
         name: names[i],
         css: part.collector.css(),
       }));
     },
+    /**
+     * Предупреждения последней компиляции всех записей, без повторов.
+     *
+     * @returns предупреждения; повторный вызов без новой компиляции — пусто
+     * @example
+     * collector.takeWarnings(); // [{ token: 'p1x', message: '…' }]
+     */
     takeWarnings(): MnWarning[] {
       const seen: Record<string, 1> = {};
       const out: MnWarning[] = [];

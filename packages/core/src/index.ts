@@ -101,6 +101,17 @@ import {
   parseTwSuffix as parseTwSuffixImpl,
 } from './presets/shared/tw';
 
+/**
+ * Создаёт экземпляр minotation: пресеты, опции, компиляторы атрибутов и поток готовых стилей.
+ *
+ * @param options — опции экземпляра (`notationMode`, `warningMode`, `presets` …); неизвестный ключ — ошибка с
+ *   подсказкой
+ * @returns экземпляр `mn`: `setPresets`, `getCompiler(attr)`, `compile()`, `styles$`
+ * @example
+ * const mn = minotationProvider({ presets: [presetStandard, presetMedias] });
+ * mn.getCompiler('class')('p10 cF00@m');
+ * mn.compile(); // .p10{padding:10px} @media (width < 992px){.cF00\@m{color:#f00}}
+ */
 export const minotationProvider = minotationProviderImpl;
 export default coreDefault;
 export const selectorsCompileProvider = selectorsCompileProviderImpl;
@@ -225,14 +236,45 @@ import {
 // Форма `export { X } from '...'` компилируется в геттер, которого не видит
 // cjs-module-lexer — ровно то, о чём предупреждает шапка этого файла. Эти два
 // символа оставались последними в старой форме (приведены 2026-09-25).
+/**
+ * Ошибка разбора токена: хендлер бракует значение, ядро превращает её в предупреждение с токеном и хендлером.
+ * `instanceof` узнаёт ошибку из любой копии ядра (CJS и ESM в одном процессе).
+ *
+ * @example
+ * mn('x', (p) => {
+ *   const arg = p.suffix;
+ *   throw new MnParseError('Value "' + arg + '" is invalid for "x"', { token: 'x' + arg, handler: 'x', arg });
+ * });
+ */
 export const MnParseError = MnParseErrorImpl;
 /** Ключ набора настроек разбора (`getCompiler(attr, settings)`, D-081). */
 export const parseSettingsKey = parseSettingsKeyImpl;
 export const MnWarningError = MnWarningErrorImpl;
 export const MnForbiddenTokenError = MnForbiddenTokenErrorImpl;
 
+/**
+ * Стандартный пресет: все CSS-токены нотации (`p10`, `cF00`, `dF`, `bgF00-00F` …) — справочник `HANDLERS.md`.
+ *
+ * @example
+ * minotationProvider({ presets: [presetStandard] }); // p10 → padding:10px
+ */
 export const presetStandard = presetStandardDefault;
+/**
+ * Синонимы состояний и контекстов: короткие имена псевдоклассов (`:h` — `:hover`, `:f` — `:focus`, `:n(2n)` —
+ * `:nth-child(2n)`).
+ *
+ * @example
+ * minotationProvider({ presets: [presetStandard, presetSynonyms] });
+ * // cF00:h → @media (hover: hover){.cF00\:h:hover{color:#f00}} — наведение только у устройств с ним (D-069)
+ */
 export const presetSynonyms = presetSynonymsDefault;
+/**
+ * Точки медиа по ширине (`@m4` — до 480px, `@d-` — от 992px) и медиа-признаки (`dark`, `print`, `motion-safe` …),
+ * D-054, D-057.
+ *
+ * @example
+ * minotationProvider({ presets: [presetStandard, presetMedias] }); // dN@m → @media (width < 992px){…}
+ */
 export const presetMedias = presetMediasDefault;
 /**
  * Пресеты normalize (D-108): версия эталона — в имени, эталон воспроизводится один в один. Наборов по умолчанию нет
@@ -244,10 +286,23 @@ export const presetNormalize4_2_0 = presetNormalize4_2_0Impl;
 export const presetNormalize5_0_0 = presetNormalize5_0_0Impl;
 export const presetNormalize6_0_0 = presetNormalize6_0_0Impl;
 export const presetNormalize7_0_0 = presetNormalize7_0_0Impl;
+/**
+ * normalize.css 8.0.1 (IE 10+, Safari 8+) один в один — последняя версия normalize.css (D-108).
+ *
+ * @example
+ * minotationProvider({ presets: [presetNormalize8_0_1, presetStandard] }); // html{line-height:1.15;…} …
+ */
 export const presetNormalize8_0_1 = presetNormalize8_0_1Impl;
 export const presetModernNormalize1_1_0 = presetModernNormalize1_1_0Impl;
 export const presetModernNormalize2_0_0 = presetModernNormalize2_0_0Impl;
 export const presetModernNormalize3_0_1 = presetModernNormalize3_0_1Impl;
+/**
+ * Базовые стили страницы поверх `presetStandard` и `presetMedias` (их он требует): `box-sizing:border-box` у всех
+ * элементов, сброс полей и т. п.
+ *
+ * @example
+ * minotationProvider({ presets: [presetStandard, presetMedias, presetMain] });
+ */
 export const presetMain = presetMainDefault;
 export const presetPrefixes = presetPrefixesDefault;
 /** Подсказки о классах, которых нет в нотации (`t0` → `st0`, `flex` → `dF`) — D-024. */

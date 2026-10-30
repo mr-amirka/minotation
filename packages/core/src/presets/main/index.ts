@@ -94,7 +94,7 @@ export default {
      * 1. Change the font styles in all browsers.
      * 2. Remove the margin in Firefox and Safari.
      */
-      'button, input, optgroup, select, textarea': 'ffInherit f100% lh1.15 m',
+      'button, input, optgroup, select, textarea': 'ffINH f100% lh1.15 m',
 
       /**
      * Show the overflow in IE.
@@ -135,7 +135,7 @@ export default {
      * 3. Remove the padding so developers are not caught out when they zero out
      *    `fieldset` elements in all browsers.
      */
-      legend: 'bxzBB cInherit dTB wmax p wsN',
+      legend: 'bxzBB cINH dTB wmax p wsN',
 
       /**
      * Add the correct vertical alignment in Chrome, Firefox, and Opera.
@@ -174,7 +174,7 @@ export default {
      * 1. Correct the inability to style clickable types in iOS and Safari.
      * 2. Change font properties to `inherit` in Safari.
      */
-      '::-webkit-file-upload-button': 'apB fontInherit',
+      '::-webkit-file-upload-button': 'apB fontINH',
 
 
       /* Interactive

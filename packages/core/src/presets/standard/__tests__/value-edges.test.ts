@@ -256,7 +256,7 @@ describe('единица по умолчанию у свойств-длин', ()
     ],
     // Ключевые слова и переменные не трогаем.
     [
-      'tiInherit',
+      'tiINH',
       'text-indent:inherit',
     ],
     [
@@ -863,11 +863,11 @@ describe('незнакомое слово у хендлера со словар�
 
   test.each([
     [
-      'ovInherit',
+      'ovINH',
       'overflow:inherit',
     ],
     [
-      'dUnset',
+      'dUNS',
       'display:unset',
     ],
   ])('%s → %s — CSS-wide keywords проходят', (token, expected) => {
@@ -963,11 +963,11 @@ describe('голое слово у свойства-длины', () => {
 
   test.each([
     [
-      'tiInherit',
+      'tiINH',
       'text-indent:inherit',
     ],
     [
-      'bspUnset',
+      'bspUNS',
       'border-spacing:unset',
     ],
   ])('%s → %s — CSS-wide проходят', (token, expected) => {

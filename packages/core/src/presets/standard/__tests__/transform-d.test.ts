@@ -104,7 +104,7 @@ describe('positions: op, pspo, tfo (group D)', () => {
       'object-position:right 10px top 20px',
     ],
     [
-      'opInherit',
+      'opINH',
       'object-position:inherit',
     ],
     [

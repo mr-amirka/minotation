@@ -288,6 +288,39 @@ export const SPLIT_AMP = splitProvider(/\s*&+\s*/);
 export const REGEXP_MATCH_VAR = /^(--[^=]+)=(.*)$/;
 export const REGEXP_MATCH_NAME = /^([a-z]+)(.*)$/;
 export const REGEXP_MATCH_IMPORTANT = /^(.*)(-i)$/;
+/**
+ * CSS-wide keywords буквами (D-125) — одна запись во всех хендлерах: `bgiINH` → `background-image:inherit`.
+ * Словарь без прототипа: суффикс `constructor` — не буквы.
+ */
+export const CSS_WIDE_BY_LETTERS: Record<string, string> = Object.assign(Object.create(null), {
+  INH: 'inherit',
+  INI: 'initial',
+  UNS: 'unset',
+  RV: 'revert',
+  RVL: 'revert-layer',
+});
+/**
+ * Буквы CSS-wide keyword по его слову (D-125): слово записи (`Inherit`) и слово CSS (`inherit`) — для подсказки
+ * «Write it shorter» на слово, где есть буквы.
+ */
+export const CSS_WIDE_LETTERS: Record<string, string> = Object.assign(Object.create(null), {
+  Inherit: 'INH',
+  inherit: 'INH',
+  Initial: 'INI',
+  initial: 'INI',
+  Unset: 'UNS',
+  unset: 'UNS',
+  Revert: 'RV',
+  revert: 'RV',
+  RevertLayer: 'RVL',
+  'revert-layer': 'RVL',
+});
+/**
+ * Метка-переменная CSS-wide keyword (D-125): ядро отдаёт её хендлеру вместо букв, хендлер ставит её туда же, куда
+ * поставил бы переменную (`c--v` → `color:var(--v)`), — ядро меняет её на ключевое слово. Так каждый хендлер,
+ * принимающий переменную целым значением, принимает и ключевые слова, со своим набором свойств.
+ */
+export const CSS_WIDE_MARK = '--mnkeyword';
 export const REGEXP_MATCH_VALUE = /^((([A-Z][A-Za-z]*)|((-)?[0-9.]+))([a-z%]+)?)?(.*)?$/;
 /**
  * Вендорный псевдоэлемент или псевдокласс (`::-moz-focus-inner`, `:-webkit-autofill`): в списке селекторов

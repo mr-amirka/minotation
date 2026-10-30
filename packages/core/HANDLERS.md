@@ -122,7 +122,7 @@ fallback и сам градиент.
 | `bgi_images/a\.png` | `background-image:url("images/a.png")` |
 | `bgi--hero` | `background-image:var(--hero)` |
 | `bgiN` | `background-image:none` |
-| `bgiInherit` | `background-image:inherit` |
+| `bgiINH` | `background-image:inherit` |
 | `lisi_dot\.svg` | `list-style-image:url("dot.svg")` |
 | `mk_a\.png` | `mask-image:url("a.png")` |
 
@@ -135,7 +135,7 @@ fallback и сам градиент.
 | `bgi_url\(a\.png\)`, `bgiUrl\(a\.png\)` | функция в токене не пишется (D-121): `bgi_a\.png` |
 | `bgi_--hero` | переменная — без `_`: `bgi--hero` |
 | `bgi_none`, `bgiNone` | `bgiN` |
-| `bgi_inherit` | `bgiInherit` |
+| `bgi_inherit` | `bgiINH` |
 
 До D-122 (2026-10-30) в `url("…")` заворачивалось всё неузнанное: `bgiF00-00F` давало `url("F00-00F")`, `bgi10px` —
 `url("10px")`, а готовая функция (`bgi_url\(a\.png\)`) проходила как есть.
@@ -162,6 +162,35 @@ fallback и сам градиент.
 
 До 2026-09-26 `g_--a;,--b` давало `grid:--a;,--b` — переменные не
 разворачивались, а `;` уезжал в CSS литералом.
+
+## CSS-wide keywords — `INH`, `INI`, `UNS`, `RV`, `RVL`
+
+Пять ключевых слов, валидных у любого свойства, пишутся буквами — одними во всех хендлерах (D-125):
+
+| Буквы | CSS | Пример |
+|-------|-----|--------|
+| `INH` | `inherit` | `bgiINH` → `background-image:inherit` |
+| `INI` | `initial` | `cINI` → `color:initial` |
+| `UNS` | `unset` | `mUNS` → `margin:unset` |
+| `RV` | `revert` | `pRV` → `padding:revert` |
+| `RVL` | `revert-layer` | `cRVL` → `color:revert-layer` |
+
+Ключевое слово встаёт туда же, куда хендлер поставил бы переменную целым значением (`c--v` → `color:var(--v)`), —
+поэтому свойств столько же: `bcylINH` → `border-top-color:inherit;border-bottom-color:inherit;border-left-color:inherit`,
+`lclINH` оставляет свои постоянные декларации и даёт `-webkit-line-clamp:inherit`. `!important` — как обычно: `mUNS-i`.
+
+Бракуется с подсказкой:
+
+| Токен | Почему |
+|-------|--------|
+| `bgiInherit`, `cRevertLayer` | слово, где есть буквы (D-113): `bgiINH`, `cRVL` |
+| `rxINH`, `rx--v` → `rotateX(var(--v))` | `rx` пишет часть `transform` (поворот), а ключевое слово — значение целиком |
+| `xINH` | `x` собирает `transform` из сдвига, масштаба и поворота — целого значения в нём нет |
+
+Цена: свободное имя, записанное ровно `INH`, `INI`, `UNS`, `RV`, `RVL` (анимация, шрифт, линия сетки), не пишется.
+До D-125 (2026-10-31) слова писались целиком (`bgiInherit`), шесть словарей держали ещё и свои буквы (`tdI`, `dirU`,
+`mktRL`), а около шестидесяти хендлеров ключевых слов не принимали вовсе (`zInherit`, `oInherit`, `bgInherit`) или
+давали битый CSS (`cRevertLayer` → `color:revertLayer`, `cnInherit` → `container-name:Inherit`).
 
 ## Формат токена
 
@@ -232,7 +261,7 @@ ff_Times_New_Roman  →  font-family:"Times New Roman"
 
 Без `_` ожидается ключевое слово свойства, буквой: `cnt` и `cntN` → `none`, `cntOQ` / `cntCQ` → `open-quote` /
 `close-quote`, `cntNOQ` / `cntNCQ` → `no-open-quote` / `no-close-quote`; `cntNormal` (буквы пока нет —
-RESEARCH/22, Q7) и CSS-wide (`cntInherit`). Полные слова с буквой (`cntNone`, `cntOpenQuote`) бракуются с подсказкой
+RESEARCH/22, Q7) и CSS-wide (`cntINH`, D-125). Полные слова с буквой (`cntNone`, `cntOpenQuote`) бракуются с подсказкой
 (D-113).
 
 Текст без `_` бракуется: `cntHello` — ошибка с подсказкой, потому что
@@ -571,7 +600,7 @@ mn.setOptions({ axisMode: 'logical' }); mn.recompile(); // живой инста
 
 | Токен | CSS |
 |-------|-----|
-| `fontInherit` | `font:inherit` |
+| `fontINH` | `font:inherit` |
 | `fontC` | `font:caption` |
 | `fontI` | `font:icon` |
 | `fontM` | `font:menu` |
@@ -1093,7 +1122,8 @@ x{число}[%][Y{число}[%]][Z{число}[%]][S{число}][R{x|y|z}{ч�
 `rx0.5turn`, `x10Y20Rz45deg` работают; `rx10px`, `rx10s`, `x10Y20Rz45px`
 бракуются с предупреждением. До 2026-09-26 единица не проверялась и уходила
 в CSS как написана (`rotateX(10px)`), а `rxInherit` давал склейку слова с
-единицей — `rotateX(Inheritdeg)`. Мимо валидатора ядра это проходило:
+единицей — `rotateX(Inheritdeg)`. Переменная — угол: `rx--a` → `rotateX(var(--a))`; до 2026-10-31 она молча давала
+`rotateX(180deg)`. Мимо валидатора ядра это проходило:
 `transform` не в его таблице.
 
 ---
@@ -2385,7 +2415,7 @@ bi8D5524-6D3504 bis1 b6 bsS
   них в CSS не существует;
 - `fx` — `flex: 1 1 auto` задаёт три свойства сразу, и браузер трактует
   сокращённую форму иначе, чем три отдельных;
-- `font` — только `fontInherit` и системные шрифты: они задают весь набор
+- `font` — только `fontINH` и системные шрифты: они задают весь набор
   шрифтовых свойств разом, а `font-variant` и `font-stretch` отдельных тегов
   не имеют;
 - `g`/`gt` — области сетки в кавычках.

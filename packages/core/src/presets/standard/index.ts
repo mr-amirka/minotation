@@ -14,14 +14,10 @@ const NAME_TOP = 'Top';
 const NAME_BOTTOM = 'Bottom';
 const NAME_AUTO = 'Auto';
 const NAME_NORMAL = 'Normal';
-const NAME_INHERIT = 'Inherit';
 const NAME_THIN = 'Thin';
 const NAME_MEDIUM = 'Medium';
 const NAME_THICK = 'Thick';
 const NAME_CONTAIN = 'Contain';
-const NAME_REVERT = 'Revert';
-const NAME_REVERT_LAYER = 'RevertLayer';
-const NAME_UNSET = 'Unset';
 const PX = 'px';
 const PERCENT = '%';
 const CONTRAST = 'contrast';
@@ -429,7 +425,6 @@ const TD_SYNONYMS = {
   U: 'Underline',
   O: 'Overline',
   L: 'LineThrough',
-  I: NAME_INHERIT,
   BL: 'Blink',
   SPE: 'SpellingError',
   GRE: 'GrammarError',
@@ -492,10 +487,6 @@ const OVERSCROLL_BEHAVIOR_PRIORITIES = {
   A: NAME_AUTO,
   CT: NAME_CONTAIN,
   N: NAME_NONE,
-  I: NAME_INHERIT,
-  R: NAME_REVERT,
-  RL: NAME_REVERT_LAYER,
-  U: NAME_UNSET,
 };
 
 /**
@@ -1706,7 +1697,7 @@ function imagePathValue(path: string, name: string): string {
   cssVarValue(path) && throwInvalid('Write the variable without "_": "' + name + path + MSG_INSTEAD_OF + written
     + MSG_SAME_VALUE);
   word === NONE && throwInvalid(MSG_WRITE_SHORTER + name + N + MSG_INSTEAD_OF + written + MSG_SAME_VALUE);
-  GLOBAL_KEYWORDS[word] && throwInvalid('Write the keyword as a word: "' + name + notationWord(word) + MSG_INSTEAD_OF
+  GLOBAL_KEYWORDS[word] && throwInvalid(MSG_WRITE_SHORTER + name + CSS_WIDE_LETTERS[word] + MSG_INSTEAD_OF
     + written + MSG_SAME_VALUE);
   path.indexOf(OPEN_PAREN) > -1 && throwInvalid(head + 'a function is not written in a class — the path alone, as "'
     + name + '_a\\.png"');
@@ -2868,7 +2859,16 @@ function normalizeCalc(
     base, sign, val + unit,
   );
 }
+/**
+ * Значение хендлера по умолчанию — для голого имени (`z` → `z1`). Непустой суффикс, который хендлер не разобрал,
+ * — брак: раньше `z--v`, `dn_x`, `rx--v` молча давали значение по умолчанию (`z-index:1`, `250ms`, `180deg`).
+ * @param p параметры хендлера
+ * @param def значение по умолчанию
+ * @returns ссылка на запись со значением по умолчанию
+ * @example normalizeDefault({ name: 'z', suffix: '', ni: '' }, 1) // { exts: ['z1'] }
+ */
 function normalizeDefault(p: MnEssenceParams, def?: string | number): MnHandlerResult {
+  p.suffix && throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR + p.name + DOUBLE_QUOTE);
   return {
     exts: [p.name + (def || 0) + p.ni],
   };
@@ -2890,6 +2890,7 @@ import type {
 } from '../../core/types';
 import {
   handlerWrap,
+  CSS_WIDE_LETTERS,
 } from '../../core/utils';
 
 /**
@@ -4441,11 +4442,21 @@ export default {
         words[letter] = entry[0];
         items.push(name + letter + HINT_OPEN + valueNormalize(entry[0]) + CLOSE_PAREN);
       });
+      // Свойства записи — у всех букв одни (`justify-content` и старый `box-pack`).
+      const props = Object.keys(styles[Object.keys(styles)[0]][1]);
       return (p) => {
         const s = p.suffix;
         const entry = styles[s];
+        const v = cssVarValue(s);
+        const style: Record<string, string> = {};
         if (entry) {
           return styleWrap(entry[1], 1);
+        }
+        if (v) {
+          for (const prop of props) {
+            style[prop] = v;
+          }
+          return styleWrap(style, 1);
         }
         if (!s) {
           return 0;
@@ -4537,12 +4548,14 @@ export default {
       delay: 'transitionDelay',
     }, (propName, essenceName) => {
       mn(essenceName, (p) => {
-        let num;
+        let num, v;
         return p.camel || p.negative ? 0 : ((num = p.num)
           ? styleWrap({
             [propName]: num + MS,
           }, 1)
-          : normalizeDefault(p, 250)
+          : (v = cssVarValue(p.suffix)) ? styleWrap({
+            [propName]: v,
+          }, 1) : normalizeDefault(p, 250)
         );
       });
     });
@@ -4687,7 +4700,8 @@ export default {
       }
       const parts = splitValueParts(suffix);
       if (parts.length === 1) {
-        const whole = cssVarValue(suffix) || (GLOBAL_KEYWORDS[toKebabCase(suffix)] && toKebabCase(suffix));
+        // CSS-wide keyword — буквами, его ставит ядро (D-125).
+        const whole = cssVarValue(suffix);
         whole || throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name
         + '": expected "A" (auto), two colors — thumb_track, as "sbcF00_0" — or a variable');
         return styleWrap({
@@ -4734,13 +4748,8 @@ export default {
         const style: Record<string, string> = {};
         const parts = splitValueParts(suffix);
         const l = parts.length;
-        // Одно слово CSS-wide — значение целиком, как у `sbc`. Переменная с `_` в имени закрывается `;`
+        // CSS-wide keyword — буквами, его ставит ядро (D-125). Переменная с `_` в имени закрывается `;`
         // (`plc--my_gap;`), иначе `_` делит части: `plc--a_C` → `var(--a) center`.
-        const kebab = toKebabCase(suffix);
-        if (l === 1 && GLOBAL_KEYWORDS[kebab]) {
-          style[propName] = kebab;
-          return styleWrap(style);
-        }
         l < 3 || throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name + '": at most two parts — '
         + slotNames[0] + '_' + slotNames[1] + ', as "' + p.name + 'C_S"');
         const words: string[] = [];
@@ -4844,11 +4853,6 @@ export default {
         const name = p.name;
         const suffix = p.suffix;
         const style: Record<string, string> = {};
-        const kebab = toKebabCase(suffix);
-        if (GLOBAL_KEYWORDS[kebab]) {
-          style[propName] = kebab;
-          return styleWrap(style, priority);
-        }
         const prefix = MSG_VALUE + suffix + MSG_IS_INVALID_FOR + name + MSG_COLON;
         // Ведущий `_` — слова CSS как есть, но у каждого слова позиции есть буква, поэтому слово в этой записи —
         // вторая запись (D-113): `op_right_10px_top_20px` → «Write it shorter: "opR_10px_T_20px"».
@@ -5098,20 +5102,19 @@ export default {
       mn(name, (p) => {
         const s = p.suffix;
         const style: Record<string, any> = {};
-        let word: string;
         if (!s) {
           return 0;
         }
         style[propName] = s === N ? NONE
           : s[0] === UNDERSCORE ? imagePathValue(s.slice(1), name)
+            // CSS-wide keyword — буквами, его ставит ядро (D-125); `bgiNone` — «Write it shorter: "bgiN"».
             : cssVarValue(s)
-            || (GLOBAL_KEYWORDS[word = assertNotLongForm(
+            || (assertNotLongForm(
               toKebabCase(s), NONE_ABBREVIATIONS, name, s,
-            )] && word)
-            || throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + name + '": a picture is its path (`' + name
+            ), throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + name + '": a picture is its path (`' + name
               + '_a\\.png`), a variable (`' + name + '--x`) or `' + name + 'N`' + (gradientIn
               ? '; a gradient is written in `' + gradientIn + '` (`' + gradientIn + 'F00-00F`)'
-              : ''));
+              : '')));
         return styleWrap(style, 1);
       });
     });
@@ -5140,6 +5143,9 @@ export default {
 
     mn(
       'x', (p) => {
+        // Суффикс не той формы молча давал `translate(0px,0px)`: `x--v`, `x_translate\(10px\)` (D-124, D-125).
+        p.suffix && p.all === undefined && throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR
+          + 'x": expected a shift, as "x10", "x10y20", "x10y20z5", with a scale "s50" and a turn "rz45" after it');
         const scale = p.s;
         const angle = p.angle;
         const z = p.z;
@@ -5193,7 +5199,10 @@ export default {
       const prefix = 'rotate' + toUpper(suffix) + OPEN_PAREN;
       mn(R + suffix, (p) => {
         let v;
-        return (v = p.value) ? styleWrap({
+        // Переменная — угол поворота, часть `transform` (`rx--a` → `rotateX(var(--a))`).
+        return (v = cssVarValue(p.suffix)) ? styleWrap({
+          transform: prefix + v + CLOSE_PAREN,
+        }) : (v = p.value) ? styleWrap({
           transform: prefix + assertAngle(
             v, p.unit, p.name + p.suffix,
           ) + CLOSE_PAREN,
@@ -5361,9 +5370,6 @@ export default {
         '',
         1,
         1,
-        {
-          I: NAME_INHERIT,
-        },
       ],
       sw: [
         'strokeWidth',
@@ -5393,7 +5399,6 @@ export default {
         1,
         0,
         {
-          U: NAME_UNSET,
           N: NAME_NORMAL,
         },
       ],
@@ -5403,8 +5408,6 @@ export default {
         2,
         1,
         {
-          U: NAME_UNSET,
-          R: NAME_REVERT,
           N: NAME_NORMAL,
         },
       ],
@@ -5414,8 +5417,6 @@ export default {
         2,
         1,
         {
-          U: NAME_UNSET,
-          R: NAME_REVERT,
           N: NAME_NORMAL,
         },
       ],
@@ -5528,8 +5529,12 @@ export default {
         // До 2026-09-22 второе молча давало 900: число всегда умножалось на 100
         // и зажималось в 1..9, то есть самая естественная запись была неверной.
         const num = p.num;
+        const v = cssVarValue(p.suffix);
+        // Нераспознанный суффикс молча давал `font-weight:100`: `fw--v`, `fw_x` (D-125, 2026-10-31).
+        v || camel || num || !p.suffix || throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR
+          + 'fw": expected a digit (`fw6`), a weight (`fw600`), a letter (`fwB`) or a variable');
         return p.negative ? 0 : styleWrap({
-          fontWeight: camel
+          fontWeight: v || (camel
           // Слово не проверялось: `fwZzz` давало `font-weight:zzz`, `fwA` —
           // `font-weight:a`, `fwF00` — `font-weight:f`. Список закрытый,
           // выводится из того же словаря кратких записей; слово пишется буквой
@@ -5546,7 +5551,7 @@ export default {
               )
               : 100 * intval(
                 num, 1, 1, 9,
-              )),
+              ))),
         }, 1);
       },
 
@@ -5562,10 +5567,12 @@ export default {
         wordBreak: 'break-word',
       }),
       z: (p) => {
-        let num;
+        let num, v;
         // `z-index` — целое число или `auto`. Дробь давала `z-index:1.5`,
         // правило, которое браузер отбрасывает целиком.
-        return p.camel ? 0 : ((num = p.num) ? (
+        return p.camel ? 0 : (v = cssVarValue(p.suffix)) ? styleWrap({
+          zIndex: v,
+        }) : ((num = p.num) ? (
           REGEXP_INTEGER.test(num) || throwInvalid(MSG_VALUE + p.suffix
           + '" is invalid: z-index is an integer'),
           styleWrap({
@@ -5725,10 +5732,6 @@ export default {
       dir: synonymProvider('direction', {
         LTR: 'Ltr',
         RTL: 'Rtl',
-        I: NAME_INHERIT,
-        R: NAME_REVERT,
-        RL: NAME_REVERT_LAYER,
-        U: NAME_UNSET,
       }),
 
       // `composite`: берёт два значения — по оси X и Y
@@ -5764,19 +5767,11 @@ export default {
       mkt: synonymProvider('maskType', {
         L: 'Luminance',
         A: 'Alpha',
-        I: NAME_INHERIT,
-        R: NAME_REVERT,
-        RL: NAME_REVERT_LAYER,
-        U: NAME_UNSET,
       }),
 
       mkm: synonymProvider('maskMode', {
         L: 'Luminance',
         A: 'Alpha',
-        I: NAME_INHERIT,
-        R: NAME_REVERT,
-        RL: NAME_REVERT_LAYER,
-        U: NAME_UNSET,
         MS: 'MatchSource',
       }),
 
@@ -6009,10 +6004,6 @@ export default {
           A: NAME_AUTO,
           N: NAME_NONE,
           M: 'Manipulation',
-          I: 'Initial',
-          R: NAME_REVERT,
-          U: NAME_UNSET,
-          RL: NAME_REVERT_LAYER,
           PX: 'PanX',
           PY: 'PanY',
           PL: 'PanLeft',
@@ -6254,7 +6245,6 @@ export default {
       ec: synonymProvider('emptyCells', {
         S: 'Show',
         H: 'Hide',
-        U: NAME_UNSET,
       }),
       bdcl: synonymProvider(
         'borderCollapse', {
@@ -6427,7 +6417,6 @@ export default {
           CR: 'ColumnReverse',
           R: 'Row',
           RR: 'RowReverse',
-          U: NAME_UNSET,
         }, 1,
       ),
       fxw: synonymProvider(
@@ -6623,7 +6612,7 @@ export default {
     function ftProvider(propName: string): MnHandler {
       return (p: MnEssenceParams) => {
         let v: string; let s: Record<string, any>;
-        return (v = filter(map(p.suffix.split(REGEXP_FILTER_SEP),
+        return (v = cssVarValue(p.suffix) || filter(map(p.suffix.split(REGEXP_FILTER_SEP),
           (v: string) => {
             let matchs: RegExpExecArray | null; let name: string; let options: any;
             if (!v || !(matchs = REGEXP_FILTER_NAME.exec(v))) {

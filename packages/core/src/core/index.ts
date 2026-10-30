@@ -106,6 +106,9 @@ import {
   REGEXP_MEDIA_PRIORITY,
   REGEXP_MATCH_VAR,
   REGEXP_MATCH_IMPORTANT,
+  CSS_WIDE_BY_LETTERS,
+  CSS_WIDE_LETTERS,
+  CSS_WIDE_MARK,
   REGEXP_IMPORTANT,
   REGEXP_MATCH_VALUE,
   REGEXP_INVALID_CSS_VALUE,
@@ -372,6 +375,121 @@ function throwRawProperty(body: string): never {
     token: '[' + body + ']',
     handler: '',
     arg: body,
+  });
+}
+
+/** Метка-переменная CSS-wide keyword значением свойства — `var(--mnkeyword)` (D-125). */
+const CSS_WIDE_MARK_VALUE = 'var(' + CSS_WIDE_MARK + ')';
+
+/**
+ * Ставит CSS-wide keyword на место метки {@link CSS_WIDE_MARK} в декларациях эссенции и во вложенных `childs`/`media`
+ * (D-125).
+ *
+ * @param essence — эссенция хендлера, вызванного с меткой вместо букв
+ * @param keyword — ключевое слово (`inherit`)
+ * @returns сколько деклараций получили ключевое слово; `-1` — метка оказалась частью значения
+ *   (`translate(var(--mnkeyword))`): ключевое слово заменяет значение свойства только целиком
+ * @example
+ * placeCssWide({ style: { color: 'var(--mnkeyword)' } }, 'inherit'); // 1, style.color === 'inherit'
+ */
+function placeCssWide(essence: MnEssenceRaw, keyword: string): number {
+  const style = essence.style;
+  const nested = [
+    essence.childs,
+    essence.media,
+  ];
+  let placed = 0;
+  let own: number;
+  let key: string;
+  let group: Record<string, MnEssenceRaw> | undefined;
+  let values: string | string[];
+  let list: string[];
+  let i: number;
+  let l: number;
+  for (key in style) {
+    values = (style as Record<string, string | string[]>)[key];
+    // Значение — строка или список запасных значений (`['var(--v)']`).
+    list = typeof values === STRING ? [values as string] : values as string[];
+    for (i = 0, l = list.length; i < l; i++) {
+      if (list[i] === CSS_WIDE_MARK_VALUE) {
+        list[i] = keyword;
+        placed++;
+      } else if (list[i].indexOf(CSS_WIDE_MARK) > -1) {
+        return -1;
+      }
+    }
+    typeof values === STRING && ((style as Record<string, string>)[key] = list[0]);
+  }
+  for (group of nested) {
+    for (key in group) {
+      if ((own = placeCssWide((group as Record<string, MnEssenceRaw>)[key], keyword)) < 0) {
+        return own;
+      }
+      placed += own;
+    }
+  }
+  return placed;
+}
+
+/**
+ * CSS-wide keyword словом там, где есть буквы (D-125, D-113): `bgiInherit` → «Write it shorter: "bgiINH"».
+ *
+ * @param value — эссенция токена (в режиме `property-value` — `имя\u0001значение`)
+ * @param word — слово, как написано в токене
+ * @param letters — его буквы
+ * @param name — имя хендлера
+ */
+function throwCssWideWord(
+  value: string, word: string, letters: string, name: string,
+): never {
+  const token = value.replace(MN_ESSENCE_PAIR, COLON);
+  const at = token.lastIndexOf(word);
+  throw new MnParseError('Write it shorter: "' + token.slice(0, at) + letters + token.slice(at + word.length)
+    + '" instead of "' + token + '" — same value (D-125)', {
+    token: token,
+    handler: name,
+    arg: word,
+  });
+}
+
+/**
+ * Токен с CSS-wide keyword, которого хендлер не поставил целым значением (D-125): `xINH` — `x` пишет часть
+ * `transform`, а не всё значение.
+ */
+function throwCssWide(
+  value: string, name: string, part: boolean,
+): never {
+  throw cssWideError(
+    value, name, part,
+  );
+}
+
+/**
+ * Сообщение хендлера, не принявшего метку CSS-wide keyword (D-125), — с буквами, как в токене: `Value "INH" is invalid
+ * for "fxa"`, `"mkiINH" was renamed: write "mkINH"`.
+ *
+ * @param ex — ошибка хендлера
+ * @param written — буквы из токена (`INH`)
+ */
+function unmarkError(ex: MnParseError, written: string): void {
+  const context = ex.context as { token: string;
+    arg: string };
+  ex.message = ex.message.split(CSS_WIDE_MARK).join(written);
+  context.token = context.token && context.token.split(CSS_WIDE_MARK).join(written);
+  context.arg = context.arg && context.arg.split(CSS_WIDE_MARK).join(written);
+}
+
+/** Ошибка {@link throwCssWide}. */
+function cssWideError(
+  value: string, name: string, part: boolean,
+): MnParseError {
+  return new MnParseError(DOUBLE_QUOTE + value.replace(MN_ESSENCE_PAIR, COLON) + '" gives no CSS: '
+    + (part ? 'a CSS-wide keyword is a whole value of a property, and handler "' + name + '" writes a part of one'
+      : 'handler "' + name + '" puts no whole value into a property, so a CSS-wide keyword has nowhere to go')
+    + ' (D-125)', {
+    token: value.replace(MN_ESSENCE_PAIR, COLON),
+    handler: name,
+    arg: '',
   });
 }
 
@@ -1875,8 +1993,17 @@ function minotationProvider(options?: MnOptions) {
    */
   function handlerEntry(handle: ((p: MnEssenceParams) => MnEssenceRaw | void | 0) & { skip?: number }): MnDomainFn {
     return (params, value) => {
+      // CSS-wide keyword буквами (D-125): хендлер получает метку-переменную и ставит её, как поставил бы `--v`.
+      const written = params.suffix;
+      const keyword = CSS_WIDE_BY_LETTERS[written];
+      const letters = keyword ? '' : CSS_WIDE_LETTERS[params.suffix];
+      letters && throwCssWideWord(
+        value, params.suffix, letters, params.name,
+      );
+      keyword && (params.suffix = CSS_WIDE_MARK);
       const matchs = handle.skip ? null : REGEXP_MATCH_VALUE.exec(params.suffix);
       let essence: MnEssenceRaw | void | 0;
+      let placed: number;
       matchs && (
         params.value = matchs[2],
         params.camel = matchs[3],
@@ -1888,9 +2015,21 @@ function minotationProvider(options?: MnOptions) {
       // Хендлер ничего не вернул — автор писал токен, а стиля не будет (`fx` без значения).
       // Молчать нельзя (D-021): пропажу иначе замечали бы только в браузере. Исключение —
       // минус Tailwind (`-p-4`), который хендлер не принимает: CSS нет, молча, как в Tailwind (D-064).
-      if (!(essence = handle(params))) {
-        return params.sign ? 0 : throwNoStyle(value, params.name);
+      try {
+        essence = handle(params);
+      } catch (ex) {
+        // Хендлер не принял метку (`fxaINH`): в его сообщении вместо `--mnkeyword` — буквы, как написал автор.
+        keyword && ex instanceof MnParseError && unmarkError(ex, written);
+        throw ex;
       }
+      if (!essence) {
+        return params.sign ? 0 : keyword ? throwCssWide(
+          value, params.name, false,
+        ) : throwNoStyle(value, params.name);
+      }
+      keyword && (placed = placeCssWide(essence as MnEssenceRaw, keyword)) < 1 && throwCssWide(
+        value, params.name, placed < 0,
+      );
       (essence as MnEssenceRaw).important = params.ni ? 1 : 0;
       return validateEssenceStyle(
         essence as MnEssenceRaw, value, params.name,

@@ -492,7 +492,7 @@ describe('одиночные свойства-длины со своим раз�
       'outline-offset:var(--v)',
     ],
     [
-      'oloInherit',
+      'oloINH',
       'outline-offset:inherit',
     ],
     [
@@ -1015,8 +1015,8 @@ describe('свойства с закрытым перечнем значений
   });
 
   test('CSS-wide keywords проходят везде', () => {
-    expect(compile(['irInherit']).css).toContain('image-rendering:inherit');
-    expect(compile(['apUnset']).css).toContain('appearance:unset');
+    expect(compile(['irINH']).css).toContain('image-rendering:inherit');
+    expect(compile(['apUNS']).css).toContain('appearance:unset');
   });
 });
 
@@ -1111,7 +1111,7 @@ describe('у свойства с перечнем число недопусти�
       'position:relative',
     ],
     [
-      'posInherit',
+      'posINH',
       'position:inherit',
     ],
     [
@@ -1161,7 +1161,7 @@ describe('стиль границы — закрытый перечень', () =
       'border-left-style:solid',
     ],
     [
-      'bsInherit',
+      'bsINH',
       'border-style:inherit',
     ],
     [
@@ -1578,11 +1578,11 @@ describe('свойства-картинки: одна запись на знач
       'background-image:none',
     ],
     [
-      'bgiInherit',
+      'bgiINH',
       'background-image:inherit',
     ],
     [
-      'bgiRevertLayer',
+      'bgiRVL',
       'background-image:revert-layer',
     ],
     [
@@ -1657,7 +1657,7 @@ describe('свойства-картинки: одна запись на знач
     ],
     [
       'bgi_inherit',
-      'Write the keyword as a word: "bgiInherit" instead of "bgi_inherit" — same value',
+      'Write it shorter: "bgiINH" instead of "bgi_inherit" — same value',
     ],
     [
       'bgi_',
@@ -1900,7 +1900,7 @@ describe('content: кавычки ставит хендлер', () => {
       'content:no-close-quote',
     ],
     [
-      'cntInherit',
+      'cntINH',
       'content:inherit',
     ],
   ])('%s → %s — без `_` ожидается ключевое слово', (token, expected) => {

@@ -590,7 +590,7 @@ describe('Standard preset — предсказуемость значений', 
   );
 
   test.each([
-    ['fontInherit', 'font:inherit'],
+    ['fontINH', 'font:inherit'],
     ['fontM', 'font:menu'],
     ['fontSB', 'font:status-bar'],
   ])('%s → %s — набор свойств одним словом', (token, expected) => {

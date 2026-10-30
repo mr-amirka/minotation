@@ -356,6 +356,6 @@ describe('single properties (group F)', () => {
   test('a function or a variable passes the closed sets', () => {
     expect(declaration('tbsCalc\\(2+2\\)')).toBe('tab-size:calc(2+2)');
     expect(declaration('tbs--t')).toBe('tab-size:var(--t)');
-    expect(declaration('fvnInherit')).toBe('font-variant-numeric:inherit');
+    expect(declaration('fvnINH')).toBe('font-variant-numeric:inherit');
   });
 });

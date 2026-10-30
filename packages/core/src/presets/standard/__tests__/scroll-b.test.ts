@@ -188,8 +188,8 @@ describe('scroll snapping and the scrollbar (group B)', () => {
       '.sstBH_M{scroll-snap-type:both mandatory}',
     ],
     [
-      'sstInherit',
-      '.sstInherit{scroll-snap-type:inherit}',
+      'sstINH',
+      '.sstINH{scroll-snap-type:inherit}',
     ],
     [
       'ssaN',
@@ -326,8 +326,8 @@ describe('sbc — scrollbar-color (group B)', () => {
       '.sbc--bar{scrollbar-color:var(--bar)}',
     ],
     [
-      'sbcInherit',
-      '.sbcInherit{scrollbar-color:inherit}',
+      'sbcINH',
+      '.sbcINH{scrollbar-color:inherit}',
     ],
   ])('%s', (token, css) => {
     expect(compile(token).css).toBe(css);

@@ -75,8 +75,8 @@ describe('grid lines (group C)', () => {
       '.gcsS_Calc\\\\\\(1\\+1\\\\\\){grid-column-start:span calc(1+1)}',
     ],
     [
-      'grsInherit',
-      '.grsInherit{grid-row-start:inherit}',
+      'grsINH',
+      '.grsINH{grid-row-start:inherit}',
     ],
     [
       'gcA',
@@ -197,8 +197,8 @@ describe('place-* (group C)', () => {
       '.plc--my_gap\\;_C{place-content:var(--my_gap) center}',
     ],
     [
-      'plcInherit',
-      '.plcInherit{place-content:inherit}',
+      'plcINH',
+      '.plcINH{place-content:inherit}',
     ],
   ])('%s', (token, css) => {
     expect(compile(token).css).toBe(css);

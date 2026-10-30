@@ -414,15 +414,15 @@ describe('ключевые слова семейств совпадают с г�
 
   test.each([
     [
-      'pInherit',
+      'pINH',
       'padding:inherit',
     ],
     [
-      'cInherit',
+      'cINH',
       'color:inherit',
     ],
     [
-      'mUnset',
+      'mUNS',
       'margin:unset',
     ],
   ])('%s → %s — CSS-wide keywords проходят везде', (token, expected) => {

@@ -305,7 +305,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'bi', props: 'border-image-source', keywords: ['border', 'image', 'gradient'], description: 'картинка рамки, как у bg: градиент, переменная, N; по пути — bi_a\\.png (D-122); рамке градиентом нужен bis1 (D-119)', examples: ['bi8D5524-6D3504 bis1 b6 bsS', 'bi_a\\.png', 'biN'] },
   { name: 'bis', props: 'border-image-slice', keywords: ['border', 'image', 'slice', 'fill'], description: 'числа без единицы или %, до четырёх; F — fill', examples: ['bis1', 'bis30_F', 'bis10_20'] },
   { name: 'biw', props: 'border-image-width', keywords: ['border', 'image', 'width'], description: 'толщина кольца картинки: длина с единицей, процент, A — auto; голое число — кратное ширины рамки, без px (D-123)', examples: ['biw2', 'biw10px', 'biwA'] },
-  { name: 'bio', props: 'border-image-outset', keywords: ['border', 'image', 'outset'], examples: ['bio5', 'bio1_2'] },
+  { name: 'bio', props: 'border-image-outset', keywords: ['border', 'image', 'outset'], description: 'вынос кольца картинки за рамку: длина с единицей; голое число — кратное ширины рамки, без px (D-123)', examples: ['bio2', 'bio10px'] },
   { name: 'bir', props: 'border-image-repeat', keywords: ['border', 'image', 'repeat', 'round'], description: 'ST stretch, R repeat, RD round, SP space', examples: ['birRD', 'birR_ST'] },
   { name: 'bdcl', props: 'border-collapse', keywords: ['border', 'collapse', 'table'], examples: ['bdclC', 'bdclS'] },
   { name: 'bsp', props: 'border-spacing', keywords: ['border', 'spacing', 'table'], description: '_ = пробел между двумя значениями', examples: ['bsp0', 'bsp5px_1rem'] },

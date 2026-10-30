@@ -177,13 +177,22 @@ describe('the other parts of border-image are their own handlers', () => {
       'biw10px_2',
       'border-image-width:10px 2',
     ],
+    // У `bio` то же: голое число — кратное ширины рамки (D-123), пиксели — с единицей.
     [
-      'bio5',
-      'border-image-outset:5px',
+      'bio2',
+      'border-image-outset:2',
     ],
     [
-      'bio1_2',
-      'border-image-outset:1px 2px',
+      'bio0.5',
+      'border-image-outset:0.5',
+    ],
+    [
+      'bio10px',
+      'border-image-outset:10px',
+    ],
+    [
+      'bio1_2px',
+      'border-image-outset:1 2px',
     ],
     [
       'birST',
@@ -268,7 +277,8 @@ describe('border-image: errors say what is accepted', () => {
     ],
     [
       'bio5%',
-      'Value "5%" is invalid for "bio": expected a length without a percentage, zero or positive',
+      'Value "5%" is invalid for "bio": expected a length with a unit (`10px`) or a number — multiples of the'
+        + ' border width (`2`); no percentage, zero or positive',
     ],
     [
       'birRound',
@@ -281,7 +291,8 @@ describe('border-image: errors say what is accepted', () => {
     // У `bio` букв нет — слово бракуется тем, что ожидалось, без пустого «Available:».
     [
       'bioQqz',
-      'Value "Qqz" is invalid for "bio": expected a length without a percentage, zero or positive',
+      'Value "Qqz" is invalid for "bio": expected a length with a unit (`10px`) or a number — multiples of the'
+        + ' border width (`2`); no percentage, zero or positive',
     ],
     // Подсказка показывает `fill` со слайсом: `bisF` сам бракуется.
     [

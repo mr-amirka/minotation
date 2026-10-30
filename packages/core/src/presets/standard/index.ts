@@ -2388,8 +2388,6 @@ const BORDER_IMAGE_REPEAT_SYNONYMS: Record<string, string> = {
 };
 /** Слайс рамки: число без единицы или процент. */
 const REGEXP_BORDER_SLICE = /^[0-9]*\.?[0-9]+%?$/;
-/** Длина без процента: `border-image-outset` процентов не принимает. */
-const REGEXP_LENGTH_NO_PERCENT = lengthPartRegExp(UNITS.filter((unit) => unit !== PERCENT));
 /** `border-image-slice`: до четырёх слайсов — чисел без единицы (пиксели картинки) или процентов. */
 const BORDER_IMAGE_SLICES: LengthRule = {
   signed: false,
@@ -2402,8 +2400,8 @@ const BORDER_IMAGE_SLICES: LengthRule = {
 };
 /**
  * `border-image-width`: до четырёх длин, процентов или чисел. Голое число остаётся числом — в CSS это кратное ширины
- * рамки (`biw2` → `border-image-width:2`: при `b10` кольцо 20px), `px` к нему не приписывается (D-123, исключение из
- * D-013); пиксели — с единицей, `biw10px`.
+ * рамки (`biw2` → `border-image-width:2`: при `b10` кольцо 20px), `px` к нему не приписывается: единица по умолчанию
+ * ставится только там, где число без неё ничего не значит (D-123, D-013); пиксели — с единицей, `biw10px`.
  */
 const BORDER_IMAGE_WIDTHS: LengthRule = {
   signed: false,
@@ -2412,12 +2410,16 @@ const BORDER_IMAGE_WIDTHS: LengthRule = {
   unitless: 1,
   expected: 'a length with a unit (`10px`), a percentage or a number — multiples of the border width (`2`)',
 };
-/** `border-image-outset`: до четырёх длин, без процентов. */
+/**
+ * `border-image-outset`: до четырёх длин без процентов или чисел. Голое число — кратное ширины рамки, как у `biw`
+ * (D-123): `bio2` → `border-image-outset:2`, при `b10` кольцо выносится на 20px; пиксели — с единицей, `bio10px`.
+ */
 const BORDER_IMAGE_OUTSETS: LengthRule = {
   signed: false,
   max: 4,
-  part: REGEXP_LENGTH_NO_PERCENT,
-  expected: 'a length without a percentage',
+  part: lengthPartRegExp(UNITS.filter((unit) => unit !== PERCENT), 1),
+  unitless: 1,
+  expected: 'a length with a unit (`10px`) or a number — multiples of the border width (`2`); no percentage',
 };
 /** Готовое значение — градиент (а не цвет-fallback из `colorGetBackground`). */
 function isGradientValue(v: string): boolean {

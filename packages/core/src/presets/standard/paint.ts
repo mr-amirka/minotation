@@ -4,8 +4,9 @@ import type {
 import type {
   MnEssenceParams,
 } from '../../core/types';
-import {
+import type {
   MnHandler,
+  MnStyle,
 } from '../../types';
 import type {
   LengthRule,
@@ -81,9 +82,16 @@ import {
   styleWrap,
 } from './context';
 
+/** Строка цветового свойства: свойство, приоритет, слова сверх цвета (`auto` у `caret-color`). */
+type ColorRow = [propName: string, priority?: number, keywords?: Record<string, 1>];
+
 const CONTRAST = 'contrast';
 const MASK_IMAGE = 'maskImage';
 const NAME_PADDING_BOX = 'PaddingBox';
+/** Код цвета в части значения: hex и, через точку, альфа (`F00.5`). */
+const REGEXP_HEX_ALPHA = /^[0-9A-Fa-f]+(\.[0-9]+)?$/;
+/** Фигура `clip-path` нативной формой: `_circle(50%)` — не путь, хоть и начинается с `_`. */
+const REGEXP_SHAPE_HEAD = /^_(?:circle|ellipse|inset|polygon)\(/i;
 const REPEAT_SYNONYMS: Record<string, string> = {
   '': NAME_REPEAT,
   R: NAME_REPEAT,
@@ -247,14 +255,14 @@ export function registerPaint(ctx: StandardContext): void {
       1,
       AUTO_KEYWORD,
     ],
-  }, (options: any[], pfx: string) => {
+  } satisfies Record<string, ColorRow>, (options, pfx) => {
     const propName = options[0];
     const priority = options[1] || 0;
     // Слова свойства сверх цвета — `auto` у `caret-color`.
-    const keywords: Record<string, 1> | undefined = options[2];
+    const keywords = options[2];
     mn(
       pfx, (p) => {
-        let s: Record<string, any>; let v: string | undefined; let synonym: any;
+        let s: MnStyle; let v: string | undefined; let synonym: string;
         const word = keywords && toKebabCase(p.suffix);
         if (word && keywords[word]) {
           s = {};
@@ -292,8 +300,6 @@ export function registerPaint(ctx: StandardContext): void {
     );
   });
 
-  /** Код цвета в части значения: hex и, через точку, альфа (`F00.5`). */
-  const REGEXP_HEX_ALPHA = /^[0-9A-Fa-f]+(\.[0-9]+)?$/;
   /**
    * Один цвет из значения, где цветов несколько: синоним, функция, переменная
    * (в том числе с альфой) или код. Те же проверки, что у `c`: длинное слово
@@ -347,9 +353,8 @@ export function registerPaint(ctx: StandardContext): void {
     const parts = splitValueParts(suffix);
     if (parts.length === 1) {
       // CSS-wide keyword — буквами, его ставит ядро (D-125).
-      const whole = cssVarValue(suffix);
-      whole || throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name
-      + '": expected "A" (auto), two colors — thumb_track, as "sbcF00_0" — or a variable');
+      const whole = cssVarValue(suffix) || throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name
+        + '": expected "A" (auto), two colors — thumb_track, as "sbcF00_0" — or a variable');
       return styleWrap({
         scrollbarColor: whole,
       });
@@ -400,7 +405,7 @@ export function registerPaint(ctx: StandardContext): void {
     const gradientIn = options[1];
     mn(name, (p) => {
       const s = p.suffix;
-      const style: Record<string, any> = {};
+      const style: MnStyle = {};
       if (!s) {
         return 0;
       }
@@ -481,7 +486,7 @@ export function registerPaint(ctx: StandardContext): void {
         A: NAME_AUTO,
         CT: NAME_CONTAIN,
         CV: NAME_COVER,
-      }, 1, 0 as any, SIZE_LENGTHS, 1,
+      }, 1, undefined, SIZE_LENGTHS, 1,
     ),
     mkr: synonymProvider(
       'maskRepeat', REPEAT_SYNONYMS, 1,
@@ -547,7 +552,7 @@ export function registerPaint(ctx: StandardContext): void {
         A: NAME_AUTO,
         CT: NAME_CONTAIN,
         CV: NAME_COVER,
-      }, 1, 0 as any, SIZE_LENGTHS, 1,
+      }, 1, undefined, SIZE_LENGTHS, 1,
     ),
     // `mask-position-x/y` в CSS нет (только с `-webkit-`), поэтому позиция маски — общим разбором, как у `op`.
     mkp: positionProvider('maskPosition', 1),
@@ -567,7 +572,7 @@ export function registerPaint(ctx: StandardContext): void {
         R: NAME_RIGHT,
         XS: 'XStart',
         XE: 'XEnd',
-      }, 2, 0 as any, OFFSET_LENGTH,
+      }, 2, undefined, OFFSET_LENGTH,
     ),
     bgpy: synonymProvider(
       'backgroundPositionY', {
@@ -576,7 +581,7 @@ export function registerPaint(ctx: StandardContext): void {
         B: NAME_BOTTOM,
         YS: 'YStart',
         YE: 'YEnd',
-      }, 2, 0 as any, OFFSET_LENGTH,
+      }, 2, undefined, OFFSET_LENGTH,
     ),
     ft: ftProvider('filter'),
     ftb: ftProvider('backdropFilter'),
@@ -770,7 +775,6 @@ export function registerPaint(ctx: StandardContext): void {
    * `clip-path` (группа F): буквы рамки (`cpthN`, `cpthBB` → `border-box`), фигуры нативной формой
    * ({@link CLIP_PATH_FUNCTIONS}) и `<clipPath>` SVG по пути: `cpth_\#wave` → `url("#wave")`.
    */
-  const REGEXP_SHAPE_HEAD = /^_(?:circle|ellipse|inset|polygon)\(/i;
   const clipPathWords = synonymProvider(
     'clipPath', VALUE_ABBREVIATIONS.clipPath, undefined, undefined, undefined, undefined, CLIP_PATH_FUNCTIONS,
   );
@@ -783,7 +787,7 @@ export function registerPaint(ctx: StandardContext): void {
 
   function ftProvider(propName: string): MnHandler {
     return (p: MnEssenceParams) => {
-      const s: Record<string, any> = {};
+      const s: MnStyle = {};
       const whole = cssVarValue(p.suffix);
       const main = whole || functionsValue(p, FILTER_FUNCTIONS);
       if (!main) {

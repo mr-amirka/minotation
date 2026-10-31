@@ -4,7 +4,7 @@ import type {
 import type {
   MnEssenceParams,
 } from '../../core/types';
-import {
+import type {
   MnHandler,
 } from '../../types';
 import {
@@ -197,7 +197,7 @@ export function registerInteraction(ctx: StandardContext): void {
     // `composite`: берёт два значения — по оси X и Y
     // (`overscroll-behavior: contain auto`).
     ovb: synonymProvider(
-      'overscrollBehavior', OVERSCROLL_BEHAVIOR_PRIORITIES, 0, 0 as any, 0 as any, 1,
+      'overscrollBehavior', OVERSCROLL_BEHAVIOR_PRIORITIES, 0, undefined, undefined, 1,
     ),
     ovbx: synonymProvider('overscrollBehaviorX', OVERSCROLL_BEHAVIOR_PRIORITIES),
     ovby: synonymProvider('overscrollBehaviorY', OVERSCROLL_BEHAVIOR_PRIORITIES),
@@ -259,7 +259,7 @@ export function registerInteraction(ctx: StandardContext): void {
         PD: 'PanDown',
         PZ: 'PinchZoom',
         // `composite`: оси комбинируются (`touch-action: pan-x pan-y`).
-      }, 0, 0 as any, 0 as any, 1,
+      }, 0, undefined, undefined, 1,
     ),
     us: synonymProvider('userSelect', {
       A: NAME_AUTO,
@@ -318,7 +318,7 @@ export function registerInteraction(ctx: StandardContext): void {
         + name + '_a\\.png,' + last + '", or the letter alone, "' + name + last + DOUBLE_QUOTE);
       if (!word && REGEXP_FUNCTION_NAME_ANY.test(last) && last.indexOf(DOT) < 0) {
         // Курсор словом: `cr_a\.png,pointer` давал бы картинку `pointer`; без картинки — `crP`.
-        for (key in CURSOR_SYNONYMS) { // eslint-disable-line
+        for (key in CURSOR_SYNONYMS) {
           key && toKebabCase(CURSOR_SYNONYMS[key]) === toKebabCase(last) && throwInvalid(MSG_WRITE_SHORTER + name
             + (l > 1 ? s.slice(0, s.length - last.length) : '') + key + MSG_INSTEAD_OF + name + s + MSG_SAME_VALUE);
         }

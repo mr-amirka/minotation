@@ -7,7 +7,7 @@ import {
 import {
   handlerWrap,
 } from '../../core/utils';
-import {
+import type {
   MnHandler,
   MnInstance,
 } from '../../types';
@@ -107,7 +107,7 @@ export function enumHint(
   let abbr: string;
   // Словари букв пишут слово по-разному (`Solid`, `-webkit-sticky`, `optimizeSpeed`), поэтому сверка — без регистра
   // и дефисов.
-  for (abbr in abbreviations) { // eslint-disable-line
+  for (abbr in abbreviations) {
     short[squashWord((abbreviations as Record<string, string>)[abbr])] = abbr;
   }
   const seen: Record<string, 1> = {};
@@ -132,7 +132,7 @@ export function assertNotLongForm(
   value: string, abbreviations: Record<string, string>, essenceName: string, raw: string,
 ): string {
   let abbr: string;
-  for (abbr in abbreviations) { // eslint-disable-line
+  for (abbr in abbreviations) {
     abbreviations[abbr] === value && throwInvalid(MSG_WRITE_SHORTER + essenceName + abbr + MSG_INSTEAD_OF + essenceName
       + raw + MSG_SAME_VALUE);
   }
@@ -309,7 +309,7 @@ export function withSuspectCheck(instance: MnInstance): MnInstance {
           : target(...(args as Parameters<MnInstance>));
       }
       // Форма-карта `mn({ fw: handler, cfx: { … } })`: хендлеры в ней — те же хендлеры.
-      for (name in first as Record<string, unknown>) { // eslint-disable-line
+      for (name in first as Record<string, unknown>) {
         map[name] = typeof (first as Record<string, unknown>)[name] === 'function'
           ? guard((first as Record<string, MnHandler>)[name], name)
           : (first as Record<string, unknown>)[name];

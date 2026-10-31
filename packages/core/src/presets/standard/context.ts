@@ -4,10 +4,11 @@ import type {
 import {
   CSS_WIDE_LETTERS,
 } from '../../core/utils';
-import {
+import type {
   MnHandler,
   MnHandlerResult,
   MnInstance,
+  MnStyle,
 } from '../../types';
 import type {
   LengthRule,
@@ -81,16 +82,35 @@ import {
   splitValueParts,
 } from './functions';
 
+/** Строка свойства-длины: свойство, значение по умолчанию, приоритет, одно значение, слова, без процента. */
+type LengthRow = [
+  propName: string, defaultValue: string | number, priority?: number, one?: number,
+  synonyms?: Record<string, string>, noPercent?: number,
+];
+
+/** Строка одиночного свойства: свойство, приоритет, длина, авто-повтор, слова. */
+type SingleRow = [
+  propName: string, priority?: number, lengthy?: number, autoRepeat?: number, keywords?: Record<string, 1>,
+];
+
 const REGEXP_TRIM_SNAKE_LEFT = /^_+/g;
 export const REGEXP_DOTS = /\./g;
+/** Функция, записанная в токене: `Rgb\(0,0,0\)`, `Url\(a\.png\)` — в цвете и картинке не принимается (D-121). */
+const REGEXP_COLOR_FUNCTION = /^[a-z][a-z0-9-]*\(/i;
+/** CSS-переменная с альфой: `--warn.3` → 30% непрозрачности. */
+const REGEXP_VAR_WITH_ALPHA = /^(---?[^.;\s]+)\.([0-9]+)$/;
+/** Ведущий `0` перед точкой — в нотации альфа пишется как `.67`, не `0.67`. */
+const REGEXP_LEADING_ZERO = /^0?\./;
+/** Цвет, записанный с `#`: `#F00`, `#FF000080`. */
+const REGEXP_LEADING_HASH_HEX = /^#[0-9A-Fa-f]{3,8}$/;
+/** Одиночный hex без альфы/градиента — только цифры. */
+const REGEXP_PLAIN_HEX = /^[0-9A-Fa-f]+$/;
 
 
 const PATTERN_VAR = '((-):env?((--[^;,]+)(,\\d+([a-z%]+):vu?):va?):vv;?)';
-// eslint-disable-next-line
 const PATTERN_VAR_ADD = '(-):nva?((--[^;,]+)(,[0-9\\.]+([a-z%]+):vua?):vaa?):vva;?';
 export const PATTERN_DIGITS = '(-?[0-9\\.]+)';
 
-// eslint-disable-next-line
 // `;?` после имени переменной — тот же необязательный терминатор, что в
 // PATTERN_VAR. Цветовому пути он не нужен для разбора (здесь нет разреза по
 // `_`, поэтому `c--my_ink` работает и без него), но пишущий токен не обязан
@@ -104,8 +124,10 @@ const PATTERN_VAL = '^(((([A-Za-z]+):otherName|([-]):sign?'
   + ':total?)?):value([a-z%]+):unit?)|'
   + PATTERN_VAR + '):vl(([-+]):sa(([0-9\\.]+):addv([a-z%]+):addu?|'
   + PATTERN_VAR_ADD + ')):add?$';
-export function floatNormalize(v: any, nosign?: number): number {
-  const m = v && v.match(REGEXP_DOTS);
+export function floatNormalize(value: string | number | undefined, nosign?: number): number {
+  // Число сюда не приходит: группы разбора — строки, `|| 0` у вызывающего — только ложное значение.
+  const m = value && (value as string).match(REGEXP_DOTS);
+  const v = parseFloat(value as string);
   // ИСПРАВЛЕНО 2026-09-23: предыдущая попытка (тем же числом) убрать
   // `v < 0 && nosign` как "недостижимое" опиралась только на `num` (числитель
   // в getVal's total-ветке, знак у него отдельной группой `sign`, не бывает
@@ -114,22 +136,15 @@ export function floatNormalize(v: any, nosign?: number): number {
   // на нём throwInvalid'ит (пустой вывод), а без этой проверки v2 молча
   // считал `-50%`. Ветка ЖИВАЯ — просто её не было в тест-сьюте; тест на
   // `w1/-2` добавлен, `positive`/`nosign` в сигнатуру возвращены.
-  (m && m.length > 1 || isNaN(v = parseFloat(v)) || (v < 0 && nosign))
+  (m && m.length > 1 || isNaN(v) || (v < 0 && nosign))
     && throwInvalid();
   return v;
 }
 
-export function replace(
-  v: any, from: string | RegExp, to: string,
-): string {
-  return ('' + v).replace(from, to);
-}
 export function snakeLeftTrim(v: string): string {
-  return replace(
-    v, REGEXP_TRIM_SNAKE_LEFT, '',
-  );
+  return v.replace(REGEXP_TRIM_SNAKE_LEFT, '');
 }
-export function styleWrap(style: Record<string, any>, priority?: number): MnHandlerResult {
+export function styleWrap(style: MnStyle, priority?: number): MnHandlerResult {
   return {
     style,
     priority: priority || 0,
@@ -177,7 +192,7 @@ export function imagePathValue(
   const word = path.toLowerCase();
   const written = name + UNDERSCORE + path;
   let letter: string;
-  for (letter in letters) { // eslint-disable-line
+  for (letter in letters) {
     (letters as Record<string, string>)[letter] === word && throwInvalid(MSG_WRITE_SHORTER + name + letter + MSG_INSTEAD_OF + written
       + MSG_SAME_VALUE);
   }
@@ -397,7 +412,7 @@ function autoRepeatValue(suffix: string, essenceName: string): string | undefine
     + (m[3] ? defaultUnitNormalize(m[3]) : '1fr') + '))';
 }
 export function calc(
-  v: any, sign: string, add: any,
+  v: string, sign: string, add: string,
 ): string {
   return 'calc(' + v + SPACE + sign + SPACE + add + CLOSE_PAREN;
 }
@@ -430,6 +445,7 @@ export function createContext(instance: MnInstance) {
     setKeyframes,
   } = mn;
   const {
+    escapeQuote,
     isDefined,
     map,
     mapIn,
@@ -476,23 +492,23 @@ export function createContext(instance: MnInstance) {
  * умолчание `deg` сохраняется (`rx45` → `rotateX(45deg)`).
  */
   /** Обратные индексы словарей кратких записей: слово CSS → буква. Строятся при первом обращении к словарю. */
-  const lettersByWord = new WeakMap<Record<string, any>, Record<string, string>>();
+  const lettersByWord = new WeakMap<Record<string, string>, Record<string, string>>();
   /**
    * Буква, которой словарь хендлера записывает слово CSS (`auto` → `A`), или `undefined`. Словарь задаёт слова в
    * любой форме (`Auto`, `NoRepeat`, `scroll-position`) — сравниваются нормализованные.
    * @param aliases — перечень свойства с другими записями слов (`optimizespeed` → `optimizeSpeed`)
    */
   function letterOf(
-    word: string, symonyms: Record<string, any>, aliases?: Record<string, 1 | string>,
+    word: string, synonyms: Record<string, string>, aliases?: Record<string, 1 | string>,
   ): string | undefined {
-    let index = lettersByWord.get(symonyms);
+    let index = lettersByWord.get(synonyms);
     if (!index) {
       const built: Record<string, string> = index = {};
-      forIn(symonyms, (w: any, abbr: string) => {
+      forIn(synonyms, (w: string, abbr: string) => {
         let v: string;
         abbr && typeof w === 'string' && !built[v = valueNormalize(w)] && (built[v] = abbr);
       });
-      lettersByWord.set(symonyms, index);
+      lettersByWord.set(synonyms, index);
     }
     // Другая запись того же слова в перечне (`moz-crisp-edges` → `-moz-crisp-edges`) — то же слово.
     const alias = aliases && aliases[word];
@@ -505,9 +521,9 @@ export function createContext(instance: MnInstance) {
    * @param written — как оно записано в суффиксе (`Auto`, `auto`)
    */
   function assertNoLetter(
-    word: string, written: string, symonyms: Record<string, any>, name: string, suffix: string,
+    word: string, written: string, synonyms: Record<string, string>, name: string, suffix: string,
   ): void {
-    const abbr = letterOf(word, symonyms);
+    const abbr = letterOf(word, synonyms);
     abbr && throwInvalid(MSG_WRITE_SHORTER + name + shorterSuffix(
       suffix, written, abbr,
     )
@@ -522,7 +538,7 @@ export function createContext(instance: MnInstance) {
    * @returns значение CSS, части через пробел (проверка по перечню свойства — за вызывающим)
    */
   function lettersValue(
-    p: MnEssenceParams, letters: Record<string, any>, aliases?: Record<string, 1 | string>,
+    p: MnEssenceParams, letters: Record<string, string>, aliases?: Record<string, 1 | string>,
   ): string {
     const suffix = p.suffix;
     const raw = suffix[0] == UNDERSCORE;
@@ -533,7 +549,7 @@ export function createContext(instance: MnInstance) {
     const shorter: string[] = new Array(l);
     let i = 0;
     let part: string;
-    let letter: any;
+    let letter: string;
     let word: string;
     let abbr: string | undefined;
     let long = 0;
@@ -585,7 +601,7 @@ export function createContext(instance: MnInstance) {
  *
  * @param value — уже кебабнутое значение
  * @param raw — как оно записано в токене (для сообщения и поиска по словарю)
- * @param symonyms — словарь кратких записей хендлера
+ * @param synonyms — словарь кратких записей хендлера
  * @param keywords — допустимые ключевые слова конкретного свойства
  * @param name — имя хендлера (для подсказки с буквой)
  * @param suffix — суффикс токена целиком (для подсказки с буквой)
@@ -593,16 +609,16 @@ export function createContext(instance: MnInstance) {
   function assertKnownWord(
     value: string,
     raw: string,
-    symonyms?: Record<string, any>,
+    synonyms?: Record<string, string>,
     keywords?: Record<string, 1>,
     name?: string,
     suffix?: string,
   ): string {
-    symonyms && !symonyms[raw] && assertNoLetter(
-      value, raw, symonyms, name as string, suffix as string,
+    synonyms && !synonyms[raw] && assertNoLetter(
+      value, raw, synonyms, name as string, suffix as string,
     );
     if (GLOBAL_KEYWORDS[value]
-    || (symonyms && symonyms[raw])
+    || (synonyms && synonyms[raw])
     || (keywords && keywords[value])) {
       return value;
     }
@@ -614,13 +630,13 @@ export function createContext(instance: MnInstance) {
     keywords: Record<string, 1>,
     allow: number,
     defaultUnit: string,
-    symonyms?: Record<string, string>,
+    synonyms?: Record<string, string>,
   ): string {
     const camel = p.camel;
     if (camel) {
       return assertKnownWord(
-        toKebabCase(symonyms && symonyms[camel] || camel),
-        camel, symonyms, keywords, p.name, p.suffix,
+        toKebabCase(synonyms && synonyms[camel] || camel),
+        camel, synonyms, keywords, p.name, p.suffix,
       );
     }
     const num = p.num;
@@ -654,7 +670,7 @@ export function createContext(instance: MnInstance) {
  * решает вызывающая сторона тем же флагом, каким и раньше.
  */
   function assertSign(
-    sign: string | undefined, positive: number | undefined, suffix: any,
+    sign: string | undefined, positive: number | undefined, suffix: string | number,
   ): void {
     sign === DASH && positive
     && throwInvalid(MSG_VALUE + suffix
@@ -669,17 +685,17 @@ export function createContext(instance: MnInstance) {
  * `b10%` давало `border-width:10%`, а `b1/2` — `border-width:50%` (дробь
  * всегда разворачивается в процент). Браузер такие правила отбрасывает.
  */
-  function assertPercent(noPercent: number | undefined, suffix: any): void {
+  function assertPercent(noPercent: number | undefined, suffix: string | number): void {
     noPercent && throwInvalid(MSG_VALUE + suffix
     + '" is invalid: this property takes a length, percent is not allowed');
   }
   function getVal(
-    suffix: any,
+    suffix: string | number,
     positive?: number,
     one?: number,
     defaultUnit?: string,
     noOtherName?: number,
-    symonyms?: Record<string, any>,
+    synonyms?: Record<string, string>,
     keywords?: Record<string, 1>,
     noPercent?: number,
     name?: string,
@@ -703,15 +719,15 @@ export function createContext(instance: MnInstance) {
     let vva: string | undefined;
     let num: string | undefined;
     let val: string;
-    let p: Record<string, any>;
+    let p: Record<string, string | undefined>;
     let sa: string | undefined;
     for (; i < l; i++) {
       parseVals(parts[i], p = {});
       if (otherName = p.otherName) {
         noOtherName && throwInvalid();
         output[i] = assertKnownWord(
-          toKebabCase(symonyms && symonyms[otherName] || otherName),
-          otherName, symonyms, keywords, name, '' + suffix,
+          toKebabCase(synonyms && synonyms[otherName] || otherName),
+          otherName, synonyms, keywords, name, '' + suffix,
         );
         continue;
       }
@@ -851,9 +867,9 @@ export function createContext(instance: MnInstance) {
  */
   function synonymProvider(
     propName: string | string[],
-    synonyms: Record<string, any>,
+    synonyms: Record<string, string>,
     priority?: number,
-    _style?: Record<string, any>,
+    _style?: MnStyle,
     // Свойство принимает не только слова из словаря, но и длину — по
     // правилу `SIZE_LENGTHS` или `OFFSET_LENGTH` (D-104).
     numeric?: LengthRule,
@@ -994,11 +1010,13 @@ export function createContext(instance: MnInstance) {
     }
     return isArray(propName)
       ? (props = flags(propName), ((p: MnEssenceParams) => {
-        let s: string; let style: Record<string, any>; let synonym: any; let propName: string;
+        let s: string; let style: MnStyle; let synonym: string; let propName: string;
         if (synonym = synonyms[s = p.suffix]) {
           style = {};
           s = valueNormalize(synonym);
-        for (propName in props) style[propName] = s; // eslint-disable-line
+          for (propName in props) {
+            style[propName] = s;
+          }
           return styleWrap(style, priority);
         }
         if (s) {
@@ -1012,12 +1030,14 @@ export function createContext(instance: MnInstance) {
           s = valueNormalize(s);
           assertSynonymAbbr(p, s);
           style = {};
-        for (propName in props) style[propName] = s; // eslint-disable-line
+          for (propName in props) {
+            style[propName] = s;
+          }
           return styleWrap(style, priority);
         }
       }))
       : ((p: MnEssenceParams) => {
-        let s: string; let style: Record<string, any>; let synonym: any;
+        let s: string; let style: MnStyle; let synonym: string;
         if (synonym = synonyms[s = p.suffix]) {
           numeric && numeric.needsNumber && throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + p.name + MSG_COLON_QUOTE
             + valueNormalize(synonym) + '" does not stand alone — add ' + numeric.expected);
@@ -1155,10 +1175,6 @@ export function createContext(instance: MnInstance) {
     return hex.slice(0, hex.length - form[0]) + DOT
     + toFixed(alpha / form[1]).replace(REGEXP_LEADING_ZERO, '');
   }
-  /** Функция, записанная в токене: `Rgb\(0,0,0\)`, `Url\(a\.png\)` — в цвете и картинке не принимается (D-121). */
-  const REGEXP_COLOR_FUNCTION = /^[a-z][a-z0-9-]*\(/i;
-  /** CSS-переменная с альфой: `--warn.3` → 30% непрозрачности. */
-  const REGEXP_VAR_WITH_ALPHA = /^(---?[^.;\s]+)\.([0-9]+)$/;
   /**
  * Значение цвета, которое НЕ разбирается как код, — переменная с альфой: `bc--warn.3` → `color-mix(in srgb,
  * var(--warn) 30%, transparent)` (D-016 п. 1). Точка-альфа уже работает для кодов (`cF00.5` → `rgba(…,.5)`), здесь
@@ -1218,9 +1234,6 @@ export function createContext(instance: MnInstance) {
       + MSG_INSTEAD_OF + p.name + head + hex + tail + MSG_SAME_VALUE);
     }
   }
-  /** Ведущий `0` перед точкой — в нотации альфа пишется как `.67`, не `0.67`. */
-  const REGEXP_LEADING_ZERO = /^0?\./;
-  const REGEXP_LEADING_HASH_HEX = /^#[0-9A-Fa-f]{3,8}$/;
   /**
  * Обратный индекс `COLOR_SYNONYMS`: длинное слово → аббревиатура.
  *
@@ -1265,8 +1278,6 @@ export function createContext(instance: MnInstance) {
     + '" is not a color: expected a code (`F00`), a variable or '
     + 'a keyword');
   }
-  /** Одиночный hex без альфы/градиента — только цифры. */
-  const REGEXP_PLAIN_HEX = /^[0-9A-Fa-f]+$/;
 
   /**
    * Фон или картинка: цвет (`bgF00`), градиент (`bgF00-00F`, `bg--a;--b`), переменная, `N` — `none`. Один читатель
@@ -1289,7 +1300,7 @@ export function createContext(instance: MnInstance) {
       + p.name + '": an image is ' + imageForms(p.name)
       + pathHint(p) + '; `' + property + '` does not accept a single color');
     return (p: MnEssenceParams) => {
-      let v: string; let style: Record<string, any>;
+      let v: string; let style: MnStyle;
       p.negative && throwInvalid();
       if (!pathHandler && p.suffix[0] === UNDERSCORE) {
         style = {};
@@ -1558,8 +1569,8 @@ export function createContext(instance: MnInstance) {
    *
    * @param table — хендлер → строка
    */
-  function registerLengthProperties(table: Record<string, any[]>): void {
-    forIn(table, (options: any[], pfx: string) => {
+  function registerLengthProperties(table: Record<string, LengthRow>): void {
+    forIn(table, (options: LengthRow, pfx: string) => {
       const [
         propName,
         defaultValue,
@@ -1581,7 +1592,7 @@ export function createContext(instance: MnInstance) {
           p.suffix || defaultValue,
           1, one, PX, 0, synonyms, keywords, noPercent, p.name,
         );
-        const style: Record<string, any> = {};
+        const style: MnStyle = {};
         style[propName] = v[0];
         return styleWrap(style, priority + v[1]);
       });
@@ -1595,17 +1606,17 @@ export function createContext(instance: MnInstance) {
    * @param table — хендлер → строка реестра
    * @param values — слоты, функции нативной формы, числа и подсказки темы по имени свойства
    */
-  function registerSingleProperties(table: Record<string, any[]>, values: SingleValues = NO_VALUES): void {
+  function registerSingleProperties(table: Record<string, SingleRow>, values: SingleValues = NO_VALUES): void {
     const slotsOf = values.slots;
     const functionsOf = values.functions || NO_VALUES.functions;
     const patterns = values.patterns || NO_VALUES.patterns;
     const parenHints = values.parenHints || NO_VALUES.parenHints;
-    forIn(table, (options: any[], essenceName: string) => {
-      const propName: string = options[0];
-      const priority: number | undefined = options[1];
-      const lengthy: number | undefined = options[2];
-      const autoRepeat: number | undefined = options[3];
-      const keywords: Record<string, 1> | undefined = options[4];
+    forIn(table, (options: SingleRow, essenceName: string) => {
+      const propName = options[0];
+      const priority = options[1];
+      const lengthy = options[2];
+      const autoRepeat = options[3];
+      const keywords = options[4];
       // §6.3: `priority || 0` вычислялся на каждый вызов хендлера, причём дважды —
       // выносим на холодный путь регистрации.
       const stylePriority = priority || 0;
@@ -1626,7 +1637,7 @@ export function createContext(instance: MnInstance) {
         ) : '');
       mn(essenceName, (p) => {
         let s, repeated, abbreviations;
-        let style: Record<string, any>;
+        let style: MnStyle;
         style = {};
         if (!(s = p.suffix)) {
         // Свойству-длине пустой суффикс даёт `0`, как у `p`/`m`/`b`; остальным
@@ -1709,6 +1720,7 @@ export function createContext(instance: MnInstance) {
     assertNoLetter,
     assertShortestHex,
     backgroundProvider,
+    escapeQuote,
     floatval,
     forEach,
     forIn,

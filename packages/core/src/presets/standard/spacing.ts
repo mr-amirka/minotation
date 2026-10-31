@@ -4,8 +4,10 @@ import type {
 import type {
   MnEssenceParams,
 } from '../../core/types';
-import {
+import type {
   MnHandler,
+  MnTokenValue,
+  MnStyle,
 } from '../../types';
 import {
   AXIS_X,
@@ -40,9 +42,13 @@ import {
 import {
   PATTERN_COLOR,
   normalizeDefault,
-  replace,
   styleWrap,
 } from './context';
+
+/** Строка семейства сторон: свойство, его хвост (`-width` у рамки), без знака, слова, без процента. */
+type SideRow = [
+  propName: string, propSuffix: string | 0, nosign: number, synonyms: Record<string, string>, noPercent?: number,
+];
 
 const SOLID = 'solid';
 const REGEXP_TRIM_KEBAB_LEFT = /^-+/g;
@@ -221,21 +227,23 @@ export function registerSpacing(ctx: StandardContext): void {
     const bsSidesSet = axisSetter((side) => BORDER + side + '-style');
     const bcSidesSet = axisSetter((side) => BORDER + side + '-color');
 
-    function sidesSetter(handle: (side: string) => string): (v: any) => Record<string, any> {
+    function sidesSetter(handle: (side: string) => string): (v: MnTokenValue) => MnStyle {
       const propsMap: Record<string, number> = {};
       forIn(sides, (_val, propSide) => {
         propsMap[handle(propSide)] = 1;
       });
-      return (v: any) => {
+      return (v: MnTokenValue) => {
       /* istanbul ignore next — защита фабрики, а не живая ветка: единственный
          вызывающий (`handleProvider` ниже) передаёт сюда `getVal()[0]`, а тот
          всегда возвращает строку (`output.join(' ')`), битый же вход роняет
          сам `getVal`. Страховка оставлена: `sidesSetter` — фабрика, её
          результат живёт в замыкании и может быть вызван из нового места. */
         isDefined(v) || throwInvalid();
-        const style: Record<string, any> = {};
+        const style: MnStyle = {};
         let pName: string;
-      for (pName in propsMap) style[pName] = v; // eslint-disable-line
+        for (pName in propsMap) {
+          style[pName] = v;
+        }
         return style;
       };
     }
@@ -247,31 +255,31 @@ export function registerSpacing(ctx: StandardContext): void {
      * @param handle имя свойства по стороне (`'-left'` → `padding-left`, `'-inline'` → `padding-inline`)
      * @param logical имя логического свойства, если `handle(axis)` его не даёт (`inset-inline`)
      */
-    function axisSetter(handle: (side: string) => string, logical?: string): (v: any) => Record<string, any> {
+    function axisSetter(handle: (side: string) => string, logical?: string): (v: MnTokenValue) => MnStyle {
       const physicalSet = sidesSetter(handle);
       if (!axis) {
         return physicalSet;
       }
       const logicalName = logical || handle(axis);
-      return (v: any) => {
+      return (v: MnTokenValue) => {
         if (instance.options.axisMode === AXIS_PHYSICAL) {
           return physicalSet(v);
         }
-        const style: Record<string, any> = {};
+        const style: MnStyle = {};
         style[logicalName] = v;
         return style;
       };
     }
 
     function handleProvider(
-      sidesSet: (v: any) => Record<string, any>,
-      // Порядок параметров унаследован; `symonyms` обязателен по смыслу, но
+      sidesSet: (v: MnTokenValue) => MnStyle,
+      // Порядок параметров унаследован; `synonyms` обязателен по смыслу, но
       // объявить его таким нельзя — он идёт после необязательных (TS1016).
       // Оба вызывающих передают словарь своего семейства.
-      nosign?: any,
-      one?: any,
-      symonyms?: Record<string, string>,
-      noPercent?: any,
+      nosign?: number,
+      one?: number,
+      synonyms?: Record<string, string>,
+      noPercent?: number,
     ): MnHandler {
     // Словарь задан на семейство, а не общий на все размеры: `mA` →
     // `margin:auto` валиден, а `pA` → `padding:auto` — нет. Допустимые слова
@@ -280,7 +288,7 @@ export function registerSpacing(ctx: StandardContext): void {
     // `getVal`, что и любая часть, — значение сразу, а не алиас на полную
     // запись (алиас делал полную запись несущей).
       const keywords: Record<string, 1> = {};
-      forIn(symonyms as Record<string, string>, (word: string) => {
+      forIn(synonyms as Record<string, string>, (word: string) => {
         keywords[toKebabCase(word)] = 1;
       });
       return (p: MnEssenceParams) => {
@@ -289,7 +297,7 @@ export function registerSpacing(ctx: StandardContext): void {
           return normalizeDefault(p, 0);
         }
         const v = getVal(
-          suffix, nosign, one, PX, 0, symonyms, keywords, noPercent, p.name,
+          suffix, nosign, one, PX, 0, synonyms, keywords, noPercent, p.name,
         );
         return styleWrap(sidesSet(v[0]), priority + v[1]);
       };
@@ -341,7 +349,7 @@ export function registerSpacing(ctx: StandardContext): void {
           A: NAME_AUTO,
         },
       ],
-    }, (args: any[], pfx: string) => {
+    } satisfies Record<string, SideRow>, (args, pfx) => {
       const propName = args[0];
       const propSuffix = args[1] || '';
       const name = pfx + suffix;
@@ -349,7 +357,8 @@ export function registerSpacing(ctx: StandardContext): void {
         LOGICAL_RENAMED[name] || name, handleProvider(
           axisSetter((side) => propName + side + propSuffix),
           args[2],
-          suffix,
+          // Сторона (`pt`, `px`) берёт одно значение, всё свойство (`p`) — до четырёх.
+          suffix ? 1 : 0,
           args[3],
           args[4],
         ), '', 1,
@@ -359,9 +368,7 @@ export function registerSpacing(ctx: StandardContext): void {
     mn(
       S + suffix, handleProvider(
         suffix
-          ? axisSetter((side) => (logicalSide ? INSET + side : replace(
-            side, REGEXP_TRIM_KEBAB_LEFT, '',
-          )), INSET + axis)
+          ? axisSetter((side) => (logicalSide ? INSET + side : side.replace(REGEXP_TRIM_KEBAB_LEFT, '')), INSET + axis)
           : (v) => {
           /* istanbul ignore next — та же защита, что в `sidesSetter` выше:
              `v` приходит из `getVal()[0]` и строкой быть обязан. */
@@ -397,7 +404,7 @@ export function registerSpacing(ctx: StandardContext): void {
     });
     mn(
       'bc' + suffix, (p) => {
-        let v: string | undefined; let synonym: any;
+        let v: string | undefined; let synonym: string;
         const raw = rawColorValue(p.suffix, p.name);
         if (raw) {
           return styleWrap(bcSidesSet(raw), priority + 1);
@@ -446,12 +453,12 @@ export function registerSpacing(ctx: StandardContext): void {
     // наоборот. Словарь кратких записей сужается под свой вариант, поэтому
     // `wmaxN` работает, а `wN` (`width:none`) бракуется.
       const keywords = sfx === 'max' ? KEYWORDS_SIZE_MAX : KEYWORDS_SIZE;
-      const symonyms: Record<string, string> = {};
+      const synonyms: Record<string, string> = {};
       forIn(SIZE_SYNONYMS, (word: string, abbr: string) => {
-        keywords[toKebabCase(word)] && (symonyms[abbr] = word);
+        keywords[toKebabCase(word)] && (synonyms[abbr] = word);
       });
       const propMap: Record<string, number> = {};
-    let propName, i = 0; // eslint-disable-line
+      let propName, i = 0;
       for (; i < length; i++) {
         propName = props[i];
         propMap[sfx ? (sfx + DASH + propName) : propName] = 1;
@@ -463,12 +470,14 @@ export function registerSpacing(ctx: StandardContext): void {
             return normalizeDefault(p, HUNDRED_PERCENT);
           }
           const v = getVal(
-            suffix, 1, 1, PX, 0, symonyms, keywords, 0, p.name,
+            suffix, 1, 1, PX, 0, synonyms, keywords, 0, p.name,
           );
           const [value] = v;
-          const style: Record<string, any> = {};
+          const style: MnStyle = {};
           let propName;
-      for (propName in propMap) style[propName] = value; // eslint-disable-line
+          for (propName in propMap) {
+            style[propName] = value;
+          }
           return styleWrap(style, priority + v[1]);
         }, '', 1,
       );

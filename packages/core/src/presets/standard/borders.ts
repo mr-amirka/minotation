@@ -1,4 +1,7 @@
 import type {
+  MnStyle,
+} from '../../types';
+import type {
   StandardContext,
 } from './context';
 import type {
@@ -70,7 +73,7 @@ const OUTLINE_STYLE_SYNONYMS = {
   TK: NAME_THICK,
 };
 
-const SHADOW_HANDLERS: Record<string, [string, (x: any, y: any, value: any, r: any, color: any) => any[]]> = {
+const SHADOW_HANDLERS: Record<string, [string, (x: string | number, y: string | number, value: string, r: string | number, color: string) => (string | number)[]]> = {
   bxsh: [
     'boxShadow',
     function(
@@ -200,7 +203,7 @@ const EMPTY_KEYWORDS: Record<string, 1> = {};
  * Последняя часть — цвет, единицы не получает. Подстановка тоже: `var(--blur)`
  * уже несёт единицу внутри себя, а `var(--blur)px` — мусор.
  */
-function shadowJoin(parts: string[], unit: string): string {
+function shadowJoin(parts: (string | number)[], unit: string): string {
   const last = parts.length - 1;
   const out: string[] = new Array(parts.length);
   let i = 0;
@@ -279,18 +282,18 @@ export function registerBorders(ctx: StandardContext): void {
     bis: synonymProvider(
       'borderImageSlice', {
         F: NAME_FILL,
-      }, 0, 0 as any, BORDER_IMAGE_SLICES, 1,
+      }, 0, undefined, BORDER_IMAGE_SLICES, 1,
     ),
     biw: synonymProvider(
       'borderImageWidth', {
         A: NAME_AUTO,
-      }, 0, 0 as any, BORDER_IMAGE_WIDTHS, 1,
+      }, 0, undefined, BORDER_IMAGE_WIDTHS, 1,
     ),
     bio: synonymProvider(
-      'borderImageOutset', {}, 0, 0 as any, BORDER_IMAGE_OUTSETS, 1,
+      'borderImageOutset', {}, 0, undefined, BORDER_IMAGE_OUTSETS, 1,
     ),
     bir: synonymProvider(
-      'borderImageRepeat', BORDER_IMAGE_REPEAT_SYNONYMS, 0, 0 as any, undefined, 1,
+      'borderImageRepeat', BORDER_IMAGE_REPEAT_SYNONYMS, 0, undefined, undefined, 1,
     ),
   });
 
@@ -356,7 +359,7 @@ export function registerBorders(ctx: StandardContext): void {
       // одна на все её длины.
       const unit = p[MN_SHADOW_UNIT] || PX;
       const output = new Array(colorsLength);
-    let sample, v, color, i, ci = 0; // eslint-disable-line
+      let sample, v, color, i, ci = 0;
       for (;ci < colorsLength; ci++) {
         color = colors[ci];
         sample = prefixIn
@@ -376,7 +379,7 @@ export function registerBorders(ctx: StandardContext): void {
 
     mn(pfx, (p) => {
       const suffix = p.suffix;
-      const style: Record<string, any> = {};
+      const style: MnStyle = {};
       // «Тени нет» — `bxshN` (наравне с голым `bxsh`); `bxshNone`, `bxsh_none` бракуются (D-113).
       if (suffix === N) {
         style[propName] = NONE;
@@ -448,7 +451,7 @@ export function registerBorders(ctx: StandardContext): void {
         const value = getVal(
           p.suffix || 10000, 1, 1, PX, 1,
         )[0];
-        const style: Record<string, any> = {};
+        const style: MnStyle = {};
         let i = 0;
         for (; i < length; i++) {
           style[propNames[i]] = value;

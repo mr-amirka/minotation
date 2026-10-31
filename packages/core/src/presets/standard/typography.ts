@@ -4,7 +4,7 @@ import type {
 import type {
   MnEssenceParams,
 } from '../../core/types';
-import {
+import type {
   MnHandler,
 } from '../../types';
 import {
@@ -379,17 +379,6 @@ const TYPOGRAPHY_VALUES: SingleValues = {
     orphans: REGEXP_VALUE_INTEGER,
   },
 };
-/** Кавычка или обратный слэш внутри строки — экранируются в CSS. */
-const REGEXP_QUOTE_ESCAPE = /(["\\])/g;
-/**
- * Экранирует то, что нельзя оставить внутри строкового значения как есть.
- *
- * `content: "he said "hi""` синтаксически обрывается на второй кавычке;
- * правильная запись — `"he said \"hi\""`.
- */
-function quoteEscape(v: string): string {
-  return v.replace(REGEXP_QUOTE_ESCAPE, '\\$1');
-}
 /**
  * Краткие записи `content`.
  *
@@ -441,11 +430,11 @@ const CONTENT_KEYWORDS: Record<string, 1> = {
  * `font-family:""My Font""` — вложенные кавычки, и правило браузер отбрасывает
  * (2026-09-27).
  */
-function __wr(v: string): string {
+function fontNameQuote(v: string): string {
   if (v[0] === DOUBLE_QUOTE || v[0] === QUOTE) {
     return v;
   }
-  return v[0] == DASH
+  return v[0] === DASH
     ? DOUBLE_QUOTE + v.slice(1) + DOUBLE_QUOTE
     : (
       v.indexOf(SPACE) > -1 ? DOUBLE_QUOTE + v + DOUBLE_QUOTE : v
@@ -460,6 +449,7 @@ function __wr(v: string): string {
 export function registerTypography(ctx: StandardContext): void {
   const {
     assertKnownWord,
+    escapeQuote,
     instance,
     intval,
     lengthOrWord,
@@ -542,7 +532,7 @@ export function registerTypography(ctx: StandardContext): void {
       p.suffix.indexOf(UNDERSCORE) > 0 && assertFontVariantNumericOrder(p.name, p.suffix);
       return base(p);
     })(synonymProvider(
-      'fontVariantNumeric', FONT_VARIANT_NUMERIC_SYNONYMS, 0, 0 as any, 0 as any, 1,
+      'fontVariantNumeric', FONT_VARIANT_NUMERIC_SYNONYMS, 0, undefined, undefined, 1,
     )),
     /**
      * Обрезка текста по числу строк: `lcl3` → `overflow:hidden`, `display:-webkit-box`,
@@ -602,7 +592,7 @@ export function registerTypography(ctx: StandardContext): void {
           )
         // `num` приходит из разбора строкой; сравнение и деление ведём
         // числом явно, а не полагаясь на приведение оператором.
-          : (+(num as string) >= 100
+          : '' + (+(num as string) >= 100
             ? 100 * intval(
               +(num as string) / 100, 1, 1, 9,
             )
@@ -802,7 +792,7 @@ export function registerTypography(ctx: StandardContext): void {
         // `numeric`: толщина линии — длина (`text-decoration: underline 2px`).
         // `composite`: линия, стиль, цвет и толщина в одном значении
         // (`text-decoration: underline wavy red`).
-      }, 0, 0 as any, OFFSET_LENGTH, 1,
+      }, 0, undefined, OFFSET_LENGTH, 1,
     ),
     tdl: synonymProvider(
       'textDecorationLine', TD_SYNONYMS, 1,
@@ -828,7 +818,7 @@ export function registerTypography(ctx: StandardContext): void {
         '': 'Ellipsis',
         C: 'Clip',
         E: 'Ellipsis',
-      }, 0, 0 as any, 0 as any, 1,
+      }, 0, undefined, undefined, 1,
     ),
     tt: synonymProvider('textTransform', {
       '': 'Uppercase',
@@ -918,7 +908,7 @@ export function registerTypography(ctx: StandardContext): void {
         N: NAME_NONE,
         RU: '\'\\00AB\'_\'\\00BB\'_\'\\201E\'_\'\\201C\'',
         EN: '\'\\201C\'_\'\\201D\'_\'\\2018\'_\'\\2019\'',
-      }, 1, 0 as any, 0 as any, 1,
+      }, 1, undefined, undefined, 1,
     ),
     lis: synonymProvider(
       'listStyle', {
@@ -927,7 +917,7 @@ export function registerTypography(ctx: StandardContext): void {
         O: 'Outside',
         // `composite`: тип, позиция и картинка в одном значении
         // (`list-style: disc inside`).
-      }, 0, 0 as any, 0 as any, 1,
+      }, 0, undefined, undefined, 1,
     ),
     lisp: synonymProvider(
       'listStylePosition', {
@@ -952,7 +942,7 @@ export function registerTypography(ctx: StandardContext): void {
         TB: 'TextBottom',
         // `numeric`: сдвиг базовой линии задаётся длиной или процентом
         // (`vertical-align: -0.125em`).
-      }, 0, 0 as any, OFFSET_LENGTH,
+      }, 0, undefined, OFFSET_LENGTH,
     ),
     wm: synonymProvider('writingMode', {
       '': 'LrTb',
@@ -1030,7 +1020,7 @@ export function registerTypography(ctx: StandardContext): void {
       assertNoFunction(
         s, p.name, () => '',
       );
-      const list = map(fontNameNormalize(s).split(REGEXP_COMMA), __wr);
+      const list = map(fontNameNormalize(s).split(REGEXP_COMMA), fontNameQuote);
       assertFontNames(list, s);
       return styleWrap({
         fontFamily: list.join(COMMA),
@@ -1083,7 +1073,8 @@ export function registerTypography(ctx: StandardContext): void {
           // Скобка, которой нет в суффиксе, — от подстановки (`cnt_--v`): её не кавычат. Скобка автора — текст.
           ? (v
             ? (v.indexOf(OPEN_PAREN) > -1 && s.indexOf(OPEN_PAREN) < 0 ? v
-              : DOUBLE_QUOTE + quoteEscape(v) + DOUBLE_QUOTE)
+              // `content: "he said "hi""` обрывается на второй кавычке: кавычка и `\` внутри строки экранируются.
+              : DOUBLE_QUOTE + escapeQuote(v) + DOUBLE_QUOTE)
             : (s.length > 1 && throwInvalid(MSG_VALUE + s
             + '" is invalid: a space is written as "cntS", an empty string as "cnt_"'),
             '""'))

@@ -239,10 +239,12 @@ function addTransitionLetter(
 addTransitionLetter(
   A, 1, ALL,
 );
+/** Заглавная не в начале слова: перед ней — дефис. */
+const REGEXP_INNER_CAPITAL = /(?!^)[A-Z]/g;
 for (const letters in TIMING_FUNCTION_SYNONYMS) {
   // `EaseIn` → `ease-in`: слова таблицы — CamelCase без цифр.
   addTransitionLetter(
-    letters, 3, TIMING_FUNCTION_SYNONYMS[letters].replace(/(?!^)[A-Z]/g, '-$&').toLowerCase(),
+    letters, 3, TIMING_FUNCTION_SYNONYMS[letters].replace(REGEXP_INNER_CAPITAL, '-$&').toLowerCase(),
   );
 }
 /** Одно имя CSS-свойства — от двух знаков, как в {@link REGEXP_PROPERTY_LIST}. */
@@ -620,8 +622,8 @@ export function registerMotion(ctx: StandardContext): void {
         (REGEXP_ANGLE_TAIL.exec(p.suffix) as RegExpExecArray)[1],
         p.name + p.suffix,
       ) + CLOSE_PAREN) : ''),
-      }); // eslint-disable-next-line
-}, '^' + PATTERN_DIGITS + ':x?(%):xu?([yY]' + PATTERN_DIGITS
+      });
+    }, '^' + PATTERN_DIGITS + ':x?(%):xu?([yY]' + PATTERN_DIGITS
   + ':y(%):yu?)?([zZ]' + PATTERN_DIGITS
   + ':z(%):zu?)?([sS]([0-9\\.]+):s)?([rR](x|y|z):dir'
   + PATTERN_DIGITS + ':angle([a-z]+):unit?)?$',

@@ -4,8 +4,9 @@ import type {
 import type {
   MnEssenceParams,
 } from '../../core/types';
-import {
+import type {
   MnHandler,
+  MnStyle,
 } from '../../types';
 import {
   AUTO,
@@ -647,7 +648,7 @@ export function registerFlexGrid(ctx: StandardContext): void {
       );
       // 1 CSS-свойство — priority = 2 - 1, как у соседних w/h (props.length === 1)
       const priority = 1;
-      const style: Record<string, any> = {};
+      const style: MnStyle = {};
       style[propName] = v[0];
       return styleWrap(style, priority + v[1]);
     };

@@ -152,7 +152,7 @@ const LAYOUT_VALUES: SingleValues = {
   },
 };
 function normalizeCalc(
-  base: any, signAndVal: string, unit: string,
+  base: string, signAndVal: string, unit: string,
 ): string {
   const sign = signAndVal[0];
   const val = signAndVal.slice(1);
@@ -220,14 +220,13 @@ export function registerLayout(ctx: StandardContext): void {
         // `clip` — как `hidden`, но без создания scroll-контейнера.
         C: 'Clip',
       // `composite`: две оси в одном значении — `overflow: hidden auto`.
-      }, priority, 0 as any, 0 as any, 1,
+      }, priority, undefined, undefined, 1,
     );
 
     mn('ov' + suffix, function (this: unknown) {
-    // `arguments` вместо rest — §6.1: хендлер зовётся на каждый токен.
-    // Приведение нужно только для `apply` в строгом режиме.
-    // eslint-disable-next-line
-    const essence = handle.apply(this, arguments as unknown as [MnEssenceParams]);
+      // `arguments` вместо rest — §6.1: хендлер зовётся на каждый токен.
+      // Приведение нужно только для `apply` в строгом режиме.
+      const essence = handle.apply(this, arguments as unknown as [MnEssenceParams]);
       if (essence) {
         const s = essence.style;
         const v = s && s[propName];
@@ -276,10 +275,10 @@ export function registerLayout(ctx: StandardContext): void {
     rlv: 'posR',
     abs: 'posA',
     fixed: 'posF',
-  'static': 'posS', // eslint-disable-line
+    'static': 'posS',
     sticky: 'posSK',
 
-  'break': styleWrap({ // eslint-disable-line
+    'break': styleWrap({
       whiteSpace: NORMAL,
       wordBreak: 'break-word',
     }),
@@ -348,7 +347,7 @@ export function registerLayout(ctx: StandardContext): void {
         IFR: 'InlineFlowRoot',
         // `composite`: внешний и внутренний тип разом
         // (`display: inline flow-root`).
-      }, 0, 0 as any, 0 as any, 1,
+      }, 0, undefined, undefined, 1,
     ),
 
     dir: synonymProvider('direction', {
@@ -480,6 +479,6 @@ export function registerLayout(ctx: StandardContext): void {
           },
         },
       };
-    // eslint-disable-next-line
-}, '^((((\\d+):w)x((\\d+):h))|(\\d+):oh)?(([-+]):sa([0-9\\.]+):addv([a-z%]+):addu?):add?|(.*):other', 1);
+    }, '^((((\\d+):w)x((\\d+):h))|(\\d+):oh)?(([-+]):sa([0-9\\.]+):addv([a-z%]+):addu?):add?|(.*):other', 1,
+  );
 }

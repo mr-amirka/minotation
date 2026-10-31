@@ -30,6 +30,7 @@ import type {
   routeParseProvider,
   indexOf,
   toFixed,
+  escapeQuote,
   IStringifyCss,
 } from 'fundamentool';
 import type {
@@ -68,14 +69,18 @@ export interface MnUtils {
   routeParseProvider: typeof routeParseProvider;
   indexOf: typeof indexOf;
   toFixed: typeof toFixed;
+  escapeQuote: typeof escapeQuote;
 }
 
 /** Значение токена MN — строка или массив строк (множественные значения) */
 export type MnTokenValue = string | string[];
 
+/** Стили хендлера: свойство в camelCase → значение (`{ paddingTop: '10px' }`). */
+export type MnStyle = Record<string, MnTokenValue>;
+
 /** Результат хендлера — стили или ссылка на сущность */
 export interface MnHandlerResult {
-  style?: Record<string, MnTokenValue>;
+  style?: MnStyle;
   priority?: number;
   exts?: string[];
   selectors?: string[];
@@ -106,7 +111,7 @@ export type MnHandler = (params: MnEssenceParams) => MnHandlerResult | void | 0;
 /** Сущность MN (статическая) */
 export interface MnEntity {
   exts?: string[];
-  style?: Record<string, MnTokenValue>;
+  style?: MnStyle;
   selectors?: string[];
   childs?: Record<string, MnEntity>;
 }

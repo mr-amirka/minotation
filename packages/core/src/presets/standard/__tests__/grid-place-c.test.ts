@@ -71,8 +71,8 @@ describe('grid lines (group C)', () => {
       '.gcs--l{grid-column-start:var(--l)}',
     ],
     [
-      'gcsS_Calc\\(1+1\\)',
-      '.gcsS_Calc\\\\\\(1\\+1\\\\\\){grid-column-start:span calc(1+1)}',
+      'gcsS_--n',
+      '.gcsS_--n{grid-column-start:span var(--n)}',
     ],
     [
       'grsINH',
@@ -126,6 +126,11 @@ describe('grid lines (group C)', () => {
     [
       'grsHeader_Side',
       'at most one number, one name and one "span"',
+    ],
+    // Функция в токене не пишется (D-124): вычисленное — через переменную, `gcsS_--n`.
+    [
+      'gcsS_Calc\\(1+1\\)',
+      'a function is not written in a class; a computed value goes through a variable, as "gcs--x"',
     ],
     [
       'grsS_S_2',

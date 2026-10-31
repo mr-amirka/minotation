@@ -353,8 +353,10 @@ describe('single properties (group F)', () => {
     expect(result.warnings).toContain(message);
   });
 
-  test('a function or a variable passes the closed sets', () => {
-    expect(declaration('tbsCalc\\(2+2\\)')).toBe('tab-size:calc(2+2)');
+  test('a variable passes the closed sets, a function is rejected (D-124)', () => {
+    const result = compile('tbsCalc\\(2+2\\)');
+    expect(result.css).toBe('');
+    expect(result.warnings).toContain('a function is not written in a class; a computed value goes through a variable');
     expect(declaration('tbs--t')).toBe('tab-size:var(--t)');
     expect(declaration('fvnINH')).toBe('font-variant-numeric:inherit');
   });

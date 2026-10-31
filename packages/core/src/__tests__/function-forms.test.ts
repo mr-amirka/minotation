@@ -687,14 +687,10 @@ describe('курсор-картинка: cr, запятая владельца (
       'cr_a\\.png_4_4',
       'cursor:url("a.png") 4 4,auto',
     ],
-    // `_` в имени файла — как написан; пробел — как в URL.
+    // `_` в имени файла — как написан.
     [
       'cr_my_img\\.png',
       'cursor:url("my_img.png"),auto',
-    ],
-    [
-      'cr_my%20icon\\.png,HA',
-      'cursor:url("my%20icon.png"),hand',
     ],
     [
       'cr_img/hand\\.svg,b\\.png_2_2,G',
@@ -1073,8 +1069,8 @@ describe('повтор и функции дорожек сетки в натив
     ],
     [
       'g_repeat\\(2,1fr\\)_/_1fr',
-      'Value "_repeat(2,1fr)_/_1fr" is invalid for "g": a function is not written in a class — a repeat of'
-      + ' tracks is "3x1fr", as "g1fr_/_3x1fr"; another function goes through a variable',
+      'Value "_repeat(2,1fr)_/_1fr" is invalid for "g": a function is not written in a class; a computed value'
+      + ' goes through a variable, as "g--x". A repeat of tracks is "3x1fr", as "g1fr_/_3x1fr"',
     ],
     [
       'g1fr_/_3x2',
@@ -1083,5 +1079,148 @@ describe('повтор и функции дорожек сетки в натив
     ],
   ])('%s', (token, message) => {
     expect(rejected(token)).toBe(message);
+  });
+});
+
+describe('функция в токене бракуется у хендлеров без нативных форм (D-124, шаг 3)', () => {
+  const COMPUTED = 'a function is not written in a class; a computed value goes through a variable, as ';
+  test.each([
+    // Закрытые списки: подсказка — буквы хендлера.
+    [
+      'dUrl\\(a\\.png\\)',
+      'Value "Url(a.png)" is invalid for "d": ' + COMPUTED + '"d--x". Available: dB (block), dN (none),',
+    ],
+    [
+      'taCalc\\(1\\)',
+      'Value "Calc(1)" is invalid for "ta": ' + COMPUTED + '"ta--x". Available: taL (left),',
+    ],
+    [
+      'ar_min\\(1,2\\)',
+      'Value "_min(1,2)" is invalid for "ar": ' + COMPUTED + '"ar--x". Available: arA (auto)',
+    ],
+    // Массивная форма `synonymProvider` (page-break-*).
+    [
+      'pgbaUrl\\(a\\)',
+      'Value "Url(a)" is invalid for "pgba": ' + COMPUTED + '"pgba--x". Available: pgbaA (auto),',
+    ],
+    // `assertEnumValue` — его зовут `pos` и `bs*`.
+    [
+      'posUrl\\(a\\)',
+      'Value "Url(a)" is invalid for "pos": ' + COMPUTED + '"pos--x". Available: posWS (-webkit-sticky),',
+    ],
+    [
+      'bstUrl\\(a\\)',
+      'Value "Url(a)" is invalid for "bst": ' + COMPUTED + '"bst--x". Available: bstO (outset),',
+    ],
+    // Число без букв — без списка.
+    [
+      'tbsCalc\\(2+2\\)',
+      'Value "Calc(2+2)" is invalid for "tbs": ' + COMPUTED + '"tbs--x"',
+    ],
+    // Свои читатели: позиция, `font`, `ff`.
+    [
+      'tfoUrl\\(a\\)',
+      'Value "Url(a)" is invalid for "tfo": ' + COMPUTED + '"tfo--x"',
+    ],
+    [
+      'opUrl\\(a\\)',
+      'Value "Url(a)" is invalid for "op": ' + COMPUTED + '"op--x"',
+    ],
+    [
+      'fontUrl\\(a\\)',
+      'Value "Url(a)" is invalid for "font": ' + COMPUTED + '"font--x"',
+    ],
+    [
+      'ffUrl\\(a\\)',
+      'Value "Url(a)" is invalid for "ff": ' + COMPUTED + '"ff--x"',
+    ],
+  ])('%s', (token, message) => {
+    expect(rejected(token).indexOf(message)).toBe(0);
+  });
+
+  test.each([
+    [
+      'd_var\\(--x\\)',
+      'd',
+    ],
+    [
+      'tnEnv\\(x\\)',
+      'tn',
+    ],
+    [
+      'tn_var\\(--x\\)',
+      'tn',
+    ],
+    [
+      'anEnv\\(x\\)',
+      'an',
+    ],
+    [
+      'gEnv\\(x\\)',
+      'g',
+    ],
+    [
+      'ttf_var\\(--x\\)',
+      'ttf',
+    ],
+    [
+      'cnt_var\\(--x\\)',
+      'cnt',
+    ],
+  ])('подстановка словом: %s — своя запись', (token, name) => {
+    expect(rejected(token)).toContain('a variable is written without "var()": "' + name + '--x" → var(--x), "' + name
+      + '---x" → env(--x)');
+  });
+
+  test.each([
+    [
+      'd--v',
+      'display:var(--v)',
+    ],
+    [
+      'dINH',
+      'display:inherit',
+    ],
+    [
+      'pos--p',
+      'position:var(--p)',
+    ],
+    [
+      'bs--s',
+      'border-style:var(--s)',
+    ],
+    [
+      'font--f',
+      'font:var(--f)',
+    ],
+    [
+      'ff--f',
+      'font-family:var(--f)',
+    ],
+    [
+      'tn--x',
+      'transition:var(--x)',
+    ],
+    [
+      'g---x',
+      'grid:env(--x)',
+    ],
+    [
+      'pgba--v',
+      'page-break-after:var(--v);break-after:var(--v)',
+    ],
+    // Скобка в кавычках — текст, не функция.
+    [
+      'q_"\\("_"\\)"',
+      'quotes:"(" ")"',
+    ],
+    [
+      "q_'\\('_'\\)'",
+      "quotes:'(' ')'",
+    ],
+  ])('%s проходит', (token, declaration) => {
+    const out = compile([token]);
+    expect(out.warnings).toEqual([]);
+    expect(out.css).toContain('{' + declaration + '}');
   });
 });

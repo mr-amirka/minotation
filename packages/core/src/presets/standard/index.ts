@@ -1631,6 +1631,7 @@ function throwParen(
   }
   const form = forms[key] || forms[inside];
   const hint = set.hints[key];
+  m && REGEXP_WRITTEN_SUBSTITUTION.test(m[0]) && throwInvalid(head + substitutionMessage(name));
   return throwInvalid(head + 'a function is not written in a class — ' + (hint
     ? 'write "' + name + hint.join('" or "' + name) + DOUBLE_QUOTE
     : form || !m
@@ -2198,9 +2199,14 @@ function assertEnumValue(
   raw: string,
   abbreviations?: Record<string, string>,
 ): string {
-  // Подстановка и любая функция проходят: их содержимое здесь разбирать нечем,
-  // а по спецификации `var()` валиден у любого свойства. CSS-wide keywords
-  // валидны везде и в списке свойства не перечисляются.
+  // Функция автора бракуется (D-124): у закрытого списка значение — его буквы, CSS-wide-буквы или переменная. Скобка
+  // в `v` после этого — от подстановки (`--v` → `var(--v)`): что в ней, здесь не видно. CSS-wide keywords валидны
+  // везде и в списке свойства не перечисляются.
+  assertNoFunction(
+    raw, essenceName, () => enumHint(
+      words, essenceName, abbreviations,
+    ),
+  );
   if (v.indexOf(OPEN_PAREN) > -1 || GLOBAL_KEYWORDS[v]) {
     return v;
   }
@@ -2349,6 +2355,38 @@ for (const letters in TIMING_FUNCTION_SYNONYMS) {
 const REGEXP_PROPERTY_NAME = /^-?[a-z][a-z0-9-]+$/;
 /** Подстановка — годится в любой слот, что внутри неё, здесь не видно. */
 const REGEXP_SUBSTITUTION = /^(?:var|env)\(/;
+/**
+ * Скобка автора вне кавычек — функция в токене: `Url(a.png)`, `_calc(1px+2px)`. В кавычках скобка — текст (`q_"("`).
+ */
+const REGEXP_AUTHOR_FUNCTION = /^(?:[^"'(]|"[^"]*"|'[^']*')*\(/;
+/**
+ * Функция в токене (D-124): у хендлера без нативных форм значение — его буквы, CSS-wide-буквы (`INH`) или переменная;
+ * вычисленное значение — через переменную. Скобка в значении после разбора — уже только от подстановки (`--v` →
+ * `var(--v)`), поэтому проверяется суффикс, как его написал автор.
+ * @param raw суффикс токена
+ * @param name имя хендлера
+ * @param hint даёт список букв хендлера (`. Available: dB (block), …`) или пустую строку; зовётся только при браке
+ * @example assertNoFunction('Url(a.png)', 'd', () => '') // «Value "Url(a.png)" is invalid for "d": a function is not …»
+ */
+function assertNoFunction(
+  raw: string, name: string, hint: () => string,
+): void {
+  REGEXP_AUTHOR_FUNCTION.test(raw) && throwInvalid(MSG_VALUE + raw + MSG_IS_INVALID_FOR + name + MSG_COLON
+    + (REGEXP_WRITTEN_SUBSTITUTION.test(raw) ? substitutionMessage(name)
+      : 'a function is not written in a class; a computed value goes through a variable, as "' + name + '--x"'
+        + hint()));
+}
+/** Подстановка, написанная словом: `_var(--x)`, `Env(x)`, `A_0.2s_var(--d)` — у неё своя запись, `--x` / `---x`. */
+const REGEXP_WRITTEN_SUBSTITUTION = /(?:^|[_,])(?:var|env)\(/i;
+/**
+ * Подстановка пишется без функции: `--x` → `var(--x)`, `---x` → `env(--x)`.
+ * @param name имя хендлера
+ * @returns хвост сообщения
+ * @example substitutionMessage('tn') // 'a variable is written without "var()": "tn--x" → var(--x), …'
+ */
+function substitutionMessage(name: string): string {
+  return 'a variable is written without "var()": "' + name + '--x" → var(--x), "' + name + '---x" → env(--x)';
+}
 /**
  * Делит по запятым ВЕРХНЕГО уровня — запятые внутри скобок остаются в части.
  *
@@ -2818,10 +2856,9 @@ function gridValue(
   let part: string;
   let hasShape = 0;
   let repeated: string | undefined;
-  // Скобка автора (D-124): повтор — нативной формой, прочие функции — переменной. Скобка в части — от подстановки.
+  // Скобку автора бракует общий путь одиночных свойств (D-124) с подсказкой про повтор; скобка в части — от
+  // подстановки.
   const gridExample = essenceName + '1fr_/_3x1fr';
-  raw.indexOf(OPEN_PAREN) > -1 && throwInvalid(prefix + 'a function is not written in a class — a repeat of tracks is '
-    + '"3x1fr", as "' + gridExample + '"; another function goes through a variable');
   for (; i < l; i++) {
     part = parts[i];
     if ((repeated = trackRepeat(
@@ -3165,7 +3202,8 @@ function gridLineSingleValue(
   let part: string;
   for (; i < l; i++) {
     part = parts[i];
-    // Функция (`calc()`, `var()`) может дать и номер, и имя — разбирать её нечем.
+    // Подстановка (`gcsS_--n` → `var(--n)`) может дать и номер, и имя — разбирать её нечем. Функцию автора бракует
+    // общий путь одиночных свойств раньше (D-124).
     if (part.indexOf(OPEN_PAREN) > -1) {
       functions++;
       continue;
@@ -4351,8 +4389,8 @@ export default {
         }
       }
       /**
-       * Одна часть значения: слово из словаря, число (если оно тут законно) или функция. Возвращает 1, если часть —
-       * длина: составное значение считает их.
+       * Одна часть значения: слово из словаря, число (если оно тут законно) или подстановка — функцию автора
+       * {@link assertNoFunction} бракует раньше (D-124). Возвращает 1, если часть — длина: составное значение считает их.
        */
       function assertSynonymPart(p: MnEssenceParams, value: string): number {
         if (value.indexOf(OPEN_PAREN) > -1
@@ -4388,10 +4426,13 @@ export default {
             return styleWrap(style, priority);
           }
           if (s) {
-          // valueNormalize, а не fontNameNormalize: массивную форму используют
-          // только page-break-хендлеры (`pgba`/`pgbb`/`pgbi`), к именам шрифтов
-          // отношения не имеющие. Через fontNameNormalize переменная уходила в
-          // CSS литералом — `pgba--v` давал `page-break-after:--v` (2026-09-23).
+            assertNoFunction(
+              s, p.name, () => abbrHint(p.name),
+            );
+            // valueNormalize, а не fontNameNormalize: массивную форму используют
+            // только page-break-хендлеры (`pgba`/`pgbb`/`pgbi`), к именам шрифтов
+            // отношения не имеющие. Через fontNameNormalize переменная уходила в
+            // CSS литералом — `pgba--v` давал `page-break-after:--v` (2026-09-23).
             s = valueNormalize(s);
             assertSynonymAbbr(p, s);
             style = {};
@@ -4416,6 +4457,9 @@ export default {
             style[propName as string] = functionsValue(p, functions);
             return styleWrap(style, priority);
           }
+          assertNoFunction(
+            s, p.name, () => abbrHint(p.name),
+          );
           // Составное значение: буквы — в каждой части (`td1_U_W`, `bgs10_A`), полное слово с буквой бракуется в
           // любой части (D-113).
           s = composite ? lettersValue(p, synonyms) : valueNormalize(s);
@@ -5552,6 +5596,11 @@ export default {
       const byWord = POSITION_BY_WORD;
       const prefix = MSG_VALUE + suffix + MSG_IS_INVALID_FOR + name + MSG_COLON;
       const hint = bare ? '' : name;
+      // Функция автора (D-124): позиция — буквы, длины и переменные. Внутри фигуры `clip-path` скобку бракует читатель
+      // форм раньше.
+      bare || assertNoFunction(
+        suffix, name, () => '',
+      );
       // Ведущий `_` — слова CSS как есть, но у каждого слова позиции есть буква, поэтому слово в этой записи —
       // вторая запись (D-113): `op_right_10px_top_20px` → «Write it shorter: "opR_10px_T_20px"».
       const raw = suffix[0] === UNDERSCORE;
@@ -5594,11 +5643,6 @@ export default {
         if (word) {
           words.push(word);
           kinds.push(POSITION_ANY);
-          continue;
-        }
-        if (part.indexOf(OPEN_PAREN) > -1) {
-          words.push(valueNormalize(part));
-          kinds.push(POSITION_OFFSET);
           continue;
         }
         word = defaultUnitNormalize(part);
@@ -7090,6 +7134,9 @@ export default {
             font: v,
           });
         }
+        assertNoFunction(
+          s, p.name, () => '',
+        );
         v = valueNormalize(s);
         // Пробел в значении означает составную форму (`16px/1.55 var(--font)`) —
         // её и убираем, даже когда внутри есть подстановка. Целиком подстановка
@@ -7098,6 +7145,7 @@ export default {
         + 'size, line height and family are set by atomic tokens — '
         + '"f16 lh1.55 ff--font"; "font" only takes system fonts');
         return styleWrap({
+          // Скобка — только от подстановки (`font--v`).
           font: v.indexOf(OPEN_PAREN) > -1
             ? v
             // Слово — буквой: `fontMenu` → «Write it shorter: "fontM"» (D-113).
@@ -7127,6 +7175,9 @@ export default {
             animation: NONE,
           });
         }
+        // Подстановка словом (`an_env\(x\)`) прошла бы частью как подстановка: у неё своя запись, `an---x`.
+        REGEXP_WRITTEN_SUBSTITUTION.test(s) && throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + p.name + MSG_COLON
+          + substitutionMessage(p.name));
         // `anNone`, `an_none` — вторые записи `anN` (D-113).
         const list = splitTopLevel(assertNotLongForm(
           valueNormalize(s), NONE_ABBREVIATIONS, p.name, s,
@@ -7160,6 +7211,9 @@ export default {
             transition: NONE,
           });
         }
+        // Подстановка словом (`tn_var\(--d\)`) — как у `an`.
+        REGEXP_WRITTEN_SUBSTITUTION.test(s) && throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + p.name + MSG_COLON
+          + substitutionMessage(p.name));
         const value = assertNotLongForm(
           valueNormalize(s), NONE_ABBREVIATIONS, p.name, s,
         );
@@ -7186,7 +7240,10 @@ export default {
           }, 1);
         }
         // Имя шрифта — идентификатор или строка; число и длина им быть не могут
-        // (`ff10px` давало `font-family:10px`).
+        // (`ff10px` давало `font-family:10px`), функция — тоже (D-124).
+        assertNoFunction(
+          s, p.name, () => '',
+        );
         const list = map(fontNameNormalize(s).split(REGEXP_COMMA), __wr);
         assertFontNames(list, s);
         return styleWrap({
@@ -7496,8 +7553,7 @@ export default {
      * Запятая разделяет то, что разделяет CSS: `cr_a\.png` → `url("a.png"),auto`, `cr_a\.svg,b\.png,P` →
      * `url("a.svg"),url("b.png"),pointer`. Последняя часть — буква запасного курсора, без неё — `auto`: CSS требует
      * ключевое слово, а `auto` ничего не меняет. Два числа в конце пути — горячая точка: `cr_a\.png_4_4,P` →
-     * `url("a.png") 4 4,pointer`. Пробел в классе невозможен, запятая — разделитель: в имени файла они пишутся как в
-     * URL, `my%20icon\.png`, `%2C`.
+     * `url("a.png") 4 4,pointer`.
      * @returns хендлер `cr`
      */
     function cursorProvider(): MnHandler {
@@ -7773,6 +7829,13 @@ export default {
       const valuePattern = VALUE_PATTERNS[propName];
       const slots = SLOT_VALIDATORS[propName];
       const functions = VALUE_FUNCTIONS[propName];
+      // Скобку у свойства с нативными формами бракует читатель форм ({@link throwParen}): подсказка называет форму.
+      // У `g`/`gt` повтора нет в наборе — подсказка о нём здесь.
+      const parenHint = slots === gridValue
+        ? () => '. A repeat of tracks is "3x1fr", as "' + essenceName + '1fr_/_3x1fr"'
+        : () => (enumWords ? enumHint(
+          enumWords, essenceName, VALUE_ABBREVIATIONS[propName],
+        ) : '');
       mn(essenceName, (p) => {
         let s, repeated, abbreviations;
         let style: Record<string, any>;
@@ -7791,6 +7854,9 @@ export default {
           style[propName] = functionsValue(p, functions);
           return styleWrap(style, stylePriority);
         }
+        assertNoFunction(
+          s, essenceName, parenHint,
+        );
         // Буквы — в каждой части составного значения (`fx1_1_A`, `arA_16/9`), полное слово с буквой бракуется в
         // любой части (D-113).
         s = (abbreviations = VALUE_ABBREVIATIONS[propName])

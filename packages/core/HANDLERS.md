@@ -41,6 +41,26 @@
 | `o--op` | `opacity:var(--op)` (с 2026-09-22; раньше `opacity:0`) |
 | `pt---safe-top` | `padding-top:env(--safe-top)` |
 
+Подстановка пишется только так: `d_var\(--x\)`, `tnEnv\(x\)` бракуются с подсказкой «a variable is written without
+"var()": "d--x" → var(--x), "d---x" → env(--x)» (D-124).
+
+### Функция в токене не пишется (D-124)
+
+Значение хендлера — его буквы, CSS-wide-буквы (`INH`, `INI`, `UNS`, `RV`, `RVL`) или переменная. Скобки в токене нет:
+функция с короткой записью пишется нативной формой хендлера (`ftBlur2`, `ttfSteps4_JE`, `gtc3x1fr`), остальное —
+переменной. Скобка автора бракуется у каждого хендлера, у закрытого списка — с его буквами:
+
+| Токен | Сообщение |
+|-------|-----------|
+| `dUrl\(a\.png\)` | «a function is not written in a class; a computed value goes through a variable, as "d--x". Available: dB (block), dN (none), …» |
+| `posUrl\(a\)` | то же, «Available: posWS (-webkit-sticky), posF (fixed), …» |
+| `tbsCalc\(2+2\)` | то же, без списка — у `tab-size` букв нет |
+| `ffUrl\(a\)`, `fontUrl\(a\)`, `tfoUrl\(a\)` | то же |
+| `g_repeat\(2,1fr\)_/_1fr` | то же и «A repeat of tracks is "3x1fr", as "g1fr_/_3x1fr"» |
+
+Скобка в кавычках — текст, не функция: `q_"\("_"\)"` → `quotes:"(" ")"`. Скобки внутри текста `cnt_…` — тоже текст
+(`cnt_see_\(note\)`).
+
 ### В составном значении
 
 `_` разделяет части значения, и каждая часть проверяется на переменную отдельно —
@@ -153,7 +173,6 @@ fallback и сам градиент.
 | `cr_a\.svg,b\.png,P` | `cursor:url("a.svg"),url("b.png"),pointer` — вторая картинка, если первая не загрузилась |
 | `cr_a\.png_4_4,P` | `cursor:url("a.png") 4 4,pointer` |
 | `cr_my_img\.png` | `cursor:url("my_img.png"),auto` — `_` в имени файла — как написан |
-| `cr_my%20icon\.png` | `cursor:url("my%20icon.png"),auto` — пробела в классе быть не может, он пишется как в URL; запятая — `%2C` |
 
 Бракуется с подсказкой: `crUrl\(a\.png\)` и `cr_url\(a\.png\)` (функция в токене не пишется — `cr_a\.png,P`),
 `cr_a\.png,pointer` («Write it shorter: "cr_a.png,P"»), `cr_pointer` (`crP`), `cr_a\.png,ZZ` (не буква курсора),
@@ -2269,6 +2288,7 @@ mnVite({
 | Процент | `b10%`, `olw10%`, `wos10%` |
 | Количество значений | `olw10_20`, `ti10_20`, `gr10_20` |
 | Слово из списка свойства | `irZzz`, `apF00`, `fwZzz`, `pA` |
+| Функция в токене (D-124) | `dUrl\(a\.png\)`, `posUrl\(a\)`, `tbsCalc\(2+2\)` |
 | Число там, где перечень закрыт | `pos10`, `ov1.5`, `d10px` |
 | Форма составного значения | `fx_1_1_1_1`, `col_30em_3`, `g_1fr_1fr` |
 

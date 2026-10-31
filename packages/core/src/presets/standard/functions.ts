@@ -28,122 +28,6 @@ import {
   enumHint,
   throwInvalid,
 } from './messages';
-
-const REGEXP_UNESCAPED_UNDERSCORE = /(?<!\\)_/;
-/**
- * `--name` → `var(--name)`, `---name` → `env(--name)`; для суффикса другой формы — `undefined`.
- *
- * Нужна хендлерам, которые разбирают суффикс сами, а не через общий `val`
- * (`ff`, `lh`): там CSS-переменная иначе молча превращается в мусор —
- * `ff--mono` давал `font-family:"-mono"` (ведущий `-` в {@link fontNameQuote} означает
- * «взять имя шрифта в кавычки»), а `lh--tight` проваливался в значение по
- * умолчанию и давал `line-height:1`.
- *
- * Форма с запасным значением (`--mono,serif` → `var(--mono,serif)`) входит сюда
- * же: запятая допускается внутри имени. Раньше она была исключена (`[^,\s]+`) с
- * пометкой «разбирается по месту», но по месту не разбиралась нигде —
- * `ff--font,serif` давал `font-family:"-font",serif`.
- *
- * Завершающий `;` — явный конец имени (`--border_size;`, см.
- * {@link splitValueParts}); в само имя он не входит.
- */
-const REGEXP_CSS_VAR = /^(---?)([^;\s]+);?$/;
-export function cssVarValue(s: string): string | undefined {
-  const m = REGEXP_CSS_VAR.exec(s);
-  return m ? (m[1].length === 3 ? 'env(--' : 'var(--') + m[2] + CLOSE_PAREN : undefined;
-}
-/**
- * Режет значение на `_`-части, НЕ трогая `_` внутри явно завершённого имени
- * переменной: `ol--border_size;_solid_--marker` → `['--border_size;', 'solid',
- * '--marker']`.
- *
- * Зачем: `_` — разделитель частей значения, поэтому имя переменной с `_`
- * иначе недостижимо (`--border_size` разваливается на `var(--border)` и
- * `size`). Экранирование здесь не вариант — обратный слэш снимается раньше, на
- * разборе токена, и до хендлера не доходит вовсе. Завершающий `;` в грамматике
- * значений был заложен изначально (`PATTERN_VAR`: имя `--[^;,]+`, затем `;?`),
- * но не работал: и `getVal`, и {@link valueNormalize} резали строку по `_`
- * ДО парсера.
- *
- * `_` внутри имени подменяется на служебный `\0` только на время разреза и
- * возвращается обратно в каждой части, поэтому наружу `\0` не попадает.
- * Значения без `;` идут коротким путём, без замен.
- *
- * @param byEscaped `1` — резать по неэкранированным `_` (`\_` — литерал),
- *   иначе по любому `_`.
- * @param keepHidden `1` — оставить `_` имени подменённым на `\0`; нужно
- *   вызывающему, который потом прогоняет части через `spaceNormalize` (та
- *   превратила бы восстановленный `_` в пробел уже внутри имени). Такой
- *   вызывающий обязан сам вернуть `\0` → `_` в самом конце.
- */
-const REGEXP_VAR_TERMINATED = /(---?[^;\s]+);/g;
-/**
- * `;` вплотную перед следующей переменной — там он ещё и граница частей.
- *
- * Ровно два дефиса: три означают минус перед переменной, то есть вычитание в
- * `calc` (`w--a;---b` → `calc(var(--a) - var(--b))`), и разделителем `;` там
- * не является. Пробел перед `env()` пишется явно: `w--a;_---b`.
- */
-const REGEXP_VAR_NEXT = /;(?=--(?!-))/g;
-const REGEXP_UNDERSCORE_ALL = /_/g;
-export const REGEXP_VAR_UNDERSCORE = /\0/g;
-function varUnderscoreHide(_all: string, name: string): string {
-  return name.replace(REGEXP_UNDERSCORE_ALL, '\0') + SEMICOLON;
-}
-export function splitValueParts(
-  v: string, byEscaped?: 1, keepHidden?: 1,
-): string[] {
-  const parts = (v.indexOf(SEMICOLON) < 0
-    ? v
-    // `;` сразу перед следующей переменной — и терминатор имени, и граница
-    // частей: `g--a;--b` → `grid:var(--a) var(--b)`. Писать там ещё и `_`
-    // (`g--a;_--b`) было лишним церемониалом — между двумя переменными
-    // подряд другого смысла у `;` и нет. Запятая пишется явно: `g--a;,--b`.
-    : v.replace(REGEXP_VAR_NEXT, ';_').replace(REGEXP_VAR_TERMINATED, varUnderscoreHide)
-  ).split(byEscaped ? REGEXP_UNESCAPED_UNDERSCORE : UNDERSCORE);
-  if (keepHidden) {
-    return parts;
-  }
-  let i = parts.length;
-  while (i--) {
-    parts[i] = parts[i].replace(REGEXP_VAR_UNDERSCORE, UNDERSCORE);
-  }
-  return parts;
-}
-/**
- * Дописывает `px` к каждой части значения, которая осталась голым числом.
- *
- * В нотации «голое число = px» — сквозное правило (`p10` → `padding:10px`,
- * `w10`, `mt10`, `lts2`). Свойства-длины из общего блока свободных значений
- * (`ti`, `wos`, `bsp`, `fxb`, `tdt`, `tuo`) из него выпадали: `ti10` давало
- * `text-indent:10` — невалидный CSS, который браузер отбрасывает. У части из
- * них это ещё и молча проходило мимо валидатора, потому что свойства нет в
- * его таблице.
- *
- * `0` не трогаем — он валиден без единицы. Уже готовые части (`10px`, `50%`,
- * `auto`, `calc(…)`, `var(…)`) не подходят под «голое число» и проходят мимо.
- */
-export const REGEXP_BARE_NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)$/;
-/**
- * Готовая длина: `0` либо число со знаком и одной из единиц. Одна сборка на все проверки длин: длина, длина без
- * процента, размер дорожки (`1fr`), длина или число (`border-image-width`) не разъезжаются в записи числа.
- * @param units допустимые единицы
- * @param unitOptional число без единицы тоже годится (`2` — кратное, как у `border-image-width`)
- * @returns регулярное выражение на часть значения целиком
- * @example lengthPartRegExp(['px', 'em']).test('-1.5em') // true
- * @example lengthPartRegExp(['px'], 1).test('2') // true
- */
-export function lengthPartRegExp(units: string[], unitOptional?: 1): RegExp {
-  return new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:' + units.join(PIPE) + ')' + (unitOptional ? '?' : '')
-    + ')$');
-}
-/**
- * Готовая длина: `0`, либо число с единицей из {@link UNITS}.
- *
- * Собирается из того же списка, чтобы не разъехаться с ним при правке:
- * добавили единицу — проверка узнала сама.
- */
-export const REGEXP_LENGTH_PART = lengthPartRegExp(UNITS);
 /**
  * Функция нативной формы `Name…`: имя в CamelCase, первый аргумент — слитно с ним, остальные — частями через
  * `_`. Скобки в токене не пишутся: `ftBlur2` → `blur(2px)`, `ftDropShadow2_4_6_000.5` →
@@ -193,6 +77,183 @@ export interface FunctionSet {
    */
   hints: Record<string, string[]>;
 }
+/** Что видит читатель аргументов одной функции {@link FunctionForm}. */
+export interface FunctionCall {
+  /** Параметры токена. */
+  p: MnEssenceParams;
+  /** Части всего суффикса — для подсказок, которые называют токен целиком (`colorPart`). */
+  parts: string[];
+  /** Номер части суффикса у каждого аргумента: первый слит с именем функции. */
+  index: number[];
+  /** Проход с запасным цветом `altColor`: цвет с альфой даёт свойству два значения, как у `sbc`. */
+  fallback: boolean;
+  /** Бросает «функция ждёт …» с примером записи. */
+  fail: (expected: string) => never;
+}
+
+/** Разбор значения одиночного свойства по слотам: части значения, суффикс токена, имя хендлера. */
+type SlotValidator = (parts: string[], raw: string, essenceName: string) => string;
+
+/**
+ * Что одиночное свойство знает о своём значении сверх строки реестра. Ключ — имя свойства, как и у
+ * {@link ENUM_KEYWORDS}: сам факт наличия означает «здесь слоты» (функции, число). Таблицы задаёт тема.
+ */
+export interface SingleValues {
+  /** Разбор значения по слотам. */
+  slots: Record<string, SlotValidator>;
+  /**
+   * Функции нативной формы: значение, которое начинается функцией набора (или содержит скобку), читает
+   * {@link functionsValue}.
+   */
+  functions?: Record<string, FunctionSet>;
+  /** Свойство берёт безразмерное число: шаблон, которому значение обязано соответствовать. */
+  patterns?: Record<string, RegExp>;
+  /** Своя подсказка о скобке в токене; без неё подсказка — перечень слов свойства. */
+  parenHints?: Record<string, (essenceName: string) => string>;
+}
+
+const REGEXP_UNESCAPED_UNDERSCORE = /(?<!\\)_/;
+/**
+ * `--name` → `var(--name)`, `---name` → `env(--name)`; для суффикса другой формы — `undefined`.
+ *
+ * Нужна хендлерам, которые разбирают суффикс сами, а не через общий `val`
+ * (`ff`, `lh`): там CSS-переменная иначе молча превращается в мусор —
+ * `ff--mono` давал `font-family:"-mono"` (ведущий `-` в {@link fontNameQuote} означает
+ * «взять имя шрифта в кавычки»), а `lh--tight` проваливался в значение по
+ * умолчанию и давал `line-height:1`.
+ *
+ * Форма с запасным значением (`--mono,serif` → `var(--mono,serif)`) входит сюда
+ * же: запятая допускается внутри имени. Раньше она была исключена (`[^,\s]+`) с
+ * пометкой «разбирается по месту», но по месту не разбиралась нигде —
+ * `ff--font,serif` давал `font-family:"-font",serif`.
+ *
+ * Завершающий `;` — явный конец имени (`--border_size;`, см.
+ * {@link splitValueParts}); в само имя он не входит.
+ */
+const REGEXP_CSS_VAR = /^(---?)([^;\s]+);?$/;
+/**
+ * Режет значение на `_`-части, НЕ трогая `_` внутри явно завершённого имени
+ * переменной: `ol--border_size;_solid_--marker` → `['--border_size;', 'solid',
+ * '--marker']`.
+ *
+ * Зачем: `_` — разделитель частей значения, поэтому имя переменной с `_`
+ * иначе недостижимо (`--border_size` разваливается на `var(--border)` и
+ * `size`). Экранирование здесь не вариант — обратный слэш снимается раньше, на
+ * разборе токена, и до хендлера не доходит вовсе. Завершающий `;` в грамматике
+ * значений был заложен изначально (`PATTERN_VAR`: имя `--[^;,]+`, затем `;?`),
+ * но не работал: и `getVal`, и {@link valueNormalize} резали строку по `_`
+ * ДО парсера.
+ *
+ * `_` внутри имени подменяется на служебный `\0` только на время разреза и
+ * возвращается обратно в каждой части, поэтому наружу `\0` не попадает.
+ * Значения без `;` идут коротким путём, без замен.
+ *
+ * @param byEscaped `1` — резать по неэкранированным `_` (`\_` — литерал),
+ *   иначе по любому `_`.
+ * @param keepHidden `1` — оставить `_` имени подменённым на `\0`; нужно
+ *   вызывающему, который потом прогоняет части через `spaceNormalize` (та
+ *   превратила бы восстановленный `_` в пробел уже внутри имени). Такой
+ *   вызывающий обязан сам вернуть `\0` → `_` в самом конце.
+ */
+const REGEXP_VAR_TERMINATED = /(---?[^;\s]+);/g;
+/**
+ * `;` вплотную перед следующей переменной — там он ещё и граница частей.
+ *
+ * Ровно два дефиса: три означают минус перед переменной, то есть вычитание в
+ * `calc` (`w--a;---b` → `calc(var(--a) - var(--b))`), и разделителем `;` там
+ * не является. Пробел перед `env()` пишется явно: `w--a;_---b`.
+ */
+const REGEXP_VAR_NEXT = /;(?=--(?!-))/g;
+const REGEXP_UNDERSCORE_ALL = /_/g;
+export const REGEXP_VAR_UNDERSCORE = /\0/g;
+/**
+ * Дописывает `px` к каждой части значения, которая осталась голым числом.
+ *
+ * В нотации «голое число = px» — сквозное правило (`p10` → `padding:10px`,
+ * `w10`, `mt10`, `lts2`). Свойства-длины из общего блока свободных значений
+ * (`ti`, `wos`, `bsp`, `fxb`, `tdt`, `tuo`) из него выпадали: `ti10` давало
+ * `text-indent:10` — невалидный CSS, который браузер отбрасывает. У части из
+ * них это ещё и молча проходило мимо валидатора, потому что свойства нет в
+ * его таблице.
+ *
+ * `0` не трогаем — он валиден без единицы. Уже готовые части (`10px`, `50%`,
+ * `auto`, `calc(…)`, `var(…)`) не подходят под «голое число» и проходят мимо.
+ */
+export const REGEXP_BARE_NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)$/;
+/**
+ * Готовая длина: `0`, либо число с единицей из {@link UNITS}.
+ *
+ * Собирается из того же списка, чтобы не разъехаться с ним при правке:
+ * добавили единицу — проверка узнала сама.
+ */
+export const REGEXP_LENGTH_PART = lengthPartRegExp(UNITS);
+/** Имя функции в части: слова в CamelCase, дальше — первый аргумент. */
+const REGEXP_FUNCTION_NAME = /^((?:[A-Z][a-z]+)+)(.*)$/;
+/** Имя, написанное не той формой: строчное (`blur5`, `hueRotate90`) или в CamelCase — для подсказки. */
+export const REGEXP_FUNCTION_NAME_ANY = /^([A-Za-z][a-z]*(?:[A-Z][a-z]+)*)(.*)$/;
+/** Функция со скобкой, как в CSS: `blur(`, `drop-shadow(`, `Blur(`. */
+export const REGEXP_FUNCTION_HEAD = /^([A-Za-z][A-Za-z-]*)\(/;
+/** Начало первого аргумента — число, длина, угол или переменная: `5`, `-2`, `.5`, `--x`. */
+export const REGEXP_FUNCTION_FIRST_ARG = /^[-.\d]/;
+const REGEXP_KEBAB_LETTER = /-([a-z])/g;
+/** Длина без процента — у `blur` и `drop-shadow` процента нет. */
+export const REGEXP_FUNCTION_LENGTH = lengthPartRegExp(UNITS.filter((unit) => unit !== PERCENT));
+/** Последнее слово CamelCase-имени: `Content` в `MinmaxMinContent`. */
+const REGEXP_CAMEL_LAST = /[A-Z][a-z]*$/;
+/**
+ * Скобка автора вне кавычек — функция в токене: `Url(a.png)`, `_calc(1px+2px)`. В кавычках скобка — текст (`q_"("`).
+ */
+const REGEXP_AUTHOR_FUNCTION = /^(?:[^"'(]|"[^"]*"|'[^']*')*\(/;
+/** Подстановка, написанная словом: `_var(--x)`, `Env(x)`, `A_0.2s_var(--d)` — у неё своя запись, `--x` / `---x`. */
+export const REGEXP_WRITTEN_SUBSTITUTION = /(?:^|[_,])(?:var|env)\(/i;
+
+/** Одиночные свойства без таблиц значений. */
+export const NO_VALUES: Required<SingleValues> = {
+  slots: {},
+  functions: {},
+  patterns: {},
+  parenHints: {},
+};
+export function cssVarValue(s: string): string | undefined {
+  const m = REGEXP_CSS_VAR.exec(s);
+  return m ? (m[1].length === 3 ? 'env(--' : 'var(--') + m[2] + CLOSE_PAREN : undefined;
+}
+function varUnderscoreHide(_all: string, name: string): string {
+  return name.replace(REGEXP_UNDERSCORE_ALL, '\0') + SEMICOLON;
+}
+export function splitValueParts(
+  v: string, byEscaped?: 1, keepHidden?: 1,
+): string[] {
+  const parts = (v.indexOf(SEMICOLON) < 0
+    ? v
+    // `;` сразу перед следующей переменной — и терминатор имени, и граница
+    // частей: `g--a;--b` → `grid:var(--a) var(--b)`. Писать там ещё и `_`
+    // (`g--a;_--b`) было лишним церемониалом — между двумя переменными
+    // подряд другого смысла у `;` и нет. Запятая пишется явно: `g--a;,--b`.
+    : v.replace(REGEXP_VAR_NEXT, ';_').replace(REGEXP_VAR_TERMINATED, varUnderscoreHide)
+  ).split(byEscaped ? REGEXP_UNESCAPED_UNDERSCORE : UNDERSCORE);
+  if (keepHidden) {
+    return parts;
+  }
+  let i = parts.length;
+  while (i--) {
+    parts[i] = parts[i].replace(REGEXP_VAR_UNDERSCORE, UNDERSCORE);
+  }
+  return parts;
+}
+/**
+ * Готовая длина: `0` либо число со знаком и одной из единиц. Одна сборка на все проверки длин: длина, длина без
+ * процента, размер дорожки (`1fr`), длина или число (`border-image-width`) не разъезжаются в записи числа.
+ * @param units допустимые единицы
+ * @param unitOptional число без единицы тоже годится (`2` — кратное, как у `border-image-width`)
+ * @returns регулярное выражение на часть значения целиком
+ * @example lengthPartRegExp(['px', 'em']).test('-1.5em') // true
+ * @example lengthPartRegExp(['px'], 1).test('2') // true
+ */
+export function lengthPartRegExp(units: string[], unitOptional?: 1): RegExp {
+  return new RegExp('^(?:0|[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:' + units.join(PIPE) + ')' + (unitOptional ? '?' : '')
+    + ')$');
+}
 /**
  * Собирает {@link FunctionSet}.
  * @param forms функции по имени в нотации, первая — пример в подсказках
@@ -217,30 +278,6 @@ export function functionSet(
     hints: hints || {},
   };
 }
-/** Что видит читатель аргументов одной функции {@link FunctionForm}. */
-export interface FunctionCall {
-  /** Параметры токена. */
-  p: MnEssenceParams;
-  /** Части всего суффикса — для подсказок, которые называют токен целиком (`colorPart`). */
-  parts: string[];
-  /** Номер части суффикса у каждого аргумента: первый слит с именем функции. */
-  index: number[];
-  /** Проход с запасным цветом `altColor`: цвет с альфой даёт свойству два значения, как у `sbc`. */
-  fallback: boolean;
-  /** Бросает «функция ждёт …» с примером записи. */
-  fail: (expected: string) => never;
-}
-/** Имя функции в части: слова в CamelCase, дальше — первый аргумент. */
-const REGEXP_FUNCTION_NAME = /^((?:[A-Z][a-z]+)+)(.*)$/;
-/** Имя, написанное не той формой: строчное (`blur5`, `hueRotate90`) или в CamelCase — для подсказки. */
-export const REGEXP_FUNCTION_NAME_ANY = /^([A-Za-z][a-z]*(?:[A-Z][a-z]+)*)(.*)$/;
-/** Функция со скобкой, как в CSS: `blur(`, `drop-shadow(`, `Blur(`. */
-export const REGEXP_FUNCTION_HEAD = /^([A-Za-z][A-Za-z-]*)\(/;
-/** Начало первого аргумента — число, длина, угол или переменная: `5`, `-2`, `.5`, `--x`. */
-export const REGEXP_FUNCTION_FIRST_ARG = /^[-.\d]/;
-const REGEXP_KEBAB_LETTER = /-([a-z])/g;
-/** Длина без процента — у `blur` и `drop-shadow` процента нет. */
-export const REGEXP_FUNCTION_LENGTH = lengthPartRegExp(UNITS.filter((unit) => unit !== PERCENT));
 /**
  * Аргумент-длина функции: голое число — пиксели (`2` → `2px`, `0` остаётся `0`), с единицей — как написано,
  * переменная — `var()`.
@@ -277,8 +314,6 @@ export function functionsStart(suffix: string, set: FunctionSet): boolean {
   const m = REGEXP_FUNCTION_NAME_ANY.exec(suffix[0] === UNDERSCORE ? suffix.slice(1) : suffix);
   return !!(m && functionKey(m[1][0].toUpperCase() + m[1].slice(1), set));
 }
-/** Последнее слово CamelCase-имени: `Content` в `MinmaxMinContent`. */
-const REGEXP_CAMEL_LAST = /[A-Z][a-z]*$/;
 /**
  * Имя функции набора в начале слова CamelCase: само слово, иначе самое длинное его начало — первый аргумент-слово
  * пишется слитно, как число: `MinmaxMinContent_1fr` → `Minmax` и `MinContent`. У формы с именем-аргументом
@@ -517,10 +552,6 @@ export function assertEnumValue(
   return parts.join(SPACE);
 }
 /**
- * Скобка автора вне кавычек — функция в токене: `Url(a.png)`, `_calc(1px+2px)`. В кавычках скобка — текст (`q_"("`).
- */
-const REGEXP_AUTHOR_FUNCTION = /^(?:[^"'(]|"[^"]*"|'[^']*')*\(/;
-/**
  * Функция в токене: у хендлера без нативных форм значение — его буквы, CSS-wide-буквы (`INH`) или переменная;
  * вычисленное значение — через переменную. Скобка в значении после разбора — уже только от подстановки (`--v` →
  * `var(--v)`), поэтому проверяется суффикс, как его написал автор.
@@ -537,8 +568,6 @@ export function assertNoFunction(
       : 'a function is not written in a class; a computed value goes through a variable, as "' + name + '--x"'
         + hint()));
 }
-/** Подстановка, написанная словом: `_var(--x)`, `Env(x)`, `A_0.2s_var(--d)` — у неё своя запись, `--x` / `---x`. */
-export const REGEXP_WRITTEN_SUBSTITUTION = /(?:^|[_,])(?:var|env)\(/i;
 /**
  * Подстановка пишется без функции: `--x` → `var(--x)`, `---x` → `env(--x)`.
  * @param name имя хендлера
@@ -548,32 +577,3 @@ export const REGEXP_WRITTEN_SUBSTITUTION = /(?:^|[_,])(?:var|env)\(/i;
 export function substitutionMessage(name: string): string {
   return 'a variable is written without "var()": "' + name + '--x" → var(--x), "' + name + '---x" → env(--x)';
 }
-
-/** Разбор значения одиночного свойства по слотам: части значения, суффикс токена, имя хендлера. */
-type SlotValidator = (parts: string[], raw: string, essenceName: string) => string;
-
-/**
- * Что одиночное свойство знает о своём значении сверх строки реестра. Ключ — имя свойства, как и у
- * {@link ENUM_KEYWORDS}: сам факт наличия означает «здесь слоты» (функции, число). Таблицы задаёт тема.
- */
-export interface SingleValues {
-  /** Разбор значения по слотам. */
-  slots: Record<string, SlotValidator>;
-  /**
-   * Функции нативной формы: значение, которое начинается функцией набора (или содержит скобку), читает
-   * {@link functionsValue}.
-   */
-  functions?: Record<string, FunctionSet>;
-  /** Свойство берёт безразмерное число: шаблон, которому значение обязано соответствовать. */
-  patterns?: Record<string, RegExp>;
-  /** Своя подсказка о скобке в токене; без неё подсказка — перечень слов свойства. */
-  parenHints?: Record<string, (essenceName: string) => string>;
-}
-
-/** Одиночные свойства без таблиц значений. */
-export const NO_VALUES: Required<SingleValues> = {
-  slots: {},
-  functions: {},
-  patterns: {},
-  parenHints: {},
-};

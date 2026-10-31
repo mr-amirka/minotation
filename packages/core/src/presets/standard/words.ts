@@ -1,4 +1,22 @@
-export const ZERO = '0';
+/**
+ * Длина у свойства со словарём — флаг `numeric` у `synonymProvider`: бывает ли она отрицательной, сколько
+ * длин в значении и какие слова стоят только поодиночке. Голое число получает `px`, как у прочих длин.
+ */
+export interface LengthRule {
+  signed: boolean;
+  max: number;
+  solo?: Record<string, 1>;
+  /** Форма числовой части, если не любая длина ({@link REGEXP_LENGTH_PART}): без процента, число без единицы. */
+  part?: RegExp;
+  /** Голое число остаётся без единицы, а не получает `px`: слайс `border-image` — пиксели картинки. */
+  unitless?: 1;
+  /** Буква одна значением не бывает: `fill` — только рядом со слайсом (`bis30_F`, а не `bisF`). */
+  needsNumber?: 1;
+  /** Что ожидалось на месте числовой части — для ошибки (по умолчанию `a length`). */
+  expected?: string;
+  /** Одна числовая часть — для «at most N …» (по умолчанию `length`). */
+  noun?: string;
+}export const ZERO = '0';
 export const NAME_NONE = 'None';
 export const NAME_HIDDEN = 'Hidden';
 export const NAME_DOTTED = 'Dotted';
@@ -167,39 +185,6 @@ export const GAP_SYNONYMS = {
 };
 
 /**
- * Словарь «одно значение или пара через `_`»: к записям `first` добавляются
- * пары `A_B` → `WordA_WordB` (`valueNormalize` разворачивает `_` в пробел).
- * Пара из двух одинаковых частей не порождается — `start start` то же, что
- * `start`, и вторая запись дала бы второе правило.
- */
-export function withPairs(
-  base: Record<string, string>,
-  first: Record<string, string>,
-  second: Record<string, string>,
-): Record<string, string> {
-  const out: Record<string, string> = {
-    ...base,
-    ...first,
-  };
-  const firstKeys = Object.keys(first);
-  const secondKeys = Object.keys(second);
-  let i = 0;
-  let j: number;
-  let a: string;
-  let b: string;
-  const firstCount = firstKeys.length;
-  const secondCount = secondKeys.length;
-  for (; i < firstCount; i++) {
-    a = firstKeys[i];
-    for (j = 0; j < secondCount; j++) {
-      b = secondKeys[j];
-      a === b || (out[a + UNDERSCORE + b] = first[a] + UNDERSCORE + second[b]);
-    }
-  }
-  return out;
-}
-
-/**
  * Функции плавности словами — `atfL` → `linear`, `atfEIO` → `ease-in-out`; у `ttf` те же буквы:
  * одна плавность пишется одинаково у анимации и у перехода.
  */
@@ -267,41 +252,6 @@ export const ANGLE_UNITS = [
   'rad',
   'turn',
 ];
-/**
- * Строка слов через пробел → множество для проверки значения.
- *
- * Компактнее объектного литерала и в исходнике, и в бандле, а разворачивается
- * один раз на холодном пути регистрации.
- */
-export function wordsSet(words: string): Record<string, 1> {
-  const parts = words.split(SPACE);
-  const set: Record<string, 1> = {};
-  let i = parts.length;
-  while (i--) {
-    set[parts[i]] = 1;
-  }
-  return set;
-}
-
-/**
- * Длина у свойства со словарём — флаг `numeric` у `synonymProvider`: бывает ли она отрицательной, сколько
- * длин в значении и какие слова стоят только поодиночке. Голое число получает `px`, как у прочих длин.
- */
-export interface LengthRule {
-  signed: boolean;
-  max: number;
-  solo?: Record<string, 1>;
-  /** Форма числовой части, если не любая длина ({@link REGEXP_LENGTH_PART}): без процента, число без единицы. */
-  part?: RegExp;
-  /** Голое число остаётся без единицы, а не получает `px`: слайс `border-image` — пиксели картинки. */
-  unitless?: 1;
-  /** Буква одна значением не бывает: `fill` — только рядом со слайсом (`bis30_F`, а не `bisF`). */
-  needsNumber?: 1;
-  /** Что ожидалось на месте числовой части — для ошибки (по умолчанию `a length`). */
-  expected?: string;
-  /** Одна числовая часть — для «at most N …» (по умолчанию `length`). */
-  noun?: string;
-}
 /** Сдвиг: `vertical-align`, `background-position-x`/`-y`, толщина в `text-decoration` — одна длина со знаком. */
 export const OFFSET_LENGTH: LengthRule = {
   signed: true,
@@ -631,3 +581,51 @@ export const BOX_SIZING_WORDS: Record<string, 1> = {
   BB: 1,
   CB: 1,
 };
+
+/**
+ * Словарь «одно значение или пара через `_`»: к записям `first` добавляются
+ * пары `A_B` → `WordA_WordB` (`valueNormalize` разворачивает `_` в пробел).
+ * Пара из двух одинаковых частей не порождается — `start start` то же, что
+ * `start`, и вторая запись дала бы второе правило.
+ */
+export function withPairs(
+  base: Record<string, string>,
+  first: Record<string, string>,
+  second: Record<string, string>,
+): Record<string, string> {
+  const out: Record<string, string> = {
+    ...base,
+    ...first,
+  };
+  const firstKeys = Object.keys(first);
+  const secondKeys = Object.keys(second);
+  let i = 0;
+  let j: number;
+  let a: string;
+  let b: string;
+  const firstCount = firstKeys.length;
+  const secondCount = secondKeys.length;
+  for (; i < firstCount; i++) {
+    a = firstKeys[i];
+    for (j = 0; j < secondCount; j++) {
+      b = secondKeys[j];
+      a === b || (out[a + UNDERSCORE + b] = first[a] + UNDERSCORE + second[b]);
+    }
+  }
+  return out;
+}
+/**
+ * Строка слов через пробел → множество для проверки значения.
+ *
+ * Компактнее объектного литерала и в исходнике, и в бандле, а разворачивается
+ * один раз на холодном пути регистрации.
+ */
+export function wordsSet(words: string): Record<string, 1> {
+  const parts = words.split(SPACE);
+  const set: Record<string, 1> = {};
+  let i = parts.length;
+  while (i--) {
+    set[parts[i]] = 1;
+  }
+  return set;
+}

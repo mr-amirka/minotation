@@ -202,36 +202,6 @@ FONT_VARIANT_NUMERIC_GROUPS.forEach((group, index) => {
     FONT_VARIANT_NUMERIC_GROUP_OF[letter] = index;
   }
 });
-
-/**
- * Порядок букв `font-variant-numeric`: по одной из группы, группы — в порядке спецификации, `N` стоит одна.
- * Незнакомую часть пропускает: её бракует общий разбор («no such abbreviation» или «write it shorter»).
- */
-function assertFontVariantNumericOrder(name: string, suffix: string): void {
-  const parts = suffix.split(UNDERSCORE);
-  const l = parts.length;
-  const groupOf = FONT_VARIANT_NUMERIC_GROUP_OF;
-  const prefix = MSG_VALUE + suffix + MSG_IS_INVALID_FOR + name + MSG_COLON;
-  let i = 0;
-  let group: number | undefined;
-  let last = -1;
-  let used = 0;
-  let unordered = 0;
-  let unknown = 0;
-  for (; i < l; i++) {
-    parts[i] === N && throwInvalid(prefix + '"N" (normal) stands alone');
-    if ((group = groupOf[parts[i]]) === undefined) {
-      unknown = 1;
-      continue;
-    }
-    used & (1 << group) && throwInvalid(prefix + 'one letter of a group — "'
-      + Object.keys(FONT_VARIANT_NUMERIC_GROUPS[group]).join('" or "') + DOUBLE_QUOTE);
-    used |= 1 << group;
-    group < last ? (unordered = 1) : (last = group);
-  }
-  unordered && !unknown && throwInvalid('Write "' + name + parts.sort((a, b) => groupOf[a] - groupOf[b])
-    .join(UNDERSCORE) + MSG_INSTEAD_OF + name + suffix + MSG_SAME_VALUE + ': the order of the specification');
-}
 const LETTER_SPACING_KEYWORDS: Record<string, 1> = {
   normal: 1,
 };
@@ -280,6 +250,102 @@ const FONT_SYNONYMS: Record<string, string> = {
 /** Стиль `text-emphasis` — тот же список, что у атомарного `tems`. */
 const TEXT_EMPHASIS_STYLE = wordsSet('none filled open dot circle double-circle'
   + ' triangle sesame');
+/** Число строк у `lcl`: целое от 1. */
+const REGEXP_LINE_COUNT = /^[1-9]\d*$/;
+
+/**
+ * `font-family`: имя шрифта — идентификатор, строка в кавычках или родовое
+ * семейство. Число и длина именем шрифта быть не могут: `ff10px` давало
+ * `font-family:10px`.
+ */
+const REGEXP_FONT_NAME = /^(?:"[^"]*"|'[^']*'|-?[A-Za-z_][\w-]*(?: [\w-]+)*)$/;
+
+/** Текст: табуляция, выделение, счётчики, висячие строки. */
+const TYPOGRAPHY_VALUES: SingleValues = {
+  slots: {
+    tabSize: tabSizeValue,
+    textEmphasis: textEmphasisValue,
+    counterIncrement: counterValue,
+    counterReset: counterValue,
+  },
+  patterns: {
+    widows: REGEXP_VALUE_INTEGER,
+    orphans: REGEXP_VALUE_INTEGER,
+  },
+};
+/**
+ * Краткие записи `content`.
+ *
+ * `S` — пробел (space). Единственная запись для него: `cnt__` бракуется,
+ * чтобы одно значение не имело двух форм. Кавычки двойные, как у всех
+ * остальных значений — одиночные в прежнем `content:' '` были разнобоем.
+ *
+ * Пустую строку пробел не заменяет: `content:""` создаёт псевдоэлемент
+ * (обычный приём для `::before`/`::after` с оформлением), `content:none` не
+ * создаёт его вовсе. Пустая строка пишется как `cnt_` — ведущий `_` означает
+ * «дальше текст», а текста после него нет.
+ */
+const CONTENT_SYNONYMS: Record<string, string> = {
+  S: '" "',
+  N: NONE,
+  // Кавычки по `quotes`: `cntOQ` → `open-quote`.
+  OQ: 'open-quote',
+  CQ: 'close-quote',
+  NOQ: 'no-open-quote',
+  NCQ: 'no-close-quote',
+};
+/** Типы маркера списка буквами — у `list`, `lis` и стиля счётчика `cntCounter_item_UR`. */
+const LIST_STYLE_TYPES: Record<string, string> = {
+  N: NAME_NONE,
+  S: 'Square',
+  D: 'Disc',
+  DC: 'Decimal',
+  DCLZ: 'DecimalLeadingZero',
+  LR: 'LowerRoman',
+  UR: 'UpperRoman',
+  C: 'Circle',
+};
+/** Имя атрибута в `attr()` или счётчика в `counter()`: `href`, `data-label`, `item`. */
+const REGEXP_CSS_NAME = /^[A-Za-z][A-Za-z\d-]*$/;
+/** Ключевые слова `content` — всё, что пишется без кавычек и не функция. */
+const CONTENT_KEYWORDS: Record<string, 1> = {
+  none: 1,
+  normal: 1,
+  'open-quote': 1,
+  'close-quote': 1,
+  'no-open-quote': 1,
+  'no-close-quote': 1,
+};
+
+/**
+ * Порядок букв `font-variant-numeric`: по одной из группы, группы — в порядке спецификации, `N` стоит одна.
+ * Незнакомую часть пропускает: её бракует общий разбор («no such abbreviation» или «write it shorter»).
+ */
+function assertFontVariantNumericOrder(name: string, suffix: string): void {
+  const parts = suffix.split(UNDERSCORE);
+  const l = parts.length;
+  const groupOf = FONT_VARIANT_NUMERIC_GROUP_OF;
+  const prefix = MSG_VALUE + suffix + MSG_IS_INVALID_FOR + name + MSG_COLON;
+  let i = 0;
+  let group: number | undefined;
+  let last = -1;
+  let used = 0;
+  let unordered = 0;
+  let unknown = 0;
+  for (; i < l; i++) {
+    parts[i] === N && throwInvalid(prefix + '"N" (normal) stands alone');
+    if ((group = groupOf[parts[i]]) === undefined) {
+      unknown = 1;
+      continue;
+    }
+    used & (1 << group) && throwInvalid(prefix + 'one letter of a group — "'
+      + Object.keys(FONT_VARIANT_NUMERIC_GROUPS[group]).join('" or "') + DOUBLE_QUOTE);
+    used |= 1 << group;
+    group < last ? (unordered = 1) : (last = group);
+  }
+  unordered && !unknown && throwInvalid('Write "' + name + parts.sort((a, b) => groupOf[a] - groupOf[b])
+    .join(UNDERSCORE) + MSG_INSTEAD_OF + name + suffix + MSG_SAME_VALUE + ': the order of the specification');
+}
 
 /** `text-emphasis`: `<style> [<color>]`, стиль из закрытого списка. */
 function textEmphasisValue(parts: string[], raw: string): string {
@@ -347,15 +413,6 @@ function tabSizeValue(
     + '": a whole number of spaces or a length — not negative, not a percent');
   return v;
 }
-/** Число строк у `lcl`: целое от 1. */
-const REGEXP_LINE_COUNT = /^[1-9]\d*$/;
-
-/**
- * `font-family`: имя шрифта — идентификатор, строка в кавычках или родовое
- * семейство. Число и длина именем шрифта быть не могут: `ff10px` давало
- * `font-family:10px`.
- */
-const REGEXP_FONT_NAME = /^(?:"[^"]*"|'[^']*'|-?[A-Za-z_][\w-]*(?: [\w-]+)*)$/;
 function assertFontNames(parts: string[], raw: string): void {
   const l = parts.length;
   let i = 0;
@@ -365,63 +422,6 @@ function assertFontNames(parts: string[], raw: string): void {
         + 'a font name — an identifier or a quoted string');
   }
 }
-
-/** Текст: табуляция, выделение, счётчики, висячие строки. */
-const TYPOGRAPHY_VALUES: SingleValues = {
-  slots: {
-    tabSize: tabSizeValue,
-    textEmphasis: textEmphasisValue,
-    counterIncrement: counterValue,
-    counterReset: counterValue,
-  },
-  patterns: {
-    widows: REGEXP_VALUE_INTEGER,
-    orphans: REGEXP_VALUE_INTEGER,
-  },
-};
-/**
- * Краткие записи `content`.
- *
- * `S` — пробел (space). Единственная запись для него: `cnt__` бракуется,
- * чтобы одно значение не имело двух форм. Кавычки двойные, как у всех
- * остальных значений — одиночные в прежнем `content:' '` были разнобоем.
- *
- * Пустую строку пробел не заменяет: `content:""` создаёт псевдоэлемент
- * (обычный приём для `::before`/`::after` с оформлением), `content:none` не
- * создаёт его вовсе. Пустая строка пишется как `cnt_` — ведущий `_` означает
- * «дальше текст», а текста после него нет.
- */
-const CONTENT_SYNONYMS: Record<string, string> = {
-  S: '" "',
-  N: NONE,
-  // Кавычки по `quotes`: `cntOQ` → `open-quote`.
-  OQ: 'open-quote',
-  CQ: 'close-quote',
-  NOQ: 'no-open-quote',
-  NCQ: 'no-close-quote',
-};
-/** Типы маркера списка буквами — у `list`, `lis` и стиля счётчика `cntCounter_item_UR`. */
-const LIST_STYLE_TYPES: Record<string, string> = {
-  N: NAME_NONE,
-  S: 'Square',
-  D: 'Disc',
-  DC: 'Decimal',
-  DCLZ: 'DecimalLeadingZero',
-  LR: 'LowerRoman',
-  UR: 'UpperRoman',
-  C: 'Circle',
-};
-/** Имя атрибута в `attr()` или счётчика в `counter()`: `href`, `data-label`, `item`. */
-const REGEXP_CSS_NAME = /^[A-Za-z][A-Za-z\d-]*$/;
-/** Ключевые слова `content` — всё, что пишется без кавычек и не функция. */
-const CONTENT_KEYWORDS: Record<string, 1> = {
-  none: 1,
-  normal: 1,
-  'open-quote': 1,
-  'close-quote': 1,
-  'no-open-quote': 1,
-  'no-close-quote': 1,
-};
 
 /**
  * Берёт имя шрифта в кавычки, если оно из нескольких слов.
@@ -465,27 +465,27 @@ export function registerTypography(ctx: StandardContext): void {
   } = ctx;
 
   /**
- * Значение одиночного свойства-длины: либо слово из его списка, либо число с
- * единицей.
- *
- * Хендлеры вида `olo`, `lts`, `tsa`, `fsa` собирали значение вручную одной и
- * той же строчкой `camel ? toKebabCase(camel) : num + (p.unit || 'px')`, и ни
- * слово, ни единица там не проверялись: `oloZzz` давало `outline-offset:zzz`,
- * `oloF00` — `outline-offset:f`, `lts10zz` — `letter-spacing:10zz`,
- * `olo10%` — `outline-offset:10%` (процентов это свойство не принимает).
- * Валидатор ядра ни одно из этих свойств не знал.
- *
- * @param p — параметры хендлера
- * @param keywords — ключевые слова конкретного свойства
- * @param allow — флаги допустимого, см. {@link LENGTH_PERCENT}
- * @param defaultUnit — единица для голого числа
- */
+   * Значение одиночного свойства-длины: либо слово из его списка, либо число с
+   * единицей.
+   *
+   * Хендлеры вида `olo`, `lts`, `tsa`, `fsa` собирали значение вручную одной и
+   * той же строчкой `camel ? toKebabCase(camel) : num + (p.unit || 'px')`, и ни
+   * слово, ни единица там не проверялись: `oloZzz` давало `outline-offset:zzz`,
+   * `oloF00` — `outline-offset:f`, `lts10zz` — `letter-spacing:10zz`,
+   * `olo10%` — `outline-offset:10%` (процентов это свойство не принимает).
+   * Валидатор ядра ни одно из этих свойств не знал.
+   *
+   * @param p — параметры хендлера
+   * @param keywords — ключевые слова конкретного свойства
+   * @param allow — флаги допустимого, см. {@link LENGTH_PERCENT}
+   * @param defaultUnit — единица для голого числа
+   */
   /**
- * У свойства только процент: ни другой единицы, ни голого нуля.
- *
- * Ноль — особый случай: {@link lengthOrWord} отдаёт его без единицы, как
- * и положено длинам, но `text-size-adjust:0` невалиден.
- */
+   * У свойства только процент: ни другой единицы, ни голого нуля.
+   *
+   * Ноль — особый случай: {@link lengthOrWord} отдаёт его без единицы, как
+   * и положено длинам, но `text-size-adjust:0` невалиден.
+   */
   function assertPercentOnly(p: MnEssenceParams): void {
     (p.num === ZERO || (p.unit && p.unit !== PERCENT))
     && throwInvalid(MSG_VALUE + p.suffix + '" is invalid: '
@@ -600,18 +600,18 @@ export function registerTypography(ctx: StandardContext): void {
       }, 1);
     },
     /**
-   * `line-height`. **Один способ на каждый смысл:** голое число — безразмерный
-   * множитель, как в CSS (`lh1.5` → `line-height:1.5`; потомки наследуют
-   * коэффициент); любая единица пишется явно и проходит как есть
-   * (`lh20px`, `lh1.2em`, `lh150%` → `line-height:150%`).
-   *
-   * Так по двум причинам. Первая: голое число молча получало
-   * `px` (`lh1` → `line-height:1px`) — единственный хендлер, где умолчание
-   * нотации «число = px» расходилось со смыслом CSS-свойства. Вторая: проценты
-   * пересчитывались в множитель (`lh150%` → `1.5`), то есть на одно значение
-   * приходилось два способа записи, да ещё и с подменой семантики —
-   * `150%` наследуется вычисленным значением, а `1.5` коэффициентом.
-   */
+     * `line-height`. **Один способ на каждый смысл:** голое число — безразмерный
+     * множитель, как в CSS (`lh1.5` → `line-height:1.5`; потомки наследуют
+     * коэффициент); любая единица пишется явно и проходит как есть
+     * (`lh20px`, `lh1.2em`, `lh150%` → `line-height:150%`).
+     *
+     * Так по двум причинам. Первая: голое число молча получало
+     * `px` (`lh1` → `line-height:1px`) — единственный хендлер, где умолчание
+     * нотации «число = px» расходилось со смыслом CSS-свойства. Вторая: проценты
+     * пересчитывались в множитель (`lh150%` → `1.5`), то есть на одно значение
+     * приходилось два способа записи, да ещё и с подменой семантики —
+     * `150%` наследуется вычисленным значением, а `1.5` коэффициентом.
+     */
     lh: (p) => {
       let num, unit, v;
       return p.camel ? 0 : (
@@ -672,11 +672,11 @@ export function registerTypography(ctx: StandardContext): void {
       }, 1,
     ),
     /**
-   * `font-variant` — шорткат над семейством `font-variant-*`. Было два
-   * синонима из ~30 значений; теперь есть все. Практически ходовые тут
-   * `fvTN` (`tabular-nums` — цифры одной ширины в таблицах), `fvSZ`
-   * (`slashed-zero`) и капитель.
-   */
+     * `font-variant` — шорткат над семейством `font-variant-*`. Было два
+     * синонима из ~30 значений; теперь есть все. Практически ходовые тут
+     * `fvTN` (`tabular-nums` — цифры одной ширины в таблицах), `fvSZ`
+     * (`slashed-zero`) и капитель.
+     */
     fv: synonymProvider(
       'fontVariant', {
         N: NAME_NORMAL,
@@ -772,11 +772,11 @@ export function registerTypography(ctx: StandardContext): void {
       }, 1,
     ),
     /**
-   * `text-decoration` — шорткат: линия + стиль + толщина + цвет. Стили
-   * (`solid`/`wavy`/…) и толщина (`auto`/`from-font`) есть
-   * ТОЛЬКО здесь: `text-decoration-line` их не принимает, а карту `TD_SYNONYMS`
-   * они делят.
-   */
+     * `text-decoration` — шорткат: линия + стиль + толщина + цвет. Стили
+     * (`solid`/`wavy`/…) и толщина (`auto`/`from-font`) есть
+     * ТОЛЬКО здесь: `text-decoration-line` их не принимает, а карту `TD_SYNONYMS`
+     * они делят.
+     */
     td: synonymProvider(
       'textDecoration', {
         ...TD_SYNONYMS,
@@ -829,12 +829,12 @@ export function registerTypography(ctx: StandardContext): void {
       MA: 'MathAuto',
     }),
     /**
-   * `text-wrap`. Карта синонимов пересобрана: прежние `N`/`NO`/`U`/`S`
-   * (`normal`/`none`/`unrestricted`/`suppress`) — значения из черновика CSS Text 3,
-   * которого не стало; ни одно из них не валидно по текущей спецификации, то есть
-   * `twN` давал CSS, молча отбрасываемый браузером. Заодно не было сокращений у
-   * ВСЕХ шести реальных значений, включая ходовые `balance` и `pretty`.
-   */
+     * `text-wrap`. Карта синонимов пересобрана: прежние `N`/`NO`/`U`/`S`
+     * (`normal`/`none`/`unrestricted`/`suppress`) — значения из черновика CSS Text 3,
+     * которого не стало; ни одно из них не валидно по текущей спецификации, то есть
+     * `twN` давал CSS, молча отбрасываемый браузером. Заодно не было сокращений у
+     * ВСЕХ шести реальных значений, включая ходовые `balance` и `pretty`.
+     */
     tw: synonymProvider('textWrap', {
       W: NAME_WRAP,
       NW: NAME_NOWRAP,
@@ -844,11 +844,11 @@ export function registerTypography(ctx: StandardContext): void {
       A: NAME_AUTO,
     }),
     /**
-   * `letter-spacing`. Голое число получает `px` (`lts2` → `2px`), как и остальные
-   * размеры в нотации; единицы указываются явно (`lts0.06em`). Раньше
-   * значение выводилось без единицы (`lts1.5` → `letter-spacing:1.5`) — невалидный CSS,
-   * который браузер отбрасывал.
-   */
+     * `letter-spacing`. Голое число получает `px` (`lts2` → `2px`), как и остальные
+     * размеры в нотации; единицы указываются явно (`lts0.06em`). Раньше
+     * значение выводилось без единицы (`lts1.5` → `letter-spacing:1.5`) — невалидный CSS,
+     * который браузер отбрасывал.
+     */
     lts: (p) => {
       let v;
       return (v = cssVarValue(p.suffix || '')) ? styleWrap({
@@ -878,12 +878,12 @@ export function registerTypography(ctx: StandardContext): void {
       W: NAME_WRAP,
     }),
     /**
-   * `white-space-collapse`. Карта пересобрана: прежние
-   * `N`/`K`/`L`/`BS`/`BA` (`normal`/`keep-all`/`loose`/`break-strict`/`break-all`)
-   * — значения `word-break`/`line-break`, к этому свойству не относящиеся;
-   * НИ ОДНО из них не валидно, то есть любой токен `wsc*` давал CSS, молча
-   * отбрасываемый браузером.
-   */
+     * `white-space-collapse`. Карта пересобрана: прежние
+     * `N`/`K`/`L`/`BS`/`BA` (`normal`/`keep-all`/`loose`/`break-strict`/`break-all`)
+     * — значения `word-break`/`line-break`, к этому свойству не относящиеся;
+     * НИ ОДНО из них не валидно, то есть любой токен `wsc*` давал CSS, молча
+     * отбрасываемый браузером.
+     */
     wsc: synonymProvider('whiteSpaceCollapse', {
       C: NAME_COLLAPSE,
       P: 'Preserve',
@@ -959,19 +959,19 @@ export function registerTypography(ctx: StandardContext): void {
       VL: 'VerticalLr',
     }),
     /**
-   * `font` — только то, что не выражается атомарно.
-   *
-   * Shorthand принимает либо системный шрифт одним словом, либо набор из
-   * размера, высоты строки и семейства. Второе выражается атомарными
-   * `f`/`lh`/`ff` — `font16px/1.55_--font` это `f16 lh1.55 ff--font`, то есть
-   * второй способ записать то же самое. Поэтому (как и общий `ol`) составная форма убрана, и хендлер сужен до слов.
-   *
-   * Убрать его целиком нельзя: `font: inherit` наследует разом семь свойств
-   * (family, size, line-height, weight, style, variant, stretch), и пяти
-   * атомарных тегов на это не хватает — `font-variant` и `font-stretch` у
-   * нотации отдельных тегов не имеют. Той же природы системные шрифты:
-   * `font: menu` задаёт весь набор сразу.
-   */
+     * `font` — только то, что не выражается атомарно.
+     *
+     * Shorthand принимает либо системный шрифт одним словом, либо набор из
+     * размера, высоты строки и семейства. Второе выражается атомарными
+     * `f`/`lh`/`ff` — `font16px/1.55_--font` это `f16 lh1.55 ff--font`, то есть
+     * второй способ записать то же самое. Поэтому (как и общий `ol`) составная форма убрана, и хендлер сужен до слов.
+     *
+     * Убрать его целиком нельзя: `font: inherit` наследует разом семь свойств
+     * (family, size, line-height, weight, style, variant, stretch), и пяти
+     * атомарных тегов на это не хватает — `font-variant` и `font-stretch` у
+     * нотации отдельных тегов не имеют. Той же природы системные шрифты:
+     * `font: menu` задаёт весь набор сразу.
+     */
     font: (p) => {
       let s, v;
       if (!(s = p.suffix)) {
@@ -1024,24 +1024,24 @@ export function registerTypography(ctx: StandardContext): void {
       }, 1);
     },
     /**
-   * `content`. Ведущий `_` означает «дальше текст» и **сам ставит кавычки**:
-   * `cnt_Hello_World` → `content:"Hello World"`. Без него значение обязано
-   * быть ключевым словом свойства.
-   *
-   * Раньше кавычки писал автор (`cnt_"Hello_World"`), а их отсутствие
-   * никто не проверял: `cntHello` давало `content:hello`, `cnt_two_words` —
-   * `content:two words`. По грамматике текст в `content` без кавычек
-   * невалиден, и браузер такое правило отбрасывает.
-   *
-   * **Кавычка внутри текста экранируется**, а не служит признаком «автор
-   * управляет сам»: `content: a "b" c` по грамматике невалиден, то есть
-   * первая версия этой проверки оставляла дыру ровно там, где её закрывала.
-   * `cnt_he_said_"hi"` → `content:"he said \"hi\""`.
-   *
-   * Не оборачивается подстановка (`cnt--v`). Функции — нативной формой: `cntAttr_href`,
-   * `cntCounter_item_UR` ({@link CONTENT_FUNCTIONS}); скобка в начале текста (`cnt_attr\(href\)`) бракуется с
-   * подсказкой, а не уходит в кавычки молча. Скобки внутри текста — текст: `cnt_see_\(note\)`.
-   */
+     * `content`. Ведущий `_` означает «дальше текст» и **сам ставит кавычки**:
+     * `cnt_Hello_World` → `content:"Hello World"`. Без него значение обязано
+     * быть ключевым словом свойства.
+     *
+     * Раньше кавычки писал автор (`cnt_"Hello_World"`), а их отсутствие
+     * никто не проверял: `cntHello` давало `content:hello`, `cnt_two_words` —
+     * `content:two words`. По грамматике текст в `content` без кавычек
+     * невалиден, и браузер такое правило отбрасывает.
+     *
+     * **Кавычка внутри текста экранируется**, а не служит признаком «автор
+     * управляет сам»: `content: a "b" c` по грамматике невалиден, то есть
+     * первая версия этой проверки оставляла дыру ровно там, где её закрывала.
+     * `cnt_he_said_"hi"` → `content:"he said \"hi\""`.
+     *
+     * Не оборачивается подстановка (`cnt--v`). Функции — нативной формой: `cntAttr_href`,
+     * `cntCounter_item_UR` ({@link CONTENT_FUNCTIONS}); скобка в начале текста (`cnt_attr\(href\)`) бракуется с
+     * подсказкой, а не уходит в кавычки молча. Скобки внутри текста — текст: `cnt_see_\(note\)`.
+     */
     cnt: (p) => {
       let s, v;
       if (!(s = p.suffix)) {

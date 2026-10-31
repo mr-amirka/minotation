@@ -104,18 +104,30 @@ const POSITION_PRIORITIES: Record<string, number> = {
  */
 /** Имена контейнера через пробел — идентификаторы CSS или переменная: `sidebar`, `side main`, `var(--c)`. */
 const REGEXP_CONTAINER_NAMES = /^(?:var\(--[\w-]+\)|(?:-?[a-zA-Z_][\w-]*)(?: -?[a-zA-Z_][\w-]*)*)$/;
-
-/** Имена контейнера из суффикса — как записаны: ведущий `_` снят, `_` — пробел, `--c` — `var(--c)`. */
-function containerNames(suffix: string): string {
-  const raw = suffix[0] === UNDERSCORE ? suffix.slice(1) : suffix;
-  return raw.indexOf('--') === 0 ? VAR_OPEN + raw + CLOSE_PAREN : raw.split(UNDERSCORE).join(SPACE);
-}
 /** Целое со знаком — `z-index` дробей не принимает. */
 const REGEXP_INTEGER = /^[-+]?\d+$/;
 /** Неотрицательное число или процент — `zoom:1.5`, `zoom:150%`. */
 const REGEXP_VALUE_ZOOM = /^(?:\d+\.?\d*|\.\d+)%?$/;
 /** Неотрицательное число или дробь — `aspect-ratio:1.5`, `aspect-ratio:16/9`. */
 const REGEXP_VALUE_RATIO = /^(?:\d+\.?\d*|\.\d+)(?:\/(?:\d+\.?\d*|\.\d+))?$/;
+
+/** Раскладка: колонки, масштаб, соотношение сторон. */
+const LAYOUT_VALUES: SingleValues = {
+  slots: {
+    columns: columnsValue,
+  },
+  // Ни то, ни другое отрицательных не принимает; дробь есть только у соотношения сторон, процент — только у масштаба.
+  patterns: {
+    zoom: REGEXP_VALUE_ZOOM,
+    aspectRatio: REGEXP_VALUE_RATIO,
+  },
+};
+
+/** Имена контейнера из суффикса — как записаны: ведущий `_` снят, `_` — пробел, `--c` — `var(--c)`. */
+function containerNames(suffix: string): string {
+  const raw = suffix[0] === UNDERSCORE ? suffix.slice(1) : suffix;
+  return raw.indexOf('--') === 0 ? VAR_OPEN + raw + CLOSE_PAREN : raw.split(UNDERSCORE).join(SPACE);
+}
 
 /**
  * `columns`: `<count> [<width>]` либо `auto`. В CSS порядок свободный
@@ -139,18 +151,6 @@ function columnsValue(parts: string[], raw: string): string {
   }
   return parts.join(SPACE);
 }
-
-/** Раскладка: колонки, масштаб, соотношение сторон. */
-const LAYOUT_VALUES: SingleValues = {
-  slots: {
-    columns: columnsValue,
-  },
-  // Ни то, ни другое отрицательных не принимает; дробь есть только у соотношения сторон, процент — только у масштаба.
-  patterns: {
-    zoom: REGEXP_VALUE_ZOOM,
-    aspectRatio: REGEXP_VALUE_RATIO,
-  },
-};
 function normalizeCalc(
   base: string, signAndVal: string, unit: string,
 ): string {
@@ -425,14 +425,14 @@ export function registerLayout(ctx: StandardContext): void {
       AVRN: 'AvoidRegion',
     }),
     /**
-   * `object-position`. Общий хендлер здесь остаётся: атомарных
-   * `object-position-x/y` в CSS не существует, разложить не на что.
-   * Составные формы — свободным значением: `op_left_top`, `op50%_0`.
-   *
-   * `background-position` (`bgp`) убран: общий хендлер порождал уникальный класс
-   * на каждую комбинацию осей, тогда как атомарные `bgpx`/`bgpy`
-   * переиспользуются между комбинациями.
-   */
+     * `object-position`. Общий хендлер здесь остаётся: атомарных
+     * `object-position-x/y` в CSS не существует, разложить не на что.
+     * Составные формы — свободным значением: `op_left_top`, `op50%_0`.
+     *
+     * `background-position` (`bgp`) убран: общий хендлер порождал уникальный класс
+     * на каждую комбинацию осей, тогда как атомарные `bgpx`/`bgpy`
+     * переиспользуются между комбинациями.
+     */
     // `composite`: две координаты в одном значении
     // (`object-position: left top`). Атомарных `object-position-x/y` в CSS нет,
     // поэтому разложить его, как `bgpx`/`bgpy`, нельзя.

@@ -145,6 +145,40 @@ const REGEXP_EASING_PART = /^(cubic-bezier|steps|CubicBezier|Steps)(.*)$/;
 /** Буквы после кебаба: `j-e` (из `JE`). */
 const REGEXP_KEBAB_LETTERS = /^[a-z](?:-[a-z])+$/;
 /**
+ * Слоты `transition` в фиксированном порядке:
+ * `свойство длительность плавность задержка`.
+ *
+ * Грамматика CSS порядок не фиксирует — `<single-transition>` это набор `||`,
+ * и `all 0.2s` с `0.2s all` равноправны. Нотация фиксирует один: так проверка
+ * становится однозначной, ошибка называется словами («в позиции 2 ожидается
+ * длительность»), и не плодится зоопарк записей одного и того же. Тот же
+ * размен в пользу единообразия, что снял общий `ol`.
+ *
+ * Проверки не было вовсе: `tn200` давало `transition:200` (число без единицы),
+ * `tnAll` — `transition:all` без длительности, `tn10zz` — `transition:10zz`.
+ */
+/** Время: число с `s`/`ms`, либо голое число — оно получает `ms`, как у `dn`. */
+const REGEXP_TIME = /^[0-9]*\.?[0-9]+(m?s)?$/;
+/**
+ * Имя CSS-свойства у `tn`: `all`, `none` или несколько имён через `;` — сокращение `tn` для общих параметров.
+ *
+ * Список свойств CSS открыт, поэтому проверяется форма, а не словарь. `;` здесь
+ * разделитель списка, а не терминатор имени переменной: имя переменной
+ * начинается с `--`, и до этой проверки оно уже развёрнуто в `var(…)`. Имя — от
+ * двух знаков: свойства из одной буквы в CSS нет, а `tnA_200` давало
+ * `transition:a 200ms`; теперь `A` — буква `all` ({@link TRANSITION_LETTERS}).
+ */
+const REGEXP_PROPERTY_LIST = /^-?[a-z][a-z0-9-]+(?:;-?[a-z][a-z0-9-]+)*;?$/;
+/**
+ * Буквы у `tn`: плавность — те же, что у `ttf`/`atf` ({@link TIMING_FUNCTION_SYNONYMS}), `A` — `all` в слоте
+ * свойства, как у `tp`. Слот: 1 — свойство, 3 — плавность. Ключ — в обеих формах части: как написана (сырой режим
+ * `tn_opacity_200_EI`) и после кебаба (`tnOpacity_200_EI` → `e-i`, `tnA_200` → `a`). Одна буква или буквы через
+ * дефис другим не бывают: имя свойства — от двух знаков, буквы в нём не разделены дефисами.
+ */
+const TRANSITION_LETTERS: Record<string, [slot: number, value: string]> = {};
+/** Длинное слово → его буква: `tn_opacity_200_ease-in` отвечает «пиши "EI"». */
+const TRANSITION_LONG_WORDS: Record<string, string> = {};
+/**
  * Буквы части слота — как в токене: кебаб превратил `JE` в `j-e`.
  * @param part часть слота
  * @returns буквы заглавными, прочее — как есть
@@ -193,40 +227,6 @@ function easingInSlot(
     j - 1,
   ];
 }
-/**
- * Слоты `transition` в фиксированном порядке:
- * `свойство длительность плавность задержка`.
- *
- * Грамматика CSS порядок не фиксирует — `<single-transition>` это набор `||`,
- * и `all 0.2s` с `0.2s all` равноправны. Нотация фиксирует один: так проверка
- * становится однозначной, ошибка называется словами («в позиции 2 ожидается
- * длительность»), и не плодится зоопарк записей одного и того же. Тот же
- * размен в пользу единообразия, что снял общий `ol`.
- *
- * Проверки не было вовсе: `tn200` давало `transition:200` (число без единицы),
- * `tnAll` — `transition:all` без длительности, `tn10zz` — `transition:10zz`.
- */
-/** Время: число с `s`/`ms`, либо голое число — оно получает `ms`, как у `dn`. */
-const REGEXP_TIME = /^[0-9]*\.?[0-9]+(m?s)?$/;
-/**
- * Имя CSS-свойства у `tn`: `all`, `none` или несколько имён через `;` — сокращение `tn` для общих параметров.
- *
- * Список свойств CSS открыт, поэтому проверяется форма, а не словарь. `;` здесь
- * разделитель списка, а не терминатор имени переменной: имя переменной
- * начинается с `--`, и до этой проверки оно уже развёрнуто в `var(…)`. Имя — от
- * двух знаков: свойства из одной буквы в CSS нет, а `tnA_200` давало
- * `transition:a 200ms`; теперь `A` — буква `all` ({@link TRANSITION_LETTERS}).
- */
-const REGEXP_PROPERTY_LIST = /^-?[a-z][a-z0-9-]+(?:;-?[a-z][a-z0-9-]+)*;?$/;
-/**
- * Буквы у `tn`: плавность — те же, что у `ttf`/`atf` ({@link TIMING_FUNCTION_SYNONYMS}), `A` — `all` в слоте
- * свойства, как у `tp`. Слот: 1 — свойство, 3 — плавность. Ключ — в обеих формах части: как написана (сырой режим
- * `tn_opacity_200_EI`) и после кебаба (`tnOpacity_200_EI` → `e-i`, `tnA_200` → `a`). Одна буква или буквы через
- * дефис другим не бывают: имя свойства — от двух знаков, буквы в нём не разделены дефисами.
- */
-const TRANSITION_LETTERS: Record<string, [slot: number, value: string]> = {};
-/** Длинное слово → его буква: `tn_opacity_200_ease-in` отвечает «пиши "EI"». */
-const TRANSITION_LONG_WORDS: Record<string, string> = {};
 function addTransitionLetter(
   letters: string, slot: number, value: string,
 ): void {
@@ -249,6 +249,79 @@ for (const letters in TIMING_FUNCTION_SYNONYMS) {
 }
 /** Одно имя CSS-свойства — от двух знаков, как в {@link REGEXP_PROPERTY_LIST}. */
 const REGEXP_PROPERTY_NAME = /^-?[a-z][a-z0-9-]+$/;
+/** Имя `@keyframes`: идентификатор CSS. */
+const REGEXP_KEYFRAMES_NAME = /^-?[a-zA-Z_][a-zA-Z0-9_-]*$/;
+/** Число повторов анимации: `2`, `1.5`, `infinite`. */
+const REGEXP_ITERATION_COUNT = /^(?:[0-9]*\.?[0-9]+|infinite)$/;
+const ANIMATION_DIRECTIONS = wordsSet('normal reverse alternate alternate-reverse');
+const ANIMATION_FILL_MODES = wordsSet('none forwards backwards both');
+const ANIMATION_PLAY_STATES = wordsSet('running paused');
+
+/**
+ * Именованные анимации — четыре анимации Tailwind: значение без имени и ключевые кадры. Кадры
+ * регистрируются при первом использовании имени в `an` и не перезаписывают уже заданные под этим именем
+ * (`mn.setKeyframes('spin', …)` автора выигрывает). Голое имя (`anSpin`) получает ещё и длительность, плавность и
+ * повторы; в форме с частями (`an_spin_2s`) значение остаётся как написано.
+ */
+const NAMED_ANIMATIONS: Record<string, [string, Record<string, Record<string, string>>]> = {
+  spin: [
+    '1s linear infinite',
+    {
+      to: {
+        transform: 'rotate(360deg)',
+      },
+    },
+  ],
+  ping: [
+    '1s cubic-bezier(0,0,.2,1) infinite',
+    {
+      '75%,100%': {
+        transform: 'scale(2)',
+        opacity: ZERO,
+      },
+    },
+  ],
+  pulse: [
+    '2s cubic-bezier(.4,0,.6,1) infinite',
+    {
+      '50%': {
+        opacity: '.5',
+      },
+    },
+  ],
+  bounce: [
+    '1s infinite',
+    {
+      '0%,100%': {
+        transform: 'translateY(-25%)',
+        animationTimingFunction: 'cubic-bezier(.8,0,1,1)',
+      },
+      '50%': {
+        transform: NONE,
+        animationTimingFunction: 'cubic-bezier(0,0,.2,1)',
+      },
+    },
+  ],
+};
+
+/** Имя свойства в списке `will-change`: идентификатор, не число и не длина. */
+// От двух знаков: `wcB` давало `will-change:b`.
+const REGEXP_WILL_CHANGE_ITEM = /^-?[a-z_][a-z0-9_-]+$/;
+/** Слова, которых в списке `will-change` быть не может: `auto` — только целиком, остальные — никогда. */
+const WILL_CHANGE_RESERVED: Record<string, 1> = wordsSet('auto none all will-change');
+
+/** Движение: перечни свойств перехода и `will-change`. */
+const MOTION_VALUES: SingleValues = {
+  slots: {
+    transitionProperty: transitionPropertyValue,
+    willChange: willChangeValue,
+  },
+};
+/**
+ * Длина без поблажек — `perspective:500px`, но не `50%`, `-5px` или два значения. Флаг нужен, потому что `0` в
+ * таблице читается как «не длина».
+ */
+const LENGTH_PLAIN = 8;
 /**
  * Разбирает один переход по слотам и возвращает его в каноническом виде.
  *
@@ -329,60 +402,6 @@ function transitionValue(parts: string[], raw: string): string[] {
   }
   return expanded;
 }
-/** Имя `@keyframes`: идентификатор CSS. */
-const REGEXP_KEYFRAMES_NAME = /^-?[a-zA-Z_][a-zA-Z0-9_-]*$/;
-/** Число повторов анимации: `2`, `1.5`, `infinite`. */
-const REGEXP_ITERATION_COUNT = /^(?:[0-9]*\.?[0-9]+|infinite)$/;
-const ANIMATION_DIRECTIONS = wordsSet('normal reverse alternate alternate-reverse');
-const ANIMATION_FILL_MODES = wordsSet('none forwards backwards both');
-const ANIMATION_PLAY_STATES = wordsSet('running paused');
-
-/**
- * Именованные анимации — четыре анимации Tailwind: значение без имени и ключевые кадры. Кадры
- * регистрируются при первом использовании имени в `an` и не перезаписывают уже заданные под этим именем
- * (`mn.setKeyframes('spin', …)` автора выигрывает). Голое имя (`anSpin`) получает ещё и длительность, плавность и
- * повторы; в форме с частями (`an_spin_2s`) значение остаётся как написано.
- */
-const NAMED_ANIMATIONS: Record<string, [string, Record<string, Record<string, string>>]> = {
-  spin: [
-    '1s linear infinite',
-    {
-      to: {
-        transform: 'rotate(360deg)',
-      },
-    },
-  ],
-  ping: [
-    '1s cubic-bezier(0,0,.2,1) infinite',
-    {
-      '75%,100%': {
-        transform: 'scale(2)',
-        opacity: ZERO,
-      },
-    },
-  ],
-  pulse: [
-    '2s cubic-bezier(.4,0,.6,1) infinite',
-    {
-      '50%': {
-        opacity: '.5',
-      },
-    },
-  ],
-  bounce: [
-    '1s infinite',
-    {
-      '0%,100%': {
-        transform: 'translateY(-25%)',
-        animationTimingFunction: 'cubic-bezier(.8,0,1,1)',
-      },
-      '50%': {
-        transform: NONE,
-        animationTimingFunction: 'cubic-bezier(0,0,.2,1)',
-      },
-    },
-  ],
-};
 
 /**
  * Одна анимация по слотам в фиксированном порядке, как у `tn` (запрос web-games):
@@ -458,12 +477,6 @@ function animationValue(parts: string[], raw: string): string {
   }
   return out.join(SPACE);
 }
-
-/** Имя свойства в списке `will-change`: идентификатор, не число и не длина. */
-// От двух знаков: `wcB` давало `will-change:b`.
-const REGEXP_WILL_CHANGE_ITEM = /^-?[a-z_][a-z0-9_-]+$/;
-/** Слова, которых в списке `will-change` быть не может: `auto` — только целиком, остальные — никогда. */
-const WILL_CHANGE_RESERVED: Record<string, 1> = wordsSet('auto none all will-change');
 /**
  * `will-change`: `auto` либо имена свойств через запятую — `wcT`, `wc_transform,opacity`. Список свойств
  * открыт, поэтому проверяется форма имени: `wc10` давало `will-change:10`, `wc10_20` — `will-change:10 20`.
@@ -508,19 +521,6 @@ function transitionPropertyValue(parts: string[], raw: string): string {
     + 'separated by commas, as "tp_color,opacity"');
   return parts[0];
 }
-
-/** Движение: перечни свойств перехода и `will-change`. */
-const MOTION_VALUES: SingleValues = {
-  slots: {
-    transitionProperty: transitionPropertyValue,
-    willChange: willChangeValue,
-  },
-};
-/**
- * Длина без поблажек — `perspective:500px`, но не `50%`, `-5px` или два значения. Флаг нужен, потому что `0` в
- * таблице читается как «не длина».
- */
-const LENGTH_PLAIN = 8;
 
 /**
  * Хендлеры темы «motion».
@@ -672,14 +672,14 @@ export function registerMotion(ctx: StandardContext): void {
 
   mn({
     /**
-   * `transition` — слоты в фиксированном порядке
-   * `свойство длительность плавность задержка`, несколько переходов через
-   * запятую.
-   *
-   * Атомарные `tp`/`dn`/`ttf`/`delay` покрывают одиночный переход целиком,
-   * но задать РАЗНЫЕ параметры разным свойствам ими нельзя — они пишут по
-   * одному значению на все сразу. Ради этого случая shorthand и остаётся.
-   */
+     * `transition` — слоты в фиксированном порядке
+     * `свойство длительность плавность задержка`, несколько переходов через
+     * запятую.
+     *
+     * Атомарные `tp`/`dn`/`ttf`/`delay` покрывают одиночный переход целиком,
+     * но задать РАЗНЫЕ параметры разным свойствам ими нельзя — они пишут по
+     * одному значению на все сразу. Ради этого случая shorthand и остаётся.
+     */
     // `an_fade_0.2s_EO_0.3s_both` → `animation:fade 0.2s ease-out 0.3s both` (плавность — буквами);
     // ключевые кадры — из пресета (`mn.setKeyframes`). Несколько анимаций — через `,`.
     an: (p) => {

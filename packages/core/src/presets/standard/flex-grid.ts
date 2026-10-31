@@ -201,6 +201,127 @@ const REGEXP_VALUE_NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)$/;
 const REGEXP_SLOT_NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)$/;
 /** Ключевые слова `flex-basis`, кроме длины. */
 const FLEX_BASIS_KEYWORDS = wordsSet('auto content min-content max-content fit-content');
+/** Слова, допустимые в `grid` помимо дорожек. */
+const GRID_KEYWORDS = wordsSet('none auto-flow dense');
+/** Область сетки — строка в кавычках: `"a b"`. */
+const REGEXP_GRID_AREA = /^(?:"[^"]*"|'[^']*')$/;
+/** Начало строки в кавычках, которая ещё не закрыта. */
+const REGEXP_QUOTE_OPEN = /^["'][^"']*$/;
+/**
+ * Ключевые слова дорожек.
+ *
+ * `none` и `subgrid` есть только у ЯВНЫХ шаблонов (`gtc`/`gtr`): у неявных
+ * (`gac`/`gar`) грамматика — просто список размеров, и `gacNone` давало
+ * невалидное `grid-auto-columns:none`.
+ */
+const TRACK_KEYWORDS = wordsSet('auto min-content max-content');
+const TEMPLATE_TRACK_KEYWORDS = wordsSet('none auto min-content max-content subgrid');
+/** Размер дорожки: длина, процент или доля свободного места (`1fr`). */
+const REGEXP_TRACK_SIZE = lengthPartRegExp(UNITS.concat('fr'));
+/**
+ * Номер линии сетки: целое со знаком, возможно с `/` для второй границы —
+ * `1`, `-1`, `1/3`.
+ */
+const REGEXP_GRID_LINE = /^[-+]?\d+(?:\/[-+]?\d+)?$/;
+/** Имя линии сетки — в квадратных скобках: `[a] 1fr`. */
+const REGEXP_LINE_NAME = /^\[[^\]]*\]$/;
+
+/**
+ * Повтор дорожек нативной формой: число повторов, `x`, дорожки через `;` — `3x1fr` → `repeat(3, 1fr)`,
+ * `2x1fr;2fr` → `repeat(2, 1fr 2fr)`. Так говорят дизайнеры («3 × 1fr»); `x` — ещё и единица разрешения (`dppx`), но
+ * дорожка разрешением не бывает, и в шаблоне сетки запись однозначна. Повтор — часть списка: `gtc3x1fr_200px` →
+ * `repeat(3, 1fr) 200px`. Повторы `auto-fit`/`auto-fill` — сокращение `AF240` ({@link autoRepeatValue}).
+ */
+const REGEXP_TRACK_REPEAT = /^(\d+)x(.*)$/;
+
+/** Слово-аргумент функций дорожек: `A` — как у `gacA`, внутренние размеры — словом, как у `gacMinContent`. */
+const TRACK_ARG_WORDS: Record<string, string> = {
+  A: AUTO,
+  MinContent: 'min-content',
+  MaxContent: 'max-content',
+};
+/** Доля свободного места: `1fr` — только верхняя граница `minmax()`. */
+const REGEXP_FLEX = /^(?:\d+\.?\d*|\.\d+)fr$/;
+/** Функции дорожки — значение целиком: внутри списка дорожек функция пишется переменной. */
+const TRACK_FORMS: Record<string, FunctionForm> = {
+  Minmax: {
+    css: 'minmax',
+    min: 2,
+    max: 2,
+    example: 'Minmax100px_1fr',
+    args: (args, call) => trackArg(args[0], call) + LIST_SEPARATOR + trackArg(
+      args[1], call, 1,
+    ),
+  },
+  FitContent: {
+    css: FIT_CONTENT,
+    min: 1,
+    max: 1,
+    example: 'FitContent200px',
+    args: (args, call) => functionLength(
+      args[0], call, undefined, 1,
+    ),
+  },
+};
+/**
+ * Функции неявных дорожек `gac`/`gar`: `garMinmax100px_A` → `grid-auto-rows:minmax(100px, auto)`.
+ */
+const TRACK_FUNCTIONS = functionSet(
+  TRACK_FORMS, 'a track function', 1,
+);
+/**
+ * Функции шаблонов `gtc`/`gtr` — те же; на скобку `repeat(` — повтор нативной формой: `gtc3x1fr`, `gtcAF240`.
+ */
+const TEMPLATE_TRACK_FUNCTIONS = functionSet(
+  TRACK_FORMS, 'a track function', 1, undefined, {
+    Repeat: [
+      '3x1fr',
+      'AF240',
+    ],
+  },
+);
+
+/** Номер линии в `<grid-line>`: целое, не ноль. */
+const REGEXP_GRID_LINE_NUMBER = /^[-+]?0*[1-9]\d*$/;
+
+/** `flex-flow` — направление и перенос, оба из закрытых списков. */
+const FLEX_FLOW_KEYWORDS = wordsSet('row row-reverse column column-reverse'
+  + ' nowrap wrap wrap-reverse');
+
+/** Сетка и флекс: слоты, функции дорожек, числа. */
+const FLEX_GRID_VALUES: SingleValues = {
+  slots: {
+    flexFlow: flexFlowValue,
+    grid: gridValue,
+    gridTemplate: gridValue,
+    gridTemplateColumns: trackValue,
+    gridTemplateRows: trackValue,
+    gridAutoColumns: trackValue,
+    gridAutoRows: trackValue,
+    gridRow: gridLineValue,
+    gridColumn: gridLineValue,
+    gridRowStart: gridLineSingleValue,
+    gridRowEnd: gridLineSingleValue,
+    gridColumnStart: gridLineSingleValue,
+    gridColumnEnd: gridLineSingleValue,
+    flex: flexValue,
+  },
+  functions: {
+    gridTemplateColumns: TEMPLATE_TRACK_FUNCTIONS,
+    gridTemplateRows: TEMPLATE_TRACK_FUNCTIONS,
+    gridAutoColumns: TRACK_FUNCTIONS,
+    gridAutoRows: TRACK_FUNCTIONS,
+  },
+  patterns: {
+    order: REGEXP_VALUE_INTEGER,
+    flexGrow: REGEXP_VALUE_NUMBER,
+    flexShrink: REGEXP_VALUE_NUMBER,
+  },
+  parenHints: {
+    grid: gridRepeatHint,
+    gridTemplate: gridRepeatHint,
+  },
+};
 
 /**
  * `flex`: `<grow> [<shrink>] [<basis>]` либо одно слово (`none`, `auto`,
@@ -231,12 +352,6 @@ function flexValue(parts: string[], raw: string): string {
   }
   return parts.join(SPACE);
 }
-/** Слова, допустимые в `grid` помимо дорожек. */
-const GRID_KEYWORDS = wordsSet('none auto-flow dense');
-/** Область сетки — строка в кавычках: `"a b"`. */
-const REGEXP_GRID_AREA = /^(?:"[^"]*"|'[^']*')$/;
-/** Начало строки в кавычках, которая ещё не закрыта. */
-const REGEXP_QUOTE_OPEN = /^["'][^"']*$/;
 /**
  * Склеивает части, разорванные пробелом внутри кавычек.
  *
@@ -319,32 +434,6 @@ function gridValue(
   return parts.join(SPACE);
 }
 /**
- * Ключевые слова дорожек.
- *
- * `none` и `subgrid` есть только у ЯВНЫХ шаблонов (`gtc`/`gtr`): у неявных
- * (`gac`/`gar`) грамматика — просто список размеров, и `gacNone` давало
- * невалидное `grid-auto-columns:none`.
- */
-const TRACK_KEYWORDS = wordsSet('auto min-content max-content');
-const TEMPLATE_TRACK_KEYWORDS = wordsSet('none auto min-content max-content subgrid');
-/** Размер дорожки: длина, процент или доля свободного места (`1fr`). */
-const REGEXP_TRACK_SIZE = lengthPartRegExp(UNITS.concat('fr'));
-/**
- * Номер линии сетки: целое со знаком, возможно с `/` для второй границы —
- * `1`, `-1`, `1/3`.
- */
-const REGEXP_GRID_LINE = /^[-+]?\d+(?:\/[-+]?\d+)?$/;
-/** Имя линии сетки — в квадратных скобках: `[a] 1fr`. */
-const REGEXP_LINE_NAME = /^\[[^\]]*\]$/;
-
-/**
- * Повтор дорожек нативной формой: число повторов, `x`, дорожки через `;` — `3x1fr` → `repeat(3, 1fr)`,
- * `2x1fr;2fr` → `repeat(2, 1fr 2fr)`. Так говорят дизайнеры («3 × 1fr»); `x` — ещё и единица разрешения (`dppx`), но
- * дорожка разрешением не бывает, и в шаблоне сетки запись однозначна. Повтор — часть списка: `gtc3x1fr_200px` →
- * `repeat(3, 1fr) 200px`. Повторы `auto-fit`/`auto-fill` — сокращение `AF240` ({@link autoRepeatValue}).
- */
-const REGEXP_TRACK_REPEAT = /^(\d+)x(.*)$/;
-/**
  * Часть шаблона сетки — повтор `3x1fr`, если она так записана. Повторяется размер или переменная; слово, `minmax()` и
  * прочее внутри повтора — через переменную.
  * @param part часть значения после нормализации: переменная внутри повтора ещё не развёрнута (`3x--w`)
@@ -416,15 +505,6 @@ function trackValue(
   }
   return parts.join(SPACE);
 }
-
-/** Слово-аргумент функций дорожек: `A` — как у `gacA`, внутренние размеры — словом, как у `gacMinContent`. */
-const TRACK_ARG_WORDS: Record<string, string> = {
-  A: AUTO,
-  MinContent: 'min-content',
-  MaxContent: 'max-content',
-};
-/** Доля свободного места: `1fr` — только верхняя граница `minmax()`. */
-const REGEXP_FLEX = /^(?:\d+\.?\d*|\.\d+)fr$/;
 /**
  * Аргумент функции дорожки: длина (голое число — пиксели, как у других функций и у `AF240`), процент, слово
  * {@link TRACK_ARG_WORDS} или переменная; доля `fr` — где её допускает грамматика.
@@ -444,44 +524,6 @@ function trackArg(
     || call.fail('a length, a percent' + (flex ? ', a fraction ("1fr")' : '') + ', "A" (auto), "MinContent" or '
       + '"MaxContent"');
 }
-/** Функции дорожки — значение целиком: внутри списка дорожек функция пишется переменной. */
-const TRACK_FORMS: Record<string, FunctionForm> = {
-  Minmax: {
-    css: 'minmax',
-    min: 2,
-    max: 2,
-    example: 'Minmax100px_1fr',
-    args: (args, call) => trackArg(args[0], call) + LIST_SEPARATOR + trackArg(
-      args[1], call, 1,
-    ),
-  },
-  FitContent: {
-    css: FIT_CONTENT,
-    min: 1,
-    max: 1,
-    example: 'FitContent200px',
-    args: (args, call) => functionLength(
-      args[0], call, undefined, 1,
-    ),
-  },
-};
-/**
- * Функции неявных дорожек `gac`/`gar`: `garMinmax100px_A` → `grid-auto-rows:minmax(100px, auto)`.
- */
-const TRACK_FUNCTIONS = functionSet(
-  TRACK_FORMS, 'a track function', 1,
-);
-/**
- * Функции шаблонов `gtc`/`gtr` — те же; на скобку `repeat(` — повтор нативной формой: `gtc3x1fr`, `gtcAF240`.
- */
-const TEMPLATE_TRACK_FUNCTIONS = functionSet(
-  TRACK_FORMS, 'a track function', 1, undefined, {
-    Repeat: [
-      '3x1fr',
-      'AF240',
-    ],
-  },
-);
 
 /**
  * Позиция в сетке: `gr`, `gc`. По грамматике это `<grid-line>`, то есть почти
@@ -512,9 +554,6 @@ function gridLineValue(
   }
   return parts.join(SPACE);
 }
-
-/** Номер линии в `<grid-line>`: целое, не ноль. */
-const REGEXP_GRID_LINE_NUMBER = /^[-+]?0*[1-9]\d*$/;
 function gridLineSingleValue(
   parts: string[], raw: string, essenceName: string,
 ): string {
@@ -554,10 +593,6 @@ function gridLineSingleValue(
   return parts.join(SPACE);
 }
 
-/** `flex-flow` — направление и перенос, оба из закрытых списков. */
-const FLEX_FLOW_KEYWORDS = wordsSet('row row-reverse column column-reverse'
-  + ' nowrap wrap wrap-reverse');
-
 /** `flex-flow`: `<direction> || <wrap>`, перечень закрыт. */
 function flexFlowValue(parts: string[], raw: string): string {
   const l = parts.length;
@@ -577,41 +612,6 @@ function gridRepeatHint(essenceName: string): string {
   return '. A repeat of tracks is "3x1fr", as "' + essenceName + '1fr_/_3x1fr"';
 }
 
-/** Сетка и флекс: слоты, функции дорожек, числа. */
-const FLEX_GRID_VALUES: SingleValues = {
-  slots: {
-    flexFlow: flexFlowValue,
-    grid: gridValue,
-    gridTemplate: gridValue,
-    gridTemplateColumns: trackValue,
-    gridTemplateRows: trackValue,
-    gridAutoColumns: trackValue,
-    gridAutoRows: trackValue,
-    gridRow: gridLineValue,
-    gridColumn: gridLineValue,
-    gridRowStart: gridLineSingleValue,
-    gridRowEnd: gridLineSingleValue,
-    gridColumnStart: gridLineSingleValue,
-    gridColumnEnd: gridLineSingleValue,
-    flex: flexValue,
-  },
-  functions: {
-    gridTemplateColumns: TEMPLATE_TRACK_FUNCTIONS,
-    gridTemplateRows: TEMPLATE_TRACK_FUNCTIONS,
-    gridAutoColumns: TRACK_FUNCTIONS,
-    gridAutoRows: TRACK_FUNCTIONS,
-  },
-  patterns: {
-    order: REGEXP_VALUE_INTEGER,
-    flexGrow: REGEXP_VALUE_NUMBER,
-    flexShrink: REGEXP_VALUE_NUMBER,
-  },
-  parenHints: {
-    grid: gridRepeatHint,
-    gridTemplate: gridRepeatHint,
-  },
-};
-
 /**
  * Хендлеры темы «flex-grid».
  *
@@ -630,11 +630,11 @@ export function registerFlexGrid(ctx: StandardContext): void {
   } = ctx;
 
   /**
- * `gap8` → `gap:8px` (обе оси разом). Для разных значений по осям —
- * атомарные `gapx` (column-gap, горизонталь) / `gapy` (row-gap, вертикаль),
- * по образцу `px`/`py` у padding/margin. Многозначной формы `gap8_16`
- * намеренно нет (принцип атомарности) — `gapx16 gapy8` вместо неё.
- */
+   * `gap8` → `gap:8px` (обе оси разом). Для разных значений по осям —
+   * атомарные `gapx` (column-gap, горизонталь) / `gapy` (row-gap, вертикаль),
+   * по образцу `px`/`py` у padding/margin. Многозначной формы `gap8_16`
+   * намеренно нет (принцип атомарности) — `gapx16 gapy8` вместо неё.
+   */
   function gapHandlerProvider(propName: string) {
     return (p: MnEssenceParams) => {
       const suffix = p.suffix;
@@ -921,10 +921,10 @@ export function registerFlexGrid(ctx: StandardContext): void {
     }),
     as: synonymProvider('alignSelf', ALIGN_SELF_WORDS),
     /**
-   * `justify-self` / `justify-items` — grid-раскладка. Буквы `S`/`ST`/`E`/`C`/`N`/`B`
-   * согласованы с `jc`/`ai`/`as`/`ac`; `L`/`R` — как у `jc`, `justify-items`
-   * и `justify-self` их тоже принимают (унаследовано от `text-align`).
-   */
+     * `justify-self` / `justify-items` — grid-раскладка. Буквы `S`/`ST`/`E`/`C`/`N`/`B`
+     * согласованы с `jc`/`ai`/`as`/`ac`; `L`/`R` — как у `jc`, `justify-items`
+     * и `justify-self` их тоже принимают (унаследовано от `text-align`).
+     */
     js: synonymProvider('justifySelf', JUSTIFY_SELF_WORDS),
     ji: synonymProvider('justifyItems', JUSTIFY_ITEMS_WORDS),
     ac: synonymProvider('alignContent', ALIGN_CONTENT_WORDS),

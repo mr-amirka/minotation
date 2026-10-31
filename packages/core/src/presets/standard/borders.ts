@@ -196,24 +196,6 @@ const MN_SHADOW_COLOR = 8;
  */
 const EMPTY_KEYWORDS: Record<string, 1> = {};
 
-/**
- * Склеивает части тени, дописывая единицу каждой длине.
- *
- * Последняя часть — цвет, единицы не получает. Подстановка тоже: `var(--blur)`
- * уже несёт единицу внутри себя, а `var(--blur)px` — мусор.
- */
-function shadowJoin(parts: (string | number)[], unit: string): string {
-  const last = parts.length - 1;
-  const out: string[] = new Array(parts.length);
-  let i = 0;
-  let part: string;
-  for (; i <= last; i++) {
-    part = '' + parts[i];
-    out[i] = (i === last || part.indexOf(OPEN_PAREN) > -1) ? part : part + unit;
-  }
-  return out.join(SPACE);
-}
-
 /** Повтор рамочной картинки (`border-image-repeat`) — те же буквы, что у повтора фона (`bgrRD`) и `stretch` (`aiST`). */
 const BORDER_IMAGE_REPEAT_SYNONYMS: Record<string, string> = {
   ST: NAME_STRETCH,
@@ -256,6 +238,24 @@ const BORDER_IMAGE_OUTSETS: LengthRule = {
   unitless: 1,
   expected: 'a length with a unit (`10px`) or a number — multiples of the border width (`2`); no percentage',
 };
+
+/**
+ * Склеивает части тени, дописывая единицу каждой длине.
+ *
+ * Последняя часть — цвет, единицы не получает. Подстановка тоже: `var(--blur)`
+ * уже несёт единицу внутри себя, а `var(--blur)px` — мусор.
+ */
+function shadowJoin(parts: (string | number)[], unit: string): string {
+  const last = parts.length - 1;
+  const out: string[] = new Array(parts.length);
+  let i = 0;
+  let part: string;
+  for (; i <= last; i++) {
+    part = '' + parts[i];
+    out[i] = (i === last || part.indexOf(OPEN_PAREN) > -1) ? part : part + unit;
+  }
+  return out.join(SPACE);
+}
 
 /**
  * Хендлеры темы «borders».
@@ -311,12 +311,12 @@ export function registerBorders(ctx: StandardContext): void {
     propName,
     handler,
   ], pfx) => {
-  /**
-   * Собирает ОДНУ тень из её разобранного суффикса.
-   *
-   * Возвращает пустую строку, когда тени нет (`bxsh` без значения или
-   * `m0` — ноль повторов): вызывающий превращает это в `none`.
-   */
+    /**
+     * Собирает ОДНУ тень из её разобранного суффикса.
+     *
+     * Возвращает пустую строку, когда тени нет (`bxsh` без значения или
+     * `m0` — ноль повторов): вызывающий превращает это в `none`.
+     */
     function shadowValue(part: string, name: string): string {
     // Вся тень одной переменной: `bxsh--shadow` → `box-shadow:var(--shadow)`.
     // У любого другого свойства `--x` означает значение целиком, и тень не

@@ -26,6 +26,16 @@ import {
   ZERO,
 } from './words';
 
+/**
+ * Хендлеры пресета сами распознают класс другой системы: значение `-слово`
+ * не разбирается, а даёт отчёт `suspect-class` (`suspectClassMode`). Одна проверка на все
+ * хендлеры пресета — при регистрации, а не в каждом: раньше 25 из них такие значения
+ * принимали и давали неверный CSS (`fw-bold` → `font-weight:100`). Паттерн разбора
+ * (`mn(name, handler, pattern)`) оборачивается здесь же, чтобы проверка шла раньше него.
+ */
+/** Подсказка в ошибке хендлера: значение подходит другому свойству. */
+type CrossHint = [test: (suffix: string) => boolean, tag: string, property: string];
+
 /** Начало пояснения в подсказке: `aiC (center)`. */
 export const HINT_OPEN = ' (';
 export const MSG_INSTEAD_OF = '" instead of "';
@@ -39,6 +49,76 @@ export const MSG_AS = ' — as "';
 /** Начало цитаты слова после двоеточия: `…for "bgs": "cover" stands alone`. */
 export const MSG_COLON_QUOTE = MSG_COLON + DOUBLE_QUOTE;
 const REGEXP_DASHES = /-/g;
+
+/**
+ * Значение вида `-слово` (`-bold`, `-only`, `-red-500`, `-caption`): в записи minotation таких
+ * нет (`--v`, `w-5`, `w10-5`, `_a-b`, `From-font` под него не подходят),
+ * а у классов других систем — сплошь (`fw-bold` — Bootstrap, `sr-only` — Bootstrap/Tailwind).
+ */
+const REGEXP_SUSPECT_VALUE = /^-[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+
+/**
+ * Частые промахи по имени (замер угадываемости): угаданное имя занято другим свойством, и для него значение
+ * неверно — к ошибке добавляется «did you mean». Проверка значения — до вызова хендлера, дешёвая; сам хендлер
+ * вызывается как всегда.
+ */
+const CROSS_HINTS: Record<string, CrossHint[]> = {
+  fs: [
+    [
+      startsWithDigit,
+      'f',
+      'font-size',
+    ],
+  ],
+  td: [
+    [
+      (suffix) => suffix[suffix.length - 1] === S && startsWithDigit(suffix),
+      'dn',
+      'transition-duration',
+    ],
+  ],
+  // `pe10`, `bs1` — привычка Tailwind: эти стороны названы `pie`, `bisw`.
+  pe: [
+    [
+      startsWithDigit,
+      'pie',
+      'padding-inline-end',
+    ],
+  ],
+  bs: [
+    [
+      (suffix) => !!BOX_SIZING_WORDS[suffix],
+      'bxz',
+      'box-sizing',
+    ],
+    [
+      startsWithDigit,
+      'bisw',
+      'border-inline-start-width',
+    ],
+  ],
+  c: [
+    [
+      (suffix) => !!CURSOR_WORDS[suffix],
+      'cr',
+      'cursor',
+    ],
+  ],
+  p: [
+    [
+      (suffix) => !!POSITION_WORDS[suffix],
+      POS,
+      'position',
+    ],
+  ],
+  f: [
+    [
+      (suffix) => !!FLOAT_WORDS[suffix],
+      'fl',
+      'float',
+    ],
+  ],
+};
 
 export function throwInvalid(message?: string): never {
   throw new MnParseError(message || 'Parameter is invalid', {
@@ -158,13 +238,6 @@ export function shorterSuffix(
   return out[0] === UNDERSCORE ? out.slice(1) : out;
 }
 
-/**
- * Значение вида `-слово` (`-bold`, `-only`, `-red-500`, `-caption`): в записи minotation таких
- * нет (`--v`, `w-5`, `w10-5`, `_a-b`, `From-font` под него не подходят),
- * а у классов других систем — сплошь (`fw-bold` — Bootstrap, `sr-only` — Bootstrap/Tailwind).
- */
-const REGEXP_SUSPECT_VALUE = /^-[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
-
 function throwSuspect(p: MnEssenceParams): never {
   throw new MnParseError(DOUBLE_QUOTE + p.name + p.suffix + MSG_COLON_QUOTE + p.suffix + '" is not a value of "' + p.name
     + '" — this looks like a class of another CSS framework, it gives no CSS', {
@@ -174,79 +247,6 @@ function throwSuspect(p: MnEssenceParams): never {
     warningType: 'suspect-class',
   });
 }
-
-/**
- * Хендлеры пресета сами распознают класс другой системы: значение `-слово`
- * не разбирается, а даёт отчёт `suspect-class` (`suspectClassMode`). Одна проверка на все
- * хендлеры пресета — при регистрации, а не в каждом: раньше 25 из них такие значения
- * принимали и давали неверный CSS (`fw-bold` → `font-weight:100`). Паттерн разбора
- * (`mn(name, handler, pattern)`) оборачивается здесь же, чтобы проверка шла раньше него.
- */
-/** Подсказка в ошибке хендлера: значение подходит другому свойству. */
-type CrossHint = [test: (suffix: string) => boolean, tag: string, property: string];
-
-/**
- * Частые промахи по имени (замер угадываемости): угаданное имя занято другим свойством, и для него значение
- * неверно — к ошибке добавляется «did you mean». Проверка значения — до вызова хендлера, дешёвая; сам хендлер
- * вызывается как всегда.
- */
-const CROSS_HINTS: Record<string, CrossHint[]> = {
-  fs: [
-    [
-      startsWithDigit,
-      'f',
-      'font-size',
-    ],
-  ],
-  td: [
-    [
-      (suffix) => suffix[suffix.length - 1] === S && startsWithDigit(suffix),
-      'dn',
-      'transition-duration',
-    ],
-  ],
-  // `pe10`, `bs1` — привычка Tailwind: эти стороны названы `pie`, `bisw`.
-  pe: [
-    [
-      startsWithDigit,
-      'pie',
-      'padding-inline-end',
-    ],
-  ],
-  bs: [
-    [
-      (suffix) => !!BOX_SIZING_WORDS[suffix],
-      'bxz',
-      'box-sizing',
-    ],
-    [
-      startsWithDigit,
-      'bisw',
-      'border-inline-start-width',
-    ],
-  ],
-  c: [
-    [
-      (suffix) => !!CURSOR_WORDS[suffix],
-      'cr',
-      'cursor',
-    ],
-  ],
-  p: [
-    [
-      (suffix) => !!POSITION_WORDS[suffix],
-      POS,
-      'position',
-    ],
-  ],
-  f: [
-    [
-      (suffix) => !!FLOAT_WORDS[suffix],
-      'fl',
-      'float',
-    ],
-  ],
-};
 
 /** Значение начинается с цифры (`10`, `1px`). */
 function startsWithDigit(suffix: string): boolean {

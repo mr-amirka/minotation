@@ -130,6 +130,27 @@ const COLOR_SCHEME_SYNONYMS = withPairs(
 const REGEXP_FUNCTION_ANGLE = lengthPartRegExp(ANGLE_UNITS);
 /** Доля: число не меньше нуля, с `%` или без. */
 const REGEXP_FUNCTION_RATIO = /^(?:\d+\.?\d*|\.\d+)%?$/;
+/** Полные имена функций фильтра там, где есть короткое: одна форма на значение. */
+const FILTER_LONG_NAMES: Record<string, string> = {
+  Grayscale: 'Gray',
+  Brightness: 'Bright',
+  HueRotate: 'Hue',
+};
+/**
+ * `background-size`, `mask-size`: ширина и высота — не отрицательные, не больше двух, `cover`/`contain` — только
+ * одни. Раньше `bgs-10px` давало `background-size:-10px`, `bgs10px_20px_30px` — три длины, `bgs_cover_10px` —
+ * `cover 10px`, и браузер отбрасывал все три.
+ */
+const SIZE_LENGTHS: LengthRule = {
+  signed: false,
+  max: 2,
+  solo: wordsSet('cover contain'),
+};
+
+/** Слово `auto` у свойства-цвета, где буква `A` занята кодом `#aaa`: `ccAuto`. */
+const AUTO_KEYWORD: Record<string, 1> = {
+  [AUTO]: 1,
+};
 /**
  * Аргумент-доля функции: голое число — проценты (`50` → `50%`), переменная — `var()`. Число не меньше нуля.
  * @param v аргумент
@@ -168,27 +189,6 @@ function ratioForm(css: string, example: string): FunctionForm {
     args: (args, call) => (args.length ? functionRatio(args[0], call) : HUNDRED_PERCENT),
   };
 }
-/** Полные имена функций фильтра там, где есть короткое: одна форма на значение. */
-const FILTER_LONG_NAMES: Record<string, string> = {
-  Grayscale: 'Gray',
-  Brightness: 'Bright',
-  HueRotate: 'Hue',
-};
-/**
- * `background-size`, `mask-size`: ширина и высота — не отрицательные, не больше двух, `cover`/`contain` — только
- * одни. Раньше `bgs-10px` давало `background-size:-10px`, `bgs10px_20px_30px` — три длины, `bgs_cover_10px` —
- * `cover 10px`, и браузер отбрасывал все три.
- */
-const SIZE_LENGTHS: LengthRule = {
-  signed: false,
-  max: 2,
-  solo: wordsSet('cover contain'),
-};
-
-/** Слово `auto` у свойства-цвета, где буква `A` занята кодом `#aaa`: `ccAuto`. */
-const AUTO_KEYWORD: Record<string, 1> = {
-  [AUTO]: 1,
-};
 
 /**
  * Хендлеры темы «paint».
@@ -445,11 +445,11 @@ export function registerPaint(ctx: StandardContext): void {
       'background', undefined, 'bgi',
     ),
     /**
-   * `opacity`. Число — проценты (`o50` → `.5`), как в 1.x. Дробь меньше единицы
-   * трактуется как готовая доля (`o0.5` → `.5`): раньше такая запись
-   * молча давала `opacity:0` (0.5 % округлялось в ноль), хотя это самый
-   * естественный для CSS вариант записи.
-   */
+     * `opacity`. Число — проценты (`o50` → `.5`), как в 1.x. Дробь меньше единицы
+     * трактуется как готовая доля (`o0.5` → `.5`): раньше такая запись
+     * молча давала `opacity:0` (0.5 % округлялось в ноль), хотя это самый
+     * естественный для CSS вариант записи.
+     */
     o: (p) => {
       let v, num;
       return p.camel || p.negative ? 0 : (
@@ -554,14 +554,14 @@ export function registerPaint(ctx: StandardContext): void {
     // `mask-position-x/y` в CSS нет (только с `-webkit-`), поэтому позиция маски — общим разбором, как у `op`.
     mkp: positionProvider('maskPosition', 1),
     /**
-   * Оси `background-position`. Ключевые слова у них РАЗНЫЕ: горизонтальная
-   * принимает `left`/`right`/`x-start`/`x-end`, вертикальная —
-   * `top`/`bottom`/`y-start`/`y-end`. Раньше карт не было вовсе, и
-   * `bgpxL` давало мусор `background-position-x:l`.
-   *
-   * Помечены `numeric`: позиция задаётся не только словом, но и длиной или
-   * процентом — `bgpx50%`, `bgpy10px`.
-   */
+     * Оси `background-position`. Ключевые слова у них РАЗНЫЕ: горизонтальная
+     * принимает `left`/`right`/`x-start`/`x-end`, вертикальная —
+     * `top`/`bottom`/`y-start`/`y-end`. Раньше карт не было вовсе, и
+     * `bgpxL` давало мусор `background-position-x:l`.
+     *
+     * Помечены `numeric`: позиция задаётся не только словом, но и длиной или
+     * процентом — `bgpx50%`, `bgpy10px`.
+     */
     bgpx: synonymProvider(
       'backgroundPositionX', {
         L: NAME_LEFT,

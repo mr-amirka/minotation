@@ -439,7 +439,8 @@ describe('mathValue — запись, которая не читается', () 
     ],
     [
       '+5',
-      '"+" is not expected',
+      '"+" is not expected'
+        + ': a value starts with a number ("10"), a variable ("$x"), a function ("Min{…}") or a group ("{…}")',
     ],
     [
       '10++5',
@@ -525,7 +526,8 @@ describe('mathValue — запись, которая не читается', () 
     ],
     [
       'F00',
-      '"F" is not expected',
+      '"F" is not expected'
+        + ': a value starts with a number ("10"), a variable ("$x"), a function ("Min{…}") or a group ("{…}")',
     ],
     [
       '10+Foo',

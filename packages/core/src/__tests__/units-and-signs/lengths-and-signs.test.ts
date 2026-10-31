@@ -114,31 +114,43 @@ describe('единицы длины', () => {
     expect(compile([token]).css).toBe('');
   });
 
+  test('tiF00 больше не даёт "text-indent:f00"', () => {
+    // Общий блок свободных значений кебабил суффикс и отдавал как есть;
+    // свойства нет в таблице валидатора ядра, поэтому проходило молча.
+    expect(compile(['tiF00']).css).toBe('');
+  });
+
+  // Раньше `ti1/2` давало `text-indent:1/2`, затем браковалось целиком; теперь это математика, как у `w`.
   test.each([
     [
-      'tiF00',
-      'text-indent:f00',
-    ],
-    [
       'ti1/2',
-      'text-indent:1/2',
+      '.ti1\\/2{text-indent:50%}',
     ],
     [
       'ti10-5',
-      'text-indent:10-5',
+      '.ti10-5{text-indent:calc(10px - 5px)}',
     ],
     [
       'ti100%-20px',
-      'text-indent:100%-20px',
+      '.ti100\\%-20px{text-indent:calc(100% - 20px)}',
     ],
-  ])('%s больше не даёт "%s"', (token) => {
-    // Общий блок свободных значений кебабил суффикс и отдавал как есть;
-    // свойства нет в таблице валидатора ядра, поэтому проходило молча.
-    expect(compile([token]).css).toBe('');
-  });
-
-  test('подстановка и функция проходят: разбирать их содержимое тут нечем', () => {
-    expect(compile(['ti$v']).css).toContain('text-indent:var(--v)');
+    [
+      'ti$v',
+      '.ti\\$v{text-indent:var(--v)}',
+    ],
+    [
+      'ti$a{10}',
+      '.ti\\$a\\{10\\}{text-indent:var(--a, 10px)}',
+    ],
+    [
+      'bsp2_$a*2',
+      '.bsp2_\\$a\\*2{border-spacing:2px calc(var(--a) * 2)}',
+    ],
+  ])('%s — длина читается как математика: %s', (token, css) => {
+    expect(compile([token])).toEqual(expect.objectContaining({
+      css,
+      warnings: [],
+    }));
   });
 });
 

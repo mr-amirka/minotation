@@ -46,6 +46,10 @@ const CALC_OPEN = 'calc(';
 const VAR_OPEN = 'var(--';
 const ENV_OPEN = 'env(';
 const NEGATE = ' * -1';
+const MSG_NOT_EXPECTED = ' is not expected';
+/** С чего начинается значение — подсказка, когда не подошёл первый же символ (`tiF00`, `w#1`). */
+const MSG_TERM_START = ': a value starts with a number ("10"), a variable ("$x"), a function ("Min{…}") or a group'
+  + ' ("{…}")';
 
 /** Голое число: единицу ему даёт место в выражении. */
 const KIND_BARE = 0;
@@ -466,8 +470,8 @@ function unexpected(): never {
   const ch = src[pos];
   return invalid(ch === COMMA && factorVariable
     ? 'a fallback is written in braces: "' + src.slice(0, pos) + '{' + src.slice(pos + 1) + '}"'
-    : DOUBLE_QUOTE + ch + DOUBLE_QUOTE + (pos ? ' after "' + src.slice(0, pos) + DOUBLE_QUOTE : '')
-      + ' is not expected');
+    : DOUBLE_QUOTE + ch + DOUBLE_QUOTE + (pos ? ' after "' + src.slice(0, pos) + DOUBLE_QUOTE + MSG_NOT_EXPECTED
+      : MSG_NOT_EXPECTED + MSG_TERM_START));
 }
 
 function invalid(reason: string): never {

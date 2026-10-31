@@ -352,53 +352,6 @@ function assertGradientStops(
 function isGradientValue(v: string): boolean {
   return REGEXP_GRADIENT_HEAD.test(v);
 }
-/**
- * Бракует значение свойства-длины, которое длиной не является.
- *
- * Числовой путь единицу проверяет (`mathValue`), а общий блок свободных
- * значений — нет: суффикс кебабится и уходит в CSS как есть. В результате
- * `ti10zz` давало `text-indent:10zz`, `tiF00` — `text-indent:f00`, `ti1/2` —
- * `text-indent:1/2`, `ti10-5` — `text-indent:10-5` (вычитание, не свёрнутое в
- * `calc`). Всё это браузер отбрасывает, а предупреждения не было: свойства нет
- * в таблице валидатора ядра. Поведение должно совпадать с числовым путём, где
- * `w10zz` бракуется.
- *
- * Значение с функцией (`calc(…)`, `var(…)`, `clamp(…)`) пропускается целиком:
- * разбирать его содержимое здесь нечем, а по спецификации подстановка валидна у
- * любого свойства.
- *
- * @param allow — что именно свойство принимает, см. {@link LENGTH_PERCENT}
- */
-function assertLengthValue(
-  v: string, essenceName: string, raw: string, allow: number,
-): string {
-  if (v.indexOf(OPEN_PAREN) > -1) {
-    return v;
-  }
-  const prefix = MSG_VALUE + raw + MSG_IS_INVALID_FOR + essenceName + MSG_COLON;
-  const parts = v.split(SPACE);
-  let i = parts.length;
-  let part: string;
-  (i < 2 || (allow & LENGTH_MULTI))
-    || throwInvalid(prefix + 'expected a single value');
-  // `border-spacing` берёт максимум два (горизонтальный и вертикальный
-  // интервал): `bsp10_20_30_40` давало четыре.
-  (i < 3 || !(allow & LENGTH_MULTI))
-    || throwInvalid(prefix + 'expected at most two values');
-  while (i--) {
-    part = parts[i];
-    // Слово сюда доходит только разрешённое: список ключевых слов свойства
-    // проверен выше по `assertKnownWord`-правилу вызывающего блока.
-    REGEXP_LENGTH_PART.test(part) || REGEXP_BARE_WORD.test(part)
-      || throwInvalid(prefix + 'expected a length');
-    (part.indexOf(PERCENT) < 0 || (allow & LENGTH_PERCENT))
-      || throwInvalid(prefix + 'expected a length, percent is not allowed');
-    (part[0] !== DASH || (allow & LENGTH_SIGN))
-      || throwInvalid(prefix + 'negative value is not allowed');
-  }
-  return v;
-}
-
 function autoRepeatValue(suffix: string, essenceName: string): string | undefined {
   const m = REGEXP_AUTO_REPEAT.exec(suffix);
   if (!m) {
@@ -1539,6 +1492,38 @@ export function createContext(instance: MnInstance) {
   }
 
   /**
+   * Значение одиночного свойства-длины из суффикса: каждая часть через `_` — математика по правилам свойства
+   * ({@link mathValue}: `ti10-5` → `calc(10px - 5px)`, `ti$a{10}` → `var(--a, 10px)`), частей — одна, у
+   * `border-spacing` — до двух.
+   *
+   * Общий блок свободных значений единицу не проверял: `ti10zz` давало `text-indent:10zz`, `ti1/2` —
+   * `text-indent:1/2`; потом проверка по форме бракована и математику (`ti10-5` — «expected a length»).
+   *
+   * @param suffix — суффикс токена как написан
+   * @param rules — правила свойства из {@link lengthRules}
+   * @param multi — свойство берёт два значения ({@link LENGTH_MULTI})
+   * @param essenceName — имя хендлера, для сообщения
+   * @returns CSS значения
+   * @example lengthPartsValue('2_4', lengthRules('bsp', 1), LENGTH_MULTI, 'bsp') // '2px 4px'
+   */
+  function lengthPartsValue(
+    suffix: string, rules: MnMathRules, multi: number, essenceName: string,
+  ): string {
+    const parts = splitValueParts(suffix);
+    const l = parts.length;
+    const prefix = MSG_VALUE + suffix + MSG_IS_INVALID_FOR + essenceName + MSG_COLON;
+    l < 2 || multi || throwInvalid(prefix + 'expected a single value');
+    // `border-spacing` берёт максимум два (горизонтальный и вертикальный интервал): `bsp10_20_30_40` давало четыре.
+    l < 3 || throwInvalid(prefix + 'expected at most two values');
+    const out: string[] = new Array(l);
+    let i = 0;
+    for (; i < l; i++) {
+      out[i] = mathValue(parts[i], rules);
+    }
+    return out.join(SPACE);
+  }
+
+  /**
    * Регистрирует одиночные свойства: строка реестра — `[свойство, приоритет, длина, авто-повтор, слова]`, что
    * свойство знает о значении сверх неё — таблицы темы.
    *
@@ -1556,6 +1541,10 @@ export function createContext(instance: MnInstance) {
       const lengthy = options[2];
       const autoRepeat = options[3];
       const keywords = options[4];
+      const rules = lengthy ? lengthRules(
+        essenceName, lengthy & LENGTH_SIGN ? 0 : 1, lengthy & LENGTH_PERCENT ? 0 : 1,
+      ) : undefined;
+      const multi = lengthy ? lengthy & LENGTH_MULTI : 0;
       // §6.3: `priority || 0` вычислялся на каждый вызов хендлера, причём дважды —
       // выносим на холодный путь регистрации.
       const stylePriority = priority || 0;
@@ -1638,10 +1627,11 @@ export function createContext(instance: MnInstance) {
             s, enumWords, ENUM_MULTI[propName], essenceName, p.suffix, abbreviations,
           );
         }
+        // Слово сюда доходит только разрешённое (проверено выше); остальное — длина из суффикса как написан.
         style[propName] = lengthy
-          ? assertLengthValue(
-            defaultUnitNormalize(s), essenceName, p.suffix, lengthy,
-          )
+          ? (REGEXP_BARE_WORD.test(s) ? s : lengthPartsValue(
+            p.suffix, rules as MnMathRules, multi, essenceName,
+          ))
           // `optimize-contrast` нужен и с префиксом WebKit (бывший `contrast`).
           : s === 'optimize-contrast' ? [
             s,

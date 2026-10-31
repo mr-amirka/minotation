@@ -1795,7 +1795,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     comboName: string, found: string, what: string,
   ): never {
     throw new MnParseError(DOUBLE_QUOTE + comboName + '": "' + found + '" — ' + what + ' after the media part. After "@" only'
-      + ' the media part may follow (D-088): selectors, states and chains go before "@" — "cF00.active:hover<.card@md",'
+      + ' the media part may follow: selectors, states and chains go before "@" — "cF00.active:hover<.card@md",'
       + ' not "cF00@md.active:hover<.card". The class gives no CSS.', {
       token: comboName,
       handler: '',

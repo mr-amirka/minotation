@@ -27,8 +27,8 @@ import type { MnPreset } from 'minotation';
 import { createMnRuntime } from 'minotation-runtime';
 
 /** Сообщение о забытом `presets`: набора по умолчанию нет (D-110). */
-const MSG_PRESETS_REQUIRED = '[minotation] MnIframe: "presets" is required — no preset is connected by default'
-  + ' (D-110). List them: presets={[presetStandard, presetSynonyms, presetMedias]}';
+const MSG_PRESETS_REQUIRED = '[minotation] MnIframe: "presets" is required — no preset is connected by default.'
+  + ' List them: presets={[presetStandard, presetSynonyms, presetMedias]}';
 
 export interface MnIframeProps {
   /** Рендерится внутрь `contentDocument.body` iframe (через `createPortal`). */

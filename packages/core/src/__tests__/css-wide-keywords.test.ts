@@ -104,15 +104,15 @@ describe('буквы ключевых слов в стандартных хен�
   test.each([
     [
       'cInherit',
-      'Write it shorter: "cINH" instead of "cInherit" — same value (D-125)',
+      'Write it shorter: "cINH" instead of "cInherit" — same value',
     ],
     [
       'bgiRevertLayer',
-      'Write it shorter: "bgiRVL" instead of "bgiRevertLayer" — same value (D-125)',
+      'Write it shorter: "bgiRVL" instead of "bgiRevertLayer" — same value',
     ],
     [
       'mUnset-i',
-      'Write it shorter: "mUNS-i" instead of "mUnset-i" — same value (D-125)',
+      'Write it shorter: "mUNS-i" instead of "mUnset-i" — same value',
     ],
   ])('слово, где есть буквы, бракуется: %s', (token, message) => {
     expect(compile([token])).toEqual({
@@ -131,8 +131,8 @@ describe('буквы ключевых слов в стандартных хен�
       'c:Inherit',
       'c:inherit',
     ], options).warnings).toEqual([
-      'Write it shorter: "c:INH" instead of "c:Inherit" — same value (D-125)',
-      'Write it shorter: "c:INH" instead of "c:inherit" — same value (D-125)',
+      'Write it shorter: "c:INH" instead of "c:Inherit" — same value',
+      'Write it shorter: "c:INH" instead of "c:inherit" — same value',
     ]);
   });
 
@@ -142,8 +142,7 @@ describe('буквы ключевых слов в стандартных хен�
       'rxINH',
       'xINH',
     ]).warnings).toEqual([
-      '"rxINH" gives no CSS: a CSS-wide keyword is a whole value of a property, and handler "rx" writes a part of one'
-      + ' (D-125)',
+      '"rxINH" gives no CSS: a CSS-wide keyword is a whole value of a property, and handler "rx" writes a part of one',
       'Value "INH" is invalid for "x": expected a shift, as "x10", "x10y20", "x10y20z5", with a scale "s50" and a turn'
       + ' "rz45" after it',
     ]);
@@ -216,15 +215,12 @@ describe('ядро: метка в эссенции своего хендлера
           },
         },
       })),
-    ).warnings).toEqual([
-      '"kwINH" gives no CSS: a CSS-wide keyword is a whole value of a property, and handler "kw" writes a part of one'
-      + ' (D-125)',
-    ]);
+    ).warnings).toEqual(['"kwINH" gives no CSS: a CSS-wide keyword is a whole value of a property, and handler "kw" writes a part of one']);
   });
 
   test('хендлер не поставил метку или не дал стиля — ключевому слову некуда встать', () => {
     const noWhole = (name: string) => '"' + name + 'INH" gives no CSS: handler "' + name + '" puts no whole value into a'
-      + ' property, so a CSS-wide keyword has nowhere to go (D-125)';
+      + ' property, so a CSS-wide keyword has nowhere to go';
     expect(compile(
       [
         'kwINH',

@@ -160,7 +160,7 @@ describe('MnIframe — presets только явно (D-110)', () => {
   test('без presets — ошибка с ответом, а не пустой CSS', () => {
     // Вызов функции-компонента напрямую: проверка стоит до хуков, рендерер для неё не нужен.
     expect(() => MnIframe({ title: 'forgotten' } as MnIframeProps)).toThrow(
-      '[minotation] MnIframe: "presets" is required — no preset is connected by default (D-110).'
+      '[minotation] MnIframe: "presets" is required — no preset is connected by default.'
         + ' List them: presets={[presetStandard, presetSynonyms, presetMedias]}',
     );
   });

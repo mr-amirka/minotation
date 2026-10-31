@@ -220,7 +220,7 @@ describe('MnIframeComponent', () => {
 
     expect(() => {
       cmp.ngAfterViewInit();
-    }).toThrow('[minotation] mn-iframe: "presets" is required — no preset is connected by default (D-110).'
+    }).toThrow('[minotation] mn-iframe: "presets" is required — no preset is connected by default.'
       + ' List them: [presets]="[presetStandard, presetSynonyms, presetMedias]"');
     expect(iframe.contentDocument!.querySelector('style[data-mn-runtime]')).toBeNull();
     iframe.remove();

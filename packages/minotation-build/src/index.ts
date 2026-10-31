@@ -881,11 +881,11 @@ export function checkBuildOptions(
  *
  * @example
  * assertPresets({}, 'mnVite');
- * // Error: [minotation] mnVite: "presets" is required — no preset is connected by default (D-110).
+ * // Error: [minotation] mnVite: "presets" is required — no preset is connected by default.
  * // List them in the options or in minotation.config.js: presets: [presetStandard, presetSynonyms, presetMedias]
  */
 export function assertPresets(options: { presets?: MnPreset[] }, where: string): void {
-  options.presets || fail(where + ': "presets" is required — no preset is connected by default (D-110).'
+  options.presets || fail(where + ': "presets" is required — no preset is connected by default.'
     + ' List them in the options or in minotation.config.js: presets: [presetStandard, presetSynonyms, presetMedias]');
 }
 

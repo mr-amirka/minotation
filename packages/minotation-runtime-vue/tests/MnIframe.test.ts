@@ -125,7 +125,7 @@ describe('MnIframe (Vue) — изоляция стилей между инста
     app.mount(container);
 
     expect(errors.map((e) => e.message)).toEqual([
-      '[minotation] MnIframe: "presets" is required — no preset is connected by default (D-110).'
+      '[minotation] MnIframe: "presets" is required — no preset is connected by default.'
         + ' List them: :presets="[presetStandard, presetSynonyms, presetMedias]"',
     ]);
     expect(container.querySelector('iframe')).toBeNull();

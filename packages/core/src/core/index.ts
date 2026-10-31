@@ -445,7 +445,7 @@ function throwCssWideWord(
   const token = value.replace(MN_ESSENCE_PAIR, COLON);
   const at = token.lastIndexOf(word);
   throw new MnParseError('Write it shorter: "' + token.slice(0, at) + letters + token.slice(at + word.length)
-    + '" instead of "' + token + '" — same value (D-125)', {
+    + '" instead of "' + token + '" — same value', {
     token: token,
     handler: name,
     arg: word,
@@ -485,8 +485,7 @@ function cssWideError(
 ): MnParseError {
   return new MnParseError(DOUBLE_QUOTE + value.replace(MN_ESSENCE_PAIR, COLON) + '" gives no CSS: '
     + (part ? 'a CSS-wide keyword is a whole value of a property, and handler "' + name + '" writes a part of one'
-      : 'handler "' + name + '" puts no whole value into a property, so a CSS-wide keyword has nowhere to go')
-    + ' (D-125)', {
+      : 'handler "' + name + '" puts no whole value into a property, so a CSS-wide keyword has nowhere to go'), {
     token: value.replace(MN_ESSENCE_PAIR, COLON),
     handler: name,
     arg: '',

@@ -76,7 +76,7 @@ export function main(argv: string[], report: Reporter): number {
  * @param config — файл конфига: заданный `--config` или имя по умолчанию
  */
 function presetsRequired(config: string): string {
-  return '"presets" is required — no preset is connected by default (D-110). List them in ' + config + ':\n'
+  return '"presets" is required — no preset is connected by default. List them in ' + config + ':\n'
     + '  const { presetStandard, presetSynonyms, presetMedias } = require(\'minotation\');\n'
     + '  module.exports = { presets: [presetStandard, presetSynonyms, presetMedias] };';
 }

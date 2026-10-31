@@ -144,7 +144,7 @@ describe('main', () => {
       dir,
       '-o',
       out,
-    ], report)).toThrow('"presets" is required — no preset is connected by default (D-110).'
+    ], report)).toThrow('"presets" is required — no preset is connected by default.'
       + ' List them in ./minotation.config.js' + hint);
     // Конфиг без presets — его имя.
     const bare = write('bare.config.cjs', 'module.exports = { altColor: true };\n');

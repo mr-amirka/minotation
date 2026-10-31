@@ -46,7 +46,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'pl', props: 'padding-left', examples: ['pl4'] },
   { name: 'pr', props: 'padding-right', examples: ['pr4'] },
   { name: 'ps', props: 'padding-inline-start', description: 'inline start — left in LTR, right in RTL', keywords: ['padding', 'inline', 'start', 'logical'], examples: ['ps10'] },
-  { name: 'pie', props: 'padding-inline-end', description: 'inline end; not pe — pe is pointer-events (D-103)', keywords: ['padding', 'inline', 'end', 'logical'], examples: ['pie10'] },
+  { name: 'pie', props: 'padding-inline-end', description: 'inline end; not pe — pe is pointer-events', keywords: ['padding', 'inline', 'end', 'logical'], examples: ['pie10'] },
   { name: 'pbs', props: 'padding-block-start', keywords: ['padding', 'block', 'start', 'logical'], examples: ['pbs10'] },
   { name: 'pbe', props: 'padding-block-end', keywords: ['padding', 'block', 'end', 'logical'], examples: ['pbe10'] },
   { name: 'm', props: 'margin', params: '{число}[px|%|em|...] | A(auto) | N(none)', keywords: ['margin', 'отступ'], examples: ['m0'] },
@@ -159,7 +159,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'bb', props: 'border-bottom-width', keywords: ['border', 'bottom'], examples: ['bb1'] },
   { name: 'bsb', props: 'border-bottom-style', keywords: ['border', 'bottom', 'style'], examples: ['bsbS'] },
   { name: 'bcb', props: 'border-bottom-color', keywords: ['border', 'bottom', 'color'], examples: ['bcbF.08'] },
-  { name: 'bisw', props: 'border-inline-start-width', description: 'not bs — bs is border-style (D-103, D-117)', keywords: ['border', 'inline', 'start', 'logical'], examples: ['bisw1'] },
+  { name: 'bisw', props: 'border-inline-start-width', description: 'not bs — bs is border-style', keywords: ['border', 'inline', 'start', 'logical'], examples: ['bisw1'] },
   { name: 'biew', props: 'border-inline-end-width', keywords: ['border', 'inline', 'end', 'logical'], examples: ['biew1'] },
   { name: 'bbs', props: 'border-block-start-width', keywords: ['border', 'block', 'start', 'logical'], examples: ['bbs1'] },
   { name: 'bbe', props: 'border-block-end-width', keywords: ['border', 'block', 'end', 'logical'], examples: ['bbe1'] },
@@ -203,7 +203,7 @@ export const ESSENCES: MnDocEntry[] = [
   // --- Фильтры ---
   {
     name: 'ft', props: 'filter', keywords: ['filter', 'blur', 'grayscale', 'brightness', 'drop-shadow'],
-    params: 'функция по имени в CamelCase, первый аргумент слитно, остальные и следующие функции через _ (D-124)',
+    params: 'функция по имени в CamelCase, первый аргумент слитно, остальные и следующие функции через _',
     examples: ['ftBlur10', 'ftBlur4', 'ftGray100', 'ftBright150', 'ftDropShadow2_4_6_000.5'],
   },
   { name: 'ftb', props: 'backdrop-filter', keywords: ['filter', 'backdrop', 'blur'], examples: ['ftbBlur8', 'ftbBlur10', 'ftbBlur12'] },
@@ -224,7 +224,7 @@ export const ESSENCES: MnDocEntry[] = [
     examples: ['ratio3x2'],
   },
 
-  // --- Прокрутка (группа B, D-097) ---
+  // --- Прокрутка (группа B) ---
   { name: 'sm', props: 'scroll-margin', keywords: ['scroll', 'margin', 'anchor'], examples: ['sm10', 'sm-8'] },
   { name: 'smt', props: 'scroll-margin-top', keywords: ['scroll', 'margin', 'top', 'anchor'], examples: ['smt80'] },
   { name: 'smb', props: 'scroll-margin-bottom', keywords: ['scroll', 'margin', 'bottom'], examples: ['smb8'] },
@@ -254,7 +254,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'sbg', props: 'scrollbar-gutter', keywords: ['scrollbar', 'gutter', 'stable'], examples: ['sbgS', 'sbgSB'] },
   { name: 'sbc', props: 'scrollbar-color', keywords: ['scrollbar', 'color', 'thumb', 'track'], examples: ['sbcF00_0', 'sbcCT_T', 'sbcA'] },
 
-  // --- Сетка и выравнивание (группа C, D-097) ---
+  // --- Сетка и выравнивание (группа C) ---
   { name: 'grs', props: 'grid-row-start', keywords: ['grid', 'row', 'start', 'line'], examples: ['grs2', 'grsSpan_2'] },
   { name: 'gre', props: 'grid-row-end', keywords: ['grid', 'row', 'end', 'line'], examples: ['gre-1', 'greA'] },
   { name: 'gcs', props: 'grid-column-start', keywords: ['grid', 'column', 'start', 'line'], examples: ['gcs2', 'gcs2_Header'] },
@@ -263,7 +263,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'pli', props: 'place-items', keywords: ['place', 'items', 'align', 'justify', 'grid', 'center'], description: 'align-items_justify-items, буквы ai + ji', examples: ['pliC', 'pliC_S'] },
   { name: 'pls', props: 'place-self', keywords: ['place', 'self', 'align', 'justify', 'grid'], description: 'align-self_justify-self, буквы as + js', examples: ['plsC', 'plsA_E'] },
 
-  // --- Позиция и трансформация (группа D, D-097) ---
+  // --- Позиция и трансформация (группа D) ---
   { name: 'op', props: 'object-position', keywords: ['object', 'position', 'image'], description: 'буквы L/C/R/T/B, углы TL/TR/BL/BR, длины; x, затем y', examples: ['opL_T', 'opTL', 'op50%_0', 'opR_10_B_20'] },
   { name: 'tfo', props: 'transform-origin', keywords: ['transform', 'origin', 'rotate', 'scale'], description: 'как op, третья часть — z (длина)', examples: ['tfoTL', 'tfo50%_0', 'tfoC_C_10'] },
   { name: 'pspo', props: 'perspective-origin', keywords: ['perspective', 'origin', '3d'], description: 'как op', examples: ['pspoC', 'pspoL_B'] },
@@ -271,7 +271,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'tfb', props: 'transform-box', keywords: ['transform', 'box', 'svg'], examples: ['tfbFB', 'tfbBB'] },
   { name: 'bfv', props: 'backface-visibility', keywords: ['backface', 'visibility', '3d', 'flip'], examples: ['bfvH', 'bfvV'] },
 
-  // --- Одиночные свойства (группа F, D-097) ---
+  // --- Одиночные свойства (группа F) ---
   { name: 'acc', props: 'accent-color', keywords: ['accent', 'color', 'checkbox', 'form'], examples: ['accF00', 'accAuto'] },
   { name: 'cc', props: 'caret-color', keywords: ['caret', 'color', 'cursor', 'input'], examples: ['ccF00', 'ccAuto'] },
   { name: 'csch', props: 'color-scheme', keywords: ['color', 'scheme', 'dark', 'light', 'theme'], examples: ['cschL_D', 'cschD'] },
@@ -289,8 +289,8 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'atf', props: 'animation-timing-function', keywords: ['animation', 'timing', 'easing'], examples: ['atfL', 'atfEIO'] },
   { name: 'bgbm', props: 'background-blend-mode', keywords: ['background', 'blend', 'mode'], examples: ['bgbmM', 'bgbmS'] },
 
-  // --- Маски, семейство mk… (E2, D-097) ---
-  { name: 'mk', props: 'mask-image', keywords: ['mask', 'image', 'gradient', 'url', 'fade'], description: 'картинка маски: градиент, как у bg, или путь через _ (mki слит в mk, D-127)', examples: ['mkF00-00F', 'mk_a\\.png', 'mk--v', 'mkN'] },
+  // --- Маски, семейство mk… (E2) ---
+  { name: 'mk', props: 'mask-image', keywords: ['mask', 'image', 'gradient', 'url', 'fade'], description: 'картинка маски: градиент, как у bg, или путь через _ (mki слит в mk)', examples: ['mkF00-00F', 'mk_a\\.png', 'mk--v', 'mkN'] },
   { name: 'mks', props: 'mask-size', keywords: ['mask', 'size', 'cover', 'contain'], examples: ['mksCV', 'mks50%_auto', 'mks10'] },
   { name: 'mkp', props: 'mask-position', keywords: ['mask', 'position'], examples: ['mkpC', 'mkpR_10_B_20'] },
   { name: 'mkr', props: 'mask-repeat', keywords: ['mask', 'repeat'], examples: ['mkrN', 'mkrX'] },
@@ -301,10 +301,10 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'mkm', props: 'mask-mode', keywords: ['mask', 'mode'], examples: ['mkmMS', 'mkmA'] },
 
   // --- Границы (доп.) — портировано из старого 1.x essences.js, проверено live-компиляцией ---
-  { name: 'bi', props: 'border-image-source', keywords: ['border', 'image', 'gradient'], description: 'картинка рамки, как у bg: градиент, переменная, N; по пути — bi_a\\.png (D-122); рамке градиентом нужен bis1 (D-119)', examples: ['bi8D5524-6D3504 bis1 b6 bsS', 'bi_a\\.png', 'biN'] },
+  { name: 'bi', props: 'border-image-source', keywords: ['border', 'image', 'gradient'], description: 'картинка рамки, как у bg: градиент, переменная, N; по пути — bi_a\\.png; рамке градиентом нужен bis1', examples: ['bi8D5524-6D3504 bis1 b6 bsS', 'bi_a\\.png', 'biN'] },
   { name: 'bis', props: 'border-image-slice', keywords: ['border', 'image', 'slice', 'fill'], description: 'числа без единицы или %, до четырёх; F — fill', examples: ['bis1', 'bis30_F', 'bis10_20'] },
-  { name: 'biw', props: 'border-image-width', keywords: ['border', 'image', 'width'], description: 'толщина кольца картинки: длина с единицей, процент, A — auto; голое число — кратное ширины рамки, без px (D-123)', examples: ['biw2', 'biw10px', 'biwA'] },
-  { name: 'bio', props: 'border-image-outset', keywords: ['border', 'image', 'outset'], description: 'вынос кольца картинки за рамку: длина с единицей; голое число — кратное ширины рамки, без px (D-123)', examples: ['bio2', 'bio10px'] },
+  { name: 'biw', props: 'border-image-width', keywords: ['border', 'image', 'width'], description: 'толщина кольца картинки: длина с единицей, процент, A — auto; голое число — кратное ширины рамки, без px', examples: ['biw2', 'biw10px', 'biwA'] },
+  { name: 'bio', props: 'border-image-outset', keywords: ['border', 'image', 'outset'], description: 'вынос кольца картинки за рамку: длина с единицей; голое число — кратное ширины рамки, без px', examples: ['bio2', 'bio10px'] },
   { name: 'bir', props: 'border-image-repeat', keywords: ['border', 'image', 'repeat', 'round'], description: 'ST stretch, R repeat, RD round, SP space', examples: ['birRD', 'birR_ST'] },
   { name: 'bdcl', props: 'border-collapse', keywords: ['border', 'collapse', 'table'], examples: ['bdclC', 'bdclS'] },
   { name: 'bsp', props: 'border-spacing', keywords: ['border', 'spacing', 'table'], description: '_ = пробел между двумя значениями', examples: ['bsp0', 'bsp5px_1rem'] },
@@ -345,7 +345,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'tdc', props: 'text-decoration-color', keywords: ['text', 'decoration', 'color'], examples: ['tdcF'] },
 
   // --- Фон (доп.) ---
-  { name: 'bgi', props: 'background-image', keywords: ['background', 'image'], description: 'картинка поверх цвета bg (D-120): путь — только через _ (D-122), переменная, N; градиент — bg', examples: ['bg3 bgi_hero\\.jpg', 'bgi--hero', 'bgiN'] },
+  { name: 'bgi', props: 'background-image', keywords: ['background', 'image'], description: 'картинка поверх цвета bg: путь — только через _, переменная, N; градиент — bg', examples: ['bg3 bgi_hero\\.jpg', 'bgi--hero', 'bgiN'] },
   { name: 'bgp', props: 'background-position', keywords: ['background', 'position'], examples: ['bgpTop'] },
   { name: 'bgpx', props: 'background-position-x', keywords: ['background', 'position'], examples: ['bgpxRight_32px'] },
   { name: 'bgpy', props: 'background-position-y', keywords: ['background', 'position'], examples: ['bgpyBottom_32px'] },
@@ -434,7 +434,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'lis', props: 'list-style', keywords: ['list', 'style'], examples: ['lisSquare'] },
   { name: 'lisp', props: 'list-style-position', keywords: ['list', 'style', 'position'], examples: ['lispInside'] },
   { name: 'list', props: 'list-style-type', keywords: ['list', 'style', 'type'], examples: ['listCircle'] },
-  { name: 'lisi', props: 'list-style-image', description: 'картинка маркера: путь — только через _ (D-122), переменная, N', keywords: ['list', 'style', 'image'], examples: ['lisi_dot\\.svg', 'lisiN'] },
+  { name: 'lisi', props: 'list-style-image', description: 'картинка маркера: путь — только через _, переменная, N', keywords: ['list', 'style', 'image'], examples: ['lisi_dot\\.svg', 'lisiN'] },
 
   // --- Page-break ---
   { name: 'pgbb', props: 'page-break-before, break-before', keywords: ['page', 'break'], examples: ['pgbbAlways'] },

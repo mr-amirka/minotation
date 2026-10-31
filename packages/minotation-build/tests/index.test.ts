@@ -1188,7 +1188,7 @@ describe('presets — только явно (D-110)', () => {
   test('без presets — ошибка с подсказкой: набора по умолчанию нет', () => {
     expect(() => checkBuildOptions({
       attrs: 'class',
-    }, 'mnVite')).toThrow('[minotation] mnVite: "presets" is required — no preset is connected by default (D-110).'
+    }, 'mnVite')).toThrow('[minotation] mnVite: "presets" is required — no preset is connected by default.'
       + ' List them in the options or in minotation.config.js: presets: [presetStandard, presetSynonyms, presetMedias]');
     expect(() => assertPresets({}, 'compile')).toThrow('compile: "presets" is required');
   });

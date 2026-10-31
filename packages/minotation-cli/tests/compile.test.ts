@@ -175,7 +175,7 @@ describe('compile', () => {
     write('a.html', '<div class="p10">');
     expect(() => compile({
       input: dir,
-    })).toThrow('[minotation] compile: "presets" is required — no preset is connected by default (D-110).');
+    })).toThrow('[minotation] compile: "presets" is required — no preset is connected by default.');
     // Явный пустой набор — допустим: токены без хендлеров, CSS пустой.
     expect(compile({
       presets: [],

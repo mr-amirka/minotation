@@ -369,10 +369,18 @@ attrs: { class: 'class', className: 'class' }     // объект
 | HTML, Astro, Vue, Svelte | `'class'` | `class="p10"` → `.p10` |
 | React (`className`) рядом с `.astro`/`.html` | `'class, className:class'` | оба → `.p10` |
 | свой атрибут для нотации | `'class, m, m-n'` | `m="p10"` → `[m~="p10"]`, `m-n="p10"` → `[m-n~="p10"]` |
+| React со свойствами-классами (`fillClassName`, `iconClassName`) | `'className:class, *ClassName:class'` | все → `.p10` |
 
 Частая ошибка — перечислить имена без цели: `['class', 'className']` даёт
 `.ws` **и** `[className~="ws"]`, то есть `className` компилируется в свой
 атрибут, а не в класс. Для React нужно `className:class`.
+
+Имя со `*` в начале — шаблон (D-131): `*ClassName` — любой атрибут, JSX-свойство
+или ключ объекта, имя которого кончается на `ClassName` (`fillClassName="p10"`,
+`{ rootClassName: 'm5' }`). Регистр — как написан, поэтому сам `className`
+перечисляется отдельно. Шаблон только сканирует: цель у него пишется явно
+(`'*ClassName'` без `:class` — ошибка), `*` в середине или одна `*` — тоже ошибка.
+Класс области (`isolateMode`) дописывается и в такие атрибуты.
 
 Токены из переменных `*Class` (`classVarSuffixes`) и вызовов `mne`/`mnClass`
 (`mergeFnNames`) — это значения классов: они идут в цель `class`, а если её

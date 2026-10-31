@@ -63,6 +63,7 @@ import type {
 /** The `class` attribute: the default target of the scanned attributes. */
 const CLASS_TARGET = 'class';
 const COLON = ':';
+const ASTERISK = '*';
 const WARNING_MODE = 'warningMode';
 const SPACE = ' ';
 /** Separates the tag from the rest of an entry. */
@@ -192,6 +193,7 @@ const REGEXP_ATTRS_SPLIT = /[\s|,;]+/;
  * @example
  * parseAttrs('class, className:class')   // → { class: 'class', className: 'class' }
  * parseAttrs(['m', 'm-n'])               // → { m: 'm', 'm-n': 'm-n' }
+ * parseAttrs('className:class, *ClassName:class')  // → { className: 'class', '*ClassName': 'class' }
  */
 export function parseAttrs(attrs?: MnAttrs): Record<string, string> {
   if (attrs === undefined || attrs === null) {
@@ -211,13 +213,13 @@ export function parseAttrs(attrs?: MnAttrs): Record<string, string> {
       at = item.indexOf(COLON);
       from = (at > -1 ? item.slice(0, at) : item).trim();
       to = (at > -1 ? item.slice(at + 1) : item).trim();
-      from && to && (out[from] = to, found++);
+      from && to && (out[from] = targetOf(from, to), found++);
     }
   } else {
     let to: unknown;
     for (const from of Object.keys(attrs)) {
       to = attrs[from];
-      from && typeof to === 'string' && to && (out[from] = to, found++);
+      from && typeof to === 'string' && to && (out[from] = targetOf(from, to), found++);
     }
   }
   if (!found) {
@@ -225,6 +227,21 @@ export function parseAttrs(attrs?: MnAttrs): Record<string, string> {
       + '. Expected e.g. "class", "class, className:class" or { className: "class" }');
   }
   return out;
+}
+
+/**
+ * Цель атрибута из `attrs`: шаблон `*ClassName` — только сканируемое имя, цель у него пишется явно (D-131).
+ *
+ * @param from — сканируемое имя или шаблон
+ * @param to — цель
+ * @returns цель
+ * @throws если цель — шаблон: `'*ClassName'` без `:class` развернулся бы в несуществующий атрибут
+ *
+ * @example targetOf('*ClassName', 'class') // → 'class'
+ */
+function targetOf(from: string, to: string): string {
+  return to.indexOf(ASTERISK) < 0 ? to : fail('attrs: "' + from + '" expands into "' + to
+    + '", but a pattern is not a target. Write the target: "' + from + ':class"');
 }
 
 function fail(message: string): never {

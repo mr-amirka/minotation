@@ -23,6 +23,7 @@
  * @module scopeClass
  */
 import {
+  attrNameSource,
   stripComments,
 } from './extractTokens';
 import {
@@ -58,8 +59,6 @@ type SyntaxWriter = (source: string, options: {
   className: string;
   fileName: string;
 }) => string | undefined;
-
-const REGEXP_ESCAPE = /[.*+?^${}()|[\]\\]/g;
 
 /** Класс, заданный из JS: элемент класса области не получит (D-076). */
 const REGEXP_UNREACHABLE = /\.className\s*=(?!=)|\.classList\s*\.\s*(?:add|toggle|replace)\s*\(|setAttribute\s*\(\s*['"]class['"]/g;
@@ -128,9 +127,9 @@ export function addScopeClassText(
 function textEditsFor(
   source: string, name: string, className: string, edits: SourceEdit[],
 ): void {
-  const escaped = name.replace(REGEXP_ESCAPE, '\\$&');
-  // Слева — не продолжение другого имени и не `:` (`:class` Vue — привязка, а не атрибут).
-  const re = new RegExp('(?<![\\w$:.-])' + escaped + '\\s*([=:])\\s*(["\'`{])', 'g');
+  // Слева — не продолжение другого имени и не `:` (`:class` Vue — привязка, а не атрибут). Шаблон `*ClassName` —
+  // любое имя с этим концом (D-131).
+  const re = new RegExp('(?<![\\w$:.-])' + attrNameSource(name) + '\\s*([=:])\\s*(["\'`{])', 'g');
   let match: RegExpExecArray | null;
   let at: number;
   let end: number;

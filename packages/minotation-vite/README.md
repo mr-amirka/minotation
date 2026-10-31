@@ -190,7 +190,7 @@ mnVite({
 
 | Опция | По умолчанию | Что делает |
 |---|---|---|
-| `attrs` | `'class'` | какие атрибуты сканировать и во что разворачивать: `'class, className:class'`; `'class, m'` → `[m~="p10"]` — [подробно](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
+| `attrs` | `'class'` | какие атрибуты сканировать и во что разворачивать: `'class, className:class'`; `'class, m'` → `[m~="p10"]`; `'className:class, *ClassName:class'` — и `fillClassName`, `iconClassName` (D-131) — [подробно](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
 | `root` | `<root Vite>/src` | корень первичного скана — или несколько (монорепо, см. ниже) |
 | `extensions` | `.html .jsx .tsx .vue .svelte` | какие файлы сканировать, если не задан `include` |
 | `include` | — | какие файлы сканировать: RegExp, путь, функция или массив |

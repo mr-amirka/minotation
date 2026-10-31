@@ -350,4 +350,26 @@ describe('точки входа ядра', () => {
       attr: 'class',
     })).not.toThrow();
   });
+
+  test('attr — имя или шаблон `*Suffix` (D-131)', () => {
+    const expected = 'option "attr" expects names or patterns "*Suffix" (as "*ClassName"), each without spaces';
+    expect(() => createScanner({
+      attr: [
+        'className',
+        '*ClassName',
+      ],
+    })).not.toThrow();
+    expect(() => createScanner({
+      attr: '*',
+    })).toThrow(expected + ', got string "*"');
+    expect(() => createScanner({
+      attr: ['class*'],
+    })).toThrow(expected);
+    expect(() => createScanner({
+      attr: ['**Name'],
+    })).toThrow(expected);
+    expect(() => createScanner({
+      attr: ['class name'],
+    })).toThrow(expected);
+  });
 });

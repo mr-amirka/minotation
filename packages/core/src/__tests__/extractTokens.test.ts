@@ -7,6 +7,9 @@ import {
   extractClassVarTokens,
   extractMergeCallTokens,
   attrNames,
+  attrMarkup,
+  attrNameSource,
+  isAttrName,
   scanTokens,
 } from '../extractTokens';
 
@@ -461,6 +464,56 @@ describe('кеш регулярок extractTokens (2026-09-25)', () => {
     expect(extractTokens('<div class="p10" className="m5">', 'class')).toEqual(['p10']);
     expect(extractTokens('<div class="p10" className="m5">', 'className')).toEqual(['m5']);
     expect(extractTokens('<div class="p10" className="m5">', 'class')).toEqual(['p10']);
+  });
+});
+
+describe('attr — шаблон `*ClassName` (D-131)', () => {
+  /** `ProgressBarStrip.tsx` в web-games: класс заливки приходит свойством `fillClassName`. */
+  const source = '<Bar className="w10" fillClassName="bg42A5F5-2285D5-42A5F5" iconClassName={\'h5\'} />';
+  const ATTR = [
+    'className',
+    '*ClassName',
+  ];
+
+  test('шаблон ловит любое имя с этим концом', () => {
+    expect(scanTokens(source, {
+      attr: ATTR,
+    })).toEqual([
+      'w10',
+      'bg42A5F5-2285D5-42A5F5',
+      'h5',
+    ]);
+  });
+
+  test('без шаблона — только точное имя', () => {
+    expect(scanTokens(source, {
+      attr: 'className',
+    })).toEqual(['w10']);
+  });
+
+  test('регистр — как написан: `*ClassName` не ловит `className` и `fillclassname`', () => {
+    expect(scanTokens('<b className="p1" fillclassname="p2" />', {
+      attr: '*ClassName',
+    })).toEqual([]);
+    expect(extractTokens('<b ClassName="p1" />', '*ClassName')).toEqual(['p1']);
+  });
+
+  test('isAttrName — имя, шаблон, короче шаблона, почти совпадение', () => {
+    expect(isAttrName('className', ATTR)).toBe(true);
+    expect(isAttrName('fillClassName', ATTR)).toBe(true);
+    expect(isAttrName('ClassName', ['*ClassName'])).toBe(true);
+    expect(isAttrName('Name', ['*ClassName'])).toBe(false);
+    expect(isAttrName('fillClassNames', ATTR)).toBe(false);
+    expect(isAttrName('fillclassName', ['*ClassName'])).toBe(false);
+    expect(isAttrName('class', ATTR)).toBe(false);
+    expect(isAttrName('class', [])).toBe(false);
+  });
+
+  test('attrNameSource и attrMarkup', () => {
+    expect(attrNameSource('className')).toBe('className');
+    expect(attrNameSource('*Class.Name')).toBe('[\\w$-]*Class\\.Name');
+    expect(attrMarkup('className')).toBe('className=');
+    expect(attrMarkup('*ClassName')).toBe('ClassName=');
   });
 });
 

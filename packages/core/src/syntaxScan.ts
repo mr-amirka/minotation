@@ -43,7 +43,9 @@
  */
 import ts from 'typescript';
 import {
+  attrMarkup,
   attrNames,
+  isAttrName,
   extractTokensInto,
   pushLiteralTokens,
   scanTokens,
@@ -133,7 +135,7 @@ export function scanTokensSyntax(source: string, options: SyntaxScanOptions): st
     : options.mergeFnNames;
   // Маркер разметки внутри строки: без него пришлось бы гонять текстовый
   // разбор по каждому литералу файла, а `class=` есть в единицах из них.
-  const markups = attrs.map((name) => name + '=');
+  const markups = attrs.map(attrMarkup);
   const state: ScanState = [
     tokens,
     attrs,
@@ -205,7 +207,7 @@ function nameOf(node: ts.Node): string {
 
 /** `class="p10"`, `class={'p10'}`, `` class={`p10 ${x}`} ``. */
 function jsxAttribute(node: ts.JsxAttribute, state: ScanState): void {
-  if (state[MN_SCAN_ATTR].indexOf(nameOf(node.name)) < 0) {
+  if (!isAttrName(nameOf(node.name), state[MN_SCAN_ATTR])) {
     return;
   }
   const value = node.initializer;
@@ -222,7 +224,7 @@ function jsxAttribute(node: ts.JsxAttribute, state: ScanState): void {
 /** `{ className: 'p10' }` и `{ rowClass: 'p10' }`. */
 function propertyAssignment(node: ts.PropertyAssignment, state: ScanState): void {
   const name = nameOf(node.name);
-  if (state[MN_SCAN_ATTR].indexOf(name) > -1 || hasSuffix(name, state[MN_SCAN_SUFFIXES])) {
+  if (isAttrName(name, state[MN_SCAN_ATTR]) || hasSuffix(name, state[MN_SCAN_SUFFIXES])) {
     pushExpression(node.initializer, state);
   }
 }
@@ -535,11 +537,11 @@ function visitScopeClass(
     className: string }, edits: SourceEdit[],
 ): void {
   let value: ts.Node | undefined;
-  if (node.kind === ts.SyntaxKind.JsxAttribute && options.attr.indexOf(nameOf((node as ts.JsxAttribute).name)) > -1) {
+  if (node.kind === ts.SyntaxKind.JsxAttribute && isAttrName(nameOf((node as ts.JsxAttribute).name), options.attr)) {
     value = (node as ts.JsxAttribute).initializer;
     value && value.kind === ts.SyntaxKind.JsxExpression && (value = (value as ts.JsxExpression).expression);
   } else if (node.kind === ts.SyntaxKind.PropertyAssignment
-    && options.attr.indexOf(nameOf((node as ts.PropertyAssignment).name)) > -1) {
+    && isAttrName(nameOf((node as ts.PropertyAssignment).name), options.attr)) {
     value = (node as ts.PropertyAssignment).initializer;
   }
   if (value) {

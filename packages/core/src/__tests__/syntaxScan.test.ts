@@ -157,6 +157,26 @@ describe('scanTokensSyntax — что собирается', () => {
     ]);
   });
 
+  test('attr с шаблоном `*ClassName` — JSX, свойства объекта и разметка в строке (D-131)', () => {
+    const source = '<Bar className="w10" fillClassName="p10" iconClassName={`m5`} />;\n'
+      + 'f({ rootClassName: \'h5\', fillclassname: \'h6\' });\nconst s = \'<i trackClassName="w20">\';';
+    expect(setOf(scanTokensSyntax(source, {
+      attr: [
+        'className',
+        '*ClassName',
+      ],
+    }))).toEqual([
+      'h5',
+      'm5',
+      'p10',
+      'w10',
+      'w20',
+    ]);
+    expect(setOf(scanTokensSyntax(source, {
+      attr: 'className',
+    }))).toEqual(['w10']);
+  });
+
   test('вызов переменной с суффиксом — функции из mnClass', () => {
     expect(scanTokensSyntax('<th class={thClass(`w(|max)150`)} />', {
       attr: 'class',

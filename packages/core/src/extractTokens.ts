@@ -61,6 +61,84 @@ const REGEXP_INTERPOLATION = /\$\{[^}]*\}/g;
  */
 const REGEXP_ESCAPE = /[.*+?^${}()|[\]\\]/g;
 
+/** Начало имени перед концом шаблона: `fill` в `fillClassName`, `data-` в `data-class` (D-131). */
+const NAME_HEAD_SOURCE = '[\\w$-]*';
+
+/**
+ * Имя атрибута для регулярного выражения: точное — экранированным, шаблон `*ClassName` — любым именем, которое
+ * кончается на `ClassName` (D-131). Граница слева — за вызывающим.
+ *
+ * @param attr — имя из опции `attr`
+ * @returns исходник регулярного выражения
+ *
+ * @example
+ * attrNameSource('className')    // → 'className'
+ * attrNameSource('*ClassName')   // → '[\\w$-]*ClassName'
+ */
+export function attrNameSource(attr: string): string {
+  return attr[0] === ASTERISK
+    ? NAME_HEAD_SOURCE + attr.slice(1).replace(REGEXP_ESCAPE, ESCAPED_MATCH)
+    : attr.replace(REGEXP_ESCAPE, ESCAPED_MATCH);
+}
+
+/**
+ * Подходит ли имя атрибута, JSX-свойства или ключа объекта под опцию `attr`: то же имя или шаблон `*ClassName` —
+ * имя кончается на `ClassName`, регистр как написан (D-131). Зовётся на каждый атрибут файла, поэтому конец
+ * сравнивается посимвольно, без `slice`.
+ *
+ * @param name — имя в исходнике
+ * @param attrs — имена и шаблоны опции `attr`
+ * @returns `true`, если имя — класс
+ *
+ * @example
+ * isAttrName('fillClassName', ['className', '*ClassName'])   // → true
+ * isAttrName('classname', ['*ClassName'])                    // → false
+ */
+export function isAttrName(name: string, attrs: string[]): boolean {
+  const l = attrs.length;
+  const nameLength = name.length;
+  let i = 0;
+  let attr: string;
+  let at: number;
+  let j: number;
+  let length: number;
+  for (; i < l; i++) {
+    attr = attrs[i];
+    if (attr[0] !== ASTERISK) {
+      if (attr === name) {
+        return true;
+      }
+      continue;
+    }
+    length = attr.length;
+    // Конец шаблона (`ClassName`) начинается в имени с `at`.
+    at = nameLength - length + 1;
+    if (at < 0) {
+      continue;
+    }
+    j = 1;
+    while (j < length && name[at + j - 1] === attr[j]) {
+      j++;
+    }
+    if (j === length) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Что искать в строке, прежде чем разбирать её как разметку: `className=` у имени, `ClassName=` у шаблона.
+ *
+ * @param attr — имя или шаблон опции `attr`
+ * @returns подстрока-признак
+ *
+ * @example attrMarkup('*ClassName') // → 'ClassName='
+ */
+export function attrMarkup(attr: string): string {
+  return (attr[0] === ASTERISK ? attr.slice(1) : attr) + EQUALS;
+}
+
 /**
  * Кеш регулярок по имени атрибута.
  *
@@ -71,7 +149,7 @@ const REGEXP_ESCAPE = /[.*+?^${}()|[\]\\]/g;
 const $$attrRegexps: Record<string, RegExp> = {};
 
 function buildAttrRegexp(attrName: string): RegExp {
-  const name = attrName.replace(REGEXP_ESCAPE, ESCAPED_MATCH);
+  const name = attrNameSource(attrName);
   // `[:=]` — принимает как JSX-атрибут (`attr=`), так и свойство объектного
   // литерала (`attr:`, включая вложенное — напр. MUI `slotProps={{ paper: { className:... } }}`).
   // Граница слева: без неё `Name` ловил бы `className=`, а `class` — `data-class=`.
@@ -940,7 +1018,8 @@ export interface ScanTokensOptions {
   /**
    * Имя атрибута (`'class'`, `'className'`) или несколько — `['class', 'className']`
    * для проекта, где `.astro`/`.html` пишут `class`, а React-компоненты — `className`.
-   * По умолчанию `'class'`.
+   * Имя с `*` в начале — шаблон: `'*ClassName'` — любое имя, которое кончается на `ClassName`
+   * (`fillClassName`, `iconClassName`; D-131). По умолчанию `'class'`.
    */
   attr?: string | string[];
   /**

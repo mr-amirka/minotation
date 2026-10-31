@@ -523,6 +523,54 @@ describe('attrs — карта «сканируемый → целевой ат�
     expect(css).toContain('.h30{height:30px}');
   });
 
+  test('шаблон *ClassName:class — свойства с этим концом тоже классы (D-131)', () => {
+    const source = '<Bar className="w10" fillClassName="p10" fillclassname="h30" />';
+    expect(parseAttrs('className:class,*ClassName:class')).toEqual({
+      className: 'class',
+      '*ClassName': 'class',
+    });
+    expect(createAttrsScanner({
+      attrs: 'className:class,*ClassName:class',
+    })(source, '/a.tsx').sort()).toEqual([
+      'class p10',
+      'class w10',
+    ]);
+    expect(createAttrsScanner({
+      attrs: 'className:class,*ClassName:class',
+    })(source).sort()).toEqual([
+      'class p10',
+      'class w10',
+    ]);
+    expect(createAttrsScanner({
+      attrs: 'className:class',
+    })(source, '/a.tsx')).toEqual(['class w10']);
+  });
+
+  test.each([
+    [
+      'шаблон без цели',
+      '*ClassName',
+      'attrs: "*ClassName" expands into "*ClassName", but a pattern is not a target. Write the target: "*ClassName:class"',
+    ],
+    [
+      'шаблон целью',
+      {
+        className: '*Name',
+      },
+      'attrs: "className" expands into "*Name", but a pattern is not a target. Write the target: "className:class"',
+    ],
+  ])('%s — ошибка (D-131)', (
+    _name, attrs, message,
+  ) => {
+    expect(() => parseAttrs(attrs as never)).toThrow(message);
+  });
+
+  test('звёздочка не в начале — ошибка сканера (D-131)', () => {
+    expect(() => createAttrsScanner({
+      attrs: 'class*:class',
+    })).toThrow('option "attr" expects names or patterns "*Suffix" (as "*ClassName"), each without spaces');
+  });
+
   test('переменные *Class и вызовы mne идут в class, а не в каждую цель', () => {
     const scan = createAttrsScanner({
       attrs: [

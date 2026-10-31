@@ -168,6 +168,30 @@ describe('текстом — .html, .vue, .svelte, .astro', () => {
   });
 });
 
+describe('шаблон `*ClassName` в attr (D-131)', () => {
+  const writePattern = createScopeClassWriter({
+    attr: [
+      'className',
+      '*ClassName',
+    ],
+  });
+
+  test('разбором — JSX и свойство объекта', () => {
+    expect(writePattern(
+      '<b className="p-4" fillClassName="m-2" fillclassname="w-1" />;\nf({ rootClassName: \'h-2\' });',
+      'Bar.tsx', '_l',
+    ).code)
+      .toBe('<b className="_l p-4" fillClassName="_l m-2" fillclassname="w-1" />;\nf({ rootClassName: \'_l h-2\' });');
+  });
+
+  test('текстом — атрибуты в разметке', () => {
+    expect(addScopeClassText(
+      '<x-bar fillClassName="m-2" data-ClassName="p-1" Name="w-1">', ['*ClassName'], '_l',
+    ))
+      .toBe('<x-bar fillClassName="_l m-2" data-ClassName="_l p-1" Name="w-1">');
+  });
+});
+
 describe('классы, заданные из JS, — недостижимы', () => {
   test('строка и фрагмент; комментарии и сравнения не в счёт', () => {
     const source = [

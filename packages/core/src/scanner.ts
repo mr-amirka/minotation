@@ -105,14 +105,30 @@ export interface ScannerOptions extends ScanTokensOptions {
   onWarning?: (message: string) => void;
 }
 
+/** Имя атрибута или шаблон `*ClassName`: звёздочка — только в начале и не одна (D-131). */
+const REGEXP_ATTR_NAME = /^\*?[^*\s]+$/;
+
+/**
+ * Проверка имён опции `attr`: каждое — имя или шаблон `*Suffix` (D-131).
+ *
+ * @param names — имена из опции
+ * @returns `undefined` или что ожидалось
+ *
+ * @example attrNamesCheck(['class*']) // → 'names or patterns "*Suffix" (as "*ClassName"), each without spaces'
+ */
+function attrNamesCheck(names: string[]): string | undefined {
+  return names.every((name) => REGEXP_ATTR_NAME.test(name)) ? undefined
+    : 'names or patterns "*Suffix" (as "*ClassName"), each without spaces';
+}
+
 /** Допустимые опции {@link createScanner} (D-038). */
 export const SCANNER_OPTIONS_SCHEMA: OptionSchema = {
   attr: (
     value, where, path,
   ) => (
-    typeof value === 'string' ? undefined : isStringArray(
+    typeof value === 'string' ? attrNamesCheck([value]) : isStringArray(
       value, where, path,
-    ) && 'a string or an array of strings'
+    ) ? 'a string or an array of strings' : attrNamesCheck(value as string[])
   ),
   classVarSuffixes: isStringArray,
   mergeFnNames: isStringArray,

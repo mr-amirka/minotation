@@ -391,6 +391,27 @@ describe('createScopeRewriter (D-075, D-076)', () => {
     });
   });
 
+  test('attrs с шаблоном *ClassName:class — класс области и в fillClassName (D-131)', () => {
+    const attrs = 'className:class,*ClassName:class';
+    const out = createTokenCollector({
+      attrs,
+      presets: APP,
+      scopePresets: [presetTw4],
+      isolateMode: 'class',
+    });
+    const file = join(
+      dir, 'ui', 'Bar.tsx',
+    );
+    const source = '<b className="p-4" fillClassName="m-2" />';
+    out.add(file, source);
+    const cls = scopeClassName('presetTw4');
+    expect(createScopeRewriter({
+      attrs,
+    })(
+      out, file, source,
+    )?.code).toBe('<b className="' + cls + ' p-4" fillClassName="' + cls + ' m-2" />');
+  });
+
   test("unreachableClassMode: 'warn' — с файлом и строкой; 'silent' — молча; 'strict' — ошибка", () => {
     const out = collector();
     out.add(ui(), '<b class="p-4">');

@@ -44,6 +44,7 @@ import {
   extractSuffix,
   REGEXP_MULTIPLIER,
   REGEXP_OLD_MULTIPLIER,
+  REGEXP_PRODUCT_TAIL,
   REGEXP_SCOPE_SUFFIX,
   SCOPE_END,
   SCOPE_START,
@@ -814,7 +815,8 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     let childs: string[];
 
     const multiplierMatch = REGEXP_MULTIPLIER.exec(name);
-    multiplierMatch || REGEXP_OLD_MULTIPLIER.test(comboName) && throwOldMultiplier(comboName);
+    multiplierMatch || REGEXP_OLD_MULTIPLIER.test(comboName) && !REGEXP_PRODUCT_TAIL.test(comboName)
+      && throwOldMultiplier(comboName);
     if (multiplierMatch) {
       name = multiplierMatch[1];
       multiplier = parseInt(multiplierMatch[2]);

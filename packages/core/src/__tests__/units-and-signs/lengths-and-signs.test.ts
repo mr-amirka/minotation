@@ -496,11 +496,11 @@ describe('одиночные свойства-длины со своим раз�
     ],
     [
       'lts0.06em',
-      'letter-spacing:0.06em',
+      'letter-spacing:.06em',
     ],
     [
       'lts-0.02em',
-      'letter-spacing:-0.02em',
+      'letter-spacing:-.02em',
     ],
     [
       'lts10%',
@@ -532,7 +532,7 @@ describe('одиночные свойства-длины со своим раз�
     ],
     [
       'fsa0.5',
-      'font-size-adjust:0.5',
+      'font-size-adjust:.5',
     ],
     [
       'fsaN',
@@ -612,6 +612,43 @@ describe('line-height, z-index, font-weight', () => {
     'lh10fr',
   ])('%s — единица у line-height теперь проверяется', (token) => {
     expect(compile([token]).css).toBe('');
+  });
+
+  // Читался только первый номер: `lts1-2` давало `1px`, `lh1.5+2` — `1.5`, хвост терялся молча.
+  test.each([
+    [
+      'lts1-2',
+      '.lts1-2{letter-spacing:calc(1px - 2px)}',
+    ],
+    [
+      'lts$a*2',
+      '.lts\\$a\\*2{letter-spacing:calc(var(--a) * 2)}',
+    ],
+    [
+      'lh1.5+2',
+      '.lh1\\.5\\+2{line-height:calc(1.5 + 2)}',
+    ],
+    [
+      'lh1/2',
+      '.lh1\\/2{line-height:50%}',
+    ],
+    [
+      'olo2-1',
+      '.olo2-1{outline-offset:calc(2px - 1px)}',
+    ],
+    [
+      'tsa50+10',
+      '.tsa50\\+10{text-size-adjust:calc(50% + 10%)}',
+    ],
+    [
+      'fsa.5',
+      '.fsa\\.5{font-size-adjust:.5}',
+    ],
+  ])('%s — значение читается целиком: %s', (token, css) => {
+    expect(compile([token])).toEqual(expect.objectContaining({
+      css,
+      warnings: [],
+    }));
   });
 
   test.each([
@@ -962,7 +999,7 @@ describe('уточнения там, где первая проверка ока
   test('fsa10px бракуется: font-size-adjust безразмерный', () => {
     expect(lexer.matchProperty('font-size-adjust', '10px').matched).toBeFalsy();
     expect(compile(['fsa10px']).css).toBe('');
-    expect(compile(['fsa0.5']).css).toContain('font-size-adjust:0.5');
+    expect(compile(['fsa0.5']).css).toContain('font-size-adjust:.5');
   });
 
   test.each([

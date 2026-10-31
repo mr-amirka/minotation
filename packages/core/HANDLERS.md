@@ -685,10 +685,12 @@ font12px_Arial         →   f12 ffArial
 | `lh1.2em` | `line-height:1.2em` |
 | `lh150%` | `line-height:150%` — единица проходит как написана |
 | `lh$tight` | `line-height:var(--tight)` |
+| `lh1.5+2` | `line-height:calc(1.5 + 2)` — значение читается целиком (раньше хвост `+2` терялся молча) |
 | `lts2` | `letter-spacing:2px` |
 | `lts1.5` | `letter-spacing:1.5px` |
-| `lts0.06em` | `letter-spacing:0.06em` (единицу указывать можно) |
+| `lts0.06em` | `letter-spacing:.06em` (единицу указывать можно) |
 | `ltsN` | `letter-spacing:normal` |
+| `lts$a*2` | `letter-spacing:calc(var(--a) * 2)` — математика, как у любой длины (`lts1-2` → `calc(1px - 2px)`) |
 | `ttU` | `text-transform:uppercase` |
 | `taC` | `text-align:center` |
 | `taR` | `text-align:right` |
@@ -712,7 +714,7 @@ font12px_Arial         →   f12 ffArial
 `lh150%` давало `1.5`, то есть на один результат приходилось два способа записи, причём с подменой
 смысла: `150%` наследуется вычисленным значением, а `1.5` — коэффициентом.
 
-`letter-spacing`, наоборот, приведён к общему правилу: `lts2` → `2px`, `lts0.06em` → `0.06em`
+`letter-spacing`, наоборот, приведён к общему правилу: `lts2` → `2px`, `lts0.06em` → `.06em`
 (раньше выводилось без единицы — невалидный CSS). 
 
 Text-align — тег `ta` + буква (`taC`/`taR`/`taL`/`taJ`/`taE`/`taS`), а **не** отдельные
@@ -1748,6 +1750,7 @@ mn.setOptions({ overflowWrapMode: 'standard' }); mn.recompile(); // живой �
 | `ovyA` | `-webkit-overflow-scrolling:touch;overflow-y:auto` |
 | `irOC` | `image-rendering:optimize-contrast;image-rendering:-webkit-optimize-contrast` (бывший `contrast`, D-094) |
 | `ratio3x2` | `padding-top:66.67%` + `>*{position:absolute;top:0;right:0;bottom:0;left:0}` (было `66.66%` до фикса `toFixed`, RESEARCH/05, 2026-09-23) |
+| `ratio16x9-$gap*2` | `padding-top:calc(56.25% - var(--gap) * 2)` — прибавка после знака читается как математика |
 
 ---
 

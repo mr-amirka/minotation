@@ -470,8 +470,8 @@ describe('Standard preset — var()/env() в значениях', () => {
 // ================================================================
 describe('Standard preset — letter-spacing', () => {
   test.each([
-    ['lts0.06em', 'letter-spacing:0.06em'],
-    ['lts-0.02em', 'letter-spacing:-0.02em'],
+    ['lts0.06em', 'letter-spacing:.06em'],
+    ['lts-0.02em', 'letter-spacing:-.02em'],
     ['lts2', 'letter-spacing:2px'],
     ['ltsN', 'letter-spacing:normal'],
   ])('%s → %s', (token, expected) => {

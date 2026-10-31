@@ -355,7 +355,7 @@ function isGradientValue(v: string): boolean {
 /**
  * Бракует значение свойства-длины, которое длиной не является.
  *
- * Числовой путь ядра единицу проверяет (`validateUnit`), а общий блок свободных
+ * Числовой путь единицу проверяет (`mathValue`), а общий блок свободных
  * значений — нет: суффикс кебабится и уходит в CSS как есть. В результате
  * `ti10zz` давало `text-indent:10zz`, `tiF00` — `text-indent:f00`, `ti1/2` —
  * `text-indent:1/2`, `ti10-5` — `text-indent:10-5` (вычитание, не свёрнутое в
@@ -411,11 +411,6 @@ function autoRepeatValue(suffix: string, essenceName: string): string | undefine
     + defaultUnitNormalize(m[2]) + LIST_SEPARATOR
     + (m[3] ? defaultUnitNormalize(m[3]) : '1fr') + '))';
 }
-export function calc(
-  v: string, sign: string, add: string,
-): string {
-  return 'calc(' + v + SPACE + sign + SPACE + add + CLOSE_PAREN;
-}
 /**
  * Значение хендлера по умолчанию — для голого имени (`z` → `z1`). Непустой суффикс, который хендлер не разобрал,
  * — брак: раньше `z--v`, `dn_x`, `rx--v` молча давали значение по умолчанию (`z-index:1`, `250ms`, `180deg`).
@@ -470,14 +465,6 @@ export function createContext(instance: MnInstance) {
     toFixed,
   } = utils;
 
-
-
-  function validateUnit(unit?: string): string | undefined {
-    if (!unit || indexOf(UNITS, unit) > -1) {
-      return unit;
-    }
-    throwInvalid('Unit "' + unit + '" is invalid');
-  }
   /**
    * Собирает угол для `rotate*()`: число плюс единица угла.
    *
@@ -624,33 +611,35 @@ export function createContext(instance: MnInstance) {
     return throwInvalid(MSG_VALUE + raw + '" is invalid: expected a number '
     + 'with a unit, a variable, calc or a keyword of this property');
   }
+  /**
+   * Значение одиночного свойства-длины: слово из его списка или математика по правилам свойства
+   * ({@link mathValue}: `lts1-2` → `calc(1px - 2px)`, `lts$a*2`, `fsa.5`).
+   *
+   * Хендлеры `olo`, `lts`, `tsa`, `fsa` собирали значение вручную одной и той же строчкой
+   * `camel ? toKebabCase(camel) : num + (p.unit || 'px')`, и ни слово, ни единица там не проверялись: `oloZzz`
+   * давало `outline-offset:zzz`, `olo10%` — `outline-offset:10%`. Потом число читалось первое, а хвост терялся
+   * молча: `lts1-2` → `letter-spacing:1px`. Теперь читается весь суффикс.
+   *
+   * @param p — параметры хендлера
+   * @param keywords — ключевые слова конкретного свойства
+   * @param rules — правила свойства ({@link lengthRules}, {@link mathRules}): единица голого числа, единицы, знак
+   * @param synonyms — словарь кратких записей хендлера
+   * @returns CSS значения
+   * @example lengthOrWord(p, LETTER_SPACING_KEYWORDS, lengthRules('lts'), GAP_SYNONYMS) // `ltsN` → 'normal'
+   */
   function lengthOrWord(
     p: MnEssenceParams,
     keywords: Record<string, 1>,
-    allow: number,
-    defaultUnit: string,
+    rules: MnMathRules,
     synonyms?: Record<string, string>,
   ): string {
     const camel = p.camel;
-    if (camel) {
-      return assertKnownWord(
+    return camel
+      ? assertKnownWord(
         toKebabCase(synonyms && synonyms[camel] || camel),
         camel, synonyms, keywords, p.name, p.suffix,
-      );
-    }
-    const num = p.num;
-    if (num == ZERO) {
-      return num;
-    }
-    const unit = p.unit;
-    unit === PERCENT && !(allow & LENGTH_PERCENT) && throwInvalid(MSG_VALUE
-    + p.suffix + '" is invalid: percent is not allowed for this property');
-    // Знак здесь не проверяется: все четыре свойства этого пути
-    // (`outline-offset`, `letter-spacing`, `text-size-adjust`,
-    // `font-size-adjust`) отрицательные значения принимают. Появится пятое,
-    // которое не принимает, — проверка добавится вместе с ним, а мёртвой
-    // ветки до тех пор нет.
-    return (p.sign || '') + (num as string) + (validateUnit(unit) || defaultUnit);
+      )
+      : mathValue('' + p.suffix, rules);
   }
 
   /** Допустимые единицы длины без процента — у `border-width`, `outline-width`, `scroll-margin`. */
@@ -1684,6 +1673,8 @@ export function createContext(instance: MnInstance) {
     lengthOrWord,
     lettersValue,
     map,
+    mathRules,
+    mathValue,
     mapIn,
     mn,
     positionProvider,
@@ -1699,7 +1690,6 @@ export function createContext(instance: MnInstance) {
     toFixed,
     toKebabCase,
     toUpper,
-    validateUnit,
     valueNormalize,
   };
 }

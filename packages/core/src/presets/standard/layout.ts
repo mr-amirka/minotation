@@ -30,7 +30,6 @@ import {
   OPEN_PAREN,
   PERCENT,
   POS,
-  PX,
   S,
   SPACE,
   UNDERSCORE,
@@ -52,8 +51,6 @@ import {
 } from '../../core/mathValue';
 import {
   REGEXP_SLOT_INTEGER,
-  calc,
-  floatNormalize,
   normalizeDefault,
   styleWrap,
 } from './context';
@@ -151,20 +148,6 @@ function columnsValue(parts: string[], raw: string): string {
   }
   return parts.join(SPACE);
 }
-function normalizeCalc(
-  base: string, signAndVal: string, unit: string,
-): string {
-  const sign = signAndVal[0];
-  const val = signAndVal.slice(1);
-  // Единственный вызов (ratio-хендлер) всегда передаёт третьим аргументом
-  // validateUnit(p.addu || 'px') — тот никогда не возвращает пустую строку
-  // при непустом входе, поэтому фолбэк на '' здесь недостижим
-  // (в v1 — тот же единственный вызов).
-  return calc(
-    base, sign, val + unit,
-  );
-}
-
 /**
  * Хендлеры темы «layout».
  *
@@ -174,15 +157,17 @@ export function registerLayout(ctx: StandardContext): void {
   const {
     floatval,
     forIn,
+    lengthRules,
     lettersValue,
+    mathValue,
     mn,
     positionProvider,
     registerSingleProperties,
     synonymProvider,
     toFixed,
     toUpper,
-    validateUnit,
   } = ctx;
+  const ratioRules = lengthRules('ratio', 1);
 
   mn('tbl', styleWrap({
     display: 'table',
@@ -460,13 +445,8 @@ export function registerLayout(ctx: StandardContext): void {
       return {
         exts: ['rlv'],
         style: {
-          paddingTop: p.add
-            ? normalizeCalc(
-              v,
-              '' + p.sa + floatNormalize(p.addv),
-              validateUnit('' + (p.addu || PX)) as string,
-            )
-            : v,
+          // Прибавка — математика целиком: `ratio16x9+10` → `calc(56.25% + 10px)`, `ratio16x9-$gap*2`.
+          paddingTop: p.add ? mathValue(v + p.add, ratioRules) : v,
         },
         childs: {
           overlay: {
@@ -478,6 +458,6 @@ export function registerLayout(ctx: StandardContext): void {
           },
         },
       };
-    }, '^((((\\d+):w)x((\\d+):h))|(\\d+):oh)?(([-+]):sa([0-9\\.]+):addv([a-z%]+):addu?):add?|(.*):other', 1,
+    }, '^((((\\d+):w)x((\\d+):h))|(\\d+):oh)?([-+].+):add?$|(.*):other', 1,
   );
 }

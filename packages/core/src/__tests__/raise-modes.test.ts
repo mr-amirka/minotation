@@ -79,6 +79,10 @@ describe('specificityMode — множитель **N', () => {
       '(p10|m5)*3',
       '(p10|m5)**3',
     ],
+    [
+      'c$ink:h*2',
+      'c$ink:h**2',
+    ],
   ])('прежняя запись %s — CSS нет, сообщение с новой записью %s', (token, replacement) => {
     const {
       css, warnings,
@@ -91,6 +95,31 @@ describe('specificityMode — множитель **N', () => {
           + ' and "*" in a value is multiplication. The old spelling gives no CSS.',
       }),
     ]);
+  });
+
+  // После переменной или скобки `*N` — только произведение: старых токенов с `$` и `{` не было.
+  test.each([
+    [
+      'w$gap*2',
+      '.w\\$gap\\*2{width:calc(var(--gap) * 2)}',
+    ],
+    [
+      'w$a;*2',
+      '.w\\$a\\;\\*2{width:calc(var(--a) * 2)}',
+    ],
+    [
+      'w{1+2}*3',
+      '.w\\{1\\+2\\}\\*3{width:calc((1px + 2px) * 3)}',
+    ],
+    [
+      'wMin{$a,10}*2',
+      '.wMin\\{\\$a\\,10\\}\\*2{width:calc(min(var(--a), 10px) * 2)}',
+    ],
+  ])('%s — произведение, не прежний множитель', (token, css) => {
+    expect(run(token)).toEqual(expect.objectContaining({
+      css,
+      warnings: [],
+    }));
   });
 
   test('по умолчанию warn: CSS есть, предупреждение с подсказкой — в консоль и onWarning', () => {

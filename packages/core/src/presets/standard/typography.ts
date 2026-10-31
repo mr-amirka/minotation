@@ -41,10 +41,10 @@ import {
   OFFSET_LENGTH,
   OPEN_PAREN,
   PERCENT,
-  PX,
   QUOTE,
   SPACE,
   UNDERSCORE,
+  UNITS,
   ZERO,
   wordsSet,
 } from './words';
@@ -456,33 +456,36 @@ export function registerTypography(ctx: StandardContext): void {
     instance,
     intval,
     lengthOrWord,
+    lengthRules,
     map,
+    mathRules,
+    mathValue,
     mn,
     registerLengthProperties,
     registerSingleProperties,
     spaceNormalize,
     synonymProvider,
     toKebabCase,
-    validateUnit,
     valueNormalize,
   } = ctx;
+  const letterSpacingRules = lengthRules('lts');
+  // Голое число `line-height` — множитель, как в CSS: единицы по умолчанию нет.
+  const lineHeightRules = mathRules({
+    name: 'lh',
+    unit: '',
+    units: UNITS,
+  });
+  const textSizeAdjustRules = mathRules({
+    name: 'tsa',
+    unit: PERCENT,
+    units: [PERCENT],
+  });
+  const fontSizeAdjustRules = mathRules({
+    name: 'fsa',
+    unit: '',
+    units: [],
+  });
 
-  /**
-   * Значение одиночного свойства-длины: либо слово из его списка, либо число с
-   * единицей.
-   *
-   * Хендлеры вида `olo`, `lts`, `tsa`, `fsa` собирали значение вручную одной и
-   * той же строчкой `camel ? toKebabCase(camel) : num + (p.unit || 'px')`, и ни
-   * слово, ни единица там не проверялись: `oloZzz` давало `outline-offset:zzz`,
-   * `oloF00` — `outline-offset:f`, `lts10zz` — `letter-spacing:10zz`,
-   * `olo10%` — `outline-offset:10%` (процентов это свойство не принимает).
-   * Валидатор ядра ни одно из этих свойств не знал.
-   *
-   * @param p — параметры хендлера
-   * @param keywords — ключевые слова конкретного свойства
-   * @param allow — флаги допустимого, см. {@link LENGTH_PERCENT}
-   * @param defaultUnit — единица для голого числа
-   */
   /**
    * У свойства только процент: ни другой единицы, ни голого нуля.
    *
@@ -615,22 +618,10 @@ export function registerTypography(ctx: StandardContext): void {
      * приходилось два способа записи, да ещё и с подменой семантики —
      * `150%` наследуется вычисленным значением, а `1.5` коэффициентом.
      */
-    lh: (p) => {
-      let num, unit, v;
-      return p.camel ? 0 : (
-        (v = cssVarValue(p.suffix || '')) ? styleWrap({
-          lineHeight: v,
-        }) : (
-        // Единица не проверялась: `lh10zz` давало `line-height:10zz`,
-        // `lh10s` — `line-height:10s`. Безразмерная форма при этом
-        // сохраняется — она и есть основная.
-          unit = validateUnit(p.unit),
-          (num = p.num) ? styleWrap({
-            lineHeight: num == ZERO ? num : (unit ? num + unit : num),
-          }) : normalizeDefault(p, '1')
-        )
-      );
-    },
+    // Весь суффикс — математика: `lh1.5+2` → `calc(1.5 + 2)`, а не молча `1.5`; единица проверяется (`lh10zz`).
+    lh: (p) => (p.camel ? 0 : p.suffix ? styleWrap({
+      lineHeight: mathValue('' + p.suffix, lineHeightRules),
+    }) : normalizeDefault(p, '1')),
     tsa: (p) => {
       let v;
       return p.negative ? 0 : (
@@ -643,8 +634,7 @@ export function registerTypography(ctx: StandardContext): void {
         // `tsa0` давало `text-size-adjust:0` — ноль там тоже невалиден.
           textSizeAdjust: (assertPercentOnly(p),
           lengthOrWord(
-            p, TEXT_SIZE_ADJUST_KEYWORDS, LENGTH_PERCENT,
-            PERCENT, TEXT_SIZE_ADJUST_SYNONYMS,
+            p, TEXT_SIZE_ADJUST_KEYWORDS, textSizeAdjustRules, TEXT_SIZE_ADJUST_SYNONYMS,
           )),
         }) : normalizeDefault(p, HUNDRED_PERCENT))
       );
@@ -661,7 +651,7 @@ export function registerTypography(ctx: StandardContext): void {
           fontSizeAdjust: (p.unit && throwInvalid(MSG_VALUE + p.suffix
           + '" is invalid: font-size-adjust is a unitless number'),
           lengthOrWord(
-            p, FONT_SIZE_ADJUST_KEYWORDS, 0, '', FONT_SIZE_ADJUST_SYNONYMS,
+            p, FONT_SIZE_ADJUST_KEYWORDS, fontSizeAdjustRules, FONT_SIZE_ADJUST_SYNONYMS,
           )),
         }) : 0)
       );
@@ -852,18 +842,11 @@ export function registerTypography(ctx: StandardContext): void {
      * значение выводилось без единицы (`lts1.5` → `letter-spacing:1.5`) — невалидный CSS,
      * который браузер отбрасывал.
      */
-    lts: (p) => {
-      let v;
-      return (v = cssVarValue(p.suffix || '')) ? styleWrap({
-        letterSpacing: v,
-      }) : (
-        (p.camel || p.num != null) ? styleWrap({
-          letterSpacing: lengthOrWord(
-            p, LETTER_SPACING_KEYWORDS, LENGTH_PERCENT, PX, GAP_SYNONYMS,
-          ),
-        }) : 0
-      );
-    },
+    lts: (p) => (p.suffix ? styleWrap({
+      letterSpacing: lengthOrWord(
+        p, LETTER_SPACING_KEYWORDS, letterSpacingRules, GAP_SYNONYMS,
+      ),
+    }) : 0),
     ws: synonymProvider('whiteSpace', {
       '': NAME_NOWRAP,
       N: NAME_NORMAL,

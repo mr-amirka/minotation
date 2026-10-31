@@ -483,19 +483,17 @@ export function registerBorders(ctx: StandardContext): void {
     ],
   });
 
+  const outlineOffsetRules = lengthRules(
+    'olo', 0, 1,
+  );
   mn({
     // `outline-offset` — длина со знаком, без процентов и без ключевых слов
     // помимо CSS-wide.
-    olo: (p) => {
-      let v;
-      return (v = cssVarValue(p.suffix || '')) ? styleWrap({
-        outlineOffset: v,
-      }) : (p.value ? styleWrap({
-        outlineOffset: lengthOrWord(
-          p, EMPTY_KEYWORDS, 0, PX,
-        ),
-      }) : normalizeDefault(p));
-    },
+    olo: (p) => (p.suffix ? styleWrap({
+      outlineOffset: lengthOrWord(
+        p, EMPTY_KEYWORDS, outlineOffsetRules,
+      ),
+    }) : normalizeDefault(p)),
     ols: synonymProvider(
       'outlineStyle', OUTLINE_STYLE_SYNONYMS, 1,
     ),

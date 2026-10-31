@@ -709,6 +709,30 @@ describe('ratio: хвост, который не разобрался, брак�
   ])('%s продолжает работать', (token, expected) => {
     expect(compileRatio(token).css).toContain(expected);
   });
+
+  // Прибавка читается целиком, как любая длина: переменные, произведения, несколько термов.
+  test.each([
+    [
+      'ratio16x9+10',
+      'padding-top:calc(56.25% + 10px)',
+    ],
+    [
+      'ratio16x9-$gap*2',
+      'padding-top:calc(56.25% - var(--gap) * 2)',
+    ],
+    [
+      'ratio16x9+1rem-2px',
+      'padding-top:calc(56.25% + 1rem - 2px)',
+    ],
+  ])('%s → %s — прибавка как математика', (token, expected) => {
+    const r = compileRatio(token);
+    expect(r.css).toContain(expected);
+    expect(r.warnings).toEqual([]);
+  });
+
+  test('единица прибавки проверяется', () => {
+    expect(compileRatio('ratio16x9+10zz').warnings.map((w) => w.message)).toEqual(['Unit "zz" is invalid']);
+  });
 });
 
 /**

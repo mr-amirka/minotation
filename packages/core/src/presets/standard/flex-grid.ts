@@ -38,7 +38,6 @@ import {
   SPAN,
   UNDERSCORE,
   UNITS,
-  ZERO,
   wordsSet,
 } from './words';
 import {
@@ -58,15 +57,19 @@ import type {
   SingleValues,
 } from './functions';
 import {
-  REGEXP_BARE_NUMBER,
   REGEXP_LENGTH_PART,
+  REGEXP_TERM_START,
   functionLength,
   functionSet,
-  lengthPartRegExp,
   splitValueParts,
 } from './functions';
 import {
   cssVarValue,
+  mathRules,
+  mathValue,
+} from '../../core/mathValue';
+import type {
+  MnMathRules,
 } from '../../core/mathValue';
 import {
   REGEXP_SLOT_IDENT,
@@ -218,8 +221,8 @@ const REGEXP_QUOTE_OPEN = /^["'][^"']*$/;
  */
 const TRACK_KEYWORDS = wordsSet('auto min-content max-content');
 const TEMPLATE_TRACK_KEYWORDS = wordsSet('none auto min-content max-content subgrid');
-/** Размер дорожки: длина, процент или доля свободного места (`1fr`). */
-const REGEXP_TRACK_SIZE = lengthPartRegExp(UNITS.concat('fr'));
+/** Доля `fr` внутри выражения: в `calc()` CSS её не берёт, доля — дорожка сама по себе. */
+const REGEXP_FLEX_INSIDE = /[0-9.]fr/;
 /**
  * Номер линии сетки: целое со знаком, возможно с `/` для второй границы —
  * `1`, `-1`, `1/3`.
@@ -244,6 +247,8 @@ const TRACK_ARG_WORDS: Record<string, string> = {
 };
 /** Доля свободного места: `1fr` — только верхняя граница `minmax()`. */
 const REGEXP_FLEX = /^(?:\d+\.?\d*|\.\d+)fr$/;
+/** Правила размера дорожки по хендлеру — строятся при первом вызове, дальше берутся готовыми. */
+const trackRulesOf: Record<string, MnMathRules> = {};
 /** Функции дорожки — значение целиком: внутри списка дорожек функция пишется переменной. */
 const TRACK_FORMS: Record<string, FunctionForm> = {
   Minmax: {
@@ -408,7 +413,7 @@ function gridValue(
   for (; i < l; i++) {
     part = parts[i];
     if ((repeated = trackRepeat(
-      part, prefix, gridExample,
+      part, prefix, gridExample, essenceName,
     ))) {
       parts[i] = repeated;
       continue;
@@ -424,10 +429,11 @@ function gridValue(
     }
     (part.indexOf(OPEN_PAREN) > -1
       || TRACK_KEYWORDS[part]
-      || REGEXP_TRACK_SIZE.test(part)
       || REGEXP_LINE_NAME.test(part))
-      || throwInvalid(prefix + 'expected a quoted area, a track size, '
-        + '`auto-flow` or the "/" separator');
+      || (parts[i] = trackSize(
+        part, essenceName, 1,
+      ) || throwInvalid(prefix + 'expected a quoted area, a track size, '
+        + '`auto-flow` or the "/" separator'));
   }
   // Список дорожек без «/» и без областей — это `gtc`/`gtr`, а не `g`:
   // `grid: 1fr 1fr` по грамматике невалиден.
@@ -441,11 +447,12 @@ function gridValue(
  * @param part часть значения после нормализации: переменная внутри повтора ещё не развёрнута (`3x$w`)
  * @param prefix начало сообщения об ошибке
  * @param example запись для подсказки: `gtc3x1fr`, у `g` — `g1fr_/_3x1fr`
+ * @param essenceName хендлер — для правил размера
  * @returns `repeat(…)`, или `undefined`, когда часть — не повтор
- * @example trackRepeat('2x1fr;2fr', prefix, 'gtc3x1fr') // 'repeat(2, 1fr 2fr)'
+ * @example trackRepeat('2x1fr;2fr', prefix, 'gtc3x1fr', 'gtc') // 'repeat(2, 1fr 2fr)'
  */
 function trackRepeat(
-  part: string, prefix: string, example: string,
+  part: string, prefix: string, example: string, essenceName: string,
 ): string | undefined {
   const m = REGEXP_TRACK_REPEAT.exec(part);
   if (!m) {
@@ -458,9 +465,11 @@ function trackRepeat(
   let track: string;
   while (i--) {
     track = tracks[i];
-    tracks[i] = cssVarValue(track) || (REGEXP_TRACK_SIZE.test(track) ? track
-      : throwInvalid(prefix + 'a repeated track is a size (length, percent, fr) or a variable, ";" between tracks'
-        + example));
+    tracks[i] = trackSize(
+      track, essenceName, 1,
+    )
+      || throwInvalid(prefix + 'a repeated track is a size (length, percent, fr) or a variable, ";" between tracks'
+        + example);
   }
   return 'repeat(' + m[1] + LIST_SEPARATOR + tracks.join(SPACE) + CLOSE_PAREN;
 }
@@ -492,23 +501,46 @@ function trackValue(
   for (; i < l; i++) {
     part = parts[i];
     if (template && (repeated = trackRepeat(
-      part, prefix, essenceName + '3x1fr',
+      part, prefix, essenceName + '3x1fr', essenceName,
     ))) {
       parts[i] = repeated;
       continue;
     }
     (part.indexOf(OPEN_PAREN) > -1
       || words[part]
-      || REGEXP_TRACK_SIZE.test(part)
       || REGEXP_LINE_NAME.test(part))
-      || throwInvalid(prefix + 'a track is a size (length, percent, fr), a keyword'
-        + (template ? ', a repeat as "' + essenceName + '3x1fr"' : '') + ' or a variable; a function is the whole value, as "'
-        + essenceName + TRACK_FUNCTIONS.first.example + DOUBLE_QUOTE);
+      || (parts[i] = trackSize(
+        part, essenceName, 1,
+      ) || throwInvalid(prefix + 'a track is a size (length, percent, fr), a'
+        + ' keyword' + (template ? ', a repeat as "' + essenceName + '3x1fr"' : '') + ' or a variable; a function is the'
+        + ' whole value, as "' + essenceName + TRACK_FUNCTIONS.first.example + DOUBLE_QUOTE));
   }
   return parts.join(SPACE);
 }
 /**
- * Аргумент функции дорожки: длина (голое число — пиксели, как у других функций и у `AF240`), процент, слово
+ * Размер дорожки. Доля (`1fr`) — как написана, где её допускает грамматика; длина или процент — математика
+ * ({@link mathValue}): голое число — пиксели, `100-20` → `calc(100px - 20px)`, `$a*2` → `calc(var(--a) * 2)`, `$a` →
+ * `var(--a)`. Доля внутри выражения — не размер: в `calc()` CSS её не берёт.
+ * @param part часть значения
+ * @param essenceName хендлер — для правил и сообщений читателя
+ * @param flex доля допустима
+ * @returns размер CSS, или `undefined`, когда часть не начинается как размер
+ * @example trackSize('100-20', 'gtc') // 'calc(100px - 20px)'
+ */
+function trackSize(
+  part: string, essenceName: string, flex?: 1,
+): string | undefined {
+  return REGEXP_FLEX.test(part) ? (flex && part)
+    : REGEXP_TERM_START.test(part) && !REGEXP_FLEX_INSIDE.test(part) ? mathValue(part, trackRulesOf[essenceName]
+      || (trackRulesOf[essenceName] = mathRules({
+        name: essenceName,
+        unit: PX,
+        units: UNITS,
+        negative: false,
+      }))) : undefined;
+}
+/**
+ * Аргумент функции дорожки: размер ({@link trackSize}, голое число — пиксели, как у других функций и у `AF240`), слово
  * {@link TRACK_ARG_WORDS} или переменная; доля `fr` — где её допускает грамматика.
  * @param v аргумент
  * @param call вызов — для ошибки
@@ -519,10 +551,9 @@ function trackValue(
 function trackArg(
   v: string, call: FunctionCall, flex?: 1,
 ): string {
-  return cssVarValue(v) || TRACK_ARG_WORDS[v]
-    || (v[0] !== DASH && (flex && REGEXP_FLEX.test(v) ? v
-      : REGEXP_BARE_NUMBER.test(v) ? (v === ZERO ? v : v + PX)
-        : REGEXP_LENGTH_PART.test(v) && v))
+  return TRACK_ARG_WORDS[v] || v[0] !== DASH && trackSize(
+    v, call.p.name, flex,
+  )
     || call.fail('a length, a percent' + (flex ? ', a fraction ("1fr")' : '') + ', "A" (auto), "MinContent" or '
       + '"MaxContent"');
 }

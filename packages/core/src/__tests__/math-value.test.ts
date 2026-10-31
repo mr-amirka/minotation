@@ -42,6 +42,12 @@ const border = mathRules({
   unit: 'px',
   units: ['px'],
 });
+/** Длинный список единиц — сообщение даёт образец, а не список. */
+const indent = mathRules({
+  name: 'ti',
+  unit: 'px',
+  units: 'px em rem ex ch vw vh vmin vmax %'.split(' '),
+});
 
 /** Сообщение ошибки разбора — или `undefined`, если значение прочиталось. */
 function errorOf(expr: string, rules = width): string | undefined {
@@ -389,17 +395,22 @@ describe('mathValue — единицы по правилам свойства', 
     [
       '1.5+2rem',
       lineHeight,
-      'Unit "rem" is invalid',
+      'Value "1.5+2rem" is invalid for "lh": unit "rem" doesn\'t fit: the value is a plain number, as "1.5"',
     ],
     [
       '10s',
       width,
-      'Unit "s" is invalid',
+      'Value "10s" is invalid for "w": unit "s" doesn\'t fit: the units are px, rem, vw, %',
     ],
     [
       '0s',
       width,
-      'Unit "s" is invalid',
+      'Value "0s" is invalid for "w": unit "s" doesn\'t fit: the units are px, rem, vw, %',
+    ],
+    [
+      '10zz',
+      indent,
+      'Value "10zz" is invalid for "ti": unit "zz" doesn\'t fit, as "10px"',
     ],
     [
       '10%+2',

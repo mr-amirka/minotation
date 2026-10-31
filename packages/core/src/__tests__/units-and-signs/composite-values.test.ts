@@ -669,6 +669,14 @@ describe('дорожки и позиции сетки', () => {
       'garA',
       'grid-auto-rows:auto',
     ],
+    [
+      'gtc10',
+      'grid-template-columns:10px',
+    ],
+    [
+      'gtc100-20_1fr',
+      'grid-template-columns:calc(100px - 20px) 1fr',
+    ],
   ];
 
   test.each(TRACKS)('%s → %s', (token, expected) => {
@@ -688,16 +696,10 @@ describe('дорожки и позиции сетки', () => {
       'grid-template-columns:10zz',
     ],
     [
-      'gtc10',
-      'grid-template-columns:10',
-    ],
-    [
       'gacZzz',
       'grid-auto-columns:zzz',
     ],
   ])('%s больше не даёт "%s"', (token, wasGiving) => {
-    // Размер дорожки без единицы невалиден, в отличие от голого числа в
-    // других местах нотации.
     const at = wasGiving.indexOf(':');
     expect(lexer.matchProperty(wasGiving.slice(0, at), wasGiving.slice(at + 1)).matched)
       .toBeFalsy();

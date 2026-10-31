@@ -154,6 +154,90 @@ describe('единицы длины', () => {
   });
 });
 
+describe('длины позиций и аргументов функций — математика', () => {
+  test.each([
+    [
+      'op10+5_T',
+      '.op10\\+5_T{object-position:calc(10px + 5px) top}',
+    ],
+    [
+      'op$a*2_T',
+      '.op\\$a\\*2_T{object-position:calc(var(--a) * 2) top}',
+    ],
+    [
+      'opMin{10,5%}_T',
+      '.opMin\\{10\\,5\\%\\}_T{object-position:min(10px, 5%) top}',
+    ],
+    [
+      'tfo10+5_T',
+      '.tfo10\\+5_T{transform-origin:calc(10px + 5px) top}',
+    ],
+    [
+      'mkp10+5',
+      '.mkp10\\+5{mask-position:calc(10px + 5px)}',
+    ],
+    [
+      'ftBlur2+1',
+      '.ftBlur2\\+1{filter:blur(calc(2px + 1px))}',
+    ],
+    [
+      'ftBlur$a*2',
+      '.ftBlur\\$a\\*2{filter:blur(calc(var(--a) * 2))}',
+    ],
+    [
+      'ftBlur0',
+      '.ftBlur0{filter:blur(0)}',
+    ],
+    [
+      'ftDropShadow2_-3+1_4_F00',
+      '.ftDropShadow2_-3\\+1_4_F00{filter:drop-shadow(2px calc(-3px + 1px) 4px #f00)}',
+    ],
+    [
+      'cpthCircle50%_10+5_T',
+      '.cpthCircle50\\%_10\\+5_T{clip-path:circle(50% at calc(10px + 5px) top)}',
+    ],
+    [
+      'cpthInset10+5',
+      '.cpthInset10\\+5{clip-path:inset(calc(10px + 5px))}',
+    ],
+  ])('%s → %s', (token, css) => {
+    expect(compile([token])).toEqual(expect.objectContaining({
+      css,
+      warnings: [],
+    }));
+  });
+
+  test.each([
+    [
+      'ftBlur-1',
+      'Value "Blur-1" is invalid for "ft": "Blur" expects a length of zero or more — as "ftBlur2"',
+    ],
+    [
+      'ftBlurZzz',
+      'Value "BlurZzz" is invalid for "ft": "Blur" expects a length — as "ftBlur2"',
+    ],
+    [
+      'ftBlur10%',
+      'Value "10%" is invalid: this property takes a length, percent is not allowed',
+    ],
+    [
+      'opZzz',
+      'Value "Zzz" is invalid for "op": a part is a side letter, a length or a percent. Available: opL (left), opC'
+      + ' (center), opR (right), opT (top), opB (bottom), opTL (top left), opTR (top right), opBL (bottom left), opBR'
+      + ' (bottom right)',
+    ],
+  ])('%s — брак со своей подсказкой', (token, message) => {
+    const out = compile([token]);
+    expect([
+      out.css,
+      out.warnings.map((w) => w.message),
+    ]).toEqual([
+      '',
+      [message],
+    ]);
+  });
+});
+
 describe('единица в тенях идёт во все длины записи', () => {
   test.each([
     [

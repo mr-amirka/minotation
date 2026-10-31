@@ -16,7 +16,6 @@ import {
   SPACE,
   UNDERSCORE,
   UNITS,
-  ZERO,
 } from './words';
 import {
   MSG_AS,
@@ -31,6 +30,11 @@ import {
 } from './messages';
 import {
   cssVarValue,
+  mathRules,
+  mathValue,
+} from '../../core/mathValue';
+import type {
+  MnMathRules,
 } from '../../core/mathValue';
 /**
  * Функция нативной формы `Name…`: имя в CamelCase, первый аргумент — слитно с ним, остальные — частями через
@@ -179,6 +183,15 @@ export const REGEXP_FUNCTION_FIRST_ARG = /^[-.\d$]/;
 const REGEXP_KEBAB_LETTER = /-([a-z])/g;
 /** Длина без процента — у `blur` и `drop-shadow` процента нет. */
 export const REGEXP_FUNCTION_LENGTH = lengthPartRegExp(UNITS.filter((unit) => unit !== PERCENT));
+/** Единицы длины без процента — у аргументов `blur`, `drop-shadow`. */
+const UNITS_NO_PERCENT = UNITS.filter((unit) => unit !== PERCENT);
+/**
+ * Часть значения начинается как терм математики: число, переменная, группа или функция со скобкой — `10`, `.5`,
+ * `-10`, `$a`, `{1+2}`, `Min{…}`. Остальное — слова хендлера, со своими подсказками.
+ */
+export const REGEXP_TERM_START = /^-?(?:[0-9.$]|\{|[A-Z][a-z]*\{)/;
+/** Правила аргумента-длины по хендлеру и флагам — строятся при первом вызове, дальше берутся готовыми. */
+const functionLengthRules: Record<string, MnMathRules> = {};
 /** Последнее слово CamelCase-имени: `Content` в `MinmaxMinContent`. */
 const REGEXP_CAMEL_LAST = /[A-Z][a-z]*$/;
 /**
@@ -263,8 +276,8 @@ export function functionSet(
   };
 }
 /**
- * Аргумент-длина функции: голое число — пиксели (`2` → `2px`, `0` остаётся `0`), с единицей — как написано,
- * переменная — `var()`.
+ * Аргумент-длина функции — математика ({@link mathValue}): голое число — пиксели (`2` → `2px`, `0` остаётся `0`),
+ * с единицей — как написано, переменная — `var()`, сумма — `calc()` (`ftBlur2+1` → `blur(calc(2px + 1px))`).
  * @param v аргумент
  * @param call вызов — для ошибки
  * @param signed отрицательная длина допустима (сдвиг тени), иначе — нет (размытие)
@@ -275,14 +288,16 @@ export function functionSet(
 export function functionLength(
   v: string, call: FunctionCall, signed?: 1, percent?: 1,
 ): string {
-  const whole = cssVarValue(v);
-  if (whole) {
-    return whole;
-  }
+  REGEXP_TERM_START.test(v) || call.fail(percent ? 'a length or a percent' : 'a length');
   (signed || v[0] !== DASH) || call.fail('a length of zero or more');
-  return REGEXP_BARE_NUMBER.test(v) ? (v === ZERO ? v : v + PX)
-    : (percent ? REGEXP_LENGTH_PART : REGEXP_FUNCTION_LENGTH).test(v) ? v
-      : call.fail(percent ? 'a length or a percent' : 'a length');
+  const name = call.p.name;
+  const key = name + (signed ? '-' : '') + (percent ? PERCENT : '');
+  return mathValue(v, functionLengthRules[key] || (functionLengthRules[key] = mathRules({
+    name,
+    unit: PX,
+    units: percent ? UNITS : UNITS_NO_PERCENT,
+    negative: !!signed,
+  })));
 }
 /**
  * Начинается ли суффикс функцией из набора — в любой форме имени, со скобкой тоже: хендлер со словарём (`ttf`)

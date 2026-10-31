@@ -221,7 +221,7 @@ describe('suspect-class (D-065, D-066)', () => {
   });
 
   test('настоящая ошибка в токене — parse-error, как раньше', () => {
-    expect(compile('w10zz', STANDARD).warnings).toEqual(['parse-error: Unit "zz" is invalid']);
+    expect(compile('w10zz', STANDARD).warnings).toEqual(['parse-error: Value "10zz" is invalid for "w": unit "zz" doesn\'t fit, as "10px"']);
   });
 
   test('неверное значение опции — ошибка', () => {

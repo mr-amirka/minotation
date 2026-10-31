@@ -75,6 +75,7 @@ import {
   REGEXP_AUTHOR_FUNCTION,
   REGEXP_BARE_NUMBER,
   REGEXP_LENGTH_PART,
+  REGEXP_TERM_START,
   REGEXP_VAR_UNDERSCORE,
   assertEnumValue,
   functionsStart,
@@ -1304,6 +1305,9 @@ export function createContext(instance: MnInstance) {
     };
   }
 
+  /** Правила длины позиции по имени хендлера — строятся при первом токене хендлера, дальше берутся готовыми. */
+  const positionRulesOf: Record<string, MnMathRules> = {};
+
   /** Слово позиции → буква: `right` → `R` — для подсказки «Write it shorter». */
   const POSITION_BY_WORD: Record<string, string> = {};
   forIn(POSITION_KEYWORDS, (word: string, abbr: string) => {
@@ -1375,9 +1379,9 @@ export function createContext(instance: MnInstance) {
         kinds.push(POSITION_ANY);
         continue;
       }
-      word = defaultUnitNormalize(part);
-      if (REGEXP_LENGTH_PART.test(word)) {
-        words.push(word);
+      // Длина — математика по правилам позиции: `op10+5_T` → `calc(10px + 5px) top`, `op$a*2_T`.
+      if (REGEXP_TERM_START.test(part)) {
+        words.push(mathValue(part, positionRulesOf[name] || (positionRulesOf[name] = lengthRules(name))));
         kinds.push(POSITION_OFFSET);
         continue;
       }

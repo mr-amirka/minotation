@@ -731,7 +731,7 @@ describe('ratio: хвост, который не разобрался, брак�
   });
 
   test('единица прибавки проверяется', () => {
-    expect(compileRatio('ratio16x9+10zz').warnings.map((w) => w.message)).toEqual(['Unit "zz" is invalid']);
+    expect(compileRatio('ratio16x9+10zz').warnings.map((w) => w.message)).toEqual(['Value "56.25%+10zz" is invalid for "ratio": unit "zz" doesn\'t fit, as "10px"']);
   });
 });
 

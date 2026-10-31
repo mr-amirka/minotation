@@ -47,6 +47,8 @@ const VAR_OPEN = 'var(--';
 const ENV_OPEN = 'env(';
 const NEGATE = ' * -1';
 const MSG_NOT_EXPECTED = ' is not expected';
+/** Сколько единиц сообщение называет списком; длиннее — образцом с единицей по умолчанию. */
+const UNITS_LISTED = 8;
 /** С чего начинается значение — подсказка, когда не подошёл первый же символ (`tiF00`, `w#1`). */
 const MSG_TERM_START = ': a value starts with a number ("10"), a variable ("$x"), a function ("Min{…}") or a group'
   + ' ("{…}")';
@@ -381,11 +383,17 @@ function readFraction(num: string): string {
   return toFixed(100 * +num / +total) + PERCENT;
 }
 
-/** Единица свойства: процент — своё сообщение. */
+/**
+ * Единица свойства: процент — своё сообщение. Чужая единица — с образцом: короткий список единиц целиком, длинный —
+ * единицей по умолчанию (`10px`), без единиц — числом.
+ */
 function checkUnit(unit: string): void {
-  rules.units.indexOf(unit) < 0 && (unit === PERCENT
+  const units = rules.units;
+  const count = units.length;
+  units.indexOf(unit) < 0 && (unit === PERCENT
     ? throwRule('this property takes a length, percent is not allowed')
-    : throwParse('Unit "' + unit + '" is invalid'));
+    : invalid('unit "' + unit + '" doesn\'t fit' + (!count ? ': the value is a plain number, as "1.5"'
+      : count > UNITS_LISTED ? ', as "10' + rules.unit + DOUBLE_QUOTE : ': the units are ' + units.join(ARG_SEPARATOR))));
 }
 
 /** Переменная `$name` → `var(--name)`, `$$name` → `env(name)`; запасной вариант — в скобках: `$a{10}`. */

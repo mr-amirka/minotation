@@ -234,7 +234,7 @@ describe('positions: op, pspo, tfo (group D)', () => {
     ],
     [
       'op10zz',
-      'expected a length or a percent',
+      'Value "10zz" is invalid for "op": unit "zz" doesn\'t fit, as "10px"',
     ],
     [
       'op_solid',

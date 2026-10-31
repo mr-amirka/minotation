@@ -234,7 +234,7 @@ describe('что раньше молча давало сломанный CSS (D-
     // Было `blur(4.5)` и `blur(4--a)` без единицы и с мусором.
     [
       'ftBlur2zz',
-      'Value "Blur2zz" is invalid for "ft": "Blur" expects a length — as "ftBlur2"',
+      'Value "2zz" is invalid for "ft": unit "zz" doesn\'t fit, as "10px"',
     ],
     [
       'ftBlur-2',
@@ -878,7 +878,11 @@ describe('фигуры clip-path в нативной форме: cpth (D-124)', 
     ],
     [
       'cpthInset10zz',
-      'Value "Inset10zz" is invalid for "cpth": "Inset" expects a length or a percent — as "cpthInset10_20_R5"',
+      'Value "10zz" is invalid for "cpth": unit "zz" doesn\'t fit, as "10px"',
+    ],
+    [
+      'cpthInsetZzz',
+      'Value "InsetZzz" is invalid for "cpth": "Inset" expects a length or a percent — as "cpthInset10_20_R5"',
     ],
     [
       'cpthPolygon50%_0,100%',
@@ -1043,8 +1047,8 @@ describe('повтор и функции дорожек сетки в натив
       'Value "0x1fr" is invalid for "gtc": the count of a repeat is a whole number from 1 — as "gtc3x1fr"',
     ],
     [
-      'gtc3x200',
-      'Value "3x200" is invalid for "gtc": a repeated track is a size (length, percent, fr) or a variable,'
+      'gtc3x1fr+1',
+      'Value "3x1fr+1" is invalid for "gtc": a repeated track is a size (length, percent, fr) or a variable,'
       + ' ";" between tracks — as "gtc3x1fr"',
     ],
     [
@@ -1073,8 +1077,8 @@ describe('повтор и функции дорожек сетки в натив
       + ' goes through a variable, as "g$x". A repeat of tracks is "3x1fr", as "g1fr_/_3x1fr"',
     ],
     [
-      'g1fr_/_3x2',
-      'Value "1fr_/_3x2" is invalid for "g": a repeated track is a size (length, percent, fr) or a'
+      'g1fr_/_3x2fr+1',
+      'Value "1fr_/_3x2fr+1" is invalid for "g": a repeated track is a size (length, percent, fr) or a'
       + ' variable, ";" between tracks — as "g1fr_/_3x1fr"',
     ],
   ])('%s', (token, message) => {

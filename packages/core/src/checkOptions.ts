@@ -115,10 +115,10 @@ export const isBoolean: OptionCheck = (value) => (
   typeof value === 'boolean' ? undefined : 'a boolean'
 );
 
-/** Строка. */
 /** Имя класса CSS без экранирования: `_l`, `mn-scope`. */
 const REGEXP_CLASS_NAME = /^-?[_a-zA-Z][\w-]*$/;
 
+/** Строка. */
 export const isString: OptionCheck = (value) => (
   typeof value === 'string' ? undefined : 'a string'
 );

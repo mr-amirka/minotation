@@ -44,8 +44,15 @@ export interface MnRuntimeOptions {
   styleAttr?: string;
 }
 
+/**
+ * Что возвращает запуск рантайма: ручка, чтобы его остановить.
+ * @example const handle = createMnRuntime(mn); … handle.stop();
+ */
 export interface MnRuntimeHandle {
-  /** Останавливает наблюдение и отписывается от `styles$`. Безопасно вызывать повторно. */
+  /**
+   * Останавливает наблюдение и отписывается от `styles$`. Безопасно вызывать повторно.
+   * @example handle.stop() // новые классы в DOM больше не компилируются
+   */
   stop(): void;
 }
 
@@ -149,6 +156,7 @@ export function createMnRuntime(mn: MnRuntimeInstance, options: MnRuntimeOptions
   renderStyles(styleAttr, doc, mn.styles$.getValue());
 
   return {
+    /** Отключает наблюдатель DOM и подписку на стили (см. {@link MnRuntimeHandle.stop}). */
     stop(): void {
       observer.disconnect();
       unsubscribeStyles();

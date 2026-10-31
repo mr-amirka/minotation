@@ -170,14 +170,35 @@ export const stripComments = stripCommentsImpl;
 export const checkOptions = checkOptionsImpl;
 export const checkKnownValues = checkKnownValuesImpl;
 export const describeValue = describeValueImpl;
+/**
+ * Проверка «одно из перечисленных значений» для схемы опций: ошибка называет весь список.
+ * @param values допустимые значения
+ * @returns проверка опции: `undefined` — подходит, иначе — что ожидалось
+ * @example oneOf('groups', 'css')('x') // '"groups" or "css"'
+ */
 export const oneOf = oneOfImpl;
 export const optionsOf = optionsOfImpl;
+/**
+ * Проверка опции-логического значения для схемы {@link checkOptions}.
+ * @returns `undefined` — подходит, иначе `'a boolean'`
+ * @example isBoolean('yes') // 'a boolean'
+ */
 export const isBoolean = isBooleanImpl;
+/**
+ * Проверка опции-строки для схемы {@link checkOptions}.
+ * @returns `undefined` — подходит, иначе `'a string'`
+ * @example isString(1) // 'a string'
+ */
 export const isString = isStringImpl;
 export const isFunction = isFunctionImpl;
 export const isCount = isCountImpl;
 export const isObject = isObjectImpl;
 export const isBooleanOrString = isBooleanOrStringImpl;
+/**
+ * Проверка опции-массива строк для схемы {@link checkOptions}.
+ * @returns `undefined` — подходит, иначе `'an array of strings'`
+ * @example isStringArray(['a', 1]) // 'an array of strings'
+ */
 export const isStringArray = isStringArrayImpl;
 export const isFunctionArray = isFunctionArrayImpl;
 export const isPresetArray = isPresetArrayImpl;

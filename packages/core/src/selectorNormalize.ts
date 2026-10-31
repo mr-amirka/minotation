@@ -173,6 +173,13 @@ export function pseudoBrackets(selector: string): string {
   return output;
 }
 
+/**
+ * Селектор нотации → CSS-селектор: разворот через `!`, части имени класса и id (`.*a`, `#^a`) — атрибутами.
+ * Скобки псевдокласса (`:not[.a]`) — отдельно, {@link pseudoBrackets}.
+ * @param minotationSelector селектор в записи нотации
+ * @returns селектор CSS
+ * @example selectorNormalize('.*card') // '[class*=card]'
+ */
 export function selectorNormalize(minotationSelector: string): string {
   return splitReverse(minotationSelector)
     .reverse()

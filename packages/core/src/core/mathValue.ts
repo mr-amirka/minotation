@@ -54,16 +54,19 @@ const KIND_DIMENSION = 1;
 
 /** Целое значение — ноль, с единицей или без: `0`, `-0`, `0px`. Пишется `0`. */
 const REGEXP_WHOLE_ZERO = /^-?0([a-z%]*)$/;
-/** `;` перед следующей переменной в прежней записи — у `$` он не нужен: `--a;--b` → `$a$b`. */
-const REGEXP_OLD_NEXT = /;(?=--(?!-))/g;
+/**
+ * `;` перед следующей переменной или запятой списка в прежней записи — у `$` он не нужен: `--a;--b` → `$a$b`,
+ * `--a;,--b` → `$a,$b`. Имени с `_` он нужен и дальше: `--my_a;--my_b` → `$my_a;$my_b`.
+ */
+const REGEXP_OLD_NEXT = /(--[A-Za-z0-9\u0080-\uFFFF-]+);(?=--(?!-)|,)/g;
 /** Прежний env в начале части: `---x` → `$$x`. */
 const REGEXP_OLD_ENV = /(^|[_,{])---/g;
 /** Прежний минус перед переменной: `10---a` → `10-$a`. */
 const REGEXP_OLD_MINUS_VARIABLE = /---/g;
 /** Прежняя переменная: `--a` → `$a`. */
 const REGEXP_OLD_DASHES = /--/g;
-/** Прежний запасной вариант через запятую: `$v,10px` → `$v{10px}`. */
-const REGEXP_OLD_FALLBACK = /(\$[A-Za-z0-9_\u0080-￿-]+);?,([^_]+)/g;
+/** Прежний запасной вариант через запятую: `$v,10px` → `$v{10px}`; запятая перед переменной — список: `$a,$b`. */
+const REGEXP_OLD_FALLBACK = /(\$[A-Za-z0-9_\u0080-￿-]+),(?!\$)([^_,]+)/g;
 
 /** Функции математики: имя в токене → [имя CSS, меньше аргументов нельзя, больше нельзя]. */
 const FUNCTIONS: Record<string, [string, number, number]> = {
@@ -426,9 +429,15 @@ function readFunction(): string {
   }
   const name = src.slice(start, pos);
   const fn = FUNCTIONS[name];
-  fn || invalid(name === 'Calc'
-    ? 'a sum is written without "Calc": "100%-2rem", a group in braces — "{100%-2rem}/3"'
-    : 'unknown function "' + name + '". Functions: ' + FUNCTION_NAMES.join(', '));
+  if (!fn) {
+    name === 'Calc' && invalid('a sum is written without "Calc": "100%-2rem", a group in braces — "{100%-2rem}/3"');
+    // Без скобок это не вызов, а заглавная буква не на месте: `bF00` — цвет в длине, а не функция «F».
+    if (src[pos] !== OPEN_BRACE) {
+      pos = start;
+      unexpected();
+    }
+    invalid('unknown function "' + name + '". Functions: ' + FUNCTION_NAMES.join(', '));
+  }
   src[pos] === OPEN_BRACE || invalid('the arguments of "' + name + '" are written in braces: "' + name
     + '{100%,50rem}"');
   pos++;
@@ -496,7 +505,7 @@ export function throwOldVariable(expr: string): never {
  * @example newVariables('--a;---b') // '$a;-$b'
  */
 export function newVariables(expr: string): string {
-  return expr.replace(REGEXP_OLD_NEXT, '').replace(REGEXP_OLD_ENV, '$1$$$$').replace(REGEXP_OLD_MINUS_VARIABLE, '-$$')
+  return expr.replace(REGEXP_OLD_NEXT, '$1').replace(REGEXP_OLD_ENV, '$1$$$$').replace(REGEXP_OLD_MINUS_VARIABLE, '-$$')
     .replace(REGEXP_OLD_DASHES, DOLLAR).replace(REGEXP_OLD_FALLBACK, '$1{$2}');
 }
 

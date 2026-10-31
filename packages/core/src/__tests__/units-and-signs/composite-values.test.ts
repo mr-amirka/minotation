@@ -98,11 +98,11 @@ describe('content: кавычки ставит хендлер', () => {
   // Функции — нативной формой (`cntAttr_href`): function-forms.test.ts.
   test.each([
     [
-      'cnt--v',
+      'cnt$v',
       'content:var(--v)',
     ],
     [
-      'cnt_--v',
+      'cnt_$v',
       'content:var(--v)',
     ],
     [
@@ -217,8 +217,8 @@ describe('transition: слоты в фиксированном порядке', 
   });
 
   test('подстановка годится в любой слот', () => {
-    expect(compile(['tn--v']).css).toContain('transition:var(--v)');
-    expect(compile(['tn_A_--ease']).css).toContain('transition:all var(--ease)');
+    expect(compile(['tn$v']).css).toContain('transition:var(--v)');
+    expect(compile(['tn_A_$ease']).css).toContain('transition:all var(--ease)');
   });
 });
 
@@ -231,15 +231,15 @@ describe('тени: список и переменная вместо сырог
 
   test.each([
     [
-      'bxshB--blur',
+      'bxshB$blur',
       'box-shadow:0px 0px var(--blur) 0px #000',
     ],
     [
-      'bxshB--blur;c--shadow',
+      'bxshB$blur;c$shadow',
       'box-shadow:0px 0px var(--blur) 0px var(--shadow)',
     ],
     [
-      'bxshB--my_blur;',
+      'bxshB$my_blur;',
       'box-shadow:0px 0px var(--my_blur) 0px #000',
     ],
   ])('%s → %s — переменная в позиции blur', (token, expected) => {
@@ -249,24 +249,24 @@ describe('тени: список и переменная вместо сырог
 
   test.each([
     [
-      'bxsh--shadow',
+      'bxsh$shadow',
       'box-shadow:var(--shadow)',
     ],
     [
-      'bxsh--shadow;',
+      'bxsh$shadow;',
       'box-shadow:var(--shadow)',
     ],
     [
-      'bxsh--a,--b',
+      'bxsh$a,$b',
       'box-shadow:var(--a),var(--b)',
     ],
     [
-      'tsh--shadow',
+      'tsh$shadow',
       'text-shadow:var(--shadow)',
     ],
   ])('%s → %s — переменная без буквы означает всю тень', (token, expected) => {
-    // У любого другого свойства `--x` это значение целиком (`bg--panel`,
-    // `tn--t`), и тень не исключение. Раньше переменная молча попадала
+    // У любого другого свойства `--x` это значение целиком (`bg$panel`,
+    // `tn$t`), и тень не исключение. Раньше переменная молча попадала
     // в позицию blur, а прочие слоты добирались умолчаниями — автор получал
     // правило, которого не писал.
     expect(compile([token]).css).toContain(expected);
@@ -276,8 +276,8 @@ describe('тени: список и переменная вместо сырог
     // `bxshb…` ядро прочитает как тег `bxshb`, не найдёт хендлера и молча
     // пропустит токен как чужой класс. Сторож на случай, если кто-то решит
     // «для красоты» перевести модификатор в нижний регистр.
-    expect(compile(['bxshb--blur']).css).not.toContain('box-shadow');
-    expect(compile(['bxshB--blur']).css).toContain('var(--blur)');
+    expect(compile(['bxshb$blur']).css).not.toContain('box-shadow');
+    expect(compile(['bxshB$blur']).css).toContain('var(--blur)');
   });
 
   test.each([
@@ -303,7 +303,7 @@ describe('тени: список и переменная вместо сырог
 
   test.each([
     'bxsh_solid',
-    'bxsh_0_2px_8px_--shadow',
+    'bxsh_0_2px_8px_$shadow',
     'tsh_solid',
   ])('%s бракуется — сырой режим у теней убран', (token) => {
     expect(compile([token]).css).toBe('');
@@ -356,32 +356,31 @@ describe('transition: список свойств с общими парамет
   });
 
   test('`;` после имени переменной остаётся терминатором', () => {
-    // Разбор различает их по началу токена: имя переменной начинается с `--`
+    // Разбор различает их по началу токена: имя переменной начинается с `$`
     // и до этой проверки уже развёрнуто в `var(…)`.
-    expect(compile(['tn_--prop_0.2s']).css).toContain('transition:var(--prop) 0.2s');
-    expect(compile(['tn_--prop;_0.2s']).css).toContain('transition:var(--prop) 0.2s');
+    expect(compile(['tn_$prop_0.2s']).css).toContain('transition:var(--prop) 0.2s');
+    expect(compile(['tn_$prop;_0.2s']).css).toContain('transition:var(--prop) 0.2s');
   });
 });
 
 describe('список переменных через `;` и запятую', () => {
-  // `;` завершает имя переменной. Раньше он срабатывал перед `_` и в конце
-  // значения, но не перед запятой: `g_--a;,--b` давало `grid:--a;,--b` —
-  // переменные не разворачивались, а `;` уезжал в CSS литералом.
+  // Запятая кончает имя переменной и разделяет список; `;` перед ней нужен
+  // только имени с `_`: `g_$my_a;,$my_b;`.
   test.each([
     [
-      'g_--a;,--b',
+      'g_$a,$b',
       'grid:var(--a),var(--b)',
     ],
     [
-      'g_--a;,--b;,--c',
+      'g_$a,$b,$c',
       'grid:var(--a),var(--b),var(--c)',
     ],
     [
-      'g_--my_a;,--my_b;',
+      'g_$my_a;,$my_b;',
       'grid:var(--my_a),var(--my_b)',
     ],
     [
-      'tn_--a;,--b',
+      'tn_$a,$b',
       'transition:var(--a),var(--b)',
     ],
   ])('%s → %s', (token, expected) => {
@@ -389,42 +388,41 @@ describe('список переменных через `;` и запятую', (
   });
 
   test('в списке могут быть не только переменные', () => {
-    expect(compile(['g_--a;,10px']).css).toContain('grid:var(--a),10px');
+    expect(compile(['g_$a,10px']).css).toContain('grid:var(--a),10px');
   });
 
-  test('без `;` запятая после имени остаётся фолбэком', () => {
-    // `var(--mono, serif)` — штатная конструкция CSS, и ломать её нельзя.
-    expect(compile(['ff--mono,serif']).css).toContain('font-family:var(--mono,serif)');
-    expect(compile(['gtc_--a,--b']).css)
-      .toContain('grid-template-columns:var(--a,--b)');
+  test('запасной вариант — в скобках, поэтому запятая после имени — всегда список', () => {
+    expect(compile(['ff$mono{serif}']).css).toContain('font-family:var(--mono, serif)');
+    expect(compile(['gtc_$a,$b']).css)
+      .toContain('grid-template-columns:var(--a),var(--b)');
   });
 
   test('пробел между переменными — через `_`, как и везде', () => {
-    expect(compile(['gtc_--rows;_--cols']).css)
+    expect(compile(['gtc_$rows;_$cols']).css)
       .toContain('grid-template-columns:var(--rows) var(--cols)');
-    expect(compile(['gtc_--a;_--b']).css)
+    expect(compile(['gtc_$a;_$b']).css)
       .toContain('grid-template-columns:var(--a) var(--b)');
   });
 });
 
 describe('`;` между переменными — разделитель частей', () => {
-  // Писать `g--a;_--b` было лишним церемониалом: между двумя переменными
-  // подряд другого смысла у `;` нет. Запятая по-прежнему пишется явно.
+  // `$` в имени CSS не бывает: имя кончается на следующей переменной, и
+  // переменные подряд — части через пробел. Запятая пишется явно.
   test.each([
     [
-      'gtc--a;--b',
+      'gtc$a$b',
       'grid-template-columns:var(--a) var(--b)',
     ],
     [
-      'gtc--a;--b;--c',
+      'gtc$a$b$c',
       'grid-template-columns:var(--a) var(--b) var(--c)',
     ],
     [
-      'col--a;--b',
+      'col$a$b',
       'columns:var(--a) var(--b)',
     ],
     [
-      'tn--a;--b',
+      'tn$a$b',
       'transition:var(--a) var(--b)',
     ],
   ])('%s → %s', (token, expected) => {
@@ -432,26 +430,26 @@ describe('`;` между переменными — разделитель ча�
   });
 
   test('ведущий `_` для этого не нужен, но и не мешает', () => {
-    expect(compile(['gtc_--a;--b']).css)
+    expect(compile(['gtc_$a$b']).css)
       .toContain('grid-template-columns:var(--a) var(--b)');
-    expect(compile(['gtc--a;_--b']).css)
+    expect(compile(['gtc$a;_$b']).css)
       .toContain('grid-template-columns:var(--a) var(--b)');
   });
 
   test('запятая остаётся явной', () => {
-    expect(compile(['gtc--a;,--b']).css)
+    expect(compile(['gtc$a,$b']).css)
       .toContain('grid-template-columns:var(--a),var(--b)');
   });
 
-  test('три дефиса — это вычитание, а не разделитель', () => {
-    // `w--a;---b` — минус перед переменной внутри calc. Пробел перед `env()`
-    // пишется явно: `w--a;_---b`.
-    expect(compile(['w--a;---b']).css).toContain('width:calc(var(--a) - var(--b))');
+  test('минус перед переменной — вычитание, а не разделитель', () => {
+    // `w$a;-$b` — минус перед переменной внутри calc; `;` закрывает имя, иначе
+    // дефис вошёл бы в него. Две части — через `_`: `w$a_$$b`.
+    expect(compile(['w$a;-$b']).css).toContain('width:calc(var(--a) - var(--b))');
   });
 
   test('терминатор имени работает как раньше', () => {
-    expect(compile(['w--my_var;']).css).toContain('width:var(--my_var)');
-    expect(compile(['bxshB--blur;c--shadow']).css)
+    expect(compile(['w$my_var;']).css).toContain('width:var(--my_var)');
+    expect(compile(['bxshB$blur;c$shadow']).css)
       .toContain('box-shadow:0px 0px var(--blur) 0px var(--shadow)');
   });
 });
@@ -612,15 +610,15 @@ describe('составные значения по слотам: fx, col, tem, c
   });
 
   test('подстановка проходит: перечислить её в слотах нечем', () => {
-    expect(compile(['coi--v']).css).toContain('counter-increment:var(--v)');
-    expect(compile(['fx--v']).css).toContain('flex:var(--v)');
+    expect(compile(['coi$v']).css).toContain('counter-increment:var(--v)');
+    expect(compile(['fx$v']).css).toContain('flex:var(--v)');
   });
 
   test('функция внутри составного значения тоже проходит', () => {
     // Содержимое функции слотами не описать, а валидна она в любом из них.
-    expect(compile(['fx--g_1_A']).css).toContain('flex:var(--g) 1 auto');
-    expect(compile(['coi_--name_2']).css).toContain('counter-increment:var(--name) 2');
-    expect(compile(['col_--n_30em']).css).toContain('columns:var(--n) 30em');
+    expect(compile(['fx$g_1_A']).css).toContain('flex:var(--g) 1 auto');
+    expect(compile(['coi_$name_2']).css).toContain('counter-increment:var(--name) 2');
+    expect(compile(['col_$n_30em']).css).toContain('columns:var(--n) 30em');
   });
 });
 
@@ -787,7 +785,7 @@ describe('flex-flow, transition-property, font-family', () => {
       'font-family:Arial,sans-serif',
     ],
     [
-      'ff--v',
+      'ff$v',
       'font-family:var(--v)',
     ],
   ])('%s → %s', (token, expected) => {
@@ -1008,7 +1006,7 @@ describe('фон и маска: только цвет, градиент или �
       'background:linear-gradient(180deg,#f00 0%,#00f 100%)',
     ],
     [
-      'bg--v',
+      'bg$v',
       'background:var(--v)',
     ],
     [
@@ -1032,7 +1030,7 @@ describe('фон и маска: только цвет, градиент или �
       'mask-image:linear-gradient(180deg,#f00 0%,#00f 100%)',
     ],
     [
-      'mk--v',
+      'mk$v',
       'mask-image:var(--v)',
     ],
   ])('%s → %s — мини-язык не задет', (token, expected) => {
@@ -1144,7 +1142,7 @@ describe('grid и grid-template', () => {
   });
 
   test('подстановка проходит — арбитр её не разбирает, а по спецификации она валидна', () => {
-    expect(compile(['g--v']).css).toContain('grid:var(--v)');
+    expect(compile(['g$v']).css).toContain('grid:var(--v)');
   });
 
   test('g_1fr_1fr бракуется — это не форма `grid`', () => {

@@ -491,12 +491,12 @@ describe('математика в произвольном значении ва
   });
 });
 
-describe('переменная CSS --имя=значение в записи Tailwind', () => {
-  test('ведущий -- — не минус: переменная, как в записи minotation', () => {
+describe('переменная CSS $имя=значение в записи Tailwind', () => {
+  test('ведущий $ — переменная, как в записи minotation', () => {
     const {
       css, warnings,
-    } = compile('--gap=4px --c=oklch\\(62%_0.2_259\\)');
-    expect(css).toBe('.--gap\\=4px{--gap:4px}.--c\\=oklch\\\\\\(62\\%_0\\.2_259\\\\\\){--c:oklch(62% 0.2 259)}');
+    } = compile('$gap=4px $c=oklch\\(62%_0.2_259\\)');
+    expect(css).toBe('.\\$gap\\=4px{--gap:4px}.\\$c\\=oklch\\\\\\(62\\%_0\\.2_259\\\\\\){--c:oklch(62% 0.2 259)}');
     expect(warnings).toEqual([]);
   });
 });

@@ -138,7 +138,7 @@ describe('единицы длины', () => {
   });
 
   test('подстановка и функция проходят: разбирать их содержимое тут нечем', () => {
-    expect(compile(['ti--v']).css).toContain('text-indent:var(--v)');
+    expect(compile(['ti$v']).css).toContain('text-indent:var(--v)');
   });
 });
 
@@ -202,9 +202,9 @@ describe('единица в тенях идёт во все длины запи�
   test('переменная в позиции blur — то, ради чего был сырой режим', () => {
     // Сырого режима у теней нет: мини-язык покрывает всё, что он
     // давал, а на списке теней он ломался — запятая уходила внутрь `var(…)`.
-    expect(compile(['bxshB--blur']).css)
+    expect(compile(['bxshB$blur']).css)
       .toContain('box-shadow:0px 0px var(--blur) 0px #000');
-    expect(compile(['bxshB--blur;c--shadow']).css)
+    expect(compile(['bxshB$blur;c$shadow']).css)
       .toContain('box-shadow:0px 0px var(--blur) 0px var(--shadow)');
   });
 });
@@ -290,6 +290,25 @@ describe('поворот измеряется углом', () => {
 
   test('x10y20rz45px бракуется так же, как rx10px', () => {
     expect(compile(['x10y20rz45px']).css).toBe('');
+  });
+
+  test('число с двумя точками в сдвиге бракуется, а не обрезается до 1.2', () => {
+    expect(compile([
+      'x1.2.3',
+      'x10y1.2.3',
+    ]).css).toBe('');
+  });
+
+  test('пустая часть длины названа: голое имя и лишний "_"', () => {
+    expect(compile([
+      'f',
+      'r10__20',
+      'p10__5',
+    ]).warnings.map((w) => w.message)).toEqual([
+      '"f" needs a value',
+      'Value "10__20" is invalid for "r": a part between "_" is empty',
+      'Value "10__5" is invalid for "p": a part between "_" is empty',
+    ]);
   });
 });
 
@@ -464,7 +483,7 @@ describe('одиночные свойства-длины со своим раз�
       'outline-offset:-2px',
     ],
     [
-      'olo--v',
+      'olo$v',
       'outline-offset:var(--v)',
     ],
     [
@@ -496,7 +515,7 @@ describe('одиночные свойства-длины со своим раз�
       'letter-spacing:normal',
     ],
     [
-      'lts--v',
+      'lts$v',
       'letter-spacing:var(--v)',
     ],
     [
@@ -550,9 +569,9 @@ describe('одиночные свойства-длины со своим раз�
   });
 
   test('переменная в olo больше не теряется', () => {
-    // Ветки `cssVarValue` у `olo` не было вовсе: `olo--v` давало
+    // Ветки `cssVarValue` у `olo` не было вовсе: `olo$v` давало
     // `outline-offset:0` — умолчание вместо подстановки.
-    expect(compile(['olo--v']).css).toContain('outline-offset:var(--v)');
+    expect(compile(['olo$v']).css).toContain('outline-offset:var(--v)');
   });
 });
 
@@ -905,7 +924,7 @@ describe('свойства, которые берут безразмерное �
 
   test('слово и подстановка проходят по своим правилам', () => {
     expect(compile(['arZzz']).css).toBe('');
-    expect(compile(['wid--v']).css).toContain('widows:var(--v)');
+    expect(compile(['wid$v']).css).toContain('widows:var(--v)');
   });
 });
 

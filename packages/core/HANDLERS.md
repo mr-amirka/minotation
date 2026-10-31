@@ -25,24 +25,31 @@
 
 ## CSS-переменные в значениях
 
-Хендлеры значений принимают `--name` → `var(--name)`, `---name` → `env(--name)`,
-`--name,fallback` → `var(--name,fallback)`:
+Хендлеры значений принимают `$name` → `var(--name)`, `$$name` → `env(name)`, запасной вариант — в фигурных
+скобках: `$name{fallback}` → `var(--name, fallback)` (D-133, D-134). Имя кончается на любом символе, которого в имени
+CSS нет (`+`, `*`, `/`, `,`, `{`, `}`, `$`); `;` закрывает имя там, где оно могло бы продолжиться (`-`, `_`, цифра,
+`.`). Объявление — `$v=10px` → `--v:10px`.
 
 | Токен | CSS |
 |-------|-----|
-| `w--sidebar` | `width:var(--sidebar)` |
-| `c--ink` | `color:var(--ink)` |
-| `bg--panel` | `background:var(--panel)` |
-| `bc--line` | `border-color:var(--line)` |
-| `p--gap` | `padding:var(--gap)` |
-| `f--size` | `font-size:var(--size)` |
-| `ff--mono` | `font-family:var(--mono)` (с 2026-09-22; раньше давало `font-family:"-mono"`) |
-| `lh--tight` | `line-height:var(--tight)` (с 2026-09-22; раньше молча давало `line-height:1`) |
-| `o--op` | `opacity:var(--op)` (с 2026-09-22; раньше `opacity:0`) |
-| `pt---safe-top` | `padding-top:env(--safe-top)` |
+| `w$sidebar` | `width:var(--sidebar)` |
+| `c$ink` | `color:var(--ink)` |
+| `bg$panel` | `background:var(--panel)` |
+| `bc$line` | `border-color:var(--line)` |
+| `p$gap` | `padding:var(--gap)` |
+| `f$size` | `font-size:var(--size)` |
+| `ff$mono` | `font-family:var(--mono)` (с 2026-09-22; раньше давало `font-family:"-mono"`) |
+| `lh$tight` | `line-height:var(--tight)` (с 2026-09-22; раньше молча давало `line-height:1`) |
+| `o$op` | `opacity:var(--op)` (с 2026-09-22; раньше `opacity:0`) |
+| `pt$$safe-top` | `padding-top:env(safe-top)` |
+| `w$gap{10}` | `width:var(--gap, 10px)` |
+| `ff$mono{serif}` | `font-family:var(--mono, serif)` |
 
 Подстановка пишется только так: `d_var\(--x\)`, `tnEnv\(x\)` бракуются с подсказкой «a variable is written without
-"var()": "d--x" → var(--x), "d---x" → env(--x)» (D-124).
+"var()": "d$x" → var(--x), "d$$x" → env(x)» (D-124).
+
+Прежняя запись (`w--a`, `pt---safe`, `w--a,10px`) CSS не даёт: «"--a" was renamed: write "$a" — …» с новой записью
+в сообщении. Сообщение убирается через один выпуск.
 
 ### Функция в токене не пишется (D-124)
 
@@ -52,7 +59,7 @@
 
 | Токен | Сообщение |
 |-------|-----------|
-| `dUrl\(a\.png\)` | «a function is not written in a class; a computed value goes through a variable, as "d--x". Available: dB (block), dN (none), …» |
+| `dUrl\(a\.png\)` | «a function is not written in a class; a computed value goes through a variable, as "d$x". Available: dB (block), dN (none), …» |
 | `posUrl\(a\)` | то же, «Available: posWS (-webkit-sticky), posF (fixed), …» |
 | `tbsCalc\(2+2\)` | то же, без списка — у `tab-size` букв нет |
 | `ffUrl\(a\)`, `fontUrl\(a\)`, `tfoUrl\(a\)` | то же |
@@ -69,29 +76,29 @@
 
 | Токен | CSS |
 |-------|-----|
-| `tnA_0.2s_--ease` | `transition:all 0.2s var(--ease)` |
-| `tn_opacity_0.2s_--ease` | `transition:opacity 0.2s var(--ease)` |
-| `bxsh10c--shadow` | `box-shadow:0px 0px 10px 0px var(--shadow)` |
-| `tnA_0.2s_---safe` | `transition:all 0.2s env(--safe)` |
-| `ff--mono,serif` | `font-family:var(--mono,serif)` (с 2026-09-23; раньше `"-mono",serif`) |
+| `tnA_0.2s_$ease` | `transition:all 0.2s var(--ease)` |
+| `tn_opacity_0.2s_$ease` | `transition:opacity 0.2s var(--ease)` |
+| `bxsh10c$shadow` | `box-shadow:0px 0px 10px 0px var(--shadow)` |
+| `tnA_0.2s_$$safe` | `transition:all 0.2s env(safe)` |
+| `ff$mono{serif}` | `font-family:var(--mono, serif)` |
 
-Имя переменной сохраняется как есть и не переводится в kebab-case: `c--myInk` →
+Имя переменной сохраняется как есть и не переводится в kebab-case: `c$myInk` →
 `color:var(--myInk)`.
 
 ### `_` в имени переменной: терминатор `;`
 
-По умолчанию `_` — разделитель частей, поэтому `--line_soft` разобралось бы как
+По умолчанию `_` — разделитель частей, поэтому `$line_soft` разобралось бы как
 `var(--line) soft`. Чтобы `_` вошёл в имя, имя закрывают точкой с запятой:
 
 | Токен | CSS |
 |-------|-----|
-| `tn--border_size;_A_--ease` | `transition:var(--border_size) all var(--ease)` |
-| `w--my_width;` | `width:var(--my_width)` |
-| `p--gap_size;` | `padding:var(--gap_size)` |
-| `w--my_w;+5` | `width:calc(var(--my_w) + 5px)` |
-| `tn--a_b;_A_--c_d;` | `transition:var(--a_b) all var(--c_d)` |
+| `tn$border_size;_A_$ease` | `transition:var(--border_size) all var(--ease)` |
+| `w$my_width;` | `width:var(--my_width)` |
+| `p$gap_size;` | `padding:var(--gap_size)` |
+| `w$my_w;+5` | `width:calc(var(--my_w) + 5px)` |
+| `tn$a_b;_A_$c_d;` | `transition:var(--a_b) all var(--c_d)` |
 
-Терминатор необязателен: для имени без `_` (`w--gap` и `w--gap;`) результат одинаков —
+Терминатор необязателен: для имени без `_` (`w$gap` и `w$gap;`) результат одинаков —
 его можно ставить всегда, не разбираясь, каким путём разбирается конкретный хендлер.
 
 Экранирование (`\_`) для этого не годится и не поддерживается: обратный слэш снимается
@@ -100,17 +107,18 @@
 ### Градиенты (`bg`, `mk`): разделитель — дефис
 
 У `bg`/`mk` части значения разделяет **дефис**, а не `_` (тот остаётся модификатором).
-Имя переменной закрывается `;`, как обычно. Отдаётся два объявления: первый цвет как
-fallback и сам градиент.
+Переменная перед `$` кончается сама (`$a$b`), перед дефисом — с `;` (`$a;-F00`): дефис бывает в имени. Отдаётся
+два объявления: первый цвет как fallback и сам градиент.
 
 | Токен | CSS |
 |-------|-----|
 | `bgF00-00F` | `background:linear-gradient(180deg,#f00 0%,#00f 100%)` |
 | `bg0F0-00F` | `background:linear-gradient(180deg,#0f0 0%,#00f 100%)` |
 | `bgF00-00F-0F0` | три точки, проценты распределяются сами (`0% / 50% / 100%`) |
-| `bg--a;--b;--c` | градиент из трёх переменных |
-| `bg--a;-F00-324` | переменная и два цвета вперемешку |
-| `bg--my_a;--my_b` | переменные с `_` в имени — терминатор работает и здесь |
+| `bg$a$b$c` | градиент из трёх переменных |
+| `bg$a;-F00-324` | переменная и два цвета вперемешку |
+| `bgF00-$b` | цвет и переменная |
+| `bg$my_a;$my_b` | переменные с `_` в имени — терминатор работает и здесь |
 
 Модификаторы (через `_`, в конце): `_g90` — угол (`+90°` к базовым 180°), `_r` — радиальный,
 `_rpt` — повторяющийся. `mk` — то же самое для `mask-image`.
@@ -125,11 +133,11 @@ fallback и сам градиент.
 
 | Токен | CSS |
 |-------|-----|
-| `bs--v` | `border-style:var(--v)` |
-| `pgba--v` | `page-break-after:var(--v);break-after:var(--v)` |
-| `bgi--hero` | `background-image:var(--hero)` — переменная подставляется как значение целиком; предполагается, что `url(…)` лежит в ней самой |
-| `lisi--v` | `list-style-image:var(--v)` |
-| `mk--v` | `mask-image:var(--v)` |
+| `bs$v` | `border-style:var(--v)` |
+| `pgba$v` | `page-break-after:var(--v);break-after:var(--v)` |
+| `bgi$hero` | `background-image:var(--hero)` — переменная подставляется как значение целиком; предполагается, что `url(…)` лежит в ней самой |
+| `lisi$v` | `list-style-image:var(--v)` |
+| `mk$v` | `mask-image:var(--v)` |
 
 ### Свойства-картинки: одна запись на значение
 
@@ -140,7 +148,7 @@ fallback и сам градиент.
 |-------|-----|
 | `bgi_a\.png` | `background-image:url("a.png")` |
 | `bgi_images/a\.png` | `background-image:url("images/a.png")` |
-| `bgi--hero` | `background-image:var(--hero)` |
+| `bgi$hero` | `background-image:var(--hero)` |
 | `bgiN` | `background-image:none` |
 | `bgiINH` | `background-image:inherit` |
 | `lisi_dot\.svg` | `list-style-image:url("dot.svg")` |
@@ -153,7 +161,7 @@ fallback и сам градиент.
 | `bgiF00-00F` | градиент пишется в `bg` (`bgF00-00F`) |
 | `bgi10px`, `bgiF00` | не путь: путь пишется через `_` — `bgi_a\.png` |
 | `bgi_url\(a\.png\)`, `bgiUrl\(a\.png\)` | функция в токене не пишется (D-121): `bgi_a\.png` |
-| `bgi_--hero` | переменная — без `_`: `bgi--hero` |
+| `bgi_$hero` | переменная — без `_`: `bgi$hero` |
 | `bgi_none`, `bgiNone` | `bgiN` |
 | `bgi_inherit` | `bgiINH` |
 
@@ -181,26 +189,17 @@ fallback и сам градиент.
 
 ### Список переменных через запятую
 
-`;` завершает имя переменной — и теперь работает в том числе перед запятой:
+Переменные подряд — части через пробел, запятая — разделитель списка: запасной вариант пишется в скобках, так что
+другого смысла у запятой после имени нет.
 
 | Токен | CSS |
 |-------|-----|
-| `gtc--a;--b` | `grid-template-columns:var(--a) var(--b)` — `;` даёт пробел |
-| `gtc--a;,--b` | `grid-template-columns:var(--a),var(--b)` — запятая явно |
-| `gtc--my_a;,--my_b;` | `grid-template-columns:var(--my_a),var(--my_b)` |
+| `gtc$a$b` | `grid-template-columns:var(--a) var(--b)` — переменные подряд дают пробел |
+| `gtc$a,$b` | `grid-template-columns:var(--a),var(--b)` — запятая явно |
+| `gtc$my_a;,$my_b;` | `grid-template-columns:var(--my_a),var(--my_b)` |
 
-Ведущий `_` для этого не нужен: между двумя переменными подряд другого смысла
-у `;` нет. `_` остаётся переключателем режима «не кебабить значение».
-
-Три дефиса после `;` — это вычитание, а не разделитель: `w--a;---b` →
-`width:calc(var(--a) - var(--b))`. Пробел перед `env()` пишется явно —
-`w--a;_---b`.
-
-Без `;` запятая после имени остаётся **фолбэком**, как в CSS:
-`ff--mono,serif` → `font-family:var(--mono,serif)`.
-
-До 2026-09-26 `g_--a;,--b` давало `grid:--a;,--b` — переменные не
-разворачивались, а `;` уезжал в CSS литералом.
+Минус перед переменной после другой — вычитание: `w$a;-$b` → `width:calc(var(--a) - var(--b))`. Две части —
+через `_`: `w$a_$$b`.
 
 ## CSS-wide keywords — `INH`, `INI`, `UNS`, `RV`, `RVL`
 
@@ -214,7 +213,7 @@ fallback и сам градиент.
 | `RV` | `revert` | `pRV` → `padding:revert` |
 | `RVL` | `revert-layer` | `cRVL` → `color:revert-layer` |
 
-Ключевое слово встаёт туда же, куда хендлер поставил бы переменную целым значением (`c--v` → `color:var(--v)`), —
+Ключевое слово встаёт туда же, куда хендлер поставил бы переменную целым значением (`c$v` → `color:var(--v)`), —
 поэтому свойств столько же: `bcylINH` → `border-top-color:inherit;border-bottom-color:inherit;border-left-color:inherit`,
 `lclINH` оставляет свои постоянные декларации и даёт `-webkit-line-clamp:inherit`. `!important` — как обычно: `mUNS-i`.
 
@@ -223,7 +222,7 @@ fallback и сам градиент.
 | Токен | Почему |
 |-------|--------|
 | `bgiInherit`, `cRevertLayer` | слово, где есть буквы (D-113): `bgiINH`, `cRVL` |
-| `rxINH`, `rx--v` → `rotateX(var(--v))` | `rx` пишет часть `transform` (поворот), а ключевое слово — значение целиком |
+| `rxINH`, `rx$v` → `rotateX(var(--v))` | `rx` пишет часть `transform` (поворот), а ключевое слово — значение целиком |
 | `xINH` | `x` собирает `transform` из сдвига, масштаба и поворота — целого значения в нём нет |
 
 Цена: свободное имя, записанное ровно `INH`, `INI`, `UNS`, `RV`, `RVL` (анимация, шрифт, линия сетки), не пишется.
@@ -253,7 +252,7 @@ fallback и сам градиент.
 разделе, а у многих её нет совсем (`bg`, D-120). Решено D-126.
 
 ```
-tnA_0.2s_--ease     →  transition:all 0.2s var(--ease)
+tnA_0.2s_$ease     →  transition:all 0.2s var(--ease)
 ff_Times_New_Roman  →  font-family:"Times New Roman"
 ```
 
@@ -318,7 +317,7 @@ RESEARCH/22, Q7) и CSS-wide (`cntINH`, D-125). Полные слова с бу�
 по грамматике невалиден, то есть такое правило оставляло бы дыру ровно там, где
 его и вводили.
 
-Подстановка не оборачивается: `cnt--v` → `content:var(--v)`.
+Подстановка не оборачивается: `cnt$v` → `content:var(--v)`.
 
 **Функции — нативной формой** (D-124), без `_`: имя в CamelCase, имя атрибута или счётчика — отдельной частью.
 
@@ -330,8 +329,8 @@ RESEARCH/22, Q7) и CSS-wide (`cntINH`, D-125). Полные слова с бу�
 | `cntCounter_item_UR` | `content:counter(item,upper-roman)` — стиль буквами `list` (`N`, `S`, `D`, `DC`, `DCLZ`, `LR`, `UR`, `C`) или переменной |
 
 Значение — одна функция. Склейка с текстом (`counter(item) ". "`), `counters(…)` и `url(…)` пишутся переменной:
-`cnt--label` с `--label: counter(item) ". "` в CSS. Скобка бракуется с подсказкой: `cnt_attr\(href\)` → «a function is
-not written in a class — write "cntAttr_href"», `cnt_url\(a\.png\)` → «write it through a variable — "cnt--x"».
+`cnt$label` с `--label: counter(item) ". "` в CSS. Скобка бракуется с подсказкой: `cnt_attr\(href\)` → «a function is
+not written in a class — write "cntAttr_href"», `cnt_url\(a\.png\)` → «write it through a variable — "cnt$x"».
 Скобки внутри текста — текст: `cnt_see_\(note\)` → `content:"see (note)"`.
 
 ---
@@ -451,7 +450,7 @@ F.38      → hex=F → #fff → rgba(255,255,255,.38)
 
 Вычитание под это правило не попадает: `w10-5` → `width:calc(10px - 5px)`.
 Знак результата заранее не известен, а со слагаемым-переменной
-(`w--a-10`) и не может быть известен на этапе компиляции.
+(`w$a-10`) и не может быть известен на этапе компиляции.
 
 ### Процент и количество значений
 
@@ -665,7 +664,7 @@ line-height, weight, style, variant, stretch. Атомарными тегами 
 самое:
 
 ```
-font16px/1.55_--font   →   f16 lh1.55 ff--font
+font16px/1.55_--font   →   f16 lh1.55 ff$font
 font12px_Arial         →   f12 ffArial
 ```
 
@@ -685,7 +684,7 @@ font12px_Arial         →   f12 ffArial
 | `lh20px` | `line-height:20px` — единица указывается явно |
 | `lh1.2em` | `line-height:1.2em` |
 | `lh150%` | `line-height:150%` — единица проходит как написана |
-| `lh--tight` | `line-height:var(--tight)` |
+| `lh$tight` | `line-height:var(--tight)` |
 | `lts2` | `letter-spacing:2px` |
 | `lts1.5` | `letter-spacing:1.5px` |
 | `lts0.06em` | `letter-spacing:0.06em` (единицу указывать можно) |
@@ -729,7 +728,7 @@ Text-align — тег `ta` + буква (`taC`/`taR`/`taL`/`taJ`/`taE`/`taS`), �
 |-------|-----|
 | `tdU` | `text-decoration:underline` (значения из карты `TD_SYNONYMS`: `N`one, `U`nderline, `O`verline, `L`ineThrough) |
 | `tdlL` | `text-decoration-line:line-through` (та же карта `TD_SYNONYMS`, отдельное свойство) |
-| `tdc--accent` | `text-decoration-color:var(--accent)` |
+| `tdc$accent` | `text-decoration-color:var(--accent)` |
 | `tdstDT` | `text-decoration-style:dotted` — добавлено 2026-09-22 |
 | `tdsN` | `text-decoration-skip:none` |
 | `tdsiA` | `text-decoration-skip-ink:auto` |
@@ -912,23 +911,23 @@ border-bottom: '1px solid rgba(255,255,255,0.08)'  →  bb1  bsbS  bcbF.08
 
 | Токен | CSS |
 |-------|-----|
-| `bxsh--shadow` | `box-shadow:var(--shadow)` |
-| `bxsh--a,--b` | `box-shadow:var(--a),var(--b)` |
-| `bxshB--blur` | `box-shadow:0px 0px var(--blur) 0px #000` |
-| `bxshB--blur;c--shadow` | `box-shadow:0px 0px var(--blur) 0px var(--shadow)` |
-| `bxsh10c--shadow` | `box-shadow:0px 0px 10px 0px var(--shadow)` |
+| `bxsh$shadow` | `box-shadow:var(--shadow)` |
+| `bxsh$a,$b` | `box-shadow:var(--a),var(--b)` |
+| `bxshB$blur` | `box-shadow:0px 0px var(--blur) 0px #000` |
+| `bxshB$blur;c$shadow` | `box-shadow:0px 0px var(--blur) 0px var(--shadow)` |
+| `bxsh10c$shadow` | `box-shadow:0px 0px 10px 0px var(--shadow)` |
 | `bxsh10x0y2c0.1,5x0y1c0.05` | две разные тени через запятую |
 | `bxshN` | `box-shadow:none` |
 
-**Переменная без буквы — это вся тень целиком** (`bxsh--shadow` →
+**Переменная без буквы — это вся тень целиком** (`bxsh$shadow` →
 `box-shadow:var(--shadow)`), как `--x` у любого другого свойства. Переменная
-именно в позиции blur пишется через `B`: `bxshB--blur`.
+именно в позиции blur пишется через `B`: `bxshB$blur`.
 
 Буква заглавная по той же причине, что `X`/`Y`/`R`/`M`: строчная слилась бы с
 именем тега — `bxshb…` ядро прочитает как тег `bxshb`, не найдёт хендлера и
 молча пропустит токен как чужой класс.
 
-До 2026-09-29 `bxsh--shadow` клало переменную в blur, а остальные слоты
+До 2026-09-29 `bxsh$shadow` клало переменную в blur, а остальные слоты
 добирались умолчаниями: получалось `0px 0px var(--shadow) 0px #000` —
 правило, которого автор не писал, и без предупреждения.
 
@@ -994,7 +993,7 @@ tn{свойство}_{длительность}_{плавность}_{задер
 `tn_color_0.2s_ease-in` → «"EI" instead of "ease-in"». Функции плавности — нативной формой, как у `ttf` (D-124):
 `CubicBezier` берёт ровно четыре части, `Steps` — число и, если следующая часть — буквы позиции, её. Скобка
 бракуется с подсказкой: `tn_cubic-bezier\(0,0,1,1\)` → «write "CubicBezier0.4_0_0.2_1"»; у `linear(…)` с точками
-короткой записи нет — переменная: `tn_color_0.2s_--ease`. `none` — буквой, как у `tp` и `an` (D-111): `tnN`; `tnNone` и `tn_none` →
+короткой записи нет — переменная: `tn_color_0.2s_$ease`. `none` — буквой, как у `tp` и `an` (D-111): `tnN`; `tnNone` и `tn_none` →
 «Write it shorter: "tnN" instead of "tnNone" — same value».
 
 Каждый слот необязателен, но **порядок обязателен**: `tn_0.2s_A` и
@@ -1016,7 +1015,7 @@ tn_color;background;border-color_0.2s
 
 `;` здесь разделитель списка, а не терминатор имени переменной: имя переменной
 начинается с `--` и к этому моменту уже развёрнуто в `var(…)`, так что
-`tn_--prop;_0.2s` по-прежнему даёт `transition:var(--prop) 0.2s`.
+`tn_$prop;_0.2s` по-прежнему даёт `transition:var(--prop) 0.2s`.
 
 **Несколько переходов через запятую** — то, ради чего shorthand остался:
 
@@ -1140,13 +1139,13 @@ import './loadingScreen.mn';
 |-------|-----|
 | `ftBlur10` | `filter:blur(10px)` |
 | `ftBlur2em` | `filter:blur(2em)` — единица, как написана |
-| `ftBlur--a` | `filter:blur(var(--a))` — переменная в аргументе |
+| `ftBlur$a` | `filter:blur(var(--a))` — переменная в аргументе |
 | `ftHue1turn` | `filter:hue-rotate(1turn)` |
 | `ftBlur3_Invert20` | `filter:blur(3px) invert(20%)` |
 | `ftDropShadow2_4_6_000.5` | `filter:drop-shadow(2px 4px 6px rgba(0,0,0,.5))` — x, y, размытие, цвет |
 | `ftDropShadow2_4_F00` | `filter:drop-shadow(2px 4px #f00)` — третья часть не длина, значит цвет |
-| `ftDropShadow2_4_--b_0` | `filter:drop-shadow(2px 4px var(--b) #000)` — размытие из переменной — вместе с цветом |
-| `ft--v` | `filter:var(--v)` — значение целиком |
+| `ftDropShadow2_4_$b_0` | `filter:drop-shadow(2px 4px var(--b) #000)` — размытие из переменной — вместе с цветом |
+| `ft$v` | `filter:var(--v)` — значение целиком |
 | `ftINH` | `filter:inherit` |
 
 Тег `ftb` = `backdrop-filter`, те же функции:
@@ -1197,7 +1196,7 @@ x{число}[%][Y{число}[%]][Z{число}[%]][S{число}][R{x|y|z}{ч�
 `rx0.5turn`, `x10Y20Rz45deg` работают; `rx10px`, `rx10s`, `x10Y20Rz45px`
 бракуются с предупреждением. До 2026-09-26 единица не проверялась и уходила
 в CSS как написана (`rotateX(10px)`), а `rxInherit` давал склейку слова с
-единицей — `rotateX(Inheritdeg)`. Переменная — угол: `rx--a` → `rotateX(var(--a))`; до 2026-10-31 она молча давала
+единицей — `rotateX(Inheritdeg)`. Переменная — угол: `rx$a` → `rotateX(var(--a))`; до 2026-10-31 она молча давала
 `rotateX(180deg)`. Мимо валидатора ядра это проходило:
 `transform` не в его таблице.
 
@@ -1269,11 +1268,11 @@ active: '', some: 'Class' }`; это та форма, в которой удоб
 Контур задаётся атомарно:
 
 ```
-olw3 olsS olc--marker      outline-width:3px; outline-style:solid; outline-color:var(--marker)
+olw3 olsS olc$marker       outline-width:3px; outline-style:solid; outline-color:var(--marker)
 olwTN olsDT olcBT          толщина, стиль и системный цвет
 ```
 
-Общего `ol` (`ol3px_solid_--marker`) больше нет. По числу правил он выигрывал,
+Общего `ol` (`ol3px_solid_$marker`) больше нет. По числу правил он выигрывал,
 пока контуров в проекте один-два, и проигрывал от четырёх комбинаций — но решающим
 оказалось не это: **два способа задать одно и то же сами по себе хуже, чем один
 менее оптимальный.** Чем больше стилей в проекте, тем вернее побеждает атомарная
@@ -1467,7 +1466,7 @@ coi10   →  counter-increment:10
 проверяется: `col_30em_3` (ширина перед числом колонок) и `coi_2_n` (значение
 перед именем) — ошибки.
 
-Подстановка проходит в любом слоте: `fx--g_1_A`, `coi_--name_2`. Слова — буквами в каждой части (D-113).
+Подстановка проходит в любом слоте: `fx$g_1_A`, `coi_$name_2`. Слова — буквами в каждой части (D-113).
 
 ## Grid
 
@@ -1501,7 +1500,7 @@ coi10   →  counter-increment:10
 | `gtc3x1fr` | `repeat(3, 1fr)` — число повторов, `x`, дорожка |
 | `gtc3x1fr_200px` | `repeat(3, 1fr) 200px` — повтор — часть списка |
 | `gtc2x1fr;2fr` | `repeat(2, 1fr 2fr)` — дорожки повтора через `;` |
-| `gtr2x--row` | `repeat(2, var(--row))` |
+| `gtr2x$row` | `repeat(2, var(--row))` |
 | `gtcMinmax100px_1fr` | `minmax(100px, 1fr)` |
 | `garMinmax100_A` | `grid-auto-rows:minmax(100px, auto)` — голое число в функции — `px`, `A` — `auto` |
 | `gacMinmaxMinContent_MaxContent` | `minmax(min-content, max-content)` — слово слитно с именем, как число |
@@ -1512,7 +1511,7 @@ coi10   →  counter-increment:10
 or "gtcAF240"», `gtr_minmax\(100px,1fr\)` — с «write "gtrMinmax100px_1fr"». Повтор — только у явных шаблонов
 `gtc`/`gtr` (и в `g`/`gt`): у `gac`/`gar` грамматика — список размеров. В повторе — размер с единицей или переменная
 (`gtc3x200` бракуется, как `gtc200`); слово или `minmax()` внутри повтора и функция внутри списка дорожек — через
-переменную: `gtc3x--col` при `--col: minmax(0, 1fr)`. Число повторов — целое от 1.
+переменную: `gtc3x$col` при `--col: minmax(0, 1fr)`. Число повторов — целое от 1.
 
 **Размер дорожки без единицы невалиден**, в отличие от голого числа в остальной
 нотации: `gtc10` бракуется, нужно `gtc10px` или `gtc10fr`. До 2026-09-27
@@ -1597,8 +1596,8 @@ or "gtcAF240"», `gtr_minmax\(100px,1fr\)` — с «write "gtrMinmax100px_1fr"»
 | `sbcF00_0` | `scrollbar-color:#f00 #000` |
 | `sbcCT_T` | `scrollbar-color:currentColor transparent` |
 | `sbcF00.5_0` | `scrollbar-color:rgba(255,0,0,.5) #000` |
-| `sbc--thumb_--track` | `scrollbar-color:var(--thumb) var(--track)` |
-| `sbc--bar` | `scrollbar-color:var(--bar)` |
+| `sbc$thumb_$track` | `scrollbar-color:var(--thumb) var(--track)` |
+| `sbc$bar` | `scrollbar-color:var(--bar)` |
 
 Бракуются: один цвет (`sbcF00`), три (`sbcF00_0_0`), неукороченный код с подсказкой на весь токен (`sbcF00_0000` →
 «"sbcF00_0.0"»), длинное слово (`sbcCurrentColor_0` → «"sbcCT_0"»). С `altColor` у кода с альфой свойство пишется
@@ -1635,7 +1634,7 @@ or "gtcAF240"», `gtr_minmax\(100px,1fr\)` — с «write "gtrMinmax100px_1fr"»
 | `plcSB_C` | `place-content:space-between center` |
 | `plcC_L` | `place-content:center left` |
 | `plsA_E` | `place-self:auto end` |
-| `plc--a_C` | `place-content:var(--a) center` |
+| `plc$a_C` | `place-content:var(--a) center` |
 
 Ошибка называет часть и её свойство со списком вариантов целыми токенами (`pliC_Q` → «the second part is
 justify-items. Available: pliC_N (normal), …»); длинное слово — «Write it shorter: "pliC_S" instead of "pliC_Start"».
@@ -1705,13 +1704,13 @@ justify-items. Available: pliC_N (normal), …»); длинное слово —
 | Токен | CSS |
 |-------|-----|
 | `ttfSteps4_JE` | `transition-timing-function:steps(4,jump-end)` — позиция буквами: `JS`, `JE`, `JN`, `JB` (`jump-start` … `jump-both`) |
-| `atfSteps--n` | `animation-timing-function:steps(var(--n))` |
+| `atfSteps$n` | `animation-timing-function:steps(var(--n))` |
 | `ttfCubicBezier0.4_0_0.2_1` | `transition-timing-function:cubic-bezier(0.4,0,0.2,1)` — x1 и x2 от 0 до 1 |
 | `ttfCubicBezier0.4_-0.5_0.2_1.5` | `transition-timing-function:cubic-bezier(0.4,-0.5,0.2,1.5)` — y любые: «отскок» |
 
 `start` и `end` — то же, что `jump-start` и `jump-end`, своих букв не получают (одна запись на значение, D-122).
 `ttfSteps\(4,jump-end\)` → «a function is not written in a class — write "ttfSteps4_JE"»; `ttf_linear\(…\)` →
-«"linear" has no short form, write it through a variable — "ttf--x"».
+«"linear" has no short form, write it through a variable — "ttf$x"».
 
 **Фигуры `clip-path`** — нативной формой (D-124). Голое число — пиксели; позиция после радиуса — буквами `op`
 (`L`/`C`/`R`/`T`/`B`, углы `TL`…, длины) и тем же читателем.
@@ -1726,7 +1725,7 @@ justify-items. Available: pliC_N (normal), …»); длинное слово —
 | `cpth_\#wave` | `clip-path:url("#wave")` — `<clipPath id="wave">` по пути, как у `bgi` |
 
 `cpthCircle\(50%\)` → «a function is not written in a class — write "cpthCircle50%_R_T"»; у `path(…)` и `xywh(…)`
-короткой записи нет — переменная, `cpth--shape`.
+короткой записи нет — переменная, `cpth$shape`.
 
 **`word-wrap` — старое имя `overflow-wrap`** (D-106). `ww…` даёт ошибку «"wwBW" was renamed: write "owrBW"»
 (`wwB` → `owrBW`, `wwNM` → `owrN`) и убирается через выпуск. Для браузеров, что знают только старое имя (IE, Edge
@@ -1787,16 +1786,16 @@ shorter: "irP"».
 
 ## Custom properties (`var()` / `env()`)
 
-Объявление — токен `--имя=значение`; подстановка — `--имя` на месте аргумента любого
+Объявление — токен `$имя=значение`; подстановка — `$имя` на месте аргумента любого
 числового хендлера, три дефиса — `env()`. Работает как в v1 (сверено 2026-09-17).
 
 | Токен | CSS |
 |-------|-----|
-| `--v=10px` | `--v:10px` |
-| `w--v` | `width:var(--v)` |
-| `w---width` | `width:env(--width)` |
-| `w--v,10px` | `width:var(--v,10px)` (fallback) |
-| `h--v+5` | `height:var(--v+5)` |
+| `$v=10px` | `--v:10px` |
+| `w$v` | `width:var(--v)` |
+| `w$$width` | `width:env(width)` |
+| `w$v{10px}` | `width:var(--v, 10px)` (fallback) |
+| `h$v+5` | `height:calc(var(--v) + 5px)` |
 
 ---
 
@@ -1977,10 +1976,10 @@ bgcF.12.active       → background-color when element has class "active"
 
 | Токен | CSS |
 |-------|-----|
-| `bg--ink[aria-pressed=true]` | `.bg--ink\[aria-pressed\=true\][aria-pressed=true]{background:var(--ink)}` |
+| `bg$ink[aria-pressed=true]` | `.bg\$ink\[aria-pressed\=true\][aria-pressed=true]{background:var(--ink)}` |
 
 Как и с `.cls` — в HTML класс должен присутствовать **буквально целиком**, включая скобки:
-`class="bg--ink[aria-pressed=true]"`. Полезно для условий, завязанных на ARIA/data-атрибуты
+`class="bg$ink[aria-pressed=true]"`. Полезно для условий, завязанных на ARIA/data-атрибуты
 без JS-переключения класса — браузер сам реагирует на изменение атрибута.
 
 ### Реестр `mn.states` — именованные группы состояний
@@ -2441,7 +2440,7 @@ pnpm try 'hmin100dvh' 'gtcAF240' 'bxsh19x5y5r3c43F'
 | `bi8D5524-6D3504_g90` | `border-image-source:linear-gradient(270deg,#8d5524 0%,#6d3504 100%)` |
 | `biF00-00F_r_rpt` | `border-image-source:repeating-radial-gradient(circle,#f00 0%,#00f 100%)` |
 | `bi_a\.png` | `border-image-source:url("a.png")` |
-| `bi--img` | `border-image-source:var(--img)` |
+| `bi$img` | `border-image-source:var(--img)` |
 | `biN` | `border-image-source:none` |
 | `bis1` | `border-image-slice:1` |
 | `bis30_F` | `border-image-slice:30 fill` |
@@ -2482,7 +2481,7 @@ bi8D5524-6D3504 bis1 b6 bsS
 | `bio5%` | вынос процентов не принимает |
 
 До D-119 (2026-10-30) `bi` писал сокращение `border-image` одним токеном (`biF00-00F_30_RD`) и находил градиент
-своим регулярным выражением, которое с записью `bg` уже разошлось (`bi--a;--b`). Сторон у `border-image` нет:
+своим регулярным выражением, которое с записью `bg` уже разошлось (`bi$a$b`). Сторон у `border-image` нет:
 `border-left-image` в CSS не существует, `bil5` давало `border-left-image:5`; `bil`, `bit`, `bilt`… не
 регистрируются.
 
@@ -2517,7 +2516,7 @@ bi8D5524-6D3504 bis1 b6 bsS
 | Убрано | Писать так | Когда |
 |--------|-----------|-------|
 | `ol3px_solid_red` | `olw3 olsS olcF00` | 2026-09-26 |
-| `font16px/1.55_--font` | `f16 lh1.55 ff--font` | 2026-09-27 |
+| `font16px/1.55_--font` | `f16 lh1.55 ff$font` | 2026-09-27 |
 | `bgp`, `bgpx`/`bgpy` в одном | `bgpx` и `bgpy` раздельно | 2026-09-24 |
 
 Довод не в длине записи, а в том, что два способа задать один стиль плодят
@@ -2562,7 +2561,7 @@ bi8D5524-6D3504 bis1 b6 bsS
   `bsDTDS` → `dot-dash` убраны 2026-09-26 — это набор старой Mozilla,
   работавший только под `-moz-border-*-style`.
 
-Если нужного действительно нет — значение пишется CSS-переменной: `f--fluid` с `--fluid: clamp(1rem, 2vw, 2rem)` в
+Если нужного действительно нет — значение пишется CSS-переменной: `f$fluid` с `--fluid: clamp(1rem, 2vw, 2rem)` в
 CSS (D-124). Ведущий `_` — не сырой режим, а запасная форма хендлера (D-126).
 
 ---

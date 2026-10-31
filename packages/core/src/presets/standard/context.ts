@@ -14,10 +14,12 @@ import type {
   LengthRule,
 } from './words';
 import {
+  CLOSE_BRACE,
   CLOSE_PAREN,
   COLOR_SYNONYMS,
   COMMA,
   DASH,
+  DOLLAR,
   DOT,
   DOUBLE_QUOTE,
   ENUM_KEYWORDS,
@@ -29,6 +31,7 @@ import {
   LIST_SEPARATOR,
   N,
   NONE,
+  OPEN_BRACE,
   OPEN_PAREN,
   PERCENT,
   POSITION_ANY,
@@ -41,12 +44,10 @@ import {
   PX,
   QUOTE,
   S,
-  SEMICOLON,
   SPACE,
   UNDERSCORE,
   UNITS,
   VALUE_ABBREVIATIONS,
-  VAR_OPEN,
   ZERO,
 } from './words';
 import {
@@ -76,12 +77,19 @@ import {
   REGEXP_LENGTH_PART,
   REGEXP_VAR_UNDERSCORE,
   assertEnumValue,
-  cssVarValue,
   functionsStart,
   functionsValue,
+  hiddenVarValue,
   splitValueParts,
   throwNoFunction,
 } from './functions';
+import {
+  cssVarValue,
+  throwOldVariable,
+} from '../../core/mathValue';
+import type {
+  MnMathRules,
+} from '../../core/mathValue';
 
 /** Строка свойства-длины: свойство, значение по умолчанию, приоритет, одно значение, слова, без процента. */
 type LengthRow = [
@@ -101,8 +109,8 @@ const REGEXP_TRIM_SNAKE_LEFT = /^_+/g;
 export const REGEXP_DOTS = /\./g;
 /** Функция, записанная в токене: `Rgb\(0,0,0\)`, `Url\(a\.png\)` — в цвете и картинке не принимается. */
 const REGEXP_COLOR_FUNCTION = /^[a-z][a-z0-9-]*\(/i;
-/** CSS-переменная с альфой: `--warn.3` → 30% непрозрачности. */
-const REGEXP_VAR_WITH_ALPHA = /^(---?[^.;\s]+)\.([0-9]+)$/;
+/** CSS-переменная с альфой: `$warn.3` → 30% непрозрачности. */
+const REGEXP_VAR_WITH_ALPHA = /^(\$\$?[^.;{}\s]+)\.([0-9]+)$/;
 /** Ведущий `0` перед точкой — в нотации альфа пишется как `.67`, не `0.67`. */
 const REGEXP_LEADING_ZERO = /^0?\./;
 /** Цвет, записанный с `#`: `#F00`, `#FF000080`. */
@@ -111,23 +119,18 @@ const REGEXP_LEADING_HASH_HEX = /^#[0-9A-Fa-f]{3,8}$/;
 const REGEXP_PLAIN_HEX = /^[0-9A-Fa-f]+$/;
 
 
-const PATTERN_VAR = '((-):env?((--[^;,]+)(,\\d+([a-z%]+):vu?):va?):vv;?)';
-const PATTERN_VAR_ADD = '(-):nva?((--[^;,]+)(,[0-9\\.]+([a-z%]+):vua?):vaa?):vva;?';
 export const PATTERN_DIGITS = '(-?[0-9\\.]+)';
 
-// `;?` после имени переменной — тот же необязательный терминатор, что в
-// PATTERN_VAR. Цветовому пути он не нужен для разбора (здесь нет разреза по
-// `_`, поэтому `c--my_ink` работает и без него), но пишущий токен не обязан
+// `;?` после имени переменной — тот же необязательный терминатор, что в любом
+// значении. Цветовому пути он не нужен для разбора (здесь нет разреза по
+// `_`, поэтому `c$my_ink` работает и без него), но пишущий токен не обязан
 // помнить, какой хендлер каким путём разбирается: без `;?` привычное
-// `c--my_ink;` молча не давало правила.
-export const PATTERN_BASE_COLOR = '([A-Z][a-z][A-Za-z]+):camel|([A-Fa-f0-9]+(\\.[0-9]+)?):color|(-?--[^;]+):vv;?';
+// `c$my_ink;` молча не давало правила.
+export const PATTERN_BASE_COLOR = '([A-Z][a-z][A-Za-z]+):camel|([A-Fa-f0-9]+(\\.[0-9]+)?):color|(\\$\\$?[^;]+):vv;?';
 export const PATTERN_COLOR = '^(' + PATTERN_BASE_COLOR + '):value$';
 
-const PATTERN_VAL = '^(((([A-Za-z]+):otherName|([-]):sign?'
-  + PATTERN_DIGITS + ':num(/' + PATTERN_DIGITS
-  + ':total?)?):value([a-z%]+):unit?)|'
-  + PATTERN_VAR + '):vl(([-+]):sa(([0-9\\.]+):addv([a-z%]+):addu?|'
-  + PATTERN_VAR_ADD + ')):add?$';
+/** Часть значения — слово хендлера (`A`, `Auto`), а не математика. */
+const REGEXP_WORD_PART = /^[A-Za-z]+$/;
 /** Значение-слово: только буквы и дефисы, без цифр, скобок и единиц. */
 const REGEXP_BARE_WORD = /^[a-z][a-z-]*$/;
 /**
@@ -213,13 +216,11 @@ const REGEXP_AUTO_REPEAT = /^AF(L?)([0-9.]+[a-z%]*)(?:_([0-9.]+[a-z%]*))?$/;
  * мусор. Значений, начинающихся с `AF`, у grid-template-свойств нет.
  */
 const REGEXP_AUTO_REPEAT_LIKE = /^AFL?(?:[0-9.]|$)/;
-export function floatNormalize(value: string | number | undefined, nosign?: number): number {
+export function floatNormalize(value: string | number | undefined): number {
   // Число сюда не приходит: группы разбора — строки, `|| 0` у вызывающего — только ложное значение.
   const m = value && (value as string).match(REGEXP_DOTS);
   const v = parseFloat(value as string);
-  // `v < 0 && nosign` — живая ветка, хоть у числителя знак и отдельной группой: PATTERN_DIGITS = `(-?[0-9.]+)`
-  // допускает знак у ЗНАМЕНАТЕЛЯ (`total`), и без проверки `w1/-2` молча давало `-50%` (v1 его бракует).
-  (m && m.length > 1 || isNaN(v) || (v < 0 && nosign))
+  (m && m.length > 1 || isNaN(v))
     && throwInvalid();
   return v;
 }
@@ -259,7 +260,7 @@ function imageForms(name: string): string {
 }
 /**
  * Картинка по пути — `_`-форма `bgi`, `lisi`, `mk` и `bi`: `bgi_hero\.jpg` → `url("hero.jpg")`. Одна запись на
- * значение: у переменной (`bgi_--x`) и ключевого слова (`bgi_none`, `bgi_inherit`) своя запись без `_`, функция в токене
+ * значение: у переменной (`bgi_$x`) и ключевого слова (`bgi_none`, `bgi_inherit`) своя запись без `_`, функция в токене
  * не пишется (`bgi_url\(a\.png\)`), пустой путь — ошибка; каждый случай бракуется с подсказкой.
  * @param path путь без ведущего `_`, как написан
  * @param name имя хендлера — для сообщений
@@ -294,13 +295,14 @@ function lowerItemStart(
   return separator + letter.toLowerCase();
 }
 /**
- * Делит по запятым ВЕРХНЕГО уровня — запятые внутри скобок остаются в части.
+ * Делит по запятым ВЕРХНЕГО уровня — запятые внутри скобок остаются в части: и в круглых CSS, и в фигурных
+ * нотации (запасной вариант переменной `$a{1,2}`, функция `Min{1,2}`).
  *
  * `cubic-bezier(0,0,1,1)` иначе распадается на четыре куска, и переход
  * бракуется на ровном месте.
  * @param v значение
  * @returns части по порядку
- * @example splitTopLevel('a(1,2),b') // ['a(1,2)', 'b']
+ * @example splitTopLevel('a(1,2),$b{3,4}') // ['a(1,2)', '$b{3,4}']
  */
 export function splitTopLevel(v: string): string[] {
   const out: string[] = [];
@@ -311,9 +313,9 @@ export function splitTopLevel(v: string): string[] {
   let c: string;
   for (; i < l; i++) {
     c = v[i];
-    if (c === OPEN_PAREN) {
+    if (c === OPEN_PAREN || c === OPEN_BRACE) {
       depth++;
-    } else if (c === CLOSE_PAREN) {
+    } else if (c === CLOSE_PAREN || c === CLOSE_BRACE) {
       depth--;
     } else if (c === COMMA && !depth) {
       out.push(v.slice(from, i));
@@ -462,12 +464,11 @@ export function createContext(instance: MnInstance) {
     color: getColor,
     colorGetBackground,
     spaceNormalize,
-    routeParseProvider,
+    mathRules,
+    mathValue,
     indexOf,
     toFixed,
   } = utils;
-
-  const parseVals = routeParseProvider(PATTERN_VAL);
 
 
 
@@ -652,117 +653,74 @@ export function createContext(instance: MnInstance) {
     return (p.sign || '') + (num as string) + (validateUnit(unit) || defaultUnit);
   }
 
+  /** Допустимые единицы длины без процента — у `border-width`, `outline-width`, `scroll-margin`. */
+  const UNITS_NO_PERCENT = UNITS.filter((unit) => unit !== PERCENT);
   /**
-   * Бракует минус у свойства, которое отрицательных значений не принимает.
+   * Правила длины для {@link getVal}: голое число — `px`, единицы — {@link UNITS}. Холодный путь — строятся в
+   * фабрике хендлера, один раз на хендлер.
    *
-   * Флаг `positive` у {@link getVal} был, но доходил только до
-   * {@link floatNormalize} — а тот зовётся в единственной ветке разбора, для
-   * дроби (`w1/-2`). Обычное число знак получало из `p.sign` и приклеивало его
-   * без всякой проверки, так что `p-5` давало `padding:-5px`, `w-5` —
-   * `width:-5px`, `f-5` — `font-size:-5px`. Браузер такое правило отбрасывает
-   * целиком; предупреждения не было.
-   *
-   * Осмысленность минуса — свойство свойства, а не разбора: `margin`, `top`,
-   * `text-indent`, `letter-spacing` отрицательные принимают, `padding`,
-   * `width`, `border-width`, `font-size`, `border-radius` — нет. Поэтому
-   * решает вызывающая сторона тем же флагом, каким и раньше.
+   * Минус и процент — свойства свойства, а не разбора: `margin`, `top`, `text-indent` отрицательные принимают,
+   * `padding`, `width`, `font-size` — нет; `width:10%` валиден, `border-width:10%` — нет (дробь `b1/2` — тоже
+   * процент). Решает место регистрации.
+   * @param name — имя хендлера, для сообщений
+   * @param positive — минус не принимается
+   * @param noPercent — процент (и дробь) не принимается
+   * @returns правила для {@link mathValue}
+   * @example lengthRules('p', 1) // padding: без минуса, с процентом
    */
-  function assertSign(
-    sign: string | undefined, positive: number | undefined, suffix: string | number,
-  ): void {
-    sign === DASH && positive
-    && throwInvalid(MSG_VALUE + suffix
-      + '" is invalid: negative value is not allowed for this property');
+  function lengthRules(
+    name: string, positive?: number, noPercent?: number,
+  ): MnMathRules {
+    return mathRules({
+      name,
+      unit: PX,
+      units: noPercent ? UNITS_NO_PERCENT : UNITS,
+      negative: !positive,
+    });
   }
   /**
-   * Бракует процент у свойства, которое принимает только длину.
-   *
-   * Процент — отдельный тип значения, и свойства делятся по нему не так, как
-   * по знаку: `width:10%` валиден, `border-width:10%` — нет, `padding:10%`
-   * валиден, `outline-width:10%` — нет. Проверки не было вовсе, поэтому
-   * `b10%` давало `border-width:10%`, а `b1/2` — `border-width:50%` (дробь
-   * всегда разворачивается в процент). Браузер такие правила отбрасывает.
+   * Значение-длина из частей через `_`: каждая часть — математика ({@link mathValue}: `10`, `1/2+10`,
+   * `$gap*2`, `Min{100%,50rem}`) или слово хендлера (`A`, `Auto`, CSS-wide).
+   * @param suffix — суффикс токена
+   * @param rules — правила свойства из {@link lengthRules}
+   * @param one — свойство берёт одно значение
+   * @param noOtherName — слов у свойства нет
+   * @param synonyms — словарь кратких записей хендлера
+   * @param keywords — допустимые ключевые слова свойства
+   * @returns CSS значения и число частей минус один (прибавка к приоритету)
+   * @example getVal('10_1/2', lengthRules('p', 1)) // ['10px 50%', 1]
    */
-  function assertPercent(noPercent: number | undefined, suffix: string | number): void {
-    noPercent && throwInvalid(MSG_VALUE + suffix
-    + '" is invalid: this property takes a length, percent is not allowed');
-  }
   function getVal(
     suffix: string | number,
-    positive?: number,
+    rules: MnMathRules,
     one?: number,
-    defaultUnit?: string,
     noOtherName?: number,
     synonyms?: Record<string, string>,
     keywords?: Record<string, 1>,
-    noPercent?: number,
-    name?: string,
   ): [string, number] {
-  // Все 6 вызовов getVal в этом файле передают defaultUnit='px' явно —
-  // фолбэк недостижим (подтверждено и в v1). Параметр остаётся
-  // опциональным в сигнатуре (иначе конфликт с предшествующими optional
-  // positive/one — TS1016), реальное значение гарантирует вызывающая сторона.
-  /* istanbul ignore next */
-    defaultUnit = defaultUnit || PX;
     const parts = splitValueParts('' + suffix);
     const l = parts.length;
-    one && l > 1 && throwInvalid('There must be one parameter');
+    const several = l > 1;
+    one && several && throwInvalid('There must be one parameter');
     l > 4 && throwInvalid('There should not be more than 4 parameters');
     const output: string[] = new Array(l);
     let i = 0;
-    let otherName: string | undefined;
-    let add: string | undefined;
-    let total: string | undefined;
-    let vv: string | undefined;
-    let vva: string | undefined;
-    let num: string | undefined;
-    let val: string;
-    let p: Record<string, string | undefined>;
-    let sa: string | undefined;
+    let part: string;
     for (; i < l; i++) {
-      parseVals(parts[i], p = {});
-      if (otherName = p.otherName) {
+      part = parts[i];
+      // Пустая часть: голое имя (`f`) или лишний `_` (`r10__20`) — ни числа, ни слова.
+      part || throwInvalid(several
+        ? MSG_VALUE + suffix + MSG_IS_INVALID_FOR + rules.name + '": a part between "_" is empty'
+        : DOUBLE_QUOTE + rules.name + '" needs a value');
+      if (REGEXP_WORD_PART.test(part)) {
         noOtherName && throwInvalid();
         output[i] = assertKnownWord(
-          toKebabCase(synonyms && synonyms[otherName] || otherName),
-          otherName, synonyms, keywords, name, '' + suffix,
+          toKebabCase(synonyms && synonyms[part] || part),
+          part, synonyms, keywords, rules.name, '' + suffix,
         );
         continue;
       }
-      // NOTE: p.vl не работает из-за бага routeParseProvider в fundamentool.
-      // Используем p.num/p.otherName/p.vv как признаки наличия значения.
-      (p.num != null || p.otherName || p.vv) || throwInvalid();
-      num = p.num;
-      vv = p.vv;
-      add = p.add;
-      total = p.total;
-      vva = p.vva;
-      sa = p.sa;
-      val = num == ZERO
-        ? num
-        : (
-          vv ? (
-            (p.env ? 'env(' : VAR_OPEN) + vv
-            + (p.va ? (validateUnit(p.vu) ? '' : defaultUnit) : '') + CLOSE_PAREN
-          ) : (assertSign(
-            p.sign, positive, suffix,
-          ), p.sign || '') + (
-            total
-              ? (assertPercent(noPercent, suffix),
-              toFixed(100 * floatNormalize(num, positive) / floatNormalize(total, positive)) + PERCENT)
-              : (p.unit === PERCENT && assertPercent(noPercent, suffix),
-              toFixed(num as string) + validateUnit(p.unit || defaultUnit))
-          )
-        );
-      output[i] = add ? calc(
-        val,
-        sa as string,
-        vva
-          ? ((p.nva ? 'env(' : VAR_OPEN) + vva
-            + (p.vaa ? (validateUnit(p.vua) ? '' : defaultUnit) : '') + CLOSE_PAREN)
-          : ('' + floatNormalize(p.addv)
-            + validateUnit(p.addu || defaultUnit)),
-      ) : val;
+      output[i] = mathValue(part, rules);
     }
     return [
       output.join(SPACE),
@@ -809,7 +767,7 @@ export function createContext(instance: MnInstance) {
     let part: string;
     while (i--) {
       part = parts[i];
-      parts[i] = cssVarValue(part)
+      parts[i] = hiddenVarValue(part)
       || varListValue(part)
       // Строка в кавычках — готовое значение, кебабить её нельзя:
       // `qRU` давало `'\00-a-b'` вместо `'\00AB'` (заглавные буквы
@@ -823,23 +781,14 @@ export function createContext(instance: MnInstance) {
     return spaceNormalize(parts.join(UNDERSCORE)).replace(REGEXP_VAR_UNDERSCORE, UNDERSCORE);
   }
   /**
-   * Разворачивает список значений через запятую, когда имя переменной в нём
-   * явно завершено точкой с запятой: `--a;,--b` → `var(--a),var(--b)`.
-   *
-   * Без `;` запятая после имени — это ФОЛБЭК, а не разделитель:
-   * `--mono,serif` → `var(--mono,serif)`, и так и должно остаться. Поэтому
-   * список распознаётся только по наличию `;` — там, где автор сам сказал, где
-   * имя кончается.
-   *
-   * Раньше такая запись не разбиралась вовсе: `g_--a;,--b` давало
-   * `grid:--a;,--b` — переменные не разворачивались, а `;` уезжал в CSS
-   * литералом.
+   * Разворачивает список значений через запятую с переменными: `$a,$b` → `var(--a),var(--b)`. Запасной вариант
+   * пишется в скобках (`$mono{serif}`), поэтому запятая после имени — всегда разделитель списка.
    *
    * @returns `undefined`, если это не список — тогда часть обрабатывается как
    *   раньше.
    */
   function varListValue(part: string): string | undefined {
-    if (part.indexOf(SEMICOLON) < 0 || part.indexOf(COMMA) < 0) {
+    if (part.indexOf(DOLLAR) < 0 || part.indexOf(COMMA) < 0) {
       return;
     }
     const items = splitTopLevel(part);
@@ -849,7 +798,7 @@ export function createContext(instance: MnInstance) {
     let item: string;
     for (; i < l; i++) {
       item = items[i];
-      out[i] = cssVarValue(item) || item;
+      out[i] = hiddenVarValue(item) || item;
     }
     return out.join(COMMA);
   }
@@ -1174,7 +1123,7 @@ export function createContext(instance: MnInstance) {
     + toFixed(alpha / form[1]).replace(REGEXP_LEADING_ZERO, '');
   }
   /**
-   * Значение цвета, которое НЕ разбирается как код, — переменная с альфой: `bc--warn.3` → `color-mix(in srgb,
+   * Значение цвета, которое НЕ разбирается как код, — переменная с альфой: `bc$warn.3` → `color-mix(in srgb,
    * var(--warn) 30%, transparent)`. Точка-альфа уже работает для кодов (`cF00.5` → `rgba(…,.5)`), здесь
    * то же правило распространено на переменные. Возвращает готовый CSS или `undefined`, если это обычный цвет.
    *
@@ -1200,11 +1149,12 @@ export function createContext(instance: MnInstance) {
       ? 'an image is ' + imageForms(name) + '; a picture by its path is `'
         + imageHint + '`'
       : 'a color is a code (`' + name + '0`, `' + name + 'F00.5`), a letter (`' + name + 'T`) or a variable (`'
-        + name + '--x`, `' + name + '--x.3`)'));
+        + name + '$x`, `' + name + '$x.3`)'));
+    suffix[0] === DASH && suffix[1] === DASH && throwOldVariable(suffix);
     const withAlpha = REGEXP_VAR_WITH_ALPHA.exec(suffix);
     if (withAlpha) {
     // `.3` → 30%, `.67` → 67% — как у кодов.
-      return 'color-mix(in srgb, var(' + withAlpha[1] + ') '
+      return 'color-mix(in srgb, ' + cssVarValue(withAlpha[1]) + SPACE
       + toFixed(parseFloat('0.' + withAlpha[2]) * 100) + '%, transparent)';
     }
   }
@@ -1278,7 +1228,7 @@ export function createContext(instance: MnInstance) {
   }
 
   /**
-   * Фон или картинка: цвет (`bgF00`), градиент (`bgF00-00F`, `bg--a;--b`), переменная, `N` — `none`. Один читатель
+   * Фон или картинка: цвет (`bgF00`), градиент (`bgF00-00F`, `bg$a$b`), переменная, `N` — `none`. Один читатель
    * на `bg`, `mk` и `bi`: исправление формы сразу у всех. Функция в токене не пишется: картинка по
    * пути — `_`-форма: у `bg` — в своём хендлере картинки (`bgi_a\.png`), у `mk` и `bi` — в них самих
    * (`mk_a\.png`, `bi_a\.png`; `mki` слит в `mk`).
@@ -1585,10 +1535,12 @@ export function createContext(instance: MnInstance) {
       forIn(synonyms, (word: string) => {
         keywords[toKebabCase(word)] = 1;
       });
+      const rules = lengthRules(
+        pfx, 1, noPercent,
+      );
       mn(pfx, (p) => {
         const v = getVal(
-          p.suffix || defaultValue,
-          1, one, PX, 0, synonyms, keywords, noPercent, p.name,
+          p.suffix || defaultValue, rules, one, 0, synonyms, keywords,
         );
         const style: MnStyle = {};
         style[propName] = v[0];
@@ -1725,6 +1677,7 @@ export function createContext(instance: MnInstance) {
     getColor,
     getVal,
     indexOf,
+    lengthRules,
     instance,
     intval,
     isDefined,

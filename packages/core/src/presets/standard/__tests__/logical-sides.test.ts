@@ -106,8 +106,8 @@ describe('logical sides with short names', () => {
       '.bcbsF00{border-block-start-color:#f00}',
     ],
     [
-      'bcbe--line',
-      '.bcbe--line{border-block-end-color:var(--line)}',
+      'bcbe$line',
+      '.bcbe\\$line{border-block-end-color:var(--line)}',
     ],
     [
       'bssS',

@@ -32,9 +32,9 @@ import {
 const ITERATIONS = 200_000;
 
 /** Типичная база компонента и типичное переопределение. */
-const BASE = 'py7 px12 r b1 bsS bc--line bg--panel c--ink f14 fw5 cr';
-const OVERRIDE = 'bg--ink c--bg';
-const LONG_BASE = 'taL py12 px14 b bb1 bsS bc--line f12 lts0.06em ttU fw6 c--ink-3 bg--bg';
+const BASE = 'py7 px12 r b1 bsS bc$line bg$panel c$ink f14 fw5 cr';
+const OVERRIDE = 'bg$ink c$bg';
+const LONG_BASE = 'taL py12 px14 b bb1 bsS bc$line f12 lts0.06em ttU fw6 c$ink-3 bg$bg';
 
 function bench(name: string, fn: () => void): void {
   for (let i = 0; i < 1000; i++) {
@@ -59,7 +59,7 @@ const fixed = mnClass(BASE);
 bench('mnClass(base)(override)      ', () => fixed(OVERRIDE));
 
 // Сторож корректности: сравнение с эталонным результатом.
-const expected = 'py7 px12 r b1 bsS bc--line f14 fw5 cr bg--ink c--bg';
+const expected = 'py7 px12 r b1 bsS bc$line f14 fw5 cr bg$ink c$bg';
 const actual = mne(BASE, OVERRIDE);
 console.log(actual === expected
   ? '\nкорректность: результат совпадает с эталоном'

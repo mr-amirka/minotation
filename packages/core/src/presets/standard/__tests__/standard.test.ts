@@ -393,7 +393,7 @@ describe('Standard preset — box-shadow / text-shadow', () => {
   test.each([
     'bxsh10zzz',        // несуществующая единица — как `w10zzz`/`p10zzz`
     'bxsh0_2_8_F00',    // свободная форма без ведущего `_`
-    'bxsh0_2_8_--shadow',
+    'bxsh0_2_8_$shadow',
     'bxsh10qq',
   ])('%s → брак, а не тихо усечённая тень', (token) => {
     expect(css(token)).toBe('');
@@ -408,8 +408,8 @@ describe('Standard preset — box-shadow / text-shadow', () => {
     ['bxsh1.5em', 'box-shadow:0em 0em 1.5em 0em #000'],
     ['bxsh10in', 'box-shadow:inset 0px 0px 10px 0px #000'],
     ['bxsh19x5y5r3c43F', 'box-shadow:5px 5px 19px 3px #43f'],
-    ['bxsh10c--shadow', 'box-shadow:0px 0px 10px 0px var(--shadow)'],
-    ['bxsh10c--shadow', 'box-shadow:0px 0px 10px 0px var(--shadow)'],
+    ['bxsh10c$shadow', 'box-shadow:0px 0px 10px 0px var(--shadow)'],
+    ['bxsh10c$shadow', 'box-shadow:0px 0px 10px 0px var(--shadow)'],
     ['tsh10x2', 'text-shadow:2px 0px 10px #000'],
   ])('%s продолжает работать (сторож на отбраковку хвоста)', (token, expected) => {
     expect(css(token)).toContain(expected);
@@ -421,12 +421,12 @@ describe('Standard preset — box-shadow / text-shadow', () => {
 // ================================================================
 describe('Standard preset — var()/env() в значениях', () => {
   test.each([
-    ['c--ink', 'color:var(--ink)'],
-    ['bg--panel', 'background:var(--panel)'],
-    ['bc--line', 'border-color:var(--line)'],
-    ['w--x', 'width:var(--x)'],
-    ['p--gap', 'padding:var(--gap)'],
-    ['f--size', 'font-size:var(--size)'],
+    ['c$ink', 'color:var(--ink)'],
+    ['bg$panel', 'background:var(--panel)'],
+    ['bc$line', 'border-color:var(--line)'],
+    ['w$x', 'width:var(--x)'],
+    ['p$gap', 'padding:var(--gap)'],
+    ['f$size', 'font-size:var(--size)'],
   ])('%s → %s', (token, expected) => {
     expect(css(token)).toContain(expected);
   });
@@ -436,11 +436,11 @@ describe('Standard preset — var()/env() в значениях', () => {
   // Хендлеры с собственным разбором суффикса (не через общий val) молча роняли
   // CSS-переменную в значение по умолчанию: lh--tight → line-height:1, o--op → opacity:0.
   test.each([
-    ['lh--tight', 'line-height:var(--tight)'],
-    ['lh---safe', 'line-height:env(--safe)'],
-    ['o--op', 'opacity:var(--op)'],
-    ['tsa--x', 'text-size-adjust:var(--x)'],
-    ['fsa--x', 'font-size-adjust:var(--x)'],
+    ['lh$tight', 'line-height:var(--tight)'],
+    ['lh$$safe', 'line-height:env(safe)'],
+    ['o$op', 'opacity:var(--op)'],
+    ['tsa$x', 'text-size-adjust:var(--x)'],
+    ['fsa$x', 'font-size-adjust:var(--x)'],
   ])('%s → %s', (token, expected) => {
     expect(css(token)).toContain(expected);
   });
@@ -451,11 +451,11 @@ describe('Standard preset — var()/env() в значениях', () => {
     expect(css('o50')).toContain('opacity:.5');
   });
 
-  test('ff--mono → font-family:var(--mono)', () => {
-    expect(css('ff--mono')).toContain('font-family:var(--mono)');
+  test('ff$mono → font-family:var(--mono)', () => {
+    expect(css('ff$mono')).toContain('font-family:var(--mono)');
   });
-  test('ff---safe → font-family:env(--safe)', () => {
-    expect(css('ff---safe')).toContain('font-family:env(--safe)');
+  test('ff$$safe → font-family:env(safe)', () => {
+    expect(css('ff$$safe')).toContain('font-family:env(safe)');
   });
   test('обычное имя шрифта не затронуто: ffArial → font-family:arial', () => {
     expect(css('ffArial')).toContain('font-family:arial');
@@ -582,7 +582,7 @@ describe('Standard preset — предсказуемость значений', 
   // Составной формы нет: `f12 ffArial` — тот же CSS атомарно,
   // а два способа задать одно и то же плодят зоопарк. У `font` остались
   // только значения, которых атомарные теги не покрывают.
-  test.each(['font12px_Arial', 'font16px/1.55_--font'])(
+  test.each(['font12px_Arial', 'font16px/1.55_$font'])(
     '%s — составная форма больше не принимается', (token) => {
       expect(css(token)).toBe('');
     },
@@ -745,10 +745,10 @@ describe('канонизация цвета: одна запись на знач
  */
 describe('цвет: переменная с альфой; функции бракуются', () => {
   test.each([
-    ['bc--warn.3', 'border-color:color-mix(in srgb, var(--warn) 30%, transparent)'],
-    ['c--ink.5', 'color:color-mix(in srgb, var(--ink) 50%, transparent)'],
-    ['bg--panel.85', 'background:color-mix(in srgb, var(--panel) 85%, transparent)'],
-    ['c--warn.67', 'color:color-mix(in srgb, var(--warn) 67%, transparent)'],
+    ['bc$warn.3', 'border-color:color-mix(in srgb, var(--warn) 30%, transparent)'],
+    ['c$ink.5', 'color:color-mix(in srgb, var(--ink) 50%, transparent)'],
+    ['bg$panel.85', 'background:color-mix(in srgb, var(--panel) 85%, transparent)'],
+    ['c$warn.67', 'color:color-mix(in srgb, var(--warn) 67%, transparent)'],
   ])('%s → %s', (token, expected) => {
     // Точка-альфа работала только для кодов (`cF00.5`); у переменных она
     // молча уходила в имя и давала битое `var(--warn.3)`.
@@ -766,7 +766,7 @@ describe('цвет: переменная с альфой; функции бра�
   });
 
   test('обычные формы цвета не задеты', () => {
-    expect(css('c--warn')).toContain('color:var(--warn)');
+    expect(css('c$warn')).toContain('color:var(--warn)');
     expect(css('cF00.5')).toContain('color:rgba(255,0,0,.5)');
     expect(css('cF00')).toContain('color:#f00');
     expect(css('cT')).toContain('color:transparent');

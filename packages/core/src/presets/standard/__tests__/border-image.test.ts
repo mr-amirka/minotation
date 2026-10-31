@@ -77,7 +77,7 @@ describe('bi is border-image-source, read as bg reads its image', () => {
     ],
     // Градиент из переменных: прежняя копия разбора в `bi` давала `border-image:var(--a) var(--b)`.
     [
-      'bi--a;--b',
+      'bi$a$b',
       'border-image-source:linear-gradient(180deg,var(--a) 0%,var(--b) 100%)',
     ],
     // Картинка по пути — `_`-форма самого `bi`; `biUrl\\(a\\.png\\)` бракуется.
@@ -86,7 +86,7 @@ describe('bi is border-image-source, read as bg reads its image', () => {
       'border-image-source:url("a.png")',
     ],
     [
-      'bi--img',
+      'bi$img',
       'border-image-source:var(--img)',
     ],
     [
@@ -141,7 +141,7 @@ describe('the other parts of border-image are their own handlers', () => {
       'border-image-slice:10 20 30 40',
     ],
     [
-      'bis--s',
+      'bis$s',
       'border-image-slice:var(--s)',
     ],
     // Голое число у `biw` — кратное ширины рамки, без `px`: `biw2` при `b10` — кольцо 20px.
@@ -325,7 +325,7 @@ describe('border-image: errors say what is accepted', () => {
     [
       'cRgb\\(0,0,0\\)',
       'Value "Rgb(0,0,0)" is invalid for "c": a function is not written in a class — a color is a code (`c0`, `cF00.5`),'
-        + ' a letter (`cT`) or a variable (`c--x`, `c--x.3`)',
+        + ' a letter (`cT`) or a variable (`c$x`, `c$x.3`)',
     ],
     [
       'cOklch\\(0.7_0.1_200\\)',

@@ -6,7 +6,6 @@ import type {
 } from '../../core/types';
 import {
   AUTO,
-  CLOSE_PAREN,
   DOUBLE_QUOTE,
   ENUM_KEYWORDS,
   NAME_ALWAYS,
@@ -35,7 +34,6 @@ import {
   S,
   SPACE,
   UNDERSCORE,
-  VAR_OPEN,
 } from './words';
 import {
   MSG_VALUE,
@@ -48,8 +46,10 @@ import type {
 import {
   REGEXP_LENGTH_PART,
   assertEnumValue,
-  cssVarValue,
 } from './functions';
+import {
+  cssVarValue,
+} from '../../core/mathValue';
 import {
   REGEXP_SLOT_INTEGER,
   calc,
@@ -123,10 +123,10 @@ const LAYOUT_VALUES: SingleValues = {
   },
 };
 
-/** Имена контейнера из суффикса — как записаны: ведущий `_` снят, `_` — пробел, `--c` — `var(--c)`. */
+/** Имена контейнера из суффикса — как записаны: ведущий `_` снят, `_` — пробел, `$c` — `var(--c)`. */
 function containerNames(suffix: string): string {
   const raw = suffix[0] === UNDERSCORE ? suffix.slice(1) : suffix;
-  return raw.indexOf('--') === 0 ? VAR_OPEN + raw + CLOSE_PAREN : raw.split(UNDERSCORE).join(SPACE);
+  return cssVarValue(raw) || raw.split(UNDERSCORE).join(SPACE);
 }
 
 /**
@@ -379,7 +379,7 @@ export function registerLayout(ctx: StandardContext): void {
       C: NAME_COLLAPSE,
     }),
     // Контейнер для запросов `@…:имя`: имя — как записано, как и в запросе: `cnMainNav` →
-    // `container-name: MainNav`, `cn_main-nav` → `main-nav`, несколько — через `_` (`cn_side_main`), `cn--c` —
+    // `container-name: MainNav`, `cn_main-nav` → `main-nav`, несколько — через `_` (`cn_side_main`), `cn$c` —
     // переменная.
     cn: (p) => {
       const names = p.suffix ? containerNames(p.suffix) : '';

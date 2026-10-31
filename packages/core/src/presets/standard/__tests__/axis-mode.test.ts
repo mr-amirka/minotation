@@ -105,9 +105,9 @@ describe('axisMode', () => {
       '.spy16{scroll-padding-top:16px;scroll-padding-bottom:16px}',
     ],
     [
-      'px--gap',
-      '.px--gap{padding-inline:var(--gap)}',
-      '.px--gap{padding-left:var(--gap);padding-right:var(--gap)}',
+      'px$gap',
+      '.px\\$gap{padding-inline:var(--gap)}',
+      '.px\\$gap{padding-left:var(--gap);padding-right:var(--gap)}',
     ],
   ])('%s — logical by default, the physical pair with axisMode: \'physical\'', (
     token, logical, physical,

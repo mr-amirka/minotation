@@ -290,7 +290,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'bgbm', props: 'background-blend-mode', keywords: ['background', 'blend', 'mode'], examples: ['bgbmM', 'bgbmS'] },
 
   // --- Маски, семейство mk… (E2) ---
-  { name: 'mk', props: 'mask-image', keywords: ['mask', 'image', 'gradient', 'url', 'fade'], description: 'картинка маски: градиент, как у bg, или путь через _ (mki слит в mk)', examples: ['mkF00-00F', 'mk_a\\.png', 'mk--v', 'mkN'] },
+  { name: 'mk', props: 'mask-image', keywords: ['mask', 'image', 'gradient', 'url', 'fade'], description: 'картинка маски: градиент, как у bg, или путь через _ (mki слит в mk)', examples: ['mkF00-00F', 'mk_a\\.png', 'mk$v', 'mkN'] },
   { name: 'mks', props: 'mask-size', keywords: ['mask', 'size', 'cover', 'contain'], examples: ['mksCV', 'mks50%_auto', 'mks10'] },
   { name: 'mkp', props: 'mask-position', keywords: ['mask', 'position'], examples: ['mkpC', 'mkpR_10_B_20'] },
   { name: 'mkr', props: 'mask-repeat', keywords: ['mask', 'repeat'], examples: ['mkrN', 'mkrX'] },
@@ -345,7 +345,7 @@ export const ESSENCES: MnDocEntry[] = [
   { name: 'tdc', props: 'text-decoration-color', keywords: ['text', 'decoration', 'color'], examples: ['tdcF'] },
 
   // --- Фон (доп.) ---
-  { name: 'bgi', props: 'background-image', keywords: ['background', 'image'], description: 'картинка поверх цвета bg: путь — только через _, переменная, N; градиент — bg', examples: ['bg3 bgi_hero\\.jpg', 'bgi--hero', 'bgiN'] },
+  { name: 'bgi', props: 'background-image', keywords: ['background', 'image'], description: 'картинка поверх цвета bg: путь — только через _, переменная, N; градиент — bg', examples: ['bg3 bgi_hero\\.jpg', 'bgi$hero', 'bgiN'] },
   { name: 'bgp', props: 'background-position', keywords: ['background', 'position'], examples: ['bgpTop'] },
   { name: 'bgpx', props: 'background-position-x', keywords: ['background', 'position'], examples: ['bgpxRight_32px'] },
   { name: 'bgpy', props: 'background-position-y', keywords: ['background', 'position'], examples: ['bgpyBottom_32px'] },

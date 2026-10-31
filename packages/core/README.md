@@ -30,31 +30,35 @@ for (const block of mn.styles$.getValue()) {
 
 ## CSS-переменные в значениях
 
-Любой хендлер значения принимает `--name` и отдаёт `var(--name)`; тройной дефис — `env()`.
+Любой хендлер значения принимает `$name` и отдаёт `var(--name)`; `$$name` — `env(name)`; запасной вариант —
+в фигурных скобках. Объявление — `$name=значение`.
 
 ```
-w--sidebar     → width: var(--sidebar)
-c--ink         → color: var(--ink)
-bg--panel      → background: var(--panel)
-bc--line       → border-color: var(--line)
-ff--mono       → font-family: var(--mono)
-w--gap,10px    → width: var(--gap,10px)
-pt---safe-top  → padding-top: env(--safe-top)
+w$sidebar      → width: var(--sidebar)
+c$ink          → color: var(--ink)
+c$ink.3        → color: color-mix(in srgb, var(--ink) 30%, transparent)
+bg$panel       → background: var(--panel)
+ff$mono{serif} → font-family: var(--mono, serif)
+w$gap{10}      → width: var(--gap, 10px)
+pt$$safe-top   → padding-top: env(safe-top)
+$gap=8px       → --gap: 8px
 ```
+
+В длинах переменная — часть математики: `w100%-$gap*2` → `width: calc(100% - var(--gap) * 2)`.
 
 `_` разделяет части значения, и каждая часть проверяется отдельно — поэтому переменные
 работают и внутри шорткатов:
 
 ```
-ol3px_solid_--marker  → outline: 3px solid var(--marker)
-tnA_0.2s_--ease       → transition: all 0.2s var(--ease)
+tnA_0.2s_$ease          → transition: all 0.2s var(--ease)
+bxsh10c$shadow          → box-shadow: 0px 0px 10px 0px var(--shadow)
 ```
 
-Если `_` нужен в самом имени переменной — имя закрывают `;`:
+Имя кончается на любом символе, которого в имени CSS нет. Если `_` нужен в самом имени — имя закрывают `;`:
 
 ```
-w--my_width;                   → width: var(--my_width)
-ol--border_size;_solid_--marker → outline: var(--border_size) solid var(--marker)
+w$my_width;                    → width: var(--my_width)
+tn$border_size;_A_$ease        → transition: var(--border_size) all var(--ease)
 ```
 
 Это рабочий способ темизации (светлая/тёмная тема на переменных) без дублирования классов.

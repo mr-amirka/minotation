@@ -429,11 +429,11 @@ describe('MnInstance — полный пайплайн', () => {
     expect(css).toContain('font-size:14px');
   });
 
-  test('--var=value: CSS custom properties', () => {
+  test('$var=value: CSS custom properties', () => {
     // # внутри значения нужно экранировать — иначе он трактуется как граница
     // (self-class/id-контекст), как и везде в грамматике combo-имени.
     const mn = createMn();
-    mn.getCompiler('class')('--bgColor=\\#F00');
+    mn.getCompiler('class')('$bgColor=\\#F00');
     mn.compile();
     const css = mn.styles$.getValue()
       .find(s => s.content.includes('--bgColor'))?.content || '';
@@ -442,7 +442,7 @@ describe('MnInstance — полный пайплайн', () => {
 
   test('_ → пробел в custom property', () => {
     const mn = createMn();
-    mn.getCompiler('class')('--transition=all_0.3s_ease');
+    mn.getCompiler('class')('$transition=all_0.3s_ease');
     mn.compile();
     const css = mn.styles$.getValue()[0]?.content || '';
     expect(css).toContain('all 0.3s ease');

@@ -33,13 +33,13 @@ import { mne } from 'minotation/mne';
 // Комментарий с образцом разметки: class="p10 w50" — вырезается сканером,
 // см. stripComments. Здесь он нужен, чтобы замер шёл на реальном входе.
 /* блочный комментарий с примером <div class="p10 w50"> */
-const chipClass = 'py7 px12 r b1 bsS bc--line bg--panel c--ink f14 fw5 cr';
-const thClass = 'taL py12 px14 b bb1 bsS bc--line f12 lts0.06em ttU fw6 c--ink-3 bg--bg';
+const chipClass = 'py7 px12 r b1 bsS bc$line bg$panel c$ink f14 fw5 cr';
+const thClass = 'taL py12 px14 b bb1 bsS bc$line f12 lts0.06em ttU fw6 c$ink-3 bg$bg';
 export default function Row({ active }) {
   return (
-    <tr class="dF fxdC gap8 p16 b1 bsS bc--line r12 bg--panel">
+    <tr class="dF fxdC gap8 p16 b1 bsS bc$line r12 bg$panel">
       <td class={mne(thClass, 'fvTN')}>1</td>
-      <td class={active ? mne(chipClass, 'bg--ink c--bg') : chipClass}>x</td>
+      <td class={active ? mne(chipClass, 'bg$ink c$bg') : chipClass}>x</td>
       <div class="dG gtcAF240 gap12 wmaxN@760 m(b10|t20)>h(2|3)" />
     </tr>
   );
@@ -85,7 +85,7 @@ const syntax = bench('scanTokensSyntax — разбор AST   ', () => {
 
 /** Тот же компонент в форме однофайлового: шаблон плюс скрипт. */
 const SFC_SAMPLE = '<template>\n'
-  + '  <div class="dF fxdC gap8 p16 b1 bsS bc--line r12 bg--panel">\n'
+  + '  <div class="dF fxdC gap8 p16 b1 bsS bc$line r12 bg$panel">\n'
   + '    <span class="taL py12 px14 f12 ttU fw6" />\n'
   + '  </div>\n'
   + '</template>\n'

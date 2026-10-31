@@ -67,13 +67,15 @@ import {
   REGEXP_BARE_NUMBER,
   REGEXP_FUNCTION_FIRST_ARG,
   REGEXP_FUNCTION_LENGTH,
-  cssVarValue,
   functionLength,
   functionSet,
   functionsValue,
   lengthPartRegExp,
   splitValueParts,
 } from './functions';
+import {
+  cssVarValue,
+} from '../../core/mathValue';
 import {
   PATTERN_COLOR,
   REGEXP_DOTS,
@@ -336,7 +338,7 @@ export function registerPaint(ctx: StandardContext): void {
   /**
    * `scrollbar-color`: `sbcA` → `auto`, иначе ровно два
    * цвета через `_` — ползунок и дорожка: `sbcF00_0` → `#f00 #000`. Одна
-   * переменная — значение целиком (`sbc--bar`), как у тени.
+   * переменная — значение целиком (`sbc$bar`), как у тени.
    *
    * С `altColor` у кода с альфой цвет приходит парой «запасное, основное» —
    * тогда и свойство пишется дважды: сначала обе запасные части, потом обе
@@ -389,7 +391,7 @@ export function registerPaint(ctx: StandardContext): void {
 
   // Картинка отдельно от цвета: `bg3 bgi_hero\.jpg` — серый остаётся под картинкой. Одна запись на значение:
   // путь — только `_`-формой (`bgi_hero\.jpg` → `url("hero.jpg")`, {@link imagePathValue}), переменная —
-  // `bgi--hero`, `none` — `bgiN`, CSS-wide keyword — словом (`bgiInherit`). Градиент пишется в `bg` / `mk`, функция в
+  // `bgi$hero`, `none` — `bgiN`, CSS-wide keyword — словом (`bgiInherit`). Градиент пишется в `bg` / `mk`, функция в
   // токене не пишется. Раньше проходило всё подряд: градиент становился именем файла (`bgiF00-00F` →
   // `url("F00-00F")`), `bgi10px` — `url("10px")`, `bgiUrl\(a\.png\)` — `Url(a.png)`, `bgi_url\(a\.png\)` — `url(a.png)`.
   forIn({
@@ -415,7 +417,7 @@ export function registerPaint(ctx: StandardContext): void {
           || (assertNotLongForm(
             toKebabCase(s), NONE_ABBREVIATIONS, name, s,
           ), throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + name + '": a picture is its path (`' + name
-            + '_a\\.png`), a variable (`' + name + '--x`) or `' + name + 'N`' + (gradientIn
+            + '_a\\.png`), a variable (`' + name + '$x`) or `' + name + 'N`' + (gradientIn
             ? '; a gradient is written in `' + gradientIn + '` (`' + gradientIn + 'F00-00F`)'
             : '')));
       return styleWrap(style, 1);
@@ -603,7 +605,7 @@ export function registerPaint(ctx: StandardContext): void {
   /**
    * `drop-shadow`: x и y, затем размытие и цвет — по порядку CSS (`ftDropShadow2_4_6_000.5` →
    * `drop-shadow(2px 4px 6px rgba(0,0,0,.5))`). Из трёх частей третья — размытие, если это число или длина, иначе
-   * цвет: `ftDropShadow2_4_F00`. Размытие из переменной пишется вместе с цветом: `ftDropShadow2_4_--b_0`.
+   * цвет: `ftDropShadow2_4_F00`. Размытие из переменной пишется вместе с цветом: `ftDropShadow2_4_$b_0`.
    */
   function dropShadowArgs(args: string[], call: FunctionCall): string {
     const l = args.length;

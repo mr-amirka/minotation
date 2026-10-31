@@ -88,11 +88,11 @@ describe('tp — a list with commas, letters for all/none', () => {
 
   test.each([
     [
-      'tp_--x',
+      'tp_$x',
       'transition-property:var(--x)',
     ],
     [
-      'tp_--a;,--b',
+      'tp_$a,$b',
       'transition-property:var(--a),var(--b)',
     ],
   ])('%s → %s — variables pass', (token, expected) => {

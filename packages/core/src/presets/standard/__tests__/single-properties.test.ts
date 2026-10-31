@@ -214,7 +214,7 @@ describe('single properties (group F)', () => {
       'overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3',
     ],
     [
-      'lcl--lines',
+      'lcl$lines',
       'overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--lines)',
     ],
     [
@@ -357,7 +357,7 @@ describe('single properties (group F)', () => {
     const result = compile('tbsCalc\\(2+2\\)');
     expect(result.css).toBe('');
     expect(result.warnings).toContain('a function is not written in a class; a computed value goes through a variable');
-    expect(declaration('tbs--t')).toBe('tab-size:var(--t)');
+    expect(declaration('tbs$t')).toBe('tab-size:var(--t)');
     expect(declaration('fvnINH')).toBe('font-variant-numeric:inherit');
   });
 });

@@ -64,12 +64,14 @@ import {
   REGEXP_AUTHOR_FUNCTION,
   REGEXP_FUNCTION_HEAD,
   REGEXP_LENGTH_PART,
-  cssVarValue,
   functionSet,
   functionsStart,
   functionsValue,
   throwNoFunction,
 } from './functions';
+import {
+  cssVarValue,
+} from '../../core/mathValue';
 import {
   REGEXP_SLOT_IDENT,
   REGEXP_SLOT_INTEGER,
@@ -538,7 +540,7 @@ export function registerTypography(ctx: StandardContext): void {
     /**
      * Обрезка текста по числу строк: `lcl3` → `overflow:hidden`, `display:-webkit-box`,
      * `-webkit-box-orient:vertical`, `-webkit-line-clamp:3`. `lclN` снимает обрезку (`display:block`,
-     * `-webkit-line-clamp:unset`). Число — целое от 1; переменная — как есть: `lcl--lines`.
+     * `-webkit-line-clamp:unset`). Число — целое от 1; переменная — как есть: `lcl$lines`.
      */
     lcl: (p: MnEssenceParams) => {
       const suffix = p.suffix;
@@ -964,7 +966,7 @@ export function registerTypography(ctx: StandardContext): void {
      *
      * Shorthand принимает либо системный шрифт одним словом, либо набор из
      * размера, высоты строки и семейства. Второе выражается атомарными
-     * `f`/`lh`/`ff` — `font16px/1.55_--font` это `f16 lh1.55 ff--font`, то есть
+     * `f`/`lh`/`ff` — `font16px/1.55_--font` это `f16 lh1.55 ff$font`, то есть
      * второй способ записать то же самое. Поэтому (как и общий `ol`) составная форма убрана, и хендлер сужен до слов.
      *
      * Убрать его целиком нельзя: `font: inherit` наследует разом семь свойств
@@ -989,12 +991,12 @@ export function registerTypography(ctx: StandardContext): void {
       v = valueNormalize(s);
       // Пробел в значении означает составную форму (`16px/1.55 var(--font)`) —
       // её и убираем, даже когда внутри есть подстановка. Целиком подстановка
-      // (`font--v`) проходит: что в переменной, здесь не видно.
+      // (`font$v`) проходит: что в переменной, здесь не видно.
       v.indexOf(SPACE) > -1 && throwInvalid(MSG_VALUE + s + '" is invalid: '
       + 'size, line height and family are set by atomic tokens — '
-      + '"f16 lh1.55 ff--font"; "font" only takes system fonts');
+      + '"f16 lh1.55 ff$font"; "font" only takes system fonts');
       return styleWrap({
-        // Скобка — только от подстановки (`font--v`).
+        // Скобка — только от подстановки (`font$v`).
         font: v.indexOf(OPEN_PAREN) > -1
           ? v
           // Слово — буквой: `fontMenu` → «Write it shorter: "fontM"».
@@ -1039,7 +1041,7 @@ export function registerTypography(ctx: StandardContext): void {
      * первая версия этой проверки оставляла дыру ровно там, где её закрывала.
      * `cnt_he_said_"hi"` → `content:"he said \"hi\""`.
      *
-     * Не оборачивается подстановка (`cnt--v`). Функции — нативной формой: `cntAttr_href`,
+     * Не оборачивается подстановка (`cnt$v`). Функции — нативной формой: `cntAttr_href`,
      * `cntCounter_item_UR` ({@link CONTENT_FUNCTIONS}); скобка в начале текста (`cnt_attr\(href\)`) бракуется с
      * подсказкой, а не уходит в кавычки молча. Скобки внутри текста — текст: `cnt_see_\(note\)`.
      */
@@ -1068,7 +1070,7 @@ export function registerTypography(ctx: StandardContext): void {
         // Текста после `_` нет — пустая строка. Суффикс из НЕСКОЛЬКИХ
         // подчёркиваний бракуется: пробел пишется мнемоникой `cntS`, и
         // двух записей одного значения быть не должно.
-          // Скобка, которой нет в суффиксе, — от подстановки (`cnt_--v`): её не кавычат. Скобка автора — текст.
+          // Скобка, которой нет в суффиксе, — от подстановки (`cnt_$v`): её не кавычат. Скобка автора — текст.
           ? (v
             ? (v.indexOf(OPEN_PAREN) > -1 && s.indexOf(OPEN_PAREN) < 0 ? v
               // `content: "he said "hi""` обрывается на второй кавычке: кавычка и `\` внутри строки экранируются.

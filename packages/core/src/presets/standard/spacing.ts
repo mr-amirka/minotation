@@ -29,7 +29,6 @@ import {
   NAME_STRETCH,
   NAME_THICK,
   NAME_THIN,
-  PX,
   S,
   wordsSet,
 } from './words';
@@ -199,6 +198,7 @@ export function registerSpacing(ctx: StandardContext): void {
     forIn,
     getColor,
     getVal,
+    lengthRules,
     instance,
     isDefined,
     lettersValue,
@@ -272,6 +272,7 @@ export function registerSpacing(ctx: StandardContext): void {
     }
 
     function handleProvider(
+      name: string,
       sidesSet: (v: MnTokenValue) => MnStyle,
       // Порядок параметров унаследован; `synonyms` обязателен по смыслу, но
       // объявить его таким нельзя — он идёт после необязательных (TS1016).
@@ -291,13 +292,16 @@ export function registerSpacing(ctx: StandardContext): void {
       forIn(synonyms as Record<string, string>, (word: string) => {
         keywords[toKebabCase(word)] = 1;
       });
+      const rules = lengthRules(
+        name, nosign, noPercent,
+      );
       return (p: MnEssenceParams) => {
         let suffix: string;
         if (!(suffix = p.suffix)) {
           return normalizeDefault(p, 0);
         }
         const v = getVal(
-          suffix, nosign, one, PX, 0, synonyms, keywords, noPercent, p.name,
+          suffix, rules, one, 0, synonyms, keywords,
         );
         return styleWrap(sidesSet(v[0]), priority + v[1]);
       };
@@ -352,9 +356,10 @@ export function registerSpacing(ctx: StandardContext): void {
     } satisfies Record<string, SideRow>, (args, pfx) => {
       const propName = args[0];
       const propSuffix = args[1] || '';
-      const name = pfx + suffix;
+      const name = LOGICAL_RENAMED[pfx + suffix] || pfx + suffix;
       mn(
-        LOGICAL_RENAMED[name] || name, handleProvider(
+        name, handleProvider(
+          name,
           axisSetter((side) => propName + side + propSuffix),
           args[2],
           // Сторона (`pt`, `px`) берёт одно значение, всё свойство (`p`) — до четырёх.
@@ -367,6 +372,7 @@ export function registerSpacing(ctx: StandardContext): void {
 
     mn(
       S + suffix, handleProvider(
+        S + suffix,
         suffix
           ? axisSetter((side) => (logicalSide ? INSET + side : side.replace(REGEXP_TRIM_KEBAB_LEFT, '')), INSET + axis)
           : (v) => {
@@ -463,6 +469,7 @@ export function registerSpacing(ctx: StandardContext): void {
         propName = props[i];
         propMap[sfx ? (sfx + DASH + propName) : propName] = 1;
       }
+      const rules = lengthRules(essencePrefix + sfx, 1);
       mn(
         essencePrefix + sfx, (p) => {
           const suffix = p.suffix;
@@ -470,7 +477,7 @@ export function registerSpacing(ctx: StandardContext): void {
             return normalizeDefault(p, HUNDRED_PERCENT);
           }
           const v = getVal(
-            suffix, 1, 1, PX, 0, synonyms, keywords, 0, p.name,
+            suffix, rules, 1, 0, synonyms, keywords,
           );
           const [value] = v;
           const style: MnStyle = {};

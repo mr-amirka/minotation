@@ -60,12 +60,14 @@ import type {
 import {
   REGEXP_BARE_NUMBER,
   REGEXP_LENGTH_PART,
-  cssVarValue,
   functionLength,
   functionSet,
   lengthPartRegExp,
   splitValueParts,
 } from './functions';
+import {
+  cssVarValue,
+} from '../../core/mathValue';
 import {
   REGEXP_SLOT_IDENT,
   REGEXP_VALUE_INTEGER,
@@ -436,7 +438,7 @@ function gridValue(
 /**
  * Часть шаблона сетки — повтор `3x1fr`, если она так записана. Повторяется размер или переменная; слово, `minmax()` и
  * прочее внутри повтора — через переменную.
- * @param part часть значения после нормализации: переменная внутри повтора ещё не развёрнута (`3x--w`)
+ * @param part часть значения после нормализации: переменная внутри повтора ещё не развёрнута (`3x$w`)
  * @param prefix начало сообщения об ошибке
  * @param example запись для подсказки: `gtc3x1fr`, у `g` — `g1fr_/_3x1fr`
  * @returns `repeat(…)`, или `undefined`, когда часть — не повтор
@@ -622,6 +624,7 @@ export function registerFlexGrid(ctx: StandardContext): void {
     assertNoLetter,
     forIn,
     getVal,
+    lengthRules,
     mn,
     registerLengthProperties,
     registerSingleProperties,
@@ -635,7 +638,9 @@ export function registerFlexGrid(ctx: StandardContext): void {
    * по образцу `px`/`py` у padding/margin. Многозначной формы `gap8_16`
    * намеренно нет (принцип атомарности) — `gapx16 gapy8` вместо неё.
    */
-  function gapHandlerProvider(propName: string) {
+  const GAP = 'gap';
+  function gapHandlerProvider(name: string, propName: string) {
+    const rules = lengthRules(name, 1);
     return (p: MnEssenceParams) => {
       const suffix = p.suffix;
       if (!suffix) {
@@ -644,7 +649,7 @@ export function registerFlexGrid(ctx: StandardContext): void {
       // `normal` — initial value у gap-семейства; размерам (`w`/`h`/`p`/`m`)
       // оно не подходит, поэтому словарь здесь свой (`gapN`).
       const v = getVal(
-        suffix, 1, 1, PX, 0, GAP_SYNONYMS, KEYWORDS_NORMAL, 0, p.name,
+        suffix, rules, 1, 0, GAP_SYNONYMS, KEYWORDS_NORMAL,
       );
       // 1 CSS-свойство — priority = 2 - 1, как у соседних w/h (props.length === 1)
       const priority = 1;
@@ -654,13 +659,13 @@ export function registerFlexGrid(ctx: StandardContext): void {
     };
   }
   mn(
-    'gap', gapHandlerProvider('gap'), '', 1,
+    GAP, gapHandlerProvider(GAP, GAP), '', 1,
   );
   mn(
-    'gapx', gapHandlerProvider('columnGap'), '', 1,
+    'gapx', gapHandlerProvider('gapx', 'columnGap'), '', 1,
   );
   mn(
-    'gapy', gapHandlerProvider('rowGap'), '', 1,
+    'gapy', gapHandlerProvider('gapy', 'rowGap'), '', 1,
   );
 
   /**

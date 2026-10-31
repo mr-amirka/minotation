@@ -143,11 +143,11 @@ describe('masks: the mk… family', () => {
 
   test.each([
     [
-      'mk--v',
+      'mk$v',
       'mask-image:var(--v)',
     ],
     [
-      'mkp--x_T',
+      'mkp$x_T',
       'mask-position:var(--x) top',
     ],
   ])('%s → %s — a variable', (token, expected) => {
@@ -192,7 +192,7 @@ describe('masks: the mk… family', () => {
 
   test.each([
     'maskbgF00-00F',
-    'maski--v',
+    'maski$v',
     'masktA',
     'maskmL',
   ])('the old %s gives no CSS — the names are gone', (token) => {

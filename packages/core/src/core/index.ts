@@ -55,8 +55,6 @@ import {
   joinOnly,
   reduceIn,
   repeat,
-  color,
-  colorGetBackground,
   cssPropertiesStringifyProvider,
   type IStringifyCss,
   withDefer,
@@ -105,10 +103,12 @@ import {
   SPLIT_AMP,
   REGEXP_MEDIA_PRIORITY,
   REGEXP_MATCH_VAR,
+  REGEXP_OLD_MATCH_VAR,
   REGEXP_MATCH_IMPORTANT,
   CSS_WIDE_BY_LETTERS,
   CSS_WIDE_LETTERS,
   CSS_WIDE_MARK,
+  CSS_WIDE_MARK_NAME,
   REGEXP_IMPORTANT,
   REGEXP_MATCH_VALUE,
   REGEXP_INVALID_CSS_VALUE,
@@ -146,6 +146,13 @@ import type {
 import {
   orderPresets,
 } from './presetOrder';
+import {
+  throwOldVariable,
+} from './mathValue';
+import {
+  colorValue,
+  gradientValue,
+} from './colorValue';
 import {
   MnForbiddenTokenError,
   MnParseError,
@@ -379,7 +386,7 @@ function throwRawProperty(body: string): never {
 }
 
 /** Метка-переменная CSS-wide keyword значением свойства — `var(--mnkeyword)` (D-125). */
-const CSS_WIDE_MARK_VALUE = 'var(' + CSS_WIDE_MARK + ')';
+const CSS_WIDE_MARK_VALUE = 'var(' + CSS_WIDE_MARK_NAME + ')';
 
 /**
  * Ставит CSS-wide keyword на место метки {@link CSS_WIDE_MARK} в декларациях эссенции и во вложенных `childs`/`media`
@@ -414,7 +421,7 @@ function placeCssWide(essence: MnEssenceRaw, keyword: string): number {
       if (list[i] === CSS_WIDE_MARK_VALUE) {
         list[i] = keyword;
         placed++;
-      } else if (list[i].indexOf(CSS_WIDE_MARK) > -1) {
+      } else if (list[i].indexOf(CSS_WIDE_MARK_NAME) > -1) {
         return -1;
       }
     }
@@ -1914,9 +1921,10 @@ function minotationProvider(options?: MnOptions) {
     let i = 0;
     let l: number;
     try {
+      REGEXP_OLD_MATCH_VAR.test(value) && throwOldVariable(value);
       if (matchs = REGEXP_MATCH_VAR.exec(value)) {
         const varStyle: Record<string, string> = {};
-        varStyle[matchs[1]] = spaceNormalize(matchs[2]);
+        varStyle['--' + matchs[1]] = spaceNormalize(matchs[2]);
         return __normalize({
           style: varStyle,
         });
@@ -2547,13 +2555,13 @@ function minotationProvider(options?: MnOptions) {
   /**
    * Утилиты, доступные пресетам внутри `(mn) => {...}` (см. {@link MnUtils}).
    *
-   * `baseUtils` (`core/utils.ts`) + `color`/`colorGetBackground`, переопределённые
+   * `baseUtils` (`core/utils.ts`) + `color`/`colorGetBackground` (`core/colorValue.ts`), собранные
    * здесь с зафиксированным `$$altColor` (из `options.altColor`, читается в
    * {@link applyOptions}) — сами пресеты передают только цвет, без второго аргумента.
    */
   mn.utils = extend(extend({}, baseUtils), {
-    color: (v: string) => color(v, $$altColor),
-    colorGetBackground: (v: string) => colorGetBackground(v, $$altColor),
+    color: (v: string) => colorValue(v, $$altColor),
+    colorGetBackground: (v: string) => gradientValue(v, $$altColor),
   });
 
   /**

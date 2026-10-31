@@ -1,5 +1,5 @@
 /**
- * Развёртка CSS-переменных в СОСТАВНОМ значении (`tn_A_0.2s_--ease`).
+ * Развёртка CSS-переменных в СОСТАВНОМ значении (`tn_A_0.2s_$ease`).
  *
  * До 2026-09-23 подстановка `--name` → `var(--name)` работала только там, где
  * значение разбиралось общим `getVal`. Хендлеры со «свободным» значением
@@ -33,34 +33,34 @@ describe('CSS-переменные в составном значении', () =
     // Регрессия, с которой всё началось: суффикс начинается с `_`, поэтому
     // целиком уходил в «сырой» режим и давал `outline:3px solid --marker`.
     [
-      'tn_A_0.2s_--ease',
+      'tn_A_0.2s_$ease',
       'transition:all 0.2s var(--ease)',
     ],
     // Та же форма без ведущего `_` — другой путь внутри хендлера, тот же итог.
     [
-      'tnA_0.2s_--ease',
+      'tnA_0.2s_$ease',
       'transition:all 0.2s var(--ease)',
     ],
     // Одиночная переменная у хендлера свободного значения тоже не работала.
     [
-      'tn--ease',
+      'tn$ease',
       'transition:var(--ease)',
     ],
     [
-      'tn_A_0.2s_--ease',
+      'tn_A_0.2s_$ease',
       'transition:all 0.2s var(--ease)',
     ],
     [
-      'bxsh10c--shadow',
+      'bxsh10c$shadow',
       'box-shadow:0px 0px 10px 0px var(--shadow)',
     ],
     // Несколько переменных в одном значении.
     [
-      'tn_A_0.2s_--ease',
+      'tn_A_0.2s_$ease',
       'transition:all 0.2s var(--ease)',
     ],
     [
-      'tn_--prop_--dur_--ease',
+      'tn_$prop_$dur_$ease',
       'transition:var(--prop) var(--dur) var(--ease)',
     ],
   ])('%s → %s', (token, expected) => {
@@ -68,21 +68,21 @@ describe('CSS-переменные в составном значении', () =
   });
 
   test('тройной дефис в составном значении даёт env(), как и в одиночном', () => {
-    expect(cssOf('tn_A_0.2s_---safe')).toBe('transition:all 0.2s env(--safe)');
+    expect(cssOf('tn_A_0.2s_$$safe')).toBe('transition:all 0.2s env(safe)');
   });
 
   test('имя переменной не кебабится — camelCase сохраняется', () => {
     // Иначе `--myInk` превратилось бы в `var(--my-ink)` и ссылалось бы
     // на несуществующую переменную. `getVal`-путь так себя и вёл всегда.
-    expect(cssOf('tn_A_0.2s_--myInk')).toBe('transition:all 0.2s var(--myInk)');
-    expect(cssOf('c--myInk')).toBe('color:var(--myInk)');
+    expect(cssOf('tn_A_0.2s_$myInk')).toBe('transition:all 0.2s var(--myInk)');
+    expect(cssOf('c$myInk')).toBe('color:var(--myInk)');
   });
 
-  test('форма с запасным значением: `--name,fallback`', () => {
+  test('форма с запасным значением: `$name{fallback}`', () => {
     // Раньше REGEXP_CSS_VAR исключал запятую с пометкой «разбирается по месту»,
-    // но по месту не разбиралась нигде: `ff--font,serif` давало
+    // но по месту не разбиралась нигде: `ff$font{serif}` давало
     // `font-family:"-font",serif` (ведущий `-` = «взять в кавычки»).
-    expect(cssOf('ff--font,serif')).toBe('font-family:var(--font,serif)');
+    expect(cssOf('ff$font{serif}')).toBe('font-family:var(--font, serif)');
   });
 
   test('без терминатора `_` остаётся разделителем', () => {
@@ -92,63 +92,63 @@ describe('CSS-переменные в составном значении', () =
     // Проверяется разбор переменной, поэтому хендлер взят свободный: `tn`
     // с 2026-09-26 проверяет слоты и `soft` в них не укладывается, `tp`
     // с D-106 принимает только список через запятую.
-    expect(cssOf('coi_--line\\_soft'))
+    expect(cssOf('coi_$line\\_soft'))
       .toBe('counter-increment:var(--line) soft');
   });
 });
 
 describe('`;` — явный конец имени переменной', () => {
   test('кейс, ради которого терминатор доведён до конца', () => {
-    // `_` внутри `--border_size;` — часть
+    // `_` внутри `$border_size;` — часть
     // имени, снаружи — по-прежнему разделитель частей значения.
-    expect(cssOf('tn--border_size;_A_--ease'))
+    expect(cssOf('tn$border_size;_A_$ease'))
       .toBe('transition:var(--border_size) all var(--ease)');
   });
 
   test.each([
     // Числовой путь (getVal) — режет суффикс по `_`, терминатор его защищает.
     [
-      'w--my_width;',
+      'w$my_width;',
       'width:var(--my_width)',
     ],
     [
-      'p--gap_size;',
+      'p$gap_size;',
       'padding:var(--gap_size)',
     ],
     // Терминатор совместим с арифметикой.
     [
-      'w--my_w;+5',
+      'w$my_w;+5',
       'width:calc(var(--my_w) + 5px)',
     ],
     // Путь «свободного» значения.
     [
-      'ff--my_font;',
+      'ff$my_font;',
       'font-family:var(--my_font)',
     ],
     [
-      'tn_A_--ease;',
+      'tn_A_$ease;',
       'transition:all var(--ease)',
     ],
     // Цветовой путь: `_` там и так был доступен, но `;` не должен ломать.
     [
-      'c--my_ink;',
+      'c$my_ink;',
       'color:var(--my_ink)',
     ],
     [
-      'bc--my_line;',
+      'bc$my_line;',
       'border-color:var(--my_line)',
     ],
     [
-      'olc--my_line;',
+      'olc$my_line;',
       'outline-color:var(--my_line)',
     ],
     [
-      'bg--my_bg;',
+      'bg$my_bg;',
       'background:var(--my_bg)',
     ],
     // Несколько имён с `_` в одном значении.
     [
-      'tn--a_b;_A_--c_d;',
+      'tn$a_b;_A_$c_d;',
       'transition:var(--a_b) all var(--c_d)',
     ],
   ])('%s → %s', (token, expected) => {
@@ -156,17 +156,17 @@ describe('`;` — явный конец имени переменной', () => 
   });
 
   test('терминатор необязателен — имя без `_` можно писать и с ним, и без', () => {
-    expect(cssOf('w--gap;')).toBe('width:var(--gap)');
-    expect(cssOf('w--gap')).toBe('width:var(--gap)');
-    expect(cssOf('c--ink;')).toBe('color:var(--ink)');
-    expect(cssOf('c--ink')).toBe('color:var(--ink)');
+    expect(cssOf('w$gap;')).toBe('width:var(--gap)');
+    expect(cssOf('w$gap')).toBe('width:var(--gap)');
+    expect(cssOf('c$ink;')).toBe('color:var(--ink)');
+    expect(cssOf('c$ink')).toBe('color:var(--ink)');
   });
 
   test('`;` не попадает внутрь имени переменной', () => {
     // Сторож против регрессии: когда REGEXP_CSS_VAR расширяли на
-    // fallback-форму, `[^\s]+` впустил `;` в имя — `ff--my_font;` дало
+    // fallback-форму, `[^\s]+` впустил `;` в имя — `ff$my_font;` дало
     // `var(--my_font;)`.
-    expect(cssOf('ff--my_font;')).not.toContain(';');
+    expect(cssOf('ff$my_font;')).not.toContain(';');
   });
 });
 
@@ -177,46 +177,46 @@ describe('хендлеры со своим путём разбора — спл�
   test.each([
     // border-style (16 хендлеров по сторонам) — шёл через голый toKebabCase.
     [
-      'bs--v',
+      'bs$v',
       'border-style:var(--v)',
     ],
     [
-      'bs--a_b;',
+      'bs$a_b;',
       'border-style:var(--a_b)',
     ],
     [
-      'bsx--v',
+      'bsx$v',
       'border-inline-style:var(--v)',
     ],
     // page-break — единственные пользователи МАССИВНОЙ формы synonymProvider,
     // она нормализовала значение как имя шрифта.
     [
-      'pgba--v',
+      'pgba$v',
       'page-break-after:var(--v);break-after:var(--v)',
     ],
     [
-      'pgba--a_b;',
+      'pgba$a_b;',
       'page-break-after:var(--a_b);break-after:var(--a_b)',
     ],
     [
-      'pgbi--v',
+      'pgbi$v',
       'page-break-inside:var(--v);break-inside:var(--v)',
     ],
     // url-свойства: переменная — значение целиком, а не имя файла внутри url.
     [
-      'bgi--hero',
+      'bgi$hero',
       'background-image:var(--hero)',
     ],
     [
-      'bgi--a_b;',
+      'bgi$a_b;',
       'background-image:var(--a_b)',
     ],
     [
-      'lisi--v',
+      'lisi$v',
       'list-style-image:var(--v)',
     ],
     [
-      'mk--v',
+      'mk$v',
       'mask-image:var(--v)',
     ],
   ])('%s → %s', (token, expected) => {

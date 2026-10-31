@@ -11,6 +11,7 @@ import {
   PERCENT,
   PIPE,
   PX,
+  DOLLAR,
   SEMICOLON,
   SPACE,
   UNDERSCORE,
@@ -28,6 +29,9 @@ import {
   enumHint,
   throwInvalid,
 } from './messages';
+import {
+  cssVarValue,
+} from '../../core/mathValue';
 /**
  * Функция нативной формы `Name…`: имя в CamelCase, первый аргумент — слитно с ним, остальные — частями через
  * `_`. Скобки в токене не пишутся: `ftBlur2` → `blur(2px)`, `ftDropShadow2_4_6_000.5` →
@@ -114,39 +118,18 @@ export interface SingleValues {
 
 const REGEXP_UNESCAPED_UNDERSCORE = /(?<!\\)_/;
 /**
- * `--name` → `var(--name)`, `---name` → `env(--name)`; для суффикса другой формы — `undefined`.
- *
- * Нужна хендлерам, которые разбирают суффикс сами, а не через общий `val`
- * (`ff`, `lh`): там CSS-переменная иначе молча превращается в мусор —
- * `ff--mono` давал `font-family:"-mono"` (ведущий `-` в {@link fontNameQuote} означает
- * «взять имя шрифта в кавычки»), а `lh--tight` проваливался в значение по
- * умолчанию и давал `line-height:1`.
- *
- * Форма с запасным значением (`--mono,serif` → `var(--mono,serif)`) входит сюда
- * же: запятая допускается внутри имени. Раньше она была исключена (`[^,\s]+`) с
- * пометкой «разбирается по месту», но по месту не разбиралась нигде —
- * `ff--font,serif` давал `font-family:"-font",serif`.
- *
- * Завершающий `;` — явный конец имени (`--border_size;`, см.
- * {@link splitValueParts}); в само имя он не входит.
- */
-const REGEXP_CSS_VAR = /^(---?)([^;\s]+);?$/;
-/**
  * Режет значение на `_`-части, НЕ трогая `_` внутри явно завершённого имени
- * переменной: `ol--border_size;_solid_--marker` → `['--border_size;', 'solid',
- * '--marker']`.
+ * переменной: `ol$border_size;_solid_$marker` → `['$border_size;', 'solid',
+ * '$marker']`.
  *
  * Зачем: `_` — разделитель частей значения, поэтому имя переменной с `_`
- * иначе недостижимо (`--border_size` разваливается на `var(--border)` и
+ * иначе недостижимо (`$border_size` разваливается на `var(--border)` и
  * `size`). Экранирование здесь не вариант — обратный слэш снимается раньше, на
- * разборе токена, и до хендлера не доходит вовсе. Завершающий `;` в грамматике
- * значений был заложен изначально (`PATTERN_VAR`: имя `--[^;,]+`, затем `;?`),
- * но не работал: и `getVal`, и {@link valueNormalize} резали строку по `_`
- * ДО парсера.
+ * разборе токена, и до хендлера не доходит вовсе.
  *
  * `_` внутри имени подменяется на служебный `\0` только на время разреза и
  * возвращается обратно в каждой части, поэтому наружу `\0` не попадает.
- * Значения без `;` идут коротким путём, без замен.
+ * Значения без `;` и `$` идут коротким путём, без замен.
  *
  * @param byEscaped `1` — резать по неэкранированным `_` (`\_` — литерал),
  *   иначе по любому `_`.
@@ -155,15 +138,13 @@ const REGEXP_CSS_VAR = /^(---?)([^;\s]+);?$/;
  *   превратила бы восстановленный `_` в пробел уже внутри имени). Такой
  *   вызывающий обязан сам вернуть `\0` → `_` в самом конце.
  */
-const REGEXP_VAR_TERMINATED = /(---?[^;\s]+);/g;
+const REGEXP_VAR_TERMINATED = /(\$\$?[A-Za-z0-9_\u0080-\uFFFF-]+);/g;
 /**
- * `;` вплотную перед следующей переменной — там он ещё и граница частей.
- *
- * Ровно два дефиса: три означают минус перед переменной, то есть вычитание в
- * `calc` (`w--a;---b` → `calc(var(--a) - var(--b))`), и разделителем `;` там
- * не является. Пробел перед `env()` пишется явно: `w--a;_---b`.
+ * Переменная вплотную перед следующей — граница частей: `g$a$b` → `grid:var(--a) var(--b)`. `$` в имени CSS не
+ * бывает, поэтому имя кончается на нём без `;`; имя с `_` — только с `;`, иначе `_` разделил бы части:
+ * `g$my_a;$my_b;`. Запятая — разделитель списка: `g$a,$b`.
  */
-const REGEXP_VAR_NEXT = /;(?=--(?!-))/g;
+const REGEXP_VAR_NEXT = /(\$\$?(?:[A-Za-z0-9_\u0080-\uFFFF-]+;|[A-Za-z0-9\u0080-\uFFFF-]+))(?=\$)/g;
 const REGEXP_UNDERSCORE_ALL = /_/g;
 export const REGEXP_VAR_UNDERSCORE = /\0/g;
 /**
@@ -193,8 +174,8 @@ const REGEXP_FUNCTION_NAME = /^((?:[A-Z][a-z]+)+)(.*)$/;
 export const REGEXP_FUNCTION_NAME_ANY = /^([A-Za-z][a-z]*(?:[A-Z][a-z]+)*)(.*)$/;
 /** Функция со скобкой, как в CSS: `blur(`, `drop-shadow(`, `Blur(`. */
 export const REGEXP_FUNCTION_HEAD = /^([A-Za-z][A-Za-z-]*)\(/;
-/** Начало первого аргумента — число, длина, угол или переменная: `5`, `-2`, `.5`, `--x`. */
-export const REGEXP_FUNCTION_FIRST_ARG = /^[-.\d]/;
+/** Начало первого аргумента — число, длина, угол или переменная: `5`, `-2`, `.5`, `$x`. */
+export const REGEXP_FUNCTION_FIRST_ARG = /^[-.\d$]/;
 const REGEXP_KEBAB_LETTER = /-([a-z])/g;
 /** Длина без процента — у `blur` и `drop-shadow` процента нет. */
 export const REGEXP_FUNCTION_LENGTH = lengthPartRegExp(UNITS.filter((unit) => unit !== PERCENT));
@@ -204,7 +185,7 @@ const REGEXP_CAMEL_LAST = /[A-Z][a-z]*$/;
  * Скобка автора вне кавычек — функция в токене: `Url(a.png)`, `_calc(1px+2px)`. В кавычках скобка — текст (`q_"("`).
  */
 export const REGEXP_AUTHOR_FUNCTION = /^(?:[^"'(]|"[^"]*"|'[^']*')*\(/;
-/** Подстановка, написанная словом: `_var(--x)`, `Env(x)`, `A_0.2s_var(--d)` — у неё своя запись, `--x` / `---x`. */
+/** Подстановка, написанная словом: `_var(--x)`, `Env(x)`, `A_0.2s_var(--d)` — у неё своя запись, `$x` / `$$x`. */
 export const REGEXP_WRITTEN_SUBSTITUTION = /(?:^|[_,])(?:var|env)\(/i;
 
 /** Одиночные свойства без таблиц значений. */
@@ -214,23 +195,15 @@ export const NO_VALUES: Required<SingleValues> = {
   patterns: {},
   parenHints: {},
 };
-export function cssVarValue(s: string): string | undefined {
-  const m = REGEXP_CSS_VAR.exec(s);
-  return m ? (m[1].length === 3 ? 'env(--' : 'var(--') + m[2] + CLOSE_PAREN : undefined;
-}
 function varUnderscoreHide(_all: string, name: string): string {
   return name.replace(REGEXP_UNDERSCORE_ALL, '\0') + SEMICOLON;
 }
 export function splitValueParts(
   v: string, byEscaped?: 1, keepHidden?: 1,
 ): string[] {
-  const parts = (v.indexOf(SEMICOLON) < 0
+  const parts = (v.indexOf(SEMICOLON) < 0 && v.indexOf(DOLLAR) < 0
     ? v
-    // `;` сразу перед следующей переменной — и терминатор имени, и граница
-    // частей: `g--a;--b` → `grid:var(--a) var(--b)`. Писать там ещё и `_`
-    // (`g--a;_--b`) было лишним церемониалом — между двумя переменными
-    // подряд другого смысла у `;` и нет. Запятая пишется явно: `g--a;,--b`.
-    : v.replace(REGEXP_VAR_NEXT, ';_').replace(REGEXP_VAR_TERMINATED, varUnderscoreHide)
+    : v.replace(REGEXP_VAR_NEXT, '$1_').replace(REGEXP_VAR_TERMINATED, varUnderscoreHide)
   ).split(byEscaped ? REGEXP_UNESCAPED_UNDERSCORE : UNDERSCORE);
   if (keepHidden) {
     return parts;
@@ -240,6 +213,17 @@ export function splitValueParts(
     parts[i] = parts[i].replace(REGEXP_VAR_UNDERSCORE, UNDERSCORE);
   }
   return parts;
+}
+/**
+ * {@link cssVarValue} части, где `_` имени закрыт `\0` ({@link splitValueParts} с `keepHidden`): имя читается с `_`,
+ * а в CSS `_` снова закрыт — его вернёт вызывающий после `spaceNormalize`.
+ * @param part часть значения: `$border\0size;`
+ * @returns CSS (`var(--border\0size)`), или `undefined`, если часть — не переменная целиком
+ * @example hiddenVarValue('$a\0b;') // 'var(--a\0b)'
+ */
+export function hiddenVarValue(part: string): string | undefined {
+  const css = cssVarValue(part.replace(REGEXP_VAR_UNDERSCORE, UNDERSCORE));
+  return css && css.replace(REGEXP_UNDERSCORE_ALL, '\0');
 }
 /**
  * Готовая длина: `0` либо число со знаком и одной из единиц. Одна сборка на все проверки длин: длина, длина без
@@ -504,7 +488,7 @@ export function throwParen(
     ? 'write "' + name + hint.join('" or "' + name) + DOUBLE_QUOTE
     : form || !m
       ? 'write "' + name + (form || set.first).example + DOUBLE_QUOTE
-      : DOUBLE_QUOTE + m[1] + '" has no short form, write it through a variable — "' + name + '--x"'));
+      : DOUBLE_QUOTE + m[1] + '" has no short form, write it through a variable — "' + name + '$x"'));
 }
 /**
  * Один вызов из {@link functionsValue}: проверка числа частей и чтение аргументов.
@@ -567,15 +551,15 @@ export function throwNoFunction(
 ): never {
   return throwInvalid(MSG_VALUE + raw + MSG_IS_INVALID_FOR + name + MSG_COLON
     + (REGEXP_WRITTEN_SUBSTITUTION.test(raw) ? substitutionMessage(name)
-      : 'a function is not written in a class; a computed value goes through a variable, as "' + name + '--x"'
+      : 'a function is not written in a class; a computed value goes through a variable, as "' + name + '$x"'
         + hint));
 }
 /**
- * Подстановка пишется без функции: `--x` → `var(--x)`, `---x` → `env(--x)`.
+ * Подстановка пишется без функции: `$x` → `var(--x)`, `$$x` → `env(x)`.
  * @param name имя хендлера
  * @returns хвост сообщения
  * @example substitutionMessage('tn') // 'a variable is written without "var()": "tn--x" → var(--x), …'
  */
 export function substitutionMessage(name: string): string {
-  return 'a variable is written without "var()": "' + name + '--x" → var(--x), "' + name + '---x" → env(--x)';
+  return 'a variable is written without "var()": "' + name + '$x" → var(--x), "' + name + '$$x" → env(x)';
 }

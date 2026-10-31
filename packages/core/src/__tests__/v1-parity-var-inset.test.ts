@@ -43,24 +43,24 @@ function compile(tokens: string[]): { css: string;
 describe('паритет с v1: custom properties', () => {
   test.each([
     [
-      '--v=10px',
-      '.--v\\=10px{--v:10px}',
+      '$v=10px',
+      '.\\$v\\=10px{--v:10px}',
     ],
     [
-      'w--v',
-      '.w--v{width:var(--v)}',
+      'w$v',
+      '.w\\$v{width:var(--v)}',
     ],
     [
-      'w---width',
-      '.w---width{width:env(--width)}',
+      'w$$width',
+      '.w\\$\\$width{width:env(width)}',
     ],
     [
-      'w--v,10px',
-      '.w--v\\,10px{width:var(--v,10px)}',
+      'w$v{10px}',
+      '.w\\$v\\{10px\\}{width:var(--v, 10px)}',
     ],
     [
-      'h--v+5',
-      '.h--v\\+5{height:var(--v+5)}',
+      'h$v+5',
+      '.h\\$v\\+5{height:calc(var(--v) + 5px)}',
     ],
   ])('%s → %s', (token, expected) => {
     const {
@@ -75,15 +75,26 @@ describe('паритет с v1: custom properties', () => {
       css,
     } = compile([
       'bxsh10in',
-      'w--v',
-      'w---width',
-      '--v=10px',
+      'w$v',
+      'w$$width',
+      '$v=10px',
     ]);
 
     expect(css).toContain('.bxsh10in{box-shadow:inset 0px 0px 10px 0px #000}');
-    expect(css).toContain('.--v\\=10px{--v:10px}');
-    expect(css).toContain('.w--v{width:var(--v)}');
-    expect(css).toContain('.w---width{width:env(--width)}');
+    expect(css).toContain('.\\$v\\=10px{--v:10px}');
+    expect(css).toContain('.w\\$v{width:var(--v)}');
+    expect(css).toContain('.w\\$\\$width{width:env(width)}');
+  });
+
+  test('старое объявление `--v=10px` бракуется с подсказкой новой записи', () => {
+    const {
+      css, warnings,
+    } = compile(['--v=10px']);
+    expect(css).toBe('');
+    expect(warnings.map((w) => w.message)).toEqual([
+      '"--v=10px" was renamed: write "$v=10px" — a variable is "$name" (var), "$$name" (env), its fallback in braces:'
+      + ' "$name{10px}". The old spelling gives no CSS.',
+    ]);
   });
 });
 
@@ -330,11 +341,11 @@ describe('паритет с v1: ветки, изначально ошибочн�
     expect(css).toContain(':hover.a.b.c{padding:10px}');
   });
 
-  test('var(--v,10) без явной единицы — подставляется defaultUnit у fallback-значения', () => {
+  test('$v{10} без явной единицы — подставляется единица свойства у fallback-значения', () => {
     const {
       css,
-    } = compile(['w--v,10']);
-    expect(css).toContain('.w--v\\,10{width:var(--v,10px)}');
+    } = compile(['w$v{10}']);
+    expect(css).toContain('.w\\$v\\{10\\}{width:var(--v, 10px)}');
   });
 
   test('include-примесь и сама эссенция делят одноимённый дочерний селектор — сливаются, не перезаписывают', () => {

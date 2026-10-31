@@ -524,6 +524,14 @@ describe('mathValue — запись, которая не читается', () 
       'unknown function "Foo". Functions: Min, Max, Clamp',
     ],
     [
+      'F00',
+      '"F" is not expected',
+    ],
+    [
+      '10+Foo',
+      '"F" after "10+" is not expected',
+    ],
+    [
       'Calc{1+2}',
       'a sum is written without "Calc": "100%-2rem", a group in braces — "{100%-2rem}/3"',
     ],
@@ -593,6 +601,22 @@ describe('mathValue — прежняя запись переменной', () =>
     [
       '--a_---b',
       '--a_---b'.replace('---', '$$$$').replace('--', '$'),
+    ],
+    [
+      'gtc--a;,--b',
+      'gtc$a,$b',
+    ],
+    [
+      'bxsh--a,--b',
+      'bxsh$a,$b',
+    ],
+    [
+      'w--v,10px',
+      'w$v{10px}',
+    ],
+    [
+      'ff--mono,serif',
+      'ff$mono{serif}',
     ],
   ])('newVariables(%s) → %s', (expr, replacement) => {
     expect(newVariables(expr)).toBe(replacement);

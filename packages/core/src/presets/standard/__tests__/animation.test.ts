@@ -51,7 +51,7 @@ test.each([
     'animation:a 1s,b 2s',
   ],
   [
-    'an_--anim',
+    'an_$anim',
     'animation:var(--anim)',
   ],
   [

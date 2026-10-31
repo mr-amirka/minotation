@@ -11,6 +11,7 @@ import {
   BORDER,
   COMMA,
   DASH,
+  DOLLAR,
   DOUBLE_QUOTE,
   LENGTH_MULTI,
   N,
@@ -43,9 +44,11 @@ import {
   throwInvalid,
 } from './messages';
 import {
-  cssVarValue,
   lengthPartRegExp,
 } from './functions';
+import {
+  cssVarValue,
+} from '../../core/mathValue';
 import {
   PATTERN_BASE_COLOR,
   normalizeDefault,
@@ -151,17 +154,17 @@ const SHADOW_UNITS = UNITS.filter((unit) => unit !== PERCENT && unit !== 'in');
  * Регулярка анкорена и собрана в этом порядке, так что она и проверяет запись,
  * и разбирает её — отдельный обход паттернами больше не нужен.
  *
- * CSS-переменная в позиции blur пишется **явно**, через `B`: `bxshB--blur`.
+ * CSS-переменная в позиции blur пишется **явно**, через `B`: `bxshB$blur`.
  * Буква заглавная по той же причине, что `X`/`Y`/`R`/`M`: строчная слилась бы
  * с именем тега — `bxshb…` ядро прочитало бы как тег `bxshb`, не нашло бы
  * хендлера и молча пропустило токен как чужой класс.
- * Без буквы переменная означает всю тень целиком (`bxsh--shadow` →
+ * Без буквы переменная означает всю тень целиком (`bxsh$shadow` →
  * `box-shadow:var(--shadow)`), как `--x` у любого другого свойства. Раньше она
  * молча попадала в позицию blur, а прочие слоты добирались умолчаниями —
  * автор получал правило, которого не писал.
  */
 const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:([0-9.]+)('
-  + SHADOW_UNITS.join(PIPE) + ')?|B(---?[^;\\s]+;?))?'
+  + SHADOW_UNITS.join(PIPE) + ')?|B(\\$\\$?[^;\\s]+;?))?'
   + '(?:[xX](-?[0-9]+))?'
   + '(?:[yY](-?[0-9]+))?'
   + '(?:[rR](-?[0-9]+))?'
@@ -268,6 +271,7 @@ export function registerBorders(ctx: StandardContext): void {
     forIn,
     getColor,
     getVal,
+    lengthRules,
     intval,
     lengthOrWord,
     mn,
@@ -320,7 +324,7 @@ export function registerBorders(ctx: StandardContext): void {
     function shadowValue(part: string, name: string): string {
     // Вся тень одной переменной: `bxsh--shadow` → `box-shadow:var(--shadow)`.
     // У любого другого свойства `--x` означает значение целиком, и тень не
-    // исключение. В позицию blur переменная ставится явно — `bxshB--blur`.
+    // исключение. В позицию blur переменная ставится явно — `bxshB$blur`.
       const whole = cssVarValue(part);
       if (whole) {
         return whole;
@@ -346,8 +350,8 @@ export function registerBorders(ctx: StandardContext): void {
         return '';
       }
       // `;` — терминатор имени переменной, как везде в нотации: без него имя
-      // жадно забрало бы следующие модификаторы (`bxshB--blur;c--shadow`).
-      value[0] === DASH && (value = cssVarValue(value) as string);
+      // жадно забрало бы следующие модификаторы (`bxshB$blur;c$shadow`).
+      value[0] === DOLLAR && (value = cssVarValue(value) as string);
       const colors = getColor(p[MN_SHADOW_COLOR] || ZERO);
       // Последняя группа регулярки — `in` (inset).
       const prefixIn = p[p.length - 1] ? 'inset ' : '';
@@ -409,10 +413,11 @@ export function registerBorders(ctx: StandardContext): void {
   });
 
 
+  const radiusRules = lengthRules(R, 1);
   mn(
     R, (p) => {
       const v = getVal(
-        p.suffix || 10000, 1, 0, PX, 1,
+        p.suffix || 10000, radiusRules, 0, 1,
       );
       return styleWrap({
         borderRadius: v[0],
@@ -445,10 +450,11 @@ export function registerBorders(ctx: StandardContext): void {
     const propNames = corners.map((corner) => BORDER + DASH + corner + '-radius');
     // Угол (2) позже пары углов (1): `rs8 rss0` — угол перекрывает пару.
     const priority = 3 - length;
+    const rules = lengthRules(R + suffix, 1);
     mn(
       R + suffix, (p) => {
         const value = getVal(
-          p.suffix || 10000, 1, 1, PX, 1,
+          p.suffix || 10000, rules, 1, 1,
         )[0];
         const style: MnStyle = {};
         let i = 0;

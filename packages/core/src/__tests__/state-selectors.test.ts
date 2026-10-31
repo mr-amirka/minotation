@@ -114,29 +114,29 @@ describe('instance.states — именованные группы состоян
 });
 
 describe('[attr=val] — атрибут-селектор как суффикс токена (v1 «Complex selectors», HANDLERS.md 2026-09-23)', () => {
-  test('bg--ink[aria-pressed=true] — атрибут-селектор добавляется к элементу как есть', () => {
-    expect(compile('bg--ink[aria-pressed=true]')).toBe('.bg--ink\\[aria-pressed\\=true\\][aria-pressed=true]{background:var(--ink)}');
+  test('bg$ink[aria-pressed=true] — атрибут-селектор добавляется к элементу как есть', () => {
+    expect(compile('bg$ink[aria-pressed=true]')).toBe('.bg\\$ink\\[aria-pressed\\=true\\][aria-pressed=true]{background:var(--ink)}');
   });
 
-  test('bc--ink[aria-pressed=true] и c--bg[aria-pressed=true] — независимые правила с общим условием', () => {
+  test('bc$ink[aria-pressed=true] и c$bg[aria-pressed=true] — независимые правила с общим условием', () => {
     const mn: any = minotationProvider();
     mn.setPresets([
       presetStandard,
       presetSynonyms,
     ]);
-    mn.getCompiler('class')('bc--ink[aria-pressed=true]');
-    mn.getCompiler('class')('c--bg[aria-pressed=true]');
+    mn.getCompiler('class')('bc$ink[aria-pressed=true]');
+    mn.getCompiler('class')('c$bg[aria-pressed=true]');
     mn.compile();
     const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
-    expect(css).toContain('.bc--ink\\[aria-pressed\\=true\\][aria-pressed=true]{border-color:var(--ink)}');
-    expect(css).toContain('.c--bg\\[aria-pressed\\=true\\][aria-pressed=true]{color:var(--bg)}');
+    expect(css).toContain('.bc\\$ink\\[aria-pressed\\=true\\][aria-pressed=true]{border-color:var(--ink)}');
+    expect(css).toContain('.c\\$bg\\[aria-pressed\\=true\\][aria-pressed=true]{color:var(--bg)}');
   });
 
   test('литеральный класс в HTML должен содержать суффикс буквально целиком', () => {
     // Селектор матчит ТОЛЬКО элемент, чей class содержит весь исходный токен
-    // (включая скобки) — а не просто "bg--ink" отдельно.
-    const css = compile('bg--ink[aria-pressed=true]');
-    expect(css.startsWith('.bg--ink\\[aria-pressed\\=true\\]')).toBe(true);
+    // (включая скобки) — а не просто "bg$ink" отдельно.
+    const css = compile('bg$ink[aria-pressed=true]');
+    expect(css.startsWith('.bg\\$ink\\[aria-pressed\\=true\\]')).toBe(true);
   });
 });
 

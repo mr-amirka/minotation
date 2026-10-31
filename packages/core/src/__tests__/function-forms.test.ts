@@ -66,7 +66,7 @@ describe('функции фильтра в нативной форме (D-124)',
       'filter:blur(0)',
     ],
     [
-      'ftBlur--a',
+      'ftBlur$a',
       'filter:blur(var(--a))',
     ],
     [
@@ -87,7 +87,7 @@ describe('функции фильтра в нативной форме (D-124)',
       'filter:grayscale(50%)',
     ],
     [
-      'ftGray--g',
+      'ftGray$g',
       'filter:grayscale(var(--g))',
     ],
     [
@@ -123,7 +123,7 @@ describe('функции фильтра в нативной форме (D-124)',
       'filter:hue-rotate(1turn)',
     ],
     [
-      'ftHue--h',
+      'ftHue$h',
       'filter:hue-rotate(var(--h))',
     ],
     [
@@ -139,12 +139,12 @@ describe('функции фильтра в нативной форме (D-124)',
       'backdrop-filter:blur(8px)',
     ],
     [
-      'ft--v',
+      'ft$v',
       'filter:var(--v)',
     ],
   ])('%s → %s', (token, css) => {
     expect(compile([token])).toEqual({
-      css: '.' + token.replace(/[.%]/g, '\\$&') + '{' + css + '}',
+      css: '.' + token.replace(/[.%$]/g, '\\$&') + '{' + css + '}',
       warnings: [],
     });
   });
@@ -171,11 +171,11 @@ describe('функции фильтра в нативной форме (D-124)',
       'drop-shadow(2px 4px 1em transparent)',
     ],
     [
-      'ftDropShadow2_4_--c',
+      'ftDropShadow2_4_$c',
       'drop-shadow(2px 4px var(--c))',
     ],
     [
-      'ftDropShadow2_4_--b_0',
+      'ftDropShadow2_4_$b_0',
       'drop-shadow(2px 4px var(--b) #000)',
     ],
     [
@@ -327,8 +327,8 @@ describe('имя функции — одной формой (D-122)', () => {
       'Write "ftBlur5" instead of "ftBlur_5" — same value',
     ],
     [
-      'ftBlur_--x',
-      'Write "ftBlur--x" instead of "ftBlur_--x" — same value',
+      'ftBlur_$x',
+      'Write "ftBlur$x" instead of "ftBlur_$x" — same value',
     ],
     [
       'ftDropShadow_2_4',
@@ -375,8 +375,8 @@ describe('функции плавности в нативной форме: ttf,
       '.ttfSteps4_JB{transition-timing-function:steps(4,jump-both)}',
     ],
     [
-      'ttfSteps--n_JE',
-      '.ttfSteps--n_JE{transition-timing-function:steps(var(--n),jump-end)}',
+      'ttfSteps$n_JE',
+      '.ttfSteps\\$n_JE{transition-timing-function:steps(var(--n),jump-end)}',
     ],
     [
       'ttfCubicBezier0.4_0_0.2_1',
@@ -387,8 +387,8 @@ describe('функции плавности в нативной форме: ttf,
       '.ttfCubicBezier0\\.4_-0\\.5_0\\.2_1\\.5{transition-timing-function:cubic-bezier(0.4,-0.5,0.2,1.5)}',
     ],
     [
-      'ttfCubicBezier--a_0_1_1',
-      '.ttfCubicBezier--a_0_1_1{transition-timing-function:cubic-bezier(var(--a),0,1,1)}',
+      'ttfCubicBezier$a_0_1_1',
+      '.ttfCubicBezier\\$a_0_1_1{transition-timing-function:cubic-bezier(var(--a),0,1,1)}',
     ],
     [
       'ttfEIO',
@@ -460,7 +460,7 @@ describe('функции плавности в нативной форме: ttf,
     [
       'ttf_linear\\(0,1\\)',
       'Value "_linear(0,1)" is invalid for "ttf": a function is not written in a class —'
-      + ' "linear" has no short form, write it through a variable — "ttf--x"',
+      + ' "linear" has no short form, write it through a variable — "ttf$x"',
     ],
     [
       'ttf_steps4',
@@ -480,7 +480,7 @@ describe('функции плавности в нативной форме: ttf,
 
   test('у фильтра функция без нативной формы — тоже переменная', () => {
     expect(rejected('ft_url\\(a\\.svg\\)')).toBe('Value "_url(a.svg)" is invalid for "ft": a function is not written in'
-      + ' a class — "url" has no short form, write it through a variable — "ft--x"');
+      + ' a class — "url" has no short form, write it through a variable — "ft$x"');
   });
 });
 
@@ -543,7 +543,7 @@ describe('функции плавности в слотах tn и an (D-124)', (
     [
       'tn_0.2s_linear\\(0,1\\)',
       'Value "_0.2s_linear(0,1)" is invalid for "tn": a function is not written in a'
-      + ' class — "linear" has no short form, write it through a variable — "--x"',
+      + ' class — "linear" has no short form, write it through a variable — "$x"',
     ],
     [
       'an_fade_1s_steps\\(4\\)',
@@ -573,7 +573,7 @@ describe('функции плавности в слотах tn и an (D-124)', (
   });
 
   test('подстановка в слоте по-прежнему проходит', () => {
-    expect(compile(['tn_A_--ease']).css).toContain('{transition:all var(--ease)}');
+    expect(compile(['tn_A_$ease']).css).toContain('{transition:all var(--ease)}');
   });
 });
 
@@ -601,7 +601,7 @@ describe('функции content в нативной форме: cnt (D-124)', (
       'content:counter(item,none)',
     ],
     [
-      'cntCounter_item_--s',
+      'cntCounter_item_$s',
       'content:counter(item,var(--s))',
     ],
     // `_` — текст: имя функции после него — слово текста.
@@ -632,7 +632,7 @@ describe('функции content в нативной форме: cnt (D-124)', (
     [
       'cnt_url\\(a\\.png\\)',
       'Value "_url(a.png)" is invalid for "cnt": a function is not written in a class — "url" has no short'
-      + ' form, write it through a variable — "cnt--x"',
+      + ' form, write it through a variable — "cnt$x"',
     ],
     [
       'cntAttr',
@@ -701,7 +701,7 @@ describe('курсор-картинка: cr, запятая владельца (
       'cursor:nw-resize',
     ],
     [
-      'cr--x',
+      'cr$x',
       'cursor:var(--x)',
     ],
   ])('%s → %s', (token, declaration) => {
@@ -750,8 +750,8 @@ describe('курсор-картинка: cr, запятая владельца (
       'Value "_a.png_4,P" is invalid for "cr": the hot spot is two numbers, x and y — as "cr_a\\.png_4_4,P"',
     ],
     [
-      'cr_--x',
-      'Write the variable without "_": "cr--x" instead of "cr_--x" — same value',
+      'cr_$x',
+      'Write the variable without "_": "cr$x" instead of "cr_$x" — same value',
     ],
   ])('%s', (token, message) => {
     expect(rejected(token)).toBe(message);
@@ -786,7 +786,7 @@ describe('фигуры clip-path в нативной форме: cpth (D-124)', 
       'clip-path:circle(20px at center)',
     ],
     [
-      'cpthCircle--r_C',
+      'cpthCircle$r_C',
       'clip-path:circle(var(--r) at center)',
     ],
     [
@@ -839,7 +839,7 @@ describe('фигуры clip-path в нативной форме: cpth (D-124)', 
     [
       'cpthPath\\(M0\\)',
       'Value "Path(M0)" is invalid for "cpth": a function is not written in a class — "Path" has no short form, write'
-      + ' it through a variable — "cpth--x"',
+      + ' it through a variable — "cpth$x"',
     ],
     [
       'cpthCircle_50%',
@@ -913,7 +913,7 @@ describe('повтор и функции дорожек сетки в натив
       'grid-template-columns:200px repeat(4, 10%) auto',
     ],
     [
-      'gtr2x--row',
+      'gtr2x$row',
       'grid-template-rows:repeat(2, var(--row))',
     ],
     [
@@ -933,7 +933,7 @@ describe('повтор и функции дорожек сетки в натив
       'grid-auto-columns:minmax(min-content, max-content)',
     ],
     [
-      'gtcMinmax--min_1fr',
+      'gtcMinmax$min_1fr',
       'grid-template-columns:minmax(var(--min), 1fr)',
     ],
     [
@@ -958,7 +958,7 @@ describe('повтор и функции дорожек сетки в натив
       'grid-template-columns:repeat(auto-fit, minmax(240px, 1fr))',
     ],
     [
-      'gtc1fr_--x',
+      'gtc1fr_$x',
       'grid-template-columns:1fr var(--x)',
     ],
   ])('%s → %s', (token, declaration) => {
@@ -990,7 +990,7 @@ describe('повтор и функции дорожек сетки в натив
     [
       'gac_repeat\\(3,1fr\\)',
       'Value "_repeat(3,1fr)" is invalid for "gac": a function is not written in a class — "repeat" has no'
-      + ' short form, write it through a variable — "gac--x"',
+      + ' short form, write it through a variable — "gac$x"',
     ],
     [
       'gtc_fit-content\\(100px\\)',
@@ -1070,7 +1070,7 @@ describe('повтор и функции дорожек сетки в натив
     [
       'g_repeat\\(2,1fr\\)_/_1fr',
       'Value "_repeat(2,1fr)_/_1fr" is invalid for "g": a function is not written in a class; a computed value'
-      + ' goes through a variable, as "g--x". A repeat of tracks is "3x1fr", as "g1fr_/_3x1fr"',
+      + ' goes through a variable, as "g$x". A repeat of tracks is "3x1fr", as "g1fr_/_3x1fr"',
     ],
     [
       'g1fr_/_3x2',
@@ -1088,51 +1088,51 @@ describe('функция в токене бракуется у хендлеро�
     // Закрытые списки: подсказка — буквы хендлера.
     [
       'dUrl\\(a\\.png\\)',
-      'Value "Url(a.png)" is invalid for "d": ' + COMPUTED + '"d--x". Available: dB (block), dN (none),',
+      'Value "Url(a.png)" is invalid for "d": ' + COMPUTED + '"d$x". Available: dB (block), dN (none),',
     ],
     [
       'taCalc\\(1\\)',
-      'Value "Calc(1)" is invalid for "ta": ' + COMPUTED + '"ta--x". Available: taL (left),',
+      'Value "Calc(1)" is invalid for "ta": ' + COMPUTED + '"ta$x". Available: taL (left),',
     ],
     [
       'ar_min\\(1,2\\)',
-      'Value "_min(1,2)" is invalid for "ar": ' + COMPUTED + '"ar--x". Available: arA (auto)',
+      'Value "_min(1,2)" is invalid for "ar": ' + COMPUTED + '"ar$x". Available: arA (auto)',
     ],
     // Массивная форма `synonymProvider` (page-break-*).
     [
       'pgbaUrl\\(a\\)',
-      'Value "Url(a)" is invalid for "pgba": ' + COMPUTED + '"pgba--x". Available: pgbaA (auto),',
+      'Value "Url(a)" is invalid for "pgba": ' + COMPUTED + '"pgba$x". Available: pgbaA (auto),',
     ],
     // `assertEnumValue` — его зовут `pos` и `bs*`.
     [
       'posUrl\\(a\\)',
-      'Value "Url(a)" is invalid for "pos": ' + COMPUTED + '"pos--x". Available: posWS (-webkit-sticky),',
+      'Value "Url(a)" is invalid for "pos": ' + COMPUTED + '"pos$x". Available: posWS (-webkit-sticky),',
     ],
     [
       'bstUrl\\(a\\)',
-      'Value "Url(a)" is invalid for "bst": ' + COMPUTED + '"bst--x". Available: bstO (outset),',
+      'Value "Url(a)" is invalid for "bst": ' + COMPUTED + '"bst$x". Available: bstO (outset),',
     ],
     // Число без букв — без списка.
     [
       'tbsCalc\\(2+2\\)',
-      'Value "Calc(2+2)" is invalid for "tbs": ' + COMPUTED + '"tbs--x"',
+      'Value "Calc(2+2)" is invalid for "tbs": ' + COMPUTED + '"tbs$x"',
     ],
     // Свои читатели: позиция, `font`, `ff`.
     [
       'tfoUrl\\(a\\)',
-      'Value "Url(a)" is invalid for "tfo": ' + COMPUTED + '"tfo--x"',
+      'Value "Url(a)" is invalid for "tfo": ' + COMPUTED + '"tfo$x"',
     ],
     [
       'opUrl\\(a\\)',
-      'Value "Url(a)" is invalid for "op": ' + COMPUTED + '"op--x"',
+      'Value "Url(a)" is invalid for "op": ' + COMPUTED + '"op$x"',
     ],
     [
       'fontUrl\\(a\\)',
-      'Value "Url(a)" is invalid for "font": ' + COMPUTED + '"font--x"',
+      'Value "Url(a)" is invalid for "font": ' + COMPUTED + '"font$x"',
     ],
     [
       'ffUrl\\(a\\)',
-      'Value "Url(a)" is invalid for "ff": ' + COMPUTED + '"ff--x"',
+      'Value "Url(a)" is invalid for "ff": ' + COMPUTED + '"ff$x"',
     ],
   ])('%s', (token, message) => {
     expect(rejected(token).indexOf(message)).toBe(0);
@@ -1168,13 +1168,13 @@ describe('функция в токене бракуется у хендлеро�
       'cnt',
     ],
   ])('подстановка словом: %s — своя запись', (token, name) => {
-    expect(rejected(token)).toContain('a variable is written without "var()": "' + name + '--x" → var(--x), "' + name
-      + '---x" → env(--x)');
+    expect(rejected(token)).toContain('a variable is written without "var()": "' + name + '$x" → var(--x), "' + name
+      + '$$x" → env(x)');
   });
 
   test.each([
     [
-      'd--v',
+      'd$v',
       'display:var(--v)',
     ],
     [
@@ -1182,31 +1182,31 @@ describe('функция в токене бракуется у хендлеро�
       'display:inherit',
     ],
     [
-      'pos--p',
+      'pos$p',
       'position:var(--p)',
     ],
     [
-      'bs--s',
+      'bs$s',
       'border-style:var(--s)',
     ],
     [
-      'font--f',
+      'font$f',
       'font:var(--f)',
     ],
     [
-      'ff--f',
+      'ff$f',
       'font-family:var(--f)',
     ],
     [
-      'tn--x',
+      'tn$x',
       'transition:var(--x)',
     ],
     [
-      'g---x',
-      'grid:env(--x)',
+      'g$$x',
+      'grid:env(x)',
     ],
     [
-      'pgba--v',
+      'pgba$v',
       'page-break-after:var(--v);break-after:var(--v)',
     ],
     // Скобка в кавычках — текст, не функция.

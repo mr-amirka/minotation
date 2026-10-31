@@ -137,7 +137,7 @@ describe('буквы ключевых слов в стандартных хен�
   });
 
   test('часть значения: rx пишет поворот, x — сборный transform', () => {
-    expect(compile(['rx--a']).css).toBe('.rx--a{transform:rotateX(var(--a))}');
+    expect(compile(['rx$a']).css).toBe('.rx\\$a{transform:rotateX(var(--a))}');
     expect(compile([
       'rxINH',
       'xINH',
@@ -171,7 +171,8 @@ describe('буквы ключевых слов в стандартных хен�
 });
 
 describe('ядро: метка в эссенции своего хендлера (D-125)', () => {
-  const mark = (p: any) => 'var(' + p.suffix + ')';
+  // Метка — переменная `$имя`, хендлер пишет её, как любую переменную: `var(--имя)`.
+  const mark = (p: any) => 'var(--' + p.suffix.slice(1) + ')';
 
   test('вложенные childs и media получают ключевое слово', () => {
     const out = compile(
@@ -290,32 +291,32 @@ describe('ядро: метка в эссенции своего хендлера
 describe('переменная целым значением — там, где её молча теряли (D-125)', () => {
   test.each([
     [
-      'z--v',
-      '.z--v{z-index:var(--v)}',
+      'z$v',
+      '.z\\$v{z-index:var(--v)}',
     ],
     [
-      'dn--v',
-      '.dn--v{transition-duration:var(--v)}',
+      'dn$v',
+      '.dn\\$v{transition-duration:var(--v)}',
     ],
     [
-      'delay--v',
-      '.delay--v{transition-delay:var(--v)}',
+      'delay$v',
+      '.delay\\$v{transition-delay:var(--v)}',
     ],
     [
-      'fw--v',
-      '.fw--v{font-weight:var(--v)}',
+      'fw$v',
+      '.fw\\$v{font-weight:var(--v)}',
     ],
     [
-      'ft--v',
-      '.ft--v{filter:var(--v)}',
+      'ft$v',
+      '.ft\\$v{filter:var(--v)}',
     ],
     [
-      'ftb--v',
-      '.ftb--v{backdrop-filter:var(--v)}',
+      'ftb$v',
+      '.ftb\\$v{backdrop-filter:var(--v)}',
     ],
     [
-      'fxa--v',
-      '.fxa--v{box-pack:var(--v);justify-content:var(--v)}',
+      'fxa$v',
+      '.fxa\\$v{box-pack:var(--v);justify-content:var(--v)}',
     ],
     [
       'zINH',
@@ -360,8 +361,8 @@ describe('переменная целым значением — там, где 
       + ' variable',
     ],
     [
-      'x--v',
-      'Value "--v" is invalid for "x": expected a shift, as "x10", "x10y20", "x10y20z5", with a scale "s50" and'
+      'x$v',
+      'Value "$v" is invalid for "x": expected a shift, as "x10", "x10y20", "x10y20z5", with a scale "s50" and'
       + ' a turn "rz45" after it',
     ],
   ])('нераспознанный суффикс — брак, а не значение по умолчанию: %s', (token, message) => {

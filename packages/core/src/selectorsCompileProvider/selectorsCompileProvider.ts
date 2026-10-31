@@ -996,8 +996,8 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * произвольном значении — само подчёркивание, его разбирает хендлер.
    */
   function tailwindEssence(utility: string): string {
-    // Ведущий `-` (`-mt-4`) — метка для ядра, хендлер получит `p.sign` (D-064). `--имя=значение` —
-    // переменная CSS в записи minotation, не минус: классов на `--` у Tailwind нет.
+    // Ведущий `-` (`-mt-4`) — метка для ядра, хендлер получит `p.sign` (D-064). `--имя` — не минус: классов на
+    // `--` у Tailwind нет; прежнее объявление переменной `--имя=значение` дойдёт до ядра и ответит «was renamed».
     return utility[0] === DASH && utility[1] !== DASH && utility.length > 1
       ? MN_NEGATIVE + tailwindEssence(utility.slice(1))
       : utility[0] === OPEN_BRACKET && utility[utility.length - 1] === CLOSE_BRACKET && utility.indexOf(COLON) > 0

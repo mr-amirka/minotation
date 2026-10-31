@@ -45,6 +45,10 @@ export const VAR_OPEN = 'var(';
 export const CLOSE_PAREN = ')';
 export const SPACE = ' ';
 export const SEMICOLON = ';';
+/** Начало переменной: `$a` → `var(--a)`, `$$a` → `env(a)` (D-133). */
+export const DOLLAR = '$';
+export const OPEN_BRACE = '{';
+export const CLOSE_BRACE = '}';
 export const N = 'N';
 export const A = 'A';
 export const NONE = 'none';

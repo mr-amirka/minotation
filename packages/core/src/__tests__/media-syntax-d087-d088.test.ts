@@ -342,7 +342,7 @@ describe('маркер контейнера: cn, ct (D-088)', () => {
   });
 
   test('переменная — законно', () => {
-    expect(compile('cn--c').css).toBe('.cn--c{container-name:var(--c)}');
+    expect(compile('cn$c').css).toBe('.cn\\$c{container-name:var(--c)}');
   });
 
   test('без значения — сообщение', () => {

@@ -15,13 +15,13 @@ const FILES = 300;
 const ROUNDS = 20;
 const SAMPLE = `
 import { mne } from 'minotation/mne';
-const chipClass = 'py7 px12 r b1 bsS bc--line bg--panel c--ink f14 fw5 cr';
-const thClass = 'taL py12 px14 b bb1 bsS bc--line f12 lts0.06em ttU fw6 c--ink-3 bg--bg';
+const chipClass = 'py7 px12 r b1 bsS bc$line bg$panel c$ink f14 fw5 cr';
+const thClass = 'taL py12 px14 b bb1 bsS bc$line f12 lts0.06em ttU fw6 c$ink-3 bg$bg';
 export default function Row({ active }) {
   return (
-    <tr class="dF fxdC gap8 p16 b1 bsS bc--line r12 bg--panel">
+    <tr class="dF fxdC gap8 p16 b1 bsS bc$line r12 bg$panel">
       <td class={mne(thClass, 'fvTN')}>1</td>
-      <td class={active ? mne(chipClass, 'bg--ink c--bg') : chipClass}>x</td>
+      <td class={active ? mne(chipClass, 'bg$ink c$bg') : chipClass}>x</td>
       <div class="dG gtcAF240 gap12 wmaxN@760 m(b10|t20)>h(2|3)" />
     </tr>
   );

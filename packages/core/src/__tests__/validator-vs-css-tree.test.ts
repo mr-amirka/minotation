@@ -89,7 +89,7 @@ const ARG_FORMS = [
   '10_20_30_40',
   'F00-00F',
   '--v',
-  '--v;',
+  '$v;',
   '0.5s',
   '1/2',
 ];
@@ -253,9 +253,9 @@ describe('вывод ядра против официальной граммат
   test('значение с подстановкой доезжает до CSS у любого свойства', () => {
     // Арбитр тут неприменим (см. referenceVerdict): `var()` он не разбирает.
     // На этом классе ядро ломалось 2026-09-17.
-    expect(cssOfToken('w--v')).toContain('width:var(--v)');
-    expect(cssOfToken('bg--bg')).toContain('background:var(--bg)');
-    expect(cssOfToken('pt---safe-top')).toContain('padding-top:env(--safe-top)');
+    expect(cssOfToken('w$v')).toContain('width:var(--v)');
+    expect(cssOfToken('bg$bg')).toContain('background:var(--bg)');
+    expect(cssOfToken('pt$$safe-top')).toContain('padding-top:env(safe-top)');
   });
 });
 

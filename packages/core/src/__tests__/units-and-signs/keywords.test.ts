@@ -216,7 +216,7 @@ describe('свойства с закрытым перечнем значений
   });
 
   test('подстановка проходит: её содержимое здесь разбирать нечем', () => {
-    expect(compile(['ir--v']).css).toContain('image-rendering:var(--v)');
+    expect(compile(['ir$v']).css).toContain('image-rendering:var(--v)');
   });
 
   test('CSS-wide keywords проходят везде', () => {
@@ -320,7 +320,7 @@ describe('у свойства с перечнем число недопусти�
       'position:inherit',
     ],
     [
-      'pos--v',
+      'pos$v',
       'position:var(--v)',
     ],
   ])('%s → %s', (token, expected) => {
@@ -370,7 +370,7 @@ describe('стиль границы — закрытый перечень', () =
       'border-style:inherit',
     ],
     [
-      'bs--v',
+      'bs$v',
       'border-style:var(--v)',
     ],
   ])('%s → %s', (token, expected) => {
@@ -489,7 +489,7 @@ describe('свойства-картинки: одна запись на знач
       'mask-image:none',
     ],
     [
-      'bgi--v',
+      'bgi$v',
       'background-image:var(--v)',
     ],
     [
@@ -515,7 +515,7 @@ describe('свойства-картинки: одна запись на знач
   test.each([
     [
       'bgiF00-00F',
-      'Value "F00-00F" is invalid for "bgi": a picture is its path (`bgi_a\\.png`), a variable (`bgi--x`) or `bgiN`;'
+      'Value "F00-00F" is invalid for "bgi": a picture is its path (`bgi_a\\.png`), a variable (`bgi$x`) or `bgiN`;'
         + ' a gradient is written in `bg` (`bgF00-00F`)',
     ],
     [
@@ -539,8 +539,8 @@ describe('свойства-картинки: одна запись на знач
       'is invalid for "bgi": a function is not written in a class',
     ],
     [
-      'bgi_--v',
-      'Write the variable without "_": "bgi--v" instead of "bgi_--v" — same value',
+      'bgi_$v',
+      'Write the variable without "_": "bgi$v" instead of "bgi_$v" — same value',
     ],
     [
       'bgi_none',

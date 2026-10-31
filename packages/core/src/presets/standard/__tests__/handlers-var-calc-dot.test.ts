@@ -194,27 +194,27 @@ describe('все хендлеры стандартного пресета: пе�
   });
 
   test('одна переменная с терминатором', () => {
-    expect(sweep((n) => n + '--v;')).toEqual([]);
+    expect(sweep((n) => n + '$v;')).toEqual([]);
   });
 
   test('переменная с `_` в имени (терминатор обязателен)', () => {
-    expect(sweep((n) => n + '--a_b;')).toEqual([]);
+    expect(sweep((n) => n + '$a_b;')).toEqual([]);
   });
 
   test('несколько переменных — ' + MULTIPART_HANDLERS.length + ' составных', () => {
-    expect(sweep((n) => n + '_--a_--b', MULTIPART_HANDLERS)).toEqual([]);
+    expect(sweep((n) => n + '_$a_$b', MULTIPART_HANDLERS)).toEqual([]);
   });
 
   test('несколько переменных с `_` в именах', () => {
-    expect(sweep((n) => n + '_--a_b;_--c_d;', MULTIPART_HANDLERS)).toEqual([]);
+    expect(sweep((n) => n + '_$a_b;_$c_d;', MULTIPART_HANDLERS)).toEqual([]);
   });
 
   test('env() — тройной дефис', () => {
-    expect(sweep((n) => n + '_---safe_solid', MULTIPART_HANDLERS)).toEqual([]);
+    expect(sweep((n) => n + '_$$safe_solid', MULTIPART_HANDLERS)).toEqual([]);
   });
 
   test('calc: переменная + сдвиг — ' + NUMERIC_HANDLERS.length + ' числовых', () => {
-    expect(sweep((n) => n + '--v;+5', NUMERIC_HANDLERS)).toEqual([]);
+    expect(sweep((n) => n + '$v;+5', NUMERIC_HANDLERS)).toEqual([]);
   });
 
   test('calc: числовой сдвиг', () => {
@@ -283,15 +283,15 @@ describe('представители классов разбора — точн�
       'числовой/размерный (getVal)',
       [
         [
-          'w--v',
+          'w$v',
           'width:var(--v)',
         ],
         [
-          'w--my_w;',
+          'w$my_w;',
           'width:var(--my_w)',
         ],
         [
-          'w--v;+5',
+          'w$v;+5',
           'width:calc(var(--v) + 5px)',
         ],
         [
@@ -311,7 +311,7 @@ describe('представители классов разбора — точн�
           'width:10.5px',
         ],
         [
-          'p--a;_--b;',
+          'p$a;_$b;',
           'padding:var(--a) var(--b)',
         ],
       ],
@@ -320,19 +320,19 @@ describe('представители классов разбора — точн�
       'цветовой',
       [
         [
-          'c--v',
+          'c$v',
           'color:var(--v)',
         ],
         [
-          'c--my_ink;',
+          'c$my_ink;',
           'color:var(--my_ink)',
         ],
         [
-          'bc--my_line;',
+          'bc$my_line;',
           'border-color:var(--my_line)',
         ],
         [
-          'olc--v',
+          'olc$v',
           'outline-color:var(--v)',
         ],
       ],
@@ -341,27 +341,27 @@ describe('представители классов разбора — точн�
       'свободное значение (synonymProvider)',
       [
         [
-          'tn--v',
+          'tn$v',
           'transition:var(--v)',
         ],
         [
-          'tn_--a_--b',
+          'tn_$a_$b',
           'transition:var(--a) var(--b)',
         ],
         [
-          'tnA_0.2s_--ease',
+          'tnA_0.2s_$ease',
           'transition:all 0.2s var(--ease)',
         ],
         [
-          'tn_A_0.2s_---safe',
-          'transition:all 0.2s env(--safe)',
+          'tn_A_0.2s_$$safe',
+          'transition:all 0.2s env(safe)',
         ],
         [
           'cnt_a\\.b',
           'content:"a.b"',
         ],
         [
-          'pos--v',
+          'pos$v',
           'position:var(--v)',
         ],
       ],
@@ -370,15 +370,15 @@ describe('представители классов разбора — точн�
       'border-style (свой sidesSetter)',
       [
         [
-          'bs--v',
+          'bs$v',
           'border-style:var(--v)',
         ],
         [
-          'bs--a_b;',
+          'bs$a_b;',
           'border-style:var(--a_b)',
         ],
         [
-          'bsx--v',
+          'bsx$v',
           'border-inline-style:var(--v)',
         ],
       ],
@@ -387,11 +387,11 @@ describe('представители классов разбора — точн�
       'массивная форма synonymProvider (page-break)',
       [
         [
-          'pgba--v',
+          'pgba$v',
           'page-break-after:var(--v);break-after:var(--v)',
         ],
         [
-          'pgbi--a_b;',
+          'pgbi$a_b;',
           'page-break-inside:var(--a_b);break-inside:var(--a_b)',
         ],
       ],
@@ -400,11 +400,11 @@ describe('представители классов разбора — точн�
       'url-свойства',
       [
         [
-          'bgi--hero',
+          'bgi$hero',
           'background-image:var(--hero)',
         ],
         [
-          'bgi--a_b;',
+          'bgi$a_b;',
           'background-image:var(--a_b)',
         ],
         [
@@ -412,11 +412,11 @@ describe('представители классов разбора — точн�
           'background-image:url("img/a.png")',
         ],
         [
-          'lisi--v',
+          'lisi$v',
           'list-style-image:var(--v)',
         ],
         [
-          'mk--v',
+          'mk$v',
           'mask-image:var(--v)',
         ],
       ],
@@ -425,11 +425,11 @@ describe('представители классов разбора — точн�
       'тени (свой позиционный парсер)',
       [
         [
-          'bxsh10c--shadow',
+          'bxsh10c$shadow',
           'box-shadow:0px 0px 10px 0px var(--shadow)',
         ],
         [
-          'bxshB--a;c--b;',
+          'bxshB$a;c$b;',
           'box-shadow:0px 0px var(--a) 0px var(--b)',
         ],
       ],
@@ -438,11 +438,11 @@ describe('представители классов разбора — точн�
       'multi-value свойства',
       [
         [
-          'tn_A_0.2s_--ease',
+          'tn_A_0.2s_$ease',
           'transition:all 0.2s var(--ease)',
         ],
         [
-          'tn_--a;_--b;',
+          'tn_$a;_$b;',
           'transition:var(--a) var(--b)',
         ],
       ],
@@ -451,19 +451,19 @@ describe('представители классов разбора — точн�
       'шрифт и content',
       [
         [
-          'ff--v',
+          'ff$v',
           'font-family:var(--v)',
         ],
         [
-          'ff--my_font;',
+          'ff$my_font;',
           'font-family:var(--my_font)',
         ],
         [
-          'ff--mono,serif',
-          'font-family:var(--mono,serif)',
+          'ff$mono{serif}',
+          'font-family:var(--mono, serif)',
         ],
         [
-          'font--v',
+          'font$v',
           'font:var(--v)',
         ],
         [
@@ -508,16 +508,16 @@ describe('градиенты: bg / mk', () => {
     ],
     // Переменные как цвета градиента.
     [
-      'bg--a;--b;--c',
+      'bg$a$b$c',
       'background:linear-gradient(180deg,var(--a) 0%,var(--b) 50%,var(--c) 100%)',
     ],
     [
-      'bg--a;-F00-324',
+      'bg$a;-F00-324',
       'background:linear-gradient(180deg,var(--a) 0%,#f00 50%,#324 100%)',
     ],
     // Переменная с `_` в имени внутри градиента — терминатор работает и здесь.
     [
-      'bg--my_a;--my_b',
+      'bg$my_a;$my_b',
       'background:linear-gradient(180deg,var(--my_a) 0%,var(--my_b) 100%)',
     ],
     // Модификаторы: угол, радиальный, повторяющийся.
@@ -539,7 +539,7 @@ describe('градиенты: bg / mk', () => {
       'mask-image:linear-gradient(180deg,#0f0 0%,#00f 100%)',
     ],
     [
-      'mk--a;-F00-324',
+      'mk$a;-F00-324',
       'mask-image:linear-gradient(180deg,var(--a) 0%,#f00 50%,#324 100%)',
     ],
   ])('%s → %s', (token, expected) => {
@@ -551,7 +551,7 @@ describe('градиенты: bg / mk', () => {
     // Именованные цвета убраны — только коды.
     expect(cssOf('bgRed')).toBe('');
     expect(cssOf('bgF00')).toBe('background:#f00');
-    expect(cssOf('bg--a')).toBe('background:var(--a)');
+    expect(cssOf('bg$a')).toBe('background:var(--a)');
   });
 
   test('мусорное значение по-прежнему отбраковывается', () => {

@@ -540,8 +540,8 @@ describe('классы вне нотации: молчат, только есл�
   });
 
   test.each([
-    ['w--v', 'width:var(--v)'],
-    ['w---safe', 'width:env(--safe)'],
+    ['w$v', 'width:var(--v)'],
+    ['w$$safe', 'width:env(safe)'],
     ['w10-5', 'width:calc(10px - 5px)'],
     ['w-5', ''],
     ['bgF00-00F', 'background:linear-gradient'],

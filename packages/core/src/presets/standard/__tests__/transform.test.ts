@@ -151,19 +151,19 @@ describe('positions: op, pspo, tfo (group D)', () => {
 
   test.each([
     [
-      'op--a',
+      'op$a',
       'object-position:var(--a)',
     ],
     [
-      'opT_--a',
+      'opT_$a',
       'object-position:top var(--a)',
     ],
     [
-      'op--x_--y_--z_--w',
+      'op$x_$y_$z_$w',
       'object-position:var(--x) var(--y) var(--z) var(--w)',
     ],
     [
-      'tfoL_T_--z',
+      'tfoL_T_$z',
       'transform-origin:left top var(--z)',
     ],
   ])('%s → %s — a variable fits any part', (token, expected) => {
@@ -174,7 +174,7 @@ describe('positions: op, pspo, tfo (group D)', () => {
     // Функция в токене не пишется: вычисленное — через переменную.
     [
       'opCalc\\(1px+2px\\)_T',
-      'a function is not written in a class; a computed value goes through a variable, as "op--x"',
+      'a function is not written in a class; a computed value goes through a variable, as "op$x"',
     ],
     [
       'opL_R',

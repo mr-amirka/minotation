@@ -52,12 +52,14 @@ import type {
 import {
   REGEXP_BARE_NUMBER,
   REGEXP_WRITTEN_SUBSTITUTION,
-  cssVarValue,
   functionSet,
   functionsValue,
   substitutionMessage,
   throwParen,
 } from './functions';
+import {
+  cssVarValue,
+} from '../../core/mathValue';
 import {
   PATTERN_DIGITS,
   REGEXP_SUBSTITUTION,
@@ -692,7 +694,7 @@ export function registerMotion(ctx: StandardContext): void {
           animation: NONE,
         });
       }
-      // Подстановка словом (`an_env\(x\)`) прошла бы частью как подстановка: у неё своя запись, `an---x`.
+      // Подстановка словом (`an_env\(x\)`) прошла бы частью как подстановка: у неё своя запись, `an$$x`.
       REGEXP_WRITTEN_SUBSTITUTION.test(s) && throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + p.name + MSG_COLON
         + substitutionMessage(p.name));
       // `anNone`, `an_none` — вторые записи `anN`.

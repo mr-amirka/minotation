@@ -67,12 +67,12 @@ describe('grid lines (group C)', () => {
       '.gceS_Side{grid-column-end:span side}',
     ],
     [
-      'gcs--l',
-      '.gcs--l{grid-column-start:var(--l)}',
+      'gcs$l',
+      '.gcs\\$l{grid-column-start:var(--l)}',
     ],
     [
-      'gcsS_--n',
-      '.gcsS_--n{grid-column-start:span var(--n)}',
+      'gcsS_$n',
+      '.gcsS_\\$n{grid-column-start:span var(--n)}',
     ],
     [
       'grsINH',
@@ -127,10 +127,10 @@ describe('grid lines (group C)', () => {
       'grsHeader_Side',
       'at most one number, one name and one "span"',
     ],
-    // Функция в токене не пишется: вычисленное — через переменную, `gcsS_--n`.
+    // Функция в токене не пишется: вычисленное — через переменную, `gcsS_$n`.
     [
       'gcsS_Calc\\(1+1\\)',
-      'a function is not written in a class; a computed value goes through a variable, as "gcs--x"',
+      'a function is not written in a class; a computed value goes through a variable, as "gcs$x"',
     ],
     [
       'grsS_S_2',
@@ -190,16 +190,16 @@ describe('place-* (group C)', () => {
       '.plsE{place-self:end}',
     ],
     [
-      'plc--a',
-      '.plc--a{place-content:var(--a)}',
+      'plc$a',
+      '.plc\\$a{place-content:var(--a)}',
     ],
     [
-      'plc--a_C',
-      '.plc--a_C{place-content:var(--a) center}',
+      'plc$a_C',
+      '.plc\\$a_C{place-content:var(--a) center}',
     ],
     [
-      'plc--my_gap;_C',
-      '.plc--my_gap\\;_C{place-content:var(--my_gap) center}',
+      'plc$my_gap;_C',
+      '.plc\\$my_gap\\;_C{place-content:var(--my_gap) center}',
     ],
     [
       'plcINH',

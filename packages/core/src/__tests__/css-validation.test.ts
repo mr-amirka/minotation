@@ -182,8 +182,8 @@ describe('ядро не бракует то, что построило из ос
     // `normal` — initial value у column-gap/row-gap.
     ['ggcN', 'grid-column-gap:normal'],
     // Подстановка переменной допустима в значении любого свойства.
-    ['w--v', 'width:var(--v)'],
-    ['bg--v', 'background:var(--v)'],
+    ['w$v', 'width:var(--v)'],
+    ['bg$v', 'background:var(--v)'],
     // Многозначный shorthand.
     ['p10_20', 'padding:10px 20px'],
     // calc.

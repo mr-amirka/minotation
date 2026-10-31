@@ -77,8 +77,8 @@ describe('scroll margins and paddings (group B)', () => {
       '.smbe8{scroll-margin-block-end:8px}',
     ],
     [
-      'sm--gap',
-      '.sm--gap{scroll-margin:var(--gap)}',
+      'sm$gap',
+      '.sm\\$gap{scroll-margin:var(--gap)}',
     ],
     [
       'sp16',
@@ -310,20 +310,20 @@ describe('sbc — scrollbar-color (group B)', () => {
       '.sbcF00\\.5_0{scrollbar-color:rgba(255,0,0,.5) #000}',
     ],
     [
-      'sbc--a_--b',
-      '.sbc--a_--b{scrollbar-color:var(--a) var(--b)}',
+      'sbc$a_$b',
+      '.sbc\\$a_\\$b{scrollbar-color:var(--a) var(--b)}',
     ],
     [
-      'sbc--a.3_F',
-      '.sbc--a\\.3_F{scrollbar-color:color-mix(in srgb, var(--a) 30%, transparent) #fff}',
+      'sbc$a.3_F',
+      '.sbc\\$a\\.3_F{scrollbar-color:color-mix(in srgb, var(--a) 30%, transparent) #fff}',
     ],
     [
-      'sbc--my_ink;_F',
-      '.sbc--my_ink\\;_F{scrollbar-color:var(--my_ink) #fff}',
+      'sbc$my_ink;_F',
+      '.sbc\\$my_ink\\;_F{scrollbar-color:var(--my_ink) #fff}',
     ],
     [
-      'sbc--bar',
-      '.sbc--bar{scrollbar-color:var(--bar)}',
+      'sbc$bar',
+      '.sbc\\$bar{scrollbar-color:var(--bar)}',
     ],
     [
       'sbcINH',

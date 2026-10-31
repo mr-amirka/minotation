@@ -33,8 +33,6 @@
 import {
   aggregate,
   camelToKebabCase,
-  color,
-  colorGetBackground,
   cssPropertiesParseSimple,
   cssPropertiesStringifyProvider,
   eachApply,
@@ -115,6 +113,10 @@ import {
   mathRules,
   mathValue,
 } from './mathValue';
+import {
+  colorValue,
+  gradientValue,
+} from './colorValue';
 import type {
   MnCompiler,
   MnContextEssence,
@@ -188,8 +190,8 @@ export const baseUtils = merge([
     mathValue,
     cssVarValue,
     observableProvider,
-    color,
-    colorGetBackground,
+    color: colorValue,
+    colorGetBackground: gradientValue,
     half,
     unslash,
     noop,
@@ -293,7 +295,10 @@ export const RE_SPACE = /\s+/gim;
 export const SPLIT_SPACE = splitProvider(/\s+/);
 export const SPLIT_SELECTOR = splitProvider(/\s*,+\s*/);
 export const SPLIT_AMP = splitProvider(/\s*&+\s*/);
-export const REGEXP_MATCH_VAR = /^(--[^=]+)=(.*)$/;
+/** Объявление переменной: `$v=10px` → `--v:10px` (D-133). */
+export const REGEXP_MATCH_VAR = /^\$([^=$]+)=(.*)$/;
+/** Прежнее объявление `--v=10px`: CSS нет, сообщение с новой записью — один выпуск. */
+export const REGEXP_OLD_MATCH_VAR = /^--[^=]+=/;
 export const REGEXP_MATCH_NAME = /^([a-z]+)(.*)$/;
 export const REGEXP_MATCH_IMPORTANT = /^(.*)(-i)$/;
 /**
@@ -325,10 +330,12 @@ export const CSS_WIDE_LETTERS: Record<string, string> = Object.assign(Object.cre
 });
 /**
  * Метка-переменная CSS-wide keyword (D-125): ядро отдаёт её хендлеру вместо букв, хендлер ставит её туда же, куда
- * поставил бы переменную (`c--v` → `color:var(--v)`), — ядро меняет её на ключевое слово. Так каждый хендлер,
+ * поставил бы переменную (`c$v` → `color:var(--v)`), — ядро меняет её на ключевое слово. Так каждый хендлер,
  * принимающий переменную целым значением, принимает и ключевые слова, со своим набором свойств.
  */
-export const CSS_WIDE_MARK = '--mnkeyword';
+export const CSS_WIDE_MARK = '$mnkeyword';
+/** Имя метки в CSS: `var(--mnkeyword)`. */
+export const CSS_WIDE_MARK_NAME = '--mnkeyword';
 export const REGEXP_MATCH_VALUE = /^((([A-Z][A-Za-z]*)|((-)?[0-9.]+))([a-z%]+)?)?(.*)?$/;
 /**
  * Вендорный псевдоэлемент или псевдокласс (`::-moz-focus-inner`, `:-webkit-autofill`): в списке селекторов

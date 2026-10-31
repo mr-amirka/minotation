@@ -36,6 +36,11 @@ import type {
 import type {
   spaceNormalize,
 } from './core/utils';
+import type {
+  cssVarValue,
+  mathRules,
+  mathValue,
+} from './core/mathValue';
 
 /**
  * Утилиты, доступные пресетам через `mn.utils`.
@@ -70,6 +75,12 @@ export interface MnUtils {
   indexOf: typeof indexOf;
   toFixed: typeof toFixed;
   escapeQuote: typeof escapeQuote;
+  /** Правила свойства для {@link MnUtils.mathValue}: имя хендлера, единица голого числа, допустимые единицы, минус. */
+  mathRules: typeof mathRules;
+  /** Значение с математикой: `100%-2*$gap` → `calc(100% - 2 * var(--gap))`, `Min{100%,50rem}` → `min(100%, 50rem)`. */
+  mathValue: typeof mathValue;
+  /** Значение целиком — переменная: `$mono{serif}` → `var(--mono, serif)`, `$$x` → `env(x)`. */
+  cssVarValue: typeof cssVarValue;
 }
 
 /** Значение токена MN — строка или массив строк (множественные значения) */

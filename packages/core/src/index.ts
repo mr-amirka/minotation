@@ -229,6 +229,10 @@ export type {
   OptionSchema,
 } from './checkOptions';
 export type {
+  MnMathRules,
+  MnMathRulesOptions,
+} from './core/mathValue';
+export type {
   MnCssDeclarations,
   MnCssEntry,
   MnInstance,

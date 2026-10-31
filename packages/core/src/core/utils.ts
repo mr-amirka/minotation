@@ -110,6 +110,11 @@ import {
 import {
   MnParseError,
 } from './types';
+import {
+  cssVarValue,
+  mathRules,
+  mathValue,
+} from './mathValue';
 import type {
   MnCompiler,
   MnContextEssence,
@@ -179,6 +184,9 @@ export function observableProvider<T>(_value: T): Observer<T> {
 
 export const baseUtils = merge([
   {
+    mathRules,
+    mathValue,
+    cssVarValue,
     observableProvider,
     color,
     colorGetBackground,

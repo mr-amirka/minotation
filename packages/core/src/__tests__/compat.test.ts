@@ -111,7 +111,7 @@ describe('fx-shorthand — multi-value через _', () => {
 // ================================================================
 // Flex-align (переименованы: fha→fxa, fva→fya)
 //
-// Реально зарегистрированы только буквы из карт в presets/standard/index.ts:
+// Реально зарегистрированы только буквы из карт в presets/standard/flex-grid.ts:
 // fxa — S/C/E/A/B (start/center/end/around/between), fya — S/C/E/ST; полные
 // слова (`fxaCenter`) бракуются с подсказкой (D-113). Токены вида fxaF/fxaL/fxaV,
 // fyaF/fyaL/fyaB/fyaT из исходного v2-теста не существуют — убраны (не баг,

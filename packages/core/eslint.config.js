@@ -72,9 +72,10 @@ module.exports = [
   {
     // The dense v1 style of the ~50 generated handlers: a value is read and checked in one expression
     // (`(x = y.z) ? … : …`), several assignments joined by commas instead of a block. Rewriting it safely means
-    // rewriting the control flow of the whole file — outside the typing task (minotation PLAN.md). The handlers' `p` /
+    // rewriting the control flow of the whole preset — outside the typing task (minotation PLAN.md). The handlers' `p` /
     // flag parameters (`nosign`, `one`, `positive`) are `any` on purpose — the same contract as the public `MnHandler`.
-    files: ['src/presets/standard/index.ts'],
+    // The preset is split by subject (D-130), so the rule covers its files, not its tests.
+    files: ['src/presets/standard/*.ts'],
     rules: {
       'no-cond-assign': 'off',
       '@stylistic/max-statements-per-line': 'off',

@@ -1969,7 +1969,7 @@ function minotationProvider(options?: MnOptions) {
       if (ex instanceof MnParseError) {
         // Контекст может быть пустым: `throwInvalid` в пресетах зовётся из
         // глубины разбора значения, где ни токена, ни имени хендлера не видно
-        // (см. его JSDoc в `presets/standard/index.ts`). Здесь они известны —
+        // (см. его JSDoc в `presets/standard/messages.ts`). Здесь они известны —
         // дозаполняем, чтобы предупреждение указывало на конкретный токен.
         ex.context.silent || collectWarning({
           type: ex.context.warningType || WARNING_PARSE_ERROR,

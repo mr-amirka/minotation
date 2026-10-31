@@ -26,7 +26,7 @@ export default {
   setup: (mn: MnInstance) => {
     mn.assign({
       '*, *:before, *:after': 'bxzBB',
-      // thc0 — -webkit-tap-highlight-color:#000 (обработчик `thc`, presets/standard/index.ts);
+      // thc0 — -webkit-tap-highlight-color:#000 (обработчик `thc`, presets/standard/paint.ts);
       // раньше задавалось отдельным mn.css({html:{'-webkit-tap-highlight-color':'#000'}})
       html: 'lh1.15 tsa thc0',
       body: 'm',

@@ -1,6 +1,6 @@
 /**
- * Маски, E2 (D-097, RESEARCH/17 § 5.6): семейство `mk…` зеркалит `bg…` — `mk` картинка (градиент, путь `mk_a\.png`, D-127), `mks`, `mkp`,
- * `mkr`, `mko`, `mkcp`, `mkc`, `mkt`, `mkm`; старых `maskbg`/`maski`/`maskt`/`maskm` больше нет (D-104).
+ * Маски: семейство `mk…` зеркалит `bg…` — `mk` картинка (градиент, путь `mk_a\.png`), `mks`, `mkp`,
+ * `mkr`, `mko`, `mkcp`, `mkc`, `mkt`, `mkm`; старых `maskbg`/`maski`/`maskt`/`maskm` больше нет.
  */
 import {
   lexer,
@@ -33,7 +33,7 @@ function declaration(token: string): string {
   return css.slice(css.indexOf('{') + 1, -1);
 }
 
-describe('masks: the mk… family (E2)', () => {
+describe('masks: the mk… family', () => {
   test.each([
     [
       'mkF00-00F',
@@ -195,7 +195,7 @@ describe('masks: the mk… family (E2)', () => {
     'maski--v',
     'masktA',
     'maskmL',
-  ])('the old %s gives no CSS — the names are gone (D-104)', (token) => {
+  ])('the old %s gives no CSS — the names are gone', (token) => {
     expect(compile(token).css).toBe('');
   });
 

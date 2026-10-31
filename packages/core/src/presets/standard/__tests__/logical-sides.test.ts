@@ -1,6 +1,6 @@
 /**
- * Логические стороны A2 (D-097, RESEARCH/17 § 5.2) с именами K3 (D-103): `ps`/`pie`, `ms`/`me`, `ss`/`se`,
- * `bisw`/`biew` (D-117), `bcs`/`bce`, `bss`/`bse` и `…bs`/`…be` по оси блока; логические углы `rss`…`ree`, `rs`/`re`;
+ * Логические стороны с короткими именами: `ps`/`pie`, `ms`/`me`, `ss`/`se`,
+ * `bisw`/`biew`, `bcs`/`bce`, `bss`/`bse` и `…bs`/`…be` по оси блока; логические углы `rss`…`ree`, `rs`/`re`;
  * размеры `iz`/`bz` с `min`/`max`. Пишут одно логическое свойство в любом `axisMode`.
  */
 import minotationProvider from '../../../core/index';
@@ -27,7 +27,7 @@ function compile(tokens: string, options: MnOptions = {}) {
   };
 }
 
-describe('logical sides A2 with K3 (D-097, D-103)', () => {
+describe('logical sides with short names', () => {
   test.each([
     [
       'ps10',
@@ -245,7 +245,7 @@ describe('logical sides A2 with K3 (D-097, D-103)', () => {
       'rlt4',
       '.rlt4{border-top-left-radius:4px}',
     ],
-  ])('%s — the old owners keep their names (K3)', (token, css) => {
+  ])('%s — the old owners keep their names', (token, css) => {
     expect(compile(token).css).toBe(css);
   });
 
@@ -279,7 +279,7 @@ describe('logical sides A2 with K3 (D-097, D-103)', () => {
   test.each([
     'bis1',
     'bie1',
-  ])('%s — the old name of the width (D-117) gives no width', (token) => {
+  ])('%s — the old name of the width gives no width', (token) => {
     expect(compile(token).css).not.toContain('width');
   });
 });

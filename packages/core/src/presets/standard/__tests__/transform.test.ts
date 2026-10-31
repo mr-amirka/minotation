@@ -1,5 +1,5 @@
 /**
- * Группа D (RESEARCH/17): общий разбор `<position>` у `op`/`pspo`/`tfo` (буквы, углы, длины, порядок осей, z у
+ * Позиция и трансформация: общий разбор `<position>` у `op`/`pspo`/`tfo` (буквы, углы, длины, порядок осей, z у
  * `transform-origin`), `psp` — perspective, `tfb` — transform-box, `bfv` — backface-visibility.
  */
 import {
@@ -171,7 +171,7 @@ describe('positions: op, pspo, tfo (group D)', () => {
   });
 
   test.each([
-    // Функция в токене не пишется (D-124): вычисленное — через переменную.
+    // Функция в токене не пишется: вычисленное — через переменную.
     [
       'opCalc\\(1px+2px\\)_T',
       'a function is not written in a class; a computed value goes through a variable, as "op--x"',

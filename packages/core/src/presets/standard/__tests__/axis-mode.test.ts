@@ -1,5 +1,5 @@
 /**
- * Осевые формы `x`/`y` (D-101): по умолчанию логические свойства (`padding-inline`), опция ядра
+ * Осевые формы `x`/`y`: по умолчанию логические свойства (`padding-inline`), опция ядра
  * `axisMode: 'physical'` возвращает физическую пару; остальные стороны — физические всегда.
  */
 import minotationProvider from '../../../core/index';
@@ -32,7 +32,7 @@ const PHYSICAL: MnOptions = {
   axisMode: 'physical',
 };
 
-describe('axisMode (D-101)', () => {
+describe('axisMode', () => {
   test.each([
     [
       'px16',

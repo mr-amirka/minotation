@@ -95,7 +95,7 @@ describe('content: кавычки ставит хендлер', () => {
     expect(warnings.length).toBe(1);
   });
 
-  // Функции — нативной формой (`cntAttr_href`, D-124): function-forms.test.ts.
+  // Функции — нативной формой (`cntAttr_href`): function-forms.test.ts.
   test.each([
     [
       'cnt--v',
@@ -211,7 +211,7 @@ describe('transition: слоты в фиксированном порядке', 
     expect(lexer.matchProperty('transition', 'color 0.2s ease,transform 0.4s linear').matched).toBeTruthy();
   });
 
-  test('части функции плавности не путаются со слотами: за четырьмя числами — задержка (D-124)', () => {
+  test('части функции плавности не путаются со слотами: за четырьмя числами — задержка', () => {
     expect(compile(['tn_0.2s_CubicBezier0_0_1_1_0.1s']).css)
       .toContain('transition:0.2s cubic-bezier(0,0,1,1) 0.1s');
   });
@@ -266,7 +266,7 @@ describe('тени: список и переменная вместо сырог
     ],
   ])('%s → %s — переменная без буквы означает всю тень', (token, expected) => {
     // У любого другого свойства `--x` это значение целиком (`bg--panel`,
-    // `tn--t`), и тень не исключение. До 2026-09-29 переменная молча попадала
+    // `tn--t`), и тень не исключение. Раньше переменная молча попадала
     // в позицию blur, а прочие слоты добирались умолчаниями — автор получал
     // правило, которого не писал.
     expect(compile([token]).css).toContain(expected);
@@ -458,7 +458,7 @@ describe('`;` между переменными — разделитель ча�
 
 describe('тени: порядок модификаторов жёсткий', () => {
   // Свободный порядок был следствием реализации — независимые regex'ы искали
-  // каждый свой фрагмент где угодно. Решение владельца 2026-09-27: одно
+  // каждый свой фрагмент где угодно. Порядок закреплён: одно
   // значение не должно записываться по-разному, как и у `tn`.
   test.each([
     'bxsh19c43Fx5y5r3',
@@ -650,7 +650,7 @@ describe('дорожки и позиции сетки', () => {
       'gtcS',
       'grid-template-columns:subgrid',
     ],
-    // Функции — нативной формой, без скобок (D-124).
+    // Функции — нативной формой, без скобок.
     [
       'gtc3x1fr',
       'grid-template-columns:repeat(3, 1fr)',
@@ -1082,7 +1082,7 @@ describe('фон и маска: только цвет, градиент или �
   });
 });
 
-// `border-image` — `presets/standard/__tests__/border-image.test.ts` (D-119: по частям, свои хендлеры).
+// `border-image` — `presets/standard/__tests__/border-image.test.ts`: по частям, у каждой свой хендлер.
 
 describe('grid и grid-template', () => {
   const OK: Array<[string, string]> = [

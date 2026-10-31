@@ -1,9 +1,9 @@
 /**
- * D-106: `tp` — список через запятую, как в CSS и в старой версии; буквы у `tp`/`ttf`/`mbm`; `ww` → `owr`;
+ * `tp` — список через запятую, как в CSS и в старой версии; буквы у `tp`/`ttf`/`mbm`; `ww` → `owr`;
  * опция `overflowWrapMode` для старого имени `word-wrap`; имя свойства из одной буквы у `tp`/`wc`/`tn` — ошибка.
- * D-107: заглавная после `,`/`;` не принимается — у элемента списка одно написание, со строчной.
- * D-109: `tn` берёт буквы плавности `ttf` и `A` — `all`; длинное слово отвечает буквой.
- * D-111: `tnN` — `transition:none`, длинная запись `none` — с подсказкой.
+ * Заглавная после `,`/`;` не принимается — у элемента списка одно написание, со строчной.
+ * `tn` берёт буквы плавности `ttf` и `A` — `all`; длинное слово отвечает буквой.
+ * `tnN` — `transition:none`, длинная запись `none` — с подсказкой.
  */
 import {
   lexer,
@@ -46,7 +46,7 @@ function declaration(token: string, options?: MnOptions): string {
   return css.slice(css.indexOf('{') + 1, -1);
 }
 
-describe('tp — a list with commas, letters for all/none (D-106)', () => {
+describe('tp — a list with commas, letters for all/none', () => {
   test.each([
     [
       'tp_color,opacity',
@@ -130,14 +130,14 @@ describe('tp — a list with commas, letters for all/none (D-106)', () => {
       'tpNone',
       'Write it shorter: "tpN" instead of "tpNone" — same value',
     ],
-  ])('%s — the long form is rejected (D-015)', (token, message) => {
+  ])('%s — the long form is rejected', (token, message) => {
     const result = compile(token);
     expect(result.css).toBe('');
     expect(result.warnings).toContain(message);
   });
 });
 
-describe('ttf and mbm take letters, as atf and bgbm (D-106)', () => {
+describe('ttf and mbm take letters, as atf and bgbm', () => {
   test.each([
     [
       'ttfEI',
@@ -214,7 +214,7 @@ describe('ttf and mbm take letters, as atf and bgbm (D-106)', () => {
   });
 });
 
-describe('ww was renamed to owr (D-106)', () => {
+describe('ww was renamed to owr', () => {
   test.each([
     [
       'wwBW',
@@ -247,7 +247,7 @@ describe('ww was renamed to owr (D-106)', () => {
   });
 });
 
-describe('overflowWrapMode — the old name word-wrap for old browsers (D-106)', () => {
+describe('overflowWrapMode — the old name word-wrap for old browsers', () => {
   test.each([
     [
       'owrBW',
@@ -308,7 +308,7 @@ describe('overflowWrapMode — the old name word-wrap for old browsers (D-106)',
   });
 });
 
-describe('a list item starts with a lower-case letter (D-107)', () => {
+describe('a list item starts with a lower-case letter', () => {
   test.each([
     [
       'tnColor;opacity_200',
@@ -366,7 +366,7 @@ describe('a list item starts with a lower-case letter (D-107)', () => {
   });
 });
 
-describe('a one-letter property name is an error (D-106)', () => {
+describe('a one-letter property name is an error', () => {
   test.each([
     [
       'wcB',
@@ -383,7 +383,7 @@ describe('a one-letter property name is an error (D-106)', () => {
   });
 });
 
-describe('tn takes the letters of ttf and A for all (D-109)', () => {
+describe('tn takes the letters of ttf and A for all', () => {
   test.each([
     [
       'tn_opacity_200_EI',
@@ -470,7 +470,7 @@ describe('tn takes the letters of ttf and A for all (D-109)', () => {
   });
 });
 
-describe('tnN is transition:none (D-111)', () => {
+describe('tnN is transition:none', () => {
   test('tnN', () => {
     expect(lexer.matchProperty('transition', 'none').matched).toBeTruthy();
     expect(declaration('tnN')).toBe('transition:none');
@@ -485,7 +485,7 @@ describe('tnN is transition:none (D-111)', () => {
       'tn_none',
       'Write it shorter: "tnN" instead of "tn_none" — same value',
     ],
-  ])('%s — the long form is rejected (D-015)', (token, message) => {
+  ])('%s — the long form is rejected', (token, message) => {
     const result = compile(token);
     expect(result.css).toBe('');
     expect(result.warnings).toContain(message);

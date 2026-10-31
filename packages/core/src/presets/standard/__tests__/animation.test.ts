@@ -1,6 +1,6 @@
 /**
- * `an` — анимация, слоты в фиксированном порядке, как у `tn` (запрос трека web-games, 2026-10-14); именованные
- * анимации с кадрами по использованию — группа G (D-097); плавность — буквами, как у `tn` (D-111).
+ * `an` — анимация, слоты в фиксированном порядке, как у `tn`; именованные анимации с кадрами по использованию;
+ * плавность — буквами, как у `tn`.
  */
 import minotationProvider from '../../../core';
 import presetStandard from '..';
@@ -102,7 +102,7 @@ test('ключевые кадры — из пресета, анимация — 
     + '.an_wg-appear_0\\.2s_EO_0\\.3s_both{animation:wg-appear 0.2s ease-out 0.3s both}');
 });
 
-describe('easing letters, as tn and atf (D-111)', () => {
+describe('easing letters, as tn and atf', () => {
   test.each([
     [
       'an_fade_L',

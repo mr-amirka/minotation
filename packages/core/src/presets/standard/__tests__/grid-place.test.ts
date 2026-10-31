@@ -1,5 +1,5 @@
 /**
- * Группа C (RESEARCH/17): одна линия сетки `grs`/`gre`/`gcs`/`gce`, `A` — `auto` и у `gr`/`gc`; пары выравнивания
+ * Сетка и выравнивание: одна линия сетки `grs`/`gre`/`gcs`/`gce`, `A` — `auto` и у `gr`/`gc`; пары выравнивания
  * `plc`/`pli`/`pls` на буквах `ac`+`jc`, `ai`+`ji`, `as`+`js`.
  */
 import minotationProvider from '../../../core/index';
@@ -127,7 +127,7 @@ describe('grid lines (group C)', () => {
       'grsHeader_Side',
       'at most one number, one name and one "span"',
     ],
-    // Функция в токене не пишется (D-124): вычисленное — через переменную, `gcsS_--n`.
+    // Функция в токене не пишется: вычисленное — через переменную, `gcsS_--n`.
     [
       'gcsS_Calc\\(1+1\\)',
       'a function is not written in a class; a computed value goes through a variable, as "gcs--x"',

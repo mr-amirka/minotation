@@ -1,5 +1,5 @@
 /**
- * Группа F (RESEARCH/17): одиночные свойства — `acc`, `cc`, `csch`, `wc`, `cpth`, `fca`, `hy`, `owr`, `tbs`, `fvn`,
+ * Одиночные свойства — `acc`, `cc`, `csch`, `wc`, `cpth`, `fca`, `hy`, `owr`, `tbs`, `fvn`,
  * `bdb`, `lcl`, `fsz`, `tnb`, `atf`, `bgbm`.
  */
 import {
@@ -353,7 +353,7 @@ describe('single properties (group F)', () => {
     expect(result.warnings).toContain(message);
   });
 
-  test('a variable passes the closed sets, a function is rejected (D-124)', () => {
+  test('a variable passes the closed sets, a function is rejected', () => {
     const result = compile('tbsCalc\\(2+2\\)');
     expect(result.css).toBe('');
     expect(result.warnings).toContain('a function is not written in a class; a computed value goes through a variable');

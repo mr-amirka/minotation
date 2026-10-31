@@ -1,5 +1,5 @@
 /**
- * `border-image` по частям (D-119): `bi` — `border-image-source`, тот же читатель картинки, что у `bg` и `mk`;
+ * `border-image` по частям: `bi` — `border-image-source`, тот же читатель картинки, что у `bg` и `mk`;
  * слайс, ширина, вынос и повтор — свои хендлеры `bis`, `biw`, `bio`, `bir`. Сторон у свойства нет.
  *
  * Попутно — стопы градиента `bg`/`mk`/`bi` делятся по запятым верхнего уровня (`rgba(…)` больше не рвётся), с
@@ -75,12 +75,12 @@ describe('bi is border-image-source, read as bg reads its image', () => {
       'biF00.5-00F',
       'border-image-source:linear-gradient(180deg,rgba(255,0,0,.5) 0%,#00f 100%)',
     ],
-    // Градиент из переменных: копия разбора в `bi` (до D-119) давала `border-image:var(--a) var(--b)`.
+    // Градиент из переменных: прежняя копия разбора в `bi` давала `border-image:var(--a) var(--b)`.
     [
       'bi--a;--b',
       'border-image-source:linear-gradient(180deg,var(--a) 0%,var(--b) 100%)',
     ],
-    // Картинка по пути — `_`-форма самого `bi` (D-122); `biUrl\\(a\\.png\\)` бракуется (D-121).
+    // Картинка по пути — `_`-форма самого `bi`; `biUrl\\(a\\.png\\)` бракуется.
     [
       'bi_a\\.png',
       'border-image-source:url("a.png")',
@@ -144,7 +144,7 @@ describe('the other parts of border-image are their own handlers', () => {
       'bis--s',
       'border-image-slice:var(--s)',
     ],
-    // Голое число у `biw` — кратное ширины рамки, без `px` (D-123): `biw2` при `b10` — кольцо 20px.
+    // Голое число у `biw` — кратное ширины рамки, без `px`: `biw2` при `b10` — кольцо 20px.
     [
       'biw2',
       'border-image-width:2',
@@ -177,7 +177,7 @@ describe('the other parts of border-image are their own handlers', () => {
       'biw10px_2',
       'border-image-width:10px 2',
     ],
-    // У `bio` то же: голое число — кратное ширины рамки (D-123), пиксели — с единицей.
+    // У `bio` то же: голое число — кратное ширины рамки, пиксели — с единицей.
     [
       'bio2',
       'border-image-outset:2',
@@ -307,7 +307,7 @@ describe('border-image: errors say what is accepted', () => {
     expect(warnings).toContain(message);
   });
 
-  // Сборная запись `border-image` одним токеном (до D-119) — части теперь пишутся своими классами.
+  // Сборной записи `border-image` одним токеном нет — части пишутся своими классами.
   test.each([
     'biF00-00F_30_RD',
     'biUrl\\(a\\.png\\)_30_F_RD',
@@ -319,7 +319,7 @@ describe('border-image: errors say what is accepted', () => {
     expect(compile(token).css).toBe('');
   });
 
-  // Функция в токене не пишется (D-121): ни цвет (`cRgb\\(0,0,0\\)` — это `c0`), ни картинка (`bgUrl\\(a\\.png\\)` —
+  // Функция в токене не пишется: ни цвет (`cRgb\\(0,0,0\\)` — это `c0`), ни картинка (`bgUrl\\(a\\.png\\)` —
   // это `bgi_a\\.png`). Ошибка называет запись, которой пишется то же самое.
   test.each([
     [
@@ -364,7 +364,7 @@ describe('border-image: errors say what is accepted', () => {
       'bgLinear-gradient\\(red,blue\\)',
       'is invalid for "bg": a function is not written in a class',
     ],
-  ])('%s — a function is not written in a class (D-121)', (token, message) => {
+  ])('%s — a function is not written in a class', (token, message) => {
     const {
       css, warnings,
     } = compile(token);
@@ -403,7 +403,7 @@ describe('the image reader of bg / mk', () => {
       'mkF00.5-00F',
       'mask-image:linear-gradient(180deg,rgba(255,0,0,.5) 0%,#00f 100%)',
     ],
-    // `N` — `none`, как у остальных хендлеров (до D-119 — «"N" is not a color»).
+    // `N` — `none`, как у остальных хендлеров (раньше — «"N" is not a color»).
     [
       'bgN',
       'background:none',

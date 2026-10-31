@@ -93,12 +93,12 @@ for (const warning of collector.takeWarnings()) {
 | `altColor` | `boolean` | `false` | запасное непрозрачное объявление рядом с `rgba` |
 | `media` | `Record<string, MnMediaEntry>` | стандартные | именованные медиа: `{ wide: { query: '(width >= 1200px)' } }` → `p10@wide` |
 | `maxDepth`, `maxDepthMode` | `number`, `'warn' \| 'silent' \| 'strict'` | —, `'warn'` | предел глубины контекстных селекторов и режим при превышении (D-039) |
-| `maxSpecificity`, `maxSpecificityMode` | `number` (1…16), `'warn' \| 'strict'` | `16`, `'warn'` | предел множителя специфичности `*N` и режим при превышении; выше потолка 16 CSS нет ни в каком режиме (D-089) |
+| `maxSpecificity`, `maxSpecificityMode` | `number` (1…16), `'warn' \| 'strict'` | `16`, `'warn'` | предел множителя специфичности `**N` и режим при превышении; выше потолка 16 CSS нет ни в каком режиме (D-089) |
 | `mediaSyntax` | `'range' \| 'classic'` | `'range'` | запись условий ширины и высоты: форма диапазона или `min-`/`max-` для старых браузеров (D-087) |
 | `axisMode` | `'logical' \| 'physical'` | `'logical'` | осевые формы `presetStandard` (`px`, `my`, `sx`, `bcy`…): логическое свойство `padding-inline` или физическая пара `padding-left` + `padding-right` (D-101) |
 | `overflowWrapMode` | `'standard' \| 'legacy' \| 'both'` | `'standard'` | имя свойства у `owr` в `presetStandard`: `overflow-wrap`, старое `word-wrap` (IE, старый Edge, Firefox до 49) или оба объявления (D-106) |
 | `mediaConflictMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | имя из опции `media` совпало с медиа пресета — остаётся определение из опции; режим сообщения (D-092) |
-| `specificityMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с накруткой специфичности `f10*2` (D-039) |
+| `specificityMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с накруткой специфичности `f10**2` (D-039) |
 | `importantMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с `!important` (`f10-i`) (D-039) |
 | `childSelectorMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | токены с дочерним селектором `>` (`cF00>1`) (D-041) |
 | `unknownMediaMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | неизвестное имя медиа (`p10@zz`) (D-058) |

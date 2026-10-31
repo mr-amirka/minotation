@@ -66,7 +66,7 @@ describe('режимы токенов по файлу', () => {
     });
     quiet.add(join(
       dir, 'ui', 'Card.html',
-    ), '<b class="p10*2">');
+    ), '<b class="p10**2">');
     expect(() => quiet.css()).not.toThrow();
     expect(quiet.takeWarnings()).toEqual([]);
     const strict = collector({
@@ -74,9 +74,9 @@ describe('режимы токенов по файлу', () => {
     });
     strict.add(join(
       dir, 'ui', 'Card.html',
-    ), '<b class="p10*2">');
-    strict.add(join(dir, 'App.html'), '<b class="m10*2">');
-    expect(() => strict.css()).toThrow('m10*2: Raising specificity ("*2") is forbidden (specificityMode: \'strict\')');
+    ), '<b class="p10**2">');
+    strict.add(join(dir, 'App.html'), '<b class="m10**2">');
+    expect(() => strict.css()).toThrow('m10**2: Raising specificity ("**2") is forbidden (specificityMode: \'strict\')');
   });
 
   test('один токен в строгом приложении и мягком пакете — ошибка за файл приложения', () => {
@@ -88,9 +88,9 @@ describe('режимы токенов по файлу', () => {
     });
     both.add(join(
       dir, 'ui', 'Card.html',
-    ), '<b class="p10*2">');
-    both.add(join(dir, 'App.html'), '<b class="p10*2">');
-    expect(() => both.css()).toThrow('p10*2: Raising specificity');
+    ), '<b class="p10**2">');
+    both.add(join(dir, 'App.html'), '<b class="p10**2">');
+    expect(() => both.css()).toThrow('p10**2: Raising specificity');
   });
 
   test('правило scopes потребителя для строгости важнее package.json пакета', () => {

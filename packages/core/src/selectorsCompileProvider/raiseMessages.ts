@@ -17,16 +17,16 @@ export function specificityMessage(mark: string, strict: boolean): string {
 }
 
 /**
- * `*N` больше `maxSpecificity` (D-089). `ceiling` — системный потолок 16: выше него CSS нет и в `'warn'`.
+ * `**N` больше `maxSpecificity` (D-089). `ceiling` — системный потолок 16: выше него CSS нет и в `'warn'`.
  */
 export function maxSpecificityMessage(
   multiplier: number, limit: number, ceiling: number, strict: boolean,
 ): string {
   return strict
-    ? 'Specificity multiplier *' + multiplier + ' exceeds maxSpecificity ' + limit
+    ? 'Specificity multiplier **' + multiplier + ' exceeds maxSpecificity ' + limit
       + ' (maxSpecificityMode: \'strict\'), the token gives no CSS. To allow it: raise maxSpecificity (up to '
       + ceiling + ') or set maxSpecificityMode: \'warn\'.'
-    : 'Specificity multiplier *' + multiplier + ' exceeds maxSpecificity ' + limit
+    : 'Specificity multiplier **' + multiplier + ' exceeds maxSpecificity ' + limit
       + (multiplier > ceiling ? ' and the ceiling ' + ceiling + ', the token gives no CSS.'
         : ', the CSS is still output (the ceiling is ' + ceiling + ').')
       + ' To forbid such tokens: maxSpecificityMode: \'strict\'.';

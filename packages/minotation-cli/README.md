@@ -66,7 +66,7 @@ mn ./index.html -o ./page.css           # одиночный файл
 | `-a, --attrs <список>` | какие атрибуты сканировать и во что разворачивать, как в v1: `"class, className:class"`, `"class, m"` → `[m~="p10"]` (по умолчанию `class`); подробно — [`attrs`](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
 | `--alt-color` | запасное непрозрачное объявление рядом с `rgba` |
 | `--warning-mode <режим>` | что делать с предупреждением о битом токене: `log` — напечатать (по умолчанию), `silent` — промолчать, `error` — код возврата 1 |
-| `--specificity-mode <режим>` | токены с накруткой специфичности (`f10*2`): `warn` — предупреждение с подсказкой (по умолчанию), `silent` — промолчать, `strict` — токен не даёт CSS, код возврата 1 |
+| `--specificity-mode <режим>` | токены с накруткой специфичности (`f10**2`): `warn` — предупреждение с подсказкой (по умолчанию), `silent` — промолчать, `strict` — токен не даёт CSS, код возврата 1 |
 | `--important-mode <режим>` | токены с `!important` (`f10-i`) — режимы те же |
 | `--child-selector-mode <режим>` | токены с дочерним селектором `>` (`cF00>1`) — режимы те же |
 | `--unknown-media-mode <режим>` | неизвестное имя медиа (`p10@zz`) — режимы те же (D-058) |
@@ -196,10 +196,10 @@ module.exports = {
   presets: [presetStandard, presetSynonyms, presetMedias], // обязательно (D-110); [] — явно пустой набор
   altColor: true,                 // как --alt-color
   warningMode: 'error',           // как --warning-mode error
-  specificityMode: 'strict',      // как --specificity-mode strict: f10*2 — ошибка
+  specificityMode: 'strict',      // как --specificity-mode strict: f10**2 — ошибка
   importantMode: 'silent',        // как --important-mode silent
   maxDepth: 3,                    // предел глубины <N/>N; maxDepthMode — как specificityMode
-  maxSpecificity: 4,              // предел *N (1…16, D-089); maxSpecificityMode: 'warn' | 'strict'
+  maxSpecificity: 4,              // предел **N (1…16, D-089); maxSpecificityMode: 'warn' | 'strict'
   media: { wide: { query: '(width >= 1200px)' } },
   skipPartials: true,             // как --skip-partials
   manifest: './dist/css.json',    // свой путь манифеста; false — как --no-manifest
@@ -240,7 +240,7 @@ Error: [minotation] minotation.config.js: option "metrics" expects a boolean or 
 | Код | Когда |
 |-----|-------|
 | 0 | CSS собран |
-| 1 | неизвестная опция, нечитаемый конфиг, в конфиге нет `presets` (D-110), с `--warning-mode error` — битый токен, в режиме `strict` — запрещённый токен (`*N`, `-i`, глубина) |
+| 1 | неизвестная опция, нечитаемый конфиг, в конфиге нет `presets` (D-110), с `--warning-mode error` — битый токен, в режиме `strict` — запрещённый токен (`**N`, `-i`, глубина) |
 
 Без `--warning-mode error` битые токены печатаются предупреждением, но сборку не роняют:
 чужие классы в разметке (`sr-only`, `mt-auto`) — обычное дело.

@@ -47,7 +47,7 @@ describe('CSS validation', () => {
       'cF00<.p',
       'cF00>.c',
       'cF00:h',
-      'cF00*2',
+      'cF00**2',
       'test[attr]',
       'test(a|b)',
       'test#id',

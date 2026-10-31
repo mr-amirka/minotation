@@ -270,7 +270,7 @@ describe('_quietRaise — служебный переключатель сбор
         setup: (inner: (name: string, value: string) => void) => inner('p', 'cF00'),
       } as never,
     ]);
-    mn.getCompiler('class')('p10*2');
+    mn.getCompiler('class')('p10**2');
     mn.compile();
     expect(seen).toContain('raised-specificity');
     expect(seen).toContain('handler-conflict');

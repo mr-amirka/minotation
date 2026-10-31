@@ -113,18 +113,18 @@ describe('MnInstance — полный пайплайн', () => {
     expect(content).toBe(expected);
   });
 
-  test('множитель *2', () => {
+  test('множитель **2', () => {
     const mn = createMn();
     mn('p', () => ({
       style: {
         padding: '10px',
       },
     }));
-    mn.getCompiler('class')('p10*2');
+    mn.getCompiler('class')('p10**2');
     mn.compile();
 
     const content = mn.styles$.getValue()[0].content;
-    // *2 не добавляется к селектору (только через контекст)
+    // **2 не добавляется к селектору (только через контекст)
     expect(content).toContain('padding:10px');
   });
 

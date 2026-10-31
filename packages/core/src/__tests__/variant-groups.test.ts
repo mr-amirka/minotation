@@ -293,36 +293,36 @@ describe('§6 Родительский контекст + variants', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §7 Multiplier *N
+// §7 Multiplier **N
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('§7 Multiplier *N (в конце токена)', () => {
-  test('(p10|m5)*2 → удвоение селектора для каждого тела', () => {
+describe('§7 Multiplier **N (в конце токена)', () => {
+  test('(p10|m5)**2 → удвоение селектора для каждого тела', () => {
     const mn = make();
-    mn.getCompiler('class')('(p10|m5)*2');
+    mn.getCompiler('class')('(p10|m5)**2');
     mn.compile();
     const c = css(mn);
-    expect(c).toContain('.\\(p10\\|m5\\)\\*2.\\(p10\\|m5\\)\\*2{padding:10px}');
-    expect(c).toContain('.\\(p10\\|m5\\)\\*2.\\(p10\\|m5\\)\\*2{margin:5px}');
+    expect(c).toContain('.\\(p10\\|m5\\)\\*\\*2.\\(p10\\|m5\\)\\*\\*2{padding:10px}');
+    expect(c).toContain('.\\(p10\\|m5\\)\\*\\*2.\\(p10\\|m5\\)\\*\\*2{margin:5px}');
   });
 
-  test('(p10|m5)<.parent*2 → *N после parent (правильная позиция)', () => {
+  test('(p10|m5)<.parent**2 → **N после parent (правильная позиция)', () => {
     const mn = make();
-    mn.getCompiler('class')('(p10|m5)<.parent*2');
+    mn.getCompiler('class')('(p10|m5)<.parent**2');
     mn.compile();
     const c = css(mn);
-    expect(c).toContain('.parent .\\(p10\\|m5\\)\\<\\.parent\\*2.\\(p10\\|m5\\)\\<\\.parent\\*2{padding:10px}');
-    expect(c).toContain('.parent .\\(p10\\|m5\\)\\<\\.parent\\*2.\\(p10\\|m5\\)\\<\\.parent\\*2{margin:5px}');
+    expect(c).toContain('.parent .\\(p10\\|m5\\)\\<\\.parent\\*\\*2.\\(p10\\|m5\\)\\<\\.parent\\*\\*2{padding:10px}');
+    expect(c).toContain('.parent .\\(p10\\|m5\\)\\<\\.parent\\*\\*2.\\(p10\\|m5\\)\\<\\.parent\\*\\*2{margin:5px}');
   });
 
-  test('(p10|m5) и (p10|m5)*2 — bodyMap группирует одинаковые тела', () => {
+  test('(p10|m5) и (p10|m5)**2 — bodyMap группирует одинаковые тела', () => {
     const mn = make();
     mn.getCompiler('class')('(p10|m5)');
-    mn.getCompiler('class')('(p10|m5)*2');
+    mn.getCompiler('class')('(p10|m5)**2');
     mn.compile();
     const c = css(mn);
-    expect(c).toContain('.\\(p10\\|m5\\),.\\(p10\\|m5\\)\\*2.\\(p10\\|m5\\)\\*2{padding:10px}');
-    expect(c).toContain('.\\(p10\\|m5\\),.\\(p10\\|m5\\)\\*2.\\(p10\\|m5\\)\\*2{margin:5px}');
+    expect(c).toContain('.\\(p10\\|m5\\),.\\(p10\\|m5\\)\\*\\*2.\\(p10\\|m5\\)\\*\\*2{padding:10px}');
+    expect(c).toContain('.\\(p10\\|m5\\),.\\(p10\\|m5\\)\\*\\*2.\\(p10\\|m5\\)\\*\\*2{margin:5px}');
   });
 });
 

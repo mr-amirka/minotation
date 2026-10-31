@@ -116,8 +116,13 @@ export const extractSuffix = escHalf(/[<>:.[\]#+~@!]/, REGEXP_SELECTOR_EXCEPTION
 
 /** Ведущие цифры = глубина вложенности комбинатора, остаток — имя (`'2Parent'` → `['2Parent', '2', 'Parent']`). */
 export const REGEXP_DEPTH = /^(\d+)(.*)$/;
-/** Хвостовой множитель `*N` — повтор селектора N раз (`'myClass*3'` → `['...', 'myClass', '3']`). */
-export const REGEXP_MULTIPLIER = /^(.*)\*([0-9]+)$/;
+/** Хвостовой множитель `**N` — повтор селектора N раз (`'myClass**3'` → `['...', 'myClass', '3']`). */
+export const REGEXP_MULTIPLIER = /^(.*)\*\*([0-9]+)$/;
+/**
+ * Прежняя запись множителя — один `*` (`p10*2`): `*` в значении — умножение, множитель — `**N`. Старая запись
+ * отвечает «переименован» один выпуск.
+ */
+export const REGEXP_OLD_MULTIPLIER = /^(.*[^*])\*([0-9]+)$/;
 /** Имя состояния/scope + произвольный суффикс после него (используется в `getSynonyms`). */
 export const REGEXP_SCOPE_SUFFIX = /^([A-Za-z0-9-_$]+)(.*)$/;
 /** Открывающая граница вложенного scope в значении синонима, см. `scopeSplit2` в `getSynonyms`. */

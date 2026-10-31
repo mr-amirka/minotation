@@ -173,17 +173,17 @@ describe('selectorsCompileProvider', () => {
     });
   });
 
-  describe('self-class (.WORD) и *N-множитель', () => {
+  describe('self-class (.WORD) и **N-множитель', () => {
     test('w50.active → self-class добавляется к селектору', () => {
       const scp = selectorsCompileProvider();
       const result = scp.parseClass('w50.active');
       expect(Object.keys(result[0][1])).toContain('.w50\\.active.active');
     });
 
-    test('w50*3 → целевой селектор повторяется 3 раза подряд (буст специфичности)', () => {
+    test('w50**3 → целевой селектор повторяется 3 раза подряд (буст специфичности)', () => {
       const scp = selectorsCompileProvider();
-      const result = scp.parseClass('w50*3');
-      expect(Object.keys(result[0][1])).toContain('.w50\\*3.w50\\*3.w50\\*3');
+      const result = scp.parseClass('w50**3');
+      expect(Object.keys(result[0][1])).toContain('.w50\\*\\*3.w50\\*\\*3.w50\\*\\*3');
     });
   });
 

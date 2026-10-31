@@ -43,6 +43,7 @@ import type {
 import {
   extractSuffix,
   REGEXP_MULTIPLIER,
+  REGEXP_OLD_MULTIPLIER,
   REGEXP_SCOPE_SUFFIX,
   SCOPE_END,
   SCOPE_START,
@@ -104,6 +105,10 @@ const AMPERSAND = '&';
 const SELECTORS = 'selectors';
 const DOT = '.';
 const ASTERISK = '*';
+/** Знак множителя специфичности: `p10**2`. */
+const MULTIPLIER_MARK = '**';
+/** Хвост прежнего множителя `*N` — для подсказки с новой записью. */
+const REGEXP_OLD_MULTIPLIER_TAIL = /\*([0-9]+)$/;
 const GREATER = '>';
 const WARNING_CHILD_SELECTOR = 'child-selector';
 const WARNING_IMPORTANT = 'important';
@@ -634,8 +639,8 @@ const REGEXP_DIGIT_CHAR = /[0-9]/;
 /** Имя после `:` в медиа — проверка, не состояние ли это. */
 const REGEXP_NAME_HEAD = /^[A-Za-z0-9_-]+/;
 
-/** Множитель специфичности в конце токена: `*2`. */
-const REGEXP_TAIL_MULTIPLIER = /^\*[0-9]+$/;
+/** Множитель специфичности в конце токена: `**2`; прежняя запись `*2` тоже кончает медиа — ответ о ней дальше. */
+const REGEXP_TAIL_MULTIPLIER = /^\*\*?[0-9]+$/;
 
 const REGEXP_MASTER_MEDIA_COMPARE = /^(<=|>=|<|>)?([0-9.]+|[A-Za-z][A-Za-z0-9-]*)$/;
 /** Ширина в запросе брейкпоинта. */
@@ -809,13 +814,14 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     let childs: string[];
 
     const multiplierMatch = REGEXP_MULTIPLIER.exec(name);
+    multiplierMatch || REGEXP_OLD_MULTIPLIER.test(comboName) && throwOldMultiplier(comboName);
     if (multiplierMatch) {
       name = multiplierMatch[1];
       multiplier = parseInt(multiplierMatch[2]);
       if (multiplier > 1) {
         // Накрутка специфичности — свой режим (D-039); запрещённый токен CSS не даёт.
         if ((instance as any)._raisedToken?.(
-          comboName, 'raised-specificity', (strict: boolean) => specificityMessage(ASTERISK + multiplier, strict),
+          comboName, 'raised-specificity', (strict: boolean) => specificityMessage(MULTIPLIER_MARK + multiplier, strict),
         )) {
           return [];
         }
@@ -1789,6 +1795,23 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
         i = j - 1;
       }
     }
+  }
+
+  /**
+   * Прежний множитель `*N`: CSS нет, сообщение с новой записью `**N`.
+   * @param comboName токен как написан
+   * @example throwOldMultiplier('p10*2') // «"p10*2" was renamed: write "p10**2" — …»
+   */
+  function throwOldMultiplier(comboName: string): never {
+    const tail = REGEXP_OLD_MULTIPLIER_TAIL.exec(comboName) as RegExpExecArray;
+    throw new MnParseError(DOUBLE_QUOTE + comboName + '" was renamed: write "'
+      + comboName.slice(0, -tail[0].length) + MULTIPLIER_MARK + tail[1] + '" — the selector multiplier is "**N",'
+      + ' and "*" in a value is multiplication. The old spelling gives no CSS.', {
+      token: comboName,
+      handler: '',
+      arg: tail[0],
+      utility: 'multiplier',
+    });
   }
 
   function throwMediaPart(

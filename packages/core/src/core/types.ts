@@ -192,7 +192,7 @@ export interface MnData {
   keyframes: [Record<string, string>, number];
 }
 
-/** Системный потолок множителя специфичности `*N` (D-089): `maxSpecificity` выше не задать. */
+/** Системный потолок множителя специфичности `**N` (D-089): `maxSpecificity` выше не задать. */
 export const MN_MAX_SPECIFICITY = 16;
 
 /**
@@ -278,7 +278,7 @@ export class MnParseError extends Error {
  * подсказывает завести синоним и писать одну каноническую форму.
  */
 /**
- * `'raised-specificity'` (`*N`) и `'important'` (`-i`) — токен перебивает чужие стили
+ * `'raised-specificity'` (`**N`) и `'important'` (`-i`) — токен перебивает чужие стили
  * весом, а не составом: признак того, что компоненты дизайн-системы воюют между собой
  * (D-039). Управляются своими опциями ({@link MnOptions.specificityMode},
  * {@link MnOptions.importantMode}), `warningMode` на них не влияет.
@@ -307,7 +307,7 @@ export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'max-specific
  * другой системы (`t0`, `flex`); выдаёт пресет `presetHints` (D-024). Подчиняется
  * `warningMode`, как обычное предупреждение.
  */
-/** Что делать с токеном `*N` или `-i` (D-039). */
+/** Что делать с токеном `**N` или `-i` (D-039). */
 export type MnRaiseMode = 'warn' | 'silent' | 'strict';
 
 /**
@@ -447,21 +447,21 @@ export interface MnOptions {
    */
   maxDepthMode?: MnRaiseMode;
   /**
-   * Предел множителя специфичности `*N` (D-089): от 1 до 16 — системного потолка, выше задать нельзя.
+   * Предел множителя специфичности `**N` (D-089): от 1 до 16 — системного потолка, выше задать нельзя.
    * @default 16
    */
   maxSpecificity?: number;
   /**
-   * Что делать, когда `*N` больше {@link MnOptions.maxSpecificity} (D-089):
+   * Что делать, когда `**N` больше {@link MnOptions.maxSpecificity} (D-089):
    * - `'warn'` — предупреждение с подсказкой; CSS есть, пока N не больше 16, выше 16 — нет;
    * - `'strict'` — токен не даёт CSS, `compile` бросает {@link MnForbiddenTokenError}.
    *
-   * Отдельно от {@link MnOptions.specificityMode}: тот решает, допустим ли `*N` вообще.
+   * Отдельно от {@link MnOptions.specificityMode}: тот решает, допустим ли `**N` вообще.
    * @default 'warn'
    */
   maxSpecificityMode?: 'warn' | 'strict';
   /**
-   * Токены с множителем `*N` (`f10*2` → `.f10\*2.f10\*2`) — накрутка специфичности
+   * Токены с множителем `**N` (`f10**2` → `.f10\*\*2.f10\*\*2`) — накрутка специфичности
    * (D-039). Перебивать стили компонента весом селектора — признак того, что
    * компоненты дизайн-системы воюют между собой; переопределять токены компонента
    * надёжнее через `mne`/`mnClass`.

@@ -1208,7 +1208,7 @@ x{число}[%][Y{число}[%]][Z{число}[%]][S{число}][R{x|y|z}{ч�
 У всех MN-классов специфичность **одинаковая** (`.f20` и `.f24` — по одному классу),
 поэтому при `class="f20 f24"` побеждает не порядок в атрибуте, а порядок правил
 в CSS-файле. Автор компонента на него не влияет, и на практике специфичность
-накручивают вручную — `f24*2`, `bg4*2`.
+накручивают вручную — `f24**2`, `bg4**2`.
 
 Утилита решает это иначе: **перекрытый токен просто не попадает в атрибут**.
 
@@ -2107,7 +2107,7 @@ className={`mt1 mx0 w bxzBB px1.5 py0.75 r1 b1 bsS dn200
 отбраковывала и `cF00<.peer~`; исправлено 2026-10-12. `cF00>1+.b` давал битый `>+.b` (и в
 v1) — исправлено тогда же.
 
-## Группировка `(a|b)` и множитель `*N`
+## Группировка `(a|b)` и множитель `**N`
 
 ⚠️ Существовало ещё в v1 (`old/minimalist-notation/docs-ru.md`, раздел «Grouping»), перенесено
 в `HANDLERS.md` только 2026-09-23 (см. `AGENT_DRAFT/RESEARCH/04_v1-v2-parity-audit-2026-09-23.md`) —
@@ -2140,12 +2140,13 @@ v1) — исправлено тогда же.
 бесполезна: запись не короче, а `(`/`|`/`)` в `class="..."` — нестандартно.
 
 Группируется тег (`(bg|bc)F00`), значение (`p(10|20|30)`), состояние (`:(h|a)`), и вложенно
-(`(p(10|20)|m5)`). Множитель `*N` в конце токена повторяет селектор N раз (составной
+(`(p(10|20)|m5)`). Множитель `**N` в конце токена повторяет селектор N раз (составной
 `.cls.cls`-селектор — редкий кейс для перебивания специфичности другого правила):
 
 | Токен | CSS |
 |-------|-----|
-| `p10*2` | `.p10\*2.p10\*2{padding:10px}` |
+| `p10**2` | `.p10\*\*2.p10\*\*2{padding:10px}` |
+| `p10*2` | CSS нет: «"p10*2" was renamed: write "p10**2"» — один `*` в значении — умножение (прежняя запись множителя отвечает так один выпуск) |
 
 Полная грамматика и больше примеров (вложенность, `@media`+группа, родительский контекст+
 группа, `m-n`/`id`-атрибуты) — `AGENT_DRAFT/SPEC/12-variant-groups-css-output.md`,
@@ -2570,7 +2571,7 @@ CSS (D-124). Ведущий `_` — не сырой режим, а запасн�
 
 Предупреждение (`MnWarning`) — битый аргумент хендлера, невалидное CSS-значение:
 токен не даёт CSS-правила, остальная компиляция идёт дальше. Что с ним делать,
-решает одна опция (D-035). Превышение `maxDepth`, `*N` и `-i` ей не подчиняются —
+решает одна опция (D-035). Превышение `maxDepth`, `**N` и `-i` ей не подчиняются —
 у них свои режимы (следующий раздел).
 
 | `warningMode` | Что происходит |
@@ -2623,7 +2624,7 @@ mnAstro({ attrs: 'class', warningMode: 'error' })
 | Опция | Токен | Почему подозрительно |
 |---|---|---|
 | `maxDepthMode` (при заданном `maxDepth`) | `p10<5.card` | длинная цепочка предков ломается при правке промежуточной разметки |
-| `specificityMode` | `f10*2` | стили компонента перебивают весом селектора — компоненты воюют между собой |
+| `specificityMode` | `f10**2` | стили компонента перебивают весом селектора — компоненты воюют между собой |
 | `importantMode` | `f10-i` | `!important` перебивает всё, включая то, чем управляет сам компонент |
 | `childSelectorMode` | `cF00>1`, `cF00>.child` | стилизует элементы, которыми компонент не владеет |
 
@@ -2639,22 +2640,22 @@ mnAstro({ attrs: 'class', warningMode: 'error' })
 mnAstro({ specificityMode: 'strict', importantMode: 'silent' });
 ```
 
-**Предел `*N` — `maxSpecificity`, `maxSpecificityMode` (D-089).** Множитель не больше `maxSpecificity` (1…16, по
+**Предел `**N` — `maxSpecificity`, `maxSpecificityMode` (D-089).** Множитель не больше `maxSpecificity` (1…16, по
 умолчанию 16; выше 16 опцию не задать). Сверх предела — `max-specificity`:
 
-| Режим | `p10*5` при `maxSpecificity: 3` | `p10*200` |
+| Режим | `p10**5` при `maxSpecificity: 3` | `p10**200` |
 |---|---|---|
 | `'warn'` (по умолчанию) | предупреждение, CSS есть | предупреждение, CSS нет — выше потолка 16 |
 | `'strict'` | CSS нет, `MnForbiddenTokenError` | CSS нет, `MnForbiddenTokenError` |
 
-`specificityMode` (выше) решает, допустим ли `*N` вообще; `maxSpecificity` — насколько.
+`specificityMode` (выше) решает, допустим ли `**N` вообще; `maxSpecificity` — насколько.
 
 ```
-[minotation] f10*2: Specificity is raised ("*2") — this may mean that component styles override
+[minotation] f10**2: Specificity is raised ("**2") — this may mean that component styles override
   each other. To hide this warning: specificityMode: 'silent'; to forbid such tokens: specificityMode: 'strict'.
 
 MnForbiddenTokenError: MN: 1 forbidden token(s):
-  f10*2: Raising specificity ("*2") is forbidden (specificityMode: 'strict'), the token gives
+  f10**2: Raising specificity ("**2") is forbidden (specificityMode: 'strict'), the token gives
   no CSS. To allow it: specificityMode: 'warn'.
 ```
 

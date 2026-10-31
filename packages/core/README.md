@@ -554,13 +554,13 @@ const mn = minotationProvider({
   onError: (error) => {},          // ошибки ядра
   maxDepth: 10,                    // предел глубины контекстных селекторов (<N, >N)
   maxDepthMode: 'warn',            // 'warn' | 'silent' | 'strict' — что делать при превышении
-  maxSpecificity: 16,              // предел *N: 1…16, выше 16 задать нельзя (D-089)
-  maxSpecificityMode: 'warn',      // 'warn' — сообщение, CSS до *16; 'strict' — без CSS, ошибка
+  maxSpecificity: 16,              // предел **N: 1…16, выше 16 задать нельзя (D-089)
+  maxSpecificityMode: 'warn',      // 'warn' — сообщение, CSS до **16; 'strict' — без CSS, ошибка
   mediaSyntax: 'range',            // (width >= 48rem); 'classic' — (min-width: 48rem) для старых браузеров (D-087)
   axisMode: 'logical',             // px16 → padding-inline:16px; 'physical' — padding-left + padding-right (D-101)
   overflowWrapMode: 'standard',    // owrBW → overflow-wrap; 'legacy' — word-wrap, 'both' — оба (старые браузеры, D-106)
   mediaConflictMode: 'warn',       // имя из media совпало с медиа пресета: остаётся своё, 'warn' | 'silent' | 'strict' (D-092)
-  specificityMode: 'warn',         // 'warn' | 'silent' | 'strict' — токены f10*2 (накрутка специфичности)
+  specificityMode: 'warn',         // 'warn' | 'silent' | 'strict' — токены f10**2 (накрутка специфичности)
   importantMode: 'warn',           // 'warn' | 'silent' | 'strict' — токены f10-i (!important)
   childSelectorMode: 'warn',       // 'warn' | 'silent' | 'strict' — токены cF00>1 (дочерний селектор)
   unknownMediaMode: 'warn',        // 'warn' | 'silent' | 'strict' — неизвестное имя медиа p10@zz

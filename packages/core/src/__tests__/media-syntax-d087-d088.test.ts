@@ -255,7 +255,7 @@ describe('запись minotation: диапазон, высота, контей�
 
   test.each([
     'w100@10.5rem',
-    'w100@m4*2',
+    'w100@m4**2',
   ])('%s — точка числа и множитель в конце — не селектор', (token) => {
     expect(compile(token).warnings.filter((w) => w.indexOf('after the media part') > -1)).toEqual([]);
   });

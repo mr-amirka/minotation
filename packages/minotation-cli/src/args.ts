@@ -44,7 +44,7 @@ export interface CliArgs {
   altColor: boolean;
   /** Что делать с предупреждением: `log`, `silent`, `error` (D-035). */
   warningMode?: 'log' | 'silent' | 'error';
-  /** Что делать с накруткой специфичности `*N`: `warn`, `silent`, `strict` (D-039). */
+  /** Что делать с накруткой специфичности `**N`: `warn`, `silent`, `strict` (D-039). */
   specificityMode?: 'warn' | 'silent' | 'strict';
   /** Что делать с `!important` (`-i`): `warn`, `silent`, `strict` (D-039). */
   importantMode?: 'warn' | 'silent' | 'strict';
@@ -276,7 +276,7 @@ Options:
       --alt-color        opaque fallback declaration next to rgba
       --warning-mode <m> warnings: log (default), silent, error (fail the build)
       --specificity-mode <m>
-                         tokens raising specificity (f10*2): warn (default),
+                         tokens raising specificity (f10**2): warn (default),
                          silent, strict (no CSS, fail the build)
       --important-mode <m>
                          !important tokens (f10-i): warn (default), silent, strict

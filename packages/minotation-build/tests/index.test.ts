@@ -1003,7 +1003,7 @@ describe('specificityMode / importantMode в накопителе (D-039)', () =
       warningMode: 'error',
       onWarning: (warning) => seen.push(warning.type),
     });
-    collector.add('/a.html', '<div class="p10*2 m10-i">');
+    collector.add('/a.html', '<div class="p10**2 m10-i">');
     expect(() => collector.css()).not.toThrow();
     expect(collector.takeWarnings().map((w) => w.type).sort()).toEqual([
       'important',
@@ -1022,8 +1022,8 @@ describe('specificityMode / importantMode в накопителе (D-039)', () =
       ...OPTIONS,
       specificityMode: 'strict',
     });
-    collector.add('/a.html', '<div class="p10*2">');
-    expect(() => collector.css()).toThrow("p10*2: Raising specificity (\"*2\") is forbidden (specificityMode: 'strict')");
+    collector.add('/a.html', '<div class="p10**2">');
+    expect(() => collector.css()).toThrow("p10**2: Raising specificity (\"**2\") is forbidden (specificityMode: 'strict')");
   });
 });
 

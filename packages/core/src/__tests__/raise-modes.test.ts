@@ -1,5 +1,5 @@
 /**
- * Режимы для токенов, перебивающих стили весом (D-039): `specificityMode` (`*N`) и
+ * Режимы для токенов, перебивающих стили весом (D-039): `specificityMode` (`**N`) и
  * `importantMode` (`-i`) — `'warn' | 'silent' | 'strict'`, по умолчанию `'warn'`;
  * `warningMode` на них не влияет.
  */
@@ -25,8 +25,8 @@ import {
 
 // Экземпляр ядра нетипизирован снаружи (`checkByAttrs`, `recompile`), как в core-api.test.ts.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const SPECIFICITY_WARN = specificityMessage('*2', false);
-const SPECIFICITY_STRICT = specificityMessage('*2', true);
+const SPECIFICITY_WARN = specificityMessage('**2', false);
+const SPECIFICITY_STRICT = specificityMessage('**2', true);
 const IMPORTANT_WARN = importantMessage(false);
 const IMPORTANT_STRICT = importantMessage(true);
 
@@ -61,37 +61,68 @@ afterEach(() => {
   warn.mockRestore();
 });
 
-describe('specificityMode — множитель *N', () => {
+describe('specificityMode — множитель **N', () => {
+  test.each([
+    [
+      'p10*2',
+      'p10**2',
+    ],
+    [
+      'cF00:h*2',
+      'cF00:h**2',
+    ],
+    [
+      'w100@m4*2',
+      'w100@m4**2',
+    ],
+    [
+      '(p10|m5)*3',
+      '(p10|m5)**3',
+    ],
+  ])('прежняя запись %s — CSS нет, сообщение с новой записью %s', (token, replacement) => {
+    const {
+      css, warnings,
+    } = run(token);
+    expect(css).toBe('');
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        type: 'parse-error',
+        message: '"' + token + '" was renamed: write "' + replacement + '" — the selector multiplier is "**N",'
+          + ' and "*" in a value is multiplication. The old spelling gives no CSS.',
+      }),
+    ]);
+  });
+
   test('по умолчанию warn: CSS есть, предупреждение с подсказкой — в консоль и onWarning', () => {
     const {
       css, warnings, error,
-    } = run('f10*2');
+    } = run('f10**2');
     expect(error).toBeUndefined();
-    expect(css).toContain('.f10\\*2.f10\\*2{');
+    expect(css).toContain('.f10\\*\\*2.f10\\*\\*2{');
     expect(warnings).toEqual([
       {
         type: 'raised-specificity',
-        token: 'f10*2',
+        token: 'f10**2',
         message: SPECIFICITY_WARN,
       },
     ]);
-    expect(warn).toHaveBeenCalledWith('[minotation] f10*2: ' + SPECIFICITY_WARN);
+    expect(warn).toHaveBeenCalledWith('[minotation] f10**2: ' + SPECIFICITY_WARN);
   });
 
-  test('*1 — не накрутка: молчим', () => {
+  test('**1 — не накрутка: молчим', () => {
     const {
       warnings,
-    } = run('f10*1');
+    } = run('f10**1');
     expect(warnings).toEqual([]);
   });
 
   test('silent: CSS есть, ни слова', () => {
     const {
       css, warnings,
-    } = run('f10*2', {
+    } = run('f10**2', {
       specificityMode: 'silent',
     });
-    expect(css).toContain('.f10\\*2.f10\\*2{');
+    expect(css).toContain('.f10\\*\\*2.f10\\*\\*2{');
     expect(warnings).toEqual([]);
     expect(warn).not.toHaveBeenCalled();
   });
@@ -99,12 +130,12 @@ describe('specificityMode — множитель *N', () => {
   test('strict: токен не даёт CSS, compile бросает ошибку с инструкцией; остальное собрано', () => {
     const {
       css, warnings, error, mn,
-    } = run('f10*2 p10', {
+    } = run('f10**2 p10', {
       specificityMode: 'strict',
     });
     expect(error).toBeInstanceOf(MnForbiddenTokenError);
-    expect((error as Error).message).toBe('MN: 1 forbidden token(s):\n  f10*2: ' + SPECIFICITY_STRICT);
-    expect((error as MnForbiddenTokenError).tokens.map((t) => t.token)).toEqual(['f10*2']);
+    expect((error as Error).message).toBe('MN: 1 forbidden token(s):\n  f10**2: ' + SPECIFICITY_STRICT);
+    expect((error as MnForbiddenTokenError).tokens.map((t) => t.token)).toEqual(['f10**2']);
     expect(css).not.toContain('f10');
     expect(css).toContain('padding:10px');
     expect(warnings).toEqual([]);
@@ -154,10 +185,10 @@ describe('importantMode — -i', () => {
     expect(css).not.toContain('!important');
   });
 
-  test('*N и -i в одном токене — два независимых сообщения', () => {
+  test('**N и -i в одном токене — два независимых сообщения', () => {
     const {
       warnings,
-    } = run('f10-i*2');
+    } = run('f10-i**2');
     expect(warnings.map((w) => w.type)).toEqual([
       'raised-specificity',
       'important',
@@ -169,17 +200,17 @@ describe('warningMode на эти режимы не влияет', () => {
   test('warningMode: silent не глушит предупреждение', () => {
     const {
       warnings,
-    } = run('f10*2', {
+    } = run('f10**2', {
       warningMode: 'silent',
     });
     expect(warnings.map((w) => w.type)).toEqual(['raised-specificity']);
-    expect(warn).toHaveBeenCalledWith('[minotation] f10*2: ' + SPECIFICITY_WARN);
+    expect(warn).toHaveBeenCalledWith('[minotation] f10**2: ' + SPECIFICITY_WARN);
   });
 
   test('warningMode: error не роняет сборку из-за warn-режимов', () => {
     const {
       error, warnings,
-    } = run('f10*2 f12-i p10<5.a', {
+    } = run('f10**2 f12-i p10<5.a', {
       warningMode: 'error',
       maxDepth: 2,
     });
@@ -195,11 +226,11 @@ describe('warningMode на эти режимы не влияет', () => {
   test('warningMode: error по-прежнему роняет на обычных предупреждениях', () => {
     const {
       error,
-    } = run('f10*2 p10px10', {
+    } = run('f10**2 p10px10', {
       warningMode: 'error',
     });
     expect((error as Error).name).toBe('MnWarningError');
-    expect((error as Error).message).not.toContain('f10*2');
+    expect((error as Error).message).not.toContain('f10**2');
   });
 
   test('maxDepthMode: silent', () => {
@@ -214,47 +245,47 @@ describe('warningMode на эти режимы не влияет', () => {
   });
 });
 
-describe('maxSpecificity — предел *N, потолок 16 (D-089)', () => {
+describe('maxSpecificity — предел **N, потолок 16 (D-089)', () => {
   const silent = {
     specificityMode: 'silent' as const,
   };
 
-  test('по умолчанию предел 16: *16 — CSS без сообщения о пределе', () => {
+  test('по умолчанию предел 16: **16 — CSS без сообщения о пределе', () => {
     const {
       css, warnings,
-    } = run('p10*16', silent);
-    expect(css).toBe('.p10\\*16'.repeat(16) + '{padding:10px}');
+    } = run('p10**16', silent);
+    expect(css).toBe('.p10\\*\\*16'.repeat(16) + '{padding:10px}');
     expect(warnings).toEqual([]);
   });
 
   test('warn: выше предела, но не выше 16 — сообщение, CSS есть', () => {
     const {
       css, warnings,
-    } = run('p10*5', {
+    } = run('p10**5', {
       ...silent,
       maxSpecificity: 3,
     });
-    expect(css).toBe('.p10\\*5'.repeat(5) + '{padding:10px}');
+    expect(css).toBe('.p10\\*\\*5'.repeat(5) + '{padding:10px}');
     expect(warnings).toEqual([
       {
         type: 'max-specificity',
-        token: 'p10*5',
+        token: 'p10**5',
         message: maxSpecificityMessage(
           5, 3, 16, false,
         ),
       },
     ]);
-    expect(warnings[0].message).toBe('Specificity multiplier *5 exceeds maxSpecificity 3, the CSS is still output'
+    expect(warnings[0].message).toBe('Specificity multiplier **5 exceeds maxSpecificity 3, the CSS is still output'
       + ' (the ceiling is 16). To forbid such tokens: maxSpecificityMode: \'strict\'.');
   });
 
   test('warn: выше потолка 16 — сообщение, CSS нет', () => {
     const {
       css, warnings, error,
-    } = run('p10*200 m5', silent);
+    } = run('p10**200 m5', silent);
     expect(css).toBe('.m5{margin:5px}');
     expect(warnings.map((w) => w.message)).toEqual([
-      'Specificity multiplier *200 exceeds maxSpecificity 16 and the'
+      'Specificity multiplier **200 exceeds maxSpecificity 16 and the'
       + ' ceiling 16, the token gives no CSS. To forbid such tokens: maxSpecificityMode: \'strict\'.',
     ]);
     expect(error).toBeUndefined();
@@ -263,7 +294,7 @@ describe('maxSpecificity — предел *N, потолок 16 (D-089)', () => 
   test('strict: выше предела — CSS нет, compile бросает ошибку с инструкцией', () => {
     const {
       css, error,
-    } = run('p10*3 m5', {
+    } = run('p10**3 m5', {
       ...silent,
       maxSpecificity: 2,
       maxSpecificityMode: 'strict',
@@ -286,16 +317,16 @@ describe('maxSpecificity — предел *N, потолок 16 (D-089)', () => 
 });
 
 describe('selectorsCompileProvider без ядра', () => {
-  test('*N, -i и превышение глубины ни на что не влияют', () => {
+  test('**N, -i и превышение глубины ни на что не влияют', () => {
     const instance: any = Object.assign(() => undefined, {
       options: {
         maxDepth: 1,
       },
     });
     const scp: any = selectorsCompileProvider(instance);
-    expect(scp.parseClass('f10-i*2<3.a').length).toBeGreaterThan(0);
+    expect(scp.parseClass('f10-i**2<3.a').length).toBeGreaterThan(0);
     // Потолок 16 (D-089) — и без ядра: выше него CSS нет.
-    expect(scp.parseClass('f10*17')).toEqual([]);
+    expect(scp.parseClass('f10**17')).toEqual([]);
   });
 });
 
@@ -357,13 +388,13 @@ describe('childSelectorMode — дочерний селектор > (D-041)', ()
 describe('тексты сообщений — нейтральный тон (замечание владельца 2026-10-09)', () => {
   test.each([
     [
-      specificityMessage('*2', false),
-      'Specificity is raised ("*2") — this may mean that component styles override'
+      specificityMessage('**2', false),
+      'Specificity is raised ("**2") — this may mean that component styles override'
       + ' each other. To hide this warning: specificityMode: \'silent\'; to forbid such tokens: specificityMode: \'strict\'.',
     ],
     [
-      specificityMessage('*2', true),
-      'Raising specificity ("*2") is forbidden (specificityMode: \'strict\'), the token'
+      specificityMessage('**2', true),
+      'Raising specificity ("**2") is forbidden (specificityMode: \'strict\'), the token'
       + ' gives no CSS. To allow it: specificityMode: \'warn\'.',
     ],
     [

@@ -35,6 +35,7 @@ import {
   PIPE,
   PX,
   R,
+  SEMICOLON,
   SPACE,
   UNITS,
   ZERO,
@@ -273,6 +274,7 @@ export function registerBorders(ctx: StandardContext): void {
     getVal,
     lengthRules,
     intval,
+    mathValue,
     lengthOrWord,
     mn,
     registerLengthProperties,
@@ -315,6 +317,9 @@ export function registerBorders(ctx: StandardContext): void {
     propName,
     handler,
   ], pfx) => {
+    const blurRules = lengthRules(
+      pfx, 1, 1,
+    );
     /**
      * Собирает ОДНУ тень из её разобранного суффикса.
      *
@@ -331,7 +336,7 @@ export function registerBorders(ctx: StandardContext): void {
       }
       const parsed = REGEXP_SHADOW_SUFFIX.exec(part);
       parsed || throwInvalid(DOUBLE_QUOTE + name + part + '" is only partly parsed: '
-      + 'the order is blur (a number or a B-- variable), then x, y, r, m, c, in');
+      + 'the order is blur (a number or a variable after B, as "' + name + 'B$blur"), then x, y, r, m, c, in');
       const p = parsed as RegExpExecArray;
       const repeatCount = intval(
         p[MN_SHADOW_M], 1, 0,
@@ -350,8 +355,10 @@ export function registerBorders(ctx: StandardContext): void {
         return '';
       }
       // `;` — терминатор имени переменной, как везде в нотации: без него имя
-      // жадно забрало бы следующие модификаторы (`bxshB$blur;c$shadow`).
-      value[0] === DOLLAR && (value = cssVarValue(value) as string);
+      // жадно забрало бы следующие модификаторы (`bxshB$blur;c$shadow`). Размытие переменной — математика:
+      // `bxshB$a*2` → `calc(var(--a) * 2)`.
+      value[0] === DOLLAR && (value = mathValue(value[value.length - 1] === SEMICOLON ? value.slice(0, -1) : value,
+        blurRules));
       const colors = getColor(p[MN_SHADOW_COLOR] || ZERO);
       // Последняя группа регулярки — `in` (inset).
       const prefixIn = p[p.length - 1] ? 'inset ' : '';

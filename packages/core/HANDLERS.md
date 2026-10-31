@@ -917,6 +917,7 @@ border-bottom: '1px solid rgba(255,255,255,0.08)'  →  bb1  bsbS  bcbF.08
 | `bxsh$a,$b` | `box-shadow:var(--a),var(--b)` |
 | `bxshB$blur` | `box-shadow:0px 0px var(--blur) 0px #000` |
 | `bxshB$blur;c$shadow` | `box-shadow:0px 0px var(--blur) 0px var(--shadow)` |
+| `bxshB$blur*2;x2` | `box-shadow:2px 0px calc(var(--blur) * 2) 0px #000` — размытие переменной — математика |
 | `bxsh10c$shadow` | `box-shadow:0px 0px 10px 0px var(--shadow)` |
 | `bxsh10x0y2c0.1,5x0y1c0.05` | две разные тени через запятую |
 | `bxshN` | `box-shadow:none` |

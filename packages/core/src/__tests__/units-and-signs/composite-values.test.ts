@@ -242,9 +242,32 @@ describe('тени: список и переменная вместо сырог
       'bxshB$my_blur;',
       'box-shadow:0px 0px var(--my_blur) 0px #000',
     ],
+    [
+      'bxshB$a*2',
+      'box-shadow:0px 0px calc(var(--a) * 2) 0px #000',
+    ],
+    [
+      'bxshB$a*2;x2',
+      'box-shadow:2px 0px calc(var(--a) * 2) 0px #000',
+    ],
+    [
+      'bxshB$a{10}',
+      'box-shadow:0px 0px var(--a, 10px) 0px #000',
+    ],
+    [
+      'tshB$a*2',
+      'text-shadow:0px 0px calc(var(--a) * 2) #000',
+    ],
   ])('%s → %s — переменная в позиции blur', (token, expected) => {
-    // `;` — терминатор имени: без него имя заберёт следующие модификаторы.
+    // `;` — терминатор имени: без него имя заберёт следующие модификаторы. Размытие — математика.
     expect(compile([token]).css).toContain(expected);
+  });
+
+  test('запись не по порядку — подсказка с переменной размытия', () => {
+    expect(compile(['bxshZ']).warnings.map((w) => w.message)).toEqual([
+      '"bxshZ" is only partly parsed: the order is'
+      + ' blur (a number or a variable after B, as "bxshB$blur"), then x, y, r, m, c, in',
+    ]);
   });
 
   test.each([

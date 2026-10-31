@@ -203,7 +203,7 @@ const REGEXP_CAMEL_LAST = /[A-Z][a-z]*$/;
 /**
  * Скобка автора вне кавычек — функция в токене: `Url(a.png)`, `_calc(1px+2px)`. В кавычках скобка — текст (`q_"("`).
  */
-const REGEXP_AUTHOR_FUNCTION = /^(?:[^"'(]|"[^"]*"|'[^']*')*\(/;
+export const REGEXP_AUTHOR_FUNCTION = /^(?:[^"'(]|"[^"]*"|'[^']*')*\(/;
 /** Подстановка, написанная словом: `_var(--x)`, `Env(x)`, `A_0.2s_var(--d)` — у неё своя запись, `--x` / `---x`. */
 export const REGEXP_WRITTEN_SUBSTITUTION = /(?:^|[_,])(?:var|env)\(/i;
 
@@ -529,8 +529,8 @@ export function assertEnumValue(
   // Функция автора бракуется: у закрытого списка значение — его буквы, CSS-wide-буквы или переменная. Скобка
   // в `v` после этого — от подстановки (`--v` → `var(--v)`): что в ней, здесь не видно. CSS-wide keywords валидны
   // везде и в списке свойства не перечисляются.
-  assertNoFunction(
-    raw, essenceName, () => enumHint(
+  REGEXP_AUTHOR_FUNCTION.test(raw) && throwNoFunction(
+    raw, essenceName, enumHint(
       words, essenceName, abbreviations,
     ),
   );
@@ -554,19 +554,21 @@ export function assertEnumValue(
 /**
  * Функция в токене: у хендлера без нативных форм значение — его буквы, CSS-wide-буквы (`INH`) или переменная;
  * вычисленное значение — через переменную. Скобка в значении после разбора — уже только от подстановки (`--v` →
- * `var(--v)`), поэтому проверяется суффикс, как его написал автор.
+ * `var(--v)`), поэтому проверяется суффикс, как его написал автор. Проверку пишет вызывающий —
+ * `REGEXP_AUTHOR_FUNCTION.test(s) && throwNoFunction(…)`: подсказка тогда строится только при браке, а хендлер,
+ * который зовётся на каждый токен, не создаёт для неё замыкание.
  * @param raw суффикс токена
  * @param name имя хендлера
- * @param hint даёт список букв хендлера (`. Available: dB (block), …`) или пустую строку; зовётся только при браке
- * @example assertNoFunction('Url(a.png)', 'd', () => '') // «Value "Url(a.png)" is invalid for "d": a function is not …»
+ * @param hint список букв хендлера (`. Available: dB (block), …`) или пустая строка
+ * @example throwNoFunction('Url(a.png)', 'd', '') // «Value "Url(a.png)" is invalid for "d": a function is not …»
  */
-export function assertNoFunction(
-  raw: string, name: string, hint: () => string,
-): void {
-  REGEXP_AUTHOR_FUNCTION.test(raw) && throwInvalid(MSG_VALUE + raw + MSG_IS_INVALID_FOR + name + MSG_COLON
+export function throwNoFunction(
+  raw: string, name: string, hint: string,
+): never {
+  return throwInvalid(MSG_VALUE + raw + MSG_IS_INVALID_FOR + name + MSG_COLON
     + (REGEXP_WRITTEN_SUBSTITUTION.test(raw) ? substitutionMessage(name)
       : 'a function is not written in a class; a computed value goes through a variable, as "' + name + '--x"'
-        + hint()));
+        + hint));
 }
 /**
  * Подстановка пишется без функции: `--x` → `var(--x)`, `---x` → `env(--x)`.

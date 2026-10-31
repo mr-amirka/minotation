@@ -71,15 +71,16 @@ import type {
 } from './functions';
 import {
   NO_VALUES,
+  REGEXP_AUTHOR_FUNCTION,
   REGEXP_BARE_NUMBER,
   REGEXP_LENGTH_PART,
   REGEXP_VAR_UNDERSCORE,
   assertEnumValue,
-  assertNoFunction,
   cssVarValue,
   functionsStart,
   functionsValue,
   splitValueParts,
+  throwNoFunction,
 } from './functions';
 
 /** Строка свойства-длины: свойство, значение по умолчанию, приоритет, одно значение, слова, без процента. */
@@ -979,7 +980,7 @@ export function createContext(instance: MnInstance) {
     }
     /**
      * Одна часть значения: слово из словаря, число (если оно тут законно) или подстановка — функцию автора
-     * {@link assertNoFunction} бракует раньше. Возвращает 1, если часть — длина: составное значение считает их.
+     * {@link throwNoFunction} бракует раньше. Возвращает 1, если часть — длина: составное значение считает их.
      */
     function assertSynonymPart(p: MnEssenceParams, value: string): number {
       if (value.indexOf(OPEN_PAREN) > -1
@@ -1017,8 +1018,8 @@ export function createContext(instance: MnInstance) {
           return styleWrap(style, priority);
         }
         if (s) {
-          assertNoFunction(
-            s, p.name, () => abbrHint(p.name),
+          REGEXP_AUTHOR_FUNCTION.test(s) && throwNoFunction(
+            s, p.name, abbrHint(p.name),
           );
           // valueNormalize, а не fontNameNormalize: массивную форму используют
           // только page-break-хендлеры (`pgba`/`pgbb`/`pgbi`), к именам шрифтов
@@ -1050,8 +1051,8 @@ export function createContext(instance: MnInstance) {
           style[propName as string] = functionsValue(p, functions);
           return styleWrap(style, priority);
         }
-        assertNoFunction(
-          s, p.name, () => abbrHint(p.name),
+        REGEXP_AUTHOR_FUNCTION.test(s) && throwNoFunction(
+          s, p.name, abbrHint(p.name),
         );
         // Составное значение: буквы — в каждой части (`td1_U_W`, `bgs10_A`), полное слово с буквой бракуется в
         // любой части.
@@ -1435,8 +1436,8 @@ export function createContext(instance: MnInstance) {
     const hint = bare ? '' : name;
     // Функция автора: позиция — буквы, длины и переменные. Внутри фигуры `clip-path` скобку бракует читатель
     // форм раньше.
-    bare || assertNoFunction(
-      suffix, name, () => '',
+    bare || REGEXP_AUTHOR_FUNCTION.test(suffix) && throwNoFunction(
+      suffix, name, '',
     );
     // Ведущий `_` — слова CSS как есть, но у каждого слова позиции есть буква, поэтому слово в этой записи —
     // вторая запись: `op_right_10px_top_20px` → «Write it shorter: "opR_10px_T_20px"».
@@ -1635,13 +1636,13 @@ export function createContext(instance: MnInstance) {
       mn(essenceName, (p) => {
         let s, repeated, abbreviations;
         let style: MnStyle;
-        style = {};
         if (!(s = p.suffix)) {
         // Свойству-длине пустой суффикс даёт `0`, как у `p`/`m`/`b`; остальным
         // значения по умолчанию нет — они принимают произвольное слово, и
         // угадывать за автора нечего.
-          return lengthy ? (style[propName] = ZERO, styleWrap(style, stylePriority)) : 0;
+          return lengthy ? (style = {}, style[propName] = ZERO, styleWrap(style, stylePriority)) : 0;
         }
+        style = {};
         if (autoRepeat && (repeated = autoRepeatValue(s, essenceName))) {
           style[propName] = repeated;
           return styleWrap(style, stylePriority);
@@ -1650,8 +1651,8 @@ export function createContext(instance: MnInstance) {
           style[propName] = functionsValue(p, functions);
           return styleWrap(style, stylePriority);
         }
-        assertNoFunction(
-          s, essenceName, parenHint,
+        REGEXP_AUTHOR_FUNCTION.test(s) && throwNoFunction(
+          s, essenceName, parenHint(),
         );
         // Буквы — в каждой части составного значения (`fx1_1_A`, `arA_16/9`), полное слово с буквой бракуется в
         // любой части.

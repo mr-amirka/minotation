@@ -738,9 +738,10 @@ export function registerMotion(ctx: StandardContext): void {
       // внутри скобок (`cubic-bezier(0,0,1,1)`) разделителем не считаются.
       const list = splitTopLevel(value);
       const l = list.length;
-      let out: string[] = [];
+      const out: string[] = new Array(l);
+      // Переход со списком свойств разворачивается в несколько: они склеиваются той же запятой на своём месте.
       for (i = 0; i < l; i++) {
-        out = out.concat(transitionValue(list[i].trim().split(SPACE), s));
+        out[i] = transitionValue(list[i].trim().split(SPACE), s).join(COMMA);
       }
       return styleWrap({
         transition: out.join(COMMA),

@@ -404,10 +404,10 @@ export function registerPaint(ctx: StandardContext): void {
     const gradientIn = options[1];
     mn(name, (p) => {
       const s = p.suffix;
-      const style: MnStyle = {};
       if (!s) {
         return 0;
       }
+      const style: MnStyle = {};
       style[propName] = s === N ? NONE
         : s[0] === UNDERSCORE ? imagePathValue(s.slice(1), name)
           // CSS-wide keyword — буквами, его ставит ядро; `bgiNone` — «Write it shorter: "bgiN"».
@@ -784,12 +784,12 @@ export function registerPaint(ctx: StandardContext): void {
 
   function ftProvider(propName: string): MnHandler {
     return (p: MnEssenceParams) => {
-      const s: MnStyle = {};
       const whole = cssVarValue(p.suffix);
       const main = whole || functionsValue(p, FILTER_FUNCTIONS);
       if (!main) {
         return 0;
       }
+      const s: MnStyle = {};
       const fallback = whole || functionsValue(
         p, FILTER_FUNCTIONS, true,
       );

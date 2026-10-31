@@ -677,17 +677,20 @@ export function registerFlexGrid(ctx: StandardContext): void {
     });
     // Свойства записи — у всех букв одни (`justify-content` и старый `box-pack`).
     const props = Object.keys(styles[Object.keys(styles)[0]][1]);
+    const propsLength = props.length;
     return (p) => {
       const s = p.suffix;
       const entry = styles[s];
-      const v = cssVarValue(s);
-      const style: Record<string, string> = {};
       if (entry) {
         return styleWrap(entry[1], 1);
       }
+      const v = cssVarValue(s);
       if (v) {
-        for (const prop of props) {
-          style[prop] = v;
+        // Объект стилей — только на этой ветке: хендлер зовётся на каждый токен.
+        const style: Record<string, string> = {};
+        let i = 0;
+        for (; i < propsLength; i++) {
+          style[props[i]] = v;
         }
         return styleWrap(style, 1);
       }

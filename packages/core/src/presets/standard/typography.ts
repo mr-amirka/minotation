@@ -61,13 +61,14 @@ import type {
   SingleValues,
 } from './functions';
 import {
+  REGEXP_AUTHOR_FUNCTION,
   REGEXP_FUNCTION_HEAD,
   REGEXP_LENGTH_PART,
-  assertNoFunction,
   cssVarValue,
   functionSet,
   functionsStart,
   functionsValue,
+  throwNoFunction,
 } from './functions';
 import {
   REGEXP_SLOT_IDENT,
@@ -982,8 +983,8 @@ export function registerTypography(ctx: StandardContext): void {
           font: v,
         });
       }
-      assertNoFunction(
-        s, p.name, () => '',
+      REGEXP_AUTHOR_FUNCTION.test(s) && throwNoFunction(
+        s, p.name, '',
       );
       v = valueNormalize(s);
       // Пробел в значении означает составную форму (`16px/1.55 var(--font)`) —
@@ -1014,8 +1015,8 @@ export function registerTypography(ctx: StandardContext): void {
       }
       // Имя шрифта — идентификатор или строка; число и длина им быть не могут
       // (`ff10px` давало `font-family:10px`), функция — тоже.
-      assertNoFunction(
-        s, p.name, () => '',
+      REGEXP_AUTHOR_FUNCTION.test(s) && throwNoFunction(
+        s, p.name, '',
       );
       const list = map(fontNameNormalize(s).split(REGEXP_COMMA), fontNameQuote);
       assertFontNames(list, s);

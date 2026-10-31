@@ -243,7 +243,7 @@ describe('ww was renamed to owr (D-106)', () => {
   ])('%s gives no CSS and answers «write %s»', (token, replacement) => {
     const result = compile(token);
     expect(result.css).toBe('');
-    expect(result.warnings).toContain('"' + token + '" was renamed: write "' + replacement + '" (D-106)');
+    expect(result.warnings).toContain('"' + token + '" was renamed: write "' + replacement + '".');
   });
 });
 

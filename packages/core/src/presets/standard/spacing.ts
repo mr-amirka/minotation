@@ -54,7 +54,7 @@ const SOLID = 'solid';
 const REGEXP_TRIM_KEBAB_LEFT = /^-+/g;
 
 
-/** `axisMode: 'physical'` (D-101) — осевые формы `x`/`y` пишут физическую пару сторон. */
+/** `axisMode: 'physical'` — осевые формы `x`/`y` пишут физическую пару сторон. */
 const AXIS_PHYSICAL = 'physical';
 const INSET = 'inset';
 const TOP = '-top';
@@ -117,7 +117,7 @@ const SIDES_MAP = {
   ],
 };
 /**
- * Логические стороны (A2, D-097; RESEARCH/17 § 5.2): `s`/`e` — начало и конец оси строки, `bs`/`be` — оси блока.
+ * Логические стороны: `s`/`e` — начало и конец оси строки, `bs`/`be` — оси блока.
  * Пишут одно логическое свойство в любом `axisMode` (`ps10` → `padding-inline-start:10px`).
  */
 const LOGICAL_SIDES: Record<string, string> = {
@@ -127,8 +127,8 @@ const LOGICAL_SIDES: Record<string, string> = {
   be: '-block-end',
 };
 /**
- * K3 (D-103): имена по A2, занятые другими свойствами, — `pe` (pointer-events) и `bs` (border-style); их стороны
- * берут `pie` и `bisw`, `be` — `biew` в пару к `bisw` (D-117: `bis`/`bie` читались как «border-image-…», и `bis`
+ * Имена логических сторон, занятые другими свойствами, — `pe` (pointer-events) и `bs` (border-style); их стороны
+ * берут `pie` и `bisw`, `be` — `biew` в пару к `bisw` (`bis`/`bie` читались как «border-image-…», и `bis`
  * нужен слайсу `border-image`).
  */
 const LOGICAL_RENAMED: Record<string, string> = {
@@ -139,8 +139,8 @@ const LOGICAL_RENAMED: Record<string, string> = {
 /**
  * Краткие записи `border-style`.
  *
- * `DTDS` → `dot-dash`, `DTDTDS` → `dot-dot-dash` и `W` → `wave` убраны
- * 2026-09-26: таких значений в CSS нет вовсе. Это проприетарный набор старой
+ * `DTDS` → `dot-dash`, `DTDTDS` → `dot-dot-dash` и `W` → `wave` убраны:
+ * таких значений в CSS нет вовсе. Это проприетарный набор старой
  * Mozilla, работавший только под `-moz-border-*-style`; в v1 он попал оттуда, а
  * в стандарт не вошёл ни один из трёх. Любой из них давал правило, которое
  * браузер отбрасывает целиком.
@@ -187,7 +187,7 @@ const KEYWORDS_SIZE_MAX: Record<string, 1> = {
 };
 
 /**
- * Хендлеры темы «spacing» (D-130).
+ * Хендлеры темы «spacing».
  *
  * @param ctx — контекст пресета (`createContext`)
  */
@@ -220,7 +220,7 @@ export function registerSpacing(ctx: StandardContext): void {
     }, {},
   )), (sides, suffix) => {
     const priority = suffix ? (4 - size(sides)) : 0;
-    // Ось `x`/`y` (D-101): по умолчанию логическое свойство (`padding-inline`), `axisMode: 'physical'` —
+    // Ось `x`/`y`: по умолчанию логическое свойство (`padding-inline`), `axisMode: 'physical'` —
     // физическая пара. Остальные стороны (`t`, `xt`, `lb`…) — физические всегда.
     const axis = suffix === AXIS_X ? '-inline' : suffix === AXIS_Y ? '-block' : '';
     const logicalSide = LOGICAL_SIDES[suffix];
@@ -284,7 +284,7 @@ export function registerSpacing(ctx: StandardContext): void {
     // Словарь задан на семейство, а не общий на все размеры: `mA` →
     // `margin:auto` валиден, а `pA` → `padding:auto` — нет. Допустимые слова
     // выводятся из значений словаря; полная запись слова с буквой (`bThin`)
-    // бракуется в пользу краткой (`bTN`, D-113). Буква разбирается тем же
+    // бракуется в пользу краткой (`bTN`). Буква разбирается тем же
     // `getVal`, что и любая часть, — значение сразу, а не алиас на полную
     // запись (алиас делал полную запись несущей).
       const keywords: Record<string, 1> = {};
@@ -332,7 +332,7 @@ export function registerSpacing(ctx: StandardContext): void {
         // слов. Процентов не принимает, в отличие от `padding`/`margin`.
         1,
       ],
-      // Группа B (RESEARCH/17): отступы прокрутки. `scroll-margin` — только
+      // Группа B: отступы прокрутки. `scroll-margin` — только
       // длина, зато со знаком; `scroll-padding` — длина, процент или `auto`.
       sm: [
         'scroll-margin',
@@ -395,7 +395,7 @@ export function registerSpacing(ctx: StandardContext): void {
       // `bsF00` — `border-style:f00`, `bsZzz` — `border-style:zzz`.
       // Без стороны свойство берёт до четырёх значений
       // (`border-style: solid dotted`), со стороной — одно. Буквы — в каждой
-      // части (`bsS_DT`), полные слова бракуются (D-113).
+      // части (`bsS_DT`), полные слова бракуются.
         ? assertEnumValue(
           lettersValue(p, BORDER_STYLE_SYNONYMS), BORDER_STYLE_KEYWORDS,
           suffix ? 0 : 1, 'bs' + suffix, s, BORDER_STYLE_SYNONYMS,
@@ -438,7 +438,7 @@ export function registerSpacing(ctx: StandardContext): void {
     ],
     w: ['width'],
     h: ['height'],
-    // Логические размеры (A2, D-097): `iz` — по оси строки, `bz` — по оси блока; `izmin`, `bzmax`… как `wmin`.
+    // Логические размеры: `iz` — по оси строки, `bz` — по оси блока; `izmin`, `bzmax`… как `wmin`.
     iz: ['inline-size'],
     bz: ['block-size'],
   }, (props, essencePrefix) => {

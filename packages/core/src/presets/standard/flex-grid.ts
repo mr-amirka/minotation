@@ -92,7 +92,7 @@ const KEYWORDS_NORMAL: Record<string, 1> = {
 
 /**
  * Буквы выравнивания: одни и те же у `ac`/`jc`, `ai`/`ji`, `as`/`js` и у пар `plc`/`pli`/`pls`, где первая часть —
- * `align-*`, вторая — `justify-*` (группа C).
+ * `align-*`, вторая — `justify-*`.
  */
 const ALIGN_CONTENT_WORDS: Record<string, string> = {
   S: NAME_START,
@@ -114,7 +114,7 @@ const JUSTIFY_CONTENT_WORDS: Record<string, string> = {
   FS: NAME_FLEX_START,
   SA: 'SpaceAround',
   SB: 'SpaceBetween',
-  // Добавлено 2026-09-22 — набор приведён к `ac`/`as`, где эти ключи уже были.
+  // Набор тот же, что у `ac`/`as`.
   S: NAME_START,
   E: NAME_END,
   SE: 'SpaceEvenly',
@@ -129,7 +129,7 @@ const ALIGN_ITEMS_WORDS: Record<string, string> = {
   B: NAME_BASELINE,
   FE: NAME_FLEX_END,
   FS: NAME_FLEX_START,
-  // 2026-09-22: буквы приведены к `as`/`ac` — `S` это Start, `ST` — Stretch.
+  // Буквы те же, что у `as`/`ac`: `S` — Start, `ST` — Stretch.
   // Раньше `aiS` значило Stretch, и одна и та же буква у трёх родственных
   // свойств означала разное. Ломающее изменение, но v2 не публиковалась,
   // а в самой библиотеке `aiS` нигде не использовался.
@@ -285,7 +285,7 @@ function gridValue(
   let part: string;
   let hasShape = 0;
   let repeated: string | undefined;
-  // Скобку автора бракует общий путь одиночных свойств (D-124) с подсказкой про повтор; скобка в части — от
+  // Скобку автора бракует общий путь одиночных свойств с подсказкой про повтор; скобка в части — от
   // подстановки.
   const gridExample = essenceName + '1fr_/_3x1fr';
   for (; i < l; i++) {
@@ -338,7 +338,7 @@ const REGEXP_GRID_LINE = /^[-+]?\d+(?:\/[-+]?\d+)?$/;
 const REGEXP_LINE_NAME = /^\[[^\]]*\]$/;
 
 /**
- * Повтор дорожек нативной формой (D-124): число повторов, `x`, дорожки через `;` — `3x1fr` → `repeat(3, 1fr)`,
+ * Повтор дорожек нативной формой: число повторов, `x`, дорожки через `;` — `3x1fr` → `repeat(3, 1fr)`,
  * `2x1fr;2fr` → `repeat(2, 1fr 2fr)`. Так говорят дизайнеры («3 × 1fr»); `x` — ещё и единица разрешения (`dppx`), но
  * дорожка разрешением не бывает, и в шаблоне сетки запись однозначна. Повтор — часть списка: `gtc3x1fr_200px` →
  * `repeat(3, 1fr) 200px`. Повторы `auto-fit`/`auto-fill` — сокращение `AF240` ({@link autoRepeatValue}).
@@ -444,7 +444,7 @@ function trackArg(
     || call.fail('a length, a percent' + (flex ? ', a fraction ("1fr")' : '') + ', "A" (auto), "MinContent" or '
       + '"MaxContent"');
 }
-/** Функции дорожки — значение целиком (D-124): внутри списка дорожек функция пишется переменной. */
+/** Функции дорожки — значение целиком: внутри списка дорожек функция пишется переменной. */
 const TRACK_FORMS: Record<string, FunctionForm> = {
   Minmax: {
     css: 'minmax',
@@ -530,7 +530,7 @@ function gridLineSingleValue(
   for (; i < l; i++) {
     part = parts[i];
     // Подстановка (`gcsS_--n` → `var(--n)`) может дать и номер, и имя — разбирать её нечем. Функцию автора бракует
-    // общий путь одиночных свойств раньше (D-124).
+    // общий путь одиночных свойств раньше.
     if (part.indexOf(OPEN_PAREN) > -1) {
       functions++;
       continue;
@@ -613,7 +613,7 @@ const FLEX_GRID_VALUES: SingleValues = {
 };
 
 /**
- * Хендлеры темы «flex-grid» (D-130).
+ * Хендлеры темы «flex-grid».
  *
  * @param ctx — контекст пресета (`createContext`)
  */
@@ -665,7 +665,7 @@ export function registerFlexGrid(ctx: StandardContext): void {
 
   /**
    * Флекс-выравнивание буквами — `fxaC`, `fyaST`: объявление с префиксной парой старого `box-*`. Полное слово
-   * (`fxaCenter`, `fya_stretch`) — вторая запись того же правила, бракуется с подсказкой (D-113); незнакомая буква —
+   * (`fxaCenter`, `fya_stretch`) — вторая запись того же правила, бракуется с подсказкой; незнакомая буква —
    * со списком букв.
    */
   function flexAlignProvider(name: string, styles: Record<string, [string, Record<string, string>]>): MnHandler {
@@ -777,7 +777,7 @@ export function registerFlexGrid(ctx: StandardContext): void {
   });
 
   /**
-   * `place-content` / `-items` / `-self` (группа C, RESEARCH/17): `align` и, через `_`, `justify`. Буквы частей —
+   * `place-content` / `-items` / `-self`: `align` и, через `_`, `justify`. Буквы частей —
    * те же, что у пары хендлеров: `plc` = `ac` + `jc`, `pli` = `ai` + `ji`, `pls` = `as` + `js`. `pliC` →
    * `center`, `plcSB_C` → `space-between center`. Одна часть задаёт обе оси, поэтому в ней — только буквы `align`:
    * `plcL` ошибка, как и `place-content: left` в CSS.
@@ -798,7 +798,7 @@ export function registerFlexGrid(ctx: StandardContext): void {
       const style: Record<string, string> = {};
       const parts = splitValueParts(suffix);
       const l = parts.length;
-      // CSS-wide keyword — буквами, его ставит ядро (D-125). Переменная с `_` в имени закрывается `;`
+      // CSS-wide keyword — буквами, его ставит ядро. Переменная с `_` в имени закрывается `;`
       // (`plc--my_gap;`), иначе `_` делит части: `plc--a_C` → `var(--a) center`.
       l < 3 || throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name + '": at most two parts — '
       + slotNames[0] + '_' + slotNames[1] + ', as "' + p.name + 'C_S"');

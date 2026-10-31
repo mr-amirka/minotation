@@ -1625,7 +1625,7 @@ describe('свойства-картинки: одна запись на знач
     ],
     [
       'mki_a\\.png',
-      '"mki_a\\.png" was renamed: write "mk_a\\.png" (D-127)',
+      '"mki_a\\.png" was renamed: write "mk_a\\.png".',
     ],
     [
       'bgi10px',

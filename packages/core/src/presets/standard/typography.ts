@@ -139,7 +139,7 @@ const FONT_WEIGHT_SYNONYMS: Record<string, string> = {
   BR: 'Bolder',
   LR: 'Lighter',
 };
-/** Слова `font-weight`; пишутся буквами (`fwBR`, а `fwBolder` бракуется, D-113). */
+/** Слова `font-weight`; пишутся буквами (`fwBR`, а `fwBolder` бракуется). */
 const FONT_WEIGHT_KEYWORDS: Record<string, 1> = {
   normal: 1,
   bold: 1,
@@ -148,19 +148,19 @@ const FONT_WEIGHT_KEYWORDS: Record<string, 1> = {
 };
 /**
  * `overflow-wrap` (`owr`): буквы те же, что у `wb`: `BW` — `break-word`. Значения `none`, `unrestricted`, `suppress`
- * убраны 2026-09-24 ещё у `ww` — невалидны по спецификации.
+ * убраны — невалидны по спецификации.
  */
 const OVERFLOW_WRAP_SYNONYMS: Record<string, string> = {
   N: NAME_NORMAL,
   BW: NAME_BREAK_WORD,
   A: 'Anywhere',
 };
-/** `ww` → `owr` (D-106): у `ww` было по две буквы на значение — `B`/`BW`, `N`/`NM`. */
+/** `ww` → `owr`: у `ww` было по две буквы на значение — `B`/`BW`, `N`/`NM`. */
 const WW_RENAMED: Record<string, string> = {
   B: 'BW',
   NM: N,
 };
-/** `overflowWrapMode` (D-106): `'legacy'` — старое имя `word-wrap`, `'both'` — оба имени. */
+/** `overflowWrapMode`: `'legacy'` — старое имя `word-wrap`, `'both'` — оба имени. */
 const WRAP_LEGACY = 'legacy';
 const WRAP_BOTH = 'both';
 /**
@@ -188,9 +188,9 @@ const FONT_VARIANT_NUMERIC_GROUPS: Record<string, string>[] = [
   },
 ];
 /**
- * `font-variant-numeric` (группа F): буквы через `_`, по одной из группы и в порядке спецификации — `fvnTN`,
+ * `font-variant-numeric`: буквы через `_`, по одной из группы и в порядке спецификации — `fvnTN`,
  * `fvnTN_SZ` → `tabular-nums slashed-zero`, `fvnLN_TN_SZ`. Порядок проверяет {@link assertFontVariantNumericOrder}:
- * `fvnSZ_TN` дало бы то же значение второй записью, а значит второе правило (D-113).
+ * `fvnSZ_TN` дало бы то же значение второй записью, а значит второе правило.
  */
 const FONT_VARIANT_NUMERIC_SYNONYMS: Record<string, string> = Object.assign({
   N: NAME_NORMAL,
@@ -248,7 +248,7 @@ const FONT_SIZE_ADJUST_KEYWORDS: Record<string, 1> = {
   none: 1,
   'from-font': 1,
 };
-/** Краткие записи `fsa`: `fsaN` → `none`, `fsaFF` → `from-font` (как `tdFF`, D-113). */
+/** Краткие записи `fsa`: `fsaN` → `none`, `fsaFF` → `from-font` (как `tdFF`). */
 const FONT_SIZE_ADJUST_SYNONYMS: Record<string, string> = {
   N: NAME_NONE,
   FF: 'FromFont',
@@ -268,7 +268,7 @@ const FONT_KEYWORDS: Record<string, 1> = {
   'small-caption': 1,
   'status-bar': 1,
 };
-/** Буквы системных шрифтов (D-113): `fontMB` → `font:message-box`. */
+/** Буквы системных шрифтов: `fontMB` → `font:message-box`. */
 const FONT_SYNONYMS: Record<string, string> = {
   C: 'caption',
   I: 'icon',
@@ -328,12 +328,12 @@ function counterValue(
 }
 
 /**
- * Одна линия сетки: `grs`, `gre`, `gcs`, `gce` (группа C, RESEARCH/17). По грамматике это `<grid-line>`:
+ * Одна линия сетки: `grs`, `gre`, `gcs`, `gce`. По грамматике это `<grid-line>`:
  * `auto`, имя, номер с именем или без, `span` с номером и/или именем — по одному каждого. Второй позиции нет, и
  * `gcs1/3` дало бы невалидное `grid-column-start:1/3`: пара пишется через `gc`.
  */
 /**
- * `tab-size` (группа F): целое число пробелов без единицы (`tbs4` → `tab-size:4` — `px` здесь не дописывается, число
+ * `tab-size`: целое число пробелов без единицы (`tbs4` → `tab-size:4` — `px` здесь не дописывается, число
  * и есть значение) или длина; не отрицательное и без процента. Дробь грамматика не берёт: `tbs1.5` давало
  * `tab-size:1.5`.
  */
@@ -394,13 +394,13 @@ const TYPOGRAPHY_VALUES: SingleValues = {
 const CONTENT_SYNONYMS: Record<string, string> = {
   S: '" "',
   N: NONE,
-  // Кавычки по `quotes` (D-113): `cntOQ` → `open-quote`.
+  // Кавычки по `quotes`: `cntOQ` → `open-quote`.
   OQ: 'open-quote',
   CQ: 'close-quote',
   NOQ: 'no-open-quote',
   NCQ: 'no-close-quote',
 };
-/** Типы маркера списка буквами (D-113) — у `list`, `lis` и стиля счётчика `cntCounter_item_UR`. */
+/** Типы маркера списка буквами — у `list`, `lis` и стиля счётчика `cntCounter_item_UR`. */
 const LIST_STYLE_TYPES: Record<string, string> = {
   N: NAME_NONE,
   S: 'Square',
@@ -428,7 +428,7 @@ const CONTENT_KEYWORDS: Record<string, 1> = {
  *
  * Уже закавыченное имя второй раз не оборачивается: `ff_"My_Font"` давало
  * `font-family:""My Font""` — вложенные кавычки, и правило браузер отбрасывает
- * (2026-09-27).
+ *.
  */
 function fontNameQuote(v: string): string {
   if (v[0] === DOUBLE_QUOTE || v[0] === QUOTE) {
@@ -442,7 +442,7 @@ function fontNameQuote(v: string): string {
 }
 
 /**
- * Хендлеры темы «typography» (D-130).
+ * Хендлеры темы «typography».
  *
  * @param ctx — контекст пресета (`createContext`)
  */
@@ -503,7 +503,7 @@ export function registerTypography(ctx: StandardContext): void {
   }
 
   /**
-   * `owr` — `overflow-wrap`. Старое имя свойства, `word-wrap`, пишется опцией `overflowWrapMode` (D-106) — для
+   * `owr` — `overflow-wrap`. Старое имя свойства, `word-wrap`, пишется опцией `overflowWrapMode` — для
    * браузеров, что знают только его: `'legacy'` — вместо стандартного, `'both'` — оба, старое первым. Режим
    * читается при компиляции токена, как `axisMode`: `setOptions` + `recompile` переключают живой инстанс.
    */
@@ -553,10 +553,8 @@ export function registerTypography(ctx: StandardContext): void {
       });
     },
   });
-  // Переименовано (D-106): `ww` (`word-wrap` — старое имя `overflow-wrap`) → `owr`.
-  mn('ww', (p) => throwRenamed(
-    'ww' + p.suffix, 'owr' + (WW_RENAMED[p.suffix] || p.suffix), 'D-106',
-  ));
+  // Переименовано: `ww` (`word-wrap` — старое имя `overflow-wrap`) → `owr`.
+  mn('ww', (p) => throwRenamed('ww' + p.suffix, 'owr' + (WW_RENAMED[p.suffix] || p.suffix)));
 
   registerLengthProperties({
     f: [
@@ -573,11 +571,11 @@ export function registerTypography(ctx: StandardContext): void {
     fw: (p) => {
       const camel = p.camel;
       // `fw6` → 600 (цифра-сокращение) и `fw600` → 600 (значение CSS как есть).
-      // До 2026-09-22 второе молча давало 900: число всегда умножалось на 100
+      // Раньше второе молча давало 900: число всегда умножалось на 100
       // и зажималось в 1..9, то есть самая естественная запись была неверной.
       const num = p.num;
       const v = cssVarValue(p.suffix);
-      // Нераспознанный суффикс молча давал `font-weight:100`: `fw--v`, `fw_x` (D-125, 2026-10-31).
+      // Нераспознанный суффикс молча давал `font-weight:100`: `fw--v`, `fw_x`.
       v || camel || num || !p.suffix || throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR
         + 'fw": expected a digit (`fw6`), a weight (`fw600`), a letter (`fwB`) or a variable');
       return p.negative ? 0 : styleWrap({
@@ -585,7 +583,7 @@ export function registerTypography(ctx: StandardContext): void {
         // Слово не проверялось: `fwZzz` давало `font-weight:zzz`, `fwA` —
         // `font-weight:a`, `fwF00` — `font-weight:f`. Список закрытый,
         // выводится из того же словаря кратких записей; слово пишется буквой
-        // (`fwB`, а `fwBold` бракуется, D-113).
+        // (`fwB`, а `fwBold` бракуется).
           ? assertKnownWord(
             toKebabCase(FONT_WEIGHT_SYNONYMS[camel] || camel), camel, FONT_WEIGHT_SYNONYMS,
             FONT_WEIGHT_KEYWORDS, p.name, p.suffix,
@@ -607,7 +605,7 @@ export function registerTypography(ctx: StandardContext): void {
    * коэффициент); любая единица пишется явно и проходит как есть
    * (`lh20px`, `lh1.2em`, `lh150%` → `line-height:150%`).
    *
-   * Изменено 2026-09-22 по двум причинам. Первая: голое число молча получало
+   * Так по двум причинам. Первая: голое число молча получало
    * `px` (`lh1` → `line-height:1px`) — единственный хендлер, где умолчание
    * нотации «число = px» расходилось со смыслом CSS-свойства. Вторая: проценты
    * пересчитывались в множитель (`lh150%` → `1.5`), то есть на одно значение
@@ -675,7 +673,7 @@ export function registerTypography(ctx: StandardContext): void {
     ),
     /**
    * `font-variant` — шорткат над семейством `font-variant-*`. Было два
-   * синонима из ~30 значений; добавлены 2026-09-24. Практически ходовые тут
+   * синонима из ~30 значений; теперь есть все. Практически ходовые тут
    * `fvTN` (`tabular-nums` — цифры одной ширины в таблицах), `fvSZ`
    * (`slashed-zero`) и капитель.
    */
@@ -775,8 +773,8 @@ export function registerTypography(ctx: StandardContext): void {
     ),
     /**
    * `text-decoration` — шорткат: линия + стиль + толщина + цвет. Стили
-   * (`solid`/`wavy`/…) и толщина (`auto`/`from-font`) добавлены 2026-09-24
-   * ТОЛЬКО сюда: `text-decoration-line` их не принимает, а карту `TD_SYNONYMS`
+   * (`solid`/`wavy`/…) и толщина (`auto`/`from-font`) есть
+   * ТОЛЬКО здесь: `text-decoration-line` их не принимает, а карту `TD_SYNONYMS`
    * они делят.
    */
     td: synonymProvider(
@@ -831,7 +829,7 @@ export function registerTypography(ctx: StandardContext): void {
       MA: 'MathAuto',
     }),
     /**
-   * `text-wrap`. Карта синонимов пересобрана 2026-09-24: прежние `N`/`NO`/`U`/`S`
+   * `text-wrap`. Карта синонимов пересобрана: прежние `N`/`NO`/`U`/`S`
    * (`normal`/`none`/`unrestricted`/`suppress`) — значения из черновика CSS Text 3,
    * которого не стало; ни одно из них не валидно по текущей спецификации, то есть
    * `twN` давал CSS, молча отбрасываемый браузером. Заодно не было сокращений у
@@ -847,7 +845,7 @@ export function registerTypography(ctx: StandardContext): void {
     }),
     /**
    * `letter-spacing`. Голое число получает `px` (`lts2` → `2px`), как и остальные
-   * размеры в нотации; единицы указываются явно (`lts0.06em`). До 2026-09-22
+   * размеры в нотации; единицы указываются явно (`lts0.06em`). Раньше
    * значение выводилось без единицы (`lts1.5` → `letter-spacing:1.5`) — невалидный CSS,
    * который браузер отбрасывал.
    */
@@ -880,7 +878,7 @@ export function registerTypography(ctx: StandardContext): void {
       W: NAME_WRAP,
     }),
     /**
-   * `white-space-collapse`. Карта пересобрана 2026-09-24: прежние
+   * `white-space-collapse`. Карта пересобрана: прежние
    * `N`/`K`/`L`/`BS`/`BA` (`normal`/`keep-all`/`loose`/`break-strict`/`break-all`)
    * — значения `word-break`/`line-break`, к этому свойству не относящиеся;
    * НИ ОДНО из них не валидно, то есть любой токен `wsc*` давал CSS, молча
@@ -966,8 +964,7 @@ export function registerTypography(ctx: StandardContext): void {
    * Shorthand принимает либо системный шрифт одним словом, либо набор из
    * размера, высоты строки и семейства. Второе выражается атомарными
    * `f`/`lh`/`ff` — `font16px/1.55_--font` это `f16 lh1.55 ff--font`, то есть
-   * второй способ записать то же самое. По решению от 2026-09-26 (то же, что
-   * сняло общий `ol`) составная форма убрана, и хендлер сужен до слов.
+   * второй способ записать то же самое. Поэтому (как и общий `ol`) составная форма убрана, и хендлер сужен до слов.
    *
    * Убрать его целиком нельзя: `font: inherit` наследует разом семь свойств
    * (family, size, line-height, weight, style, variant, stretch), и пяти
@@ -999,7 +996,7 @@ export function registerTypography(ctx: StandardContext): void {
         // Скобка — только от подстановки (`font--v`).
         font: v.indexOf(OPEN_PAREN) > -1
           ? v
-          // Слово — буквой: `fontMenu` → «Write it shorter: "fontM"» (D-113).
+          // Слово — буквой: `fontMenu` → «Write it shorter: "fontM"».
           : assertKnownWord(
             v, s, FONT_SYNONYMS, FONT_KEYWORDS, p.name, s,
           ),
@@ -1016,7 +1013,7 @@ export function registerTypography(ctx: StandardContext): void {
         }, 1);
       }
       // Имя шрифта — идентификатор или строка; число и длина им быть не могут
-      // (`ff10px` давало `font-family:10px`), функция — тоже (D-124).
+      // (`ff10px` давало `font-family:10px`), функция — тоже.
       assertNoFunction(
         s, p.name, () => '',
       );
@@ -1031,7 +1028,7 @@ export function registerTypography(ctx: StandardContext): void {
    * `cnt_Hello_World` → `content:"Hello World"`. Без него значение обязано
    * быть ключевым словом свойства.
    *
-   * До 2026-09-26 кавычки писал автор (`cnt_"Hello_World"`), а их отсутствие
+   * Раньше кавычки писал автор (`cnt_"Hello_World"`), а их отсутствие
    * никто не проверял: `cntHello` давало `content:hello`, `cnt_two_words` —
    * `content:two words`. По грамматике текст в `content` без кавычек
    * невалиден, и браузер такое правило отбрасывает.
@@ -1041,7 +1038,7 @@ export function registerTypography(ctx: StandardContext): void {
    * первая версия этой проверки оставляла дыру ровно там, где её закрывала.
    * `cnt_he_said_"hi"` → `content:"he said \"hi\""`.
    *
-   * Не оборачивается подстановка (`cnt--v`). Функции — нативной формой (D-124): `cntAttr_href`,
+   * Не оборачивается подстановка (`cnt--v`). Функции — нативной формой: `cntAttr_href`,
    * `cntCounter_item_UR` ({@link CONTENT_FUNCTIONS}); скобка в начале текста (`cnt_attr\(href\)`) бракуется с
    * подсказкой, а не уходит в кавычки молча. Скобки внутри текста — текст: `cnt_see_\(note\)`.
    */
@@ -1081,7 +1078,7 @@ export function registerTypography(ctx: StandardContext): void {
           // Скобка здесь — только от подстановки (`cnt--v`): скобку автора забрал читатель функций выше.
           : (v.indexOf(OPEN_PAREN) > -1
             ? v
-            // Слово с буквой полной записью бракуется: `cntNone` → `cntN` (D-113).
+            // Слово с буквой полной записью бракуется: `cntNone` → `cntN`.
             : assertKnownWord(
               v, s, CONTENT_SYNONYMS, CONTENT_KEYWORDS, p.name, s,
             )),
@@ -1089,7 +1086,7 @@ export function registerTypography(ctx: StandardContext): void {
     },
   });
   /**
-   * Функции `content` в нативной форме (D-124): `cntAttr_href` → `attr(href)`, `cntCounter_item_UR` →
+   * Функции `content` в нативной форме: `cntAttr_href` → `attr(href)`, `cntCounter_item_UR` →
    * `counter(item,upper-roman)` — стиль буквами `list` ({@link LIST_STYLE_TYPES}). Значение — одна функция: склейка
    * с текстом (`counter(item) ". "`) пишется переменной. У `url(…)`, `counters(…)` короткой записи нет — тоже
    * переменная.

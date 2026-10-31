@@ -50,14 +50,13 @@ export function throwInvalid(message?: string): never {
 
 /**
  * Старая запись после переименования: сообщение с новой, CSS нет. Убирается через один выпуск — задача
- * в PLAN; это сообщение, а не вторая реализация.
- * @param decision решение, которым переименовано: D-094 (по умолчанию), D-106 (`ww` → `owr`) или D-127 (`mki` → `mk`)
+ * в плане; это сообщение, а не вторая реализация.
+ * @param token старая запись
+ * @param replacement новая запись того же значения
  */
-export function throwRenamed(
-  token: string, replacement: string, decision?: string,
-): never {
-  throw new MnParseError(DOUBLE_QUOTE + token + '" was renamed: write "' + replacement + '" ('
-    + (decision || 'D-094') + '). The old spelling gives no CSS and is removed in the next release.', {
+export function throwRenamed(token: string, replacement: string): never {
+  throw new MnParseError(DOUBLE_QUOTE + token + '" was renamed: write "' + replacement
+    + '". The old spelling gives no CSS and is removed in the next release.', {
     token,
     handler: '',
     arg: '',
@@ -113,7 +112,7 @@ export function enumHint(
   const seen: Record<string, 1> = {};
   let canon: string;
   let key: string;
-  // Слово с краткой записью предлагается краткой (D-094): `apN (none)`, а не `apNone`. Алиас, который пишет то же
+  // Слово с краткой записью предлагается краткой: `apN (none)`, а не `apNone`. Алиас, который пишет то же
   // слово иначе (`optimizespeed` → `optimizeSpeed`), даёт одну строку, а не две.
   for (const word of Object.keys(words)) {
     canon = words[word] === 1 ? word : words[word] as string;
@@ -125,7 +124,7 @@ export function enumHint(
 }
 
 /**
- * Полное слово, у которого есть краткая запись (D-094), бракуется с подсказкой: `fxNone` → «Write it shorter: "fxN"». Иное
+ * Полное слово, у которого есть краткая запись, бракуется с подсказкой: `fxNone` → «Write it shorter: "fxN"». Иное
  * значение возвращается как есть.
  */
 export function assertNotLongForm(
@@ -140,7 +139,7 @@ export function assertNotLongForm(
 }
 
 /**
- * Суффикс с буквой на месте полного слова — для подсказки (D-113): `1_Auto` → `1_A`, `_1_auto` → `1_A`. Ведущий `_`
+ * Суффикс с буквой на месте полного слова — для подсказки: `1_Auto` → `1_A`, `_1_auto` → `1_A`. Ведущий `_`
  * сырого режима снимается: буквы пишутся без него. Заменяется первая часть, записанная этим словом.
  */
 export function shorterSuffix(
@@ -161,7 +160,7 @@ export function shorterSuffix(
 
 /**
  * Значение вида `-слово` (`-bold`, `-only`, `-red-500`, `-caption`): в записи minotation таких
- * нет (проверено 2026-09-27: `--v`, `w-5`, `w10-5`, `_a-b`, `From-font` под него не подходят),
+ * нет (`--v`, `w-5`, `w10-5`, `_a-b`, `From-font` под него не подходят),
  * а у классов других систем — сплошь (`fw-bold` — Bootstrap, `sr-only` — Bootstrap/Tailwind).
  */
 const REGEXP_SUSPECT_VALUE = /^-[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
@@ -177,17 +176,17 @@ function throwSuspect(p: MnEssenceParams): never {
 }
 
 /**
- * Хендлеры пресета сами распознают класс другой системы (D-065, D-066): значение `-слово`
+ * Хендлеры пресета сами распознают класс другой системы: значение `-слово`
  * не разбирается, а даёт отчёт `suspect-class` (`suspectClassMode`). Одна проверка на все
  * хендлеры пресета — при регистрации, а не в каждом: раньше 25 из них такие значения
  * принимали и давали неверный CSS (`fw-bold` → `font-weight:100`). Паттерн разбора
  * (`mn(name, handler, pattern)`) оборачивается здесь же, чтобы проверка шла раньше него.
  */
-/** Подсказка в ошибке хендлера: значение подходит другому свойству (D-094). */
+/** Подсказка в ошибке хендлера: значение подходит другому свойству. */
 type CrossHint = [test: (suffix: string) => boolean, tag: string, property: string];
 
 /**
- * Частые промахи по имени (замер угадываемости, D-094): угаданное имя занято другим свойством, и для него значение
+ * Частые промахи по имени (замер угадываемости): угаданное имя занято другим свойством, и для него значение
  * неверно — к ошибке добавляется «did you mean». Проверка значения — до вызова хендлера, дешёвая; сам хендлер
  * вызывается как всегда.
  */
@@ -206,7 +205,7 @@ const CROSS_HINTS: Record<string, CrossHint[]> = {
       'transition-duration',
     ],
   ],
-  // `pe10`, `bs1` — привычка Tailwind (A2): эти стороны названы `pie`, `bisw` (K3, D-103, D-117).
+  // `pe10`, `bs1` — привычка Tailwind: эти стороны названы `pie`, `bisw`.
   pe: [
     [
       startsWithDigit,

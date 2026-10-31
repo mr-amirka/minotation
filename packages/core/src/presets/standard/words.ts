@@ -200,8 +200,8 @@ export function withPairs(
 }
 
 /**
- * Функции плавности словами — `atfL` → `linear`, `atfEIO` → `ease-in-out` (группа F, RESEARCH/17); у `ttf` те же буквы
- * (D-106): одна плавность пишется одинаково у анимации и у перехода.
+ * Функции плавности словами — `atfL` → `linear`, `atfEIO` → `ease-in-out`; у `ttf` те же буквы:
+ * одна плавность пишется одинаково у анимации и у перехода.
  */
 export const TIMING_FUNCTION_SYNONYMS: Record<string, string> = {
   L: 'Linear',
@@ -213,7 +213,7 @@ export const TIMING_FUNCTION_SYNONYMS: Record<string, string> = {
   SE: 'StepEnd',
 };
 /**
- * Режимы смешивания `background-blend-mode` (группа F): `bgbmM` → `multiply`. `C` — `color`, поэтому пары на «color»
+ * Режимы смешивания `background-blend-mode`: `bgbmM` → `multiply`. `C` — `color`, поэтому пары на «color»
  * получили вторую букву: `CD` — `color-dodge`, `CB` — `color-burn`. `plus-darker`/`plus-lighter` фону не положены —
  * они только у `mix-blend-mode` ({@link MIX_BLEND_MODE_SYNONYMS}).
  */
@@ -235,7 +235,7 @@ export const BLEND_MODE_SYNONYMS: Record<string, string> = {
   C: 'Color',
   LM: 'Luminosity',
 };
-/** Режимы смешивания элемента (`mbm`, D-106): буквы фона плюс `PD` — `plus-darker`, `PL` — `plus-lighter`. */
+/** Режимы смешивания элемента (`mbm`): буквы фона плюс `PD` — `plus-darker`, `PL` — `plus-lighter`. */
 export const MIX_BLEND_MODE_SYNONYMS: Record<string, string> = {
   ...BLEND_MODE_SYNONYMS,
   PD: 'PlusDarker',
@@ -284,7 +284,7 @@ export function wordsSet(words: string): Record<string, 1> {
 }
 
 /**
- * Длина у свойства со словарём — флаг `numeric` у `synonymProvider` (D-104): бывает ли она отрицательной, сколько
+ * Длина у свойства со словарём — флаг `numeric` у `synonymProvider`: бывает ли она отрицательной, сколько
  * длин в значении и какие слова стоят только поодиночке. Голое число получает `px`, как у прочих длин.
  */
 export interface LengthRule {
@@ -308,7 +308,7 @@ export const OFFSET_LENGTH: LengthRule = {
   max: 1,
 };
 
-/** Краткая запись `none` у свойств, где других букв нет: `biN`, `tnN` (D-111). */
+/** Краткая запись `none` у свойств, где других букв нет: `biN`, `tnN`. */
 export const NONE_ABBREVIATIONS: Record<string, string> = {
   N: NONE,
 };
@@ -326,12 +326,12 @@ const TEXT_EMPHASIS_LETTERS: Record<string, string> = {
 };
 
 export const VALUE_ABBREVIATIONS: Record<string, Record<string, string>> = {
-  // `tpA`/`tpN` давали `transition-property:a`/`n` (D-106).
+  // `tpA`/`tpN` давали `transition-property:a`/`n`.
   transitionProperty: {
     A: ALL,
     N: NONE,
   },
-  // Буквы виджетов (D-113); `textarea`/`textfield` и `menulist`/`meter` ждут решения владельца — RESEARCH/22, Q3.
+  // Буквы виджетов; у `textarea`/`textfield` и `menulist`/`meter` букв пока нет: для этих пар они ещё не выбраны.
   appearance: {
     N: NONE,
     A: AUTO,
@@ -533,7 +533,7 @@ export const ENUM_KEYWORDS: Record<string, Record<string, 1 | string>> = {
   textUnderlinePosition: wordsSet('auto from-font under left right'),
   transformStyle: {
     ...wordsSet('flat preserve-3d'),
-    // Другие записи слова — для подсказки «Write it shorter: "tsP"» (D-113): `tsPreserve3d`, `tsPreserve3D`.
+    // Другие записи слова — для подсказки «Write it shorter: "tsP"»: `tsPreserve3d`, `tsPreserve3D`.
     preserve3d: PRESERVE_3D,
     'preserve3-d': PRESERVE_3D,
   },

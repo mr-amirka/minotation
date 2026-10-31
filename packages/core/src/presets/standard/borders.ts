@@ -145,8 +145,7 @@ const SHADOW_UNITS = UNITS.filter((unit) => unit !== PERCENT && unit !== 'in');
  *
  * Свободный порядок был следствием реализации: `SHADOW_PATTERNS` — независимые
  * regex'ы, каждый искал свой фрагмент где угодно, поэтому `bxsh19c43Fx5y5r3`
- * давало то же, что `bxsh19x5y5r3c43F`. Решение владельца 2026-09-27 — сделать
- * порядок жёстким, по тому же доводу, что и у `tn`: одно значение не должно
+ * давало то же, что `bxsh19x5y5r3c43F`. Порядок жёсткий по тому же доводу, что и у `tn`: одно значение не должно
  * записываться по-разному.
  *
  * Регулярка анкорена и собрана в этом порядке, так что она и проверяет запись,
@@ -159,7 +158,7 @@ const SHADOW_UNITS = UNITS.filter((unit) => unit !== PERCENT && unit !== 'in');
  * Без буквы переменная означает всю тень целиком (`bxsh--shadow` →
  * `box-shadow:var(--shadow)`), как `--x` у любого другого свойства. Раньше она
  * молча попадала в позицию blur, а прочие слоты добирались умолчаниями —
- * автор получал правило, которого не писал (решение владельца 2026-09-29).
+ * автор получал правило, которого не писал.
  */
 const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:([0-9.]+)('
   + SHADOW_UNITS.join(PIPE) + ')?|B(---?[^;\\s]+;?))?'
@@ -237,7 +236,7 @@ const BORDER_IMAGE_SLICES: LengthRule = {
 /**
  * `border-image-width`: до четырёх длин, процентов или чисел. Голое число остаётся числом — в CSS это кратное ширины
  * рамки (`biw2` → `border-image-width:2`: при `b10` кольцо 20px), `px` к нему не приписывается: единица по умолчанию
- * ставится только там, где число без неё ничего не значит (D-123, D-013); пиксели — с единицей, `biw10px`.
+ * ставится только там, где число без неё ничего не значит; пиксели — с единицей, `biw10px`.
  */
 const BORDER_IMAGE_WIDTHS: LengthRule = {
   signed: false,
@@ -247,8 +246,8 @@ const BORDER_IMAGE_WIDTHS: LengthRule = {
   expected: 'a length with a unit (`10px`), a percentage or a number — multiples of the border width (`2`)',
 };
 /**
- * `border-image-outset`: до четырёх длин без процентов или чисел. Голое число — кратное ширины рамки, как у `biw`
- * (D-123): `bio2` → `border-image-outset:2`, при `b10` кольцо выносится на 20px; пиксели — с единицей, `bio10px`.
+ * `border-image-outset`: до четырёх длин без процентов или чисел. Голое число — кратное ширины рамки, как у `biw`:
+ * `bio2` → `border-image-outset:2`, при `b10` кольцо выносится на 20px; пиксели — с единицей, `bio10px`.
  */
 const BORDER_IMAGE_OUTSETS: LengthRule = {
   signed: false,
@@ -259,7 +258,7 @@ const BORDER_IMAGE_OUTSETS: LengthRule = {
 };
 
 /**
- * Хендлеры темы «borders» (D-130).
+ * Хендлеры темы «borders».
  *
  * @param ctx — контекст пресета (`createContext`)
  */
@@ -380,7 +379,7 @@ export function registerBorders(ctx: StandardContext): void {
     mn(pfx, (p) => {
       const suffix = p.suffix;
       const style: MnStyle = {};
-      // «Тени нет» — `bxshN` (наравне с голым `bxsh`); `bxshNone`, `bxsh_none` бракуются (D-113).
+      // «Тени нет» — `bxshN` (наравне с голым `bxsh`); `bxshNone`, `bxsh_none` бракуются.
       if (suffix === N) {
         style[propName] = NONE;
         return styleWrap(style);
@@ -422,7 +421,7 @@ export function registerBorders(ctx: StandardContext): void {
   );
 
 
-  // border-radius by corners; логические углы и пары углов `rs`/`re` (A2, D-097) — `border-<блок>-<строка>-radius`
+  // border-radius by corners; логические углы и пары углов `rs`/`re` — `border-<блок>-<строка>-radius`
   forIn({
     lt: ['top-left'],
     lb: ['bottom-left'],

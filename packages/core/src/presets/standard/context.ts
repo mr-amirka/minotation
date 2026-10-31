@@ -95,7 +95,7 @@ type SingleRow = [
 
 const REGEXP_TRIM_SNAKE_LEFT = /^_+/g;
 export const REGEXP_DOTS = /\./g;
-/** Функция, записанная в токене: `Rgb\(0,0,0\)`, `Url\(a\.png\)` — в цвете и картинке не принимается (D-121). */
+/** Функция, записанная в токене: `Rgb\(0,0,0\)`, `Url\(a\.png\)` — в цвете и картинке не принимается. */
 const REGEXP_COLOR_FUNCTION = /^[a-z][a-z0-9-]*\(/i;
 /** CSS-переменная с альфой: `--warn.3` → 30% непрозрачности. */
 const REGEXP_VAR_WITH_ALPHA = /^(---?[^.;\s]+)\.([0-9]+)$/;
@@ -115,7 +115,7 @@ export const PATTERN_DIGITS = '(-?[0-9\\.]+)';
 // PATTERN_VAR. Цветовому пути он не нужен для разбора (здесь нет разреза по
 // `_`, поэтому `c--my_ink` работает и без него), но пишущий токен не обязан
 // помнить, какой хендлер каким путём разбирается: без `;?` привычное
-// `c--my_ink;` молча не давало правила (2026-09-23).
+// `c--my_ink;` молча не давало правила.
 export const PATTERN_BASE_COLOR = '([A-Z][a-z][A-Za-z]+):camel|([A-Fa-f0-9]+(\\.[0-9]+)?):color|(-?--[^;]+):vv;?';
 export const PATTERN_COLOR = '^(' + PATTERN_BASE_COLOR + '):value$';
 
@@ -128,14 +128,8 @@ export function floatNormalize(value: string | number | undefined, nosign?: numb
   // Число сюда не приходит: группы разбора — строки, `|| 0` у вызывающего — только ложное значение.
   const m = value && (value as string).match(REGEXP_DOTS);
   const v = parseFloat(value as string);
-  // ИСПРАВЛЕНО 2026-09-23: предыдущая попытка (тем же числом) убрать
-  // `v < 0 && nosign` как "недостижимое" опиралась только на `num` (числитель
-  // в getVal's total-ветке, знак у него отдельной группой `sign`, не бывает
-  // отрицательным). Но PATTERN_DIGITS = `(-?[0-9.]+)` допускает знак и у
-  // ЗНАМЕНАТЕЛЯ (`total`) — `w1/-2` реально даёт отрицательный `total`, и v1
-  // на нём throwInvalid'ит (пустой вывод), а без этой проверки v2 молча
-  // считал `-50%`. Ветка ЖИВАЯ — просто её не было в тест-сьюте; тест на
-  // `w1/-2` добавлен, `positive`/`nosign` в сигнатуру возвращены.
+  // `v < 0 && nosign` — живая ветка, хоть у числителя знак и отдельной группой: PATTERN_DIGITS = `(-?[0-9.]+)`
+  // допускает знак у ЗНАМЕНАТЕЛЯ (`total`), и без проверки `w1/-2` молча давало `-50%` (v1 его бракует).
   (m && m.length > 1 || isNaN(v) || (v < 0 && nosign))
     && throwInvalid();
   return v;
@@ -177,12 +171,12 @@ function imageForms(name: string): string {
   return 'a gradient (`' + name + 'F00-00F`), a variable or `' + name + 'N`';
 }
 /**
- * Картинка по пути — `_`-форма `bgi`, `lisi`, `mk` и `bi` (D-122, D-127): `bgi_hero\.jpg` → `url("hero.jpg")`. Одна запись на
+ * Картинка по пути — `_`-форма `bgi`, `lisi`, `mk` и `bi`: `bgi_hero\.jpg` → `url("hero.jpg")`. Одна запись на
  * значение: у переменной (`bgi_--x`) и ключевого слова (`bgi_none`, `bgi_inherit`) своя запись без `_`, функция в токене
- * не пишется (`bgi_url\(a\.png\)`, D-121), пустой путь — ошибка; каждый случай бракуется с подсказкой.
+ * не пишется (`bgi_url\(a\.png\)`), пустой путь — ошибка; каждый случай бракуется с подсказкой.
  * @param path путь без ведущего `_`, как написан
  * @param name имя хендлера — для сообщений
- * @param letters буквы хендлера → слово CSS: слово путём — вторая запись (`cpth_border-box` → `cpthBB`, D-113)
+ * @param letters буквы хендлера → слово CSS: слово путём — вторая запись (`cpth_border-box` → `cpthBB`)
  * @returns `url("…")`
  * @example imagePathValue('img/a.png', 'bgi') // 'url("img/a.png")'
  */
@@ -221,7 +215,7 @@ export function imagePathValue(
  */
 export const REGEXP_VALUE_INTEGER = /^[-+]?\d+$/;
 /**
- * Заглавная в начале элемента списка значений — после `,` или `;`: не принимается (D-107), см. `toKebabCase`.
+ * Заглавная в начале элемента списка значений — после `,` или `;`: не принимается, см. `toKebabCase`.
  * Вторая регулярка — с флагом `g` для подсказки; `.test` на ней нельзя: `lastIndex` хранит состояние.
  */
 const REGEXP_LIST_ITEM_CAPITAL = /[,;][A-Z]/;
@@ -282,7 +276,7 @@ export const REGEXP_SLOT_IDENT = /^-?[A-Za-z_][\w-]*$/;
  * Что может получиться у `bg`/`maskbg`: цвет, вызов функции (градиент,
  * `rgba`, `var`) или ключевое слово цвета.
  *
- * Мини-язык этого хендлера закрыт по решению владельца 2026-09-26: картинка,
+ * Мини-язык этого хендлера закрыт: картинка,
  * позиция, размер и повтор задаются атомарными `bgi`, `bgpx`/`bgpy`, `bgs`,
  * `bgr`.
  */
@@ -306,7 +300,7 @@ function assertGradientStops(
 ): void {
   // Первый аргумент — направление (`180deg`, `circle`), дальше идут стопы. Запятые — только верхнего уровня:
   // по всем `rgba(255,0,0,.5)` распадался на `0`, `0`, `.5) 0%`, и градиент с прозрачным стопом
-  // (`bgF00.5-00F`) бракувался целиком (до 2026-10-30).
+  // (`bgF00.5-00F`) бракувался целиком (раньше).
   const stops = splitTopLevel(value.slice(value.indexOf(OPEN_PAREN) + 1, -1));
   let i = stops.length;
   while (--i > 0) {
@@ -433,7 +427,7 @@ export function normalizeDefault(p: MnEssenceParams, def?: string | number): MnH
 
 /**
  * Помощники пресета, которым нужен `mn.utils`: строятся один раз на экземпляр в `setup` и передаются каждому
- * предметному файлу (D-130).
+ * предметному файлу.
  *
  * @param instance — экземпляр minotation
  * @returns контекст пресета
@@ -515,7 +509,7 @@ export function createContext(instance: MnInstance) {
     return index[word] || (typeof alias === 'string' ? index[valueNormalize(alias)] : undefined);
   }
   /**
-   * Бракует полное слово, у которого в словаре хендлера есть буква (D-113): две записи одного значения дают в CSS
+   * Бракует полное слово, у которого в словаре хендлера есть буква: две записи одного значения дают в CSS
    * два правила. Подсказка — тот же токен с буквой на месте слова: `m1_Auto` → «Write it shorter: "m1_A"».
    * @param word — слово CSS (`auto`)
    * @param written — как оно записано в суффиксе (`Auto`, `auto`)
@@ -530,7 +524,7 @@ export function createContext(instance: MnInstance) {
       + MSG_INSTEAD_OF + name + suffix + MSG_SAME_VALUE);
   }
   /**
-   * Значение из нескольких частей через буквы хендлера (D-113): буква работает в любой части (`bsS_DT` →
+   * Значение из нескольких частей через буквы хендлера: буква работает в любой части (`bsS_DT` →
    * `solid dotted`, `fx1_1_A` → `1 1 auto`), полное слово с буквой бракуется в любой части и в любом режиме
    * (`bs_solid`, `fx1_1_Auto`). Подсказка переписывает весь токен буквами: `bs_solid_dotted` → «Write it shorter:
    * "bsS_DT"». Остальное нормализуется, как {@link valueNormalize}: переменные, кавычки, сырой режим.
@@ -596,7 +590,7 @@ export function createContext(instance: MnInstance) {
  * `min-width:none` — нет. Поэтому список приходит от места регистрации,
  * а не берётся общим на всё семейство.
  *
- * Слово, у которого в словаре хендлера есть буква, полной записью бракуется (D-113): `mAuto`, `m1_Auto`,
+ * Слово, у которого в словаре хендлера есть буква, полной записью бракуется: `mAuto`, `m1_Auto`,
  * `bThin`, `fwBold` — вторые записи `mA`, `m1_A`, `bTN`, `fwB`.
  *
  * @param value — уже кебабнутое значение
@@ -701,7 +695,7 @@ export function createContext(instance: MnInstance) {
     name?: string,
   ): [string, number] {
   // Все 6 вызовов getVal в этом файле передают defaultUnit='px' явно —
-  // фолбэк недостижим (подтверждено и в v1, 2026-09-23). Параметр остаётся
+  // фолбэк недостижим (подтверждено и в v1). Параметр остаётся
   // опциональным в сигнатуре (иначе конфликт с предшествующими optional
   // positive/one — TS1016), реальное значение гарантирует вызывающая сторона.
   /* istanbul ignore next */
@@ -773,9 +767,9 @@ export function createContext(instance: MnInstance) {
   }
 
   /**
-   * Camel case значения → kebab case. Заглавная сразу после `,`/`;` не принимается (D-107): у элемента списка
-   * одно написание — со строчной (`tnColor;opacity_200`). До D-106 такая заглавная давала дефис (`-opacity`),
-   * в D-106 — второе написание того же класса. Префикс производителя пишется явным дефисом:
+   * Camel case значения → kebab case. Заглавная сразу после `,`/`;` не принимается: у элемента списка
+   * одно написание — со строчной (`tnColor;opacity_200`). Сначала такая заглавная давала дефис (`-opacity`),
+   * потом — второе написание того же класса. Префикс производителя пишется явным дефисом:
    * `wcTransform,-webkitTransform` → `transform,-webkit-transform`.
    */
   function toKebabCase(v: string): string {
@@ -800,7 +794,7 @@ export function createContext(instance: MnInstance) {
  * переменных выполняется и в нём: `--name` в позиции CSS-значения не имеет
  * смысла как литерал, а без этого не работали составные шорткаты — суффикс
  * `ol_3px_solid_--marker` начинается с `_` и целиком уходил в сырой режим,
- * давая невалидное `outline:3px solid --marker` (2026-09-23).
+ * давая невалидное `outline:3px solid --marker`.
  */
   function valueNormalize(v: string): string {
     const raw = v[0] == UNDERSCORE;
@@ -833,7 +827,7 @@ export function createContext(instance: MnInstance) {
  * список распознаётся только по наличию `;` — там, где автор сам сказал, где
  * имя кончается.
  *
- * До 2026-09-26 такая запись не разбиралась вовсе: `g_--a;,--b` давало
+ * Раньше такая запись не разбиралась вовсе: `g_--a;,--b` давало
  * `grid:--a;,--b` — переменные не разворачивались, а `;` уезжал в CSS
  * литералом.
  *
@@ -871,12 +865,12 @@ export function createContext(instance: MnInstance) {
     priority?: number,
     _style?: MnStyle,
     // Свойство принимает не только слова из словаря, но и длину — по
-    // правилу `SIZE_LENGTHS` или `OFFSET_LENGTH` (D-104).
+    // правилу `SIZE_LENGTHS` или `OFFSET_LENGTH`.
     numeric?: LengthRule,
     // Значение свойства составное (`display: inline flow-root`), поэтому у
     // него остаётся сырой режим — перечислить такие сочетания словарём нельзя.
     composite?: 1,
-    // Функции свойства в нативной форме (D-124): `ttfSteps4_JE`. Суффикс, который начинается их именем (или
+    // Функции свойства в нативной форме: `ttfSteps4_JE`. Суффикс, который начинается их именем (или
     // содержит скобку), читает {@link functionsValue}; остальное — словарь, как раньше.
     functions?: FunctionSet,
   ): MnHandler {
@@ -925,7 +919,7 @@ export function createContext(instance: MnInstance) {
    * перечнем «готового значения, которого автор нотации не предусмотрел», не
    * бывает, так что выход там только пропускал мусор. Составных среди 38
    * свойств этого пути пять — `display`, `list-style`, `overscroll-behavior`,
-   * `text-decoration`, `touch-action` (2026-09-26).
+   * `text-decoration`, `touch-action`.
    */
     function assertSynonymAbbr(p: MnEssenceParams, value: string): void {
     // Сюда доходит только запись, которой НЕТ в словаре кратких форм
@@ -939,7 +933,7 @@ export function createContext(instance: MnInstance) {
       // Составное значение проверяется ПО ЧАСТЯМ, а не пропускается целиком:
       // перечень у таких свойств тоже закрыт, просто значение из нескольких
       // слов. Пропуск оставлял дыру — `d_solid` давало `display:solid`,
-      // `ovb_solid` — `overscroll-behavior:solid` (2026-09-27).
+      // `ovb_solid` — `overscroll-behavior:solid`.
       if (composite && value.indexOf(SPACE) > -1) {
         const parts = value.split(SPACE);
         let i = parts.length;
@@ -982,7 +976,7 @@ export function createContext(instance: MnInstance) {
     }
     /**
      * Одна часть значения: слово из словаря, число (если оно тут законно) или подстановка — функцию автора
-     * {@link assertNoFunction} бракует раньше (D-124). Возвращает 1, если часть — длина: составное значение считает их.
+     * {@link assertNoFunction} бракует раньше. Возвращает 1, если часть — длина: составное значение считает их.
      */
     function assertSynonymPart(p: MnEssenceParams, value: string): number {
       if (value.indexOf(OPEN_PAREN) > -1
@@ -1026,7 +1020,7 @@ export function createContext(instance: MnInstance) {
           // valueNormalize, а не fontNameNormalize: массивную форму используют
           // только page-break-хендлеры (`pgba`/`pgbb`/`pgbi`), к именам шрифтов
           // отношения не имеющие. Через fontNameNormalize переменная уходила в
-          // CSS литералом — `pgba--v` давал `page-break-after:--v` (2026-09-23).
+          // CSS литералом — `pgba--v` давал `page-break-after:--v`.
           s = valueNormalize(s);
           assertSynonymAbbr(p, s);
           style = {};
@@ -1057,7 +1051,7 @@ export function createContext(instance: MnInstance) {
           s, p.name, () => abbrHint(p.name),
         );
         // Составное значение: буквы — в каждой части (`td1_U_W`, `bgs10_A`), полное слово с буквой бракуется в
-        // любой части (D-113).
+        // любой части.
         s = composite ? lettersValue(p, synonyms) : valueNormalize(s);
         numeric && !numeric.unitless && (s = defaultUnitNormalize(s));
         assertSynonymAbbr(p, s);
@@ -1177,12 +1171,12 @@ export function createContext(instance: MnInstance) {
   }
   /**
  * Значение цвета, которое НЕ разбирается как код, — переменная с альфой: `bc--warn.3` → `color-mix(in srgb,
- * var(--warn) 30%, transparent)` (D-016 п. 1). Точка-альфа уже работает для кодов (`cF00.5` → `rgba(…,.5)`), здесь
+ * var(--warn) 30%, transparent)`. Точка-альфа уже работает для кодов (`cF00.5` → `rgba(…,.5)`), здесь
  * то же правило распространено на переменные. Возвращает готовый CSS или `undefined`, если это обычный цвет.
  *
- * Функция в токене (`cRgb\(0,0,0\)`, `bgUrl\(a\.png\)`) бракуется (D-121): цвет пишется кодом, буквой или
- * переменной, картинка по пути — `_`-формой своего хендлера (`bgi_a\.png`, `mk_a\.png`, `bi_a\.png`). До D-121
- * любая функция уходила в CSS как есть (D-016 п. 2), и проходили `rgba(1,2)`, `foo(1)`.
+ * Функция в токене (`cRgb\(0,0,0\)`, `bgUrl\(a\.png\)`) бракуется: цвет пишется кодом, буквой или
+ * переменной, картинка по пути — `_`-формой своего хендлера (`bgi_a\.png`, `mk_a\.png`, `bi_a\.png`). Раньше
+ * любая функция уходила в CSS как есть, и проходили `rgba(1,2)`, `foo(1)`.
  *
  * Разбирается СЫРОЙ суффикс: `PATTERN_COLOR` обрезает функцию на первой скобке (`Color-mix(a,b)` → `camel:
  * 'Color'`), поэтому по разобранным полям её не распознать.
@@ -1238,7 +1232,7 @@ export function createContext(instance: MnInstance) {
  * Обратный индекс `COLOR_SYNONYMS`: длинное слово → аббревиатура.
  *
  * Нужен, чтобы забраковать вторую запись того же цвета: `cCurrentColor` при
- * наличии `cCT`. Стало возможно после 2026-09-24, когда синонимы перестали
+ * наличии `cCT`. Стало возможно, когда синонимы перестали
  * разворачиваться в АЛИАС на длинную форму (`exts: ['cCurrentColor']`) и
  * начали отдавать значение напрямую — до этого длинная форма была нужна как
  * цель ссылки и убрать её было нельзя.
@@ -1281,9 +1275,9 @@ export function createContext(instance: MnInstance) {
 
   /**
    * Фон или картинка: цвет (`bgF00`), градиент (`bgF00-00F`, `bg--a;--b`), переменная, `N` — `none`. Один читатель
-   * на `bg`, `mk` и `bi` (D-119): исправление формы сразу у всех. Функция в токене не пишется (D-121): картинка по
-   * пути — `_`-форма (D-122): у `bg` — в своём хендлере картинки (`bgi_a\.png`, D-120), у `mk` и `bi` — в них самих
-   * (`mk_a\.png`, `bi_a\.png`; `mki` слит в `mk`, D-127).
+   * на `bg`, `mk` и `bi`: исправление формы сразу у всех. Функция в токене не пишется: картинка по
+   * пути — `_`-форма: у `bg` — в своём хендлере картинки (`bgi_a\.png`), у `mk` и `bi` — в них самих
+   * (`mk_a\.png`, `bi_a\.png`; `mki` слит в `mk`).
    * @param propName свойство (`background`, `maskImage`, `borderImageSource`)
    * @param imageOnly свойство принимает только картинку: одиночный цвет бракуется, цвет-fallback `altColor` не
    *   выводится (`mask-image`, `border-image-source`)
@@ -1307,7 +1301,7 @@ export function createContext(instance: MnInstance) {
         style[propName] = imagePathValue(p.suffix.slice(1), p.name);
         return styleWrap(style);
       }
-      // `none` — буквой, как у остальных хендлеров (D-113): `bgN`, `mkN` бракувались как «not a color».
+      // `none` — буквой, как у остальных хендлеров: `bgN`, `mkN` бракувались как «not a color».
       if (p.suffix === 'N') {
         style = {};
         style[propName] = NONE;
@@ -1319,7 +1313,7 @@ export function createContext(instance: MnInstance) {
       }
       // Синонимы проверяем ДО разбора как цвета: буквы аббревиатур бывают
       // валидными hex-цифрами, и без этого `bgAC` (AccentColor) уходил в
-      // `#aaa`, `bgBB` (ButtonBorder) — в `#bb` (2026-09-24).
+      // `#aaa`, `bgBB` (ButtonBorder) — в `#bb`.
       const raw = rawColorValue(
         p.suffix, p.name, (pathHandler || p.name) + '_a\\.png',
       );
@@ -1334,7 +1328,7 @@ export function createContext(instance: MnInstance) {
       if (synonym) {
       // Значение НАПРЯМУЮ, без алиаса на длинную форму (`bgCurrentColor`):
       // иначе длинная форма нужна как цель ссылки и её нельзя забраковать,
-      // а она даёт вторую запись того же цвета. Смена механизма 2026-09-24.
+      // а она даёт вторую запись того же цвета.
         style = {};
         style[propName] = getColor(synonym);
         return styleWrap(style);
@@ -1370,7 +1364,7 @@ export function createContext(instance: MnInstance) {
       // `linear-gradient(180deg,100% 0%,20px 100%)`. Поэтому у градиента
       // проверяется каждый стоп — у КАЖДОГО градиента списка: с `altColor`
       // первым идёт цвет-fallback, и проверка одного `first` пропускала
-      // `bgF00-zz` (до 2026-10-30).
+      // `bgF00-zz` (раньше).
       const gradients = filter(result, isGradientValue);
       forEach(gradients, (gradient: string) => assertGradientStops(
         gradient, v, p.name,
@@ -1389,7 +1383,7 @@ export function createContext(instance: MnInstance) {
   }
 
   /**
-   * `<position>` из букв и длин (группа D, RESEARCH/17) — общий разбор `op` (object-position), `pspo`
+   * `<position>` из букв и длин — общий разбор `op` (object-position), `pspo`
    * (perspective-origin) и `tfo` (transform-origin). Буквы `L`/`C`/`R`/`T`/`B`, углы `TL`/`TR`/`BL`/`BR` первой
    * частью, голое число — `px`: `opL_T` → `left top`, `tfoTL` → `top left`, `op50%_0`, `opR_10_B_20` →
    * `right 10px bottom 20px`. Ведущий `_` — запись словами CSS, как раньше: `op_left_top`.
@@ -1414,16 +1408,16 @@ export function createContext(instance: MnInstance) {
     };
   }
 
-  /** Слово позиции → буква: `right` → `R` — для подсказки «Write it shorter» (D-113). */
+  /** Слово позиции → буква: `right` → `R` — для подсказки «Write it shorter». */
   const POSITION_BY_WORD: Record<string, string> = {};
   forIn(POSITION_KEYWORDS, (word: string, abbr: string) => {
     POSITION_BY_WORD[valueNormalize(word)] = abbr;
   });
 
   /**
-   * Части `<position>` (группа D): буквы `L`/`C`/`R`/`T`/`B`, углы первой частью, длины, переменные; ведущий `_` —
+   * Части `<position>`: буквы `L`/`C`/`R`/`T`/`B`, углы первой частью, длины, переменные; ведущий `_` —
    * слова CSS. Общий читатель {@link positionProvider} (`op`, `pspo`, `tfo`) и позиции фигур `clip-path` после
-   * радиуса (`cpthCircle50%_R_T`, D-124).
+   * радиуса (`cpthCircle50%_R_T`).
    * @param name имя хендлера — для сообщений
    * @param suffix часть токена с позицией, как написана
    * @param z свойство берёт третью часть z (`transform-origin`)
@@ -1436,13 +1430,13 @@ export function createContext(instance: MnInstance) {
     const byWord = POSITION_BY_WORD;
     const prefix = MSG_VALUE + suffix + MSG_IS_INVALID_FOR + name + MSG_COLON;
     const hint = bare ? '' : name;
-    // Функция автора (D-124): позиция — буквы, длины и переменные. Внутри фигуры `clip-path` скобку бракует читатель
+    // Функция автора: позиция — буквы, длины и переменные. Внутри фигуры `clip-path` скобку бракует читатель
     // форм раньше.
     bare || assertNoFunction(
       suffix, name, () => '',
     );
     // Ведущий `_` — слова CSS как есть, но у каждого слова позиции есть буква, поэтому слово в этой записи —
-    // вторая запись (D-113): `op_right_10px_top_20px` → «Write it shorter: "opR_10px_T_20px"».
+    // вторая запись: `op_right_10px_top_20px` → «Write it shorter: "opR_10px_T_20px"».
     const raw = suffix[0] === UNDERSCORE;
     const written = splitValueParts(raw ? suffix.slice(1) : suffix);
     const writtenCount = written.length;
@@ -1565,7 +1559,7 @@ export function createContext(instance: MnInstance) {
 
   /**
    * Регистрирует свойства-длины: строка — `[свойство, значение по умолчанию, приоритет, одно значение, слова,
-   * без процента]` (D-130).
+   * без процента]`.
    *
    * @param table — хендлер → строка
    */
@@ -1581,7 +1575,7 @@ export function createContext(instance: MnInstance) {
       const noPercent = options[5];
       // Допустимые слова выводятся из значений самого словаря: если хендлер
       // объявил `N: 'Normal'`, то `normal` — слово этого свойства, и пишется оно
-      // буквой (`ggcN`; `ggcNormal` бракуется, D-113). Отдельная таблица здесь
+      // буквой (`ggcN`; `ggcNormal` бракуется). Отдельная таблица здесь
       // не нужна — словарь уже задан на свойство, а не на семейство.
       const keywords: Record<string, 1> = {};
       forIn(synonyms, (word: string) => {
@@ -1601,7 +1595,7 @@ export function createContext(instance: MnInstance) {
 
   /**
    * Регистрирует одиночные свойства: строка реестра — `[свойство, приоритет, длина, авто-повтор, слова]`, что
-   * свойство знает о значении сверх неё — таблицы темы (D-130).
+   * свойство знает о значении сверх неё — таблицы темы.
    *
    * @param table — хендлер → строка реестра
    * @param values — слоты, функции нативной формы, числа и подсказки темы по имени свойства
@@ -1657,7 +1651,7 @@ export function createContext(instance: MnInstance) {
           s, essenceName, parenHint,
         );
         // Буквы — в каждой части составного значения (`fx1_1_A`, `arA_16/9`), полное слово с буквой бракуется в
-        // любой части (D-113).
+        // любой части.
         s = (abbreviations = VALUE_ABBREVIATIONS[propName])
           ? lettersValue(
             p, abbreviations, enumWords,
@@ -1703,7 +1697,7 @@ export function createContext(instance: MnInstance) {
           ? assertLengthValue(
             defaultUnitNormalize(s), essenceName, p.suffix, lengthy,
           )
-          // `optimize-contrast` нужен и с префиксом WebKit (бывший `contrast`, D-094).
+          // `optimize-contrast` нужен и с префиксом WebKit (бывший `contrast`).
           : s === 'optimize-contrast' ? [
             s,
             '-webkit-' + s,

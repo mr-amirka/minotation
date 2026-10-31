@@ -60,7 +60,7 @@ const OVERSCROLL_BEHAVIOR_PRIORITIES = {
 };
 
 /**
- * `scroll-snap-type` (группа B, RESEARCH/17): ось и, через `_`, строгость —
+ * `scroll-snap-type`: ось и, через `_`, строгость —
  * `sstX` → `x`, `sstX_M` → `x mandatory`, `sstBH_P` → `both proximity`.
  * `B` — `block`, как у `display`.
  */
@@ -112,10 +112,10 @@ const SCROLL_SNAP_ALIGN_SYNONYMS = withPairs(
  * `transform-style` пришлось бы писать сырым режимом — `ts_preserve-3d`.
  */
 /**
- * Краткие записи слов у хендлеров общей таблицы (D-094): `fxN` → `flex:none`, `arA` → `aspect-ratio:auto`, как
+ * Краткие записи слов у хендлеров общей таблицы: `fxN` → `flex:none`, `arA` → `aspect-ratio:auto`, как
  * `dN` у `display`. Полное слово при краткой записи бракуется с подсказкой — одно значение, одна запись.
  */
-/** Старое `apcNone` → новое `apN` (D-094): полное слово — сразу краткой записью. */
+/** Старое `apcNone` → новое `apN`: полное слово — сразу краткой записью. */
 const APPEARANCE_RENAMED: Record<string, string> = {
   None: N,
   Auto: A,
@@ -123,7 +123,7 @@ const APPEARANCE_RENAMED: Record<string, string> = {
 
 /**
  * Буквы `cursor`. Однобуквенные заняты исторически (`C` — crosshair, `P` — pointer, `A` — auto), поэтому добавленные
- * 2026-09-24 значения берут по две буквы. Курсоры изменения размера — направление + `R`: `crER` (e-resize), `crNWR`
+ * позже значения берут по две буквы. Курсоры изменения размера — направление + `R`: `crER` (e-resize), `crNWR`
  * (nw-resize), `crNSR` (ns-resize). Те же буквы — запасной курсор после картинки: `cr_a\.png,P`.
  */
 const CURSOR_SYNONYMS: Record<string, string> = {
@@ -172,7 +172,7 @@ const REGEXP_HOT_SPOT = /^\d*\.?\d+$/;
 const REGEXP_CAPITALS = /^[A-Z]+$/;
 
 /**
- * Хендлеры темы «interaction» (D-130).
+ * Хендлеры темы «interaction».
  *
  * @param ctx — контекст пресета (`createContext`)
  */
@@ -202,7 +202,7 @@ export function registerInteraction(ctx: StandardContext): void {
     ovbx: synonymProvider('overscrollBehaviorX', OVERSCROLL_BEHAVIOR_PRIORITIES),
     ovby: synonymProvider('overscrollBehaviorY', OVERSCROLL_BEHAVIOR_PRIORITIES),
 
-    // Группа B (RESEARCH/17): привязка прокрутки и полоса прокрутки. Пары
+    // Группа B: привязка прокрутки и полоса прокрутки. Пары
     // значений перечислены словарём (`sstX_M`, `ssaC_S`), поэтому сырой
     // режим этим свойствам не нужен.
     sst: synonymProvider('scrollSnapType', SCROLL_SNAP_TYPE_SYNONYMS),
@@ -244,7 +244,7 @@ export function registerInteraction(ctx: StandardContext): void {
       BL: NAME_BLOCK,
       IL: NAME_INLINE,
     }),
-    // `cursor`: буквы ({@link CURSOR_SYNONYMS}) и картинки по пути с запасным курсором (D-124).
+    // `cursor`: буквы ({@link CURSOR_SYNONYMS}) и картинки по пути с запасным курсором.
     cr: cursorProvider(),
     tcha: synonymProvider(
       'touchAction', {
@@ -286,7 +286,7 @@ export function registerInteraction(ctx: StandardContext): void {
   });
 
   /**
-   * `cursor` (D-124, запятая владельца): буквы — как у остальных хендлеров (`crP`), картинка — по пути в `_`-форме.
+   * `cursor` — части через запятую: буквы — как у остальных хендлеров (`crP`), картинка — по пути в `_`-форме.
    * Запятая разделяет то, что разделяет CSS: `cr_a\.png` → `url("a.png"),auto`, `cr_a\.svg,b\.png,P` →
    * `url("a.svg"),url("b.png"),pointer`. Последняя часть — буква запасного курсора, без неё — `auto`: CSS требует
    * ключевое слово, а `auto` ничего не меняет. Два числа в конце пути — горячая точка: `cr_a\.png_4_4,P` →
@@ -351,6 +351,6 @@ export function registerInteraction(ctx: StandardContext): void {
     ap: ['appearance'],
   });
 
-  // Переименовано (D-094): `e` → `pe` (pointer-events).
+  // Переименовано: `e` → `pe` (pointer-events).
   mn('e', (p) => throwRenamed('e' + p.suffix, 'pe' + p.suffix));
 }

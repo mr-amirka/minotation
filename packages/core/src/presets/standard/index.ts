@@ -53,10 +53,10 @@ export default {
   },
 } as MnPresetObject;
 
-/** Для тестов: краткие записи слов по свойствам (D-094). */
+/** Для тестов: краткие записи слов по свойствам. */
 export const STANDARD_VALUE_ABBREVIATIONS = VALUE_ABBREVIATIONS;
 /**
- * Для тестов: буквы хендлеров на `synonymProvider` с закрытым списком (D-106) — значения в CamelCase, как в картах.
+ * Для тестов: буквы хендлеров на `synonymProvider` с закрытым списком — значения в CamelCase, как в картах.
  */
 export const STANDARD_SYNONYMS_BY_PROPERTY: Record<string, Record<string, string>> = {
   transitionTimingFunction: TIMING_FUNCTION_SYNONYMS,

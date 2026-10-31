@@ -79,8 +79,8 @@ const MS = 'ms';
  */
 const REGEXP_ANGLE_TAIL = /[rR][xyz][-+]?[0-9.]+([a-z]*)$/;
 /**
- * Позиции шага `steps()` буквами (D-124): `ttfSteps4_JE` → `steps(4,jump-end)`. `start` и `end` — то же, что
- * `jump-start` и `jump-end`, поэтому своих букв не получают: одна запись на значение (D-122).
+ * Позиции шага `steps()` буквами: `ttfSteps4_JE` → `steps(4,jump-end)`. `start` и `end` — то же, что
+ * `jump-start` и `jump-end`, поэтому своих букв не получают: одна запись на значение.
  */
 const STEP_POSITIONS: Record<string, string> = {
   JS: 'jump-start',
@@ -92,7 +92,7 @@ const REGEXP_STEP_POSITION = /^J[SENB]$/;
 /** Число шагов — целое от 1. */
 const REGEXP_STEP_COUNT = /^[1-9]\d*$/;
 /**
- * Функции плавности в нативной форме (D-124) — у `ttf`, `atf` и в слоте плавности `tn`/`an`: `ttfSteps4_JE` →
+ * Функции плавности в нативной форме — у `ttf`, `atf` и в слоте плавности `tn`/`an`: `ttfSteps4_JE` →
  * `steps(4,jump-end)`, `ttfCubicBezier0.4_0_0.2_1` → `cubic-bezier(0.4,0,0.2,1)`. Слова плавности — буквами
  * ({@link TIMING_FUNCTION_SYNONYMS}); у `linear(…)` с точками короткой записи нет — она пишется переменной.
  */
@@ -153,7 +153,7 @@ function slotLetters(part: string): string {
   return REGEXP_KEBAB_LETTERS.test(part) ? part.split(DASH).join('').toUpperCase() : part;
 }
 /**
- * Функция плавности в слотах `tn`/`an` (D-124): `tn_color_0.2s_CubicBezier0.4_0_0.2_1`. Берёт ровно `min` частей и
+ * Функция плавности в слотах `tn`/`an`: `tn_color_0.2s_CubicBezier0.4_0_0.2_1`. Берёт ровно `min` частей и
  * сверх них — те, что подходят под `more` (`Steps4_JE`, а `100` после него — уже задержка), и читает их общим
  * читателем {@link functionsValue}.
  * @param parts части одного перехода или анимации
@@ -215,17 +215,17 @@ const REGEXP_TIME = /^[0-9]*\.?[0-9]+(m?s)?$/;
  * разделитель списка, а не терминатор имени переменной: имя переменной
  * начинается с `--`, и до этой проверки оно уже развёрнуто в `var(…)`. Имя — от
  * двух знаков: свойства из одной буквы в CSS нет, а `tnA_200` давало
- * `transition:a 200ms` (D-106); теперь `A` — буква `all` ({@link TRANSITION_LETTERS}, D-109).
+ * `transition:a 200ms`; теперь `A` — буква `all` ({@link TRANSITION_LETTERS}).
  */
 const REGEXP_PROPERTY_LIST = /^-?[a-z][a-z0-9-]+(?:;-?[a-z][a-z0-9-]+)*;?$/;
 /**
- * Буквы у `tn` (D-109): плавность — те же, что у `ttf`/`atf` ({@link TIMING_FUNCTION_SYNONYMS}), `A` — `all` в слоте
+ * Буквы у `tn`: плавность — те же, что у `ttf`/`atf` ({@link TIMING_FUNCTION_SYNONYMS}), `A` — `all` в слоте
  * свойства, как у `tp`. Слот: 1 — свойство, 3 — плавность. Ключ — в обеих формах части: как написана (сырой режим
  * `tn_opacity_200_EI`) и после кебаба (`tnOpacity_200_EI` → `e-i`, `tnA_200` → `a`). Одна буква или буквы через
  * дефис другим не бывают: имя свойства — от двух знаков, буквы в нём не разделены дефисами.
  */
 const TRANSITION_LETTERS: Record<string, [slot: number, value: string]> = {};
-/** Длинное слово → его буква: `tn_opacity_200_ease-in` отвечает «пиши "EI"» (D-015, D-109). */
+/** Длинное слово → его буква: `tn_opacity_200_ease-in` отвечает «пиши "EI"». */
 const TRANSITION_LONG_WORDS: Record<string, string> = {};
 function addTransitionLetter(
   letters: string, slot: number, value: string,
@@ -295,7 +295,7 @@ function transitionValue(parts: string[], raw: string): string[] {
     } else if (easing = easingInSlot(
       parts, i, 'tn',
     )) {
-      // Функция плавности — нативной формой (D-124), её части уже взяты.
+      // Функция плавности — нативной формой, её части уже взяты.
       at = 3;
       out[i] = easing[0];
       parts = parts.slice(0, i + 1).concat(parts.slice(easing[1] + 1));
@@ -338,7 +338,7 @@ const ANIMATION_FILL_MODES = wordsSet('none forwards backwards both');
 const ANIMATION_PLAY_STATES = wordsSet('running paused');
 
 /**
- * Именованные анимации (группа G, D-097) — четыре анимации Tailwind: значение без имени и ключевые кадры. Кадры
+ * Именованные анимации — четыре анимации Tailwind: значение без имени и ключевые кадры. Кадры
  * регистрируются при первом использовании имени в `an` и не перезаписывают уже заданные под этим именем
  * (`mn.setKeyframes('spin', …)` автора выигрывает). Голое имя (`anSpin`) получает ещё и длительность, плавность и
  * повторы; в форме с частями (`an_spin_2s`) значение остаётся как написано.
@@ -385,14 +385,14 @@ const NAMED_ANIMATIONS: Record<string, [string, Record<string, Record<string, st
 };
 
 /**
- * Одна анимация по слотам в фиксированном порядке, как у `tn` (запрос web-games, 2026-10-14):
+ * Одна анимация по слотам в фиксированном порядке, как у `tn` (запрос web-games):
  * `имя длительность плавность задержка повторы направление заполнение состояние`. Любой слот
  * можно пропустить, порядок — не убывает. Голое число в слоте времени — `ms`; голое число после
  * задержки — число повторов. `none` до длительности — имя, после — заполнение.
  *
- * Плавность — буквами, как у `tn` и `atf` (D-111): `an_fade_0.2s_EO`. Буква — плавность только после имени или
+ * Плавность — буквами, как у `tn` и `atf`: `an_fade_0.2s_EO`. Буква — плавность только после имени или
  * длительности: первая часть — всегда имя (`an_e_1s` — анимация `e`: значение до кебаба одно и то же, что `anE_1s`).
- * Длинное слово (`ease-out`) — ошибка с буквой, как у `tn` (D-015, D-109).
+ * Длинное слово (`ease-out`) — ошибка с буквой, как у `tn`.
  */
 function animationValue(parts: string[], raw: string): string {
   let l = parts.length;
@@ -430,7 +430,7 @@ function animationValue(parts: string[], raw: string): string {
     } else if (slot && (easing = easingInSlot(
       parts, i, 'an',
     ))) {
-      // Функция плавности — нативной формой (D-124), как буква: только после имени (первая часть — всегда имя).
+      // Функция плавности — нативной формой, как буква: только после имени (первая часть — всегда имя).
       at = 3;
       out[i] = easing[0];
       parts = parts.slice(0, i + 1).concat(parts.slice(easing[1] + 1));
@@ -460,12 +460,12 @@ function animationValue(parts: string[], raw: string): string {
 }
 
 /** Имя свойства в списке `will-change`: идентификатор, не число и не длина. */
-// От двух знаков: `wcB` давало `will-change:b` (D-106).
+// От двух знаков: `wcB` давало `will-change:b`.
 const REGEXP_WILL_CHANGE_ITEM = /^-?[a-z_][a-z0-9_-]+$/;
 /** Слова, которых в списке `will-change` быть не может: `auto` — только целиком, остальные — никогда. */
 const WILL_CHANGE_RESERVED: Record<string, 1> = wordsSet('auto none all will-change');
 /**
- * `will-change` (группа F): `auto` либо имена свойств через запятую — `wcT`, `wc_transform,opacity`. Список свойств
+ * `will-change`: `auto` либо имена свойств через запятую — `wcT`, `wc_transform,opacity`. Список свойств
  * открыт, поэтому проверяется форма имени: `wc10` давало `will-change:10`, `wc10_20` — `will-change:10 20`.
  */
 function willChangeValue(
@@ -488,7 +488,7 @@ function willChangeValue(
 
 /**
  * `transition-property`: `none` либо имена свойств через запятую, как в CSS и как было в старой версии
- * (`tp_color,opacity`, D-106). Список свойств CSS открыт, поэтому проверяется форма имени — число, длина,
+ * (`tp_color,opacity`). Список свойств CSS открыт, поэтому проверяется форма имени — число, длина,
  * одна буква свойством быть не могут. `;` — сокращение `tn` для общих параметров; у `tp` параметров нет, и
  * `tp_color;opacity` давало `transition-property:color;opacity` — `;` обрывал объявление в CSS.
  */
@@ -523,7 +523,7 @@ const MOTION_VALUES: SingleValues = {
 const LENGTH_PLAIN = 8;
 
 /**
- * Хендлеры темы «motion» (D-130).
+ * Хендлеры темы «motion».
  *
  * @param ctx — контекст пресета (`createContext`)
  */
@@ -590,12 +590,12 @@ export function registerMotion(ctx: StandardContext): void {
       N: NAME_NORMAL,
       AD: 'AllowDiscrete',
     }),
-    // Функции — нативной формой (D-124): `atfSteps4_JE`, `atfCubicBezier0.4_0_0.2_1`.
+    // Функции — нативной формой: `atfSteps4_JE`, `atfCubicBezier0.4_0_0.2_1`.
     atf: synonymProvider(
       'animationTimingFunction', TIMING_FUNCTION_SYNONYMS, undefined, undefined, undefined, undefined,
       EASING_FUNCTIONS,
     ),
-    // Буквы `atf` (D-106); приоритет выше `tn`, как у прочих полных свойств перехода.
+    // Буквы `atf`; приоритет выше `tn`, как у прочих полных свойств перехода.
     ttf: synonymProvider(
       'transitionTimingFunction', TIMING_FUNCTION_SYNONYMS, 1, undefined, undefined, undefined, EASING_FUNCTIONS,
     ),
@@ -603,7 +603,7 @@ export function registerMotion(ctx: StandardContext): void {
 
   mn(
     'x', (p) => {
-      // Суффикс не той формы молча давал `translate(0px,0px)`: `x--v`, `x_translate\(10px\)` (D-124, D-125).
+      // Суффикс не той формы молча давал `translate(0px,0px)`: `x--v`, `x_translate\(10px\)`.
       p.suffix && p.all === undefined && throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR
         + 'x": expected a shift, as "x10", "x10y20", "x10y20z5", with a scale "s50" and a turn "rz45" after it');
       const scale = p.s;
@@ -631,7 +631,7 @@ export function registerMotion(ctx: StandardContext): void {
 
   mn('spnr', (p) => {
     let v;
-    // Суффикс без числа молча давал спиннер по умолчанию: `spnr_linear`, `spnrZzz` — `3000ms` (D-113, аудит).
+    // Суффикс без числа молча давал спиннер по умолчанию: `spnr_linear`, `spnrZzz` — `3000ms` (аудит).
     p.suffix && !p.value && throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR
       + 'spnr": expected a period in milliseconds, as "spnr2000"');
     return isNaN(v = (v = p.value) ? parseInt(v) : 3000) || v < 1 ? 0 : (
@@ -680,7 +680,7 @@ export function registerMotion(ctx: StandardContext): void {
    * но задать РАЗНЫЕ параметры разным свойствам ими нельзя — они пишут по
    * одному значению на все сразу. Ради этого случая shorthand и остаётся.
    */
-    // `an_fade_0.2s_EO_0.3s_both` → `animation:fade 0.2s ease-out 0.3s both` (плавность — буквами, D-111);
+    // `an_fade_0.2s_EO_0.3s_both` → `animation:fade 0.2s ease-out 0.3s both` (плавность — буквами);
     // ключевые кадры — из пресета (`mn.setKeyframes`). Несколько анимаций — через `,`.
     an: (p) => {
       let s, i;
@@ -695,7 +695,7 @@ export function registerMotion(ctx: StandardContext): void {
       // Подстановка словом (`an_env\(x\)`) прошла бы частью как подстановка: у неё своя запись, `an---x`.
       REGEXP_WRITTEN_SUBSTITUTION.test(s) && throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + p.name + MSG_COLON
         + substitutionMessage(p.name));
-      // `anNone`, `an_none` — вторые записи `anN` (D-113).
+      // `anNone`, `an_none` — вторые записи `anN`.
       const list = splitTopLevel(assertNotLongForm(
         valueNormalize(s), NONE_ABBREVIATIONS, p.name, s,
       ));
@@ -722,7 +722,7 @@ export function registerMotion(ctx: StandardContext): void {
       if (!(s = p.suffix)) {
         return 0;
       }
-      // `tnN` — `transition:none`, как `tpN` и `anN` (D-111); длинная запись — с подсказкой (D-015).
+      // `tnN` — `transition:none`, как `tpN` и `anN`; длинная запись — с подсказкой.
       if (s === N) {
         return styleWrap({
           transition: NONE,
@@ -758,7 +758,7 @@ export function registerMotion(ctx: StandardContext): void {
     ts: ['transformStyle'],
     // Группа F: `wcT` → `transform`; любое другое свойство — словом (`wcBackgroundColor`).
     wc: ['willChange'],
-    // `perspective` (группа D): неотрицательная длина или `none` — `psp500`, `pspN`.
+    // `perspective`: неотрицательная длина или `none` — `psp500`, `pspN`.
     psp: [
       'perspective',
       0,

@@ -105,7 +105,7 @@ const POSITION_PRIORITIES: Record<string, number> = {
 /** Имена контейнера через пробел — идентификаторы CSS или переменная: `sidebar`, `side main`, `var(--c)`. */
 const REGEXP_CONTAINER_NAMES = /^(?:var\(--[\w-]+\)|(?:-?[a-zA-Z_][\w-]*)(?: -?[a-zA-Z_][\w-]*)*)$/;
 
-/** Имена контейнера из суффикса — как записаны (D-091): ведущий `_` снят, `_` — пробел, `--c` — `var(--c)`. */
+/** Имена контейнера из суффикса — как записаны: ведущий `_` снят, `_` — пробел, `--c` — `var(--c)`. */
 function containerNames(suffix: string): string {
   const raw = suffix[0] === UNDERSCORE ? suffix.slice(1) : suffix;
   return raw.indexOf('--') === 0 ? VAR_OPEN + raw + CLOSE_PAREN : raw.split(UNDERSCORE).join(SPACE);
@@ -158,15 +158,15 @@ function normalizeCalc(
   const val = signAndVal.slice(1);
   // Единственный вызов (ratio-хендлер) всегда передаёт третьим аргументом
   // validateUnit(p.addu || 'px') — тот никогда не возвращает пустую строку
-  // при непустом входе, поэтому фолбэк на '' здесь недостижим (2026-09-23,
-  // подтверждено и в v1 — тот же единственный вызов).
+  // при непустом входе, поэтому фолбэк на '' здесь недостижим
+  // (в v1 — тот же единственный вызов).
   return calc(
     base, sign, val + unit,
   );
 }
 
 /**
- * Хендлеры темы «layout» (D-130).
+ * Хендлеры темы «layout».
  *
  * @param ctx — контекст пресета (`createContext`)
  */
@@ -194,7 +194,7 @@ export function registerLayout(ctx: StandardContext): void {
       verticalAlign: 'middle',
     },
   });
-  // Переименовано (D-094): `lt`/`rt`/`jt` → `flL`/`flR`/`flN`, `apc` → `ap`.
+  // Переименовано: `lt`/`rt`/`jt` → `flL`/`flR`/`flN`, `apc` → `ap`.
   forIn({
     lt: 'flL',
     rt: 'flR',
@@ -242,7 +242,7 @@ export function registerLayout(ctx: StandardContext): void {
     const s = p.suffix;
     // Перечень у `position` закрыт, поэтому значение — буква или ошибка:
     // `pos10` давало `position:10`, `posZzz` — `position:zzz`, `posAbsolute`
-    // и `pos_absolute` — вторые записи `posA` (D-113). Голый `pos` — `relative`.
+    // и `pos_absolute` — вторые записи `posA`. Голый `pos` — `relative`.
     const v = s ? assertEnumValue(
       lettersValue(
         p, POSITION_SYNONYMS, ENUM_KEYWORDS.position,
@@ -333,7 +333,7 @@ export function registerLayout(ctx: StandardContext): void {
         RBBG: 'RubyBaseGroup',
         RBT: 'RubyText',
         RBTG: 'RubyTextGroup',
-        // Современные значения (добавлено 2026-09-22): раньше `dG` падало в
+        // Современные значения: раньше `dG` падало в
         // буквальный `display:g` — короткие формы должны работать, а не ломаться.
         G: 'Grid',
         IG: 'InlineGrid',
@@ -355,7 +355,7 @@ export function registerLayout(ctx: StandardContext): void {
       RTL: 'Rtl',
     }),
 
-    // `float` (D-094): `flL`, `flR`, `flN`, логические `flIS`, `flIE`.
+    // `float`: `flL`, `flR`, `flN`, логические `flIS`, `flIE`.
     fl: synonymProvider('float', {
       L: NAME_LEFT,
       R: NAME_RIGHT,
@@ -378,7 +378,7 @@ export function registerLayout(ctx: StandardContext): void {
       H: NAME_HIDDEN,
       C: NAME_COLLAPSE,
     }),
-    // Контейнер для запросов `@…:имя` (D-088): имя — как записано, как и в запросе (D-091): `cnMainNav` →
+    // Контейнер для запросов `@…:имя`: имя — как записано, как и в запросе: `cnMainNav` →
     // `container-name: MainNav`, `cn_main-nav` → `main-nav`, несколько — через `_` (`cn_side_main`), `cn--c` —
     // переменная.
     cn: (p) => {
@@ -429,8 +429,7 @@ export function registerLayout(ctx: StandardContext): void {
    * `object-position-x/y` в CSS не существует, разложить не на что.
    * Составные формы — свободным значением: `op_left_top`, `op50%_0`.
    *
-   * `background-position` (`bgp`) убран 2026-09-24 — трек
-   * `notation-ergonomics`, задача 5: общий хендлер порождал уникальный класс
+   * `background-position` (`bgp`) убран: общий хендлер порождал уникальный класс
    * на каждую комбинацию осей, тогда как атомарные `bgpx`/`bgpy`
    * переиспользуются между комбинациями.
    */

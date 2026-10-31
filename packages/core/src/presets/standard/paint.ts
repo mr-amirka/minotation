@@ -111,7 +111,7 @@ const MASK_BOX_SYNONYMS: Record<string, string> = {
   VB: NAME_VIEW_BOX,
 };
 /**
- * `color-scheme` (группа F): `cschL`, `cschL_D` → `light dark`, `cschD_O` → `dark only`. Одно `only` невалидно —
+ * `color-scheme`: `cschL`, `cschL_D` → `light dark`, `cschD_O` → `dark only`. Одно `only` невалидно —
  * схема нужна хотя бы одна, поэтому `O` бывает только второй частью.
  */
 const COLOR_SCHEME_WORDS: Record<string, string> = {
@@ -168,7 +168,7 @@ function ratioForm(css: string, example: string): FunctionForm {
     args: (args, call) => (args.length ? functionRatio(args[0], call) : HUNDRED_PERCENT),
   };
 }
-/** Полные имена функций фильтра там, где есть короткое: одна форма на значение (D-122). */
+/** Полные имена функций фильтра там, где есть короткое: одна форма на значение. */
 const FILTER_LONG_NAMES: Record<string, string> = {
   Grayscale: 'Gray',
   Brightness: 'Bright',
@@ -191,7 +191,7 @@ const AUTO_KEYWORD: Record<string, 1> = {
 };
 
 /**
- * Хендлеры темы «paint» (D-130).
+ * Хендлеры темы «paint».
  *
  * @param ctx — контекст пресета (`createContext`)
  */
@@ -236,14 +236,13 @@ export function registerPaint(ctx: StandardContext): void {
     ],
     // WebkitTapHighlightColor — вендорное свойство без нестандартного аналога
     // (camelCase с ведущей заглавной буквы camelToKebabCase превращает в
-    // '-webkit-tap-highlight-color', см. fundamentool). Добавлено 2026-09-23
-    // взамен ручного mn.css({html:{'-webkit-tap-highlight-color':'#000'}})
+    // '-webkit-tap-highlight-color', см. fundamentool). Хендлер заменил ручной mn.css({html:{'-webkit-tap-highlight-color':'#000'}})
     // в presets/main/index.ts — единственного оставшегося в проекте вызова mn.css.
     thc: [
       'WebkitTapHighlightColor',
       1,
     ],
-    // Группа F (RESEARCH/17): цвет галочек и полей формы, цвет каретки. `auto` — словом (`ccAuto`): буква `A` —
+    // Группа F: цвет галочек и полей формы, цвет каретки. `auto` — словом (`ccAuto`): буква `A` —
     // код цвета `#aaa`.
     acc: [
       'accentColor',
@@ -285,7 +284,7 @@ export function registerPaint(ctx: StandardContext): void {
             // Цвет считается разобранным, только если сработала одна из веток
             // самого PATTERN_COLOR: код, переменная или слово.
             // `p.camel` заполняет и общий разбор ядра: у `F00.active` это `F`, и
-            // хвост молча терялся (`color:#fff`, найдено 2026-10-12). Слово — цвет,
+            // хвост молча терялся (`color:#fff`). Слово — цвет,
             // только если оно и есть всё значение.
             (p.color || p.vv || p.camel && p.camel === p.suffix) || throwInvalid(MSG_VALUE + p.suffix
             + '" is not a color: expected a code (`F00`), a variable '
@@ -335,7 +334,7 @@ export function registerPaint(ctx: StandardContext): void {
   }
 
   /**
-   * `scrollbar-color` (группа B, RESEARCH/17): `sbcA` → `auto`, иначе ровно два
+   * `scrollbar-color`: `sbcA` → `auto`, иначе ровно два
    * цвета через `_` — ползунок и дорожка: `sbcF00_0` → `#f00 #000`. Одна
    * переменная — значение целиком (`sbc--bar`), как у тени.
    *
@@ -352,7 +351,7 @@ export function registerPaint(ctx: StandardContext): void {
     }
     const parts = splitValueParts(suffix);
     if (parts.length === 1) {
-      // CSS-wide keyword — буквами, его ставит ядро (D-125).
+      // CSS-wide keyword — буквами, его ставит ядро.
       const whole = cssVarValue(suffix) || throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name
         + '": expected "A" (auto), two colors — thumb_track, as "sbcF00_0" — or a variable');
       return styleWrap({
@@ -388,10 +387,10 @@ export function registerPaint(ctx: StandardContext): void {
     mbm: synonymProvider('mixBlendMode', MIX_BLEND_MODE_SYNONYMS),
   });
 
-  // Картинка отдельно от цвета (D-120): `bg3 bgi_hero\.jpg` — серый остаётся под картинкой. Одна запись на значение
-  // (D-122): путь — только `_`-формой (`bgi_hero\.jpg` → `url("hero.jpg")`, {@link imagePathValue}), переменная —
+  // Картинка отдельно от цвета: `bg3 bgi_hero\.jpg` — серый остаётся под картинкой. Одна запись на значение:
+  // путь — только `_`-формой (`bgi_hero\.jpg` → `url("hero.jpg")`, {@link imagePathValue}), переменная —
   // `bgi--hero`, `none` — `bgiN`, CSS-wide keyword — словом (`bgiInherit`). Градиент пишется в `bg` / `mk`, функция в
-  // токене не пишется (D-121). До D-122 проходило всё подряд: градиент становился именем файла (`bgiF00-00F` →
+  // токене не пишется. Раньше проходило всё подряд: градиент становился именем файла (`bgiF00-00F` →
   // `url("F00-00F")`), `bgi10px` — `url("10px")`, `bgiUrl\(a\.png\)` — `Url(a.png)`, `bgi_url\(a\.png\)` — `url(a.png)`.
   forIn({
     bgi: [
@@ -411,7 +410,7 @@ export function registerPaint(ctx: StandardContext): void {
       }
       style[propName] = s === N ? NONE
         : s[0] === UNDERSCORE ? imagePathValue(s.slice(1), name)
-          // CSS-wide keyword — буквами, его ставит ядро (D-125); `bgiNone` — «Write it shorter: "bgiN"».
+          // CSS-wide keyword — буквами, его ставит ядро; `bgiNone` — «Write it shorter: "bgiN"».
           : cssVarValue(s)
           || (assertNotLongForm(
             toKebabCase(s), NONE_ABBREVIATIONS, name, s,
@@ -423,13 +422,11 @@ export function registerPaint(ctx: StandardContext): void {
     });
   });
 
-  // Слито (D-127): `mki` — то же свойство `mask-image`, что `mk`; путь — `mk_a\.png`.
+  // Слито: `mki` — то же свойство `mask-image`, что `mk`; путь — `mk_a\.png`.
   // Точка в пути пишется экранированной (`mk_a\.png`) — так же и в подсказке.
   mn('mki', (p) => {
     const suffix = p.suffix.replace(REGEXP_DOTS, '\\.');
-    return throwRenamed(
-      'mki' + suffix, 'mk' + suffix, 'D-127',
-    );
+    return throwRenamed('mki' + suffix, 'mk' + suffix);
   });
 
   registerLengthProperties({
@@ -449,7 +446,7 @@ export function registerPaint(ctx: StandardContext): void {
     ),
     /**
    * `opacity`. Число — проценты (`o50` → `.5`), как в 1.x. Дробь меньше единицы
-   * трактуется как готовая доля (`o0.5` → `.5`): до 2026-09-22 такая запись
+   * трактуется как готовая доля (`o0.5` → `.5`): раньше такая запись
    * молча давала `opacity:0` (0.5 % округлялось в ноль), хотя это самый
    * естественный для CSS вариант записи.
    */
@@ -467,7 +464,7 @@ export function registerPaint(ctx: StandardContext): void {
       );
     },
 
-    // Маски (E2, D-097): семейство `mk…` зеркалит `bg…` — `mk` картинка (градиент, путь `mk_a\.png` — D-127), `mks`,
+    // Маски: семейство `mk…` зеркалит `bg…` — `mk` картинка (градиент, путь `mk_a\.png`; бывшее `mki` слито с ним), `mks`,
     // `mkr`, `mko`, `mkcp`.
     mkt: synonymProvider('maskType', {
       L: 'Luminance',
@@ -559,7 +556,7 @@ export function registerPaint(ctx: StandardContext): void {
     /**
    * Оси `background-position`. Ключевые слова у них РАЗНЫЕ: горизонтальная
    * принимает `left`/`right`/`x-start`/`x-end`, вертикальная —
-   * `top`/`bottom`/`y-start`/`y-end`. До 2026-09-24 карт не было вовсе, и
+   * `top`/`bottom`/`y-start`/`y-end`. Раньше карт не было вовсе, и
    * `bgpxL` давало мусор `background-position-x:l`.
    *
    * Помечены `numeric`: позиция задаётся не только словом, но и длиной или
@@ -624,7 +621,7 @@ export function registerPaint(ctx: StandardContext): void {
   }
 
   /**
-   * Функции фильтра в нативной форме (D-124) — список закрыт спецификацией (`<filter-function>`): `ftBlur2`,
+   * Функции фильтра в нативной форме — список закрыт спецификацией (`<filter-function>`): `ftBlur2`,
    * `ftGray50`, `ftHue90`, `ftDropShadow2_4_6_000.5`. Голое число — единица функции: пиксели у размытия, проценты
    * у долей, градусы у поворота тона. Голое имя — значение по умолчанию: `ftBlur` → `blur(4px)`, `ftGray` →
    * `grayscale(100%)`.
@@ -632,7 +629,7 @@ export function registerPaint(ctx: StandardContext): void {
    * Раньше имя прокидывалось как есть и хвост приклеивался без проверки: `ftBlur\(2px\)` давало `blur(4(2px))`,
    * `ftBlur.5` — `blur(4.5)`, `ftBlur--a` — `blur(4--a)`, `ftHueRotate90` — `hue-rotate(90)` без единицы,
    * `ftDropShadow2` — `drop-shadow(2)`, а `ftBrightness150` — `brightness(150)`, то есть в сто раз ярче, чем
-   * `ftBright150` (полное имя шло без процентов). Ещё раньше (2026-09-27) закрыт сам список: `ftbF00` давало
+   * `ftBright150` (полное имя шло без процентов). Ещё раньше закрыт сам список: `ftbF00` давало
    * `backdrop-filter:f(00)`, `ftb_solid` — `solid()`.
    */
   const FILTER_FORMS: Record<string, FunctionForm> = {
@@ -696,7 +693,7 @@ export function registerPaint(ctx: StandardContext): void {
     return out.join(SPACE);
   }
   /**
-   * Фигуры `clip-path` в нативной форме (D-124): `cpthCircle50%_R_T` → `circle(50% at right top)`,
+   * Фигуры `clip-path` в нативной форме: `cpthCircle50%_R_T` → `circle(50% at right top)`,
    * `cpthEllipse30%_50%_C`, `cpthInset10_20_R5` → `inset(10px 20px round 5px)` (`R` — перед радиусом скругления),
    * `cpthPolygon50%_0,100%_100%,0_100%` → `polygon(50% 0,100% 100%,0 100%)` (`_` внутри точки, `,` между точками).
    * Голое число — пиксели. Остальное (`path(…)`, `xywh(…)`, правило заливки) — переменной.
@@ -772,7 +769,7 @@ export function registerPaint(ctx: StandardContext): void {
     },
   }, 'a clip-path shape');
   /**
-   * `clip-path` (группа F): буквы рамки (`cpthN`, `cpthBB` → `border-box`), фигуры нативной формой
+   * `clip-path`: буквы рамки (`cpthN`, `cpthBB` → `border-box`), фигуры нативной формой
    * ({@link CLIP_PATH_FUNCTIONS}) и `<clipPath>` SVG по пути: `cpth_\#wave` → `url("#wave")`.
    */
   const clipPathWords = synonymProvider(
@@ -807,6 +804,6 @@ export function registerPaint(ctx: StandardContext): void {
   registerSingleProperties({
     ir: ['imageRendering'],
   });
-  // Переименовано (D-094): `contrast` → `irOptimizeContrast`.
+  // Переименовано: `contrast` → `irOptimizeContrast`.
   mn(CONTRAST, (p) => throwRenamed(CONTRAST + p.suffix, 'irOptimizeContrast'));
 }

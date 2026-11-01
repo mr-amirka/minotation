@@ -111,18 +111,18 @@ describe('bareMathMode', () => {
     ]);
   });
 
-  test('выражение с группы в начале — терм перед ней: `{{` читатель не принимает', () => {
+  test('выражение с группы в начале — скобки как написано, `{{` читатель принимает', () => {
     const bare = compile(['w{1+2}*3'], {
       bareMathMode: 'warn',
     });
     expect([
       bare.warnings,
-      compile(['w{1*{1+2}*3}'], {
+      compile(['w{{1+2}*3}'], {
         bareMathMode: 'strict',
       }).css,
     ]).toEqual([
-      ['bare-math: "w{1+2}*3" writes math without braces: write "w{1*{1+2}*3}"' + HINT_WARN],
-      '.w\\{1\\*\\{1\\+2\\}\\*3\\}{width:calc(1 * (1px + 2px) * 3)}',
+      ['bare-math: "w{1+2}*3" writes math without braces: write "w{{1+2}*3}"' + HINT_WARN],
+      '.w\\{\\{1\\+2\\}\\*3\\}{width:calc((1px + 2px) * 3)}',
     ]);
   });
 

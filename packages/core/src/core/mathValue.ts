@@ -250,9 +250,6 @@ function readValue(expr: string, mathRulesValue: MnMathRules): string {
   rules = mathRulesValue;
   level = 0;
   bareOps = 0;
-  // `{{` — интерполяция шаблонов (Angular, Vue, Mustache): в атрибуте класса такую запись съест шаблон.
-  expr.indexOf('{{') > -1 && invalid('"{{" is not written — it is template interpolation (Angular, Vue, Mustache):'
-    + ' put a term before the inner group, "{2*{a+b}+1}", "Min{50rem,{100%-2rem}/3}"');
   // Значение — одна группа целиком: её скобки ничего не группируют — `{1+2}` → `calc(1px + 2px)`, `{10}` → `10px`
   // (было `calc((1px + 2px))`). Так слот буквенной записи пишет математику: `x{10+5}`.
   if (expr[0] === OPEN_BRACE && groupEnd(expr) === end - 1) {

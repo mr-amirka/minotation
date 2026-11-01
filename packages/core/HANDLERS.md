@@ -490,6 +490,7 @@ F.38      → hex=F → #fff → rgba(255,255,255,.38)
 | `fClamp{1rem,2.5vw+1rem,3rem}` | `font-size:clamp(1rem, 2.5vw + 1rem, 3rem)` |
 | `wMin{100%,Max{50vw,300}}` | `width:min(100%, max(50vw, 300px))` — функция в функции |
 | `w{100%-2rem}/3` | `width:calc((100% - 2rem) / 3)` — группа |
+| `w{{1+2}*3}` | `width:calc((1px + 2px) * 3)` — группа в начале группы; в шаблоне, где `{{` — интерполяция (Angular, Vue, Mustache), перед ней пишется терм: `w{1*{1+2}*3}` |
 | `w$a{10}+5` | `width:calc(var(--a, 10px) + 5px)` — запасной вариант в скобках |
 | `pt$$safe-area-inset-top+8` | `padding-top:calc(env(safe-area-inset-top) + 8px)` |
 | `f1rem+.5vw` | `font-size:calc(1rem + .5vw)` — `.5` — то же, что `0.5` |

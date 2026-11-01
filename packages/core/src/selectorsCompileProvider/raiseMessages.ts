@@ -10,8 +10,6 @@ const OPEN_BRACE = '{';
 const CLOSE_BRACE = '}';
 const SEMICOLON = ';';
 const DOLLAR = '$';
-/** Начало скобок перед выражением с группы: терм `1*` разделяет `{{`. */
-const GROUP_FIRST = '{1*';
 
 /** `*N` — накрутка специфичности; `mark` — как записано в токене (`*2`). */
 export function specificityMessage(mark: string, strict: boolean): string {
@@ -93,8 +91,8 @@ export function bareMathMessage(
 /**
  * Токен со скобками вокруг каждой части с математикой, слева направо. `;`, закрывавший переменную перед буквой
  * следующего слота, в скобках не нужен: `x$a*2;y3` → `x{$a*2}y3`; перед следующей переменной он остаётся
- * разделителем. Часть, прочитанная дважды, ставит скобки один раз. Выражение с группы в начале получает терм перед
- * ней — `{{` читатель не принимает (интерполяция шаблонов): `w{1+2}*3` → `w{1*{1+2}*3}`.
+ * разделителем. Часть, прочитанная дважды, ставит скобки один раз. Выражение с группы в начале — как написано:
+ * `w{1+2}*3` → `w{{1+2}*3}`; `{{` в шаблоне с интерполяцией автор разделяет термом сам — `w{1*{1+2}*3}`.
  * @param token — токен
  * @param found — пары «как написано», «выражение»
  * @returns токен со скобками
@@ -113,7 +111,7 @@ function bracedToken(token: string, found: string[]): string {
     if (k > -1) {
       tail = k + found[i].length;
       out[tail] === SEMICOLON && out[tail + 1] !== DOLLAR && tail++;
-      braced = (found[i + 1][0] === OPEN_BRACE ? GROUP_FIRST : OPEN_BRACE) + found[i + 1] + CLOSE_BRACE;
+      braced = OPEN_BRACE + found[i + 1] + CLOSE_BRACE;
       out = out.slice(0, k) + braced + out.slice(tail);
       at = k + braced.length;
     }

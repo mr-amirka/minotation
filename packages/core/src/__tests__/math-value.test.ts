@@ -563,16 +563,6 @@ describe('mathValue — запись, которая не читается', () 
       'Min100%',
       'the arguments of "Min" are written in braces: "Min{100%,50rem}"',
     ],
-    [
-      '{{a+b}*2}',
-      '"{{" is not written — it is template interpolation (Angular, Vue, Mustache): put a term before'
-      + ' the inner group, "{2*{a+b}+1}", "Min{50rem,{100%-2rem}/3}"',
-    ],
-    [
-      'Min{{100%-2rem}/3,50rem}',
-      '"{{" is not written — it is template interpolation (Angular, Vue, Mustache):'
-      + ' put a term before the inner group, "{2*{a+b}+1}", "Min{50rem,{100%-2rem}/3}"',
-    ],
   ])('%j — %s', (expr, reason) => {
     expect(errorOf(expr)).toBe('Value "' + expr + '" is invalid for "w": ' + reason);
   });
@@ -703,6 +693,25 @@ describe('cssVarValue — значение целиком переменная',
 
   test('прежняя запись — сообщение с новой', () => {
     expect(() => cssVarValue('--mono')).toThrow('"--mono" was renamed: write "$mono"');
+  });
+});
+
+describe('mathValue — `{{`: группа в начале группы', () => {
+  test.each([
+    [
+      '{{1+2}*3}',
+      'calc((1px + 2px) * 3)',
+    ],
+    [
+      'Min{{100%-2rem}/3,50rem}',
+      'min((100% - 2rem) / 3, 50rem)',
+    ],
+    [
+      '{{{1+2}}}',
+      'calc(1px + 2px)',
+    ],
+  ])('%s → %s — интерполяция шаблонов — забота автора', (expr, css) => {
+    expect(mathValue(expr, width)).toBe(css);
   });
 });
 

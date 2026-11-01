@@ -203,6 +203,11 @@ export function mathValue(expr: string, mathRulesValue: MnMathRules): string {
   // `{{` — интерполяция шаблонов (Angular, Vue, Mustache): в атрибуте класса такую запись съест шаблон.
   expr.indexOf('{{') > -1 && invalid('"{{" is not written — it is template interpolation (Angular, Vue, Mustache):'
     + ' put a term before the inner group, "{2*{a+b}+1}", "Min{50rem,{100%-2rem}/3}"');
+  // Значение — одна группа целиком: её скобки ничего не группируют — `{1+2}` → `calc(1px + 2px)`, `{10}` → `10px`
+  // (было `calc((1px + 2px))`). Так слот буквенной записи пишет математику: `x{10+5}`.
+  if (expr[0] === OPEN_BRACE && groupEnd(expr) === end - 1) {
+    return mathValue(expr.slice(1, -1), mathRulesValue);
+  }
   const zero = REGEXP_WHOLE_ZERO.exec(expr);
   if (zero) {
     zero[1] && checkUnit(zero[1]);
@@ -213,6 +218,28 @@ export function mathValue(expr: string, mathRulesValue: MnMathRules): string {
   const text = readSum();
   pos < end && unexpected();
   return sumOps ? CALC_OPEN + text + CLOSE_PAREN : text;
+}
+
+/**
+ * Где закрывается группа, открытая первым символом.
+ * @param expr — выражение, начатое с `{`
+ * @returns индекс её `}`, или `-1`, если она не закрыта
+ * @example groupEnd('{1+2}*3') // 4
+ */
+function groupEnd(expr: string): number {
+  const l = expr.length;
+  let depth = 0;
+  let i = 0;
+  let ch: string;
+  for (; i < l; i++) {
+    ch = expr[i];
+    if (ch === OPEN_BRACE) {
+      depth++;
+    } else if (ch === CLOSE_BRACE && !--depth) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 /** Сумма: произведения через `+` и `-`. Минус в начале — знак первого терма. */

@@ -4,6 +4,8 @@
  */
 import {
   cssVarValue,
+  mathBareBegin,
+  mathBareEnd,
   mathRules,
   mathValue,
   newVariables,
@@ -701,6 +703,97 @@ describe('cssVarValue — значение целиком переменная',
 
   test('прежняя запись — сообщение с новой', () => {
     expect(() => cssVarValue('--mono')).toThrow('"--mono" was renamed: write "$mono"');
+  });
+});
+
+/** Что собрал читатель за одно значение: пары «как написано», «выражение». */
+function bareOf(
+  expr: string, rules = width, written?: string,
+): string[] {
+  const outer = mathBareBegin();
+  mathValue(
+    expr, rules, written,
+  );
+  return mathBareEnd(outer);
+}
+
+describe('mathValue — математика без скобок для bareMathMode', () => {
+  test.each([
+    '1/2+32',
+    '10-20',
+    '$a*2',
+    '10*2/4',
+    '{1+2}*3',
+    '3*{1+2}',
+    'Min{1,2}+3',
+  ])('%s — оператор вне скобок, значение собрано', (expr) => {
+    expect(bareOf(expr)).toEqual([
+      expr,
+      expr,
+    ]);
+  });
+
+  test.each([
+    '10',
+    '1/3',
+    '{1/2+32}',
+    '{3*{1+2}}',
+    'Min{10+5,20%}',
+    '$a{10+5}',
+    '$a',
+    'Clamp{1,2+3,4}',
+  ])('%s — оператора вне скобок нет', (expr) => {
+    expect(bareOf(expr)).toEqual([]);
+  });
+
+  test.each([
+    '-10',
+    '-$a',
+  ])('%s — знак не математика', (expr) => {
+    expect(bareOf(expr, margin)).toEqual([]);
+  });
+
+  test('как написано в токене — отдельно от выражения', () => {
+    expect(bareOf(
+      '$a*2', width, 'B$a*2',
+    )).toEqual([
+      'B$a*2',
+      '$a*2',
+    ]);
+  });
+
+  test('сбор вложенный: внутренний не теряет внешний', () => {
+    const outer = mathBareBegin();
+    mathValue('1+2', width);
+    const inner = mathBareBegin();
+    mathValue('3+4', width);
+    expect([
+      mathBareEnd(inner),
+      mathBareEnd(outer),
+    ]).toEqual([
+      [
+        '3+4',
+        '3+4',
+      ],
+      [
+        '1+2',
+        '1+2',
+      ],
+    ]);
+  });
+
+  test('без сбора читатель ничего не копит', () => {
+    mathValue('1+2', width);
+    expect(mathBareBegin()).toBeUndefined();
+    mathBareEnd(undefined);
+  });
+
+  test('ошибка в значении не оставляет глубину скобок следующему', () => {
+    expect(errorOf('{1+')).toBeDefined();
+    expect(bareOf('1+2')).toEqual([
+      '1+2',
+      '1+2',
+    ]);
   });
 });
 

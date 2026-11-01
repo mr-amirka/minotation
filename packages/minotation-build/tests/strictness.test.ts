@@ -204,3 +204,33 @@ describe('warningMode по файлу', () => {
     expect(out.takeWarnings()).toEqual([]);
   });
 });
+
+describe('bareMathMode по файлу (D-139)', () => {
+  test("ни проект, ни файл не задали — запись без скобок разрешена молча: умолчание 'silent', не 'warn'", () => {
+    const out = collector();
+    out.add(join(dir, 'a.html'), '<b class="w1/2+32">');
+    expect(out.css()).toContain('calc(50% + 32px)');
+    expect(out.takeWarnings()).toEqual([]);
+  });
+
+  test("проект 'warn' — CSS и предупреждение с формой в скобках", () => {
+    const out = collector({
+      bareMathMode: 'warn',
+    });
+    out.add(join(dir, 'a.html'), '<b class="w1/2+32 w{1/2+32}">');
+    expect(out.css()).toContain('calc(50% + 32px)');
+    expect(out.takeWarnings().map((w) => w.type + ' ' + w.token)).toEqual(['bare-math w1/2+32']);
+  });
+
+  test('файл строгий, пакет мягкий: токен пакета не ругают, токен файла — ошибка', () => {
+    pkg({
+      bareMathMode: 'silent',
+    });
+    const out = collector();
+    out.add(join(
+      dir, 'ui', 'a.html',
+    ), '<b class="p10+5">');
+    out.add(join(dir, 'App.html'), '<!-- @minotation bareMathMode: strict --><b class="w1/2+32">');
+    expect(() => out.css()).toThrow("bareMathMode: 'strict'");
+  });
+});

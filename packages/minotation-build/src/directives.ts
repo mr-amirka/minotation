@@ -54,6 +54,8 @@ export interface MnNotationDirective {
   suspectClassMode?: MnRaiseMode;
   /** Строгость: группа даёт битый CSS (D-077). */
   groupSuspectMode?: MnRaiseMode;
+  /** Строгость: математика без скобок (D-139). */
+  bareMathMode?: MnRaiseMode;
 }
 
 /**
@@ -70,6 +72,7 @@ export const STRICTNESS_KEYS: Array<keyof MnNotationDirective> = [
   'unknownMediaMode',
   'suspectClassMode',
   'groupSuspectMode',
+  'bareMathMode',
 ];
 
 /** Ключи директивы — общие для комментария, `package.json` и правил `scopes`. */
@@ -103,6 +106,7 @@ export const DIRECTIVE_SCHEMA: OptionSchema = {
   unknownMediaMode: raiseMode,
   suspectClassMode: raiseMode,
   groupSuspectMode: raiseMode,
+  bareMathMode: raiseMode,
 };
 
 /** Директиву ищем только в начале файла: дальше она уже не «о файле», а случайный текст. */

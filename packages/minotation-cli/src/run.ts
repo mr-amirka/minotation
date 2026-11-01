@@ -139,6 +139,7 @@ export function mergeSettings(args: CliArgs, config: Partial<RunSettings>): RunS
     handlerConflictMode: args.handlerConflictMode || config.handlerConflictMode,
     presetConflictMode: args.presetConflictMode || config.presetConflictMode,
     groupSuspectMode: args.groupSuspectMode || config.groupSuspectMode,
+    bareMathMode: args.bareMathMode || config.bareMathMode,
     groupMode: args.groupMode || config.groupMode,
     notationMode: args.notationMode || config.notationMode,
     contextWhere: args.contextWhere || config.contextWhere,

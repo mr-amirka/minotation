@@ -266,6 +266,7 @@ export const CORE_OPTION_KEYS = [
   'presetConflictMode',
   'mediaConflictMode',
   'groupSuspectMode',
+  'bareMathMode',
   'groupMode',
   'notationMode',
   'contextWhere',
@@ -289,6 +290,13 @@ const RAISE_OPTIONS: Partial<Record<MnWarning['type'], keyof MnNotationDirective
   'unknown-media': 'unknownMediaMode',
   'suspect-class': 'suspectClassMode',
   'group-suspect': 'groupSuspectMode',
+  'bare-math': 'bareMathMode',
+};
+
+/** Умолчание режима, когда его не задал ни проект, ни файл: у ядра оно своё, не `'warn'`. */
+const MODE_DEFAULTS: Partial<Record<keyof MnNotationDirective, string>> = {
+  warningMode: 'log',
+  bareMathMode: MODE_SILENT,
 };
 
 /** Предупреждения подключения пресетов — без токена: их режим проектный, ядро его уже применило. */
@@ -1177,7 +1185,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   function modeFor(
     key: keyof MnNotationDirective, token: string, files: Map<string, string[]>,
   ): string {
-    const project = String((options as Record<string, unknown>)[key] || (key === WARNING_MODE ? 'log' : MODE_WARN));
+    const project = String((options as Record<string, unknown>)[key] || MODE_DEFAULTS[key] || MODE_WARN);
     const ids = filesOf(token, files);
     if (!ids.length) {
       return project;
@@ -1428,6 +1436,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
       unknownMediaMode: MODE_WARN,
       suspectClassMode: MODE_WARN,
       groupSuspectMode: MODE_WARN,
+      bareMathMode: MODE_WARN,
       // Область пакета — привязана к своему классу (D-075); приложение — без изоляции (D-076).
       isolateMode: isolateClass ? isolateMode : ISOLATE_NONE,
       isolateClass,
@@ -1519,6 +1528,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
       handlerConflictMode: MODE_SILENT,
       presetConflictMode: MODE_SILENT,
       groupSuspectMode: MODE_SILENT,
+      bareMathMode: MODE_SILENT,
     });
     mn.setPresets(all);
     compileEntries(mn, [entry]);

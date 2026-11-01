@@ -106,6 +106,7 @@ for (const warning of collector.takeWarnings()) {
 | `handlerConflictMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | одно имя от двух пресетов (D-067) |
 | `presetConflictMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | пресеты несовместимых экосистем (D-067) |
 | `groupSuspectMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | группа скобок даёт битый CSS (D-077) |
+| `bareMathMode` | `'warn' \| 'silent' \| 'strict'` | `'silent'` | математика без скобок: `w1/2+32` вместо `w{1/2+32}` (D-139) |
 | `groupMode` | `'groups' \| 'css'` | `'groups'` | `'css'` — скобки как в CSS, без групп (D-077) |
 | `notationMode` | `'context-qualified' \| 'tw4-compatible' \| 'breakpoint-prefixed' \| 'property-value'` | `'context-qualified'` | режим синтаксиса классов разметки (D-045) |
 | `contextWhere` | `boolean` | `false` | контекст селектора в `:where()` — специфичность только у класса (D-049) |
@@ -274,7 +275,7 @@ module.exports = {
 ### Строгость по файлу (D-081)
 
 `warningMode` и режимы токенов (`specificityMode`, `importantMode`, `maxDepthMode`, `maxSpecificityMode`, `childSelectorMode`,
-`unknownMediaMode`, `suspectClassMode`, `groupSuspectMode`) файл или пакет задаёт **для себя** — в
+`unknownMediaMode`, `suspectClassMode`, `groupSuspectMode`, `bareMathMode`) файл или пакет задаёт **для себя** — в
 комментарии `@minotation`, в `package.json` или правилом `scopes`. Каждый файл судится своими
 настройками: строгие правила приложения не применяются к пакету, который их не придерживается —
 чинить чужой пакет не в нашей власти.
@@ -396,7 +397,7 @@ attrs: { class: 'class', className: 'class' }     // объект
 | Опция | Что делает |
 |-------|------------|
 | `presets` | статические пресеты |
-| поля ядра | `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `maxSpecificity`, `maxSpecificityMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `suspectClassMode`, `handlerConflictMode`, `presetConflictMode`, `mediaConflictMode`, `groupSuspectMode`, `groupMode`, `notationMode`, `contextWhere`, `mediaNesting`, `mediaSyntax`, `axisMode`, `overflowWrapMode`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
+| поля ядра | `altColor`, `warningMode`, `media`, `maxDepth`, `maxDepthMode`, `maxSpecificity`, `maxSpecificityMode`, `specificityMode`, `importantMode`, `childSelectorMode`, `unknownMediaMode`, `suspectClassMode`, `handlerConflictMode`, `presetConflictMode`, `mediaConflictMode`, `groupSuspectMode`, `bareMathMode`, `groupMode`, `notationMode`, `contextWhere`, `mediaNesting`, `mediaSyntax`, `axisMode`, `overflowWrapMode`, `onWarning`, `onError` — плоско, как в v1 (D-034) |
 
 | Метод | Что делает |
 |-------|------------|

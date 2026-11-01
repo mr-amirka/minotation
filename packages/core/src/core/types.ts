@@ -299,6 +299,8 @@ export type MnWarningType = 'parse-error' | 'max-depth-exceeded' | 'max-specific
   | 'preset-conflict'
   /** Группа скобок даёт заведомо битый CSS — `:is(.a|.b)`, `:h(2n)` (D-077, `groupSuspectMode`). */
   | 'group-suspect'
+  /** Математика без скобок — `w1/2+32`, а не `w{1/2+32}` (D-139, `bareMathMode`). */
+  | 'bare-math'
   /** Класс задан из JS в файле изолированной области — класса области не получит (D-076, `unreachableClassMode`). */
   | 'unreachable-class';
 
@@ -534,6 +536,18 @@ export interface MnOptions {
    * @default 'warn'
    */
   groupSuspectMode?: MnRaiseMode;
+  /**
+   * Математика без скобок (D-139): оператор вне скобок в значении — `w1/2+32`, `p10+5_20`, `w$a*2`, `x$a*2;y3`.
+   * В скобках — `w{1/2+32}`, `p{10+5}_20`, `x{$a*2}y3` — CSS тот же, и режим её не касается; не касается и
+   * знака (`w-10`), дроби (`w1/3`), запасного варианта (`w$a{10}`), функции (`wMin{10,5%}`), `**N`.
+   * - `'silent'` — CSS, молча: запись без скобок разрешена;
+   * - `'warn'` — CSS и предупреждение с формой в скобках: так проект находит такие токены, прежде чем запретить;
+   * - `'strict'` — токен не даёт CSS, `compile` бросает {@link MnForbiddenTokenError}.
+   *
+   * `warningMode` на этот случай не влияет.
+   * @default 'silent'
+   */
+  bareMathMode?: MnRaiseMode;
   /**
    * Что значат круглые скобки в записи (D-077):
    * - `'groups'` — группы вариантов `(a|b)`, `w(|max)150`, scope-грамматика `p10:h(.x)`;

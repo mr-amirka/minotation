@@ -247,9 +247,11 @@ describe('mergeSettings', () => {
       'css',
     ]), {
       groupSuspectMode: 'silent',
+      bareMathMode: 'warn',
     })).toMatchObject({
       groupMode: 'css',
       groupSuspectMode: 'silent',
+      bareMathMode: 'warn',
     });
     expect(mergeSettings(parseArgs([]), {
       notationMode: 'tw4-compatible',

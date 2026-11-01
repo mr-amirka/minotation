@@ -186,6 +186,8 @@ const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:([0-9.]+)('
   + '(?:[mM]([0-9]+))?'
   + '(?:c(' + PATTERN_BASE_COLOR.replace(REGEXP_ROUTE_KEY, '') + '))?'
   + '(in)?$');
+/** Буква переменной размытия: `bxshB$blur`. */
+const BLUR_MARK = 'B';
 /** Часть тени — голое число: ей нужна единица записи. */
 const REGEXP_SHADOW_NUMBER = /^-?[0-9.]+$/;
 /** Позиции групп в {@link REGEXP_SHADOW_SUFFIX}. */
@@ -346,12 +348,20 @@ export function registerBorders(ctx: StandardContext): void {
      * `{10+5}` → `calc(10px + 5px)`, `$a*2;` → `calc(var(--a) * 2)`.
      * @param v значение слота
      * @param rules правила слота
+     * @param mark буква перед значением в токене (`B` у переменной размытия) — для подсказки «в скобки»
      * @returns часть тени
      */
-    function slotValue(v: string, rules: MnMathRules): string {
+    function slotValue(
+      v: string, rules: MnMathRules, mark?: string,
+    ): string {
       const first = v[0];
-      return first === OPEN_BRACE || first === DOLLAR ? mathValue(v[v.length - 1] === SEMICOLON ? v.slice(0, -1) : v,
-        rules) : v;
+      if (first !== OPEN_BRACE && first !== DOLLAR) {
+        return v;
+      }
+      const expr = v[v.length - 1] === SEMICOLON ? v.slice(0, -1) : v;
+      return mathValue(
+        expr, rules, mark && mark + expr,
+      );
     }
     /**
      * Собирает ОДНУ тень из её разобранного суффикса.
@@ -393,7 +403,9 @@ export function registerBorders(ctx: StandardContext): void {
       // `;` — терминатор имени переменной, как везде в нотации: без него имя
       // жадно забрало бы следующие модификаторы (`bxshB$blur;c$shadow`). Размытие переменной — математика:
       // `bxshB$a*2` → `calc(var(--a) * 2)`.
-      value = slotValue(value, blurRules);
+      value = slotValue(
+        value, blurRules, p[MN_SHADOW_BLUR_VAR] && BLUR_MARK,
+      );
       const colors = getColor(p[MN_SHADOW_COLOR] || ZERO);
       // Последняя группа регулярки — `in` (inset).
       const prefixIn = p[p.length - 1] ? 'inset ' : '';

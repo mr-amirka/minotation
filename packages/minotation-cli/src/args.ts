@@ -60,6 +60,8 @@ export interface CliArgs {
   presetConflictMode?: 'warn' | 'silent' | 'strict';
   /** Группа скобок даёт битый CSS (`cF:is(.a|.b)`): `warn`, `silent`, `strict` (D-077). */
   groupSuspectMode?: 'warn' | 'silent' | 'strict';
+  /** Математика без скобок `w1/2+32` (D-139): `silent` — по умолчанию, разрешена; `warn`; `strict`. */
+  bareMathMode?: 'warn' | 'silent' | 'strict';
   /** Скобки: `groups` — группы вариантов, `css` — скобки как в CSS (D-077). */
   groupMode?: 'groups' | 'css';
   /** Режим синтаксиса нотации: `context-qualified`, `tw4-compatible` (D-045). */
@@ -152,6 +154,7 @@ const OPTIONS: Record<string, keyof CliArgs> = {
   '--handler-conflict-mode': 'handlerConflictMode',
   '--preset-conflict-mode': 'presetConflictMode',
   '--group-suspect-mode': 'groupSuspectMode',
+  '--bare-math-mode': 'bareMathMode',
   '--group-mode': 'groupMode',
   '--notation-mode': 'notationMode',
   '--notation-conflict-mode': 'notationConflictMode',
@@ -222,6 +225,8 @@ export function parseArgs(argv: string[]): CliArgs {
     || raise('Option "--preset-conflict-mode" expects warn, silent or strict, got "' + args.presetConflictMode + DOUBLE_QUOTE);
   args.groupSuspectMode === undefined || RAISE_MODES[args.groupSuspectMode]
     || raise('Option "--group-suspect-mode" expects warn, silent or strict, got "' + args.groupSuspectMode + DOUBLE_QUOTE);
+  args.bareMathMode === undefined || RAISE_MODES[args.bareMathMode]
+    || raise('Option "--bare-math-mode" expects warn, silent or strict, got "' + args.bareMathMode + DOUBLE_QUOTE);
   args.groupMode === undefined || args.groupMode === 'groups' || args.groupMode === 'css'
     || raise('Option "--group-mode" expects groups or css, got "' + args.groupMode + DOUBLE_QUOTE);
   args.notationMode === undefined || NOTATION_MODES[args.notationMode]
@@ -294,6 +299,9 @@ Options:
       --group-suspect-mode <m>
                          parentheses that give broken CSS (cF:is(.a|.b)): warn (default),
                          silent, strict
+      --bare-math-mode <m>
+                         math without braces (w1/2+32, not w{1/2+32}): silent (default),
+                         warn, strict
       --group-mode <m>   parentheses: groups (default, (a|b) variant groups) or css
                          (plain CSS parentheses, no groups)
       --context-where    wrap selector context in :where() (Tailwind v4 specificity)

@@ -219,6 +219,15 @@ describe('parseArgs', () => {
     ]))
       .toThrow('Option "--group-suspect-mode" expects warn, silent or strict, got "x"');
     expect(parseArgs([
+      '--bare-math-mode',
+      'strict',
+    ]).bareMathMode).toBe('strict');
+    expect(() => parseArgs([
+      '--bare-math-mode',
+      'x',
+    ]))
+      .toThrow('Option "--bare-math-mode" expects warn, silent or strict, got "x"');
+    expect(parseArgs([
       '--group-mode',
       'css',
     ]).groupMode).toBe('css');

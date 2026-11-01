@@ -72,6 +72,7 @@ import {
   isInvalidSelector,
 } from '../isInvalidSelector';
 import {
+  bareMathMessage,
   suspectClassMessage,
 } from '../selectorsCompileProvider/raiseMessages';
 import {
@@ -147,6 +148,8 @@ import {
   orderPresets,
 } from './presetOrder';
 import {
+  mathBareBegin,
+  mathBareEnd,
   throwOldVariable,
 } from './mathValue';
 import {
@@ -174,9 +177,11 @@ const MSG_UNKNOWN_MEDIA = 'Media "@';
 const COLON = ':';
 const WARNING_SUSPECT_CLASS = 'suspect-class';
 const WARNING_PRESET_CONFLICT = 'preset-conflict';
+const WARNING_BARE_MATH = 'bare-math';
 const SPACE_OPEN_PAREN = ' (';
 const DOT = '.';
 const MODE_WARN = 'warn';
+const MODE_SILENT = 'silent';
 const SPACE = ' ';
 const MODE_STRICT = 'strict';
 const DOUBLE_QUOTE = '"';
@@ -356,7 +361,8 @@ function prefixMatches(rest: string, prefix: string): boolean {
 }
 
 type RaiseType = 'raised-specificity' | 'important' | 'max-depth-exceeded' | 'max-specificity' | 'child-selector'
-  | 'unknown-media' | 'suspect-class' | 'handler-conflict' | 'preset-conflict' | 'media-conflict' | 'group-suspect';
+  | 'unknown-media' | 'suspect-class' | 'handler-conflict' | 'preset-conflict' | 'media-conflict' | 'group-suspect'
+  | 'bare-math';
 
 /** Типы медиа CSS: известны без описания в `mn.media` (D-058). */
 const CSS_MEDIA_TYPES: Record<string, number> = {
@@ -516,7 +522,7 @@ function isCompileWarning(warning: MnWarning): boolean {
     && warning.type !== 'max-depth-exceeded' && warning.type !== 'child-selector'
     && warning.type !== 'unknown-media' && warning.type !== WARNING_SUSPECT_CLASS
     && warning.type !== 'handler-conflict' && warning.type !== WARNING_PRESET_CONFLICT && warning.type !== 'media-conflict'
-    && warning.type !== 'group-suspect';
+    && warning.type !== 'group-suspect' && warning.type !== WARNING_BARE_MATH;
 }
 
 /**
@@ -665,6 +671,8 @@ function minotationProvider(options?: MnOptions) {
       'media-conflict': settings.mediaConflictMode || MODE_WARN,
       'preset-conflict': settings.presetConflictMode || MODE_WARN,
       'group-suspect': settings.groupSuspectMode || MODE_WARN,
+      // Запись без скобок разрешена, пока проект не решит иначе (D-139).
+      'bare-math': settings.bareMathMode || MODE_SILENT,
     };
   }
   /**
@@ -684,7 +692,7 @@ function minotationProvider(options?: MnOptions) {
     const mode = $$raiseModes[type];
     const key = type + SPACE + token;
     let warning: MnWarning;
-    if (mode === 'silent' || $$raisedTokens[key]) {
+    if (mode === MODE_SILENT || $$raisedTokens[key]) {
       return mode === MODE_STRICT;
     }
     $$raisedTokens[key] = 1;
@@ -2011,6 +2019,7 @@ function minotationProvider(options?: MnOptions) {
       const matchs = handle.skip ? null : REGEXP_MATCH_VALUE.exec(params.suffix);
       let essence: MnEssenceRaw | void | 0;
       let placed: number;
+      let bare: string[];
       matchs && (
         params.value = matchs[2],
         params.camel = matchs[3],
@@ -2022,12 +2031,16 @@ function minotationProvider(options?: MnOptions) {
       // Хендлер ничего не вернул — автор писал токен, а стиля не будет (`fx` без значения).
       // Молчать нельзя (D-021): пропажу иначе замечали бы только в браузере. Исключение —
       // минус Tailwind (`-p-4`), который хендлер не принимает: CSS нет, молча, как в Tailwind (D-064).
+      // Математика без скобок (D-139) — её видит только читатель: он копит значения, пока работает хендлер.
+      const outer = mathBareBegin();
       try {
         essence = handle(params);
       } catch (ex) {
         // Хендлер не принял метку (`fxaINH`): в его сообщении вместо `--mnkeyword` — буквы, как написал автор.
         keyword && ex instanceof MnParseError && unmarkError(ex, written);
         throw ex;
+      } finally {
+        bare = mathBareEnd(outer);
       }
       if (!essence) {
         return params.sign ? 0 : keyword ? throwCssWide(
@@ -2038,6 +2051,13 @@ function minotationProvider(options?: MnOptions) {
         value, params.name, placed < 0,
       );
       (essence as MnEssenceRaw).important = params.ni ? 1 : 0;
+      if (bare.length && raisedToken(
+        value, WARNING_BARE_MATH, (strict: boolean) => bareMathMessage(
+          value, bare, strict,
+        ),
+      )) {
+        return 0;
+      }
       return validateEssenceStyle(
         essence as MnEssenceRaw, value, params.name,
       ) && __normalize(essence) || 0;
@@ -2105,7 +2125,7 @@ function minotationProvider(options?: MnOptions) {
       token: '',
       message: message + '. To hide this warning: ' + option + ': \'silent\'.',
     };
-    if (mode === 'silent' || $$raisedTokens[type + SPACE + message]) {
+    if (mode === MODE_SILENT || $$raisedTokens[type + SPACE + message]) {
       return;
     }
     $$raisedTokens[type + SPACE + message] = 1;

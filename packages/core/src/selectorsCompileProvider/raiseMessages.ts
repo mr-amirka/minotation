@@ -6,6 +6,13 @@
  * (замечание владельца 2026-10-09). `strict` — режим `'strict'`: токен не даёт CSS.
  */
 
+const OPEN_BRACE = '{';
+const CLOSE_BRACE = '}';
+const SEMICOLON = ';';
+const DOLLAR = '$';
+/** Начало скобок перед выражением с группы: терм `1*` разделяет `{{`. */
+const GROUP_FIRST = '{1*';
+
 /** `*N` — накрутка специфичности; `mark` — как записано в токене (`*2`). */
 export function specificityMessage(mark: string, strict: boolean): string {
   return strict
@@ -64,6 +71,54 @@ export function maxDepthMessage(
       + ' — styles depend on a long chain of ancestors, which may make the markup harder to change.'
       + ' To allow such depth: raise maxDepth; to hide this warning: maxDepthMode: \'silent\';'
       + ' to forbid such tokens: maxDepthMode: \'strict\'.';
+}
+
+/**
+ * Математика без скобок (D-139): токен и он же со скобками — его можно скопировать.
+ * @param token — токен
+ * @param found — пары «как часть написана в токене», «выражение» от читателя математики
+ * @param strict — режим `'strict'`
+ * @returns сообщение
+ * @example bareMathMessage('w1/2+32', ['1/2+32', '1/2+32'], false) // '"w1/2+32" writes math without braces: …'
+ */
+export function bareMathMessage(
+  token: string, found: string[], strict: boolean,
+): string {
+  const head = '"' + token + '" writes math without braces: write "' + bracedToken(token, found) + '"';
+  return strict
+    ? head + ' (bareMathMode: \'strict\'), the token gives no CSS. To allow it: bareMathMode: \'silent\'.'
+    : head + '. To hide this warning: bareMathMode: \'silent\'; to forbid such tokens: bareMathMode: \'strict\'.';
+}
+
+/**
+ * Токен со скобками вокруг каждой части с математикой, слева направо. `;`, закрывавший переменную перед буквой
+ * следующего слота, в скобках не нужен: `x$a*2;y3` → `x{$a*2}y3`; перед следующей переменной он остаётся
+ * разделителем. Часть, прочитанная дважды, ставит скобки один раз. Выражение с группы в начале получает терм перед
+ * ней — `{{` читатель не принимает (интерполяция шаблонов): `w{1+2}*3` → `w{1*{1+2}*3}`.
+ * @param token — токен
+ * @param found — пары «как написано», «выражение»
+ * @returns токен со скобками
+ * @example bracedToken('bxshB$a*2;x2', ['B$a*2', '$a*2']) // 'bxsh{$a*2}x2'
+ */
+function bracedToken(token: string, found: string[]): string {
+  const l = found.length;
+  let out = token;
+  let at = 0;
+  let i = 0;
+  let k: number;
+  let tail: number;
+  let braced: string;
+  for (; i < l; i += 2) {
+    k = out.indexOf(found[i], at);
+    if (k > -1) {
+      tail = k + found[i].length;
+      out[tail] === SEMICOLON && out[tail + 1] !== DOLLAR && tail++;
+      braced = (found[i + 1][0] === OPEN_BRACE ? GROUP_FIRST : OPEN_BRACE) + found[i + 1] + CLOSE_BRACE;
+      out = out.slice(0, k) + braced + out.slice(tail);
+      at = k + braced.length;
+    }
+  }
+  return out;
 }
 
 /** `>` — дочерний селектор; `mark` — дочерняя часть токена (`>1`, `>.child`). */

@@ -239,6 +239,9 @@ export const CORE_OPTIONS_SCHEMA: OptionSchema = {
   groupSuspectMode: oneOf(
     MODE_WARN, MODE_SILENT, MODE_STRICT,
   ),
+  bareMathMode: oneOf(
+    MODE_WARN, MODE_SILENT, MODE_STRICT,
+  ),
   groupMode: oneOf('groups', 'css'),
   notationMode: oneOf(
     'context-qualified', 'tw4-compatible', 'breakpoint-prefixed', 'property-value',

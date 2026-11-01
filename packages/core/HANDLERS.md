@@ -518,7 +518,9 @@ CSS не даёт: «"p10*2" was renamed: write "p10**2"» — сообщени�
 | `bxsh10x{-$a}y4` | `box-shadow:calc(var(--a) * -1) 4px 10px 0px #000` |
 
 Скобки вокруг всего значения ничего не группируют и в CSS не идут: `w{1+2}` → `width:calc(1px + 2px)`, `w{10}` →
-`width:10px`. Математика без скобок в слоте — ошибка с готовой формой: `x10+5` — «math in a shift goes in braces, as
+`width:10px`. Запись без скобок вне слотов разрешена; проект запрещает её опцией `bareMathMode` (README ядра):
+`'warn'` — CSS и подсказка «write "w{1/2+32}"», `'strict'` — брак сборки. Математика без скобок в слоте — ошибка с
+готовой формой: `x10+5` — «math in a shift goes in braces, as
 "x{10+5}"…», `bxsh10+5x2` — «… a shadow slot holds it in braces, as "bxsh{10+5}x2"…».
 
 Ошибки называют место: `w+5` — «"+" is not expected: a value starts with a number ("10"), a variable ("$x"), a

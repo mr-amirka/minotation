@@ -474,6 +474,23 @@ mn.setPresets([presetMedias, presetTw4]);   // presetMedias: ['minotation', 'tw4
 `suspectClassMode: 'warn'` (по умолчанию) — предупреждение, CSS нет, `warningMode: 'error'` сборку
 из-за таких классов не роняет; `'silent'` — молча; `'strict'` — брак сборки.
 
+### Математика без скобок — `bareMathMode` (D-139)
+
+Математика пишется и без скобок, и в скобках — CSS один: `w1/2+32` и `w{1/2+32}` → `width:calc(50% + 32px)`.
+Скобки обязательны только там, где выражению нечем кончиться — в буквенных записях `x{10+5}`, `bxsh{10+5}x2`.
+Проект, которому нужна одна запись, запрещает форму без скобок:
+
+| Токен | `'silent'` (по умолчанию) | `'warn'` | `'strict'` |
+|---|---|---|---|
+| `w1/2+32` | `width:calc(50% + 32px)` | CSS и `bare-math`: «"w1/2+32" writes math without braces: write "w{1/2+32}"…» | CSS нет, `compile` бросает `MnForbiddenTokenError` |
+| `w{1/2+32}` | CSS | CSS, молча | CSS, молча |
+| `x$a*2;y3` | CSS | CSS и «… write "x{$a*2}y3"» | CSS нет |
+
+Не математика, режим их не касается: знак `w-10`, дробь `w1/3`, запасной вариант `w$a{10}`, функция `wMin{10,5%}`,
+`**N`. Оператор внутри скобок функции — в скобках: `wMin{10+5,20%}`. `'warn'` — шаг перехода: CSS остаётся, а в
+логе сборки — каждый токен без скобок с готовой формой; когда лог чист — `'strict'`. `warningMode` на этот случай
+не влияет.
+
 ### Шкала для пресетов-клонов — `defineScale` (D-059)
 
 Одним вызовом — хендлеры на все сочетания «свойство × сторона» и статики на слова. Для
@@ -570,6 +587,7 @@ const mn = minotationProvider({
   unknownMediaMode: 'warn',        // 'warn' | 'silent' | 'strict' — неизвестное имя медиа p10@zz
   suspectClassMode: 'warn',        // 'warn' | 'silent' | 'strict' — класс другой системы fw-bold
   groupSuspectMode: 'warn',        // 'warn' | 'silent' | 'strict' — группа даёт битый CSS: cF:is(.a|.b), cF:h(2n)
+  bareMathMode: 'silent',          // 'warn' | 'silent' | 'strict' — математика без скобок: w1/2+32, а не w{1/2+32}
   groupMode: 'groups',             // 'groups' | 'css' — 'css': скобки это CSS, групп (a|b) нет (D-077)
   handlerConflictMode: 'warn',     // 'warn' | 'silent' | 'strict' — одно имя от двух пресетов
   presetConflictMode: 'warn',      // 'warn' | 'silent' | 'strict' — пресеты несовместимых экосистем

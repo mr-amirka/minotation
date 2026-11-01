@@ -179,6 +179,15 @@ let factorVariable = 0;
  * `10px * 2 / 4`, а не `10px * 50%` (длину на процент CSS не умножает).
  */
 let factorFirst = 0;
+/** Глубина скобок разбора: группа, аргументы функции, запасной вариант переменной. Вне скобок — `0`. */
+let level = 0;
+/** В значении есть оператор вне скобок — математика без скобок (`w1/2+32`, а не `w{1/2+32}`). */
+let bareOps = 0;
+/**
+ * Математика без скобок, найденная с {@link mathBareBegin}: пары «как часть написана в токене», «выражение».
+ * `undefined` — сбор выключен: читатель, вызванный вне хендлера, ничего не копит.
+ */
+let bareFound: string[] | undefined;
 
 /**
  * Значение с математикой — строка CSS. Один терм — без `calc` (`10` → `10px`, `$a` → `var(--a)`,
@@ -186,8 +195,14 @@ let factorFirst = 0;
  * остаётся числом, где оно множитель: `$gap*2` → `calc(var(--gap) * 2)`, `10*2` → `calc(10px * 2)`. Число над
  * числом — дробь: `1/3` → `33.33%`. Внутри математики ноль пишется с единицей — `calc(0 + 5px)` CSS не принимает.
  *
+ * Оператор вне скобок (`1/2+32`, `$a*2`) — математика без скобок: при включённом сборе
+ * ({@link mathBareBegin}) значение записывается для режима `bareMathMode`. Не она: знак (`-10`, `-$a`), дробь
+ * (`1/3`), всё внутри скобок группы, функции и запасного варианта (`{1+2}`, `Min{10+5,20%}`, `$a{10+5}`).
+ *
  * @param expr — одна часть значения (между `_`): `100%-2rem+10`
  * @param mathRulesValue — правила свойства из {@link mathRules}
+ * @param written — как часть написана в токене, если не так, как `expr`: тень пишет переменную размытия через
+ *   `B` (`B$a*2` — выражение `$a*2`). По нему подсказка ставит скобки: `bxshB$a*2;x2` → `bxsh{$a*2}x2`
  * @returns CSS значения
  * @throws {MnParseError} выражение не читается, единица или минус не подходят свойству, прежняя запись
  *   переменной (`--a`)
@@ -195,18 +210,55 @@ let factorFirst = 0;
  * mathValue('100%-2*$gap', widthRules); // 'calc(100% - 2 * var(--gap))'
  * mathValue('Min{100%,50rem}', widthRules); // 'min(100%, 50rem)'
  */
-export function mathValue(expr: string, mathRulesValue: MnMathRules): string {
+export function mathValue(
+  expr: string, mathRulesValue: MnMathRules, written?: string,
+): string {
+  const css = readValue(expr, mathRulesValue);
+  bareOps && bareFound && bareFound.push(written === undefined ? expr : written, expr);
+  return css;
+}
+
+/**
+ * Начинает сбор математики без скобок: ядро зовёт его перед хендлером токена, {@link mathBareEnd} — после.
+ * Сбор вложенный: прежний возвращается в {@link mathBareEnd}.
+ * @returns прежний сбор
+ * @example const outer = mathBareBegin(); mathValue('1+2', rules); mathBareEnd(outer) // ['1+2', '1+2']
+ */
+export function mathBareBegin(): string[] | undefined {
+  const outer = bareFound;
+  bareFound = [];
+  return outer;
+}
+
+/**
+ * Заканчивает сбор, начатый {@link mathBareBegin}.
+ * @param outer — прежний сбор, который вернул {@link mathBareBegin}
+ * @returns пары «как часть написана в токене», «выражение» — по одной на каждое значение с оператором вне скобок
+ * @example mathBareEnd(outer) // ['B$a*2', '$a*2']
+ */
+export function mathBareEnd(outer: string[] | undefined): string[] {
+  const found = bareFound as string[];
+  bareFound = outer;
+  return found;
+}
+
+/** Тело {@link mathValue}: CSS значения; `bareOps` после него — был ли оператор вне скобок. */
+function readValue(expr: string, mathRulesValue: MnMathRules): string {
   src = expr;
   pos = 0;
   end = expr.length;
   rules = mathRulesValue;
+  level = 0;
+  bareOps = 0;
   // `{{` — интерполяция шаблонов (Angular, Vue, Mustache): в атрибуте класса такую запись съест шаблон.
   expr.indexOf('{{') > -1 && invalid('"{{" is not written — it is template interpolation (Angular, Vue, Mustache):'
     + ' put a term before the inner group, "{2*{a+b}+1}", "Min{50rem,{100%-2rem}/3}"');
   // Значение — одна группа целиком: её скобки ничего не группируют — `{1+2}` → `calc(1px + 2px)`, `{10}` → `10px`
   // (было `calc((1px + 2px))`). Так слот буквенной записи пишет математику: `x{10+5}`.
   if (expr[0] === OPEN_BRACE && groupEnd(expr) === end - 1) {
-    return mathValue(expr.slice(1, -1), mathRulesValue);
+    const css = readValue(expr.slice(1, -1), mathRulesValue);
+    bareOps = 0;
+    return css;
   }
   const zero = REGEXP_WHOLE_ZERO.exec(expr);
   if (zero) {
@@ -265,6 +317,7 @@ function readSum(): string {
       break;
     }
     pos++;
+    level || (bareOps = 1);
     text += SPACE + ch + SPACE + readProduct('');
     ops++;
   }
@@ -291,6 +344,7 @@ function readProduct(sign: string): string {
       break;
     }
     pos++;
+    level || (bareOps = 1);
     ops.push(ch);
     factorFirst = 0;
     texts.push(readFactor(''));
@@ -336,7 +390,9 @@ function readFactor(sign: string): string {
   }
   if (ch === OPEN_BRACE) {
     pos++;
+    level++;
     const inner = readSum();
+    level--;
     closeBrace();
     // Внутренняя сумма — своя: тип множителя ставится после неё.
     factorKind = KIND_DIMENSION;
@@ -433,7 +489,9 @@ function readVariable(): string {
   let fallback = '';
   if (src[pos] === OPEN_BRACE) {
     pos++;
+    level++;
     fallback = readSum();
+    level--;
     fallback = ARG_SEPARATOR + (sumOps ? CALC_OPEN + fallback + CLOSE_PAREN : fallback);
     closeBrace();
   }
@@ -480,6 +538,7 @@ function readFunction(): string {
   src[pos] === OPEN_BRACE || invalid('the arguments of "' + name + '" are written in braces: "' + name
     + '{100%,50rem}"');
   pos++;
+  level++;
   const args: string[] = [];
   for (;;) {
     args.push(readSum());
@@ -489,6 +548,7 @@ function readFunction(): string {
     }
     pos++;
   }
+  level--;
   closeBrace();
   (args.length < fn[1] || args.length > fn[2]) && invalid(DOUBLE_QUOTE + name + '" takes ' + (fn[1] === fn[2]
     ? fn[1] : 'at least ' + fn[1]) + ' arguments, got ' + args.length);

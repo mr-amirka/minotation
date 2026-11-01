@@ -2,6 +2,9 @@ import type {
   StandardContext,
 } from './context';
 import type {
+  MnMathRules,
+} from '../../core/mathValue';
+import type {
   MnEssenceParams,
 } from '../../core/types';
 import {
@@ -15,6 +18,7 @@ import {
   COMMA,
   DASH,
   DEG,
+  DOLLAR,
   DOUBLE_QUOTE,
   LIST_SEPARATOR,
   N,
@@ -28,6 +32,7 @@ import {
   NAME_VISIBLE,
   NONE,
   NONE_ABBREVIATIONS,
+  OPEN_BRACE,
   OPEN_PAREN,
   PX,
   R,
@@ -62,6 +67,8 @@ import {
 } from '../../core/mathValue';
 import {
   PATTERN_DIGITS,
+  PATTERN_MATH_SLOT,
+  REGEXP_MATH_TAIL,
   REGEXP_SUBSTITUTION,
   floatNormalize,
   normalizeDefault,
@@ -80,6 +87,10 @@ const MS = 'ms';
  * строки.
  */
 const REGEXP_ANGLE_TAIL = /[rR][xyz][-+]?[0-9.]+([a-z]*)$/;
+/** Значение оси сдвига: число или слот математики ({@link PATTERN_MATH_SLOT}) — `x{10+5}`, `x$a;y10`, `x$a*2`. */
+const PATTERN_SHIFT = '(-?[0-9\\.]+|' + PATTERN_MATH_SLOT + ')';
+/** Хендлер сдвига. */
+const SHIFT = 'x';
 /**
  * Позиции шага `steps()` буквами: `ttfSteps4_JE` → `steps(4,jump-end)`. `start` и `end` — то же, что
  * `jump-start` и `jump-end`, поэтому своих букв не получают: одна запись на значение.
@@ -541,7 +552,35 @@ export function registerMotion(ctx: StandardContext): void {
     synonymProvider,
     toUpper,
     valueNormalize,
+    lengthRules,
+    mathValue,
   } = ctx;
+  // Сдвиг по x и y — со знаком и в процентах (от размеров элемента); по z процентов нет.
+  const shiftRules = lengthRules(
+    SHIFT, 0, 0,
+  );
+  const shiftZRules = lengthRules(
+    SHIFT, 0, 1,
+  );
+
+  /**
+   * Сдвиг одной оси: число — с единицей записи (`10` → `10px`, `10%`), математика в скобках или переменная — через
+   * читатель ({@link mathValue}): `{10+5}` → `calc(10px + 5px)`, `$a*2` → `calc(var(--a) * 2)`.
+   * @param v значение оси из записи
+   * @param unit `%` после числа
+   * @param rules правила оси
+   * @param raw токен — для ошибки
+   * @returns длина CSS
+   */
+  function shiftAxis(
+    v: string, unit: string | undefined, rules: MnMathRules, raw: string,
+  ): string {
+    if (v[0] !== OPEN_BRACE && v[0] !== DOLLAR) {
+      return floatNormalize(v) + (unit || PX);
+    }
+    unit && throwInvalid(DOUBLE_QUOTE + raw + '" puts "%" after math: write it inside, as "x{10%+5}"');
+    return mathValue(v[v.length - 1] === SEMICOLON ? v.slice(0, -1) : v, rules);
+  }
   function assertAngle(
     value: string, unit: string | undefined, raw: string,
   ): string {
@@ -604,19 +643,29 @@ export function registerMotion(ctx: StandardContext): void {
   });
 
   mn(
-    'x', (p) => {
-      // Суффикс не той формы молча давал `translate(0px,0px)`: `x--v`, `x_translate\(10px\)`.
-      p.suffix && p.all === undefined && throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR
-        + 'x": expected a shift, as "x10", "x10y20", "x10y20z5", with a scale "s50" and a turn "rz45" after it');
+    SHIFT, (p) => {
+      // Суффикс не той формы молча давал `translate(0px,0px)`: `x--v`, `x_translate\(10px\)`. Математика без скобок
+      // (`x10+5`) — своя подсказка: буква следующей оси не может закончить выражение.
+      const suffix = '' + p.suffix;
+      suffix && p.all === undefined && throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + 'x": ' + (REGEXP_MATH_TAIL
+        .test(suffix) ? 'math in a shift goes in braces, as "x{10+5}", "x10y{100%-20}"' : 'expected a shift, as "x10",'
+        + ' "x10y20", "x10y20z5", with a scale "s50" and a turn "rz45" after it'));
       const scale = p.s;
       const angle = p.angle;
       const z = p.z;
+      const raw = p.name + suffix;
       return styleWrap({
         transform:
-      'translate(' + (floatNormalize(p.x || ZERO) + ('' + (p.xu || PX))) + COMMA
-      + (floatNormalize(p.y || ZERO) + ('' + (p.yu || PX))) + CLOSE_PAREN
+      'translate(' + shiftAxis(
+        '' + (p.x || ZERO), p.xu as string | undefined, shiftRules, raw,
+      ) + COMMA
+      + shiftAxis(
+        '' + (p.y || ZERO), p.yu as string | undefined, shiftRules, raw,
+      ) + CLOSE_PAREN
       + (z ? (' translateZ('
-        + floatNormalize(z) + ('' + (p.zu || PX)) + CLOSE_PAREN) : '')
+        + shiftAxis(
+          '' + z, p.zu as string | undefined, shiftZRules, raw,
+        ) + CLOSE_PAREN) : '')
       + (scale ? (' scale(' + (0.01 * floatNormalize(scale)) + CLOSE_PAREN) : '')
       + (angle ? (' rotate' + toUpper('' + p.dir)
       + OPEN_PAREN + assertAngle(
@@ -625,8 +674,8 @@ export function registerMotion(ctx: StandardContext): void {
         p.name + p.suffix,
       ) + CLOSE_PAREN) : ''),
       });
-    }, '^' + PATTERN_DIGITS + ':x?(%):xu?([yY]' + PATTERN_DIGITS
-  + ':y(%):yu?)?([zZ]' + PATTERN_DIGITS
+    }, '^' + PATTERN_SHIFT + ':x?(%):xu?([yY]' + PATTERN_SHIFT
+  + ':y(%):yu?)?([zZ]' + PATTERN_SHIFT
   + ':z(%):zu?)?([sS]([0-9\\.]+):s)?([rR](x|y|z):dir'
   + PATTERN_DIGITS + ':angle([a-z]+):unit?)?$',
   );

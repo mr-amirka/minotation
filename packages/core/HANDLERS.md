@@ -503,8 +503,23 @@ CSS не даёт: «"p10*2" was renamed: write "p10**2"» — сообщени�
 
 Где математика читается: длины одиночных свойств и их части (`w`, `p`, `m`, `ti`, `lts`, `bsp`, …), `lh`, прибавка
 `ratio`, позиции (`op10+5_T`), аргументы функций (`ftBlur2+1`, `cpthInset10+5`), дорожки сетки (`gtc100-20_1fr`),
-переменная размытия тени (`bxshB$blur*2`). В буквенных записях тени и сдвига (`bxsh10x2`, `x10y20`) — пока нет:
-выражение там не знает, где кончиться (`bxsh10+5x2`), форма — открытый вопрос S-6.
+переменная размытия тени (`bxshB$blur*2`), слоты буквенных записей тени и сдвига — в скобках.
+
+В буквенной записи (`bxsh10x2`, `x10y20`) буква следующего слота не кончает выражение: в `bxsh10+5x2` `x` — и слот,
+и продолжение значения. Поэтому слот держит математику в скобках, а переменную — как есть, `;` закрывает имя перед
+буквой:
+
+| Токен | CSS |
+|-------|-----|
+| `x{10+5}` | `transform:translate(calc(10px + 5px),0px)` |
+| `x{100%-20}y$a*2` | `transform:translate(calc(100% - 20px),calc(var(--a) * 2))` |
+| `x$a;y10` | `transform:translate(var(--a),10px)` |
+| `bxsh{10+5}x2` | `box-shadow:2px 0px calc(10px + 5px) 0px #000` |
+| `bxsh10x{-$a}y4` | `box-shadow:calc(var(--a) * -1) 4px 10px 0px #000` |
+
+Скобки вокруг всего значения ничего не группируют и в CSS не идут: `w{1+2}` → `width:calc(1px + 2px)`, `w{10}` →
+`width:10px`. Математика без скобок в слоте — ошибка с готовой формой: `x10+5` — «math in a shift goes in braces, as
+"x{10+5}"…», `bxsh10+5x2` — «… a shadow slot holds it in braces, as "bxsh{10+5}x2"…».
 
 Ошибки называют место: `w+5` — «"+" is not expected: a value starts with a number ("10"), a variable ("$x"), a
 function ("Min{…}") or a group ("{…}")»; `wMin{100%}` — «"Min" takes at least 2 arguments, got 1»; `wFoo{1}` —
@@ -944,7 +959,9 @@ border-bottom: '1px solid rgba(255,255,255,0.08)'  →  bb1  bsbS  bcbF.08
 `0dvh 0dvh 10dvh 0dvh #000`. До 2026-09-26 склейка была жёстко `px` и единица
 молча терялась (`bxsh1.5em` давал `1.5px`).
 
-Модификаторы `x`/`y`/`r` — целые числа без единицы: единица у записи одна.
+Модификаторы `x`/`y`/`r` — целые числа без единицы: единица у записи одна. Математика и переменная в любом слоте
+длины — в скобках и как есть, см. «Математика в значении»: `bxsh{10+5}x2`, `bxsh10x$a;y4`. Единица записи в
+скобки не входит: `bxsh10emx{1+2}` → `calc(1px + 2px) 0em 10em 0em`.
 
 Две единицы недоступны. `%` — потому что тень по грамматике принимает
 `<length>`, а не проценты (`bxsh10%` бракуется). `in` (дюймы) — из-за коллизии
@@ -960,6 +977,8 @@ border-bottom: '1px solid rgba(255,255,255,0.08)'  →  bb1  bsbS  bcbF.08
 | `bxshB$blur` | `box-shadow:0px 0px var(--blur) 0px #000` |
 | `bxshB$blur;c$shadow` | `box-shadow:0px 0px var(--blur) 0px var(--shadow)` |
 | `bxshB$blur*2;x2` | `box-shadow:2px 0px calc(var(--blur) * 2) 0px #000` — размытие переменной — математика |
+| `bxsh10x$a;y4` | `box-shadow:var(--a) 4px 10px 0px #000` — переменная в сдвиге, `;` закрывает имя |
+| `bxsh10x$a*2;y{1+1}r{2}` | `box-shadow:calc(var(--a) * 2) calc(1px + 1px) 10px 2px #000` |
 | `bxsh10c$shadow` | `box-shadow:0px 0px 10px 0px var(--shadow)` |
 | `bxsh10x0y2c0.1,5x0y1c0.05` | две разные тени через запятую |
 | `bxshN` | `box-shadow:none` |
@@ -1229,6 +1248,12 @@ x{число}[%][Y{число}[%]][Z{число}[%]][S{число}][R{x|y|z}{ч�
 | `xRz70` | `transform:translate(0px,0px) rotateZ(70deg)` |
 | `xRx-60` | `transform:translate(0px,0px) rotateX(-60deg)` |
 | `x50Y30S150Rz45` | `transform:translate(50px,30px) scale(1.5) rotateZ(45deg)` |
+| `x{10+5}` | `transform:translate(calc(10px + 5px),0px)` — математика — в скобках |
+| `x$a*2;y3` | `transform:translate(calc(var(--a) * 2),3px)` — переменная как есть, `;` закрывает её |
+| `x10y{-$a}z{1+2}` | `transform:translate(10px,calc(var(--a) * -1)) translateZ(calc(1px + 2px))` |
+
+Сдвиг по осям — число, математика в скобках или переменная (см. «Математика в значении»); `%` после скобок
+бракуется — его место внутри: `x{10%+5}`.
 
 **`S{n}` — это `n / 100`, не буквальный множитель CSS `scale()`**: `xS150` → `scale(1.5)`,
 не `xS1.5` (это даст `scale(0.015)` — `1.5 / 100`). Направление у `R` — строго одна из

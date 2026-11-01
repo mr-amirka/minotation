@@ -12,6 +12,7 @@ import {
   COMMA,
   DASH,
   DOLLAR,
+  OPEN_BRACE,
   DOUBLE_QUOTE,
   LENGTH_MULTI,
   N,
@@ -30,7 +31,6 @@ import {
   NAME_THIN,
   NONE,
   NONE_ABBREVIATIONS,
-  OPEN_PAREN,
   PERCENT,
   PIPE,
   PX,
@@ -50,8 +50,13 @@ import {
 import {
   cssVarValue,
 } from '../../core/mathValue';
+import type {
+  MnMathRules,
+} from '../../core/mathValue';
 import {
   PATTERN_BASE_COLOR,
+  PATTERN_MATH_SLOT,
+  REGEXP_MATH_TAIL,
   normalizeDefault,
   snakeLeftTrim,
   splitTopLevel,
@@ -145,6 +150,11 @@ const REGEXP_ROUTE_KEY = /:[_A-Za-z0-9.]+/g;
  */
 const SHADOW_UNITS = UNITS.filter((unit) => unit !== PERCENT && unit !== 'in');
 /**
+ * Слот длины тени после буквы: целое число или слот математики ({@link PATTERN_MATH_SLOT}); закрывает
+ * необязательную группу буквы.
+ */
+const PATTERN_SHADOW_SLOT = '(-?[0-9]+|' + PATTERN_MATH_SLOT + '))?';
+/**
  * Порядок модификаторов тени — **жёсткий**: `blur x y r m c in`.
  *
  * Свободный порядок был следствием реализации: `SHADOW_PATTERNS` — независимые
@@ -154,6 +164,10 @@ const SHADOW_UNITS = UNITS.filter((unit) => unit !== PERCENT && unit !== 'in');
  *
  * Регулярка анкорена и собрана в этом порядке, так что она и проверяет запись,
  * и разбирает её — отдельный обход паттернами больше не нужен.
+ *
+ * Математика — в скобках, в любой позиции длины: `bxsh{10+5}x2`, `bxsh10x{-$a}y4`; переменная в x/y/r — как есть
+ * (`bxsh10x$a;y4`), `;` закрывает имя перед буквой следующего слота. Без скобок выражению нечем кончиться: в
+ * `bxsh10+5x2` буква `x` — и следующий слот, и продолжение значения.
  *
  * CSS-переменная в позиции blur пишется **явно**, через `B`: `bxshB$blur`.
  * Буква заглавная по той же причине, что `X`/`Y`/`R`/`M`: строчная слилась бы
@@ -165,22 +179,25 @@ const SHADOW_UNITS = UNITS.filter((unit) => unit !== PERCENT && unit !== 'in');
  * автор получал правило, которого не писал.
  */
 const REGEXP_SHADOW_SUFFIX = new RegExp('^(?:([0-9.]+)('
-  + SHADOW_UNITS.join(PIPE) + ')?|B(\\$\\$?[^;\\s]+;?))?'
-  + '(?:[xX](-?[0-9]+))?'
-  + '(?:[yY](-?[0-9]+))?'
-  + '(?:[rR](-?[0-9]+))?'
+  + SHADOW_UNITS.join(PIPE) + ')?|B(\\$\\$?[^;\\s]+;?)|(\\{.*?\\}))?'
+  + '(?:[xX]' + PATTERN_SHADOW_SLOT
+  + '(?:[yY]' + PATTERN_SHADOW_SLOT
+  + '(?:[rR]' + PATTERN_SHADOW_SLOT
   + '(?:[mM]([0-9]+))?'
   + '(?:c(' + PATTERN_BASE_COLOR.replace(REGEXP_ROUTE_KEY, '') + '))?'
   + '(in)?$');
+/** Часть тени — голое число: ей нужна единица записи. */
+const REGEXP_SHADOW_NUMBER = /^-?[0-9.]+$/;
 /** Позиции групп в {@link REGEXP_SHADOW_SUFFIX}. */
 const MN_SHADOW_VALUE = 1;
 const MN_SHADOW_UNIT = 2;
 const MN_SHADOW_BLUR_VAR = 3;
-const MN_SHADOW_X = 4;
-const MN_SHADOW_Y = 5;
-const MN_SHADOW_R = 6;
-const MN_SHADOW_M = 7;
-const MN_SHADOW_COLOR = 8;
+const MN_SHADOW_BLUR_MATH = 4;
+const MN_SHADOW_X = 5;
+const MN_SHADOW_Y = 6;
+const MN_SHADOW_R = 7;
+const MN_SHADOW_M = 8;
+const MN_SHADOW_COLOR = 9;
 /**
  * Что именно принимает свойство-длина — флаги, третья позиция в таблице ниже.
  *
@@ -246,8 +263,8 @@ const BORDER_IMAGE_OUTSETS: LengthRule = {
 /**
  * Склеивает части тени, дописывая единицу каждой длине.
  *
- * Последняя часть — цвет, единицы не получает. Подстановка тоже: `var(--blur)`
- * уже несёт единицу внутри себя, а `var(--blur)px` — мусор.
+ * Последняя часть — цвет, единицы не получает. Единицу получает только голое число: подстановка и математика
+ * (`var(--blur)`, `calc(…)`, `10px` из `{10}`) уже несут её, а `var(--blur)px` — мусор.
  */
 function shadowJoin(parts: (string | number)[], unit: string): string {
   const last = parts.length - 1;
@@ -256,7 +273,7 @@ function shadowJoin(parts: (string | number)[], unit: string): string {
   let part: string;
   for (; i <= last; i++) {
     part = '' + parts[i];
-    out[i] = (i === last || part.indexOf(OPEN_PAREN) > -1) ? part : part + unit;
+    out[i] = (i === last || !REGEXP_SHADOW_NUMBER.test(part)) ? part : part + unit;
   }
   return out.join(SPACE);
 }
@@ -320,6 +337,22 @@ export function registerBorders(ctx: StandardContext): void {
     const blurRules = lengthRules(
       pfx, 1, 1,
     );
+    const offsetRules = lengthRules(
+      pfx, 0, 1,
+    );
+
+    /**
+     * Слот тени: число — как написано (единицу допишет {@link shadowJoin}), скобки и переменная — через читатель:
+     * `{10+5}` → `calc(10px + 5px)`, `$a*2;` → `calc(var(--a) * 2)`.
+     * @param v значение слота
+     * @param rules правила слота
+     * @returns часть тени
+     */
+    function slotValue(v: string, rules: MnMathRules): string {
+      const first = v[0];
+      return first === OPEN_BRACE || first === DOLLAR ? mathValue(v[v.length - 1] === SEMICOLON ? v.slice(0, -1) : v,
+        rules) : v;
+    }
     /**
      * Собирает ОДНУ тень из её разобранного суффикса.
      *
@@ -335,15 +368,18 @@ export function registerBorders(ctx: StandardContext): void {
         return whole;
       }
       const parsed = REGEXP_SHADOW_SUFFIX.exec(part);
-      parsed || throwInvalid(DOUBLE_QUOTE + name + part + '" is only partly parsed: '
-      + 'the order is blur (a number or a variable after B, as "' + name + 'B$blur"), then x, y, r, m, c, in');
+      parsed || throwInvalid(DOUBLE_QUOTE + name + part + (REGEXP_MATH_TAIL.test(part)
+        ? '" puts math without braces: a shadow slot holds it in braces, as "' + name + '{10+5}x2", "' + name
+          + '10x{-$a}"'
+        : '" is only partly parsed: the order is blur (a number or a variable after B, as "' + name
+          + 'B$blur"), then x, y, r, m, c, in'));
       const p = parsed as RegExpExecArray;
       const repeatCount = intval(
         p[MN_SHADOW_M], 1, 0,
       );
       // Значение (blur) — ведущее число или переменная; модификаторы его не
       // содержат.
-      let value = p[MN_SHADOW_VALUE] || p[MN_SHADOW_BLUR_VAR];
+      let value = p[MN_SHADOW_VALUE] || p[MN_SHADOW_BLUR_VAR] || p[MN_SHADOW_BLUR_MATH];
       if (!value) {
       // Модификаторы без ведущего значения — описка: `bxshR3` раньше давало
       // мусор `Rpx` в позиции blur, а потом молча превращалось в `none`.
@@ -357,8 +393,7 @@ export function registerBorders(ctx: StandardContext): void {
       // `;` — терминатор имени переменной, как везде в нотации: без него имя
       // жадно забрало бы следующие модификаторы (`bxshB$blur;c$shadow`). Размытие переменной — математика:
       // `bxshB$a*2` → `calc(var(--a) * 2)`.
-      value[0] === DOLLAR && (value = mathValue(value[value.length - 1] === SEMICOLON ? value.slice(0, -1) : value,
-        blurRules));
+      value = slotValue(value, blurRules);
       const colors = getColor(p[MN_SHADOW_COLOR] || ZERO);
       // Последняя группа регулярки — `in` (inset).
       const prefixIn = p[p.length - 1] ? 'inset ' : '';
@@ -368,14 +403,17 @@ export function registerBorders(ctx: StandardContext): void {
       // по грамматике суффикса — целые без единицы, поэтому единица у записи
       // одна на все её длины.
       const unit = p[MN_SHADOW_UNIT] || PX;
+      const offsetX = slotValue(p[MN_SHADOW_X] || ZERO, offsetRules);
+      const offsetY = slotValue(p[MN_SHADOW_Y] || ZERO, offsetRules);
+      const spread = slotValue(p[MN_SHADOW_R] || ZERO, offsetRules);
       const output = new Array(colorsLength);
       let sample, v, color, i, ci = 0;
       for (;ci < colorsLength; ci++) {
         color = colors[ci];
         sample = prefixIn
         + shadowJoin(handler(
-          p[MN_SHADOW_X] || 0, p[MN_SHADOW_Y] || 0,
-          value, p[MN_SHADOW_R] || 0, color,
+          offsetX, offsetY,
+          value, spread, color,
         ),
         unit);
         v = new Array(repeatCount);

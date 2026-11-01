@@ -143,8 +143,7 @@ describe('буквы ключевых слов в стандартных хен�
       'xINH',
     ]).warnings).toEqual([
       '"rxINH" gives no CSS: a CSS-wide keyword is a whole value of a property, and handler "rx" writes a part of one',
-      'Value "INH" is invalid for "x": expected a shift, as "x10", "x10y20", "x10y20z5", with a scale "s50" and a turn'
-      + ' "rz45" after it',
+      '"xINH" gives no CSS: a CSS-wide keyword is a whole value of a property, and handler "x" writes a part of one',
     ]);
   });
 
@@ -361,8 +360,8 @@ describe('переменная целым значением — там, где 
       + ' variable',
     ],
     [
-      'x$v',
-      'Value "$v" is invalid for "x": expected a shift, as "x10", "x10y20", "x10y20z5", with a scale "s50" and'
+      'x_x',
+      'Value "_x" is invalid for "x": expected a shift, as "x10", "x10y20", "x10y20z5", with a scale "s50" and'
       + ' a turn "rz45" after it',
     ],
   ])('нераспознанный суффикс — брак, а не значение по умолчанию: %s', (token, message) => {

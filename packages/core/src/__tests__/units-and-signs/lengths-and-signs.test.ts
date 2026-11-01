@@ -247,6 +247,123 @@ describe('длины позиций и аргументов функций — �
   });
 });
 
+describe('математика в буквенной записи — в скобках', () => {
+  test.each([
+    [
+      'x{10+5}',
+      'transform:translate(calc(10px + 5px),0px)',
+    ],
+    [
+      'x{100%-20}y$a*2',
+      'transform:translate(calc(100% - 20px),calc(var(--a) * 2))',
+    ],
+    [
+      'x$a;y10',
+      'transform:translate(var(--a),10px)',
+    ],
+    [
+      'x$a*2;y3',
+      'transform:translate(calc(var(--a) * 2),3px)',
+    ],
+    [
+      'x10y{-$a}z{1+2}',
+      'transform:translate(10px,calc(var(--a) * -1)) translateZ(calc(1px + 2px))',
+    ],
+    [
+      'x{Min{10,5%}}y5',
+      'transform:translate(min(10px, 5%),5px)',
+    ],
+    [
+      'x{3*{1+2}}',
+      'transform:translate(calc(3 * (1px + 2px)),0px)',
+    ],
+    [
+      'x10y20z5',
+      'transform:translate(10px,20px) translateZ(5px)',
+    ],
+    [
+      'bxsh{10+5}x2',
+      'box-shadow:2px 0px calc(10px + 5px) 0px #000',
+    ],
+    [
+      'bxsh{10}',
+      'box-shadow:0px 0px 10px 0px #000',
+    ],
+    [
+      'bxsh10x{-$a}y4',
+      'box-shadow:calc(var(--a) * -1) 4px 10px 0px #000',
+    ],
+    [
+      'bxsh10x$a;y4',
+      'box-shadow:var(--a) 4px 10px 0px #000',
+    ],
+    [
+      'bxsh10x$a*2;y{1+1}r{2}',
+      'box-shadow:calc(var(--a) * 2) calc(1px + 1px) 10px 2px #000',
+    ],
+    [
+      'tsh{2+1}x1',
+      'text-shadow:1px 0px calc(2px + 1px) #000',
+    ],
+  ])('%s → %s', (token, expected) => {
+    // Буква следующего слота не кончает выражение без скобок (`bxsh10+5x2`: `x` — и слот, и продолжение), скобки —
+    // кончают. Переменная — как есть, `;` закрывает имя перед буквой.
+    const out = compile([token]);
+    expect([
+      out.css,
+      out.warnings,
+    ]).toEqual([
+      expect.stringContaining(expected),
+      [],
+    ]);
+  });
+
+  test('единица записи тени не входит в скобки: у математики свои единицы', () => {
+    // `em` у blur достаётся голым числам; `{1+2}` — значение читателя, его единица по умолчанию `px`.
+    expect(compile(['bxsh10emx{1+2}']).css).toContain('box-shadow:calc(1px + 2px) 0em 10em 0em #000');
+  });
+
+  test.each([
+    [
+      'x10+5',
+      'Value "10+5" is invalid for "x": math in a shift goes in braces, as "x{10+5}", "x10y{100%-20}"',
+    ],
+    [
+      'x{10}%',
+      '"x{10}%" puts "%" after math: write it inside, as "x{10%+5}"',
+    ],
+    [
+      'x0z{5%}',
+      'Value "5%" is invalid: this property takes a length, percent is not allowed',
+    ],
+    [
+      'bxsh10+5x2',
+      '"bxsh10+5x2" puts math without braces: a shadow slot holds it in braces, as "bxsh{10+5}x2", "bxsh10x{-$a}"',
+    ],
+    [
+      'tsh10x2-3',
+      '"tsh10x2-3" puts math without braces: a shadow slot holds it in braces, as "tsh{10+5}x2", "tsh10x{-$a}"',
+    ],
+    [
+      'bxsh{-1}',
+      'Value "-1" is invalid: negative value is not allowed for this property',
+    ],
+    [
+      'bxsh10x{5%}',
+      'Value "5%" is invalid: this property takes a length, percent is not allowed',
+    ],
+  ])('%s — брак со своей подсказкой', (token, message) => {
+    const out = compile([token]);
+    expect([
+      out.css,
+      out.warnings.map((w) => w.message),
+    ]).toEqual([
+      '',
+      [message],
+    ]);
+  });
+});
+
 describe('единица в тенях идёт во все длины записи', () => {
   test.each([
     [

@@ -208,6 +208,15 @@ describe('длины позиций и аргументов функций — �
   });
 
   test.each([
+    // `+` перед `+` — часть значения, а не сосед `+5`: раньше давало `.w10\\+\\+5++5{width:10px}` молча.
+    [
+      'w10++5',
+      'Value "10++5" is invalid for "w": "+" after "10+" is not expected',
+    ],
+    [
+      'w$a++$b',
+      'Value "$a++$b" is invalid for "w": "+" after "$a+" is not expected',
+    ],
     [
       'ftBlur-1',
       'Value "Blur-1" is invalid for "ft": "Blur" expects a length of zero or more — as "ftBlur2"',

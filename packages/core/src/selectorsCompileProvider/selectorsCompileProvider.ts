@@ -246,14 +246,31 @@ function suffixesReduce(suffixes: StrMap<StrMap<number>>,
  * // → [[{ w50: 1 }, { '.w50': [[0, undefined]] }]]
  */
 /**
- * Имя класса для селектора: `escapeCss` и вдобавок `{`, `}` (группы Master CSS, D-051) и `&`
- * (медиа `@sm&safari`, D-053) — без экранирования селектор битый: `&` вне вложенности — это
- * селектор вложения.
+ * Имя класса для селектора: `escapeCss` и то, что её запасная ветка (Node, где нет `CSS.escape`) не
+ * экранирует, — `{`, `}` (скобки математики и групп), `&` (медиа `@sm&safari`: `&` вне вложенности —
+ * селектор вложения) и цифра в начале (`2xl:p-4` → `.\32 xl\:p-4`; без этого селектор недействителен).
+ * Уже экранированное не трогается: в браузере `escapeCss` — это `CSS.escape`, у неё `{` уже `\{`.
+ *
+ * Переходная: когда `escapeCss` станет `CSS.escape` по спецификации и в Node, здесь останется
+ * `escapeCss(name)` — письмо «`escapeCss` gives different bytes in Node and in a browser» в
+ * `LABARATORY/PROJECTS_CONTEXT/fundamentool/TASKS/main/INBOX.md`.
  */
 function escapeClass(name: string): string {
-  return escapeCss(name).replace(REGEXP_UNESCAPED_CLASS_CHARS, '\\$&');
+  return escapeCss(name).replace(REGEXP_CLASS_ESCAPE, classEscapeReplacer);
 }
-const REGEXP_UNESCAPED_CLASS_CHARS = /[{}&]/g;
+/** Цифра в начале, готовая пара `\x` (пропускается) или символ, который экранируется. */
+const REGEXP_CLASS_ESCAPE = /^[0-9]|\\[\s\S]|[{}&]/g;
+/**
+ * Замена для {@link REGEXP_CLASS_ESCAPE}.
+ * @param match — найденное
+ * @returns цифра — кодом (`2` → `\32 `), пара `\x` — как есть, остальное — с `\`
+ */
+function classEscapeReplacer(match: string): string {
+  if (match[0] === BACKSLASH) {
+    return match;
+  }
+  return match >= '0' && match <= '9' ? BACKSLASH + '3' + match + SPACE : BACKSLASH + match;
+}
 
 /** Имя-заглушка эссенции при разборе селектора (D-071): контекст читается как у класса. */
 const SELECTOR_ESSENCE = 'x';

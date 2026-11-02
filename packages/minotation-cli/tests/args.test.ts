@@ -160,12 +160,12 @@ describe('parseArgs', () => {
       '--specificity-mode',
       'error',
     ]))
-      .toThrow('Option "--specificity-mode" expects warn, silent or strict, got "error"');
+      .toThrow('Option "--specificity-mode": expects one of warn, silent, strict, got string "error"');
     expect(() => parseArgs([
       '--important-mode',
       'block',
     ]))
-      .toThrow('Option "--important-mode" expects warn, silent or strict, got "block"');
+      .toThrow('Option "--important-mode": expects one of warn, silent, strict, got string "block"');
     expect(parseArgs([
       '--child-selector-mode',
       'strict',
@@ -182,17 +182,17 @@ describe('parseArgs', () => {
       '--notation-conflict-mode',
       'silent',
     ]))
-      .toThrow('Option "--notation-conflict-mode" expects warn or strict, got "silent"');
+      .toThrow('Option "--notation-conflict-mode": expects one of warn, strict, got string "silent"');
     expect(() => parseArgs([
       '--notation-mode',
       'tailwind',
     ]))
-      .toThrow('Option "--notation-mode" expects context-qualified, tw4-compatible, breakpoint-prefixed or property-value, got "tailwind"');
+      .toThrow('Option "--notation-mode": expects one of context-qualified, tw4-compatible, breakpoint-prefixed, property-value, got string "tailwind"');
     expect(() => parseArgs([
       '--child-selector-mode',
       'error',
     ]))
-      .toThrow('Option "--child-selector-mode" expects warn, silent or strict, got "error"');
+      .toThrow('Option "--child-selector-mode": expects one of warn, silent, strict, got string "error"');
     expect(parseArgs([
       '--unknown-media-mode',
       'strict',
@@ -217,7 +217,7 @@ describe('parseArgs', () => {
       '--group-suspect-mode',
       'x',
     ]))
-      .toThrow('Option "--group-suspect-mode" expects warn, silent or strict, got "x"');
+      .toThrow('Option "--group-suspect-mode": expects one of warn, silent, strict, got string "x"');
     expect(parseArgs([
       '--bare-math-mode',
       'strict',
@@ -226,7 +226,7 @@ describe('parseArgs', () => {
       '--bare-math-mode',
       'x',
     ]))
-      .toThrow('Option "--bare-math-mode" expects warn, silent or strict, got "x"');
+      .toThrow('Option "--bare-math-mode": expects one of warn, silent, strict, got string "x"');
     expect(parseArgs([
       '--group-mode',
       'css',
@@ -234,27 +234,27 @@ describe('parseArgs', () => {
     expect(() => parseArgs([
       '--group-mode',
       'x',
-    ])).toThrow('Option "--group-mode" expects groups or css, got "x"');
+    ])).toThrow('Option "--group-mode": expects one of groups, css, got string "x"');
     expect(() => parseArgs([
       '--handler-conflict-mode',
       'x',
     ]))
-      .toThrow('Option "--handler-conflict-mode" expects warn, silent or strict, got "x"');
+      .toThrow('Option "--handler-conflict-mode": expects one of warn, silent, strict, got string "x"');
     expect(() => parseArgs([
       '--preset-conflict-mode',
       'x',
     ]))
-      .toThrow('Option "--preset-conflict-mode" expects warn, silent or strict, got "x"');
+      .toThrow('Option "--preset-conflict-mode": expects one of warn, silent, strict, got string "x"');
     expect(() => parseArgs([
       '--suspect-class-mode',
       'off',
     ]))
-      .toThrow('Option "--suspect-class-mode" expects warn, silent or strict, got "off"');
+      .toThrow('Option "--suspect-class-mode": expects one of warn, silent, strict, got string "off"');
     expect(() => parseArgs([
       '--unknown-media-mode',
       'warning',
     ]))
-      .toThrow('Option "--unknown-media-mode" expects warn, silent or strict, got "warning"');
+      .toThrow('Option "--unknown-media-mode": expects one of warn, silent, strict, got string "warning"');
   });
 
   test('--warning-mode принимает только log, silent, error', () => {
@@ -266,7 +266,7 @@ describe('parseArgs', () => {
       '--warning-mode',
       'errror',
     ]))
-      .toThrow('Option "--warning-mode" expects log, silent or error, got "errror"');
+      .toThrow('Option "--warning-mode": expects one of log, silent, error, got string "errror". Did you mean "error"?');
   });
 
   test.each([

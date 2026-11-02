@@ -17,7 +17,7 @@
  */
 import type { NextConfig } from 'next';
 import type { Configuration } from 'webpack';
-import { isBoolean } from 'minotation';
+import { boolean } from 'fundamentool/schema';
 import { MnWebpackPlugin, checkBuildOptions, withBuildConfig } from 'minotation-webpack';
 import type { MnWebpackPluginOptions } from 'minotation-webpack';
 
@@ -69,7 +69,7 @@ export function withMn(
   code: MnNextOptions = {},
 ): NextConfig {
   const own = {
-    enabled: isBoolean,
+    enabled: boolean().optional(),
   };
   // Опции из `minotation.config.*` рабочего каталога, поверх — из кода (D-081).
   const mnOptions = withBuildConfig(code, 'withMn', own);

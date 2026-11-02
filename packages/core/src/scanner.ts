@@ -19,14 +19,9 @@ import type {
   ScanTokensOptions,
 } from './extractTokens';
 import {
-  checkOptions,
-  isBoolean,
-  isFunction,
-  isStringArray,
-} from './checkOptions';
-import type {
-  OptionSchema,
-} from './checkOptions';
+  MN_WHERE,
+  SCANNER_OPTIONS,
+} from './options';
 
 /**
  * Однофайловые компоненты: скрипт в них разбирается парсером, шаблон — текстом.
@@ -108,38 +103,6 @@ export interface ScannerOptions extends ScanTokensOptions {
   onWarning?: (message: string) => void;
 }
 
-/** Имя атрибута или шаблон `*ClassName`: звёздочка — только в начале и не одна (D-131). */
-const REGEXP_ATTR_NAME = /^\*?[^*\s]+$/;
-
-/**
- * Проверка имён опции `attr`: каждое — имя или шаблон `*Suffix` (D-131).
- *
- * @param names — имена из опции
- * @returns `undefined` или что ожидалось
- *
- * @example attrNamesCheck(['class*']) // → 'names or patterns "*Suffix" (as "*ClassName"), each without spaces'
- */
-function attrNamesCheck(names: string[]): string | undefined {
-  return names.every((name) => REGEXP_ATTR_NAME.test(name)) ? undefined
-    : 'names or patterns "*Suffix" (as "*ClassName"), each without spaces';
-}
-
-/** Допустимые опции {@link createScanner} (D-038). */
-export const SCANNER_OPTIONS_SCHEMA: OptionSchema = {
-  attr: (
-    value, where, path,
-  ) => (
-    typeof value === 'string' ? attrNamesCheck([value]) : isStringArray(
-      value, where, path,
-    ) ? 'a string or an array of strings' : attrNamesCheck(value as string[])
-  ),
-  classVarSuffixes: isStringArray,
-  mergeFnNames: isStringArray,
-  comments: isBoolean,
-  syntax: isBoolean,
-  onWarning: isFunction,
-};
-
 /** Сканер файла: текст плюс имя, по которому выбирается способ разбора. */
 export type Scanner = (source: string, fileName?: string) => string[];
 
@@ -167,9 +130,9 @@ interface SyntaxModule {
  * scan(source, '/index.html');    // текстом
  */
 export function createScanner(options: ScannerOptions): Scanner {
-  checkOptions(
-    options, SCANNER_OPTIONS_SCHEMA, 'createScanner',
-  );
+  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    SCANNER_OPTIONS().parse(options, MN_WHERE + 'createScanner');
+  }
   if (options.syntax === false) {
     return (source: string) => scanTokens(source, options);
   }

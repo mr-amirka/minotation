@@ -118,7 +118,7 @@ describe('loadConfig', () => {
       .toThrow('unknown option "altColour". Did you mean "altColor"?');
     const bad = write('mn.bad.cjs', 'module.exports = { metrics: 1 };');
     expect(() => loadConfig(bad, report))
-      .toThrow('option "metrics" expects a boolean or a string, got number 1');
+      .toThrow('mn.bad.cjs: "metrics" expects true, false or a file name, got number 1');
   });
 
   test('файл общий для всех инструментов: опции плагинов допустимы, CLI берёт только свои (D-081)', () => {
@@ -127,7 +127,7 @@ describe('loadConfig', () => {
       altColor: true,
     });
     const bad = write('cli-bad.config.cjs', 'module.exports = { input: 1 };');
-    expect(() => loadConfig(bad, report)).toThrow('option "input" expects a string, got number 1');
+    expect(() => loadConfig(bad, report)).toThrow('cli-bad.config.cjs: "input" expects a string, got number 1');
   });
 
   test('читает настройки из файла', () => {
@@ -768,7 +768,7 @@ describe('изоляция: --isolate-out, --isolate-copy (D-079, D-081)', () =>
     expect(readFileSync(join(single, 'Button.tsx'), 'utf8')).toContain(scopeClassName('presetTw4') + ' p-4');
     expect(() => isolate({
       isolateCopy: 5 as never,
-    })).toThrow('option "isolateCopy" expects true, false, a path or glob, a RegExp, a function or an array of them');
+    })).toThrow('[minotation] compile: "isolateCopy" expects true, false, a path or glob, a RegExp, a function or an array of them, got number 5');
     expect(() => build({
       presets: PRESETS,
       input: dir,
@@ -819,10 +819,10 @@ describe('изоляция: --isolate-out, --isolate-copy (D-079, D-081)', () =>
     expect(() => parseArgs([
       '--isolate-mode',
       'x',
-    ])).toThrow('Option "--isolate-mode" expects none, class or where, got "x"');
+    ])).toThrow('Option "--isolate-mode": expects one of none, class, where, got string "x"');
     expect(() => parseArgs([
       '--unreachable-class-mode',
       'x',
-    ])).toThrow('Option "--unreachable-class-mode" expects warn, silent or strict');
+    ])).toThrow('Option "--unreachable-class-mode": expects one of warn, silent, strict, got string');
   });
 });

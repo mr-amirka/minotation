@@ -135,5 +135,5 @@ describe("contextWhere — 'tw4-compatible'", () => {
 test('contextWhere — не boolean: ошибка проверки опций', () => {
   expect(() => minotationProvider({
     contextWhere: 'yes',
-  } as never)).toThrow('option "contextWhere" expects a boolean, got string "yes"');
+  } as never)).toThrow('"contextWhere" expects true or false, got string "yes"');
 });

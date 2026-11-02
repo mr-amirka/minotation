@@ -179,7 +179,7 @@ describe('mnVite — проверка опций (D-038)', () => {
     expect(() => mnVite({ atrs: 'class' } as never))
       .toThrow('[minotation] mnVite: unknown option "atrs". Did you mean "attrs"?');
     expect(() => mnVite({ inject: 'style' } as never))
-      .toThrow('[minotation] mnVite: option "inject" expects "inline", "link" or false, got string "style"');
+      .toThrow('[minotation] mnVite: "inject" expects "inline", "link" or false, got string "style"');
     expect(() => mnVite({ mn: { strict: true } } as never))
       .toThrow('[minotation] mnVite: unknown option "mn". Known options:');
   });

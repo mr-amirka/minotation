@@ -1,5 +1,5 @@
 import type { AstroIntegration } from 'astro';
-import { isBoolean } from 'minotation';
+import { boolean } from 'fundamentool/schema';
 import { MN_VIRTUAL, checkBuildOptions, mnVite, withBuildConfig } from 'minotation-vite';
 import type { MnViteOptions } from 'minotation-vite';
 
@@ -51,7 +51,7 @@ export const PAGE_IMPORT = `import '${MN_VIRTUAL}';`;
  */
 export function mnAstro(code: MnAstroOptions = {}): AstroIntegration {
   const own = {
-    inject: isBoolean,
+    inject: boolean().optional(),
   };
   // Опции из `minotation.config.*` рабочего каталога, поверх — из кода (D-081).
   const options = withBuildConfig(code, 'mnAstro', own);

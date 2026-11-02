@@ -19,7 +19,7 @@ import {
   createScopeResolver,
   createTokenCollector,
   globToRegExp,
-  isScopeRules,
+  SCOPE_RULES,
   readPackageName,
 } from '../src/index';
 import type {
@@ -211,13 +211,13 @@ describe('scopes — проверка опции', () => {
       {
         scopes: {},
       },
-      'option "scopes" expects an array of scope rules',
+      '[minotation] mnVite: "scopes" expects a list, got object',
     ],
     [
       {
         scopes: ['@acme/ui'],
       },
-      'option "scopes[0]" expects an object with "match"',
+      '[minotation] mnVite: "scopes"[0] expects an options object, got string "@acme/ui"',
     ],
     [
       {
@@ -227,7 +227,7 @@ describe('scopes — проверка опции', () => {
           },
         ],
       },
-      'option "scopes[0]" needs "match"',
+      '[minotation] mnVite: "scopes"[0]."match" expects a package name, a path pattern, a RegExp or an array of them, got undefined',
     ],
     [
       {
@@ -258,18 +258,16 @@ describe('scopes — проверка опции', () => {
           },
         ],
       },
-      'unknown option "scopes[0].attrs". Known options: notationMode, requires, groupMode, contextWhere, warningMode, specificityMode, importantMode,'
-      + ' maxDepthMode, maxSpecificityMode, childSelectorMode, unknownMediaMode, suspectClassMode, groupSuspectMode, bareMathMode,'
-      + ' match, override',
+      '[minotation] mnVite: "scopes"[0]: unknown option "attrs". Known options: notationMode, requires, groupMode, contextWhere, warningMode,'
+      + ' maxDepthMode, maxSpecificityMode, specificityMode, importantMode, childSelectorMode, unknownMediaMode, suspectClassMode,'
+      + ' groupSuspectMode, bareMathMode, match, override',
     ],
   ])('%j', (options, message) => {
     expect(() => checkBuildOptions(options as never, 'mnVite')).toThrow(message);
   });
 
   test('проверка доступна и отдельно; пакет с битым или пустым package.json — без имени', () => {
-    expect(isScopeRules(
-      [], 'x', 'scopes',
-    )).toBeUndefined();
+    expect(SCOPE_RULES().parse([], 'x')).toEqual([]);
     mkdirSync(join(dir, 'nil'));
     writeFileSync(join(
       dir, 'nil', 'package.json',

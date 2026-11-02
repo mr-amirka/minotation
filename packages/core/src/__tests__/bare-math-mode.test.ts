@@ -187,7 +187,7 @@ describe('bareMathMode', () => {
   test.each([
     [
       'strickt',
-      'option "bareMathMode" expects "warn", "silent" or "strict", got string "strickt"',
+      '"bareMathMode" expects one of warn, silent, strict, got string "strickt". Did you mean "strict"?',
     ],
   ])('опция проверяется: %s', (value, message) => {
     expect(() => minotationProvider({

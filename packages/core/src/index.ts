@@ -49,22 +49,11 @@ export type {
   ScopeClassWriterOptions,
 } from './scopeClass';
 import {
-  checkOptions as checkOptionsImpl,
-  checkKnownValues as checkKnownValuesImpl,
-  describeValue as describeValueImpl,
-  oneOf as oneOfImpl,
-  optionsOf as optionsOfImpl,
-  isBoolean as isBooleanImpl,
-  isString as isStringImpl,
-  isFunction as isFunctionImpl,
-  isCount as isCountImpl,
-  isObject as isObjectImpl,
-  isBooleanOrString as isBooleanOrStringImpl,
-  isStringArray as isStringArrayImpl,
-  isFunctionArray as isFunctionArrayImpl,
-  isPresetArray as isPresetArrayImpl,
-  CORE_OPTIONS_SCHEMA as CORE_OPTIONS_SCHEMA_IMPL,
-} from './checkOptions';
+  CORE_OPTIONS as CORE_OPTIONS_IMPL,
+  MN_WHERE as MN_WHERE_IMPL,
+  RAISE_MODES as RAISE_MODES_IMPL,
+  SCANNER_OPTIONS as SCANNER_OPTIONS_IMPL,
+} from './options';
 import {
   mne as mneImpl,
   mnClass as mnClassImpl,
@@ -164,45 +153,17 @@ export const stripComments = stripCommentsImpl;
  * Модуль ничего не импортирует — рассчитан на вызов на каждый рендер.
  */
 /**
- * Проверка опций публичного API (D-038): неизвестный ключ и некорректное
- * значение — ошибка с подсказкой. Общая для ядра, плагинов и CLI.
+ * Схема опций ядра на `fundamentool/schema` (D-141): `CORE_OPTIONS().parse(options, where)`,
+ * `.keys` — их ключи, `.shape` — для схемы шире (`object({ ...CORE_OPTIONS().shape, out: string() })`).
+ * Ядро проверяет по ней только в разработке; сборка и CLI — всегда, своими схемами поверх этой.
  */
-export const checkOptions = checkOptionsImpl;
-export const checkKnownValues = checkKnownValuesImpl;
-export const describeValue = describeValueImpl;
-/**
- * Проверка «одно из перечисленных значений» для схемы опций: ошибка называет весь список.
- * @param values допустимые значения
- * @returns проверка опции: `undefined` — подходит, иначе — что ожидалось
- * @example oneOf('groups', 'css')('x') // '"groups" or "css"'
- */
-export const oneOf = oneOfImpl;
-export const optionsOf = optionsOfImpl;
-/**
- * Проверка опции-логического значения для схемы {@link checkOptions}.
- * @returns `undefined` — подходит, иначе `'a boolean'`
- * @example isBoolean('yes') // 'a boolean'
- */
-export const isBoolean = isBooleanImpl;
-/**
- * Проверка опции-строки для схемы {@link checkOptions}.
- * @returns `undefined` — подходит, иначе `'a string'`
- * @example isString(1) // 'a string'
- */
-export const isString = isStringImpl;
-export const isFunction = isFunctionImpl;
-export const isCount = isCountImpl;
-export const isObject = isObjectImpl;
-export const isBooleanOrString = isBooleanOrStringImpl;
-/**
- * Проверка опции-массива строк для схемы {@link checkOptions}.
- * @returns `undefined` — подходит, иначе `'an array of strings'`
- * @example isStringArray(['a', 1]) // 'an array of strings'
- */
-export const isStringArray = isStringArrayImpl;
-export const isFunctionArray = isFunctionArrayImpl;
-export const isPresetArray = isPresetArrayImpl;
-export const CORE_OPTIONS_SCHEMA = CORE_OPTIONS_SCHEMA_IMPL;
+export const CORE_OPTIONS = CORE_OPTIONS_IMPL;
+/** Схема опций `createScanner` (D-141) — сборка включает её поля в свои. */
+export const SCANNER_OPTIONS = SCANNER_OPTIONS_IMPL;
+/** Начало сообщения проверки: `MN_WHERE + 'mnVite'` → `[minotation] mnVite: …`. */
+export const MN_WHERE = MN_WHERE_IMPL;
+/** Режимы реакции на предупреждение: `warn`, `silent`, `strict`. */
+export const RAISE_MODES = RAISE_MODES_IMPL;
 export const mne = mneImpl;
 export const mnClass = mnClassImpl;
 export const mnKey = mnKeyImpl;
@@ -225,10 +186,6 @@ export type {
   MnTwHandler,
 } from './presets/shared/tw';
 export type {
-  OptionCheck,
-  OptionSchema,
-} from './checkOptions';
-export type {
   MnMathRules,
   MnMathRulesOptions,
 } from './core/mathValue';
@@ -246,6 +203,7 @@ export type {
   MnWarning,
   MnWarningType,
   MnOptions,
+  MnMediaEntry,
   MnRaiseMode,
   MnPreset,
   MnPresetObject,

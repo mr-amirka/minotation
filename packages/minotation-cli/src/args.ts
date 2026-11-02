@@ -1,5 +1,3 @@
-const DOUBLE_QUOTE = '"';
-
 /**
  * Разбор аргументов командной строки.
  *
@@ -10,6 +8,15 @@ const DOUBLE_QUOTE = '"';
  *
  * @module args
  */
+
+import type {
+  TSchema,
+} from 'fundamentool/schema';
+import {
+  CONFIG_OPTIONS,
+} from './compile';
+
+const DOUBLE_QUOTE = '"';
 
 /**
  * Разобранные аргументы командной строки.
@@ -181,6 +188,7 @@ export function parseArgs(argv: string[]): CliArgs {
   let flag: keyof CliArgs | undefined;
   let option: keyof CliArgs | undefined;
   let positional = 0;
+  const known = CONFIG_OPTIONS().shape;
   for (; i < l; i++) {
     arg = argv[i];
     if ((flag = FLAGS[arg])) {
@@ -196,68 +204,16 @@ export function parseArgs(argv: string[]): CliArgs {
     if (option) {
       i + 1 < l || raise('Option "' + arg + '" requires a value');
       args[option] = argv[++i];
+      // Значение — по схеме опции конфига (D-141): списки режимов — одни на ядро, сборку и CLI.
+      (known[option as keyof typeof known] as TSchema<unknown> | undefined)?.parse(args[option], 'Option "' + arg + DOUBLE_QUOTE);
       continue;
     }
     arg[0] === '-' && raise('Unknown option: "' + arg + DOUBLE_QUOTE);
     positional++ && raise('Path given twice: "' + args.input + '" and "' + arg + DOUBLE_QUOTE);
     args.input = arg;
   }
-  args.isolateMode === undefined || args.isolateMode === 'none' || args.isolateMode === 'class'
-    || args.isolateMode === 'where'
-    || raise('Option "--isolate-mode" expects none, class or where, got "' + args.isolateMode + DOUBLE_QUOTE);
-  args.unreachableClassMode === undefined || RAISE_MODES[args.unreachableClassMode]
-    || raise('Option "--unreachable-class-mode" expects warn, silent or strict, got "' + args.unreachableClassMode + DOUBLE_QUOTE);
-  args.warningMode === undefined || WARNING_MODES[args.warningMode]
-    || raise('Option "--warning-mode" expects log, silent or error, got "' + args.warningMode + DOUBLE_QUOTE);
-  args.specificityMode === undefined || RAISE_MODES[args.specificityMode]
-    || raise('Option "--specificity-mode" expects warn, silent or strict, got "' + args.specificityMode + DOUBLE_QUOTE);
-  args.importantMode === undefined || RAISE_MODES[args.importantMode]
-    || raise('Option "--important-mode" expects warn, silent or strict, got "' + args.importantMode + DOUBLE_QUOTE);
-  args.childSelectorMode === undefined || RAISE_MODES[args.childSelectorMode]
-    || raise('Option "--child-selector-mode" expects warn, silent or strict, got "' + args.childSelectorMode + DOUBLE_QUOTE);
-  args.unknownMediaMode === undefined || RAISE_MODES[args.unknownMediaMode]
-    || raise('Option "--unknown-media-mode" expects warn, silent or strict, got "' + args.unknownMediaMode + DOUBLE_QUOTE);
-  args.suspectClassMode === undefined || RAISE_MODES[args.suspectClassMode]
-    || raise('Option "--suspect-class-mode" expects warn, silent or strict, got "' + args.suspectClassMode + DOUBLE_QUOTE);
-  args.handlerConflictMode === undefined || RAISE_MODES[args.handlerConflictMode]
-    || raise('Option "--handler-conflict-mode" expects warn, silent or strict, got "' + args.handlerConflictMode + DOUBLE_QUOTE);
-  args.presetConflictMode === undefined || RAISE_MODES[args.presetConflictMode]
-    || raise('Option "--preset-conflict-mode" expects warn, silent or strict, got "' + args.presetConflictMode + DOUBLE_QUOTE);
-  args.groupSuspectMode === undefined || RAISE_MODES[args.groupSuspectMode]
-    || raise('Option "--group-suspect-mode" expects warn, silent or strict, got "' + args.groupSuspectMode + DOUBLE_QUOTE);
-  args.bareMathMode === undefined || RAISE_MODES[args.bareMathMode]
-    || raise('Option "--bare-math-mode" expects warn, silent or strict, got "' + args.bareMathMode + DOUBLE_QUOTE);
-  args.groupMode === undefined || args.groupMode === 'groups' || args.groupMode === 'css'
-    || raise('Option "--group-mode" expects groups or css, got "' + args.groupMode + DOUBLE_QUOTE);
-  args.notationMode === undefined || NOTATION_MODES[args.notationMode]
-    || raise('Option "--notation-mode" expects context-qualified, tw4-compatible, breakpoint-prefixed or property-value, got "'
-      + args.notationMode + DOUBLE_QUOTE);
-  args.notationConflictMode === undefined || args.notationConflictMode === 'warn' || args.notationConflictMode === 'strict'
-    || raise('Option "--notation-conflict-mode" expects warn or strict, got "' + args.notationConflictMode + DOUBLE_QUOTE);
   return args;
 }
-
-/** Допустимые значения `--warning-mode`. */
-const WARNING_MODES: Record<string, 1> = {
-  log: 1,
-  silent: 1,
-  error: 1,
-};
-
-/** Допустимые значения `--notation-mode` (D-045). */
-const NOTATION_MODES: Record<string, 1> = {
-  'context-qualified': 1,
-  'tw4-compatible': 1,
-  'breakpoint-prefixed': 1,
-  'property-value': 1,
-};
-
-/** Допустимые значения `--specificity-mode` и `--important-mode` (D-039). */
-const RAISE_MODES: Record<string, 1> = {
-  warn: 1,
-  silent: 1,
-  strict: 1,
-};
 
 function raise(message: string): never {
   throw new Error(message);

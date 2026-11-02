@@ -42,6 +42,6 @@ describe('mnEsbuild — проверка опций (D-038)', () => {
     expect(() => mnEsbuild({ exlude: /a/ } as never))
       .toThrow('[minotation] mnEsbuild: unknown option "exlude". Did you mean "exclude"?');
     expect(() => mnEsbuild({ warningMode: 'strict' } as never))
-      .toThrow('[minotation] mnEsbuild: option "warningMode" expects "log", "silent" or "error", got string "strict"');
+      .toThrow('[minotation] mnEsbuild: "warningMode" expects one of log, silent, error, got string "strict"');
   });
 });

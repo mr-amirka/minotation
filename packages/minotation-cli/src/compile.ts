@@ -19,23 +19,27 @@ import {
   resolve,
 } from 'node:path';
 import {
-  checkOptions,
-  isString,
-  isStringArray,
+  array,
+  custom,
+  lazy,
+  object,
+  string,
+} from 'fundamentool/schema';
+import {
+  MN_WHERE,
 } from 'minotation';
 import type {
   MnWarning,
-  OptionSchema,
   MnPreset,
 } from 'minotation';
 import {
   assertPresets,
-  BUILD_OPTIONS_SCHEMA,
-  CORE_OPTION_KEYS,
+  BUILD_OPTIONS,
   createBuildCollector,
   createFileFilter,
   createMatcher,
   createScopeRewriter,
+  PLUGIN_CORE_OPTIONS,
 } from 'minotation-build';
 import type {
   BuildOutput,
@@ -49,35 +53,39 @@ import type {
 } from 'minotation-build';
 
 /**
- * Допустимые поля конфига `mn.config.js` и настроек {@link compile} (D-038):
+ * Допустимые поля конфига `minotation.config.*` и настроек {@link compile} (D-038, D-141):
  * общий набор плагинов, кроме того, что у CLI задаётся иначе (`output` вместо
- * `fileName`, корень — `input`), плюс свои поля CLI.
+ * `fileName`, корень — `input`), плюс свои поля CLI. CLI работает в Node и проверяет всегда.
+ *
+ * @example
+ * CONFIG_OPTIONS().parse({ outptu: './mn.css' }, MN_WHERE + 'compile');
+ * // TypeError: [minotation] compile: unknown option "outptu". Did you mean "output"?
  */
-export const CONFIG_SCHEMA: OptionSchema = {
-  ...pick(BUILD_OPTIONS_SCHEMA, [
-    ...CORE_OPTION_KEYS,
-    'presets',
-    'scopePresets',
-    'scopes',
-    'isolateMode',
-    'unreachableClassMode',
-    'attrs',
-    'syntax',
-    'include',
-    'exclude',
-    'skipPartials',
-    'entry',
-    'manifest',
-    'metrics',
-    'notationConflictMode',
-  ]),
-  input: isString,
-  output: isString,
-  ignore: isStringArray,
-  isolateOut: isString,
-  isolateCopy: (value) => (typeof value === 'boolean' || isCopyMatcher(value)
-    ? undefined : 'true, false, a path or glob, a RegExp, a function or an array of them'),
-};
+export const CONFIG_OPTIONS = /*#__PURE__*/ lazy(() => object({
+  ...PLUGIN_CORE_OPTIONS().shape,
+  ...BUILD_OPTIONS().pick({
+    presets: true,
+    scopePresets: true,
+    scopes: true,
+    isolateMode: true,
+    unreachableClassMode: true,
+    attrs: true,
+    syntax: true,
+    include: true,
+    exclude: true,
+    skipPartials: true,
+    entry: true,
+    manifest: true,
+    metrics: true,
+    notationConflictMode: true,
+  }).shape,
+  input: string().optional(),
+  output: string().optional(),
+  ignore: array(string()).optional(),
+  isolateOut: string().optional(),
+  isolateCopy: custom<boolean | MnFileMatcher>((value) => typeof value === 'boolean' || isCopyMatcher(value),
+    'true, false, a path or glob, a RegExp, a function or an array of them').optional(),
+}));
 
 /** Шаблон копирования `isolateCopy`: путь или glob, RegExp, функция — или массив из них. */
 function isCopyMatcher(value: unknown): boolean {
@@ -87,15 +95,6 @@ function isCopyMatcher(value: unknown): boolean {
 
 function fail(message: string): never {
   throw new Error('[minotation] ' + message);
-}
-
-/** Подмножество схемы по списку ключей. */
-function pick(schema: OptionSchema, keys: readonly string[]): OptionSchema {
-  const out: OptionSchema = {};
-  for (const key of keys) {
-    out[key] = schema[key];
-  }
-  return out;
 }
 
 /** Расширения, которые сканируются, если не задано иное. */
@@ -276,6 +275,15 @@ function walk(
   }
 }
 
+/** Поля ядра из настроек — только заданные. */
+function coreOf(settings: CompileSettings): MnCoreOptions {
+  const out: Record<string, unknown> = {};
+  for (const key of PLUGIN_CORE_OPTIONS().keys) {
+    settings[key] === undefined || (out[key] = settings[key]);
+  }
+  return out as MnCoreOptions;
+}
+
 /**
  * Собирает CSS из файлов по указанному пути.
  *
@@ -283,19 +291,8 @@ function walk(
  * что с ними делать (вывести, посчитать, уронить сборку), принимает
  * вызывающий — у CLI это зависит от `--warning-mode`.
  */
-/** Поля ядра из настроек — только заданные. */
-function coreOf(settings: CompileSettings): MnCoreOptions {
-  const out: Record<string, unknown> = {};
-  for (const key of CORE_OPTION_KEYS) {
-    settings[key] === undefined || (out[key] = settings[key]);
-  }
-  return out as MnCoreOptions;
-}
-
 export function compile(settings: CompileSettings): CompileResult {
-  checkOptions(
-    settings, CONFIG_SCHEMA, 'compile',
-  );
+  CONFIG_OPTIONS().parse(settings, MN_WHERE + 'compile');
   assertPresets(settings, 'compile');
   const files = collectFiles(
     settings.input, settings, settings.ignore,

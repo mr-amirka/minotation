@@ -176,6 +176,6 @@ describe('presetConflictMode — маркеры экосистем', () => {
         ...tailwindish,
         ecosystems: 'tailwind' as never,
       },
-    ])).toThrow('option "ecosystems" expects an array of strings');
+    ])).toThrow('[minotation] preset "presetTailwindish": "ecosystems" expects a list, got string "tailwind"');
   });
 });

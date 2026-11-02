@@ -151,25 +151,25 @@ describe('orderPresets — устойчивая топологическая с�
       {
         setup: () => undefined,
       } as never,
-    ], {})).toThrow('[minotation] preset object: a preset object needs a "name"');
+    ], {})).toThrow('[minotation] preset object: "name" expects a name (a non-empty string), got undefined');
     expect(() => orderPresets([
       {
         name: '',
         setup: () => undefined,
       } as never,
-    ], {})).toThrow('a preset object needs a "name"');
+    ], {})).toThrow('[minotation] preset object: "name" expects a name (a non-empty string), got string ""');
     expect(() => orderPresets([
       {
         name: 'a',
       } as never,
-    ], {})).toThrow('[minotation] preset "a": a preset object needs a "setup(mn)" function');
+    ], {})).toThrow('[minotation] preset "a": "setup" expects a function setup(mn), got undefined');
     expect(() => orderPresets([
       {
         name: 'a',
         setup: () => undefined,
         notationMode: 'tailwind',
       } as never,
-    ], {})).toThrow('option "notationMode" expects "context-qualified", "tw4-compatible", "breakpoint-prefixed" or "property-value"');
+    ], {})).toThrow('"notationMode" expects one of context-qualified, tw4-compatible, breakpoint-prefixed, property-value, got string "tailwind"');
   });
 });
 
@@ -247,6 +247,6 @@ describe('mn.setPresets с пресет-объектами', () => {
     })).not.toThrow();
     expect(() => minotationProvider({
       presets: ['presetStandard'] as never,
-    })).toThrow('option "presets" expects an array of presets (functions or preset objects)');
+    })).toThrow('"presets"[0] expects a preset (a function or a preset object), got string "presetStandard"');
   });
 });

@@ -823,18 +823,18 @@ describe('mathRules — опции проверяются при создани�
         unit: 'px',
         units: 'px',
       },
-      'option "units" expects an array of strings, got string "px"',
+      '"units" expects a list, got string "px"',
     ],
     [
       {
         name: 'w',
         unit: 'px',
       },
-      'mathRules: option "units" is required, got undefined',
+      'mathRules: "units" expects a list, got undefined',
     ],
     [
       undefined,
-      'mathRules: option "name" is required, got undefined',
+      'mathRules: expects an options object, got undefined',
     ],
     [
       {

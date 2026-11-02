@@ -225,8 +225,8 @@ module.exports = {
 не собрать ничего. То же с опечаткой и значением не того типа:
 
 ```
-Error: [minotation] minotation.config.js: unknown option "altColour". Did you mean "altColor"?
-Error: [minotation] minotation.config.js: option "metrics" expects a boolean or a string, got number 1
+TypeError: [minotation] minotation.config.js: unknown option "altColour". Did you mean "altColor"?
+TypeError: [minotation] minotation.config.js: "metrics" expects true, false or a file name, got number 1
 ```
 
 Опции плагинов, которых у CLI нет (`fileName`, `root`, `extensions`, `inject`, …), в файле допустимы —

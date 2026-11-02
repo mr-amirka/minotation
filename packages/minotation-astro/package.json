@@ -14,6 +14,9 @@
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch --no-coverage --config=./jest.config.cjs",
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage --config=./jest.config.cjs"
   },
+  "dependencies": {
+    "fundamentool": "workspace:*"
+  },
   "peerDependencies": {
     "astro": "^7.0.0",
     "minotation": "workspace:*",

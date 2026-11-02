@@ -42,6 +42,6 @@ describe('MnWebpackPlugin — проверка опций (D-038)', () => {
     expect(() => new MnWebpackPlugin({ output: 'mn.css' } as never))
       .toThrow('[minotation] MnWebpackPlugin: unknown option "output". Known options:');
     expect(() => new MnWebpackPlugin({ metrics: 1 } as never))
-      .toThrow('[minotation] MnWebpackPlugin: option "metrics" expects a boolean or a string, got number 1');
+      .toThrow('[minotation] MnWebpackPlugin: "metrics" expects true, false or a file name, got number 1');
   });
 });

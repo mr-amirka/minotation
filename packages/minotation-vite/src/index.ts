@@ -1,7 +1,5 @@
 import type { ModuleNode, Plugin, ViteDevServer } from 'vite';
-import {
-  oneOf,
-} from 'minotation';
+import { literal, oneOf, union } from 'fundamentool/schema';
 import type { MnInstance, MnWarning } from 'minotation';
 import { checkBuildOptions as checkBuildOptionsImpl, createBuildCollector, createFileFilter, createScopeRewriter, metricsFileName, scanRoots, walkFiles, withBuildConfig as withBuildConfigImpl } from 'minotation-build';
 import type { BuildCollector, FileFilter, MnBuildOptions } from 'minotation-build';
@@ -157,7 +155,7 @@ function evalPresetFile(id: string): MnPreset | null {
  */
 export function mnVite(code: MnViteOptions = {}): Plugin {
   const own = {
-    inject: oneOf('inline', 'link', false),
+    inject: union([oneOf(['inline', 'link']), literal(false)]).describe('"inline", "link" or false').optional(),
   };
   // Опции из `minotation.config.*` рабочего каталога, поверх — из кода (D-081).
   const options = withBuildConfig(code, 'mnVite', own);

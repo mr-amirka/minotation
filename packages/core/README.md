@@ -599,20 +599,22 @@ const mn = minotationProvider({
 
 Вендорные префиксы подключаются пресетом `presetPrefixes`.
 
-Опции проверяются при создании и в `mn.setOptions` (D-038): неизвестный ключ и
-значение не того типа — ошибка с подсказкой.
+Опции проверяются при создании и в `mn.setOptions` (D-038, D-141): неизвестный ключ и
+значение не того типа — ошибка с подсказкой. Ядро проверяет **только в разработке**
+(`process.env.NODE_ENV !== 'production'`): в браузерном рантайме продакшен-сборка выбрасывает
+проверки вместе со схемами. Плагины и CLI работают в Node и проверяют всегда.
 
 ```ts
 minotationProvider({ altColor: 'off' });
-// Error: [minotation] minotationProvider: option "altColor" expects a boolean, got string "off"
+// TypeError: [minotation] minotationProvider: "altColor" expects true or false, got string "off"
 
 minotationProvider({ isolateMod: 'class' });
-// Error: [minotation] minotationProvider: unknown option "isolateMod". Did you mean "isolateMode"?
+// TypeError: [minotation] minotationProvider: unknown option "isolateMod". Did you mean "isolateMode"?
 ```
 
-Тот же проверяльщик экспортируется для своих точек входа: `checkOptions(options,
-schema, 'myPlugin')` и проверки `isBoolean`, `isString`, `isStringArray`,
-`oneOf(...)`, `optionsOf(schema)` и др.
+Схема опций — `CORE_OPTIONS` на `fundamentool/schema`: своя точка входа строит схему шире из её
+полей — `object({ ...CORE_OPTIONS().shape, out: string() })`, часть — `CORE_OPTIONS().pick({ notationMode: true })`;
+`CORE_OPTIONS().keys` — список ключей. Так же `SCANNER_OPTIONS` для `createScanner`.
 
 ### `mn.setPresets(presets)`
 

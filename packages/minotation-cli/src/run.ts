@@ -26,10 +26,10 @@ import {
   sep,
 } from 'node:path';
 import {
-  checkOptions,
+  MN_WHERE,
 } from 'minotation';
 import {
-  BUILD_OPTIONS_SCHEMA,
+  BUILD_OPTIONS,
   CONFIG_FILE_NAMES,
   createMatcher,
   formatFileName,
@@ -44,7 +44,7 @@ import type {
   CliArgs,
 } from './args';
 import {
-  CONFIG_SCHEMA,
+  CONFIG_OPTIONS,
   compile,
 } from './compile';
 import type {
@@ -92,20 +92,19 @@ export interface RunSettings extends CompileSettings {
  */
 export function loadConfig(path: string | undefined, report: Reporter): Partial<RunSettings> {
   const loaded = loadConfigFile(
-    BUILD_OPTIONS_SCHEMA, process.cwd(), path && resolve(path),
+    BUILD_OPTIONS(), process.cwd(), path && resolve(path),
   );
   if (!loaded) {
     return {};
   }
   report.log('Config: ' + loaded.path);
   const config: Record<string, unknown> = {};
+  const known = CONFIG_OPTIONS().shape;
   for (const key in loaded.options) { // eslint-disable-line
-    CONFIG_SCHEMA[key] && (config[key] = loaded.options[key]);
+    known[key as keyof typeof known] && (config[key] = loaded.options[key]);
   }
   // Свои поля CLI в общей схеме не проверяются по значению — проверяем здесь (D-038).
-  checkOptions(
-    config, CONFIG_SCHEMA, relative(process.cwd(), loaded.path),
-  );
+  CONFIG_OPTIONS().parse(config, MN_WHERE + relative(process.cwd(), loaded.path));
   return config as Partial<RunSettings>;
 }
 

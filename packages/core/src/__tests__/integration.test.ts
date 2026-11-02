@@ -954,11 +954,11 @@ describe('isolateMode — проверки и привязка (D-075)', () => {
     expect(() => mnProvider({
       isolateMode: 'where',
       isolateClass: '.l',
-    })).toThrow('option "isolateClass" expects a class name without a dot (e.g. "_l")');
+    })).toThrow('"isolateClass" expects a class name without a dot (e.g. "_l"), got string');
     expect(() => mnProvider({
       isolateMode: 'scope' as 'class',
       isolateClass: '_l',
-    })).toThrow('option "isolateMode" expects');
+    })).toThrow('"isolateMode" expects one of none, class, where, got');
   });
 
   test.each([

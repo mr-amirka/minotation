@@ -338,10 +338,10 @@ describe('maxSpecificity — предел **N, потолок 16 (D-089)', () =>
   test('предел — целое от 1 до 16: выше задать нельзя', () => {
     expect(() => minotationProvider({
       maxSpecificity: 17,
-    })).toThrow('option "maxSpecificity" expects an integer from 1 to 16, got number 17');
+    })).toThrow('"maxSpecificity" expects a whole number from 1 to 16, got number 17');
     expect(() => minotationProvider({
       maxSpecificityMode: 'silent' as never,
-    })).toThrow('option "maxSpecificityMode" expects "warn" or "strict"');
+    })).toThrow('"maxSpecificityMode" expects one of warn, strict, got');
   });
 });
 

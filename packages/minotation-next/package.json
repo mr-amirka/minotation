@@ -12,6 +12,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "fundamentool": "workspace:*",
     "minotation": "workspace:*",
     "minotation-webpack": "workspace:*"
   },

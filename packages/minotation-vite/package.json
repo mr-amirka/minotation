@@ -15,7 +15,8 @@
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage --config=./jest.config.cjs"
   },
   "dependencies": {
-    "esbuild": "^0.28.0"
+    "esbuild": "^0.28.0",
+    "fundamentool": "workspace:*"
   },
   "peerDependencies": {
     "minotation": "workspace:*",

@@ -205,7 +205,7 @@ describe('mn.variantPrefixedSynonyms — проверка', () => {
   test('не объект и не строка в значении — ошибка', () => {
     const mn = minotationProvider();
     expect(() => mn.variantPrefixedSynonyms('peer' as never))
-      .toThrow('[minotation] mn.variantPrefixedSynonyms: option "map" expects an object, got string "peer"');
+      .toThrow('[minotation] mn.variantPrefixedSynonyms: expects an object, got string "peer"');
     expect(() => mn.variantPrefixedSynonyms({
       peer: 1 as never,
     })).toThrow('[minotation] mn.variantPrefixedSynonyms: "peer" expects a selector string, got number 1');

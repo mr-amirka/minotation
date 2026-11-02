@@ -15,14 +15,18 @@ import type {
   MnEssenceParams,
 } from '../../core/types';
 import {
-  checkOptions,
-  isBoolean,
-  isObject,
-  isString,
-} from '../../checkOptions';
-import type {
-  OptionCheck,
-} from '../../checkOptions';
+  array,
+  boolean,
+  func,
+  lazy,
+  object,
+  record,
+  string,
+  union,
+} from 'fundamentool/schema';
+import {
+  MN_WHERE,
+} from '../../options';
 
 const DASH = '-';
 
@@ -53,40 +57,23 @@ export interface MnScaleOptions {
   arbitrary?: boolean;
 }
 
-const isScale: OptionCheck = (value) => (
-  typeof value === 'function' || isObject(
-    value, '', '',
-  ) === undefined
-    && Object.keys(value as object).every((key) => typeof (value as Record<string, unknown>)[key] === 'string')
-    ? undefined : 'a function (step) => value or an object of strings'
-);
-
-const isStringMap: OptionCheck = (value) => (
-  isObject(
-    value, '', '',
-  ) === undefined
-    && Object.keys(value as object).every((key) => typeof (value as Record<string, unknown>)[key] === 'string')
-    ? undefined : 'an object of strings'
-);
-
-const isSidesMap: OptionCheck = (value) => (
-  isObject(
-    value, '', '',
-  ) === undefined && Object.keys(value as object).every((key) => {
-    const sides = (value as Record<string, unknown>)[key];
-    return Array.isArray(sides) && sides.length > 0 && sides.every((side) => typeof side === 'string');
-  }) ? undefined : 'an object of non-empty string arrays: { t: [\'top\'], x: [\'left\', \'right\'] }'
-);
-
-const SCALE_SCHEMA = {
-  properties: isStringMap,
-  sides: isSidesMap,
-  separator: isString,
-  scale: isScale,
-  keywords: isStringMap,
-  negative: isBoolean,
-  arbitrary: isBoolean,
-};
+/** Опции {@link defineScale} ({@link MnScaleOptions}): обязательны `properties` и `scale`. */
+const SCALE_OPTIONS = /*#__PURE__*/ lazy(() => {
+  const strings = record(string());
+  return object({
+    properties: strings,
+    sides: record(array(string()).refine((sides) => sides.length > 0, 'expects a non-empty list of sides'))
+      .describe('an object of non-empty string arrays: { t: [\'top\'], x: [\'left\', \'right\'] }').optional(),
+    separator: string().optional(),
+    scale: union([
+      func(),
+      strings,
+    ]).describe('a function (step) => value or an object of strings'),
+    keywords: strings.optional(),
+    negative: boolean().optional(),
+    arbitrary: boolean().optional(),
+  });
+});
 
 /** Числовой шаг: `4`, `2.5`. */
 const REGEXP_STEP = /^\d+(?:\.\d+)?$/;
@@ -108,10 +95,6 @@ function camel(property: string): string {
 /** Отрицание значения: `1rem` → `-1rem`, `0` → `0`, `var(--x)` → `calc(var(--x) * -1)`. */
 function negate(value: string): string {
   return value === '0' ? value : REGEXP_LEADING_NUMBER.test(value) ? DASH + value : 'calc(' + value + ' * -1)';
-}
-
-function required(option: string): never {
-  throw new Error('[minotation] defineScale: option "' + option + '" is required');
 }
 
 function fail(
@@ -143,11 +126,9 @@ function fail(
  * // mt-4 → margin-top:1rem; -mx-2 → margin-left:-.5rem;margin-right:-.5rem; mx-auto → auto
  */
 export function defineScale(mn: MnInstance, options: MnScaleOptions): MnInstance {
-  checkOptions(
-    options, SCALE_SCHEMA, 'defineScale',
-  );
-  options && options.properties || required('properties');
-  options.scale || required('scale');
+  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    SCALE_OPTIONS().parse(options, MN_WHERE + 'defineScale');
+  }
   const sides = options.sides || {
     '': [''],
   };

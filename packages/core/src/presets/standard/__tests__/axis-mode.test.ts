@@ -169,10 +169,10 @@ describe('axisMode', () => {
     expect(() => createMn({
       axisMode: 'phisical' as never,
     }))
-      .toThrow('option "axisMode" expects "logical" or "physical"');
+      .toThrow('"axisMode" expects one of logical, physical, got string "phisical". Did you mean "physical"?');
     expect(() => createMn().setOptions({
       axisMode: 'ltr' as never,
     }))
-      .toThrow('option "axisMode" expects "logical" or "physical"');
+      .toThrow('[minotation] mn.setOptions: "axisMode" expects one of logical, physical, got string "ltr"');
   });
 });

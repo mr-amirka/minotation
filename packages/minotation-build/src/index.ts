@@ -35,7 +35,7 @@ import {
 import {
   createScopeResolver as createScopeResolverImpl,
   globToRegExp as globToRegExpImpl,
-  isScopeRules as isScopeRulesImpl,
+  SCOPE_RULES as SCOPE_RULES_IMPL,
 } from './scopes';
 import type {
   MnScopeRule,
@@ -50,11 +50,12 @@ import {
 } from 'node:path';
 import {
   clearPackageDirectiveCache as clearPackageDirectiveCacheImpl,
+  DIRECTIVE_OPTIONS as DIRECTIVE_OPTIONS_IMPL,
   readFileNotation as readFileNotationImpl,
   readNotationDirective as readNotationDirectiveImpl,
   readPackageDirective as readPackageDirectiveImpl,
   readPackageName as readPackageNameImpl,
-  STRICTNESS_KEYS,
+  STRICTNESS_OPTIONS as STRICTNESS_OPTIONS_IMPL,
 } from './directives';
 import type {
   MnNotationDirective,
@@ -69,9 +70,9 @@ const SPACE = ' ';
 /** Separates the tag from the rest of an entry. */
 const TAG_SEPARATOR = '\u0000';
 const COMMA = ',';
-const MODE_WARN = 'warn';
+const MODE_WARN = 'warn' as const;
 const MODE_SILENT = 'silent';
-const MODE_STRICT = 'strict';
+const MODE_STRICT = 'strict' as const;
 const NEWLINE = '\n';
 const UNDERSCORE = '_';
 const ISOLATE_NONE = 'none';
@@ -105,8 +106,12 @@ export const withConfigFile = withConfigFileImpl;
 export const createScopeResolver = createScopeResolverImpl;
 /** Шаблон пути → RegExp. */
 export const globToRegExp = globToRegExpImpl;
-/** Проверка опции `scopes`. */
-export const isScopeRules = isScopeRulesImpl;
+/** Схема опции `scopes` (D-141). */
+export const SCOPE_RULES = SCOPE_RULES_IMPL;
+/** Схема директивы `@minotation` и поля `"minotation"` в `package.json` (D-141). */
+export const DIRECTIVE_OPTIONS = DIRECTIVE_OPTIONS_IMPL;
+/** Режимы строгости, допустимые в директиве и в правиле `scopes` (D-141). */
+export const STRICTNESS_OPTIONS = STRICTNESS_OPTIONS_IMPL;
 export type {
   MnScopeMatch,
   MnScopeRule,
@@ -115,21 +120,30 @@ export type {
   LoadedConfig,
 } from './config';
 import {
-  CORE_OPTIONS_SCHEMA,
+  array,
+  boolean,
+  custom,
+  func,
+  lazy,
+  object,
+  oneOf,
+  record,
+  string,
+  union,
+} from 'fundamentool/schema';
+import type {
+  TSchema,
+} from 'fundamentool/schema';
+import {
+  CORE_OPTIONS,
+  MN_WHERE,
   MnForbiddenTokenError,
   MnWarningError,
-  checkOptions,
+  RAISE_MODES,
+  SCANNER_OPTIONS,
   createScanner,
   createScopeClassWriter,
-  isBoolean,
-  isBooleanOrString,
-  isFunction,
-  isPresetArray,
-  isString,
-  isStringArray,
   minotationProvider,
-  oneOf,
-  optionsOf,
   parseSettingsKey,
 } from 'minotation';
 import type {
@@ -138,10 +152,11 @@ import type {
   MnParseSettings,
   MnPreset as MnCorePreset,
   MnWarning,
-  OptionCheck,
-  OptionSchema,
   ScannerOptions,
 } from 'minotation';
+import type {
+  MnOptionsSchema,
+} from './config';
 
 /** Пресет — функция, донастраивающая mn-инстанс. */
 /** Пресет: функция или пресет-объект `{ name, requires, setup }` (D-045). */
@@ -248,34 +263,16 @@ function fail(message: string): never {
   throw new Error('[minotation] ' + message);
 }
 
-/** Поля ядра, которые в опциях плагина лежат плоско, как в v1 (D-034). */
-export const CORE_OPTION_KEYS = [
-  'altColor',
-  WARNING_MODE,
-  'media',
-  'maxDepth',
-  'maxDepthMode',
-  'maxSpecificity',
-  'maxSpecificityMode',
-  'specificityMode',
-  'importantMode',
-  'childSelectorMode',
-  'unknownMediaMode',
-  'suspectClassMode',
-  'handlerConflictMode',
-  'presetConflictMode',
-  'mediaConflictMode',
-  'groupSuspectMode',
-  'bareMathMode',
-  'groupMode',
-  'notationMode',
-  'contextWhere',
-  'mediaNesting',
-  'mediaSyntax',
-  'axisMode',
-  'onWarning',
-  'onError',
-] as const;
+/**
+ * Поля ядра, которые в опциях плагина лежат плоско, как в v1 (D-034): все опции ядра, кроме
+ * `presets` (у плагина свои), `isolateMode` (у плагина — изоляция областей пакетов) и
+ * `isolateClass` (класс области сборка назначает сама, D-076). `.keys` — их список.
+ */
+export const PLUGIN_CORE_OPTIONS = /*#__PURE__*/ lazy(() => CORE_OPTIONS().omit({
+  presets: true,
+  isolateMode: true,
+  isolateClass: true,
+}));
 
 /**
  * Предупреждения токенов со своим режимом в ядре (D-039) → опция режима. Их сборка судит по файлу
@@ -316,12 +313,12 @@ const MODE_WEIGHT: Record<string, number> = {
 };
 
 /** Опции ядра в опциях плагина — на верхнем уровне, без вложенного `mn` (D-034). */
-export type MnCoreOptions = Pick<MnOptions, typeof CORE_OPTION_KEYS[number]>;
+export type MnCoreOptions = Omit<MnOptions, 'presets' | 'isolateMode' | 'isolateClass'>;
 
 /** Опции ядра из опций плагина — только заданные. */
 function coreOptionsOf(options: MnCoreOptions): MnCoreOptions {
   const out: Record<string, unknown> = {};
-  for (const key of CORE_OPTION_KEYS) {
+  for (const key of PLUGIN_CORE_OPTIONS().keys) {
     options[key] === undefined || (out[key] = options[key]);
   }
   return out as MnCoreOptions;
@@ -761,81 +758,78 @@ export interface MnEntryOptions extends MnCoreOptions {
   fileName?: string;
 }
 
-/** Отбор файлов: RegExp, строка, функция или массив из них. */
-const isFileMatcher: OptionCheck = (
-  value, where, path,
-) => {
-  const ok = value instanceof RegExp || typeof value === 'string' || typeof value === 'function'
-    || Array.isArray(value) && value.every((item) => !isFileMatcher(
-      item, where, path,
-    ));
-  return ok ? undefined : 'a RegExp, a string, a function or an array of them';
-};
-
-/** `attrs`: строка, массив строк или объект «атрибут → целевой атрибут». */
-const isAttrs: OptionCheck = (
-  value, where, path,
-) => {
-  const ok = typeof value === 'string' || !isStringArray(
-    value, where, path,
-  )
-    || Object.prototype.toString.call(value) === '[object Object]'
-      && Object.keys(value as object).every((key) => typeof (value as Record<string, unknown>)[key] === 'string');
-  return ok ? undefined : 'a string, an array of strings or an object of strings';
-};
+/** Отбор файлов ({@link MnFileMatcher}): RegExp, строка, функция или массив из них. */
+function fileMatcher(): TSchema<MnFileMatcher> {
+  const fits = (value: unknown): boolean => value instanceof RegExp || typeof value === 'string'
+    || typeof value === 'function' || Array.isArray(value) && value.every(fits);
+  return custom<MnFileMatcher>(fits, 'a RegExp, a string, a function or an array of them');
+}
 
 /**
- * Опции ядра в опциях плагина — без `isolateClass`: класс области сборка назначает сама (D-076);
- * `isolateMode` у плагина — изоляция областей пакетов.
+ * Опции записи `entry` ({@link MnEntryOptions}, D-038): опции ядра без `isolateClass` — класс
+ * области сборка назначает сама (D-076) — и отбор файлов записи.
  */
-const WITHOUT_ISOLATE_CLASS: OptionSchema = (() => {
-  const out: OptionSchema = {
-    ...CORE_OPTIONS_SCHEMA,
-  };
-  delete out.isolateClass;
-  return out;
-})();
+export const ENTRY_OPTIONS = /*#__PURE__*/ lazy(() => {
+  const core = CORE_OPTIONS();
+  return object({
+    ...core.omit({
+      isolateClass: true,
+    }).shape,
+    include: fileMatcher().optional(),
+    exclude: fileMatcher().optional(),
+    skipPartials: boolean().optional(),
+    attrs: union([
+      string(),
+      array(string()),
+      record(string()),
+    ]).describe('a string, an array of strings or an object of strings').optional(),
+    fileName: string().optional(),
+    scopePresets: core.shape.presets,
+  });
+});
 
-/** Допустимые опции записи `entry` (D-038). */
-export const ENTRY_OPTIONS_SCHEMA: OptionSchema = {
-  ...WITHOUT_ISOLATE_CLASS,
-  include: isFileMatcher,
-  exclude: isFileMatcher,
-  skipPartials: isBoolean,
-  attrs: isAttrs,
-  fileName: isString,
-  scopePresets: isPresetArray,
-};
+/** Опции плагина — общий набор {@link MnBuildOptions} (D-038): записи, сканер, файлы, отчёты. */
+export const BUILD_OPTIONS = /*#__PURE__*/ lazy(() => {
+  const scanner = SCANNER_OPTIONS().shape;
+  const fileOrFlag = union([
+    boolean(),
+    string(),
+  ]).describe('true, false or a file name').optional();
+  return object({
+    ...ENTRY_OPTIONS().shape,
+    onScannerWarning: func().optional(),
+    classVarSuffixes: scanner.classVarSuffixes,
+    mergeFnNames: scanner.mergeFnNames,
+    comments: scanner.comments,
+    syntax: scanner.syntax,
+    root: union([
+      string(),
+      array(string()),
+    ]).describe('a string or an array of strings').optional(),
+    unreachableClassMode: oneOf(RAISE_MODES).optional(),
+    scopes: SCOPE_RULES_IMPL().optional(),
+    extensions: array(string()).optional(),
+    presetExtensions: array(string()).optional(),
+    entry: record(ENTRY_OPTIONS()).optional(),
+    manifest: fileOrFlag,
+    metrics: fileOrFlag,
+    notationConflictMode: oneOf([
+      MODE_WARN,
+      MODE_STRICT,
+    ]).optional(),
+  });
+});
 
-/** Строка или массив строк (`root`). */
-const isStringOrStringArray: OptionCheck = (value) => (
-  typeof value === 'string' || isStringArray(
-    value, '', '',
-  ) === undefined ? undefined
-    : 'a string or an array of strings'
-);
+/** Свои опции плагина сверх общего набора: имя → схема (`{ inject: boolean().optional() }`). */
+export type MnOwnOptions = Record<string, TSchema<unknown>>;
 
-/** Допустимые опции плагина — общий набор {@link MnBuildOptions} (D-038). */
-export const BUILD_OPTIONS_SCHEMA: OptionSchema = {
-  ...ENTRY_OPTIONS_SCHEMA,
-  presets: isPresetArray,
-  onScannerWarning: isFunction,
-  classVarSuffixes: isStringArray,
-  mergeFnNames: isStringArray,
-  comments: isBoolean,
-  syntax: isBoolean,
-  root: isStringOrStringArray,
-  unreachableClassMode: oneOf(
-    MODE_WARN, MODE_SILENT, MODE_STRICT,
-  ),
-  scopes: isScopeRulesImpl,
-  extensions: isStringArray,
-  presetExtensions: isStringArray,
-  entry: optionsOf(ENTRY_OPTIONS_SCHEMA),
-  manifest: isBooleanOrString,
-  metrics: isBooleanOrString,
-  notationConflictMode: oneOf(MODE_WARN, MODE_STRICT),
-};
+/** Общий набор и свои опции плагина — одной схемой. */
+function buildOptionsWith(own?: MnOwnOptions): MnOptionsSchema {
+  return own ? object({
+    ...BUILD_OPTIONS().shape,
+    ...own,
+  }) : BUILD_OPTIONS();
+}
 
 /**
  * Опции плагина из `minotation.config.*` рабочего каталога, под ними — опции из кода (D-081).
@@ -845,19 +839,16 @@ export const BUILD_OPTIONS_SCHEMA: OptionSchema = {
  * @param own — свои опции плагина сверх общего набора
  */
 export function withBuildConfig<T extends object>(
-  options: T, tool: string, own?: OptionSchema,
+  options: T, tool: string, own?: MnOwnOptions,
 ): T {
   return withConfigFileImpl(
-    options, tool, BUILD_OPTIONS_SCHEMA, own ? {
-      ...BUILD_OPTIONS_SCHEMA,
-      ...own,
-    } : BUILD_OPTIONS_SCHEMA,
+    options, tool, BUILD_OPTIONS(), buildOptionsWith(own),
   );
 }
 
 /**
  * Проверяет опции плагина: неизвестный ключ и некорректное значение — ошибка с
- * подсказкой (D-038). Вызывается при создании плагина.
+ * подсказкой (D-038). Вызывается при создании плагина; в Node — всегда, и в продакшене (D-141).
  *
  * @param options — опции, как их передал пользователь
  * @param where — имя плагина для сообщения (`mnVite`)
@@ -865,18 +856,13 @@ export function withBuildConfig<T extends object>(
  *
  * @example
  * checkBuildOptions({ atrs: 'class' }, 'mnVite');
- * // Error: [minotation] mnVite: unknown option "atrs". Did you mean "attrs"?
+ * // TypeError: [minotation] mnVite: unknown option "atrs". Did you mean "attrs"?
  */
 export function checkBuildOptions(
-  options: unknown, where: string, own?: OptionSchema,
+  options: unknown, where: string, own?: MnOwnOptions,
 ): void {
-  checkOptions(
-    options, own ? {
-      ...BUILD_OPTIONS_SCHEMA,
-      ...own,
-    } : BUILD_OPTIONS_SCHEMA, where,
-  );
-  assertPresets(options as MnBuildOptions, where);
+  options === undefined || buildOptionsWith(own).parse(options, MN_WHERE + where);
+  assertPresets((options || {}) as MnBuildOptions, where);
 }
 
 /**
@@ -1172,7 +1158,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
   function ownStrictness(notation: MnNotationDirective | undefined): string {
     const out: Record<string, unknown> = {};
     let any = false;
-    for (const key of STRICTNESS_KEYS) {
+    for (const key of STRICTNESS_OPTIONS().keys) {
       notation && notation[key] !== undefined && (out[key] = notation[key], any = true);
     }
     return any ? JSON.stringify(out) : '';

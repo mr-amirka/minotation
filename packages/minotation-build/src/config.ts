@@ -21,12 +21,19 @@ import {
   relative,
 } from 'node:path';
 import {
-  checkOptions,
-} from 'minotation';
+  object,
+  unknown,
+} from 'fundamentool/schema';
 import type {
-  OptionCheck,
-  OptionSchema,
+  TObjectSchema,
+  TSchema,
+} from 'fundamentool/schema';
+import {
+  MN_WHERE,
 } from 'minotation';
+
+/** Схема объекта опций (`object(…)` из `fundamentool/schema`): проверка, поля и их ключи (D-141). */
+export type MnOptionsSchema = Pick<TObjectSchema<Record<string, TSchema<unknown>>>, 'shape' | 'keys' | 'parse'>;
 
 /** Имена файла по порядку поиска. */
 export const CONFIG_FILE_NAMES = [
@@ -80,7 +87,7 @@ export interface LoadedConfig {
  * @param path — явный путь файла (CLI `--config`); тогда он обязан существовать
  */
 export function loadConfigFile(
-  schema: OptionSchema, dir: string = process.cwd(), path?: string,
+  schema: MnOptionsSchema, dir: string = process.cwd(), path?: string,
 ): LoadedConfig | undefined {
   const full = path || CONFIG_FILE_NAMES.map((name) => join(dir, name)).find((file) => existsSync(file));
   if (!full) {
@@ -103,9 +110,8 @@ export function loadConfigFile(
     });
   }
   const options = (loaded.default || loaded) as Record<string, unknown>;
-  checkOptions(
-    options, withToolKeys(schema), relative(process.cwd(), full),
-  );
+  // Файл — данные, а не код: проверяется всегда (D-141)
+  withToolKeys(schema).parse(options, MN_WHERE + relative(process.cwd(), full));
   const out: LoadedConfig = {
     path: full,
     options,
@@ -123,19 +129,18 @@ function freshRequire(path: string): { default?: Record<string, unknown> } & Rec
   return requireConfig(path);
 }
 
-/** Значение ключа другого инструмента проверяет сам инструмент. */
-const anyValue: OptionCheck = () => undefined;
-
-function withToolKeys(schema: OptionSchema): OptionSchema {
-  const out: OptionSchema = {
-    ...schema,
+/** Схема и ключи всех инструментов: значение ключа другого инструмента проверяет сам инструмент. */
+function withToolKeys(schema: MnOptionsSchema): MnOptionsSchema {
+  const shape: Record<string, TSchema<unknown>> = {
+    ...schema.shape,
   };
+  const anyValue = unknown();
   for (const tool in TOOL_OPTION_KEYS) { // eslint-disable-line
     for (const key of TOOL_OPTION_KEYS[tool]) {
-      out[key] || (out[key] = anyValue);
+      shape[key] || (shape[key] = anyValue);
     }
   }
-  return out;
+  return object(shape);
 }
 
 /**
@@ -153,11 +158,11 @@ function withToolKeys(schema: OptionSchema): OptionSchema {
  *
  * @example
  * // minotation.config.js: module.exports = { attrs: 'className:class', metrics: false };
- * withConfigFile({ metrics: true }, 'mnVite', BUILD_OPTIONS_SCHEMA, BUILD_OPTIONS_SCHEMA);
+ * withConfigFile({ metrics: true }, 'mnVite', BUILD_OPTIONS(), BUILD_OPTIONS());
  * // => { attrs: 'className:class', metrics: true }
  */
 export function withConfigFile<T extends object>(
-  options: T, tool: string, validate: OptionSchema, pick: OptionSchema, dir?: string, path?: string,
+  options: T, tool: string, validate: MnOptionsSchema, pick: MnOptionsSchema, dir?: string, path?: string,
 ): T {
   const loaded = loadConfigFile(
     validate, dir, path,
@@ -168,7 +173,7 @@ export function withConfigFile<T extends object>(
   const own = TOOL_OPTION_KEYS[tool] || [];
   const picked: Record<string, unknown> = {};
   for (const key in loaded.options) { // eslint-disable-line
-    (pick[key] || own.indexOf(key) > -1) && (picked[key] = loaded.options[key]);
+    (pick.shape[key] || own.indexOf(key) > -1) && (picked[key] = loaded.options[key]);
   }
   return {
     ...picked,

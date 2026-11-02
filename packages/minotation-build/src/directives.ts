@@ -15,15 +15,18 @@ import {
   join,
 } from 'node:path';
 import {
-  checkOptions,
-  isBoolean,
-  isStringArray,
-  oneOf,
+  array,
+  lazy,
+  object,
+  string,
+} from 'fundamentool/schema';
+import {
+  CORE_OPTIONS,
+  MN_WHERE,
 } from 'minotation';
 import type {
   MnNotationMode,
   MnRaiseMode,
-  OptionSchema,
 } from 'minotation';
 
 /** Что файл или пакет объявляет о себе. */
@@ -60,54 +63,36 @@ export interface MnNotationDirective {
 
 /**
  * Ключи строгости (группа C, D-081): меняют не CSS, а то, о чём сообщать и когда падать. Судятся
- * по файлу; в правиле `scopes` потребитель важнее декларации пакета.
+ * по файлу; в правиле `scopes` потребитель важнее декларации пакета. Схема — часть опций ядра;
+ * `STRICTNESS_OPTIONS().keys` — список ключей.
  */
-export const STRICTNESS_KEYS: Array<keyof MnNotationDirective> = [
-  'warningMode',
-  'specificityMode',
-  'importantMode',
-  'maxDepthMode',
-  'maxSpecificityMode',
-  'childSelectorMode',
-  'unknownMediaMode',
-  'suspectClassMode',
-  'groupSuspectMode',
-  'bareMathMode',
-];
+export const STRICTNESS_OPTIONS = /*#__PURE__*/ lazy(() => CORE_OPTIONS().pick({
+  warningMode: true,
+  specificityMode: true,
+  importantMode: true,
+  maxDepthMode: true,
+  maxSpecificityMode: true,
+  childSelectorMode: true,
+  unknownMediaMode: true,
+  suspectClassMode: true,
+  groupSuspectMode: true,
+  bareMathMode: true,
+}));
 
-/** Ключи директивы — общие для комментария, `package.json` и правил `scopes`. */
-export const DIRECTIVE_KEYS: Array<keyof MnNotationDirective> = [
-  'notationMode',
-  'requires',
-  'groupMode',
-  'contextWhere',
-  ...STRICTNESS_KEYS,
-];
-
-const raiseMode = oneOf(
-  'warn', 'silent', 'strict',
-);
-
-export const DIRECTIVE_SCHEMA: OptionSchema = {
-  notationMode: oneOf(
-    'context-qualified', 'tw4-compatible', 'breakpoint-prefixed', 'property-value',
-  ),
-  requires: isStringArray,
-  groupMode: oneOf('groups', 'css'),
-  contextWhere: isBoolean,
-  warningMode: oneOf(
-    'log', 'silent', 'error',
-  ),
-  specificityMode: raiseMode,
-  importantMode: raiseMode,
-  maxDepthMode: raiseMode,
-  maxSpecificityMode: oneOf('warn', 'strict'),
-  childSelectorMode: raiseMode,
-  unknownMediaMode: raiseMode,
-  suspectClassMode: raiseMode,
-  groupSuspectMode: raiseMode,
-  bareMathMode: raiseMode,
-};
+/**
+ * Директива ({@link MnNotationDirective}) — общая для комментария, `package.json` и правил `scopes`:
+ * режим, требования, скобки, контекст и строгость. `DIRECTIVE_OPTIONS().keys` — список ключей.
+ */
+export const DIRECTIVE_OPTIONS = /*#__PURE__*/ lazy(() => {
+  const core = CORE_OPTIONS().shape;
+  return object({
+    notationMode: core.notationMode,
+    requires: array(string()).optional(),
+    groupMode: core.groupMode,
+    contextWhere: core.contextWhere,
+    ...STRICTNESS_OPTIONS().shape,
+  });
+});
 
 /** Директиву ищем только в начале файла: дальше она уже не «о файле», а случайный текст. */
 const HEAD_LENGTH = 2048;
@@ -157,9 +142,8 @@ export function readNotationDirective(source: string, where: string): MnNotation
       ? value.split(',').map((name) => name.trim()).filter(Boolean)
       : value === 'true' ? true : value === 'false' ? false : value;
   }
-  checkOptions(
-    out, DIRECTIVE_SCHEMA, where + ' @minotation',
-  );
+  // Директива пришла из файла, а не из кода: проверяется всегда (D-141)
+  DIRECTIVE_OPTIONS().parse(out, MN_WHERE + where + ' @minotation');
   return out as MnNotationDirective;
 }
 
@@ -244,9 +228,7 @@ function parsePackage(path: string): PackageInfo {
   }
   typeof json.name === 'string' && (out.name = json.name);
   if (json.minotation !== undefined) {
-    checkOptions(
-      json.minotation, DIRECTIVE_SCHEMA, path + ' "minotation"',
-    );
+    DIRECTIVE_OPTIONS().parse(json.minotation, MN_WHERE + path + ' "minotation"');
     out.directive = json.minotation as MnNotationDirective;
   }
   return out;
@@ -272,7 +254,7 @@ export function readFileNotation(source: string, id: string): MnNotationDirectiv
   }
   // По ключу: что объявил файл — его, остальное — от пакета.
   const out: Record<string, unknown> = {};
-  for (const key of DIRECTIVE_KEYS) {
+  for (const key of DIRECTIVE_OPTIONS().keys) {
     out[key] = own && own[key] !== undefined ? own[key] : pkg && pkg[key];
   }
   return out as MnNotationDirective;

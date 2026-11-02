@@ -389,7 +389,7 @@ describe('minotation-vite — отбор файлов из эталонного 
   test('root — не строка и не массив строк: ошибка с ожидаемым', () => {
     expect(() => mnVite({
       root: 5 as never,
-    })).toThrow('option "root" expects a string or an array of strings, got number 5');
+    })).toThrow('"root" expects a string or an array of strings, got number 5');
   });
 
   test('root задаёт корень первичного скана вместо src/', () => {

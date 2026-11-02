@@ -245,7 +245,7 @@ describe('scopePresets — опция плагина', () => {
   test('проверка типа; в записи entry — своё значение', () => {
     expect(() => checkBuildOptions({
       scopePresets: 1,
-    } as never, 'mnVite')).toThrow('option "scopePresets" expects');
+    } as never, 'mnVite')).toThrow('[minotation] mnVite: "scopePresets" expects a list, got number 1');
     expect(() => checkBuildOptions({
       presets: [],
       entry: {

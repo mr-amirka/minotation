@@ -110,6 +110,8 @@ async function buildEsm(outdir, entryPoints, plugins) {
     // tree-shaking-ом. Исходник — ESM и всегда актуален.
     alias: {
       fundamentool: fileURLToPath(new URL('../node_modules/fundamentool/src/index.ts', import.meta.url)),
+      // Подпуть отдельно: алиас пакета указывает на файл, и `fundamentool/schema` стал бы `…/index.ts/schema`
+      'fundamentool/schema': fileURLToPath(new URL('../node_modules/fundamentool/src/schema/index.ts', import.meta.url)),
     },
     plugins,
     sourcemap: true,

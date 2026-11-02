@@ -182,7 +182,7 @@ describe('mediaSyntax: \'classic\' — во всех режимах (D-087)', ()
   test('значение опции проверяется', () => {
     expect(() => minotationProvider({
       mediaSyntax: 'legacy' as never,
-    })).toThrow('option "mediaSyntax" expects "range" or "classic"');
+    })).toThrow('"mediaSyntax" expects one of range, classic, got string "legacy"');
   });
 });
 
@@ -413,7 +413,7 @@ describe('опция media важнее пресета, совпадение —
   test('значение режима проверяется', () => {
     expect(() => minotationProvider({
       mediaConflictMode: 'loud' as never,
-    })).toThrow('option "mediaConflictMode" expects "warn", "silent" or "strict"');
+    })).toThrow('"mediaConflictMode" expects one of warn, silent, strict, got string "loud"');
   });
 });
 

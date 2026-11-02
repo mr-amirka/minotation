@@ -279,7 +279,7 @@ describe('проверка опций (D-038)', () => {
         ...TAILWIND,
         scale: 4,
       },
-      'option "scale" expects a function (step) => value or an object of strings, got number 4',
+      '"scale" expects a function (step) => value or an object of strings, got number 4',
     ],
     [
       {
@@ -288,7 +288,7 @@ describe('проверка опций (D-038)', () => {
           1: 4,
         },
       },
-      'option "scale" expects a function (step) => value or an object of strings',
+      '"scale" expects a function (step) => value or an object of strings, got object',
     ],
     [
       {
@@ -297,7 +297,7 @@ describe('проверка опций (D-038)', () => {
           m: 1,
         },
       },
-      'option "properties" expects an object of strings',
+      '"properties"."m" expects a string, got number 1',
     ],
     [
       {
@@ -306,7 +306,7 @@ describe('проверка опций (D-038)', () => {
           t: 'top',
         },
       },
-      'option "sides" expects an object of non-empty string arrays',
+      '"sides"."t" expects a list, got string "top"',
     ],
     [
       {
@@ -315,19 +315,19 @@ describe('проверка опций (D-038)', () => {
           t: [],
         },
       },
-      'option "sides" expects an object of non-empty string arrays',
+      '"sides"."t" expects a non-empty list of sides',
     ],
     [
       {
         scale: TAILWIND.scale,
       },
-      'option "properties" is required',
+      '"properties" expects an object, got undefined',
     ],
     [
       {
         properties: TAILWIND.properties,
       },
-      'option "scale" is required',
+      '"scale" expects a function (step) => value or an object of strings, got undefined',
     ],
   ])('%j — ошибка', (options, message) => {
     const mn = minotationProvider();
@@ -335,6 +335,6 @@ describe('проверка опций (D-038)', () => {
   });
 
   test('без опций — ошибка', () => {
-    expect(() => defineScale(minotationProvider(), undefined as never)).toThrow('option "properties" is required');
+    expect(() => defineScale(minotationProvider(), undefined as never)).toThrow('[minotation] defineScale: expects an options object, got undefined');
   });
 });

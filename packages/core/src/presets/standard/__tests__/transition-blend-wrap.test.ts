@@ -300,7 +300,7 @@ describe('overflowWrapMode — the old name word-wrap for old browsers', () => {
     expect(() => createMn({
       overflowWrapMode: 'old' as never,
     }))
-      .toThrow('option "overflowWrapMode" expects "standard", "legacy" or "both"');
+      .toThrow('"overflowWrapMode" expects one of standard, legacy, both, got string "old"');
     expect(() => createMn({
       overflowWrapMod: 'both',
     } as never))

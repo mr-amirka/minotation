@@ -397,7 +397,7 @@ describe('mnGulp — проверка опций (D-038)', () => {
         },
       },
     } as never))
-      .toThrow('[minotation] mnGulp: unknown option "entry.admin.incude". Did you mean "entry.admin.include"?');
+      .toThrow('[minotation] mnGulp: "entry"."admin": unknown option "incude". Did you mean "include"?');
   });
 });
 

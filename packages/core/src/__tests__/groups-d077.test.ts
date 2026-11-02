@@ -184,7 +184,7 @@ describe("c) groupMode: 'css' — скобки это CSS", () => {
   test('проверка опций', () => {
     expect(() => minotationProvider({
       groupMode: 'plain',
-    } as unknown as MnOptions)).toThrow('option "groupMode" expects "groups" or "css", got string "plain"');
+    } as unknown as MnOptions)).toThrow('"groupMode" expects one of groups, css, got string "plain"');
     expect(() => minotationProvider({
       groupMod: 'css',
     } as unknown as MnOptions)).toThrow('Did you mean "groupMode"');

@@ -27,11 +27,14 @@ import {
   MN_CSS_RULE,
 } from '../selectorsCompileProvider/constants';
 import {
-  checkOptions,
-  CORE_OPTIONS_SCHEMA,
-  describeValue,
-  isObject as isObjectOption,
-} from '../checkOptions';
+  CORE_OPTIONS,
+  MN_WHERE,
+} from '../options';
+import {
+  custom,
+  lazy,
+  record,
+} from 'fundamentool/schema';
 import {
   mediaCondition,
 } from './mediaCondition';
@@ -39,6 +42,7 @@ import {
   asError,
   createEvent,
   createObservable,
+  describeValue,
   eachApply,
   eachTry,
   forEach,
@@ -192,6 +196,9 @@ const AT = '@';
 const IMPORTANT_SUFFIX = '-i';
 const WARNING_PARSE_ERROR = 'parse-error';
 const OPEN_BRACE = '{';
+/** `mn.variantPrefixedSynonyms`: имя метки → её селектор, непустая строка (D-046). */
+const VARIANT_SYNONYMS = /*#__PURE__*/ lazy(() => record(custom<string>((value) => typeof value === 'string' && value !== '',
+  'a selector string')));
 const PX = 'px';
 const MEDIA_ALL = 'all';
 const CLOSE_BRACE = '}';
@@ -545,9 +552,9 @@ function isCompileWarning(warning: MnWarning): boolean {
  * mn.styles$.getState(); // → скомпилированные CSS-стили
  */
 function minotationProvider(options?: MnOptions) {
-  checkOptions(
-    options, CORE_OPTIONS_SCHEMA, 'minotationProvider',
-  );
+  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    CORE_OPTIONS().optional().parse(options, MN_WHERE + 'minotationProvider');
+  }
   // Отдельная переменная, а не мутация параметра: `setOptions` его
   // переприсваивает, и из-за этого компилятор не мог сузить тип внутри
   // замыканий — каждое обращение к полю требовало проверки на `undefined`,
@@ -2538,17 +2545,8 @@ function minotationProvider(options?: MnOptions) {
    * mn.variantPrefixedSynonyms({ peer: '.peer~' });
    */
   mn.variantPrefixedSynonyms = (map: Record<string, string>): any => {
-    checkOptions(
-      {
-        map,
-      }, {
-        map: isObjectOption,
-      }, 'mn.variantPrefixedSynonyms',
-    );
-    let name: string;
-    for (name in map) { // eslint-disable-line
-      typeof map[name] === 'string' && map[name]
-        || fail('mn.variantPrefixedSynonyms: "' + name + '" expects a selector string, got ' + describeValue(map[name]));
+    if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+      VARIANT_SYNONYMS().parse(map, MN_WHERE + 'mn.variantPrefixedSynonyms');
     }
     extend((mn as any)._variantPrefixedSynonyms || ((mn as any)._variantPrefixedSynonyms = {}), map);
     return mn;
@@ -2603,9 +2601,9 @@ function minotationProvider(options?: MnOptions) {
    * mn.recompile;
    */
   mn.setOptions = (partialOptions: Partial<MnOptions>): any => {
-    checkOptions(
-      partialOptions, CORE_OPTIONS_SCHEMA, 'mn.setOptions',
-    );
+    if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+      CORE_OPTIONS().parse(partialOptions, MN_WHERE + 'mn.setOptions');
+    }
     settings = extend(extend({}, settings), partialOptions) as MnOptions;
     applyOptions();
     return mn;

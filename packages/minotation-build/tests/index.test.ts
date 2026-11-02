@@ -21,6 +21,9 @@ import {
   tmpdir,
 } from 'node:os';
 import {
+  literal,
+} from 'fundamentool/schema';
+import {
   asPreset,
   assertPresets,
   checkBuildOptions,
@@ -568,7 +571,7 @@ describe('attrs — карта «сканируемый → целевой ат�
   test('звёздочка не в начале — ошибка сканера (D-131)', () => {
     expect(() => createAttrsScanner({
       attrs: 'class*:class',
-    })).toThrow('option "attr" expects names or patterns "*Suffix" (as "*ClassName"), each without spaces');
+    })).toThrow('[minotation] createScanner: "attr" expects names or patterns "*Suffix" (as "*ClassName"), each without spaces');
   });
 
   test('переменные *Class и вызовы mne идут в class, а не в каждую цель', () => {
@@ -821,6 +824,15 @@ describe('опции ядра — плоско, без mn (D-034)', () => {
     const logical = createTokenCollector(OPTIONS);
     logical.add('/a.html', '<div class="px16">');
     expect(logical.css()).toContain('.px16{padding-inline:16px}');
+  });
+
+  test('каждая опция ядра доходит до ядра: overflowWrapMode — старое имя word-wrap', () => {
+    const collector = createTokenCollector({
+      ...OPTIONS,
+      overflowWrapMode: 'legacy',
+    });
+    collector.add('/a.html', '<div class="owrBW">');
+    expect(collector.css()).toContain('.owrBW{word-wrap:break-word}');
   });
 
   test('колбэк сканера — onScannerWarning; onWarning сканеру не передаётся', () => {
@@ -1100,7 +1112,7 @@ describe('checkBuildOptions — проверка опций плагина (D-03
         inject: 'link',
         presets: [],
       }, 'mnVite', {
-        inject: (value) => (value === 'link' ? undefined : '"link"'),
+        inject: literal('link'),
       },
     )).not.toThrow();
   });
@@ -1109,20 +1121,20 @@ describe('checkBuildOptions — проверка опций плагина (D-03
     expect(() => checkBuildOptions({
       attrs: 1,
     }, 'mnGulp'))
-      .toThrow('option "attrs" expects a string, an array of strings or an object of strings, got number 1');
+      .toThrow('[minotation] mnGulp: "attrs" expects a string, an array of strings or an object of strings, got number 1');
     expect(() => checkBuildOptions({
       attrs: {
         className: 1,
       },
     }, 'mnGulp'))
-      .toThrow('option "attrs" expects a string, an array of strings or an object of strings, got object');
+      .toThrow('[minotation] mnGulp: "attrs" expects a string, an array of strings or an object of strings, got object');
     expect(() => checkBuildOptions({
       include: [
         /a/,
         1,
       ],
     }, 'mnGulp'))
-      .toThrow('option "include" expects a RegExp, a string, a function or an array of them, got array');
+      .toThrow('[minotation] mnGulp: "include" expects a RegExp, a string, a function or an array of them, got array');
     expect(() => checkBuildOptions({
       include: null,
     }, 'mnGulp'))
@@ -1134,11 +1146,11 @@ describe('checkBuildOptions — проверка опций плагина (D-03
         },
       },
     }, 'mnGulp'))
-      .toThrow('unknown option "entry.admin.output". Known options:');
+      .toThrow('"entry"."admin": unknown option "output". Known options:');
     expect(() => checkBuildOptions({
       manifest: 1,
     }, 'mnGulp'))
-      .toThrow('option "manifest" expects a boolean or a string, got number 1');
+      .toThrow('"manifest" expects true, false or a file name, got number 1');
   });
 });
 
@@ -1221,6 +1233,6 @@ describe('checkBuildOptions — root', () => {
         '/a',
         1,
       ],
-    } as never, 'mnRollup')).toThrow('option "root" expects a string or an array of strings');
+    } as never, 'mnRollup')).toThrow('[minotation] mnRollup: "root" expects a string or an array of strings, got array');
   });
 });

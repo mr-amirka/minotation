@@ -106,7 +106,7 @@ describe('readNotationDirective — комментарий @minotation в нач
     expect(() => readNotationDirective('/* @minotation notationMod: tw4-compatible */', 'Button.tsx'))
       .toThrow('[minotation] Button.tsx @minotation: unknown option "notationMod". Did you mean "notationMode"?');
     expect(() => readNotationDirective('/* @minotation notationMode: tailwind */', 'Button.tsx'))
-      .toThrow('option "notationMode" expects "context-qualified", "tw4-compatible", "breakpoint-prefixed" or "property-value", got string "tailwind"');
+      .toThrow('[minotation] Button.tsx @minotation: "notationMode" expects one of context-qualified, tw4-compatible, breakpoint-prefixed, property-value, got string "tailwind"');
     expect(() => readNotationDirective('/* @minotation tw4-compatible */', 'Button.tsx'))
       .toThrow('[minotation] Button.tsx: "@minotation tw4-compatible" expects "key: value"');
   });

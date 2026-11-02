@@ -367,15 +367,15 @@ describe('presetHints — фабрика: исключения групп и о�
   test('неизвестная группа — ошибка с ближайшей и перечнем', () => {
     expect(() => presetHints({
       excludeGroups: ['bootsrap' as never],
-    })).toThrow('[minotation] presetHints: unknown value "bootsrap" in "excludeGroups". Did you mean "bootstrap"?'
-      + ' Known groups: typos, tailwind, bootstrap');
+    })).toThrow('[minotation] presetHints: "excludeGroups"[0] expects one of typos, tailwind, bootstrap, got string'
+      + ' "bootsrap". Did you mean "bootstrap"?');
   });
 
   test('неизвестный обработчик без похожих — перечень', () => {
     expect(() => presetHints({
       excludeHandlers: ['container'],
-    })).toThrow('[minotation] presetHints: unknown value "container" in "excludeHandlers". Known handlers: '
-      + HINTS.handlers.join(', '));
+    })).toThrow('[minotation] presetHints: "excludeHandlers"[0] expects one of ' + HINTS.handlers.join(', ')
+      + ', got string "container"');
   });
 
   test('неизвестная опция и не тот тип — ошибка проверки опций', () => {
@@ -384,6 +384,6 @@ describe('presetHints — фабрика: исключения групп и о�
     } as never)).toThrow('[minotation] presetHints: unknown option "exclude".');
     expect(() => presetHints({
       excludeGroups: 'bootstrap',
-    } as never)).toThrow('option "excludeGroups" expects an array of strings, got string "bootstrap"');
+    } as never)).toThrow('[minotation] presetHints: "excludeGroups" expects a list, got string "bootstrap"');
   });
 });

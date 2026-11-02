@@ -4,16 +4,21 @@
  * Холодный путь: вызывается из `mn.setPresets` один раз на список.
  */
 import {
-  checkOptions,
   describeValue,
-  isFunction,
-  isString,
-  isStringArray,
+} from 'fundamentool';
+import {
+  array,
+  custom,
+  func,
+  lazy,
+  object,
   oneOf,
-} from '../checkOptions';
-import type {
-  OptionSchema,
-} from '../checkOptions';
+  string,
+} from 'fundamentool/schema';
+import {
+  MN_WHERE,
+  NOTATION_MODES,
+} from '../options';
 import type {
   MnPreset,
   MnPresetObject,
@@ -21,27 +26,21 @@ import type {
 
 const DOUBLE_QUOTE = '"';
 
-/** Допустимые поля пресет-объекта. */
-const PRESET_SCHEMA: OptionSchema = {
-  name: isString,
-  requires: isStringArray,
-  ecosystems: isStringArray,
-  notationMode: oneOf(
-    'context-qualified', 'tw4-compatible', 'breakpoint-prefixed', 'property-value',
-  ),
-  setup: isFunction,
-};
+/** Поля пресет-объекта ({@link MnPresetObject}): обязательны `name` и `setup`. */
+const PRESET_OBJECT = /*#__PURE__*/ lazy(() => object({
+  name: custom<string>((value) => typeof value === 'string' && value !== '', 'a name (a non-empty string)'),
+  requires: array(string()).optional(),
+  ecosystems: array(string()).optional(),
+  notationMode: oneOf(NOTATION_MODES).optional(),
+  setup: func().describe('a function setup(mn)'),
+}));
 
-/** Проверяет пресет-объект: обязательные `name`, `setup` и схема полей (D-038). */
+/** Проверяет пресет-объект в разработке (D-141): сообщение называет пресет по имени, если оно есть. */
 function checkPreset(preset: MnPresetObject): void {
-  const named = Boolean(preset) && typeof preset.name === 'string';
-  const where = 'preset ' + (named ? DOUBLE_QUOTE + preset.name + DOUBLE_QUOTE : 'object');
-  checkOptions(
-    preset, PRESET_SCHEMA, where,
-  );
-  named && preset.name
-    || fail(where + ': a preset object needs a "name"');
-  typeof preset.setup === 'function' || fail(where + ': a preset object needs a "setup(mn)" function');
+  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    const named = Boolean(preset) && typeof preset.name === 'string' && preset.name !== '';
+    PRESET_OBJECT().parse(preset, MN_WHERE + 'preset ' + (named ? DOUBLE_QUOTE + preset.name + DOUBLE_QUOTE : 'object'));
+  }
 }
 
 function fail(message: string): never {

@@ -35,6 +35,6 @@ describe('mnRollup — проверка опций (D-038)', () => {
     expect(() => mnRollup({ fileNmae: 'a.css' } as never))
       .toThrow('[minotation] mnRollup: unknown option "fileNmae". Did you mean "fileName"?');
     expect(() => mnRollup({ attrs: 5 } as never))
-      .toThrow('[minotation] mnRollup: option "attrs" expects');
+      .toThrow('[minotation] mnRollup: "attrs" expects');
   });
 });

@@ -12,12 +12,15 @@ import {
   toFixed,
 } from 'fundamentool';
 import {
-  checkOptions,
-  describeValue,
-  isBoolean,
-  isString,
-  isStringArray,
-} from '../checkOptions';
+  array,
+  boolean,
+  lazy,
+  object,
+  string,
+} from 'fundamentool/schema';
+import {
+  MN_WHERE,
+} from '../options';
 import {
   MnParseError,
 } from './types';
@@ -118,49 +121,35 @@ export interface MnMathRulesOptions {
   negative?: boolean;
 }
 
-const RULES_SCHEMA = {
-  name: isString,
-  unit: isString,
-  units: isStringArray,
-  negative: isBoolean,
-};
-const RULES_REQUIRED = [
-  'name',
-  'unit',
-  'units',
-];
+/** Опции {@link mathRules}: единица голого числа — из допустимых. */
+const RULES_OPTIONS = /*#__PURE__*/ lazy(() => object({
+  name: string(),
+  unit: string(),
+  units: array(string()),
+  negative: boolean().optional(),
+}).refine((options) => !options.unit || options.units.indexOf(options.unit) > -1,
+  (options) => '"unit" expects one of "units", got "' + options.unit + DOUBLE_QUOTE));
 
 /**
  * Правила свойства для {@link mathValue}. Холодный путь: собираются один раз, в фабрике хендлера.
  *
  * @param options — имя хендлера, единица голого числа, допустимые единицы, минус
  * @returns замороженные правила
- * @throws {Error} неизвестный ключ (с ближайшим допустимым), значение не того типа, нет обязательного ключа,
- *   единица голого числа не из допустимых
+ * @throws {TypeError} в разработке: неизвестный ключ (с ближайшим допустимым), значение не того типа, нет
+ *   обязательного ключа, единица голого числа не из допустимых
  * @example
  * const widthRules = mathRules({ name: 'w', unit: 'px', units: ['px', 'rem', '%'] });
  */
 export function mathRules(options: MnMathRulesOptions): MnMathRules {
-  const where = 'mathRules';
-  checkOptions(
-    options, RULES_SCHEMA, where,
-  );
-  for (const key of RULES_REQUIRED) {
-    (options as unknown as Record<string, unknown> | undefined)?.[key] === undefined
-      && fail(where + ': option "' + key + '" is required, got ' + describeValue(options && (options as never)[key]));
+  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    RULES_OPTIONS().parse(options, MN_WHERE + 'mathRules');
   }
-  options.unit && options.units.indexOf(options.unit) < 0
-    && fail(where + ': "unit" expects one of "units", got "' + options.unit + DOUBLE_QUOTE);
   return Object.freeze({
     name: options.name,
     unit: options.unit,
     units: Object.freeze(options.units.slice()),
     negative: !!options.negative,
   });
-}
-
-function fail(message: string): never {
-  throw new Error('[minotation] ' + message);
 }
 
 // Состояние разбора одного значения. Модульное, а не замыкание: разбор синхронный и не вызывает чужой код.

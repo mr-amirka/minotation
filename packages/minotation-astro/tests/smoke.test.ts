@@ -39,7 +39,7 @@ describe('minotation-astro — smoke', () => {
 describe('mnAstro — проверка опций (D-038)', () => {
   test('inject у astro — только boolean; опечатка — подсказка', () => {
     expect(() => mnAstro({ inject: 'link' } as never))
-      .toThrow('[minotation] mnAstro: option "inject" expects a boolean, got string "link"');
+      .toThrow('[minotation] mnAstro: "inject" expects true or false, got string "link"');
     expect(() => mnAstro({ warningMod: 'error' } as never))
       .toThrow('[minotation] mnAstro: unknown option "warningMod". Did you mean "warningMode"?');
     expect(() => mnAstro({ presets: PRESETS, inject: false })).not.toThrow();

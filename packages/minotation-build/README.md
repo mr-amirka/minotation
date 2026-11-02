@@ -129,28 +129,48 @@ for (const warning of collector.takeWarnings()) {
 `extensions` по умолчанию ничего не ограничивает, а `include`/`exclude`/
 `skipPartials` отсекают файлы внутри уже выбранных.
 
-### Проверка опций (D-038)
+### Проверка опций (D-038, D-141)
 
-Плагин проверяет опции при создании. Неизвестный ключ и значение не того типа —
-ошибка сразу, а не молча проигнорированная настройка:
+Плагин проверяет опции при создании — всегда, и в продакшене: он работает в Node, где размер проверок
+не важен. Неизвестный ключ и значение не того типа — ошибка (`TypeError`) сразу, а не молча
+проигнорированная настройка:
 
 ```ts
 mnVite({ atrs: 'class' });
-// Error: [minotation] mnVite: unknown option "atrs". Did you mean "attrs"?
+// TypeError: [minotation] mnVite: unknown option "atrs". Did you mean "attrs"?
 
 mnVite({ mn: { strict: true } });
-// Error: [minotation] mnVite: unknown option "mn". Known options: altColor, warningMode, …
+// TypeError: [minotation] mnVite: unknown option "mn". Known options: presets, media, onError, …
 
 mnVite({ warningMode: 'strict' });
-// Error: [minotation] mnVite: option "warningMode" expects "log", "silent" or "error", got string "strict"
+// TypeError: [minotation] mnVite: "warningMode" expects one of log, silent, error, got string "strict"
 
 mnGulp({ entry: { admin: { incude: /admin/ } } });
-// Error: [minotation] mnGulp: unknown option "entry.admin.incude". Did you mean "entry.admin.include"?
+// TypeError: [minotation] mnGulp: "entry"."admin": unknown option "incude". Did you mean "include"?
 ```
 
 `undefined` в значении — то же, что отсутствие ключа: опции можно собирать
-условно. Свой плагин поверх общего набора проверяет опции так же —
-`checkBuildOptions(options, 'myPlugin', { ownOption: isBoolean })`.
+условно.
+
+Опции описаны схемами `fundamentool/schema`, и их можно брать по частям:
+
+- `BUILD_OPTIONS()` — общий набор плагина; `ENTRY_OPTIONS()` — запись `entry`;
+- `PLUGIN_CORE_OPTIONS()` — опции ядра, которые плагин передаёт ядру (`CORE_OPTIONS()` без `presets`,
+  `isolateMode`, `isolateClass`); его `.keys` — список этих опций;
+- `DIRECTIVE_OPTIONS()` — комментарий `@minotation` и поле `"minotation"` в `package.json`;
+  `STRICTNESS_OPTIONS()` — режимы строгости, которые в них допустимы; `SCOPE_RULES()` — опция `scopes`.
+
+Свой плагин поверх общего набора передаёт свои опции схемами:
+
+```ts
+import { boolean } from 'fundamentool/schema';
+
+const own = { inject: boolean().optional() };
+const options = withBuildConfig(code, 'mnMyPlugin', own);
+checkBuildOptions(options, 'mnMyPlugin', own);
+// mnMyPlugin({ inject: 'yes' })
+// TypeError: [minotation] mnMyPlugin: "inject" expects true or false, got string "yes"
+```
 
 ## Файл настроек `minotation.config.*` (D-081)
 

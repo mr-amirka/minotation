@@ -22,10 +22,14 @@ import type {
   MnPresetObject,
 } from '../../core/types';
 import {
-  checkKnownValues,
-  checkOptions,
-  isStringArray,
-} from '../../checkOptions';
+  array,
+  lazy,
+  object,
+  oneOf,
+} from 'fundamentool/schema';
+import {
+  MN_WHERE,
+} from '../../options';
 
 const HINTS_TYPOS = 'typos';
 const HINTS_TAILWIND = 'tailwind';
@@ -400,6 +404,12 @@ export interface PresetHintsOptions {
   excludeHandlers?: string[];
 }
 
+/** Опции {@link presetHints}: группы и обработчики — только известные, близкое имя — «did you mean». */
+const HINTS_OPTIONS = /*#__PURE__*/ lazy(() => object({
+  excludeGroups: array(oneOf(GROUPS)).optional(),
+  excludeHandlers: array(oneOf(HANDLERS)).optional(),
+}));
+
 /** Предупреждение вместо CSS: токен не даёт правила, остальная компиляция идёт дальше. */
 function hint(groups: HintGroup[], message: string): never {
   throw new MnParseError(PRESET_NAME + '[' + groups.join(', ') + ']: ' + message, {
@@ -529,18 +539,9 @@ function presetHints(arg: MnInstance | PresetHintsOptions): void | MnPresetObjec
     apply(arg, {});
     return;
   }
-  checkOptions(
-    arg, {
-      excludeGroups: isStringArray,
-      excludeHandlers: isStringArray,
-    }, PRESET_NAME,
-  );
-  checkKnownValues(
-    arg.excludeGroups || [], GROUPS, PRESET_NAME, 'excludeGroups', 'groups',
-  );
-  checkKnownValues(
-    arg.excludeHandlers || [], HANDLERS, PRESET_NAME, 'excludeHandlers', 'handlers',
-  );
+  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    HINTS_OPTIONS().parse(arg, MN_WHERE + PRESET_NAME);
+  }
   // Фабрика — пресет-объект с именем: на него можно сослаться в `requires` (D-045).
   return {
     name: PRESET_NAME,

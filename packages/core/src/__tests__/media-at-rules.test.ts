@@ -233,7 +233,7 @@ describe('mediaNesting (D-070)', () => {
   test('неверное значение — ошибка', () => {
     expect(() => minotationProvider({
       mediaNesting: 'yes' as never,
-    })).toThrow('option "mediaNesting" expects a boolean');
+    })).toThrow('"mediaNesting" expects true or false, got string "yes"');
   });
 });
 

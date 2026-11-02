@@ -12,18 +12,18 @@ import {
   sep,
 } from 'node:path';
 import {
-  checkOptions,
-  isBoolean,
-} from 'minotation';
+  array,
+  boolean,
+  custom,
+  lazy,
+  object,
+} from 'fundamentool/schema';
 import type {
   MnNotationMode,
-  OptionCheck,
-  OptionSchema,
 } from 'minotation';
 import {
-  DIRECTIVE_KEYS,
-  DIRECTIVE_SCHEMA,
-  STRICTNESS_KEYS,
+  DIRECTIVE_OPTIONS,
+  STRICTNESS_OPTIONS,
   readPackageName,
 } from './directives';
 import type {
@@ -68,42 +68,22 @@ export interface MnScopeRule extends Omit<MnNotationDirective, 'notationMode' | 
   contextWhere?: boolean;
 }
 
-const isScopeMatch: OptionCheck = (value) => {
-  const items = Array.isArray(value) ? value : [value];
-  return items.length && items.every((item) => typeof item === 'string' && item || item instanceof RegExp)
-    ? undefined : 'a package name, a path pattern, a RegExp or an array of them';
-};
-
-const RULE_SCHEMA: OptionSchema = {
-  ...DIRECTIVE_SCHEMA,
-  match: isScopeMatch,
-  override: isBoolean,
-};
-
-/** Проверка опции `scopes` (D-038): массив правил, у каждого — `match`. */
-export const isScopeRules: OptionCheck = (
-  value, where, path,
-) => {
-  if (!Array.isArray(value)) {
-    return 'an array of scope rules';
-  }
-  value.forEach((rule, index) => {
-    const at = path + '[' + index + ']';
-    if (Object.prototype.toString.call(rule) !== '[object Object]') {
-      throw new Error('[minotation] ' + where + ': option "' + at + '" expects an object with "match"');
-    }
-    checkOptions(
-      rule, RULE_SCHEMA, where, at,
-    );
-    (rule as MnScopeRule).match === undefined
-      && fail(where + ': option "' + at + '" needs "match" — a package name, a path pattern or a RegExp');
-  });
-  return undefined;
-};
-
-function fail(message: string): never {
-  throw new Error('[minotation] ' + message);
-}
+/**
+ * Опция `scopes` (D-038, D-141): список правил, у каждого — `match`; остальное — поля директивы.
+ *
+ * @example
+ * SCOPE_RULES().parse([{ notationMode: 'tw4-compatible' }], '[minotation] mnVite');
+ * // TypeError: [minotation] mnVite: [0]."match" expects a package name, a path pattern, a RegExp or an array of
+ * //   them, got undefined
+ */
+export const SCOPE_RULES = /*#__PURE__*/ lazy(() => array(object({
+  ...DIRECTIVE_OPTIONS().shape,
+  match: custom<MnScopeMatch>((value) => {
+    const items = Array.isArray(value) ? value : [value];
+    return items.length > 0 && items.every((item) => typeof item === 'string' && item !== '' || item instanceof RegExp);
+  }, 'a package name, a path pattern, a RegExp or an array of them'),
+  override: boolean().optional(),
+})));
 
 /** Строка — шаблон или путь, а не имя пакета: есть `* ? {`, или начинается с `.`/`/`. */
 function isPathPattern(value: string): boolean {
@@ -193,6 +173,8 @@ export function createScopeResolver(rules: MnScopeRule[] | undefined, root: stri
   if (!compiled.length) {
     return (_id, own) => own;
   }
+  const keys = DIRECTIVE_OPTIONS().keys;
+  const strictness: readonly string[] = STRICTNESS_OPTIONS().keys;
   return (id, own) => {
     const found = compiled.find((item) => item[0](id));
     if (!found) {
@@ -202,11 +184,11 @@ export function createScopeResolver(rules: MnScopeRule[] | undefined, root: stri
     const out: MnNotationDirective = {
       ...own,
     };
-    for (const key of DIRECTIVE_KEYS) {
+    for (const key of keys) {
       // Правила разбора: своя декларация важнее правила, `override` — аварийно наоборот (D-082).
       // Строгость: правило потребителя важнее — чинить чужой пакет не в его власти (D-081).
       rule[key] === undefined
-        || own && own[key] !== undefined && !rule.override && STRICTNESS_KEYS.indexOf(key) < 0
+        || own && own[key] !== undefined && !rule.override && strictness.indexOf(key) < 0
         || ((out as Record<string, unknown>)[key] = rule[key]);
     }
     return out;

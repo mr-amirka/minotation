@@ -103,7 +103,7 @@ function mnDeclarations(candidate: string): string[] {
   const out: string[] = [];
   let condition: string;
   let match: RegExpExecArray | null;
-  for (const style of mn.styles$.getValue().filter((s) => s.priority > -3000)) {
+  for (const style of mn.styles$.getState().filter((s) => s.priority > -3000)) {
     condition = conditionOf(style.content.slice(0, style.content.indexOf('{'))) || '';
     const re = /\{([^{}]*)\}/g;
     while ((match = re.exec(style.content))) {

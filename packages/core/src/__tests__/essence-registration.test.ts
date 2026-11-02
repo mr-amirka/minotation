@@ -22,7 +22,7 @@ function compile(mn: any, ...tokens: string[]): string {
     c(t);
   }
   mn.compile();
-  return mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+  return mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
 }
 
 describe('формы регистрации эссенций', () => {
@@ -143,7 +143,7 @@ describe('обход DOM — обе формы аргумента attrs', () => 
     ]);
     mn.compile();
 
-    const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+    const css = mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
     expect(css).toContain('padding:10px');
     expect(css).toContain('margin-top:4px');
   });
@@ -155,6 +155,6 @@ describe('обход DOM — обе формы аргумента attrs', () => 
     }), 'class');
     mn.compile();
 
-    expect(mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n')).toContain('padding:10px');
+    expect(mn.styles$.getState().map((s: { content: string }) => s.content).join('\n')).toContain('padding:10px');
   });
 });

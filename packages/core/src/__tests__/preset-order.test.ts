@@ -194,7 +194,7 @@ describe('mn.setPresets с пресет-объектами', () => {
     ];
     mn.setPresets(presets);
     mn.compile();
-    const css = mn.styles$.getValue().map((s) => s.content).join('');
+    const css = mn.styles$.getState().map((s) => s.content).join('');
     expect(css).toContain('-webkit-tap-highlight-color:#000');
     expect(css).toContain('a{cursor:pointer}');
   });

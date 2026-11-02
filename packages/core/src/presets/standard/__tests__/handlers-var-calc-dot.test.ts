@@ -65,7 +65,7 @@ function cssOfTokens(tokens: string[]): string {
     compile(tokens[i]);
   }
   mn.compile();
-  return mn.styles$.getValue().map((s: {
+  return mn.styles$.getState().map((s: {
     content: string;
   }) => s.content).join('');
 }

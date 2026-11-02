@@ -44,7 +44,7 @@ function css(token) {
   const inst = mn();
   inst.getCompiler('class')(token);
   inst.compile();
-  return inst.styles$.getValue().map(b => b.content).join('');
+  return inst.styles$.getState().map(b => b.content).join('');
 }
 
 // ================================================================
@@ -185,7 +185,7 @@ describe('Цвета — новый MN (компактный формат rgba)'
     });
     inst.getCompiler('class')('bgF.12');
     inst.compile();
-    const out = inst.styles$.getValue().map(b => b.content).join('');
+    const out = inst.styles$.getState().map(b => b.content).join('');
     expect(out).not.toMatch(/background:#fff.*background:rgba/s);
   });
 });
@@ -198,7 +198,7 @@ describe('Демо-строка ControlPanel — новый MN', () => {
     const inst = mn();
     inst.getCompiler('class')('w320 bg0A0A12.88 ftbBlur12 cF dF fxdC ov');
     inst.compile();
-    const out = inst.styles$.getValue().map(b => b.content).join('');
+    const out = inst.styles$.getState().map(b => b.content).join('');
     expect(out).toContain('width:320px');
     expect(out).toContain('rgba(10,10,18,.88)');
     expect(out).toContain('backdrop-filter:blur(12px)');
@@ -212,7 +212,7 @@ describe('Демо-строка ControlPanel — новый MN', () => {
     const inst = mn();
     inst.getCompiler('class')('px16 fxs0 h75 dF aiC');
     inst.compile();
-    const out = inst.styles$.getValue().map(b => b.content).join('');
+    const out = inst.styles$.getState().map(b => b.content).join('');
     expect(out).toContain('padding-inline:16px');
     expect(out).toContain('flex-shrink:0');
     expect(out).toContain('height:75px');
@@ -224,7 +224,7 @@ describe('Демо-строка ControlPanel — новый MN', () => {
     const inst = mn();
     inst.getCompiler('class')('px16 pt16 pb40 fxg1 ovyA');
     inst.compile();
-    const out = inst.styles$.getValue().map(b => b.content).join('');
+    const out = inst.styles$.getState().map(b => b.content).join('');
     expect(out).toContain('flex-grow:1');
     expect(out).toContain('overflow-y:auto');
     expect(out).not.toContain('overflow-y:absolute');

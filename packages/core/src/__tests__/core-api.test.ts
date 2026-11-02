@@ -39,7 +39,7 @@ function makeMn(options?: any) {
 }
 
 function cssOf(mn: any): string {
-  return mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+  return mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
 }
 
 /** Структурная заглушка DOM-узла: компилятору нужны только эти два свойства. */
@@ -177,7 +177,7 @@ describe('mn — предупреждения и maxDepth', () => {
     expect(cssOf(mn)).not.toContain('padding:10px');
     expect(cssOf(mn)).toContain('margin:20px');
     // Учтён в ошибке, а не в warnings$.
-    expect(mn.warnings$.getValue()).toEqual([]);
+    expect(mn.warnings$.getState()).toEqual([]);
   });
 
   test('незнакомое имя — чужой CSS-класс, молчим', () => {
@@ -191,7 +191,7 @@ describe('mn — предупреждения и maxDepth', () => {
     mn.checkByAttrs('noSuchHandlerXyz container btn active swiper-slide', 'class');
     mn.compile();
 
-    expect(mn.warnings$.getValue()).toEqual([]);
+    expect(mn.warnings$.getState()).toEqual([]);
   });
 
   test('битый аргумент ЗАРЕГИСТРИРОВАННОГО хендлера предупреждение даёт', () => {
@@ -203,7 +203,7 @@ describe('mn — предупреждения и maxDepth', () => {
     mn.checkByAttrs('p10zz', 'class');
     mn.compile();
 
-    const types = mn.warnings$.getValue().map((w: MnWarning) => w.type);
+    const types = mn.warnings$.getState().map((w: MnWarning) => w.type);
     expect(types).toContain('parse-error');
   });
 

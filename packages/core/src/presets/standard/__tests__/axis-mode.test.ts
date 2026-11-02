@@ -18,7 +18,7 @@ function createMn(options: MnOptions = {}) {
 }
 
 function cssOf(mn: ReturnType<typeof createMn>): string {
-  return mn.styles$.getValue().filter((s) => s.priority > -3000).map((s) => s.content).join('');
+  return mn.styles$.getState().filter((s) => s.priority > -3000).map((s) => s.content).join('');
 }
 
 function compile(tokens: string, options?: MnOptions): string {

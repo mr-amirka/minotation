@@ -70,12 +70,12 @@ describe('битые селекторы из токенов', () => {
     const mn = minotationProvider({
       warningMode: 'silent',
     });
-    mn.error$.on((e: unknown) => errors.push(e));
+    mn.error$.watch((e: unknown) => errors.push(e));
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
     return {
-      css: mn.styles$.getValue().map((s) => s.content).join(''),
+      css: mn.styles$.getState().map((s) => s.content).join(''),
       errors,
     };
   }
@@ -165,7 +165,7 @@ describe('вырожденная группа вариантов в значен
     mn.getCompiler('class')(token);
     mn.compile();
     return {
-      css: mn.styles$.getValue().map((s: { content: string }) => s.content).join(''),
+      css: mn.styles$.getState().map((s: { content: string }) => s.content).join(''),
       warnings,
     };
   }
@@ -365,7 +365,7 @@ describe('вырожденная группа вариантов в селект
     mn.setPresets([presetStandard]);
     mn.assign(selectors);
     mn.compile();
-    return mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+    return mn.styles$.getState().map((s: { content: string }) => s.content).join('');
   }
 
   test.each([
@@ -433,7 +433,7 @@ describe('вырожденная группа вариантов в селект
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')('cF00:not[.a[.b]]');
     mn.compile();
-    const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+    const css = mn.styles$.getState().map((s: { content: string }) => s.content).join('');
 
     expect(css).toContain(':not(.a[.b]){color:#f00}');
   });
@@ -495,7 +495,7 @@ describe('классы вне нотации: молчат, только есл�
     mn.getCompiler('class')(token);
     mn.compile();
     return {
-      css: mn.styles$.getValue().map((s: { content: string }) => s.content).join(''),
+      css: mn.styles$.getState().map((s: { content: string }) => s.content).join(''),
       warnings,
     };
   }

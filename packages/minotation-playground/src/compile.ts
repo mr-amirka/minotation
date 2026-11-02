@@ -48,7 +48,7 @@ export function compilePreviewCss(html: string, presetIds: string[]): string {
   for (const token of tokens) compile(token);
   mn.compile();
 
-  return mn.styles$.getValue()
+  return mn.styles$.getState()
     .map((s: { content: string }) => s.content)
     .join('\n');
 }

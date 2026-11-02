@@ -56,7 +56,7 @@ function compile(
   mn.getCompiler('class')(tokens);
   mn.compile();
   return {
-    css: mn.styles$.getValue().map((s) => s.content).join(''),
+    css: mn.styles$.getState().map((s) => s.content).join(''),
     warnings: warnings.map((w) => w.message),
   };
 }
@@ -260,7 +260,7 @@ describe('ведущий - у обычных хендлеров не меняе�
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')('-p10');
     mn.compile();
-    expect(mn.styles$.getValue().map((s) => s.content).join('')).not.toContain('padding');
+    expect(mn.styles$.getState().map((s) => s.content).join('')).not.toContain('padding');
     expect(warnings).toEqual([]);
   });
 });

@@ -18,7 +18,7 @@ function compile(token: string, options?: any): string {
   mn.setPresets([presetStandard]);
   mn.getCompiler('class')(token);
   mn.compile();
-  return mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+  return mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
 }
 
 describe('медиа-шаблоны в токене', () => {
@@ -118,7 +118,7 @@ describe('медиа-шаблон + другие части токена (род
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')('(p10|m5)@600-900');
     mn.compile();
-    const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+    const css = mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
     expect(css).toContain('(width >= 600px)');
     expect(css).toContain('(width <= 900px)');
     expect(css).toContain('padding:10px');

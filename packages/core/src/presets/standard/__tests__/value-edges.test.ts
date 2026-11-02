@@ -27,7 +27,7 @@ function compile(tokens: string[], options?: any): { css: string;
   }
   mn.compile();
   return {
-    css: mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n'),
+    css: mn.styles$.getState().map((s: { content: string }) => s.content).join('\n'),
     warnings,
   };
 }
@@ -184,7 +184,7 @@ describe('единица по умолчанию у свойств-длин', ()
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    const m = mn.styles$.getValue().map((s) => s.content).join('')
+    const m = mn.styles$.getState().map((s) => s.content).join('')
       .match(/\{([^}]*)\}\s*$/);
     return m ? m[1] : '';
   }
@@ -288,7 +288,7 @@ describe('gap: синоним N (normal) во всём семействе', () =
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    const m = mn.styles$.getValue().map((s) => s.content).join('')
+    const m = mn.styles$.getState().map((s) => s.content).join('')
       .match(/\{([^}]*)\}\s*$/);
     return m ? m[1] : '';
   }
@@ -344,7 +344,7 @@ describe('сокращённые записи значений', () => {
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    const m = mn.styles$.getValue().map((s) => s.content).join('')
+    const m = mn.styles$.getState().map((s) => s.content).join('')
       .match(/\{([^}]*)\}\s*$/);
     return m ? m[1] : '';
   }
@@ -570,7 +570,7 @@ describe('переменная как слагаемое в calc (PATTERN_VAR_AD
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    return mn.styles$.getValue().map((s) => s.content).join('');
+    return mn.styles$.getState().map((s) => s.content).join('');
   }
 
   // Три дефиса подряд читаются как «знак операции `-`» + «`--` имени переменной».
@@ -748,7 +748,7 @@ describe('auto-repeat: gtcAF240 вместо gtcRepeat\\(auto-fit,minmax\\(240px
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    const m = mn.styles$.getValue().map((s) => s.content).join('')
+    const m = mn.styles$.getState().map((s) => s.content).join('')
       .match(/\{([^}]*)\}\s*$/);
     return m ? m[1] : '';
   }
@@ -843,7 +843,7 @@ describe('незнакомое слово у хендлера со словар�
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    const m = mn.styles$.getValue().map((s) => s.content).join('')
+    const m = mn.styles$.getState().map((s) => s.content).join('')
       .match(/\{([^}]*)\}\s*$/);
     return m ? m[1] : '';
   }
@@ -935,7 +935,7 @@ describe('голое слово у свойства-длины', () => {
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    const m = mn.styles$.getValue().map((s) => s.content).join('')
+    const m = mn.styles$.getState().map((s) => s.content).join('')
       .match(/\{([^}]*)\}\s*$/);
     return m ? m[1] : '';
   }

@@ -24,7 +24,7 @@ function css(tokens: string): string[] {
   ]);
   mn.getCompiler('class')(tokens);
   mn.compile();
-  return mn.styles$.getValue().map((s) => s.content);
+  return mn.styles$.getState().map((s) => s.content);
 }
 
 test.each([

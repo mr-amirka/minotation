@@ -61,7 +61,7 @@ function compileAll(tokens: string[]): Record<string, string> {
     compile(token);
   }
   mn.compile();
-  const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+  const css = mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
   const out: Record<string, string> = {};
   const re = /([^{}]+)\{([^{}]*)\}/g;
   let m: RegExpExecArray | null;

@@ -24,7 +24,7 @@ function css(token: string, options: MnOptions = {}): string {
   ]);
   mn.getCompiler('class')(token);
   mn.compile();
-  return mn.styles$.getValue().map((s) => s.content).join(' ');
+  return mn.styles$.getState().map((s) => s.content).join(' ');
 }
 
 describe("contextWhere — 'context-qualified'", () => {
@@ -126,7 +126,7 @@ describe("contextWhere — 'tw4-compatible'", () => {
     });
     mn.getCompiler('class')('group-hover:cF00 peer-invalid:c0F0');
     mn.compile();
-    const out = mn.styles$.getValue().map((s) => s.content).join(' ');
+    const out = mn.styles$.getState().map((s) => s.content).join(' ');
     expect(out).toContain('.group-hover\\:cF00:is(:where(.group:hover) *){color:#f00}');
     expect(out).toContain('.peer-invalid\\:c0F0:is(:where(.peer:invalid)~*){color:#0f0}');
   });

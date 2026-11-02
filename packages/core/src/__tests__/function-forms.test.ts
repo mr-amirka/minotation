@@ -32,7 +32,7 @@ function compile(tokens: string[], options: MnOptions = {}): { css: string;
   }
   mn.compile();
   return {
-    css: mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n'),
+    css: mn.styles$.getState().map((s: { content: string }) => s.content).join('\n'),
     warnings: warnings.map((w) => w.message),
   };
 }

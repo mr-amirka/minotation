@@ -35,7 +35,7 @@ function compile(tokens: string[]): { css: string;
   }
   mn.compile();
   return {
-    css: mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n'),
+    css: mn.styles$.getState().map((s: { content: string }) => s.content).join('\n'),
     warnings,
   };
 }
@@ -261,7 +261,7 @@ describe('паритет с v1: дочерние эссенции x.y', () => {
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')('tbl@sm');
     mn.compile();
-    const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+    const css = mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
     expect(css).toContain('@media (width <= 640px){.tbl\\@sm{display:table}.tbl\\@sm>*{display:table-cell;vertical-align:middle}}');
   });
 });
@@ -283,7 +283,7 @@ describe(':h — :hover только при устройстве с наведе
     ]);
     mn.getCompiler('class')(token);
     mn.compile();
-    return mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+    return mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
   }
 
   test(':h — внутри @media (hover: hover)', () => {
@@ -314,7 +314,7 @@ describe(':h — :hover только при устройстве с наведе
     ]);
     mn.getCompiler('class')('p10:h');
     mn.compile();
-    expect(mn.styles$.getValue().map((s: { content: string }) => s.content).join(''))
+    expect(mn.styles$.getState().map((s: { content: string }) => s.content).join(''))
       .toBe('@media (hover: hover){.p10\\:h:hover{padding:10px}}');
   });
 });
@@ -377,7 +377,7 @@ describe('паритет с v1: ветки, изначально ошибочн�
     }));
     mn.getCompiler('class')('hostpart');
     mn.compile();
-    const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+    const css = mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
     expect(css).toContain('padding:1px');
     // обе childs-записи под одинаковым ключом ' span' — от include-примеси и от
     // самой эссенции — присутствуют вместе (слияние), ни одна не затёрла другую

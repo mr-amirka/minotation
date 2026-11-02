@@ -80,7 +80,7 @@ function compileAll(tokens: string[]): string {
     compile(tokens[i]);
   }
   mn.compile();
-  return mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+  return mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
 }
 
 describe('presetStandard — прогон всех хендлеров по формам аргумента', () => {

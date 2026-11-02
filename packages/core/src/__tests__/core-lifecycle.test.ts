@@ -22,7 +22,7 @@ function makeMn(options?: any) {
 }
 
 function cssOf(mn: any): string {
-  return mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+  return mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
 }
 
 describe('mn — сброс и пересчёт', () => {
@@ -163,7 +163,7 @@ describe('mn — ошибки при загрузке пресета', () => {
   test('пресет, бросивший Error, уводит его в error$, а не наружу', () => {
     const errors: Error[] = [];
     const mn: any = minotationProvider();
-    mn.error$.on((e: Error) => errors.push(e));
+    mn.error$.watch((e: Error) => errors.push(e));
 
     // Загрузка не должна прерываться: один сломанный пресет не повод терять
     // остальные.
@@ -182,7 +182,7 @@ describe('mn — ошибки при загрузке пресета', () => {
     // `message`, а не получать `undefined` от строки или числа.
     const errors: Error[] = [];
     const mn: any = minotationProvider();
-    mn.error$.on((e: Error) => errors.push(e));
+    mn.error$.watch((e: Error) => errors.push(e));
 
     mn.setPresets([
       () => {
@@ -227,7 +227,7 @@ describe('mn — ошибки внутри хендлера', () => {
   test('обычная ошибка хендлера уходит в error$, компиляция продолжается', () => {
     const mn: any = minotationProvider();
     const errors: unknown[] = [];
-    mn.error$.on((e: unknown) => errors.push(e));
+    mn.error$.watch((e: unknown) => errors.push(e));
     mn.setPresets([
       presetStandard,
       (instance: any) => {
@@ -328,7 +328,7 @@ describe('битый аргумент хендлера → warnings$, а не er
     const mn: any = minotationProvider({
       onWarning: (w: MnWarning) => warnings.push(w),
     });
-    mn.error$.on((e: unknown) => errors.push(e));
+    mn.error$.watch((e: unknown) => errors.push(e));
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
@@ -370,7 +370,7 @@ describe('битый аргумент хендлера → warnings$, а не er
     const mn: any = minotationProvider({
       warningMode: 'silent',
     });
-    mn.error$.on((e: unknown) => errors.push(e));
+    mn.error$.watch((e: unknown) => errors.push(e));
     mn.setPresets([
       presetStandard,
       (instance: any) => {

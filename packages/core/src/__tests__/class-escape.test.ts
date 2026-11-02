@@ -84,7 +84,7 @@ function compile(
   const c = mn.getCompiler('class');
   tokens.forEach((t) => c(t));
   mn.compile();
-  return mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+  return mn.styles$.getState().map((s: { content: string }) => s.content).join('');
 }
 
 const NODE = load(false);

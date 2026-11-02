@@ -21,7 +21,7 @@ function cssOf(token: string): string {
   mn.setPresets([presetStandard]);
   mn.getCompiler('class')(token);
   mn.compile();
-  const css = mn.styles$.getValue().map((s: {
+  const css = mn.styles$.getState().map((s: {
     content: string;
   }) => s.content).join('');
   const m = css.match(/\{([^}]*)\}\s*$/);

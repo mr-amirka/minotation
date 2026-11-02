@@ -24,7 +24,7 @@ function compile(token: string, media?: Record<string, unknown>) {
   mn.getCompiler('class')(token);
   mn.compile();
   return {
-    css: mn.styles$.getValue().map((s) => s.content).join(' '),
+    css: mn.styles$.getState().map((s) => s.content).join(' '),
     warnings,
   };
 }

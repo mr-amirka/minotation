@@ -29,7 +29,7 @@ const mnProvider = require('../index').default || require('../index').minotation
 
 function css(mn) {
   mn.compile();
-  return mn.styles$.getValue().map(s => s.content).join('');
+  return mn.styles$.getState().map(s => s.content).join('');
 }
 
 function makeBase() {
@@ -233,8 +233,8 @@ describe('часть имени: начинается с, заканчивает
     mn.getCompiler('class')(token);
     mn.compile();
     return {
-      css: mn.styles$.getValue().map((s: { content: string }) => s.content).join(''),
-      warnings: mn.warnings$.getValue(),
+      css: mn.styles$.getState().map((s: { content: string }) => s.content).join(''),
+      warnings: mn.warnings$.getState(),
     };
   }
 

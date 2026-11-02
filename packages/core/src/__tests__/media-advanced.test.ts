@@ -19,7 +19,7 @@ const mnProvider = require('../index').default || require('../index').minotation
 
 function css(mn) {
   mn.compile();
-  return mn.styles$.getValue().map(s => s.content).join('');
+  return mn.styles$.getState().map(s => s.content).join('');
 }
 
 function check(mn, token) {

@@ -17,7 +17,7 @@
  * // Скомпилировать токены из HTML
  * mn.getCompiler('class')('w50 w100%+10');
  * mn.compile;
- * const css = mn.styles$.getValue;
+ * const css = mn.styles$.getState();
  * ```
  *
  * ## Архитектура
@@ -36,7 +36,6 @@ import {
   cssPropertiesParseSimple,
   cssPropertiesStringifyProvider,
   eachApply,
-  eachTry,
   escapeCss,
   escapeQuote,
   escapeRegExp,
@@ -84,7 +83,6 @@ import {
   reduce,
   reduceIn,
   regexpMapperProvider,
-  removeOf,
   routeParseProvider,
   scopeJoin,
   scopeSplit,
@@ -150,46 +148,11 @@ export function spaceNormalize(v: string): string {
   return v.replace(REGEXP_SPACE_NORMALIZE, replacerSpaceNormalize);
 }
 
-/**
- * Простая реализация Observable.
- *
- * Используется для `mn.styles$` (поток стилей) и `mn.error$` (поток ошибок).
- */
-type Observer<T> = {
-  getValue: () => T;
-  emit: (value: T) => void;
-  on: (callback: (value: T) => void) => () => void;
-};
-
-export function observableProvider<T>(_value: T): Observer<T> {
-  const callbacks: Array<((value: T) => void) | 0> = [];
-  return {
-    getValue: () => {
-      return _value;
-    },
-    emit: (value: T) => {
-      _value = value;
-      eachTry(callbacks, [value]);
-    },
-    on: (callback: (value: T) => void) => {
-      callbacks.push(callback);
-      let cb: ((value: T) => void) | 0 = callback;
-      return () => {
-        if (cb) {
-          removeOf(callbacks, cb);
-          cb = 0;
-        }
-      };
-    },
-  };
-}
-
 export const baseUtils = merge([
   {
     mathRules,
     mathValue,
     cssVarValue,
-    observableProvider,
     color: colorValue,
     colorGetBackground: gradientValue,
     half,
@@ -1193,5 +1156,5 @@ export function __compileProvider(attrName: string): MnCompiler {
  * mn('w', (p) => ({ style: { width: p.suffix + 'px' } }));
  * mn.getCompiler('class')('w50');
  * mn.compile;
- * console.log(mn.styles$.getValue); // [{ content: '.w50{width:50px}' }]
+ * console.log(mn.styles$.getState()); // [{ content: '.w50{width:50px}' }]
  */

@@ -1464,7 +1464,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
         warning, entries, all,
       ));
     }
-    return mn.styles$.getValue()
+    return mn.styles$.getState()
       .map((s: { content: string }) => s.content)
       .join(NEWLINE);
   }
@@ -1533,7 +1533,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     mn.setPresets(all);
     compileEntries(mn, [entry]);
     mn.compile();
-    return mn.styles$.getValue()
+    return mn.styles$.getState()
       .map((s: { content: string }) => s.content)
       .join(NEWLINE);
   }

@@ -48,7 +48,7 @@ function run(
     error = ex;
   }
   return {
-    css: mn.styles$.getValue().map((s) => s.content).join(''),
+    css: mn.styles$.getState().map((s) => s.content).join(''),
     warnings,
     error,
   };

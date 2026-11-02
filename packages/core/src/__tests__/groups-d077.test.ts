@@ -29,7 +29,7 @@ function compile(tokens: string, options: MnOptions = {}): { css: string;
   mn.getCompiler('class')(tokens);
   mn.compile();
   return {
-    css: mn.styles$.getValue().map((s) => s.content).join(''),
+    css: mn.styles$.getState().map((s) => s.content).join(''),
     warnings,
   };
 }
@@ -178,7 +178,7 @@ describe("c) groupMode: 'css' — скобки это CSS", () => {
     mn.setPresets([presetStandard]);
     mn.assign('li:nth-child(2n), a(.x)', 'p10');
     mn.compile();
-    expect(mn.styles$.getValue().map((s) => s.content).join('')).toContain('li:nth-child(2n),a\\(.x\\){padding:10px}');
+    expect(mn.styles$.getState().map((s) => s.content).join('')).toContain('li:nth-child(2n),a\\(.x\\){padding:10px}');
   });
 
   test('проверка опций', () => {
@@ -194,7 +194,7 @@ describe("c) groupMode: 'css' — скобки это CSS", () => {
 describe('настройки разбора компилятора: getCompiler(attr, settings) (D-081)', () => {
   function cssOf(mn: ReturnType<typeof minotationProvider>): string {
     mn.compile();
-    return mn.styles$.getValue().map((s) => s.content).join('');
+    return mn.styles$.getState().map((s) => s.content).join('');
   }
 
   test('groupMode и contextWhere компилятора важнее опций экземпляра', () => {

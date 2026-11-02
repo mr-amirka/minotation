@@ -216,7 +216,7 @@ describe('вложенные scope в состоянии', () => {
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    return mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+    return mn.styles$.getState().map((s: { content: string }) => s.content).join('');
   }
 
   test('один уровень → круглые скобки', () => {

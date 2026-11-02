@@ -41,7 +41,7 @@ function compile(
   }
   mn.compile();
   return {
-    css: mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n'),
+    css: mn.styles$.getState().map((s: { content: string }) => s.content).join('\n'),
     warnings: warnings.map((w) => w.message),
     errors,
   };

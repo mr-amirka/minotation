@@ -16,7 +16,7 @@
 const mnProvider = require('../index').default || require('../index').minotationProvider;
 
 function css(mn) {
-  return mn.styles$.getValue().map(s => s.content).join('');
+  return mn.styles$.getState().map(s => s.content).join('');
 }
 
 function make(opts) {

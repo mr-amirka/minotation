@@ -30,12 +30,12 @@ function compile(token: string): { css: string;
     onWarning: (w: { type: string;
       token?: string }) => warnings.push(w),
   });
-  mn.error$.on((e: unknown) => errors.push(e));
+  mn.error$.watch((e: unknown) => errors.push(e));
   mn.setPresets([presetStandard]);
   mn.getCompiler('class')(token);
   mn.compile();
   return {
-    css: mn.styles$.getValue().map((s: { content: string }) => s.content).join(''),
+    css: mn.styles$.getState().map((s: { content: string }) => s.content).join(''),
     errorCount: errors.length,
     warnings,
   };
@@ -114,8 +114,8 @@ describe('цвет: хвост после кода не теряется мол�
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    expect(mn.styles$.getValue().map((s) => s.content).join('')).toBe('');
-    expect(mn.warnings$.getValue().map((w) => w.type)).toEqual(['parse-error']);
+    expect(mn.styles$.getState().map((s) => s.content).join('')).toBe('');
+    expect(mn.warnings$.getState().map((w) => w.type)).toEqual(['parse-error']);
   });
 
   test("'tw4-compatible': cF00.active целиком в хендлере — брак, а не color:#fff", () => {
@@ -126,6 +126,6 @@ describe('цвет: хвост после кода не теряется мол�
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')('cF00.active');
     mn.compile();
-    expect(mn.styles$.getValue().map((s) => s.content).join('')).toBe('');
+    expect(mn.styles$.getState().map((s) => s.content).join('')).toBe('');
   });
 });

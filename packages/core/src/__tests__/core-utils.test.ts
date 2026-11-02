@@ -11,7 +11,7 @@
  */
 
 import {
-  normalizeSelectors, normalizeComboNames, observableProvider, REGEXP_INVALID_CSS_VALUE,
+  normalizeSelectors, normalizeComboNames, REGEXP_INVALID_CSS_VALUE,
 } from '../core/utils';
 
 describe('normalizeSelectors', () => {
@@ -53,41 +53,6 @@ describe('normalizeComboNames', () => {
     });
   });
 });
-
-describe('observableProvider', () => {
-  test('регресс: unsubscribe() реально снимает подписку (раньше callback обнулялся до removeOf, удалялся 0, а не сам callback)', () => {
-    const obs = observableProvider(0);
-    let calls = 0;
-    const unsubscribe = obs.on(() => {
-      calls++;
-    });
-    obs.emit(1);
-    expect(calls).toBe(1);
-    unsubscribe();
-    obs.emit(2);
-    expect(calls).toBe(1);
-  });
-
-  test('повторный вызов unsubscribe() безопасен (не падает, не снимает чужую подписку)', () => {
-    const obs = observableProvider(0);
-    let calls = 0;
-    const unsubscribe = obs.on(() => {
-      calls++;
-    });
-    unsubscribe();
-    unsubscribe();
-    obs.emit(1);
-    expect(calls).toBe(0);
-  });
-
-  test('getValue() возвращает последнее значение', () => {
-    const obs = observableProvider('a');
-    expect(obs.getValue()).toBe('a');
-    obs.emit('b');
-    expect(obs.getValue()).toBe('b');
-  });
-});
-
 
 describe('REGEXP_INVALID_CSS_VALUE — эвристика битого значения', () => {
   test.each([

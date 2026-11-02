@@ -27,7 +27,7 @@ function create() {
   return {
     mn,
     warnings,
-    styles: () => mn.styles$.getValue().map((s) => [
+    styles: () => mn.styles$.getState().map((s) => [
       s.priority,
       s.content,
     ]),

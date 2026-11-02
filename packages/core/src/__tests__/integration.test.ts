@@ -33,7 +33,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('p10');
     mn.compile();
 
-    const styles = mn.styles$.getValue();
+    const styles = mn.styles$.getState();
     expect(styles).toHaveLength(1);
     expect(styles[0].content).toContain('.p10{padding:10px}');
   });
@@ -53,7 +53,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('p10 m5');
     mn.compile();
 
-    const styles = mn.styles$.getValue();
+    const styles = mn.styles$.getState();
     expect(styles).toHaveLength(1);
     const content = styles[0].content;
     expect(content).toContain('padding:10px');
@@ -70,7 +70,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('cF00<.p');
     mn.compile();
 
-    const content = mn.styles$.getValue()[0].content;
+    const content = mn.styles$.getState()[0].content;
     expect(content).toContain('.p');
     expect(content).toContain('color:#F00');
   });
@@ -88,7 +88,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('cF00:h');
     mn.compile();
 
-    const content = mn.styles$.getValue()[0].content;
+    const content = mn.styles$.getState()[0].content;
     expect(content).toContain(':hover');
   });
 
@@ -109,7 +109,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('p10');
     mn.compile();
 
-    const content = mn.styles$.getValue()[0].content;
+    const content = mn.styles$.getState()[0].content;
     expect(content).toBe(expected);
   });
 
@@ -123,15 +123,15 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('p10**2');
     mn.compile();
 
-    const content = mn.styles$.getValue()[0].content;
+    const content = mn.styles$.getState()[0].content;
     // **2 не добавляется к селектору (только через контекст)
     expect(content).toContain('padding:10px');
   });
 
-  test('styles$ observable', () => {
+  test('styles$ — store: watch gets the current styles at once, then each compile', () => {
     const mn = createMn();
     const emitted = [];
-    mn.styles$.on((styles) => emitted.push(styles));
+    mn.styles$.watch((styles) => emitted.push(styles));
 
     mn('p', () => ({
       style: {
@@ -141,8 +141,9 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('p10');
     mn.compile();
 
-    expect(emitted).toHaveLength(1);
-    expect(emitted[0]).toHaveLength(1);
+    expect(emitted).toHaveLength(2);
+    expect(emitted[0]).toEqual([]);
+    expect(emitted[1]).toHaveLength(1);
   });
 
   test('-i флаг (!important) в аргументе', () => {
@@ -155,7 +156,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('p10-i');
     mn.compile();
 
-    const content = mn.styles$.getValue()[0].content;
+    const content = mn.styles$.getState()[0].content;
     expect(content).toContain('!important');
   });
 
@@ -169,7 +170,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('p10-i<.parent');
     mn.compile();
 
-    const content = mn.styles$.getValue()[0].content;
+    const content = mn.styles$.getState()[0].content;
     expect(content).toContain('!important');
   });
 
@@ -183,7 +184,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('p10');
     mn.compile();
 
-    const content = mn.styles$.getValue()[0].content;
+    const content = mn.styles$.getState()[0].content;
     expect(content).not.toContain('!important');
   });
 
@@ -204,7 +205,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('p10@m');
     mn.compile();
 
-    const content = mn.styles$.getValue()[0].content;
+    const content = mn.styles$.getState()[0].content;
     expect(content).toContain('@media (width <= 991px)');
     expect(content).toContain('padding:10px');
   });
@@ -219,7 +220,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('p10@768');
     mn.compile();
 
-    const content = mn.styles$.getValue()[0].content;
+    const content = mn.styles$.getState()[0].content;
     expect(content).toContain('@media (width <= 768px)');
   });
 
@@ -239,7 +240,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('p10@safari');
     mn.compile();
 
-    const content = mn.styles$.getValue()[0].content;
+    const content = mn.styles$.getState()[0].content;
     expect(content).toContain('.safari');
     expect(content).not.toContain('@media');
   });
@@ -259,7 +260,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('m')('p10');
     mn.compile();
 
-    const content = mn.styles$.getValue()[0].content;
+    const content = mn.styles$.getState()[0].content;
     expect(content).toContain('[m~="p10"]');
   });
 
@@ -274,7 +275,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('m')('p10');
     mn.compile();
 
-    const contents = mn.styles$.getValue().map(s => s.content);
+    const contents = mn.styles$.getState().map(s => s.content);
     const hasClass = contents.some(c => c.includes('.p10'));
     const hasAttr = contents.some(c => c.includes('[m~="p10"]'));
     expect(hasClass).toBe(true);
@@ -291,7 +292,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('(cF00|cF11)<.p');
     mn.compile();
 
-    const content = mn.styles$.getValue()[0].content;
+    const content = mn.styles$.getState()[0].content;
     expect(content).toContain('.p');
     expect(content).toContain('color:#F00');
     expect(content).toContain('color:#F11');
@@ -307,7 +308,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('cF00<(.p1|.p2)');
     mn.compile();
 
-    const contents = mn.styles$.getValue().map(s => s.content).join(' ');
+    const contents = mn.styles$.getState().map(s => s.content).join(' ');
     expect(contents).toContain('.p1');
     expect(contents).toContain('.p2');
   });
@@ -324,7 +325,7 @@ describe('MnInstance — полный пайплайн', () => {
     });
     mn.compile();
 
-    const css = mn.styles$.getValue()
+    const css = mn.styles$.getState()
       .find(s => s.content.includes('box-sizing'))?.content || '';
     expect(css).toContain('*,*:before,*:after');
     expect(css).toContain('box-sizing:border-box');
@@ -342,7 +343,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('p10');
     mn.compile();
 
-    expect(mn.styles$.getValue()[0].content).toContain('padding:10px');
+    expect(mn.styles$.getState()[0].content).toContain('padding:10px');
   });
 
   test('стандартный пресет: реальный пример', () => {
@@ -361,7 +362,7 @@ describe('MnInstance — полный пайплайн', () => {
     mn.getCompiler('class')('w50% m-5');
 
     mn.compile();
-    const allCss = mn.styles$.getValue().map(s => s.content).join(' ');
+    const allCss = mn.styles$.getState().map(s => s.content).join(' ');
 
     // Размеры и отступы
     expect(allCss).toContain('padding:20px');
@@ -404,7 +405,7 @@ describe('MnInstance — полный пайплайн', () => {
     }));
     mn.getCompiler('class')('p10');
     mn.compile();
-    const css = mn.styles$.getValue()[0].content;
+    const css = mn.styles$.getState()[0].content;
     expect(css).toContain('padding:10px');
     expect(css).toContain('font-size:14px');
   });
@@ -424,7 +425,7 @@ describe('MnInstance — полный пайплайн', () => {
     }));
     mn.getCompiler('class')('p10');
     mn.compile();
-    const css = mn.styles$.getValue()[0].content;
+    const css = mn.styles$.getState()[0].content;
     expect(css).toContain('padding:10px');
     expect(css).toContain('font-size:14px');
   });
@@ -435,7 +436,7 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn.getCompiler('class')('$bgColor=\\#F00');
     mn.compile();
-    const css = mn.styles$.getValue()
+    const css = mn.styles$.getState()
       .find(s => s.content.includes('--bgColor'))?.content || '';
     expect(css).toContain('--bgColor:#F00');
   });
@@ -444,7 +445,7 @@ describe('MnInstance — полный пайплайн', () => {
     const mn = createMn();
     mn.getCompiler('class')('$transition=all_0.3s_ease');
     mn.compile();
-    const css = mn.styles$.getValue()[0]?.content || '';
+    const css = mn.styles$.getState()[0]?.content || '';
     expect(css).toContain('all 0.3s ease');
   });
 
@@ -459,7 +460,7 @@ describe('MnInstance — полный пайплайн', () => {
       },
     });
     mn.compile();
-    const css = mn.styles$.getValue()
+    const css = mn.styles$.getState()
       .find(s => s.content.includes('keyframes'))?.content || '';
     expect(css).toContain('@keyframes fadeIn');
     expect(css).toContain('opacity:0');
@@ -479,7 +480,7 @@ describe('MnInstance — полный пайплайн', () => {
       }));
       mn.getCompiler('class')('p15');
       mn.compile();
-      expect(mn.styles$.getValue()[0].content).toContain('padding:15px');
+      expect(mn.styles$.getState()[0].content).toContain('padding:15px');
     });
 
     test('mn(key, StyleResult) — статический объект', () => {
@@ -491,7 +492,7 @@ describe('MnInstance — полный пайплайн', () => {
       });
       mn.getCompiler('class')('abs');
       mn.compile();
-      expect(mn.styles$.getValue()[0].content).toContain('position:absolute');
+      expect(mn.styles$.getState()[0].content).toContain('position:absolute');
     });
 
     test('mn(key, string) — строковый макрос (full-token expansion)', () => {
@@ -509,7 +510,7 @@ describe('MnInstance — полный пайплайн', () => {
       mn('box', 'p10 m5');
       mn.getCompiler('class')('box');
       mn.compile();
-      const css = mn.styles$.getValue().map(s => s.content).join('');
+      const css = mn.styles$.getState().map(s => s.content).join('');
       expect(css).toContain('padding:10px');
       expect(css).toContain('margin:5px');
     });
@@ -531,7 +532,7 @@ describe('MnInstance — полный пайплайн', () => {
       });
       mn.getCompiler('class')('p5 abs box');
       mn.compile();
-      const css = mn.styles$.getValue().map(s => s.content).join('');
+      const css = mn.styles$.getState().map(s => s.content).join('');
       expect(css).toContain('padding:5px');
       expect(css).toContain('position:absolute');
       expect(css).toContain('padding:20px');
@@ -552,7 +553,7 @@ describe('MnInstance — полный пайплайн', () => {
       mn('card', '(p10|m5)');
       mn.getCompiler('class')('card');
       mn.compile();
-      const css = mn.styles$.getValue().map(s => s.content).join('');
+      const css = mn.styles$.getState().map(s => s.content).join('');
       expect(css).toContain('padding:10px');
       expect(css).toContain('margin:5px');
     });
@@ -570,7 +571,7 @@ describe('MnInstance — полный пайплайн', () => {
       }));
       result.getCompiler('class')('p8 m4');
       result.compile();
-      const css = mn.styles$.getValue().map(s => s.content).join('');
+      const css = mn.styles$.getState().map(s => s.content).join('');
       expect(css).toContain('padding:8px');
       expect(css).toContain('margin:4px');
     });
@@ -594,7 +595,7 @@ describe('self-class условия — полный CSS пайплайн', () =
     const inst = mn();
     inst.getCompiler('class')(tokens);
     inst.compile();
-    return inst.styles$.getValue().map(s => s.content).join('\n');
+    return inst.styles$.getState().map(s => s.content).join('\n');
   }
 
   // ── Базовые self-class ───────────────────────────────────────────────────
@@ -748,7 +749,7 @@ describe('self-class условия — полный CSS пайплайн', () =
     inst.setPresets([presetStandard]);
     inst.getCompiler('class')('crP');
     inst.compile();
-    const result = inst.styles$.getValue().map(s => s.content).join('');
+    const result = inst.styles$.getState().map(s => s.content).join('');
     expect(result).toContain('.crP{');
     expect(result).toContain('pointer');
   });
@@ -778,7 +779,7 @@ describe('self-class +WORD условия — полный CSS пайплайн'
     inst.setPresets([presetStandard]);
     inst.getCompiler('class')(tokens);
     inst.compile();
-    return inst.styles$.getValue().map(s => s.content).join('');
+    return inst.styles$.getState().map(s => s.content).join('');
   }
 
   test('cF+38 — числовой суффикс, нет self-class: значение `F+38` — не цвет, брак', () => {
@@ -862,14 +863,14 @@ describe('hex-цвет с opacity — полный CSS пайплайн', () => 
     inst.setPresets([presetStandard, presetSynonyms]);
     inst.getCompiler('class')(tokens);
     inst.compile();
-    return inst.styles$.getValue().map(s => s.content).join('\n');
+    return inst.styles$.getState().map(s => s.content).join('\n');
   }
   function cssNoAltColor(tokens) {
     const inst = createMn({ altColor: false });
     inst.setPresets([presetStandard, presetSynonyms]);
     inst.getCompiler('class')(tokens);
     inst.compile();
-    return inst.styles$.getValue().map(s => s.content).join('\n');
+    return inst.styles$.getState().map(s => s.content).join('\n');
   }
 
   // ── bg (background) ───────────────────────────────────────────────────────
@@ -974,7 +975,7 @@ describe('isolateMode — проверки и привязка (D-075)', () => {
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    expect(mn.styles$.getValue().map((s: { content: string }) => s.content).join('')).toContain(expected);
+    expect(mn.styles$.getState().map((s: { content: string }) => s.content).join('')).toContain(expected);
   });
 
   test('mn.assign и mn.css не привязываются — они глобальные', () => {
@@ -988,7 +989,7 @@ describe('isolateMode — проверки и привязка (D-075)', () => {
       '--x': '1',
     });
     mn.compile();
-    const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+    const css = mn.styles$.getState().map((s: { content: string }) => s.content).join('');
     expect(css).toContain('.btn{padding:10px}');
     expect(css).not.toContain('_l');
   });

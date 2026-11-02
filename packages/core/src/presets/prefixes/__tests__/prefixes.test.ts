@@ -16,7 +16,7 @@ function css(token: string, withPrefixes: boolean): string {
   });
   mn.getCompiler('class')(token);
   mn.compile();
-  return mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+  return mn.styles$.getState().map((s: { content: string }) => s.content).join('');
 }
 
 describe('presetPrefixes', () => {

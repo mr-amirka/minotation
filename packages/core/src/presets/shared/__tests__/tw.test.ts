@@ -34,7 +34,7 @@ function compile(tokens: string, setup: (mn: MnInstance) => void) {
   mn.getCompiler('class')(tokens);
   mn.compile();
   return {
-    css: mn.styles$.getValue().map((s) => s.content).join(''),
+    css: mn.styles$.getState().map((s) => s.content).join(''),
     warnings: warnings.map((w) => w.message),
   };
 }

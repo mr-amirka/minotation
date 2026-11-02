@@ -33,7 +33,7 @@ function compile(
     error = ex;
   }
   return {
-    css: mn.styles$.getValue().map((s) => s.content).join(''),
+    css: mn.styles$.getState().map((s) => s.content).join(''),
     warnings: warnings.map((w) => w.type + ': ' + w.message),
     error,
     mn,

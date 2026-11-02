@@ -63,7 +63,7 @@ function compile(tokens: string, options: MnOptions = {}) {
     error = ex;
   }
   return {
-    css: mn.styles$.getValue().map((s) => s.content).join(' '),
+    css: mn.styles$.getState().map((s) => s.content).join(' '),
     warnings,
     error,
   };
@@ -92,7 +92,7 @@ describe("notationMode: 'tw4-compatible'", () => {
     };
     mn.getCompiler('class')('hover:cF00');
     mn.compile();
-    const css = mn.styles$.getValue().map((s) => s.content).join(' ');
+    const css = mn.styles$.getState().map((s) => s.content).join(' ');
     expect(css).toContain('.hover\\:cF00:hover{color:#f00}');
     expect(css).not.toContain('(hover: hover)');
   });
@@ -227,7 +227,7 @@ describe('mn.variantPrefixedSynonyms — проверка', () => {
     });
     mn.getCompiler('class')('next-hover:cF00 box-hover:cF00 card-hover:cF00');
     mn.compile();
-    const css = mn.styles$.getValue().map((s) => s.content).join(' ');
+    const css = mn.styles$.getState().map((s) => s.content).join(' ');
     // Одинаковые объявления ядро сводит в одно правило — проверяем селекторы.
     expect(css).toContain('.n:hover+.next-hover\\:cF00');
     expect(css).toContain('.box:hover>.box-hover\\:cF00');
@@ -247,8 +247,8 @@ describe("'tw4-compatible' без меток и без ядра", () => {
     });
     mn.getCompiler('class')('peer-hover:cF00');
     mn.compile();
-    expect(mn.styles$.getValue().map((s) => s.content).join('')).not.toContain('peer-hover');
-    expect(mn.warnings$.getValue().map((w) => w.type)).toEqual(['parse-error']);
+    expect(mn.styles$.getState().map((s) => s.content).join('')).not.toContain('peer-hover');
+    expect(mn.warnings$.getState().map((w) => w.type)).toEqual(['parse-error']);
   });
 
   test('selectorsCompileProvider отдельно: медиа нет — приставка неизвестна', () => {
@@ -290,7 +290,7 @@ describe('компилятор с режимом: getCompiler(attr, { notationMo
       notationMode: 'tw4-compatible',
     })('hover:cF00');
     mn.compile();
-    const css = mn.styles$.getValue().map((s) => s.content).join(' ');
+    const css = mn.styles$.getState().map((s) => s.content).join(' ');
     expect(css).toContain('.p10\\:hover:hover{padding:10px}');
     expect(css).toContain('.hover\\:cF00:hover{color:#f00}');
   });
@@ -305,15 +305,15 @@ describe('компилятор с режимом: getCompiler(attr, { notationMo
     ]);
     mn.getCompiler('class')('hover:cF00');
     mn.compile();
-    expect(mn.styles$.getValue().map((s) => s.content).join(' ')).not.toContain('hover\\:cF00');
+    expect(mn.styles$.getState().map((s) => s.content).join(' ')).not.toContain('hover\\:cF00');
     mn.getCompiler('class', {
       notationMode: 'tw4-compatible',
     })('hover:cF00');
     mn.compile();
-    expect(mn.styles$.getValue().map((s) => s.content).join(' ')).toContain('.hover\\:cF00:hover{color:#f00}');
+    expect(mn.styles$.getState().map((s) => s.content).join(' ')).toContain('.hover\\:cF00:hover{color:#f00}');
     // Полная пересборка — компилятор с режимом не теряется.
     mn.recompile();
-    expect(mn.styles$.getValue().map((s) => s.content).join(' ')).toContain('.hover\\:cF00:hover{color:#f00}');
+    expect(mn.styles$.getState().map((s) => s.content).join(' ')).toContain('.hover\\:cF00:hover{color:#f00}');
   });
 });
 
@@ -334,8 +334,8 @@ describe("notationMode: 'breakpoint-prefixed' — quantum-css (D-045 этап 4)
     mn.getCompiler('class')(tokens);
     mn.compile();
     return {
-      css: mn.styles$.getValue().map((s) => s.content).join(' '),
-      warnings: mn.warnings$.getValue(),
+      css: mn.styles$.getState().map((s) => s.content).join(' '),
+      warnings: mn.warnings$.getState(),
     };
   }
 

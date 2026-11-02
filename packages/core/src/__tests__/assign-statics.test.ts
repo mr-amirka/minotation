@@ -20,7 +20,7 @@ function makeMn(options?: any) {
 }
 
 function cssOf(mn: any): string {
-  return mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+  return mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
 }
 
 describe('mn.assign', () => {

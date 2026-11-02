@@ -26,7 +26,7 @@ export function compile(tokens: string[]): { css: string;
   }
   mn.compile();
   return {
-    css: mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n'),
+    css: mn.styles$.getState().map((s: { content: string }) => s.content).join('\n'),
     warnings,
   };
 }

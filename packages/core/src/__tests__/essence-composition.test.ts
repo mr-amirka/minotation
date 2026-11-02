@@ -10,7 +10,7 @@ import presetStandard from '../presets/standard';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 function cssOf(mn: any): string {
-  return mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+  return mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
 }
 
 function compile(mn: any, token: string): string {

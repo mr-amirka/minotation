@@ -96,7 +96,7 @@ function compile(presets: MnPreset[]): string {
     presets,
   });
   mn.compile();
-  return mn.styles$.getValue().map((s) => s.content).join('');
+  return mn.styles$.getState().map((s) => s.content).join('');
 }
 
 describe('normalize presets reproduce their references exactly (D-108)', () => {

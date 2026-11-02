@@ -63,7 +63,7 @@ function css(token) {
   const mn = makeMn();
   mn.getCompiler('class')(token);
   mn.compile();
-  return mn.styles$.getValue()
+  return mn.styles$.getState()
     .map((s) => s.content)
     .join('');
 }

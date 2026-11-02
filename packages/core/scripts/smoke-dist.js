@@ -39,7 +39,7 @@ function compile(core, tokens, presets) {
   mn.getCompiler('class')(tokens);
   mn.compile();
   return {
-    css: mn.styles$.getValue().map((b) => b.content).join(''),
+    css: mn.styles$.getState().map((b) => b.content).join(''),
     warnings: warnings.join(','),
   };
 }

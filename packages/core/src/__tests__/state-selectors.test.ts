@@ -19,7 +19,7 @@ function compile(token: string): string {
   ]);
   mn.getCompiler('class')(token);
   mn.compile();
-  return mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+  return mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
 }
 
 describe('состояния в комбо-имени', () => {
@@ -91,7 +91,7 @@ describe('instance.states — именованные группы состоян
     mn.getCompiler('class')('p10:interactive');
     mn.compile();
 
-    const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+    const css = mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
     expect(css).toContain(':hover');
     expect(css).toContain(':focus');
   });
@@ -108,7 +108,7 @@ describe('instance.states — именованные группы состоян
     mn.getCompiler('class')('p10:checked');
     mn.compile();
 
-    const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+    const css = mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
     expect(css).toContain(':checked{padding:10px}');
   });
 });
@@ -127,7 +127,7 @@ describe('[attr=val] — атрибут-селектор как суффикс �
     mn.getCompiler('class')('bc$ink[aria-pressed=true]');
     mn.getCompiler('class')('c$bg[aria-pressed=true]');
     mn.compile();
-    const css = mn.styles$.getValue().map((s: { content: string }) => s.content).join('\n');
+    const css = mn.styles$.getState().map((s: { content: string }) => s.content).join('\n');
     expect(css).toContain('.bc\\$ink\\[aria-pressed\\=true\\][aria-pressed=true]{border-color:var(--ink)}');
     expect(css).toContain('.c\\$bg\\[aria-pressed\\=true\\][aria-pressed=true]{color:var(--bg)}');
   });
@@ -176,7 +176,7 @@ describe('вырожденные контекстные селекторы: пр
     mn.getCompiler('class')(token);
     mn.compile();
     return {
-      css: mn.styles$.getValue().map((s: { content: string }) => s.content).join(''),
+      css: mn.styles$.getState().map((s: { content: string }) => s.content).join(''),
       warnings,
     };
   }
@@ -296,7 +296,7 @@ describe('синонимы состояний', () => {
     mn.getCompiler('class')(token);
     mn.compile();
     return {
-      css: mn.styles$.getValue().map((s: { content: string }) => s.content).join(''),
+      css: mn.styles$.getState().map((s: { content: string }) => s.content).join(''),
       warnings,
     };
   }

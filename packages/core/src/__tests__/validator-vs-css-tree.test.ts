@@ -114,7 +114,7 @@ function collectPairs(): Pair[] {
       mn.setPresets([presetStandard]);
       mn.getCompiler('class')(names[i] + ARG_FORMS[j]);
       mn.compile();
-      const css = mn.styles$.getValue().map((s: {
+      const css = mn.styles$.getState().map((s: {
         content: string;
       }) => s.content).join('');
       const bodies = css.match(/\{[^}]*\}/g) || [];
@@ -196,7 +196,7 @@ function cssOfToken(token: string): string {
   mn.setPresets([presetStandard]);
   mn.getCompiler('class')(token);
   mn.compile();
-  return mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+  return mn.styles$.getState().map((s: { content: string }) => s.content).join('');
 }
 
 describe('вывод ядра против официальной грамматики CSS (css-tree + mdn-data)', () => {
@@ -275,7 +275,7 @@ describe('ключевые слова семейств совпадают с г�
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    return mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+    return mn.styles$.getState().map((s: { content: string }) => s.content).join('');
   }
 
   /** Токен → CSS-свойство и ожидаемое значение. */
@@ -452,7 +452,7 @@ describe('списки закрытых перечислений совпада�
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    return mn.styles$.getValue().map((s: { content: string }) => s.content).join('');
+    return mn.styles$.getState().map((s: { content: string }) => s.content).join('');
   }
 
   const LISTS: Array<[string, string, string]> = [

@@ -21,7 +21,7 @@ function compile(tokens: string, options: MnOptions = {}): { css: string;
   mn.getCompiler('class')(tokens);
   mn.compile();
   return {
-    css: mn.styles$.getValue().filter((s) => s.priority > -3000).map((s) => s.content).join(''),
+    css: mn.styles$.getState().filter((s) => s.priority > -3000).map((s) => s.content).join(''),
     warnings: warnings.map((w) => w.message).join(' '),
   };
 }

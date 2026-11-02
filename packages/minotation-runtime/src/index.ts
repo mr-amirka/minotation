@@ -23,9 +23,9 @@
 export interface MnRuntimeInstance {
   getCompiler(attrName: string): (value: string) => void;
   compile(): void;
+  /** Стили — стор: `watch` зовёт сразу с текущими, потом на каждое изменение. */
   styles$: {
-    getValue(): Array<{ content: string }>;
-    on(callback: (value: Array<{ content: string }>) => void): () => void;
+    watch(callback: (value: Array<{ content: string }>) => void): () => void;
   };
 }
 
@@ -152,8 +152,7 @@ export function createMnRuntime(mn: MnRuntimeInstance, options: MnRuntimeOptions
     subtree: true,
   });
 
-  const unsubscribeStyles = mn.styles$.on((items) => renderStyles(styleAttr, doc, items));
-  renderStyles(styleAttr, doc, mn.styles$.getValue());
+  const unsubscribeStyles = mn.styles$.watch((items) => renderStyles(styleAttr, doc, items));
 
   return {
     /** Отключает наблюдатель DOM и подписку на стили (см. {@link MnRuntimeHandle.stop}). */

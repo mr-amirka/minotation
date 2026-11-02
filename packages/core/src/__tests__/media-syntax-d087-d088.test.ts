@@ -42,7 +42,7 @@ function compile(
   mn.getCompiler('class')(tokens);
   mn.compile();
   return {
-    css: mn.styles$.getValue().filter((s) => s.priority > -3000).map((s) => s.content).join(''),
+    css: mn.styles$.getState().filter((s) => s.priority > -3000).map((s) => s.content).join(''),
     warnings: warnings.map((w) => w.message),
   };
 }
@@ -378,7 +378,7 @@ describe('опция media важнее пресета, совпадение —
     mn.getCompiler('class')('p10@m p10@md p10@own');
     mn.compile();
     return {
-      css: mn.styles$.getValue().map((style) => style.content).join(''),
+      css: mn.styles$.getState().map((style) => style.content).join(''),
       warnings: warnings.map((w) => w.type + ': ' + w.message),
     };
   }

@@ -37,6 +37,8 @@ import {
 } from './mediaCondition';
 import {
   asError,
+  createEvent,
+  createObservable,
   eachApply,
   eachTry,
   forEach,
@@ -58,6 +60,7 @@ import {
   repeat,
   cssPropertiesStringifyProvider,
   type IStringifyCss,
+  type Observable,
   withDefer,
   getBase,
   set as baseSet,
@@ -78,7 +81,6 @@ import {
 } from '../selectorsCompileProvider/raiseMessages';
 import {
   baseUtils,
-  observableProvider,
   OBJECT,
   FUNCTION,
   STRING,
@@ -540,7 +542,7 @@ function isCompileWarning(warning: MnWarning): boolean {
  * const mn = minotationProvider({ presets: [presetStandard] });
  * mn.check('w50 cF00');
  * mn.compile;
- * mn.styles$.getValue; // → скомпилированные CSS-стили
+ * mn.styles$.getState(); // → скомпилированные CSS-стили
  */
 function minotationProvider(options?: MnOptions) {
   checkOptions(
@@ -1114,12 +1116,15 @@ function minotationProvider(options?: MnOptions) {
   const $$parseComboNameCache: Record<string, ParseComboNameFn> = {};
   const cssPropertiesStringify: IStringifyCss = mn.propertiesStringify
     = cssPropertiesStringifyProvider();
-  const emit = (mn.styles$ = observableProvider<MnStyleEntry[]>([])).emit;
-  const error$ = mn.error$ = observableProvider<Error | undefined>(undefined);
-  const emitError = error$.emit;
+  // Наружу — только чтение (`getState`, `watch`, `map`): пишет одно ядро.
+  const styles$ = createObservable<MnStyleEntry[]>([]);
+  mn.styles$ = styles$ as Observable<MnStyleEntry[]>;
+  const emit = styles$.setState;
+  const emitError = mn.error$ = createEvent<Error>();
   let $$onError = noop as (e: Error) => void;
-  const warnings$ = mn.warnings$ = observableProvider<MnWarning[]>([]);
-  const emitWarnings = warnings$.emit;
+  const warnings$ = createObservable<MnWarning[]>([]);
+  mn.warnings$ = warnings$ as Observable<MnWarning[]>;
+  const emitWarnings = warnings$.setState;
   let $$logWarning: (warning: MnWarning) => void = logWarning;
   let $$onWarning: (warning: MnWarning) => void = noop;
   let $$warnings: MnWarning[] = [];
@@ -1166,11 +1171,8 @@ function minotationProvider(options?: MnOptions) {
   let $$forbidden: MnWarning[] = [];
   let $$revision = 0;
 
-  error$.on((error: Error | undefined) => {
-    // `undefined` в типе канала — начальное значение; `on` его не доставляет
-    // (подписка срабатывает только на `emit`), а `emit` зовётся лишь из
-    // `emitError`, который всегда даёт `Error`.
-    $$onError(error as Error);
+  emitError.watch((error) => {
+    $$onError(error);
   });
   // Позволяет selectorsCompileProvider (отдельный модуль, свой замкнутый scope)
   // сообщать о превышении maxDepth в режиме 'warn' — по тому же соглашению,
@@ -2419,7 +2421,7 @@ function minotationProvider(options?: MnOptions) {
    * Компилирует накопленные токены в CSS-стили.
    *
    * Должен вызываться после того, как все токены собраны через `getCompiler`.
-   * Результат доступен через `mn.styles$.getValue`.
+   * Результат доступен через `mn.styles$.getState()`.
    *
    * Инкрементально: по умолчанию читает только НОВЫЕ значения атрибутов
    * (`$$compilers[*].getNext`) — уже обработанные не пересчитываются

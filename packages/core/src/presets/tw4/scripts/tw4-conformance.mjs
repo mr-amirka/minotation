@@ -116,7 +116,7 @@ const mn = minotationProvider({
 mn.setPresets([presetMedias, presetTw4]);
 mn.getCompiler('class')(classes.join(SPACE));
 mn.compile();
-const actual = parse(mn.styles$.getValue().filter((style) => style.priority > -3000).map((style) => style.content).join('\n'));
+const actual = parse(mn.styles$.getState().filter((style) => style.priority > -3000).map((style) => style.content).join('\n'));
 
 let same = 0;
 const missing = [];

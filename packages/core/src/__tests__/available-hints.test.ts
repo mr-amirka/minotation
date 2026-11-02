@@ -33,7 +33,7 @@ function compile(token: string): { css: string;
   mn.getCompiler('class')(token);
   mn.compile();
   return {
-    css: mn.styles$.getValue().map((s: { content: string }) => s.content).join(''),
+    css: mn.styles$.getState().map((s: { content: string }) => s.content).join(''),
     warnings,
   };
 }

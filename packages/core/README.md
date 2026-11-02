@@ -22,7 +22,7 @@ mn.getCompiler('class')('p10 cF00 fx bgFFF fwBold:h');
 mn.compile();
 
 // Получаем CSS
-for (const block of mn.styles$.getValue()) {
+for (const block of mn.styles$.getState()) {
   console.log(block.content);
 }
 // → .p10{padding:10px}.cF00{color:#F00}.fx{display:flex}...
@@ -635,9 +635,23 @@ compile('p10 cF00 fx:h');
 
 Компилирует все накопленные токены в CSS.
 
-### `mn.styles$.getValue()`
+### `mn.styles$`, `mn.warnings$`, `mn.error$`
 
-Возвращает массив `StyleBlock[]` — скомпилированные CSS-блоки.
+Каналы fundamentool (`fundamentool/Observable`, поведение Effector):
+
+- `mn.styles$` — стор скомпилированных CSS-блоков `StyleBlock[]`: `getState()` — сейчас, `watch(fn)` — сразу с
+  текущими, потом после каждого `compile()`, `map(fn)` — производный стор;
+- `mn.warnings$` — стор предупреждений `MnWarning[]`, так же;
+- `mn.error$` — событие ошибки разбора: `watch(fn)` зовётся на каждую ошибку, не при подписке.
+
+`watch` возвращает отписку — функцию, у которой есть и `unsubscribe()`.
+
+```ts
+const stop = mn.styles$.watch((blocks) => {
+  style.textContent = blocks.map((b) => b.content).join('');
+});
+mn.error$.watch((error) => console.error(error.message));
+```
 
 ### `mn(tag, handler)`
 
@@ -832,6 +846,7 @@ ESM грузится и Node напрямую, и Vite как исходник w
 | `mn('tag', handler, ...)` | `mn('tag', handler)` (без изменений) |
 | `mn.presets([...])` | `mn.setPresets([...])` |
 | `mn.getCompiler('class')(tokens)` | `mn.getCompiler('class')(tokens)` (без изменений) |
-| `mn.styles$.getValue()` | `mn.styles$.getValue()` ✅ |
+| `mn.styles$.getValue()` | `mn.styles$.getState()` |
+| `mn.styles$.on(fn)` | `mn.styles$.watch(fn)` — сразу с текущими стилями |
 | `require('.../presets/styles')` | `import { presetStandard }` |
 | `require('.../presets/main')` | `import { presetMain }` |

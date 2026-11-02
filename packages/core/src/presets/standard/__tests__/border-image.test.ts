@@ -28,7 +28,7 @@ function compile(tokens: string, altColor?: boolean): { css: string;
   tokens.split(' ').forEach((token) => compileClass(token));
   mn.compile();
   return {
-    css: mn.styles$.getValue().filter((s) => s.priority > -3000).map((s) => s.content).join(''),
+    css: mn.styles$.getState().filter((s) => s.priority > -3000).map((s) => s.content).join(''),
     warnings: warnings.map((w) => w.message).join(' '),
   };
 }

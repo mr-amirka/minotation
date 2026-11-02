@@ -45,7 +45,7 @@ function compile(tokens: string, options: MnOptions = {}) {
     error = ex;
   }
   return {
-    css: mn.styles$.getValue().map((s) => s.content).join(' '),
+    css: mn.styles$.getState().map((s) => s.content).join(' '),
     warnings,
     error,
   };
@@ -305,7 +305,7 @@ describe('пограничные случаи', () => {
     });
     mn.getCompiler('class')('next-[.x]:cF00 parent-[.y]:cF00');
     mn.compile();
-    expect(mn.styles$.getValue().map((s) => s.content).join(' ')).toBe('.a.x+.next-\\[\\.x\\]\\:cF00,.b.y>.parent-\\[\\.y\\]\\:cF00{color:#f00}');
+    expect(mn.styles$.getState().map((s) => s.content).join(' ')).toBe('.a.x+.next-\\[\\.x\\]\\:cF00,.b.y>.parent-\\[\\.y\\]\\:cF00{color:#f00}');
   });
 
   test('точка по высоте', () => {
@@ -319,7 +319,7 @@ describe('пограничные случаи', () => {
     };
     mn.getCompiler('class')('tall:cF00 max-tall:c0F0');
     mn.compile();
-    expect(mn.styles$.getValue().map((s) => s.content)).toEqual([
+    expect(mn.styles$.getState().map((s) => s.content)).toEqual([
       '@media (height >= 800px){.tall\\:cF00{color:#f00}}',
       '@media (height < 800px){.max-tall\\:c0F0{color:#0f0}}',
     ]);
@@ -446,7 +446,7 @@ describe('at-правила: @supports, @container (D-057)', () => {
     ]);
     mn.getCompiler('class')('@d:cF00 @max-box:cF00');
     mn.compile();
-    expect(mn.styles$.getValue().map((style) => style.content).join('')).toBe('@container (width >= 30rem){.\\@d\\:cF00{color:#f00}}@container (width < 200px){.\\@max-box\\:cF00{color:#f00}}');
+    expect(mn.styles$.getState().map((style) => style.content).join('')).toBe('@container (width >= 30rem){.\\@d\\:cF00{color:#f00}}@container (width < 200px){.\\@max-box\\:cF00{color:#f00}}');
   });
 
   test('selectorsCompileProvider отдельно: без mn.media', () => {

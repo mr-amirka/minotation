@@ -36,7 +36,7 @@ function compile(tokens: string, options: MnOptions = {}) {
     error = ex;
   }
   return {
-    css: mn.styles$.getValue().map((s) => s.content),
+    css: mn.styles$.getState().map((s) => s.content),
     warnings,
     error,
   };
@@ -249,7 +249,7 @@ describe('приоритет ^N (D-071)', () => {
     ]);
     mn.getCompiler('class')(tokens);
     mn.compile();
-    return mn.styles$.getValue().map((s) => [
+    return mn.styles$.getState().map((s) => [
       s.priority,
       s.content,
     ]);

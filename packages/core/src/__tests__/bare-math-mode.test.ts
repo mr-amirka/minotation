@@ -39,7 +39,7 @@ function compile(tokens: string[], options: MnOptions = {}) {
     error = ex;
   }
   return {
-    css: mn.styles$.getValue().map((s: { content: string }) => s.content).join(''),
+    css: mn.styles$.getState().map((s: { content: string }) => s.content).join(''),
     warnings: warnings.map((w) => w.type + ': ' + w.message),
     error,
   };

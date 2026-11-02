@@ -38,7 +38,7 @@ for (const token of tokens) {
   mn.getCompiler('class')(token);
   mn.compile();
 
-  const css = mn.styles$.getValue().map((s) => s.content).join('');
+  const css = mn.styles$.getState().map((s) => s.content).join('');
 
   console.log('\n' + token);
   if (css) {

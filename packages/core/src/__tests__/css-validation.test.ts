@@ -36,7 +36,7 @@ describe('CSS validation', () => {
     ]);
     mn.getCompiler('class')('w1/2 w1/3 w50p p10 cF00<.p:h bgF fx1 fxdColumn');
     mn.compile();
-    const css = mn.styles$.getValue().map(s => s.content).join('\n');
+    const css = mn.styles$.getState().map(s => s.content).join('\n');
     expect(() => postcss.parse(css)).not.toThrow();
   });
 
@@ -61,7 +61,7 @@ describe('CSS validation', () => {
     const mn = make([presetStandard, presetMedias]);
     mn.getCompiler('class')(tokens.join(' '));
     mn.compile();
-    const css = mn.styles$.getValue().map(s => s.content).join(' ');
+    const css = mn.styles$.getState().map(s => s.content).join(' ');
 
     // Целевой класс — тот, что образован от имени токена.
     // С группировкой селекторов несколько токенов с одним CSS-телом объединяются:
@@ -82,7 +82,7 @@ describe('CSS validation', () => {
     const mn = make([presetStandard]);
     mn.getCompiler('class')('cF00<.parent cF00<.a+.b cF00>.child cF00<#myid');
     mn.compile();
-    const css = mn.styles$.getValue().map(s => s.content).join(' ');
+    const css = mn.styles$.getState().map(s => s.content).join(' ');
     expect(css).toMatch(/\.parent /);
     expect(css).toMatch(/\.a\+\.b/);
     expect(css).toMatch(/\.child/);
@@ -93,7 +93,7 @@ describe('CSS validation', () => {
     const mn = make([presetStandard, presetSynonyms]);
     mn.getCompiler('class')('cF00:h cF00:f cF00:a cF00:even cF00:first cF00:last');
     mn.compile();
-    const css = mn.styles$.getValue().map(s => s.content).join(' ');
+    const css = mn.styles$.getState().map(s => s.content).join(' ');
     expect(css).toMatch(/:hover/);
     expect(css).toMatch(/:focus/);
     expect(css).toMatch(/:active/);
@@ -107,7 +107,7 @@ describe('CSS validation', () => {
     // D-054: `@d` — до точки 992px, `@d-` — от неё, `@m4-d` — между точками.
     mn.getCompiler('class')('p10@m p10@d- p10@m5 p10@dark p10@m4-d');
     mn.compile();
-    const css = mn.styles$.getValue().map(s => s.content).join('\n');
+    const css = mn.styles$.getState().map(s => s.content).join('\n');
     expect(() => postcss.parse(css)).not.toThrow();
     expect(css).toContain('@media (width < 992px)');
     expect(css).toContain('@media (width >= 992px)');
@@ -143,7 +143,7 @@ describe('CSS validation', () => {
       'cF00<.parent@m:h',
     ].join(' '));
     mn.compile();
-    const css = mn.styles$.getValue().map(s => s.content).join('\n');
+    const css = mn.styles$.getState().map(s => s.content).join('\n');
     expect(() => postcss.parse(css)).not.toThrow();
   });
 });
@@ -170,7 +170,7 @@ describe('ядро не бракует то, что построило из ос
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    const m = mn.styles$.getValue().map((s) => s.content).join('')
+    const m = mn.styles$.getState().map((s) => s.content).join('')
       .match(/\{([^}]*)\}\s*$/);
     return m ? m[1] : '';
   }
@@ -221,7 +221,7 @@ describe('размерные свойства: none, auto и внутренни�
     mn.setPresets([presetStandard]);
     mn.getCompiler('class')(token);
     mn.compile();
-    const m = mn.styles$.getValue().map((s) => s.content).join('')
+    const m = mn.styles$.getState().map((s) => s.content).join('')
       .match(/\{([^}]*)\}\s*$/);
     return m ? m[1] : '';
   }

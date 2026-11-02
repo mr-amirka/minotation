@@ -45,7 +45,7 @@ function compile(tokens: string, options: MnOptions = {}) {
     error = ex;
   }
   return {
-    css: mn.styles$.getValue().map((s) => s.content).join(' '),
+    css: mn.styles$.getState().map((s) => s.content).join(' '),
     warnings,
     error,
   };
@@ -164,7 +164,7 @@ describe("'property-value' — состояния и псевдоэлемент�
     });
     mn.getCompiler('class')('c:F00:first');
     mn.compile();
-    expect(mn.styles$.getValue().map((s) => s.content).join('')).toContain(':first-of-type{color:#f00}');
+    expect(mn.styles$.getState().map((s) => s.content).join('')).toContain(':first-of-type{color:#f00}');
   });
 });
 

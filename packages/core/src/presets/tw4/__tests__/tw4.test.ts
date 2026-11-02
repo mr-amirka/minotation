@@ -43,7 +43,7 @@ function compile(tokens: string, options: MnOptions = {}) {
   ]);
   mn.getCompiler('class')(tokens);
   mn.compile();
-  const all = mn.styles$.getValue().map((s) => s.content).join('');
+  const all = mn.styles$.getState().map((s) => s.content).join('');
   // Переменные темы (`:root{…}`) и начальные значения помощников (`*{--tw-…}`) — отдельно.
   const theme = all.match(REGEXP_THEME_RULE) || [];
   return {
@@ -64,7 +64,7 @@ describe('тема', () => {
     ]);
     mn.getCompiler('class')('mt-4');
     mn.compile();
-    expect(mn.styles$.getValue().map((s) => [
+    expect(mn.styles$.getState().map((s) => [
       s.priority,
       s.content,
     ])).toEqual([

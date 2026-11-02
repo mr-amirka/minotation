@@ -612,6 +612,22 @@ minotationProvider({ isolateMod: 'class' });
 // TypeError: [minotation] minotationProvider: unknown option "isolateMod". Did you mean "isolateMode"?
 ```
 
+Условие — только `process.env.NODE_ENV` (lab D-051): сборщик подставляет его значение, а `typeof process` оставил бы
+как есть, и в браузере проверки не работали бы и в разработке.
+
+**`minotation/checked`** (D-144) — тот же пакет, где проверки работают всегда, при любом режиме сборки приложения.
+Он для просмотрщика, где опции и пресеты пишет человек: поля настроек, свой пресет. Всё — ядро и пресеты —
+импортируется оттуда, чтобы в бандле была одна копия.
+
+```ts
+import { minotationProvider, presetStandard } from 'minotation/checked';
+
+const mn = minotationProvider(optionsFromFields); // продакшен-сборка просмотрщика — проверки на месте
+// TypeError: [minotation] minotationProvider: "altColor" expects true or false, got string "off"
+```
+
+Остальные приложения импортируют `minotation`: проверок и схем в их продакшен-бандле нет.
+
 Схема опций — `CORE_OPTIONS` на `fundamentool/schema`: своя точка входа строит схему шире из её
 полей — `object({ ...CORE_OPTIONS().shape, out: string() })`, часть — `CORE_OPTIONS().pick({ notationMode: true })`;
 `CORE_OPTIONS().keys` — список ключей. Так же `SCANNER_OPTIONS` для `createScanner`.

@@ -1,5 +1,5 @@
 /**
- * Smoke-тест собранного `dist` — CommonJS (`dist/*.js`), ESM (`dist/esm/*.mjs`) и браузерная (`dist/browser/*.mjs`).
+ * Smoke-тест собранного `dist` — CommonJS (`dist/*.js`), ESM (`dist/esm/*.mjs`) и браузерная (`dist/browser/*.mjs`), `minotation/checked` (`dist/checked`).
  * Запускается через: pnpm test:dist
  * Ловит расхождение между исходниками (ts-jest) и тем, что реально грузит Node.
  *
@@ -171,6 +171,68 @@ async function checkBrowser() {
   check('browser scanner says why', warnings.join(''), 'runs in Node only');
 }
 
+// ── `minotation/checked` (D-144, 2026-11-02) ─────────────────────────────────
+// Проверки ядра остаются в бандле, собранном для продакшена: `NODE_ENV` в `dist/checked` уже заменён. Бандл
+// `minotation` с тем же режимом их выбрасывает вместе со схемами. Тот же вызов с опечаткой в опции — в обоих.
+
+/** Модуль бандла: сообщение ошибки `minotationProvider` на опечатку в опции, `null` — если ошибки не было. */
+const TYPO_ENTRY = (from) => "import { minotationProvider } from '" + from + "';\n"
+  + 'let message = null;\n'
+  + "try { minotationProvider({ isolateMod: 'class' }); } catch (error) { message = error.message; }\n"
+  + 'export default message;\n';
+
+const TYPO_MESSAGE = 'unknown option "isolateMod". Did you mean "isolateMode"?';
+
+/**
+ * Собирает `TYPO_ENTRY` для продакшена и выполняет.
+ *
+ * @param from — откуда импорт (имя пакета — чтобы проверить и `exports`)
+ * @param platform — платформа esbuild: `browser` берёт условие `browser`, `node` — `import`
+ * @returns вход сборки из `dist` и сообщение ошибки
+ */
+async function typoInProduction(from, platform) {
+  const result = await require('esbuild').build({
+    stdin: { contents: TYPO_ENTRY(from), resolveDir: __dirname, loader: 'js' },
+    bundle: true,
+    minify: true,
+    format: 'esm',
+    platform,
+    define: { 'process.env.NODE_ENV': '"production"' },
+    external: ['typescript'],
+    write: false,
+    metafile: true,
+    logLevel: 'silent',
+  });
+  const entry = Object.keys(result.metafile.inputs).find((input) => /dist\/.*index\.m?js$/.test(input));
+  const code = result.outputFiles[0].text;
+  const { default: message } = await import('data:text/javascript,' + encodeURIComponent(code));
+  return [entry, message];
+}
+
+async function checkChecked() {
+  const cjsKeys = Object.keys(cjs).filter((k) => k !== '__esModule').sort().join(',');
+  for (const [platform, file] of [['browser', 'dist/checked/browser/index.mjs'], ['node', 'dist/checked/esm/index.mjs']]) {
+    const [entry, message] = await typoInProduction('minotation/checked', platform);
+    check('checked ' + platform + ' via exports', entry, file);
+    check('checked ' + platform + ' checks in production', String(message), TYPO_MESSAGE);
+    const built = await import('../' + file);
+    check('checked ' + platform + ' exports = cjs exports', Object.keys(built).sort().join(','), cjsKeys);
+    checkBuild('checked ' + platform, built);
+  }
+  const mode = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'production';
+  let message = null;
+  try {
+    require('../dist/checked/index.js').minotationProvider({ isolateMod: 'class' });
+  } catch (error) {
+    message = error.message;
+  }
+  process.env.NODE_ENV = mode;
+  check('checked cjs checks in production', String(message), TYPO_MESSAGE);
+  const [, plain] = await typoInProduction('minotation', 'browser');
+  check('minotation in production: no checks', String(plain), 'null');
+}
+
 // ── Неимпортированный пресет в бандл не попадает (D-110, 2026-10-27) ──────────
 // Компилятор не тянет за собой пресеты: `import { minotationProvider }` не несёт их кода. Сборка из
 // исходников — эталон: там бандлер выбрасывает неимпортированный модуль целиком. Пресет обязан добавлять к
@@ -264,7 +326,7 @@ function checkExports() {
 
 checkExports();
 
-checkEsm().then(checkBrowser).then(checkTreeShake).then(() => {
+checkEsm().then(checkBrowser).then(checkChecked).then(checkTreeShake).then(() => {
   if (failed) {
     console.error('\nDist smoke-test FAILED.');
     process.exit(1);

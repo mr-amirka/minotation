@@ -30,6 +30,15 @@
       "import": "./dist/esm/mne.mjs",
       "default": "./dist/mne.js"
     },
+    "./checked": {
+      "types": "./dist/index.d.ts",
+      "browser": {
+        "import": "./dist/checked/browser/index.mjs",
+        "default": "./dist/checked/index.js"
+      },
+      "import": "./dist/checked/esm/index.mjs",
+      "default": "./dist/checked/index.js"
+    },
     "./syntax": {
       "types": "./dist/syntaxScan.d.ts",
       "import": "./dist/esm/syntaxScan.mjs",

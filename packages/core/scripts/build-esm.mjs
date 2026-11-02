@@ -29,6 +29,12 @@
  * (`splitting`) — чтобы `minotation` и `minotation/mne` делили одну копию.
  *
  * `.mjs` — чтобы файлы читались как ESM независимо от `"type"` пакета.
+ *
+ * `dist/checked` — `minotation/checked` (D-144): те же исходники с `process.env.NODE_ENV`, заменённым на
+ * `"development"`, — CommonJS, ESM для Node и ESM для браузера. Замена касается только кода minotation и
+ * `fundamentool`: другого в бандле нет. Проверки ядра работают при любом режиме сборки приложения — это нужно
+ * просмотрщику, где опции и пресеты пишет человек. Остальные приложения импортируют `minotation` и не везут ни
+ * проверок, ни схем (D-141).
  */
 import { build } from 'esbuild';
 import { readdirSync, rmSync } from 'fs';
@@ -80,20 +86,48 @@ const nodeLazyTypescript = {
   },
 };
 
+/** Корень пакета — рабочий каталог esbuild. */
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
+
+/**
+ * `fundamentool` берётся из исходников: его опубликованный `dist/esm` собирается отдельно от `build` и отстал от
+ * CJS (на 2026-10-05 в нём нет `flatFlags`, `mergeDepth`, `setBase`, `toFixed`), а CJS не вырезается tree-shaking-ом.
+ * Исходник — ESM и всегда актуален.
+ */
+const FUNDAMENTOOL = {
+  fundamentool: fileURLToPath(new URL('../node_modules/fundamentool/src/index.ts', import.meta.url)),
+  // Подпуть отдельно: алиас пакета указывает на файл, и `fundamentool/schema` стал бы `…/index.ts/schema`
+  'fundamentool/schema': fileURLToPath(new URL('../node_modules/fundamentool/src/schema/index.ts', import.meta.url)),
+  'fundamentool/hooks': fileURLToPath(new URL('../node_modules/fundamentool/src/hooks/index.ts', import.meta.url)),
+};
+
+/** `minotation/checked`: проверки в разработке включены навсегда. */
+const CHECKED = { 'process.env.NODE_ENV': '"development"' };
+
+/**
+ * Удаляет каталог сборки.
+ *
+ * @param outdir — каталог от корня пакета
+ */
+function clean(outdir) {
+  rmSync(fileURLToPath(new URL('../' + outdir, import.meta.url)), {
+    recursive: true,
+    force: true,
+  });
+}
+
 /**
  * Одна ESM-сборка.
  *
  * @param outdir — каталог в `dist`
  * @param entryPoints — точки входа
  * @param plugins — плагины esbuild
+ * @param define — замены выражений (`CHECKED` для `dist/checked`)
  */
-async function buildEsm(outdir, entryPoints, plugins) {
-  rmSync(fileURLToPath(new URL('../' + outdir, import.meta.url)), {
-    recursive: true,
-    force: true,
-  });
+async function buildEsm(outdir, entryPoints, plugins, define) {
+  clean(outdir);
   await build({
-    absWorkingDir: fileURLToPath(new URL('..', import.meta.url)),
+    absWorkingDir: ROOT,
     entryPoints,
     outdir,
     outExtension: { '.js': '.mjs' },
@@ -104,17 +138,9 @@ async function buildEsm(outdir, entryPoints, plugins) {
     target: 'es2022',
     // Парсер — необязательная peer-зависимость, его ставит потребитель.
     external: ['typescript'],
-    // `fundamentool` берётся из исходников: его опубликованный `dist/esm`
-    // собирается отдельно от `build` и отстал от CJS (на 2026-10-05 в нём нет
-    // `flatFlags`, `mergeDepth`, `setBase`, `toFixed`), а CJS не вырезается
-    // tree-shaking-ом. Исходник — ESM и всегда актуален.
-    alias: {
-      fundamentool: fileURLToPath(new URL('../node_modules/fundamentool/src/index.ts', import.meta.url)),
-      // Подпуть отдельно: алиас пакета указывает на файл, и `fundamentool/schema` стал бы `…/index.ts/schema`
-      'fundamentool/schema': fileURLToPath(new URL('../node_modules/fundamentool/src/schema/index.ts', import.meta.url)),
-      'fundamentool/hooks': fileURLToPath(new URL('../node_modules/fundamentool/src/hooks/index.ts', import.meta.url)),
-    },
+    alias: FUNDAMENTOOL,
     plugins,
+    define,
     sourcemap: true,
     logLevel: 'warning',
   });
@@ -147,3 +173,23 @@ await buildEsm('dist/esm', moduleEntries([]), [nodeLazyTypescript]);
 
 // `minotation/syntax` в браузере не нужен: он и есть парсер.
 await buildEsm('dist/browser', moduleEntries(['syntaxScan.ts']), [browserSyntaxStub]);
+
+// `minotation/checked`: `exports` называет только `index`. ESM — по модулю на вход, как выше, чтобы просмотрщик с
+// одним пресетом не вёз остальные. CommonJS — для `require` (jest в jsdom), как `dist/index.js` у `minotation`.
+clean('dist/checked');
+await build({
+  absWorkingDir: ROOT,
+  entryPoints: { index: 'src/index.ts' },
+  outdir: 'dist/checked',
+  bundle: true,
+  format: 'cjs',
+  platform: 'node',
+  target: 'es2022',
+  external: ['typescript'],
+  alias: FUNDAMENTOOL,
+  define: CHECKED,
+  sourcemap: true,
+  logLevel: 'warning',
+});
+await buildEsm('dist/checked/esm', moduleEntries([]), [nodeLazyTypescript], CHECKED);
+await buildEsm('dist/checked/browser', moduleEntries(['syntaxScan.ts']), [browserSyntaxStub], CHECKED);

@@ -352,7 +352,7 @@ const presetApp = {
 
 mn.setPresets([presetApp, presetMedias, presetStandard]);   // порядок — любой
 mn.setPresets([presetApp]);
-// Error: [minotation] presetApp requires "presetStandard", which is not connected. Connected presets: presetApp
+// TypeError: [minotation] mn.setPresets: presetApp requires "presetStandard", which is not connected. Connected presets: presetApp
 ```
 
 Стандартные пресеты — объекты с именами; `presetMain` требует `presetStandard` и `presetMedias`,

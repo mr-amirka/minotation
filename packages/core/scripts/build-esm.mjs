@@ -112,6 +112,7 @@ async function buildEsm(outdir, entryPoints, plugins) {
       fundamentool: fileURLToPath(new URL('../node_modules/fundamentool/src/index.ts', import.meta.url)),
       // Подпуть отдельно: алиас пакета указывает на файл, и `fundamentool/schema` стал бы `…/index.ts/schema`
       'fundamentool/schema': fileURLToPath(new URL('../node_modules/fundamentool/src/schema/index.ts', import.meta.url)),
+      'fundamentool/hooks': fileURLToPath(new URL('../node_modules/fundamentool/src/hooks/index.ts', import.meta.url)),
     },
     plugins,
     sourcemap: true,

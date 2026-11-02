@@ -110,7 +110,7 @@ describe('orderPresets — устойчивая топологическая с�
     );
     expect(() => orderPresets([a], {
       presetHints: track([], 'presetHints'),
-    })).toThrow('[minotation] presetTailwind requires "presetTailwindColors", which is not connected.'
+    })).toThrow('[minotation] mn.setPresets: presetTailwind requires "presetTailwindColors", which is not connected.'
       + ' Connected presets: presetHints, presetTailwind');
   });
 
@@ -125,7 +125,7 @@ describe('orderPresets — устойчивая топологическая с�
       a,
       b,
     ], {}))
-      .toThrow('[minotation] presets require each other: presetA → presetB → presetA');
+      .toThrow('[minotation] mn.setPresets: presets require each other: presetA → presetB → presetA');
   });
 
   test('два разных пресета с одним именем — ошибка (и с уже подключённым тоже)', () => {
@@ -133,7 +133,7 @@ describe('orderPresets — устойчивая топологическая с�
       track([], 'x'),
       track([], 'x'),
     ], {}))
-      .toThrow('[minotation] two different presets are named "x"');
+      .toThrow('[minotation] mn.setPresets: two different presets are named "x"');
     expect(() => orderPresets([track([], 'x')], {
       x: track([], 'x'),
     })).toThrow('two different presets are named "x"');
@@ -176,7 +176,7 @@ describe('orderPresets — устойчивая топологическая с�
 describe('mn.setPresets с пресет-объектами', () => {
   test('не массив и не пресет — ошибка «что ждали, что пришло» (D-110)', () => {
     const mn = minotationProvider();
-    expect(() => mn.setPresets(undefined as never)).toThrow('[minotation] setPresets expects an array of presets, got'
+    expect(() => mn.setPresets(undefined as never)).toThrow('[minotation] mn.setPresets: expects a list of presets, got'
       + ' undefined');
     expect(() => mn.setPresets([undefined] as never)).toThrow('[minotation] preset object:');
   });

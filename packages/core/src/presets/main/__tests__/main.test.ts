@@ -32,7 +32,7 @@ function compile(presets) {
 describe('presetMain', () => {
   test('без presetMedias — ошибка о зависимости (D-045): иначе a{cursor:pointer}@mouse пропадал молча', () => {
     expect(() => compile([presetStandard, presetMain]))
-      .toThrow('[minotation] presetMain requires "presetMedias", which is not connected.');
+      .toThrow('[minotation] mn.setPresets: presetMain requires "presetMedias", which is not connected.');
   });
 
   test('компилируется без ошибок вместе с presetStandard', () => {

@@ -126,7 +126,7 @@ function fail(
  * // mt-4 → margin-top:1rem; -mx-2 → margin-left:-.5rem;margin-right:-.5rem; mx-auto → auto
  */
 export function defineScale(mn: MnInstance, options: MnScaleOptions): MnInstance {
-  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production') {
     SCALE_OPTIONS().parse(options, MN_WHERE + 'defineScale');
   }
   const sides = options.sides || {

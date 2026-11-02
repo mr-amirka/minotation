@@ -37,7 +37,7 @@ const PRESET_OBJECT = /*#__PURE__*/ lazy(() => object({
 
 /** Проверяет пресет-объект в разработке (D-141): сообщение называет пресет по имени, если оно есть. */
 function checkPreset(preset: MnPresetObject): void {
-  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production') {
     const named = Boolean(preset) && typeof preset.name === 'string' && preset.name !== '';
     PRESET_OBJECT().parse(preset, MN_WHERE + 'preset ' + (named ? DOUBLE_QUOTE + preset.name + DOUBLE_QUOTE : 'object'));
   }

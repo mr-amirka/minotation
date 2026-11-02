@@ -141,7 +141,7 @@ const RULES_OPTIONS = /*#__PURE__*/ lazy(() => object({
  * const widthRules = mathRules({ name: 'w', unit: 'px', units: ['px', 'rem', '%'] });
  */
 export function mathRules(options: MnMathRulesOptions): MnMathRules {
-  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production') {
     RULES_OPTIONS().parse(options, MN_WHERE + 'mathRules');
   }
   return Object.freeze({

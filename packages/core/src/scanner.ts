@@ -130,7 +130,7 @@ interface SyntaxModule {
  * scan(source, '/index.html');    // текстом
  */
 export function createScanner(options: ScannerOptions): Scanner {
-  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production') {
     SCANNER_OPTIONS().parse(options, MN_WHERE + 'createScanner');
   }
   if (options.syntax === false) {

@@ -539,7 +539,7 @@ function presetHints(arg: MnInstance | PresetHintsOptions): void | MnPresetObjec
     apply(arg, {});
     return;
   }
-  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production') {
     HINTS_OPTIONS().parse(arg, MN_WHERE + PRESET_NAME);
   }
   // Фабрика — пресет-объект с именем: на него можно сослаться в `requires` (D-045).

@@ -552,7 +552,7 @@ function isCompileWarning(warning: MnWarning): boolean {
  * mn.styles$.getState(); // → скомпилированные CSS-стили
  */
 function minotationProvider(options?: MnOptions) {
-  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production') {
     CORE_OPTIONS().optional().parse(options, MN_WHERE + 'minotationProvider');
   }
   // Отдельная переменная, а не мутация параметра: `setOptions` его
@@ -2545,7 +2545,7 @@ function minotationProvider(options?: MnOptions) {
    * mn.variantPrefixedSynonyms({ peer: '.peer~' });
    */
   mn.variantPrefixedSynonyms = (map: Record<string, string>): any => {
-    if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== 'production') {
       VARIANT_SYNONYMS().parse(map, MN_WHERE + 'mn.variantPrefixedSynonyms');
     }
     extend((mn as any)._variantPrefixedSynonyms || ((mn as any)._variantPrefixedSynonyms = {}), map);
@@ -2601,7 +2601,7 @@ function minotationProvider(options?: MnOptions) {
    * mn.recompile;
    */
   mn.setOptions = (partialOptions: Partial<MnOptions>): any => {
-    if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== 'production') {
       CORE_OPTIONS().parse(partialOptions, MN_WHERE + 'mn.setOptions');
     }
     settings = extend(extend({}, settings), partialOptions) as MnOptions;

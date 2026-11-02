@@ -9,6 +9,7 @@
  * Холодный путь: только регистрация, разбор значений — в хендлерах при первой встрече класса.
  */
 import {
+  bracketPairs,
   escapedSplitProvider,
 } from 'fundamentool';
 import type {
@@ -1309,15 +1310,22 @@ const REGEXP_SHADOW_PART = /^(?:inset|-?[\d.]+[a-z%]*)$/;
 /** Произвольное значение похоже на цвет, а не на тень: `#f00`, `rgb(…)`, `var(--c)`, `red`. */
 const REGEXP_COLOR_LIKE = /^(?:#|rgb|hsl|oklch|oklab|lab|lch|color|var\()|^[a-z]+$/;
 
+/** Круглые скобки CSS: разделитель внутри них — часть значения (`rgb(0 0 0 / 5%)`). */
+const PARENS = bracketPairs([
+  [
+    OPEN_PAREN,
+    CLOSE_PAREN,
+  ],
+]);
 /** Деление по запятой вне скобок — список теней. */
 const splitShadows = escapedSplitProvider({
   separator: COMMA,
-  brackets: OPEN_PAREN + CLOSE_PAREN,
+  brackets: PARENS,
 }).base;
 /** Деление по пробелу вне скобок — токены одной тени. */
 const splitShadowTokens = escapedSplitProvider({
   separator: SPACE,
-  brackets: OPEN_PAREN + CLOSE_PAREN,
+  brackets: PARENS,
 }).base;
 
 /** Номер токена-цвета в тени — последний, что не длина и не `inset`; нет — `-1`. */

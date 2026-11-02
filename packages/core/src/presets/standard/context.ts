@@ -1,4 +1,5 @@
 import {
+  bracketPairs,
   escapedSplitProvider,
 } from 'fundamentool';
 import type {
@@ -321,7 +322,16 @@ function lowerItemStart(
  */
 export const splitTopLevel = escapedSplitProvider({
   separator: COMMA,
-  brackets: OPEN_PAREN + CLOSE_PAREN + OPEN_BRACE + CLOSE_BRACE,
+  brackets: bracketPairs([
+    [
+      OPEN_PAREN,
+      CLOSE_PAREN,
+    ],
+    [
+      OPEN_BRACE,
+      CLOSE_BRACE,
+    ],
+  ]),
 }).base;
 /**
  * Бракует градиент, у которого стоп не является цветом.

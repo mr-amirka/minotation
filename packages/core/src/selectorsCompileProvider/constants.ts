@@ -2,12 +2,13 @@
  * Разделители и регэкспы грамматики MN-комбо-имён (общие для всего `selectorsCompileProvider/`).
  *
  * Сплиттеры — `escapedSplitProvider({ separator, escape?, brackets? })` из fundamentool: экранированное (`escape`,
- * по умолчанию `\\` и символ после) не разделитель, внутри `brackets` — тоже. `escapedHalfProvider` с теми же
- * опциями делит строку на `[prefix, suffix, value]` по ПЕРВОМУ разделителю.
+ * по умолчанию `\\` и символ после) не разделитель, внутри `brackets` (пары из `bracketPairs`) — тоже.
+ * `escapedHalfProvider` с теми же опциями делит строку на `[prefix, suffix, value]` по ПЕРВОМУ разделителю.
  *
  * @module constants
  */
 import {
+  bracketPairs,
   escapedHalfProvider,
   escapedSplitProvider,
 } from 'fundamentool';
@@ -16,7 +17,24 @@ import {
  * Скобки, внутри которых разделитель — часть значения: `:has[>a]` — не дочерний сегмент записи, а аргумент
  * псевдокласса.
  */
-const SELECTOR_BRACKETS = '[]()';
+const SELECTOR_BRACKETS = bracketPairs([
+  [
+    '[',
+    ']',
+  ],
+  [
+    '(',
+    ')',
+  ],
+]);
+
+/** Круглые скобки: `:not(.a,.b)` — один аргумент, а не два сегмента. */
+const PARENS = bracketPairs([
+  [
+    '(',
+    ')',
+  ],
+]);
 
 /**
  * Сплиттер по разделителю вне `[…]`/`(…)` и не экранированному — части с экранированием как есть.
@@ -49,7 +67,7 @@ function escSplit(separator: string): (source: string) => string[] {
 function parenSplit(separator: string): (source: string) => string[] {
   const split = escapedSplitProvider({
     separator,
-    brackets: '()',
+    brackets: PARENS,
   }).base;
   return (source) => split(source).filter(Boolean);
 }

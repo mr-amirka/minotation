@@ -1,3 +1,6 @@
+import {
+  escapedSplitProvider,
+} from 'fundamentool';
 import type {
   MnEssenceParams,
 } from '../../core/types';
@@ -314,31 +317,12 @@ function lowerItemStart(
  *
  * `cubic-bezier(0,0,1,1)` иначе распадается на четыре куска, и переход
  * бракуется на ровном месте.
- * @param v значение
- * @returns части по порядку
  * @example splitTopLevel('a(1,2),$b{3,4}') // ['a(1,2)', '$b{3,4}']
  */
-export function splitTopLevel(v: string): string[] {
-  const out: string[] = [];
-  const l = v.length;
-  let depth = 0;
-  let from = 0;
-  let i = 0;
-  let c: string;
-  for (; i < l; i++) {
-    c = v[i];
-    if (c === OPEN_PAREN || c === OPEN_BRACE) {
-      depth++;
-    } else if (c === CLOSE_PAREN || c === CLOSE_BRACE) {
-      depth--;
-    } else if (c === COMMA && !depth) {
-      out.push(v.slice(from, i));
-      from = i + 1;
-    }
-  }
-  out.push(v.slice(from));
-  return out;
-}
+export const splitTopLevel = escapedSplitProvider({
+  separator: COMMA,
+  brackets: OPEN_PAREN + CLOSE_PAREN + OPEN_BRACE + CLOSE_BRACE,
+}).base;
 /**
  * Бракует градиент, у которого стоп не является цветом.
  *

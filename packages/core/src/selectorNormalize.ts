@@ -63,7 +63,9 @@ const OPEN_BRACKET = '[';
 const DOUBLE_QUOTE = '"';
 
 /** Сплиттер по `!` с учётом экранирования (base-версия без unslash). */
-const splitReverse = escapedSplitProvider('!').base;
+const splitReverse = escapedSplitProvider({
+  separator: '!',
+}).base;
 
 /**
  * `.*текст` / `.^текст` / `.$текст` и то же с `#` (D-050): `[1]` — `.` или `#`, `[2]` —

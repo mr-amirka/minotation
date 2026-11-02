@@ -9,6 +9,9 @@
  * @module cli
  */
 import {
+  asError,
+} from 'fundamentool';
+import {
   main,
 } from './main';
 
@@ -20,6 +23,6 @@ const report = {
 try {
   process.exitCode = main(process.argv.slice(2), report);
 } catch (ex) {
-  report.error((ex as Error).message);
+  report.error(asError(ex).message);
   process.exitCode = 1;
 }

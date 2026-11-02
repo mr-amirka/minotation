@@ -77,6 +77,9 @@ import {
   cssVarValue,
 } from '../../core/mathValue';
 import {
+  colorVarValue,
+} from '../../core/colorValue';
+import {
   PATTERN_COLOR,
   REGEXP_DOTS,
   imagePathValue,
@@ -317,7 +320,7 @@ export function registerPaint(ctx: StandardContext): void {
     if (synonym) {
       return getColor(synonym);
     }
-    const raw = rawColorValue(part, p.name) || cssVarValue(part);
+    const raw = rawColorValue(part, p.name) || colorVarValue(part);
     if (raw) {
       return [raw];
     }

@@ -8,6 +8,9 @@
  * Подключается **вместо** `presetStandard` (D-043), запись классов — режим `'tw4-compatible'`.
  * Холодный путь: только регистрация, разбор значений — в хендлерах при первой встрече класса.
  */
+import {
+  escapedSplitProvider,
+} from 'fundamentool';
 import type {
   MnInstance,
   MnHandler,
@@ -77,6 +80,7 @@ const VAR_TW_BORDER_STYLE = 'var(--tw-border-style)';
 const OPEN_PAREN = '(';
 const VAR_OPEN = 'var(';
 const LIST_SEPARATOR = ', ';
+const COMMA = ',';
 const DEG = 'deg';
 const NORMAL = 'normal';
 const ROTATE = 'rotate';
@@ -1305,25 +1309,16 @@ const REGEXP_SHADOW_PART = /^(?:inset|-?[\d.]+[a-z%]*)$/;
 /** Произвольное значение похоже на цвет, а не на тень: `#f00`, `rgb(…)`, `var(--c)`, `red`. */
 const REGEXP_COLOR_LIKE = /^(?:#|rgb|hsl|oklch|oklab|lab|lch|color|var\()|^[a-z]+$/;
 
-/** Деление по разделителю вне скобок. */
-function splitTop(value: string, separator: string): string[] {
-  const out: string[] = [];
-  const l = value.length;
-  let depth = 0;
-  let from = 0;
-  let i = 0;
-  let ch: string;
-  for (; i < l; i++) {
-    ch = value[i];
-    depth += ch === OPEN_PAREN ? 1 : ch === CLOSE_PAREN ? -1 : 0;
-    if (ch === separator && !depth) {
-      out.push(value.slice(from, i));
-      from = i + 1;
-    }
-  }
-  out.push(value.slice(from));
-  return out;
-}
+/** Деление по запятой вне скобок — список теней. */
+const splitShadows = escapedSplitProvider({
+  separator: COMMA,
+  brackets: OPEN_PAREN + CLOSE_PAREN,
+}).base;
+/** Деление по пробелу вне скобок — токены одной тени. */
+const splitShadowTokens = escapedSplitProvider({
+  separator: SPACE,
+  brackets: OPEN_PAREN + CLOSE_PAREN,
+}).base;
 
 /** Номер токена-цвета в тени — последний, что не длина и не `inset`; нет — `-1`. */
 function colorIndex(tokens: string[]): number {
@@ -1341,8 +1336,8 @@ function colorIndex(tokens: string[]): number {
 function shadowParts(
   value: string, colorVar: string, alpha?: string,
 ): string[] {
-  return splitTop(value, ',').map((part) => {
-    const tokens = splitTop(part.trim(), SPACE).filter(Boolean);
+  return splitShadows(value).map((part) => {
+    const tokens = splitShadowTokens(part.trim()).filter(Boolean);
     const i = colorIndex(tokens);
     i < 0 || (tokens[i] = VAR_OPEN + colorVar + LIST_SEPARATOR + (alpha ? 'oklab(from ' + tokens[i] + ' l a b / ' + alpha + CLOSE_PAREN : tokens[i]) + CLOSE_PAREN);
     return tokens.join(SPACE);
@@ -1756,7 +1751,7 @@ function gradientHandler(kind: 'linear' | 'radial' | 'conic') {
     if (args.arbitrary !== undefined) {
       return args.parts.length || args.negative || args.modifier !== undefined ? undefined : result({
         '--tw-gradient-position': args.arbitrary,
-        backgroundImage: image + ',' + args.arbitrary + CLOSE_TWO_PARENS,
+        backgroundImage: image + COMMA + args.arbitrary + CLOSE_TWO_PARENS,
       });
     }
     if (kind === LINEAR) {

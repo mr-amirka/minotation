@@ -6,6 +6,9 @@
  * Холодный путь: файл читается один раз на каталог.
  */
 import {
+  asError,
+} from 'fundamentool';
+import {
   existsSync,
   readFileSync,
   statSync,
@@ -95,7 +98,7 @@ export function loadConfigFile(
   try {
     loaded = full.endsWith('.json') ? JSON.parse(readFileSync(full, 'utf8')) : freshRequire(full);
   } catch (ex) {
-    throw new Error('[minotation] Failed to read config "' + full + '": ' + (ex as Error).message, {
+    throw new Error('[minotation] Failed to read config "' + full + '": ' + asError(ex).message, {
       cause: ex,
     });
   }

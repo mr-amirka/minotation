@@ -10,6 +10,9 @@
  * @module scanner
  */
 import {
+  asError,
+} from 'fundamentool';
+import {
   scanTokens,
 } from './extractTokens';
 import type {
@@ -212,7 +215,7 @@ function loadSyntaxScan(options: ScannerOptions, required: boolean): SyntaxModul
         console.warn(message);
       });
       warn('[minotation] syntax: true, but the parser is unavailable ('
-        + (ex as Error).message + '). Files are scanned as text. '
+        + asError(ex).message + '). Files are scanned as text. '
         + 'Install typescript — it is an optional peer dependency.');
     }
     return undefined;

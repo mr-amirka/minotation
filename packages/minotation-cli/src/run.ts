@@ -7,6 +7,7 @@
  * @module run
  */
 import {
+  asError,
   createTimeout,
 } from 'fundamentool';
 import {
@@ -328,7 +329,7 @@ export function startWatch(settings: RunSettings, report: Reporter): () => void 
         try {
           build(settings, report);
         } catch (ex) {
-          report.error((ex as Error).message);
+          report.error(asError(ex).message);
         }
       }, 50);
     },

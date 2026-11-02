@@ -36,6 +36,7 @@ import {
   mediaCondition,
 } from './mediaCondition';
 import {
+  asError,
   eachApply,
   eachTry,
   forEach,
@@ -125,7 +126,6 @@ import {
   getEessenceSelectors,
   __compileProvider,
   spaceNormalize,
-  asError,
 } from './utils';
 import type {
   MnData,

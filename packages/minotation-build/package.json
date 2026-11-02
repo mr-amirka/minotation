@@ -15,6 +15,9 @@
     "test:coverage": "jest --coverage --config=./jest.config.js",
     "validate": "pnpm run lint && pnpm run test:coverage"
   },
+  "dependencies": {
+    "fundamentool": "workspace:*"
+  },
   "peerDependencies": {
     "minotation": "workspace:*"
   },

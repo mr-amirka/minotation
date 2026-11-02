@@ -7,8 +7,12 @@ import {
   push,
   reduceIn,
   repeat,
+  scopeSplit,
   unslash,
   variants,
+} from 'fundamentool';
+import type {
+  ScopeNode,
 } from 'fundamentool';
 import {
   assertMediaNames,
@@ -53,13 +57,12 @@ import {
   MN_NEGATIVE,
   REGEXP_BREAKPOINT_PREFIX,
   splitChild,
+  splitConditions,
+  splitDeclarations,
   splitParent,
+  splitPrefixes,
   splitState,
 } from './constants';
-import {
-  scopeSplit2,
-  type ScopeNode,
-} from './scopeSplit2';
 import {
   mediaFilterIteratee,
 } from './extractMedia';
@@ -245,33 +248,6 @@ function suffixesReduce(suffixes: StrMap<StrMap<number>>,
  * const result = scp.parseClass('w50');
  * // → [[{ w50: 1 }, { '.w50': [[0, undefined]] }]]
  */
-/**
- * Имя класса для селектора: `escapeCss` и то, что её запасная ветка (Node, где нет `CSS.escape`) не
- * экранирует, — `{`, `}` (скобки математики и групп), `&` (медиа `@sm&safari`: `&` вне вложенности —
- * селектор вложения) и цифра в начале (`2xl:p-4` → `.\32 xl\:p-4`; без этого селектор недействителен).
- * Уже экранированное не трогается: в браузере `escapeCss` — это `CSS.escape`, у неё `{` уже `\{`.
- *
- * Переходная: когда `escapeCss` станет `CSS.escape` по спецификации и в Node, здесь останется
- * `escapeCss(name)` — письмо «`escapeCss` gives different bytes in Node and in a browser» в
- * `LABARATORY/PROJECTS_CONTEXT/fundamentool/TASKS/main/INBOX.md`.
- */
-function escapeClass(name: string): string {
-  return escapeCss(name).replace(REGEXP_CLASS_ESCAPE, classEscapeReplacer);
-}
-/** Цифра в начале, готовая пара `\x` (пропускается) или символ, который экранируется. */
-const REGEXP_CLASS_ESCAPE = /^[0-9]|\\[\s\S]|[{}&]/g;
-/**
- * Замена для {@link REGEXP_CLASS_ESCAPE}.
- * @param match — найденное
- * @returns цифра — кодом (`2` → `\32 `), пара `\x` — как есть, остальное — с `\`
- */
-function classEscapeReplacer(match: string): string {
-  if (match[0] === BACKSLASH) {
-    return match;
-  }
-  return match >= '0' && match <= '9' ? BACKSLASH + '3' + match + SPACE : BACKSLASH + match;
-}
-
 /** Имя-заглушка эссенции при разборе селектора (D-071): контекст читается как у класса. */
 const SELECTOR_ESSENCE = 'x';
 
@@ -741,7 +717,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * @param comboName — одно слово из атрибута `class`
    */
   function parseClass(comboName: string): ReturnType<ParseComboNameFn> {
-    return parseComboName(comboName, DOT + escapeClass(comboName) + isolateSuffix());
+    return parseComboName(comboName, DOT + escapeCss(comboName) + isolateSuffix());
   }
 
   /**
@@ -939,7 +915,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   function parseVariantPrefixed(comboName: string,
     targetName: string): Array<[StrMap<number>, AltMap]> {
     // `:` внутри `[…]`/`(…)` — часть произвольного значения или варианта (D-055).
-    const prefixes = splitTopLevelColon(comboName);
+    const prefixes = splitPrefixes(comboName);
     const l = prefixes.length - 1;
     const states: string[] = [''];
     const medias: string[] = [];
@@ -1240,31 +1216,6 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     return mathSpaces(value.replace(REGEXP_ARBITRARY_SPACE, (match) => (match === UNDERSCORE ? SPACE : UNDERSCORE)));
   }
 
-  /** `:` вне `[…]`/`(…)` и не экранированный — разделитель приставок. */
-  function splitTopLevelColon(source: string): string[] {
-    const out: string[] = [];
-    const l = source.length;
-    let depth = 0;
-    let from = 0;
-    let i = 0;
-    let ch: string;
-    for (; i < l; i++) {
-      ch = source[i];
-      if (ch === BACKSLASH) {
-        i++;
-      } else if (ch === OPEN_BRACKET || ch === OPEN_PAREN) {
-        depth++;
-      } else if (ch === CLOSE_BRACKET || ch === CLOSE_PAREN) {
-        depth--;
-      } else if (ch === COLON && !depth) {
-        out.push(source.slice(from, i));
-        from = i + 1;
-      }
-    }
-    out.push(source.slice(from));
-    return out;
-  }
-
   /**
    * `{метка}-{синоним|медиа}[/имя]` → метка в цепочке (D-046, D-048). Метка — только
    * зарегистрированная в `mn.variantPrefixedSynonyms` (`group: '.group'`, `peer: '.peer~'`),
@@ -1391,7 +1342,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     if (comboName[0] === '{') {
       j = closeAt(comboName, 0);
       j < 0 && throwPropertyValue(comboName, 'the group "{" is not closed');
-      decls = splitTopLevel(comboName.slice(1, j), ';');
+      decls = splitDeclarations(comboName.slice(1, j));
       i = j + 1;
     } else {
       i = declarationEnd(comboName, 0);
@@ -1562,24 +1513,6 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     return -1;
   }
 
-  function splitTopLevel(source: string, separator: string): string[] {
-    const out: string[] = [];
-    const l = source.length;
-    let depth = 0;
-    let from = 0;
-    let i = 0;
-    for (; i < l; i++) {
-      source[i] === OPEN_PAREN && depth++;
-      source[i] === CLOSE_PAREN && depth--;
-      if (!depth && source[i] === separator) {
-        out.push(source.slice(from, i));
-        from = i + 1;
-      }
-    }
-    out.push(source.slice(from));
-    return out.filter(Boolean);
-  }
-
   /**
    * Состояние Master CSS: `:hover` — как есть, `::before`/`:before`/`:after` — псевдоэлемент,
    * `:first`, `:last`, `:odd`, `:even`, `:nth(N)` — сокращения оригинала; зарегистрированный
@@ -1607,7 +1540,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    */
   function masterMedia(expression: string, comboName: string): string {
     const media: StrMap<{ query?: string }> = (instance as any).media || {};
-    return splitTopLevel(expression, AMPERSAND).map((atom) => {
+    return splitConditions(expression).map((atom) => {
       const matchs = REGEXP_MASTER_MEDIA_COMPARE.exec(atom);
       const isNumber = !!matchs && /^[0-9.]+$/.test(matchs[2]);
       let width: number;
@@ -1679,7 +1612,6 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       utility: 'tw4-compatible',
     });
   }
-
 
   /**
    * Фаза разбора `'context-qualified'` (D-047): строка контекста (`:h@md<.group>1`) →
@@ -1868,22 +1800,40 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
 
   /** `':h:f[2n]'` → дерево {@link MnStateNode}: `[`/`]` — вложенность, `:` — состояния. */
   function parseStates(value: string): MnStateNode[] {
-    return toStateNodes(scopeSplit2(
+    return toStateNodes(scopeSplit(
       value, SCOPE_START, SCOPE_END,
     ));
   }
 
+  /**
+   * Дерево `scopeSplit` (текст и скобки подряд: `['h', ['f'], 'a']`) → узлы «текст и скобка сразу после него»:
+   * `[[['h'], [[['f'], undefined]]], [['a'], undefined]]`. Скобка без текста перед ней — узел с пустым текстом.
+   */
   function toStateNodes(scopes: ScopeNode[]): MnStateNode[] {
     const l = scopes.length;
     const out: MnStateNode[] = [];
     let i = 0;
     let scope: ScopeNode;
+    let next: ScopeNode | undefined;
     for (; i < l; i++) {
       scope = scopes[i];
-      out.push([
-        splitState(scope[0]),
-        scope[1] && toStateNodes(scope[1]),
-      ]);
+      if (typeof scope === 'string') {
+        next = scopes[i + 1];
+        if (typeof next === 'object') {
+          i++;
+        } else {
+          next = undefined;
+        }
+        out.push([
+          splitState(scope),
+          next && toStateNodes(next),
+        ]);
+      } else {
+        out.push([
+          splitState(''),
+          toStateNodes(scope),
+        ]);
+      }
     }
     return out;
   }
@@ -1992,16 +1942,15 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   /**
    * Разбирает `:state`-часть суффикса (после первого `:` в {@link parseSegment}) в AltMap.
    *
-   * `value` сначала делится на вложенные scope через `scopeSplit2(value, SCOPE_START, SCOPE_END)`
-   * (границы `[`/`]`; локальный порт `mn-utils/scopeSplit2` из v1 — `fundamentool.scopeSplit`
-   * возвращает другую, несовместимую форму, см. `scopeSplit2.ts`), затем на каждом уровне
+   * `value` сначала делится на вложенные scope через `scopeSplit(value, SCOPE_START, SCOPE_END)`
+   * (границы `[`/`]`, {@link toStateNodes} связывает текст со скобкой после него), затем на каждом уровне
    * текст сегмента — на `:`-разделённые токены ({@link StrMap} `splitState`). Первый токен
    * уровня — литеральный префикс (не ищется как состояние), остальные разрешаются по приоритету:
    * 1. `mn.synonyms(...)`-регистрация (`$$synonyms[state]`) — раскрывается в её AltMap;
    * 2. именованная группа состояний из `instance.states` (`$$states[state]`, публичный,
    *    но ничем в этом пакете не заполняется — точка расширения для потребителя);
    * 3. иначе — как обычный CSS-псевдокласс, литерально `:state`.
-   * Вложенный scope (потомок в дереве `scopeSplit2`) оборачивается в `(...)` на верхнем
+   * Вложенный scope (потомок в дереве состояний) оборачивается в `(...)` на верхнем
    * уровне и в `[...]` глубже — механика унаследована из v1.
    *
    * @param value — `:state`-суффикс (например `:hover`, `:(hover|focus)`)

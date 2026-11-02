@@ -607,15 +607,16 @@ export function newVariables(expr: string): string {
 
 /**
  * Значение целиком — переменная: `$mono` → `var(--mono)`, `$$safe-area-inset-top` → `env(safe-area-inset-top)`,
- * запасной вариант в скобках как есть: `$mono{serif}` → `var(--mono, serif)`, `$a{$b}` → `var(--a, var(--b))`.
- * Для хендлеров, чьё значение не длина (`ff`, `tn`, цвета); длину читает {@link mathValue}.
+ * запасной вариант в скобках — как есть или через `fallback`: `$mono{serif}` → `var(--mono, serif)`, `$a{$b}` →
+ * `var(--a, var(--b))`. Для хендлеров, чьё значение не длина (`ff`, `tn`, цвета); длину читает {@link mathValue}.
  *
  * @param s — часть значения
+ * @param fallback — читатель запасного варианта, который не переменная (цвет: `F00` → `#f00`); без него — как есть
  * @returns CSS, или `undefined`, если часть — не переменная целиком
  * @throws {MnParseError} прежняя запись (`--mono`)
  * @example cssVarValue('$mono{serif}') // 'var(--mono, serif)'
  */
-export function cssVarValue(s: string): string | undefined {
+export function cssVarValue(s: string, fallback?: (raw: string) => string): string | undefined {
   if (s[0] !== DOLLAR) {
     s[0] === DASH && s[1] === DASH && throwOldVariable(s);
     return;
@@ -636,5 +637,6 @@ export function cssVarValue(s: string): string | undefined {
     return;
   }
   const raw = s.slice(pos + 1, -1);
-  return (env ? ENV_OPEN : VAR_OPEN) + name + ARG_SEPARATOR + (cssVarValue(raw) || raw) + CLOSE_PAREN;
+  return (env ? ENV_OPEN : VAR_OPEN) + name + ARG_SEPARATOR + (cssVarValue(raw, fallback) || (fallback ? fallback(raw) : raw))
+    + CLOSE_PAREN;
 }

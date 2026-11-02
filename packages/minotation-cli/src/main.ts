@@ -7,6 +7,9 @@
  * @module main
  */
 import {
+  asError,
+} from 'fundamentool';
+import {
   readFileSync,
 } from 'node:fs';
 import {
@@ -45,7 +48,7 @@ export function main(argv: string[], report: Reporter): number {
   try {
     args = parseArgs(argv);
   } catch (ex) {
-    report.error((ex as Error).message);
+    report.error(asError(ex).message);
     report.error('');
     report.error(HELP);
     return 1;

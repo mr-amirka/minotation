@@ -40,7 +40,29 @@ const REGEXP_STOP = /^p([0-9]+)([a-z%]*)/i;
 const REGEXP_UNDERSCORES = /_+/;
 
 /**
- * Цвет: переменная целиком (`$ink` → `var(--ink)`, `$ink{F00}` → `var(--ink, F00)`) или код
+ * Переменная-цвет целиком: `$ink` → `var(--ink)`, запасной вариант — цвет: `$ink{F00}` → `var(--ink, #f00)`,
+ * `$a{$b{F00.5}}` → `var(--a, var(--b, rgba(255,0,0,.5)))`.
+ *
+ * @param v — цвет, как записан в токене
+ * @returns CSS, или `undefined`, если это не переменная целиком
+ * @throws {MnParseError} прежняя запись переменной (`--ink`)
+ * @example colorVarValue('$ink{F00}') // 'var(--ink, #f00)'
+ */
+export function colorVarValue(v: string): string | undefined {
+  return cssVarValue(v, colorFallback);
+}
+
+/**
+ * Запасной вариант переменной-цвета: код — как цвет (`F00` → `#f00`), слово — как есть.
+ * @param raw — запасной вариант, как записан
+ * @returns CSS цвета
+ */
+function colorFallback(raw: string): string {
+  return color(raw)[0];
+}
+
+/**
+ * Цвет: переменная целиком (`$ink` → `var(--ink)`, `$ink{F00}` → `var(--ink, #f00)`) или код
  * (`F00` → `#f00`; с альфой и `alt` — запасной `#rgb` и `rgba()`).
  *
  * @param v — цвет, как записан в токене
@@ -50,7 +72,7 @@ const REGEXP_UNDERSCORES = /_+/;
  * @example colorValue('$ink') // ['var(--ink)']
  */
 export function colorValue(v: string, alt?: boolean): string[] {
-  const css = cssVarValue(v);
+  const css = colorVarValue(v);
   return css ? [css] : color(v, alt);
 }
 

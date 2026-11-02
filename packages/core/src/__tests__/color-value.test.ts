@@ -4,8 +4,12 @@
  */
 import {
   colorValue,
+  colorVarValue,
   gradientValue,
 } from '../core/colorValue';
+import {
+  cssVarValue,
+} from '../core/mathValue';
 import {
   MnParseError,
 } from '../core/types';
@@ -32,7 +36,7 @@ describe('colorValue', () => {
     ],
     [
       '$ink{F00}',
-      ['var(--ink, F00)'],
+      ['var(--ink, #f00)'],
     ],
     [
       '$$titlebar-area-color',
@@ -131,7 +135,7 @@ describe('gradientValue', () => {
     ],
     [
       '$a{F00}-$b{$c}',
-      'linear-gradient(180deg,var(--a, F00) 0%,var(--b, var(--c)) 100%)',
+      'linear-gradient(180deg,var(--a, #f00) 0%,var(--b, var(--c)) 100%)',
     ],
     [
       '$a$b_g90',
@@ -176,5 +180,48 @@ describe('gradientValue', () => {
   ])('the old spelling %s is renamed', (v) => {
     expect(() => gradientValue(v)).toThrow(MnParseError);
     expect(() => gradientValue(v)).toThrow('" was renamed: write "');
+  });
+});
+
+describe('colorVarValue', () => {
+  it.each([
+    [
+      '$ink',
+      'var(--ink)',
+    ],
+    [
+      '$ink{F00}',
+      'var(--ink, #f00)',
+    ],
+    [
+      '$a{$b{F00.5}}',
+      'var(--a, var(--b, rgba(255,0,0,.5)))',
+    ],
+    [
+      '$ink{red}',
+      'var(--ink, red)',
+    ],
+    [
+      '$$safe{0}',
+      'env(safe, #000)',
+    ],
+  ])('%s → %s: the fallback is read as a color', (v, expected) => {
+    expect(colorVarValue(v)).toBe(expected);
+  });
+
+  it('a code is not a variable', () => {
+    expect(colorVarValue('F00')).toBeUndefined();
+  });
+});
+
+describe('cssVarValue — the fallback reader', () => {
+  it('without a reader the fallback stays as written', () => {
+    expect(cssVarValue('$a{F00}')).toBe('var(--a, F00)');
+  });
+
+  it('the reader gets only what is not a variable, at any depth', () => {
+    const seen: string[] = [];
+    expect(cssVarValue('$a{$b{x}}', (raw) => (seen.push(raw), raw.toUpperCase()))).toBe('var(--a, var(--b, X))');
+    expect(seen).toEqual(['x']);
   });
 });

@@ -777,3 +777,15 @@ describe('цвет: переменная с альфой; функции бра�
     expect(css('cRed')).toBe('');
   });
 });
+
+describe('цвет: запасной вариант переменной читается как цвет', () => {
+  test.each([
+    ['c$a{F00}', 'color:var(--a, #f00)'],
+    ['bc$a{F00.5}', 'border-color:var(--a, rgba(255,0,0,.5))'],
+    ['bg$a{$b{0F0}}', 'background:var(--a, var(--b, #0f0))'],
+    ['bg$a{F00}-$b{00F}', 'background:linear-gradient(180deg,var(--a, #f00) 0%,var(--b, #00f) 100%)'],
+    ['c$a{red}', 'color:var(--a, red)'],
+  ])('%s → %s', (token, expected) => {
+    expect(css(token)).toContain(expected);
+  });
+});

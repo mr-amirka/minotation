@@ -11,7 +11,7 @@
  */
 
 import {
-  asError, normalizeSelectors, normalizeComboNames, observableProvider, REGEXP_INVALID_CSS_VALUE,
+  normalizeSelectors, normalizeComboNames, observableProvider, REGEXP_INVALID_CSS_VALUE,
 } from '../core/utils';
 
 describe('normalizeSelectors', () => {
@@ -88,35 +88,6 @@ describe('observableProvider', () => {
   });
 });
 
-/**
- * Приведение перехваченного к `Error`. Нужно потому, что `catch` даёт
- * `unknown`: бросить в JS можно что угодно, и до строгого режима в `error$`
- * могла уехать строка или объект без `message` — подписчик получал бы
- * `undefined` вместо текста ошибки.
- */
-describe('asError', () => {
-  test('настоящая ошибка возвращается как есть — без потери стека', () => {
-    const original = new TypeError('сломалось');
-    expect(asError(original)).toBe(original);
-  });
-
-  test('строка становится сообщением', () => {
-    const error = asError('просто строка');
-    expect(error).toBeInstanceOf(Error);
-    expect(error.message).toBe('просто строка');
-  });
-
-  test.each([
-    [42, '42'],
-    [null, 'null'],
-    [undefined, 'undefined'],
-    [{
-      a: 1,
-    }, '[object Object]'],
-  ])('%p описывается как %p', (value, expected) => {
-    expect(asError(value).message).toBe(expected);
-  });
-});
 
 describe('REGEXP_INVALID_CSS_VALUE — эвристика битого значения', () => {
   test.each([

@@ -1,10 +1,9 @@
 /**
  * Разделители и регэкспы грамматики MN-комбо-имён (общие для всего `selectorsCompileProvider/`).
  *
- * `escapedSplitProvider(sep, escaped?)` — фабрика сплиттера, уважающего экранирование:
- * фрагменты, подходящие под `escaped`, не считаются разделителем и возвращаются как есть
- * (после `unslash`). `escapedHalfProvider` — аналогично, но делит строку только на
- * `[prefix, suffix, value]` по ПЕРВОМУ вхождению разделителя.
+ * Сплиттеры — `escapedSplitProvider({ separator, escape?, brackets? })` из fundamentool: экранированное (`escape`,
+ * по умолчанию `\\` и символ после) не разделитель, внутри `brackets` — тоже. `escapedHalfProvider` с теми же
+ * опциями делит строку на `[prefix, suffix, value]` по ПЕРВОМУ разделителю.
  *
  * @module constants
  */
@@ -13,52 +12,64 @@ import {
   escapedSplitProvider,
 } from 'fundamentool';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const escSplit = escapedSplitProvider as any;
+/**
+ * Скобки, внутри которых разделитель — часть значения: `:has[>a]` — не дочерний сегмент записи, а аргумент
+ * псевдокласса.
+ */
+const SELECTOR_BRACKETS = '[]()';
 
 /**
- * Разделитель вне `[…]`/`(…)` и не экранированный — части с экранированием как есть, как у
- * `escapedSplitProvider(…).base`. Внутри скобок разделитель — часть значения: `:has[>a]` — не
- * дочерний сегмент записи, а аргумент псевдокласса (до 2026-10-14 давал `:has() a]`).
+ * Сплиттер по разделителю вне `[…]`/`(…)` и не экранированному — части с экранированием как есть.
+ * @param separator — разделитель
+ * @returns части по порядку
  */
 function topLevelSplit(separator: string): (source: string) => string[] {
-  return (source: string) => {
-    const out: string[] = [];
-    const l = source.length;
-    let from = 0;
-    let depth = 0;
-    let i = 0;
-    let ch: string;
-    for (; i < l; i++) {
-      ch = source[i];
-      if (ch === '\\') {
-        i++;
-      } else if (ch === '[' || ch === '(') {
-        depth++;
-      } else if (ch === ']' || ch === ')') {
-        depth--;
-      } else if (ch === separator && !depth) {
-        out.push(source.slice(from, i));
-        from = i + 1;
-      }
-    }
-    out.push(source.slice(from));
-    return out;
-  };
+  return escapedSplitProvider({
+    separator,
+    brackets: SELECTOR_BRACKETS,
+  }).base;
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const escHalf = escapedHalfProvider as any;
+
+/**
+ * Сплиттер по разделителю (не экранированному) — части с экранированием как есть.
+ * @param separator — разделитель
+ * @returns части по порядку
+ */
+function escSplit(separator: string): (source: string) => string[] {
+  return escapedSplitProvider({
+    separator,
+  }).base;
+}
+
+/**
+ * Сплиттер по разделителю вне `(…)` и не экранированному — части с экранированием как есть, пустые отброшены.
+ * @param separator — разделитель
+ * @returns непустые части по порядку
+ */
+function parenSplit(separator: string): (source: string) => string[] {
+  const split = escapedSplitProvider({
+    separator,
+    brackets: '()',
+  }).base;
+  return (source) => split(source).filter(Boolean);
+}
 
 /** Разделяет по `<` — родительский комбинатор (`Child<Parent` → `['Child', 'Parent']`). */
 export const splitParent = topLevelSplit('<');
 /** Разделяет по `>` — комбинатор прямого потомка. */
 export const splitChild = topLevelSplit('>');
+/** Разделяет по `:` вне скобок — приставки вариантов (`hover:[&>a]:p-4`). */
+export const splitPrefixes = topLevelSplit(':');
 /** Разделяет по `@` — медиа-суффикс (`sel@mobile` → `['sel', 'mobile']`). */
-export const splitMedia = escSplit('@').base;
+export const splitMedia = escSplit('@');
 /** Разделяет по `:` — состояния/псевдоклассы (`w50:hover` → `['w50', 'hover']`). */
-export const splitState = escSplit(':').base;
+export const splitState = escSplit(':');
 /** Разделяет по `,` — списки альтернатив (`sm,md` → `['sm', 'md']`). */
-export const splitComma = escSplit(',').base;
+export const splitComma = escSplit(',');
+/** Разделяет по `;` вне `(…)` — объявления группы (`{color:red;margin:calc(1px;2px)}`). */
+export const splitDeclarations = parenSplit(';');
+/** Разделяет по `&` вне `(…)` — условия медиа Master CSS (`@sm&(orientation:landscape)`). */
+export const splitConditions = parenSplit('&');
 /**
  * Что НЕ считается границей селектора, хотя выглядит как разделитель:
  *
@@ -110,14 +121,20 @@ export const REGEXP_SELECTOR_EXCEPTIONS
  * при конвертации v1 `.js`→`.ts` из `[<>:\.\[\]#+~]`, из-за которого класс почти никогда
  * не матчился; найден и исправлен 2026-08-10).
  */
-export const splitSelector = escSplit(/[<>:.[\]#+~]/, REGEXP_SELECTOR_EXCEPTIONS).base;
+export const splitSelector = escapedSplitProvider({
+  separator: /[<>:.[\]#+~]/,
+  escape: REGEXP_SELECTOR_EXCEPTIONS,
+}).base;
 /**
  * Делит имя на `[префикс, суффикс-с-разделителем, значение]` по ПЕРВОМУ вхождению
  * `< > :. [ ] # + ~ @ !`. Те же исключения на экранирование/десятичные значения, что
  * у {@link splitSelector}. Используется для отделения имени эссенции от хвоста селектора.
  * Та же экранировка `]`, что у {@link splitSelector} — см. её комментарий про баг миграции.
  */
-export const extractSuffix = escHalf(/[<>:.[\]#+~@!]/, REGEXP_SELECTOR_EXCEPTIONS).base;
+export const extractSuffix = escapedHalfProvider({
+  separator: /[<>:.[\]#+~@!]/,
+  escape: REGEXP_SELECTOR_EXCEPTIONS,
+}).base;
 
 /** Ведущие цифры = глубина вложенности комбинатора, остаток — имя (`'2Parent'` → `['2Parent', '2', 'Parent']`). */
 export const REGEXP_DEPTH = /^(\d+)(.*)$/;
@@ -135,9 +152,9 @@ export const REGEXP_OLD_MULTIPLIER = /^(.*[^*])\*([0-9]+)$/;
 export const REGEXP_PRODUCT_TAIL = /(?:\$[A-Za-z0-9_\u0080-\uFFFF-]+;?|\})\*[0-9]+$/;
 /** Имя состояния/scope + произвольный суффикс после него (используется в `getSynonyms`). */
 export const REGEXP_SCOPE_SUFFIX = /^([A-Za-z0-9-_$]+)(.*)$/;
-/** Открывающая граница вложенного scope в значении синонима, см. `scopeSplit2` в `getSynonyms`. */
+/** Открывающая граница вложенного scope в значении синонима, см. `parseStates` и `getSynonyms`. */
 export const SCOPE_START = '[';
-/** Закрывающая граница вложенного scope в значении синонима, см. `scopeSplit2` в `getSynonyms`. */
+/** Закрывающая граница вложенного scope в значении синонима, см. `parseStates` и `getSynonyms`. */
 export const SCOPE_END = ']';
 /** Брейкпоинт quantum-css перед утилитой: `SM_bgc-dg` → `[1]` `SM`, `[2]` `bgc-dg` (D-045 этап 4). */
 export const REGEXP_BREAKPOINT_PREFIX = /^([A-Z][A-Z0-9]*)_(.+)$/;

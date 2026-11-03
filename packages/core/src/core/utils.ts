@@ -263,6 +263,30 @@ export const REGEXP_MATCH_VAR = /^\$([^=$]+)=(.*)$/;
 /** Прежнее объявление `--v=10px`: CSS нет, сообщение с новой записью — один выпуск. */
 export const REGEXP_OLD_MATCH_VAR = /^--[^=]+=/;
 export const REGEXP_MATCH_NAME = /^([a-z]+)(.*)$/;
+
+/**
+ * Похоже ли имя на MN-токен, то есть стоит ли вообще придираться к его
+ * записи: к структуре скобок и сепараторов и к готовому селектору.
+ *
+ * Критерий: имя начинается со строчной буквы, и этот префикс зарегистрирован
+ * как тег. Чужие классы в разметке сплошь и рядом начинаются с букв
+ * (`sr-only`, `my-widget`) или вовсе не являются классами (`...` из образца
+ * в комментарии), и придираться к ним не за что — автор их писал не в нотации.
+ *
+ * До 2026-09-26 порядок был обратный: структура проверялась раньше, чем
+ * выяснялось, есть ли у имени тег. `sr-only` давало `Parameter is invalid`
+ * (тег `s` существует, а `-only` не разбирается), `...` — «висячий
+ * сепаратор», и со `strict: true` любой из них ронял сборку. Решение
+ * владельца: падать не должно (трек `scanner-robustness`, задача 1; уточняет
+ * D-014, где такую границу оставляли как есть).
+ *
+ * Настоящие ошибки в токенах это не затрагивает: у `w50@`, `p10:`, `cF00.`
+ * тег зарегистрирован, предупреждение остаётся.
+ */
+export function looksLikeToken(comboName: string, domains: Record<string, unknown>): boolean {
+  const matched = REGEXP_MATCH_NAME.exec(comboName);
+  return !!matched && !!domains[matched[1]];
+}
 export const REGEXP_MATCH_IMPORTANT = /^(.*)(-i)$/;
 /**
  * CSS-wide keywords буквами (D-125) — одна запись во всех хендлерах: `bgiINH` → `background-image:inherit`.
@@ -584,6 +608,10 @@ function groupSuspectMessage(
 export function assertVariantGroups(
   value: string, utility: string, valueOnly?: number,
 ): void {
+  // Всё, о чём сообщает проверка, — про скобки; без них проходить запись незачем (у большинства токенов их нет).
+  if (value.indexOf(OPEN_PAREN) < 0 && value.indexOf(CLOSE_PAREN) < 0) {
+    return;
+  }
   const l = value.length;
   let i = 0;
   // Стеки по глубине вложенности: была ли `|` на этом уровне и есть ли

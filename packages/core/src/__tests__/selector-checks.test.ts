@@ -1,62 +1,69 @@
 // @ts-nocheck
 /* eslint-disable */
 /**
- * Тесты isInvalidSelector — валидация CSS-селекторов.
+ * Проверки записи токена: готовый селектор (`selectorProblem`) и скобки вариантов (`assertVariantGroups`).
  */
 
-const { isInvalidSelector } = require('../isInvalidSelector');
+const { selectorProblem, assertTokenSelectors } = require('../selectorProblem');
 const { minotationProvider } = require('../core/index');
+const { MnParseError } = require('../core/types');
 const presetStandard = require('../presets/standard').default;
 
-describe('isInvalidSelector', () => {  describe('валидные селекторы', () => {
-    test('.myClass', () => {
-      expect(isInvalidSelector('.myClass')).toBe(false);
-    });
-
-    test('.camelCase', () => {
-      expect(isInvalidSelector('.camelCase')).toBe(false);
-    });
-
-    test('.my-class', () => {
-      expect(isInvalidSelector('.my-class')).toBe(false);
-    });
-
-    test('.my_class', () => {
-      expect(isInvalidSelector('.my_class')).toBe(false);
-    });
-
-    test('.my\\+class (экранированный +)', () => {
-      // \\+ — экранированный плюс, удаляется перед проверкой
-      expect(isInvalidSelector('.my\\+class')).toBe(false);
-    });
+describe('selectorProblem', () => {
+  test.each([
+    ['.myClass'],
+    ['.camelCase'],
+    ['.my-class'],
+    ['.my_class'],
+    ['.my\\+class'],
+    [''],
+    ['.'],
+    ['."invalid[chars]"'],
+    [".\"invalid'chars\""],
+    ['.a:not(.b,.c)'],
+    ['.a:is(.b,:not(.c,.d))'],
+    ['.a\\,b'],
+    ['.a[title="a,b"]'],
+  ])('%s — в порядке', (selector) => {
+    expect(selectorProblem(selector)).toBe('');
   });
 
-  describe('невалидные селекторы', () => {
-    test('.[myClass] — квадратные скобки сразу после точки', () => {
-      expect(isInvalidSelector('.[myClass]')).toBe(true);
-    });
-
-    test('.#myId — хэш сразу после точки', () => {
-      expect(isInvalidSelector('.#myId')).toBe(true);
-    });
-
-    test('.0leading — цифра сразу после точки', () => {
-      expect(isInvalidSelector('.0leading')).toBe(true);
-    });
-
-    test('пустая строка', () => {
-      expect(isInvalidSelector('')).toBe(false);
-    });
+  test.each([
+    ['.[myClass]', '['],
+    ['.#myId', '#'],
+    ['.0leading', '0'],
+    ['.p10\\>\\.0a .0a', '0'],
+    ['. a', ' '],
+    ['."a', '"'],
+    ['.`a', '`'],
+  ])('%s — после точки «%s»', (selector, next) => {
+    expect(selectorProblem(selector)).toBe('Selector "' + selector + '" has "." followed by "' + next
+      + '": a class name can\'t start with it');
   });
 
-  describe('закавыченные строки игнорируются', () => {
-    test('"invalid[chars]" внутри кавычек', () => {
-      expect(isInvalidSelector('."invalid[chars]"')).toBe(false);
-    });
+  test.each([
+    ['.cF00\\#a\\,b#a,b', 'запятая снаружи'],
+    ['.a(b,c', 'скобка не закрыта'],
+    ['.a(b(c,d', 'не закрыта вложенная'],
+    ['.a(b,(c)', 'вложенная закрыта, внешняя нет'],
+    ['.a)b,c', 'лишняя закрывающая не открывает уровень'],
+    ['.a\\(b,c\\)d', 'экранированные скобки — не скобки'],
+  ])('%s — голая запятая (%s)', (selector) => {
+    expect(selectorProblem(selector)).toBe('Selector "' + selector + '" has a bare ",": it would start a second'
+      + ' selector and style other elements. Escape it — "\\," — if it belongs to the value; in :not, :is, :where'
+      + ' write the list in square brackets: ":not[.a,.b]"');
+  });
 
-    test("\"invalid'chars\" с одинарными внутри двойных", () => {
-      expect(isInvalidSelector(".\"invalid'chars\"")).toBe(false);
-    });
+  test('assertTokenSelectors — первый битый селектор: MnParseError с токеном', () => {
+    expect(() => assertTokenSelectors([[{}, { '.a': 1 }]], 'a')).not.toThrow();
+    let error;
+    try {
+      assertTokenSelectors([[{}, { '.a': 1, '.b,c': 1 }]], 'tok');
+    } catch (ex) {
+      error = ex;
+    }
+    expect(error).toBeInstanceOf(MnParseError);
+    expect(error.context).toEqual({ token: 'tok', handler: '', arg: 'tok', utility: 'selectors' });
   });
 });
 
@@ -67,8 +74,10 @@ describe('isInvalidSelector', () => {  describe('валидные селекто
 describe('битые селекторы из токенов', () => {
   function compile(token: string) {
     const errors: unknown[] = [];
+    const warnings: { type: string; token: string; message: string }[] = [];
     const mn = minotationProvider({
       warningMode: 'silent',
+      onWarning: (w) => warnings.push(w),
     });
     mn.error$.watch((e: unknown) => errors.push(e));
     mn.setPresets([presetStandard]);
@@ -77,6 +86,7 @@ describe('битые селекторы из токенов', () => {
     return {
       css: mn.styles$.getState().map((s) => s.content).join(''),
       errors,
+      warnings,
     };
   }
 
@@ -84,14 +94,37 @@ describe('битые селекторы из токенов', () => {
     ['cF00#a,b', 'запятая в id-условии'],
     ['cF00[a,b]', 'запятая в атрибутном условии'],
     ['p10<.a,.b', 'запятая в родительском селекторе'],
-  ])('%s (%s) — правило не выпускается', (token) => {
+  ])('%s (%s) — правило не выпускается, предупреждение с токеном', (token) => {
     // Запятая в CSS — разделитель списка, поэтому такое правило цепляет совсем
     // не то: `.cF00\#a\,b#a,b` читается как «… ИЛИ b» и красит каждый <b>.
     const {
-      css, errors,
+      css, errors, warnings,
     } = compile(token);
     expect(css).toBe('');
-    expect(errors.length).toBeGreaterThan(0);
+    expect(errors).toEqual([]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].type).toBe('parse-error');
+    expect(warnings[0].token).toBe(token);
+    expect(warnings[0].message).toContain('has a bare ","');
+  });
+
+  test('после точки — не имя класса: предупреждение с токеном', () => {
+    const {
+      css, errors, warnings,
+    } = compile('p10.#a');
+    expect(css).toBe('');
+    expect(errors).toEqual([]);
+    expect(warnings.map((w) => [w.type, w.token])).toEqual([['parse-error', 'p10.#a']]);
+    expect(warnings[0].message).toContain('has "." followed by "#"');
+  });
+
+  test('strict: битый селектор — ошибка сборки', () => {
+    const mn = minotationProvider({
+      warningMode: 'error',
+    });
+    mn.setPresets([presetStandard]);
+    mn.getCompiler('class')('cF00#a,b');
+    expect(() => mn.compile()).toThrow('has a bare ","');
   });
 
   test.each([

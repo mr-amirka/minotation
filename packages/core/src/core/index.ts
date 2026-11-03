@@ -77,8 +77,8 @@ import type {
   ParseComboNameFn,
 } from '../selectorsCompileProvider';
 import {
-  isInvalidSelector,
-} from '../isInvalidSelector';
+  assertTokenSelectors,
+} from '../selectorProblem';
 import {
   bareMathMessage,
   suspectClassMessage,
@@ -132,6 +132,7 @@ import {
   getEessenceSelectors,
   __compileProvider,
   spaceNormalize,
+  looksLikeToken,
 } from './utils';
 import type {
   MnData,
@@ -1195,7 +1196,11 @@ function minotationProvider(options?: MnOptions) {
         // аллоцировался бы на каждый разбор. Приведение нужно только для
         // `apply`, которому при строгом режиме нужен массив.
         // eslint-disable-next-line
-        return parseComboNameFn.apply(this, arguments as unknown as any[]);
+        const items = parseComboNameFn.apply(this, arguments as unknown as any[]);
+        // Готовые селекторы — тут же, внутри разбора: битый селектор — ошибка разбора токена, как остальные.
+        // Чужие классы (`...`, `x,y`) CSS не дают и молчат (D-065) — та же граница, что у проверок структуры.
+        looksLikeToken(arguments[0], $$domains) && assertTokenSelectors(items, arguments[0]);
+        return items;
       } catch (ex) {
         if (ex instanceof MnParseError) {
           // Запрещённый токен уже учтён для MnForbiddenTokenError (D-039).
@@ -1214,17 +1219,6 @@ function minotationProvider(options?: MnOptions) {
       }
       return [];
     };
-  }
-
-  function selectorsValidateFilter<T>(selectorsMap: Record<string, T>): Record<string, T> {
-    let selector: string;
-    const output: Record<string, T> = {};
-    for (selector in selectorsMap) { // eslint-disable-line
-      isInvalidSelector(selector)
-        ? emitError(new Error('Invalid selector: "' + selector + DOUBLE_QUOTE))
-        : (output[selector] = selectorsMap[selector]);
-    }
-    return output;
   }
 
   /**
@@ -1723,7 +1717,7 @@ function minotationProvider(options?: MnOptions) {
         ) {
           item = items[i];
           essencesNames = item[0];
-          selectorsMedias = selectorsValidateFilter(item[1]);
+          selectorsMedias = item[1];
           for (childSelector in selectorsMedias) { // eslint-disable-line
             // Медиа токена и медиа селектора (D-071) — вместе, через `&`; иначе — по умолчанию.
             mediaName = joinMedia(selectorsMedias[childSelector], selectorMedia) || defaultMediaName;
@@ -2324,7 +2318,7 @@ function minotationProvider(options?: MnOptions) {
     let mediaName: string;
     let selectors: Record<string, number>;
     const essences = item[0];
-    const selectorsMedias = selectorsValidateFilter(item[1]);
+    const selectorsMedias = item[1];
     for (selector in selectorsMedias) { // eslint-disable-line
       mediaName = selectorsMedias[selector];
       selectors = {};

@@ -26,9 +26,6 @@ import {
   selectorNormalize as selectorNormalizeImpl,
 } from './selectorNormalize';
 import {
-  isInvalidSelector as isInvalidSelectorImpl,
-} from './isInvalidSelector';
-import {
   extractTokens as extractTokensImpl,
   extractClassVarTokens as extractClassVarTokensImpl,
   extractMergeCallTokens as extractMergeCallTokensImpl,
@@ -112,7 +109,6 @@ export const extractMedia = extractMediaImpl;
 export const getCombinatorByDepth = getCombinatorByDepthImpl;
 export const getCombinator = getCombinatorImpl;
 export const selectorNormalize = selectorNormalizeImpl;
-export const isInvalidSelector = isInvalidSelectorImpl;
 export const extractTokens = extractTokensImpl;
 
 /**

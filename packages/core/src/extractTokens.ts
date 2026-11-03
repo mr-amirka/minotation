@@ -1,3 +1,19 @@
+import {
+  MN_GROUP_ATTR,
+  MN_GROUP_FNS,
+  MN_GROUP_TARGET,
+  MN_GROUP_VARS,
+  MN_PLAN_COMMENTS,
+  MN_PLAN_GROUPS,
+  MN_PLAN_MARKER_TARGET,
+  cachedScanPlanOf,
+} from './scanPlan';
+import type {
+  ScanGroup,
+  ScanPlan,
+  ScannedTokens,
+} from './scanPlan';
+
 /** A replacement: the match, escaped. */
 const ESCAPED_MATCH = '\\$&';
 const SPACE = ' ';
@@ -61,8 +77,11 @@ const REGEXP_INTERPOLATION = /\$\{[^}]*\}/g;
  */
 const REGEXP_ESCAPE = /[.*+?^${}()|[\]\\]/g;
 
-/** Начало имени перед концом шаблона: `fill` в `fillClassName`, `data-` в `data-class` (D-131). */
-const NAME_HEAD_SOURCE = '[\\w$-]*';
+/**
+ * Начало имени перед концом шаблона: `fill` в `fillClassName`, `data-` в `data-class` (D-131). Хотя бы один знак:
+ * `*ClassName` — имя, которое кончается на `ClassName` и длиннее него (D-146, одно правило для трёх опций).
+ */
+const NAME_HEAD_SOURCE = '[\\w$-]+';
 
 /**
  * Имя атрибута для регулярного выражения: точное — экранированным, шаблон `*ClassName` — любым именем, которое
@@ -73,7 +92,7 @@ const NAME_HEAD_SOURCE = '[\\w$-]*';
  *
  * @example
  * attrNameSource('className')    // → 'className'
- * attrNameSource('*ClassName')   // → '[\\w$-]*ClassName'
+ * attrNameSource('*ClassName')   // → '[\\w$-]+ClassName'
  */
 export function attrNameSource(attr: string): string {
   return attr[0] === ASTERISK
@@ -82,19 +101,21 @@ export function attrNameSource(attr: string): string {
 }
 
 /**
- * Подходит ли имя атрибута, JSX-свойства или ключа объекта под опцию `attr`: то же имя или шаблон `*ClassName` —
- * имя кончается на `ClassName`, регистр как написан (D-131). Зовётся на каждый атрибут файла, поэтому конец
+ * Подходит ли имя атрибута, ключа, переменной или функции под имена опции (D-146): то же имя или шаблон `*ClassName` —
+ * имя кончается на `ClassName`, регистр как написан (D-131). Зовётся на каждый узел файла, поэтому конец
  * сравнивается посимвольно, без `slice`.
  *
  * @param name — имя в исходнике
- * @param attrs — имена и шаблоны опции `attr`
- * @returns `true`, если имя — класс
+ * @param attrs — имена и шаблоны одной опции, без целей
+ * @returns `true`, если имя подходит
  *
  * @example
- * isAttrName('fillClassName', ['className', '*ClassName'])   // → true
- * isAttrName('classname', ['*ClassName'])                    // → false
+ * isScanName('fillClassName', ['className', '*ClassName'])   // → true
+ * isScanName('classname', ['*ClassName'])                    // → false
+ * isScanName('ClassName', ['*ClassName'])                    // → false — только окончание, без начала
+ * isScanName('thClass', ['mne', '*Class'])                   // → true
  */
-export function isAttrName(name: string, attrs: string[]): boolean {
+export function isScanName(name: string, attrs: string[]): boolean {
   const l = attrs.length;
   const nameLength = name.length;
   let i = 0;
@@ -111,9 +132,9 @@ export function isAttrName(name: string, attrs: string[]): boolean {
       continue;
     }
     length = attr.length;
-    // Конец шаблона (`ClassName`) начинается в имени с `at`.
+    // Конец шаблона (`ClassName`) начинается в имени с `at`; перед ним — хотя бы один знак.
     at = nameLength - length + 1;
-    if (at < 0) {
+    if (at < 1) {
       continue;
     }
     j = 1;
@@ -590,11 +611,11 @@ export function pushLiteralTokens(out: string[], literal: string): void {
 }
 
 /**
- * Извлекает MN-токены из строковых значений переменных с заданными суффиксами.
+ * Извлекает MN-токены из строковых значений переменных с заданными именами.
  *
  * Классы, собранные в переменной, разбор `class="…"` не видит — а в островах
  * (React/Preact/Vue) набор токенов почти всегда лежит в константе. Конвенция имени
- * (суффикс `Class`) делает такую переменную видимой для сборки.
+ * (шаблон `*Class` — имя кончается на `Class`) делает такую переменную видимой для сборки.
  *
  * Распознаются присваивание (`const aClass = '…'`), свойство объекта
  * (`{ aClass: '…' }`) и аннотация типа между ними (`const aClass: string = '…'`).
@@ -610,13 +631,17 @@ export function pushLiteralTokens(out: string[], literal: string): void {
  * `[^=;\\n]+` до конца строки и отступать назад в поисках `=`).
  *
  * @param source — исходный текст файла
- * @param suffixes — суффиксы имён (`['Class']`); пустой массив отключает разбор
+ * @param names — имена и шаблоны `*Окончание` (`['*Class']`; D-146); пустой массив отключает разбор
  * @returns список токенов (с возможными повторами)
+ *
+ * @example
+ * extractClassVarTokens("const rowClass = 'p10'", ['*Class'])      // → ['p10']
+ * extractClassVarTokens("const rowStyles = 'p10'", ['rowStyles'])  // → ['p10']
  */
-export function extractClassVarTokens(source: string, suffixes: string[]): string[] {
+export function extractClassVarTokens(source: string, names: string[]): string[] {
   const out: string[] = [];
   extractClassVarTokensInto(
-    out, source, suffixes,
+    out, source, names,
   );
   return out;
 }
@@ -626,33 +651,39 @@ export function extractClassVarTokens(source: string, suffixes: string[]): strin
  *
  * @param out — аккумулятор
  * @param source — полный текст файла
- * @param suffixes — суффиксы имён; пустой массив отключает разбор
+ * @param names — имена и шаблоны `*Окончание`; пустой массив отключает разбор
  */
 export function extractClassVarTokensInto(
-  out: string[], source: string, suffixes: string[],
+  out: string[], source: string, names: string[],
 ): void {
-  const suffixesLength = suffixes.length;
-  if (!suffixesLength) {
+  const namesLength = names.length;
+  if (!namesLength) {
     return;
   }
   const l = source.length;
   let si = 0;
-  let suffix: string;
-  let suffixLength: number;
+  let name: string;
+  let isExact: boolean;
+  let nameLength: number;
   let from: number;
   let at: number;
   let i: number;
   let quote: string;
   let valueFrom: number;
-  for (; si < suffixesLength; si++) {
-    suffix = suffixes[si];
-    suffixLength = suffix.length;
+  for (; si < namesLength; si++) {
+    name = names[si];
+    // Шаблон `*Class` ищется окончанием, перед которым — начало имени; точное имя — целиком.
+    isExact = name[0] !== ASTERISK;
+    isExact || (name = name.slice(1));
+    nameLength = name.length;
     from = 0;
-    while ((at = source.indexOf(suffix, from)) !== -1) {
-      i = at + suffixLength;
+    while ((at = source.indexOf(name, from)) !== -1) {
+      i = at + nameLength;
       from = i;
-      // `thClassy` — суффикс продолжается, значит это другое имя.
-      if (i < l && isIdentChar(source[i])) {
+      // `thClassy` — окончание продолжается, значит это другое имя; `my_rowStyles` — у точного имени чужое начало;
+      // `Class` — у шаблона нет начала.
+      if (i < l && isIdentChar(source[i])
+        || (isExact ? at && isIdentChar(source[at - 1]) : !at || !isIdentChar(source[at - 1]))) {
         continue;
       }
       while (i < l && isSpaceChar(source[i])) {
@@ -729,7 +760,7 @@ function isAssignment(source: string, at: number): boolean {
 }
 
 /**
- * Кеш регулярок поиска вызовов, по списку имён и суффиксов.
+ * Кеш регулярок поиска вызовов, по списку имён.
  *
  * Список приходит из опций плагина и на всю сборку один, а функция зовётся на каждый файл.
  */
@@ -742,24 +773,27 @@ const $$mergeCallRegexps: Record<string, RegExp> = {};
  * в регекспе: `(?<![\\w$.])` слева и `(?![\\w$])` справа. Раньше это проверялось вручную
  * после каждого `indexOf`, и проход по файлу делался отдельно на каждое имя.
  *
- * Суффиксы дают вторую ветку — вызов переменной с суффиксом (`thClass('w150')`): так
- * зовётся функция, которую вернул `mnClass(base)`, и её аргументы — те же токены.
+ * Шаблон `*Class` — любое имя с этим окончанием: так зовётся и функция, которую вернул `mnClass(base)`
+ * (`thClass('w150')`), и её аргументы — те же токены (D-146).
  */
-function mergeCallRegExp(names: string[], suffixes: string[]): RegExp {
-  const key = names.join(PIPE) + SLASH + suffixes.join(PIPE);
+function mergeCallRegExp(names: string[]): RegExp {
+  const key = names.join(PIPE);
   const cached = $$mergeCallRegexps[key];
   if (cached) {
     return cached;
   }
-  const alternatives = names.map((n) => n.replace(REGEXP_ESCAPE, ESCAPED_MATCH));
-  suffixes.length && alternatives.push('[\\w$]+(?:'
-    + suffixes.map((n) => n.replace(REGEXP_ESCAPE, ESCAPED_MATCH)).join(PIPE) + CLOSE_PAREN);
+  const alternatives = names.map((n) => (n[0] === ASTERISK
+    ? CALL_NAME_HEAD_SOURCE + n.slice(1).replace(REGEXP_ESCAPE, ESCAPED_MATCH)
+    : n.replace(REGEXP_ESCAPE, ESCAPED_MATCH)));
   return ($$mergeCallRegexps[key] = new RegExp('(?<![\\w$.])(?:' + alternatives.join(PIPE)
     + ')(?![\\w$])\\s*\\(', 'g'));
 }
 
+/** Начало имени функции перед окончанием шаблона: `th` в `thClass`, хотя бы один знак. */
+const CALL_NAME_HEAD_SOURCE = '[\\w$]+';
+
 /**
- * Извлекает MN-токены из строковых аргументов вызовов функций слияния (`mne`, `mnClass`).
+ * Извлекает MN-токены из строковых аргументов вызовов функций слияния (`mne`, `*Class`).
  *
  * `mne('pt26 pb6', props.class)` — токены записаны прямо в вызове: ни в `class="…"`,
  * ни в переменной с суффиксом. Без этого разбора они не попадали в CSS, причём молча:
@@ -771,18 +805,17 @@ function mergeCallRegExp(names: string[], suffixes: string[]): RegExp {
  * сбалансированность скобок регулярным выражением не выражается.
  *
  * @param source — исходный текст файла
- * @param names — имена функций (`['mne', 'mnClass']`)
- * @param suffixes — суффиксы переменных (`['Class']`): вызов `thClass('w150')` тоже
- *   разбирается — это функция, которую вернул `mnClass`. По умолчанию — без них.
- *   Оба списка пустые — разбор отключён
+ * @param names — имена и шаблоны `*Окончание` (`['mne', '*Class']`; D-146): `*Class` берёт и `mnClass('p10')`, и
+ *   `thClass('w150')` — функцию, которую вернул `mnClass`. Пустой список — разбор отключён
  * @returns список токенов (с возможными повторами)
+ *
+ * @example
+ * extractMergeCallTokens("mne(base, 'p10'); thClass('w150')", ['mne', '*Class'])   // → ['p10', 'w150']
  */
-export function extractMergeCallTokens(
-  source: string, names: string[], suffixes?: string[],
-): string[] {
+export function extractMergeCallTokens(source: string, names: string[]): string[] {
   const out: string[] = [];
   extractMergeCallTokensInto(
-    out, source, names, suffixes,
+    out, source, names,
   );
   return out;
 }
@@ -792,18 +825,15 @@ export function extractMergeCallTokens(
  *
  * @param out — аккумулятор
  * @param source — полный текст файла
- * @param names — имена функций слияния
- * @param suffixes — суффиксы переменных, чей вызов тоже разбирается; оба списка
- *   пустые — разбор отключён
+ * @param names — имена и шаблоны функций; пустой список — разбор отключён
  */
 export function extractMergeCallTokensInto(
-  out: string[], source: string, names: string[], suffixes?: string[],
+  out: string[], source: string, names: string[],
 ): void {
-  const varSuffixes = suffixes || [];
-  if (!names.length && !varSuffixes.length) {
+  if (!names.length) {
     return;
   }
-  const re = mergeCallRegExp(names, varSuffixes);
+  const re = mergeCallRegExp(names);
   re.lastIndex = 0;
   const l = source.length;
   let i: number;
@@ -1000,38 +1030,35 @@ function newlinesOf(
   return out;
 }
 
-/**
- * Опция `attr` списком имён: строка — одно имя, массив — как есть, пусто — `class`.
- *
- * @param attr — значение опции `attr`
- * @returns непустой список имён атрибутов
- */
-export function attrNames(attr: string | string[] | undefined): string[] {
-  if (!attr || !attr.length) {
-    return ['class'];
-  }
-  return typeof attr === 'string' ? [attr] : attr;
-}
-
-/** Опции {@link scanTokens}. */
+/** Опции {@link scanTokens}: записи трёх механизмов и вырезание комментариев (D-146). */
 export interface ScanTokensOptions {
   /**
-   * Имя атрибута (`'class'`, `'className'`) или несколько — `['class', 'className']`
-   * для проекта, где `.astro`/`.html` пишут `class`, а React-компоненты — `className`.
-   * Имя с `*` в начале — шаблон: `'*ClassName'` — любое имя, которое кончается на `ClassName`
-   * (`fillClassName`, `iconClassName`; D-131). По умолчанию `'class'`.
+   * Атрибуты и ключи объектов: `'class'`, `'className:class'`, `'*ClassName:class'` (любое имя, которое кончается на
+   * `ClassName`; D-131), `'m'` — в `[m~="ws"]`. Имя без цели — само себе цель; у шаблона цель пишется явно.
+   *
+   * @default ['class']
    */
-  attr?: string | string[];
+  attr?: string[];
   /**
-   * Суффиксы имён переменных со списком токенов. По умолчанию `['Class']`,
-   * пустой массив отключает механизм.
+   * Переменные и ключи объектов со списком токенов: `'*Class:class'` берёт `const rowClass = 'p10'`. Цель пишется
+   * явно. Пустой список отключает механизм.
+   *
+   * @default ['*Class:class']
    */
-  classVarSuffixes?: string[];
+  classVarName?: string[];
   /**
-   * Имена функций слияния, чьи строковые аргументы сканируются.
-   * По умолчанию `['mne', 'mnClass']`, пустой массив отключает механизм.
+   * Вызовы, чьи строковые аргументы — токены: `'mne:class'` и `'*Class:class'` — `mnClass('p10')` и
+   * `thClass('w150')` (функция, которую вернул `mnClass`). Цель пишется явно. Пустой список отключает механизм.
+   *
+   * @default ['mne:class', '*Class:class']
    */
-  mergeFnNames?: string[];
+  classFnName?: string[];
+  /**
+   * `true` — список, заданный вместо умолчания, теряет его записи намеренно: сканер не предупреждает (D-146).
+   *
+   * @default false
+   */
+  replaceDefaults?: boolean;
   /**
    * `false` — не вырезать комментарии перед сканированием.
    *
@@ -1043,31 +1070,84 @@ export interface ScanTokensOptions {
 }
 
 /**
- * Единая точка сбора MN-токенов из текста файла — атрибут, переменные с суффиксом,
- * аргументы функций слияния.
+ * Единая точка сбора MN-токенов из текста файла — атрибуты, переменные, аргументы вызовов, по цели.
  *
- * Плагины сборщиков должны вызывать её, а не собирать механизмы по отдельности:
- * до 2026-09-25 `classVarSuffixes` был реализован только в `minotation-vite`, и проекты
- * на esbuild, rollup и webpack теряли токены из переменных, ничего об этом не сообщая.
+ * Плагины сборщиков должны вызывать её (через `createScanner`), а не собирать механизмы по отдельности:
+ * до 2026-09-25 переменные разбирались только в `minotation-vite`, и проекты на esbuild, rollup и webpack
+ * теряли токены из переменных, ничего об этом не сообщая.
+ *
+ * Опции разбираются один раз на объект опций (план кешируется); сканер с выбором разбора по файлу — `createScanner`.
  *
  * @param source — полный текст файла
  * @param options — см. {@link ScanTokensOptions}
- * @returns массив токенов (с возможными повторами)
+ * @returns токены по цели (с возможными повторами)
  *
  * @example
- * scanTokens('<div class="p10">', { attr: 'class' })       // → ['p10']
- * scanTokens("const aClass = 'p10';", {})                  // → ['p10']
- * scanTokens("mne(base, 'p10')", {})                       // → ['p10']
+ * scanTokens('<div class="p10">', {})                                // → { class: ['p10'] }
+ * scanTokens("const aClass = 'p10'; mne(base, 'w1')", {})            // → { class: ['p10', 'w1'] }
+ * scanTokens('<a className="p10" m="w1">', { attr: ['className:class', 'm'] })
+ * // → { class: ['p10'], m: ['w1'] }
  */
-export function scanTokens(source: string, options: ScanTokensOptions): string[] {
-  const tokens: string[] = [];
+export function scanTokens(source: string, options: ScanTokensOptions): ScannedTokens {
+  return scanTokensByPlan(source, cachedScanPlanOf(options));
+}
+
+/**
+ * {@link scanTokens} по готовому плану: на каждый файл, без разбора опций.
+ *
+ * @param source — полный текст файла
+ * @param plan — план из `scanPlanOf`
+ * @returns токены по цели
+ */
+export function scanTokensByPlan(source: string, plan: ScanPlan): ScannedTokens {
+  const out: ScannedTokens = {};
+  scanTokensByPlanInto(
+    out, source, plan,
+  );
+  return out;
+}
+
+/**
+ * {@link scanTokensByPlan} в готовый набор: однофайловый компонент складывает шаблон и скрипты в один объект, без
+ * промежуточных.
+ *
+ * @param out — набор, куда добавляются токены по цели
+ * @param source — полный текст файла
+ * @param plan — план из `scanPlanOf`
+ */
+export function scanTokensByPlanInto(
+  out: ScannedTokens, source: string, plan: ScanPlan,
+): void {
+  const groups = plan[MN_PLAN_GROUPS];
+  const l = groups.length;
+  const markerTarget = plan[MN_PLAN_MARKER_TARGET];
   // Комментарии вырезаются ДО всех трёх механизмов: токен из примера
   // разметки в комментарии либо раздувает CSS правилами, которые не к чему
   // применить, либо роняет сборку под `strict` — см. `stripComments`.
   // Маркеры `@mn` читаются всегда (D-083), даже с `comments: false`.
-  const stripped = stripComments(source, tokens);
-  source = options.comments === false ? source : stripped;
-  const attrs = attrNames(options.attr);
+  const stripped = stripComments(source, out[markerTarget] || (out[markerTarget] = []));
+  source = plan[MN_PLAN_COMMENTS] ? stripped : source;
+  let i = 0;
+  let group: ScanGroup;
+  for (; i < l; i++) {
+    group = groups[i];
+    scanGroupInto(
+      out[group[MN_GROUP_TARGET]] || (out[group[MN_GROUP_TARGET]] = []), source, group,
+    );
+  }
+}
+
+/**
+ * Три механизма одной группы — в один массив.
+ *
+ * @param tokens — аккумулятор группы
+ * @param source — текст без комментариев
+ * @param group — группа плана
+ */
+export function scanGroupInto(
+  tokens: string[], source: string, group: ScanGroup,
+): void {
+  const attrs = group[MN_GROUP_ATTR];
   const attrsLength = attrs.length;
   let i = 0;
   for (; i < attrsLength; i++) {
@@ -1075,19 +1155,10 @@ export function scanTokens(source: string, options: ScanTokensOptions): string[]
       tokens, source, attrs[i],
     );
   }
-  const suffixes = options.classVarSuffixes === undefined ? ['Class'] : options.classVarSuffixes;
   extractClassVarTokensInto(
-    tokens, source, suffixes,
+    tokens, source, group[MN_GROUP_VARS],
   );
   extractMergeCallTokensInto(
-    tokens,
-    source,
-    options.mergeFnNames === undefined ? [
-      'mne',
-      'mnClass',
-    ] : options.mergeFnNames,
-    suffixes,
+    tokens, source, group[MN_GROUP_FNS],
   );
-  return tokens;
 }
-

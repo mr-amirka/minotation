@@ -17,7 +17,7 @@ describe('parseArgs', () => {
     const args = parseArgs([]);
     expect(args.input).toBeUndefined();
     expect(args.output).toBeUndefined();
-    expect(args.attrs).toBeUndefined();
+    expect(args.attr).toBeUndefined();
     expect(args.watch).toBe(false);
   });
 
@@ -54,16 +54,21 @@ describe('parseArgs', () => {
         '-a',
         'className:class',
       ],
-      'attrs',
-      'className:class',
+      'attr',
+      ['className:class'],
     ],
     [
       [
-        '--attrs',
-        'class, className:class',
+        '--attr',
+        'class, className:class|m; m-n',
       ],
-      'attrs',
-      'class, className:class',
+      'attr',
+      [
+        'class',
+        'className:class',
+        'm',
+        'm-n',
+      ],
     ],
     [
       [
@@ -92,7 +97,7 @@ describe('parseArgs', () => {
   ])('%p → %s = %p', (
     argv, key, value,
   ) => {
-    expect(parseArgs(argv as string[])[key]).toBe(value);
+    expect(parseArgs(argv as string[])[key]).toEqual(value);
   });
 
   test.each([
@@ -275,8 +280,19 @@ describe('parseArgs', () => {
       'Option "-o" requires a value',
     ],
     [
+      ['--attr'],
+      'Option "--attr" requires a value',
+    ],
+    [
+      [
+        '--attr',
+        '*ClassName',
+      ],
+      'Option "--attr": [0] expects "name" or "name:target"',
+    ],
+    [
       ['--attrs'],
-      'Option "--attrs" requires a value',
+      'Unknown option: "--attrs"',
     ],
     [
       ['--zzz'],
@@ -300,7 +316,7 @@ describe('parseArgs', () => {
       '--output',
       '--watch',
       '--config',
-      '--attrs',
+      '--attr',
       '--alt-color',
       '--warning-mode',
       '--include',

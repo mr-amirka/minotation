@@ -3,7 +3,7 @@
  *
  * Логика выбора живёт здесь, а не в плагинах, по конкретной причине: механизм,
  * реализованный в одном плагине, в остальных молча отсутствует. Так было с
- * `classVarSuffixes` — он работал только в vite до 2026-09-25, и проекты на
+ * переменными (`classVarName`) — они разбирались только в vite до 2026-09-25, и проекты на
  * webpack, rollup и esbuild теряли токены из переменных, ничего не сообщая.
  * Плагин должен уметь одно: позвать `createScanner` и передать имя файла.
  *
@@ -13,7 +13,7 @@ import {
   asError,
 } from 'fundamentool';
 import {
-  scanTokens,
+  scanTokensByPlan,
 } from './extractTokens';
 import type {
   ScanTokensOptions,
@@ -22,6 +22,14 @@ import {
   MN_WHERE,
   SCANNER_OPTIONS,
 } from './options';
+import {
+  scanDefaultWarnings,
+  scanPlanOf,
+} from './scanPlan';
+import type {
+  ScanPlan,
+  ScannedTokens,
+} from './scanPlan';
 
 /**
  * Однофайловые компоненты: скрипт в них разбирается парсером, шаблон — текстом.
@@ -97,24 +105,19 @@ export interface ScannerOptions extends ScanTokensOptions {
    */
   syntax?: boolean;
   /**
-   * Куда сообщить, что `syntax: true`, а парсера нет.
-   * По умолчанию — `console.warn`; сообщение выводится один раз.
+   * Куда сообщить, что `syntax: true`, а парсера нет, и что список заменил умолчание (D-146).
+   * По умолчанию — `console.warn`; каждое сообщение выводится один раз, при создании сканера или на первом файле.
    */
   onWarning?: (message: string) => void;
 }
 
-/** Сканер файла: текст плюс имя, по которому выбирается способ разбора. */
-export type Scanner = (source: string, fileName?: string) => string[];
+/** Сканер файла: текст плюс имя, по которому выбирается способ разбора; токены — по цели. */
+export type Scanner = (source: string, fileName?: string) => ScannedTokens;
 
-/** Тип функции синтаксического сканера — ровно то, что нужно здесь. */
-type SyntaxScan = (source: string, options: ScanTokensOptions & {
-  fileName?: string;
-}) => string[];
-
-/** Обе формы разбора: целиком и по блокам SFC. */
+/** Обе формы разбора: целиком и по блокам SFC, по готовому плану. */
 interface SyntaxModule {
-  scanTokensSyntax: SyntaxScan;
-  scanTokensSfc: SyntaxScan;
+  scanSyntaxByPlan: (source: string, plan: ScanPlan, fileName?: string) => ScannedTokens;
+  scanSfcByPlan: (source: string, plan: ScanPlan) => ScannedTokens;
 }
 
 /**
@@ -124,39 +127,47 @@ interface SyntaxModule {
  * опция, ни режим по умолчанию не должны стоить загрузки `typescript`, пока не
  * встретился файл, который есть смысл разбирать.
  *
+ * Записи опций разбираются здесь один раз (D-146); список, заменивший умолчание и потерявший его записи, — это
+ * предупреждение в `onWarning`, если не задано `replaceDefaults: true`.
+ *
  * @example
- * const scan = createScanner({ attr: 'class' });
- * scan(source, '/src/App.tsx');   // разбором, если парсер доступен
+ * const scan = createScanner({ attr: ['class', 'className:class'] });
+ * scan(source, '/src/App.tsx');   // разбором, если парсер доступен → { class: ['p10'] }
  * scan(source, '/index.html');    // текстом
  */
 export function createScanner(options: ScannerOptions): Scanner {
   if (process.env.NODE_ENV !== 'production') {
     SCANNER_OPTIONS().parse(options, MN_WHERE + 'createScanner');
   }
+  const warn = options.onWarning || ((message: string) => {
+    console.warn(message);
+  });
+  for (const message of scanDefaultWarnings(options)) {
+    warn(message);
+  }
+  const plan = scanPlanOf(options);
   if (options.syntax === false) {
-    return (source: string) => scanTokens(source, options);
+    return (source: string) => scanTokensByPlan(source, plan);
   }
   // Явный `true` — о недоступном парсере предупреждаем; в автоматическом
   // режиме молчим: никто о нём не просил, а текстовый разбор работает.
   const required = options.syntax === true;
   // 0 — ещё не пробовали, иначе модуль или 1 (парсера нет, больше не пробуем).
   let parser: SyntaxModule | 0 | 1 = 0;
-  return (source: string, fileName?: string): string[] => {
+  return (source: string, fileName?: string): ScannedTokens => {
     const kind = fileName ? syntaxKindOf(fileName) : 0;
     if (!kind) {
-      return scanTokens(source, options);
+      return scanTokensByPlan(source, plan);
     }
     if (!parser) {
-      parser = loadSyntaxScan(options, required) || 1;
+      parser = loadSyntaxScan(warn, required) || 1;
     }
     if (parser === 1) {
-      return scanTokens(source, options);
+      return scanTokensByPlan(source, plan);
     }
-    const scan = kind === 1 ? parser.scanTokensSyntax : parser.scanTokensSfc;
-    return scan(source, {
-      ...options,
-      fileName,
-    });
+    return kind === 1 ? parser.scanSyntaxByPlan(
+      source, plan, fileName,
+    ) : parser.scanSfcByPlan(source, plan);
   };
 }
 
@@ -166,7 +177,7 @@ export function createScanner(options: ScannerOptions): Scanner {
  * `typescript` — необязательная peer-зависимость: его отсутствие не повод
  * ронять сборку. Сообщаем о нём, только когда режим попросили явно.
  */
-function loadSyntaxScan(options: ScannerOptions, required: boolean): SyntaxModule | undefined {
+function loadSyntaxScan(warn: (message: string) => void, required: boolean): SyntaxModule | undefined {
   try {
     // Через `require` и внутри функции: статический импорт затянул бы парсер
     // в каждую сборку, включая те, где нет ни одного подходящего файла.
@@ -174,9 +185,6 @@ function loadSyntaxScan(options: ScannerOptions, required: boolean): SyntaxModul
     return require('./syntaxScan') as SyntaxModule;
   } catch (ex) {
     if (required) {
-      const warn = options.onWarning || ((message: string) => {
-        console.warn(message);
-      });
       warn('[minotation] syntax: true, but the parser is unavailable ('
         + asError(ex).message + '). Files are scanned as text. '
         + 'Install typescript — it is an optional peer dependency.');

@@ -16,9 +16,13 @@ import {
   scanTokens,
 } from '../extractTokens';
 import {
-  scanTokensSfc,
+  scanSfcByPlan,
+  scanSyntaxByPlan,
   scanTokensSyntax,
 } from '../syntaxScan';
+import {
+  scanPlanOf,
+} from '../scanPlan';
 
 const ROW = 'Row';
 const CLASS_ATTR = 'class';
@@ -65,8 +69,10 @@ function bench(name: string, fn: () => void): number {
 }
 
 const options = {
-  attr: CLASS_ATTR,
+  attr: [CLASS_ATTR],
 };
+// План строится один раз, как в `createScanner`: файлы сканируются по готовому.
+const plan = scanPlanOf(options);
 
 const text = bench('scanTokens — текстовый          ', () => {
   for (let i = 0; i < FILES; i++) {
@@ -76,10 +82,9 @@ const text = bench('scanTokens — текстовый          ', () => {
 
 const syntax = bench('scanTokensSyntax — разбор AST   ', () => {
   for (let i = 0; i < FILES; i++) {
-    scanTokensSyntax(sources[i], {
-      attr: CLASS_ATTR,
-      fileName: 'file' + i + '.tsx',
-    });
+    scanSyntaxByPlan(
+      sources[i], plan, 'file' + i + '.tsx',
+    );
   }
 });
 
@@ -106,10 +111,7 @@ const sfcText = bench('SFC — текстовый                 ', () => {
 
 const sfc = bench('SFC — скрипт разбором           ', () => {
   for (let i = 0; i < FILES; i++) {
-    scanTokensSfc(sfcSources[i], {
-      attr: CLASS_ATTR,
-      fileName: 'file' + i + '.vue',
-    });
+    scanSfcByPlan(sfcSources[i], plan);
   }
 });
 
@@ -128,8 +130,8 @@ function setOf(tokens: string[]): string[] {
   return Array.from(new Set(tokens)).sort();
 }
 
-const a = setOf(scanTokens(sources[0], options));
-const b = setOf(scanTokensSyntax(sources[0], options));
+const a = setOf(scanTokens(sources[0], options).class);
+const b = setOf(scanTokensSyntax(sources[0], options).class);
 console.log(a.join(SPACE) === b.join(SPACE)
   ? 'корректность: наборы совпадают (' + a.length + ' токенов)'
   : 'КОРРЕКТНОСТЬ НАРУШЕНА:\n  текст: ' + a.join(SPACE) + '\n  разбор: ' + b.join(SPACE));

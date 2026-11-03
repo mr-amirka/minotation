@@ -63,7 +63,7 @@ describe('minotation-vite — реальная сборка', () => {
       'src/theme.mn.ts': "export default (mn) => { mn('viteToken', 'cF00'); };\nexport const MARKER = 'mn-vite-fixture-marker-6c1f';\n",
     });
 
-    await runBuild(root, { attrs: 'class' });
+    await runBuild(root, { attr: ['class'] });
 
     const html = readFileSync(join(root, 'dist/index.html'), 'utf-8');
     expect(html).toContain('<style data-mn');
@@ -99,7 +99,8 @@ describe('minotation-vite — реальная сборка', () => {
     });
 
     await runBuild(root, {
-      attrs: 'data-cls:class',
+      attr: ['data-cls:class'],
+      replaceDefaults: true,
       extensions: ['.vue'],
       presetExtensions: ['.mnjs'],
       altColor: true,

@@ -329,7 +329,7 @@ describe('minotation-vite — attr массивом (2026-10-05)', () => {
       'src/Page.html': '<div class="p10"></div>',
       'src/Card.tsx': 'export const Card = () => <div className="m10" />;',
     });
-    const plugin = makePlugin(root, 'build', { attrs: ['class', 'className:class'] });
+    const plugin = makePlugin(root, 'build', { attr: ['class', 'className:class'] });
 
     const css = transformHtml(plugin, '<html><head></head><body></body></html>')
       .map((tag) => tag.children).join('');
@@ -410,7 +410,10 @@ describe('изоляция областей пакетов: класс обла�
       'ui/package.json': JSON.stringify({ name: '@acme/ui', minotation: { requires: ['presetTw4'], notationMode: 'tw4-compatible' } }),
     });
     const plugin = makePlugin(root, 'build', {
-      attrs: 'class, className:class',
+      attr: [
+        'class',
+        'className:class',
+      ],
       scopePresets: [presetTw4],
       isolateMode: 'class',
     });

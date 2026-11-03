@@ -2306,7 +2306,8 @@ export function presetApp(mn: MnInstance): void {
 ```ts
 // vite.config.ts
 mnVite({
-  attr: 'className',
+  attr: ['className:class'],
+  replaceDefaults: true,
   extensions: ['.tsx', '.jsx'],
   presets: [presetStandard, presetSynonyms, presetMedias, presetNormalize8_0_1, presetMain],
   // presetExtensions: ['.mn.ts', '.mn.js', '.mn.tsx'],  // дефолт — менять не нужно
@@ -2690,7 +2691,7 @@ minotationProvider({ warningMode: 'silent', onWarning: (w) => report.push(w) });
 
 ```javascript
 // astro.config.mjs / vite.config.ts
-mnAstro({ attrs: 'class', warningMode: 'error' })
+mnAstro({ attr: ['class'], warningMode: 'error' })
 ```
 
 ---

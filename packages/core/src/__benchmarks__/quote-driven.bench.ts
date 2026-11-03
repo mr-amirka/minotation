@@ -144,8 +144,8 @@ function scanByQuotes(
 const three = bench('три прохода (текущая реализация)', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokens(sources[i], {
-      attr: CLASS_ATTR,
-    });
+      attr: [CLASS_ATTR],
+    }).class;
   }
 });
 const quotes = bench('от кавычки назад                ', () => {
@@ -161,8 +161,8 @@ const quotes = bench('от кавычки назад                ', () => {
 console.log(`разница: ${((1 - quotes / three) * 100).toFixed(1)}%`);
 
 const a = scanTokens(sources[0], {
-  attr: CLASS_ATTR,
-}).slice().sort().join(' ');
+  attr: [CLASS_ATTR],
+}).class.slice().sort().join(' ');
 const b = scanByQuotes(
   sources[0], CLASS_ATTR, 'Class', [
     'mne',

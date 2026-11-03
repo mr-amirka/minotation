@@ -40,6 +40,10 @@ import {
   isSyntaxScannable as isSyntaxScannableImpl,
 } from './scanner';
 import {
+  parseScanEntries as parseScanEntriesImpl,
+  SCAN_DEFAULTS as SCAN_DEFAULTS_IMPL,
+} from './scanPlan';
+import {
   addScopeClassText as addScopeClassTextImpl,
   createScopeClassWriter as createScopeClassWriterImpl,
 } from './scopeClass';
@@ -112,12 +116,12 @@ export const isInvalidSelector = isInvalidSelectorImpl;
 export const extractTokens = extractTokensImpl;
 
 /**
- * Сбор токенов для плагинов сборщиков: атрибут + переменные с суффиксом `Class`
- * + строковые аргументы `mne`/`mnClass`.
+ * Сбор токенов из текста по цели: атрибуты (`attr`), переменные (`classVarName`), аргументы вызовов (`classFnName`;
+ * D-146).
  *
- * Плагины вызывают именно `scanTokens`, а не собирают механизмы по отдельности —
+ * Плагины вызывают `createScanner`, а не собирают механизмы по отдельности —
  * иначе набор возможностей расходится от сборщика к сборщику (так и было
- * до 2026-09-25: `classVarSuffixes` работал только в `minotation-vite`).
+ * до 2026-09-25: переменные разбирались только в `minotation-vite`).
  */
 export const scanTokens = scanTokensImpl;
 
@@ -129,6 +133,13 @@ export const scanTokens = scanTokensImpl;
  * по отдельности.
  */
 export const createScanner = createScannerImpl;
+/**
+ * Записи опции сканера парами «имя, цель» (D-146): `parseScanEntries(['className:class', 'm'], true)` →
+ * `[['className', 'class'], ['m', 'm']]`. Сборке — чтобы узнать, какие атрибуты дают классы.
+ */
+export const parseScanEntries = parseScanEntriesImpl;
+/** Умолчания `attr`, `classVarName`, `classFnName` (D-146). */
+export const SCAN_DEFAULTS = SCAN_DEFAULTS_IMPL;
 /** Писатель класса области в разметку (D-075, D-076): разбором для JS/TS, текстом для остального. */
 export const createScopeClassWriter = createScopeClassWriterImpl;
 /** Класс области в разметку текстом. */
@@ -171,6 +182,9 @@ export const mnMap = mnMapImpl;
 export type {
   ScanTokensOptions,
 } from './extractTokens';
+export type {
+  ScannedTokens,
+} from './scanPlan';
 export type {
   ScannerOptions,
   Scanner,

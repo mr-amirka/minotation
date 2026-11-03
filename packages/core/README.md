@@ -217,7 +217,7 @@ cF00<.p>.c    → .p .cF00 .c          (смешанная цепочка)
 Это про **сборку** (плагины, CLI): они сканируют исходники. Рантайм (`minotation-runtime`)
 компилирует классы из DOM, и там сработает любая запись — но запись с уточнением всё равно
 лучше: она одинакова для сборки и рантайма, а состояние видно в самой разметке.
-`classVarSuffixes` (`const thClass = '…'`) и `mnClass` — для **повторно используемых наборов**
+`classVarName` (`const thClass = '…'`) и `mnClass` — для **повторно используемых наборов**
 токенов, а не для вариантов.
 
 ## Пресеты
@@ -771,11 +771,39 @@ mn.setKeyframes('fadeIn', {
 ```js
 import { createScanner } from 'minotation';
 
-const scan = createScanner({ attr: 'class' });
-scan(source, '/src/App.tsx');    // парсером
+const scan = createScanner({
+  attr: ['class', 'className:class', '*ClassName:class'],   // по умолчанию ['class']
+  classVarName: ['*Class:class'],                             // по умолчанию — так же
+  classFnName: ['mne:class', '*Class:class'],                 // по умолчанию — так же
+});
+scan(source, '/src/App.tsx');    // парсером → { class: ['p10', …] }
 scan(source, '/src/App.vue');    // скрипт парсером, шаблон текстом
 scan(source, '/index.html');     // текстом
 ```
+
+**Опции сканера** (D-146) — списки записей `имя` или `имя:цель`. Имя — точное (`mne`) или шаблон `*Окончание`
+(`*Class` — любое имя длиннее `Class`, которое им кончается: `rowClass`, `thClass`). Цель — во что компилируются
+найденные токены: `class` даёт `.p10`, любая другая — `[цель~="p10"]`. Результат — токены по цели:
+
+```js
+createScanner({ attr: ['class', 'm'] })('<a class="p10" m="w1">')   // → { class: ['p10'], m: ['w1'] }
+```
+
+| Опция | Что сканирует | По умолчанию |
+|---|---|---|
+| `attr` | атрибуты, JSX-свойства, ключи объектов: `class="p10"`, `{ className: 'p10' }`; имя без цели — само себе цель | `['class']` |
+| `classVarName` | переменные и ключи со списком токенов: `const rowClass = 'p10'` | `['*Class:class']` |
+| `classFnName` | строковые аргументы вызовов: `mne('p10')`, `mnClass('p10')`, `thClass('w150')` | `['mne:class', '*Class:class']` |
+| `replaceDefaults` | `true` — списки выше заменяют умолчание намеренно | `false` |
+
+Список, в котором нет записи умолчания, заменяет его — сканер предупреждает об этом один раз, при создании:
+
+```text
+[minotation] classFnName replaces its default and no longer scans "mne:class", "*Class:class"
+  (calls like mne('p10') and thClass('w150')). Add them to the list, or set replaceDefaults: true
+```
+
+Пустой список (`classFnName: []`) выключает механизм без предупреждения.
 
 | Что за файл | Как разбирается |
 |---|---|

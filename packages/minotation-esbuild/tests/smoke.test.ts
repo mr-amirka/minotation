@@ -23,7 +23,7 @@ describe('minotation-esbuild — smoke', () => {
   });
 
   test('setup(build) — регистрирует onStart, onResolve (virtual:mn.css), onLoad x3 (модуль CSS, пресеты, файлы приложения), onEnd', () => {
-    const plugin = mnEsbuild({ presets: PRESETS, attrs: 'className:class' });
+    const plugin = mnEsbuild({ presets: PRESETS, attr: ['className:class'], replaceDefaults: true });
     const onStart = jest.fn();
     const onResolve = jest.fn();
     const onLoad = jest.fn();

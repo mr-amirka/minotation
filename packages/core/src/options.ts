@@ -24,7 +24,6 @@ import {
   object,
   oneOf,
   string,
-  union,
 } from 'fundamentool/schema';
 import {
   MN_MAX_SPECIFICITY,
@@ -141,27 +140,32 @@ export const CORE_OPTIONS = /*#__PURE__*/ lazy(() => {
   });
 });
 
-/** Имя атрибута или шаблон `*ClassName`: звёздочка — только в начале и не одна (D-131). */
-const REGEXP_ATTR_NAME = /^\*?[^*\s]+$/;
+/** Запись `attr`: имя или `имя:цель`, у шаблона `*ClassName` — только с целью (D-131, D-146). */
+const REGEXP_ATTR_ENTRY = /^(?:[^*\s:,|;]+(?::[^*\s:,|;]+)?|\*[^*\s:,|;]+:[^*\s:,|;]+)$/;
+
+/** Запись `classVarName` / `classFnName`: имя или шаблон, цель — всегда (D-146). */
+const REGEXP_TARGET_ENTRY = /^\*?[^*\s:,|;]+:[^*\s:,|;]+$/;
 
 /**
  * Опции `createScanner` ({@link ScannerOptions}).
  *
  * @example
- * SCANNER_OPTIONS().parse({ attr: 'class*' }, MN_WHERE + 'createScanner');
- * // TypeError: [minotation] createScanner: "attr" expects names or patterns "*Suffix" (as "*ClassName"), each
- * //   without spaces
+ * SCANNER_OPTIONS().parse({ attr: ['*ClassName'] }, MN_WHERE + 'createScanner');
+ * // TypeError: [minotation] createScanner: "attr"[0] expects "name" or "name:target"; a pattern "*Ending" with its
+ * //   target, as "*ClassName:class"; no spaces; got "*ClassName"
  */
 export const SCANNER_OPTIONS = /*#__PURE__*/ lazy(() => {
-  const names = array(string()).optional();
+  const withTarget = array(string().refine((entry) => REGEXP_TARGET_ENTRY.test(entry),
+    (entry) => 'expects "name:target" or "*Ending:target", as "*Class:class"; no spaces; got "' + entry + '"'))
+    .optional();
   return object({
-    attr: union([
-      string(),
-      array(string()),
-    ]).refine((value) => (typeof value === 'string' ? [value] : value).every((name) => REGEXP_ATTR_NAME.test(name)),
-      'expects names or patterns "*Suffix" (as "*ClassName"), each without spaces').optional(),
-    classVarSuffixes: names,
-    mergeFnNames: names,
+    attr: array(string().refine((entry) => REGEXP_ATTR_ENTRY.test(entry),
+      (entry) => 'expects "name" or "name:target"; a pattern "*Ending" with its target, as "*ClassName:class"; '
+        + 'no spaces; got "' + entry + '"'))
+      .optional(),
+    classVarName: withTarget,
+    classFnName: withTarget,
+    replaceDefaults: boolean().optional(),
     comments: boolean().optional(),
     syntax: boolean().optional(),
     onWarning: func().optional(),

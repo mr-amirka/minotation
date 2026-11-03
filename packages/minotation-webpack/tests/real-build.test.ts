@@ -428,7 +428,10 @@ describe('minotation-webpack — изоляция областей пакето�
     });
     const plugin = new MnWebpackPlugin({
       presets: PRESETS,
-      attrs: 'class, className:class',
+      attr: [
+        'class',
+        'className:class',
+      ],
       scopePresets: [presetTw4],
       isolateMode: 'class',
     });

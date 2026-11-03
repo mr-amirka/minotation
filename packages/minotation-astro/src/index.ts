@@ -46,7 +46,7 @@ export const PAGE_IMPORT = `import '${MN_VIRTUAL}';`;
  * import { mnAstro } from 'minotation-astro';
  *
  * export default defineConfig({
- *   integrations: [mnAstro({ attrs: 'class, className:class' })],
+ *   integrations: [mnAstro({ attr: ['class', 'className:class'] })],
  * });
  */
 export function mnAstro(code: MnAstroOptions = {}): AstroIntegration {

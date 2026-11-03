@@ -168,7 +168,7 @@ describe('readPackageDirective — поле "minotation" ближайшего pa
 describe('накопитель: классы в режиме своего файла', () => {
   test('файл с директивой tw4-compatible в проекте context-qualified', () => {
     const collector = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
       presets: PRESETS,
       warningMode: 'silent',
     });
@@ -189,7 +189,7 @@ describe('накопитель: классы в режиме своего фай
       },
     }));
     const collector = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
       presets: PRESETS,
       warningMode: 'silent',
     });
@@ -201,7 +201,7 @@ describe('накопитель: классы в режиме своего фай
 
   test('директива с режимом проекта — без отдельного компилятора; смена режима сбрасывает кеш', () => {
     const collector = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
       presets: PRESETS,
       warningMode: 'silent',
     });
@@ -218,7 +218,7 @@ describe('накопитель: классы в режиме своего фай
 describe('requires — нужный пресет подключён', () => {
   test('нет — ошибка с файлом и перечнем подключённых', () => {
     const collector = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
       presets: [presetStandard],
     });
     collector.add(join(dir, 'Button.tsx'), '// @minotation requires: presetTailwindish\n<b class="p10">');
@@ -228,13 +228,13 @@ describe('requires — нужный пресет подключён', () => {
 
   test('есть — сборка идёт; без пресетов — «none»', () => {
     const ok = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
       presets: PRESETS,
     });
     ok.add(join(dir, 'a.tsx'), '// @minotation requires: presetTailwindish\n<b class="p10">');
     expect(ok.css()).toContain('padding:10px');
     const none = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
     });
     none.add(join(dir, 'a.tsx'), '// @minotation requires: presetX\n<b class="p10">');
     expect(() => none.css()).toThrow('Connected presets: none');
@@ -247,7 +247,7 @@ describe('notationConflictMode — один класс в разных режи�
 
   test("'warn' (по умолчанию): предупреждение, в CSS — разбор, который даёт CSS", () => {
     const collector = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
       presets: PRESETS,
     });
     collector.add(join(dir, 'a.html'), projectFile);
@@ -266,7 +266,7 @@ describe('notationConflictMode — один класс в разных режи�
 
   test("'strict': ошибка", () => {
     const collector = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
       presets: PRESETS,
       notationConflictMode: 'strict',
     });
@@ -277,7 +277,7 @@ describe('notationConflictMode — один класс в разных режи�
 
   test('одинаковый CSS в обоих режимах — не конфликт', () => {
     const collector = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
       presets: PRESETS,
     });
     collector.add(join(dir, 'a.html'), '<b class="p10">');
@@ -290,7 +290,7 @@ describe('notationConflictMode — один класс в разных режи�
 describe('createBuildCollector — директива доходит до записей entry', () => {
   test('add читает директиву файла; set принимает её явно', () => {
     const build = createBuildCollector({
-      attrs: 'class',
+      attr: ['class'],
       presets: PRESETS,
       warningMode: 'silent',
     }, dir);
@@ -311,7 +311,7 @@ describe('сравнение режимов не повторяет предуп
   test('конфликт хендлеров при подключении — один раз, а не по разу на сравнение', () => {
     const seen: string[] = [];
     const collector = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
       presets: [
         presetStandard,
         presetMedias,
@@ -338,7 +338,7 @@ describe('настройки разбора по файлу: groupMode, contextW
       },
     }));
     const collector = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
       presets: [presetStandard],
       groupMode: 'css',
       warningMode: 'silent',
@@ -357,7 +357,7 @@ describe('настройки разбора по файлу: groupMode, contextW
 
   test('contextWhere и groupMode — из комментария файла; совпадающее с проектом не в счёт', () => {
     const collector = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
       presets: [presetStandard],
       warningMode: 'silent',
     });
@@ -370,7 +370,7 @@ describe('настройки разбора по файлу: groupMode, contextW
 
   test('один класс с разным CSS при разных настройках — конфликт с понятными настройками', () => {
     const collector = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
       presets: [presetStandard],
       warningMode: 'silent',
     });
@@ -389,7 +389,7 @@ describe('настройки разбора по файлу: groupMode, contextW
       name: 'lib',
     }));
     const collector = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
       presets: [presetStandard],
       groupMode: 'css',
       scopes: [

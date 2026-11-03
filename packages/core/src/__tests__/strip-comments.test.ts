@@ -42,7 +42,7 @@ describe('комментарии не дают токенов', () => {
       'JSDoc',
     ],
   ])('%s — %s', (source) => {
-    expect(scanTokens(source, {})).toEqual(['m5']);
+    expect(scanTokens(source, {}).class).toEqual(['m5']);
   });
 
   test.each([
@@ -56,7 +56,7 @@ describe('комментарии не дают токенов', () => {
     ],
   ])('%s — %s не считается комментарием', (source) => {
     // Иначе `//` в URL съел бы остаток строки вместе с разметкой.
-    expect(scanTokens(source, {})).toEqual(['m5']);
+    expect(scanTokens(source, {}).class).toEqual(['m5']);
   });
 
   test('шаблонная строка — не комментарий, и токены из неё нужны', () => {
@@ -64,7 +64,7 @@ describe('комментарии не дают токенов', () => {
     // в комментарии: вырезать её нечего.
     const source = 'const s = `// class="p10"`; <div class="m5">';
     expect(stripComments(source)).toBe(source);
-    expect(scanTokens(source, {})).toEqual([
+    expect(scanTokens(source, {}).class).toEqual([
       'p10',
       'm5',
     ]);
@@ -76,7 +76,7 @@ describe('комментарии не дают токенов', () => {
       const aClass = 'p10 w50';
       <div class="m5 dF">{mne(aClass, 'c--ink')}</div>
     `;
-    const tokens = scanTokens(source, {});
+    const tokens = scanTokens(source, {}).class;
     expect(tokens).toContain('p10');
     expect(tokens).toContain('m5');
     expect(tokens).toContain('dF');
@@ -100,7 +100,7 @@ describe('комментарии не дают токенов', () => {
     const source = '// class="p10"\n<div class="m5">';
     expect(scanTokens(source, {
       comments: false,
-    })).toEqual([
+    }).class).toEqual([
       'p10',
       'm5',
     ]);
@@ -109,6 +109,8 @@ describe('комментарии не дают токенов', () => {
   test('незакрытый комментарий съедает остаток файла', () => {
     // Так же ведёт себя и компилятор языка: незакрытый `/*` — ошибка в самом
     // файле, и притворяться, что дальше код, смысла нет.
-    expect(scanTokens('/* class="p10"\n<div class="m5">', {})).toEqual([]);
+    expect(scanTokens('/* class="p10"\n<div class="m5">', {})).toEqual({
+      class: [],
+    });
   });
 });

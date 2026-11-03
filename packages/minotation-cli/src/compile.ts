@@ -44,7 +44,6 @@ import {
 import type {
   BuildOutput,
   Metrics,
-  MnAttrs,
   MnCoreOptions,
   MnEntryOptions,
   MnFileMatcher,
@@ -69,7 +68,10 @@ export const CONFIG_OPTIONS = /*#__PURE__*/ lazy(() => object({
     scopes: true,
     isolateMode: true,
     unreachableClassMode: true,
-    attrs: true,
+    attr: true,
+    classVarName: true,
+    classFnName: true,
+    replaceDefaults: true,
     syntax: true,
     include: true,
     exclude: true,
@@ -125,10 +127,16 @@ export interface CompileSettings extends MnCoreOptions {
   /** Файл или директория для сканирования. */
   input: string;
   /**
-   * Какие атрибуты сканировать и во что разворачивать — как в v1 (D-025):
-   * `'class, className:class'`, массив или объект. По умолчанию `'class'`.
+   * Какие атрибуты сканировать и во что разворачивать — как `attrs` в v1 (D-025, D-146): записи `имя` или
+   * `имя:цель`, `['class', 'className:class']`. По умолчанию `['class']`.
    */
-  attrs?: MnAttrs;
+  attr?: string[];
+  /** Переменные со списком токенов, `['*Class:class']` (D-146). */
+  classVarName?: string[];
+  /** Вызовы со строками-токенами, `['mne:class', '*Class:class']` (D-146). */
+  classFnName?: string[];
+  /** `true` — списки выше заменяют умолчание намеренно, без предупреждения. */
+  replaceDefaults?: boolean;
   /**
    * Разбирать ли `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
    *
@@ -300,7 +308,10 @@ export function compile(settings: CompileSettings): CompileResult {
   // CSS — общим накопителем, как у плагинов: записи `entry`, их фильтры,
   // пресеты и разворачивание атрибутов (D-025, D-030).
   const build = createBuildCollector({
-    attrs: settings.attrs,
+    attr: settings.attr,
+    classVarName: settings.classVarName,
+    classFnName: settings.classFnName,
+    replaceDefaults: settings.replaceDefaults,
     syntax: settings.syntax,
     entry: settings.entry,
     scopePresets: settings.scopePresets,

@@ -28,9 +28,9 @@
  *    из пунктов 2–3). Текстовый сканер таких выражений не видит.
  * 2. Свойство объекта с тем же именем: `{ className: 'p10' }` — в том числе
  *    вложенное (`slotProps={{ paper: { className: 'p10' } }}`).
- * 3. Переменная с суффиксом: `const rowClass = 'p10'`, `{ rowClass: 'p10' }`.
- * 4. Строковые аргументы функций слияния: `mne(base, 'p10')`, включая вложенные,
- *    и вызова переменной с суффиксом: `thClass('w150')` — функции из `mnClass`.
+ * 3. Переменная из `classVarName`: `const rowClass = 'p10'`, `{ rowClass: 'p10' }`.
+ * 4. Строковые аргументы вызовов из `classFnName`: `mne(base, 'p10')`, включая вложенные,
+ *    и `thClass('w150')` — функции из `mnClass` (шаблон `*Class`).
  * 5. Разметка внутри строкового литерала (`` html`<div class="p10">` ``) —
  *    текстовым разбором уже самого литерала: для парсера это просто строка,
  *    а токены в ней настоящие.
@@ -44,16 +44,28 @@
 import ts from 'typescript';
 import {
   attrMarkup,
-  attrNames,
-  isAttrName,
+  isScanName,
   extractTokensInto,
   pushLiteralTokens,
-  scanTokens,
+  scanTokensByPlanInto,
   stripComments,
 } from './extractTokens';
 import type {
   ScanTokensOptions,
 } from './extractTokens';
+import {
+  MN_GROUP_ATTR,
+  MN_GROUP_FNS,
+  MN_GROUP_TARGET,
+  MN_GROUP_VARS,
+  MN_PLAN_GROUPS,
+  MN_PLAN_MARKER_TARGET,
+  cachedScanPlanOf,
+} from './scanPlan';
+import type {
+  ScanPlan,
+  ScannedTokens,
+} from './scanPlan';
 import {
   applyEdits,
   isWrapped,
@@ -94,14 +106,40 @@ function scriptKindOf(fileName: string): ts.ScriptKind {
  *
  * @param source — полный текст файла
  * @param options — см. {@link SyntaxScanOptions}
- * @returns массив токенов (с возможными повторами)
+ * @returns токены по цели (с возможными повторами)
  *
  * @example
- * scanTokensSyntax('<div class="p10" />', { attr: 'class' })     // → ['p10']
- * scanTokensSyntax('// class="p10"', { attr: 'class' })          // → []
+ * scanTokensSyntax('<div class="p10" />', {})     // → { class: ['p10'] }
+ * scanTokensSyntax('// class="p10"', {})          // → { class: [] }
  */
-export function scanTokensSyntax(source: string, options: SyntaxScanOptions): string[] {
-  const fileName = options.fileName || 'source.tsx';
+export function scanTokensSyntax(source: string, options: SyntaxScanOptions): ScannedTokens {
+  return scanSyntaxByPlan(
+    source, cachedScanPlanOf(options), options.fileName,
+  );
+}
+
+/**
+ * {@link scanTokensSyntax} по готовому плану: файл разбирается один раз, дерево обходится на каждую группу.
+ *
+ * @param source — полный текст файла
+ * @param plan — план из `scanPlanOf`
+ * @param fileName — имя файла (диалект); по умолчанию `.tsx`
+ * @returns токены по цели
+ */
+export function scanSyntaxByPlan(
+  source: string, plan: ScanPlan, fileName = 'source.tsx',
+): ScannedTokens {
+  const out: ScannedTokens = {};
+  scanSyntaxInto(
+    out, source, plan, fileName,
+  );
+  return out;
+}
+
+/** {@link scanSyntaxByPlan} в готовый набор: скрипты однофайлового компонента пишут в один объект. */
+function scanSyntaxInto(
+  out: ScannedTokens, source: string, plan: ScanPlan, fileName: string,
+): void {
   const file = ts.createSourceFile(
     fileName,
     source,
@@ -118,33 +156,32 @@ export function scanTokensSyntax(source: string, options: SyntaxScanOptions): st
   // на битом файле возвращает дерево как ни в чём не бывало.
   const broken = (file as unknown as { parseDiagnostics?: unknown[] }).parseDiagnostics;
   if (broken && broken.length) {
-    return scanTokens(source, options);
+    scanTokensByPlanInto(
+      out, source, plan,
+    );
+    return;
   }
-  const tokens: string[] = [];
+  const markerTarget = plan[MN_PLAN_MARKER_TARGET];
   // Маркеры `@mn` в комментариях (D-083) — тем же разбором, что и у текстового сканера: паритет.
-  stripComments(source, tokens);
-  const attrs = attrNames(options.attr);
-  const suffixes = options.classVarSuffixes === undefined
-    ? ['Class']
-    : options.classVarSuffixes;
-  const mergeFnNames = options.mergeFnNames === undefined
-    ? [
-      'mne',
-      'mnClass',
-    ]
-    : options.mergeFnNames;
-  // Маркер разметки внутри строки: без него пришлось бы гонять текстовый
-  // разбор по каждому литералу файла, а `class=` есть в единицах из них.
-  const markups = attrs.map(attrMarkup);
-  const state: ScanState = [
-    tokens,
-    attrs,
-    suffixes,
-    mergeFnNames,
-    markups,
-  ];
-  visit(file, state);
-  return tokens;
+  stripComments(source, out[markerTarget] || (out[markerTarget] = []));
+  const groups = plan[MN_PLAN_GROUPS];
+  const l = groups.length;
+  let i = 0;
+  let attrs: string[];
+  let target: string;
+  for (; i < l; i++) {
+    attrs = groups[i][MN_GROUP_ATTR];
+    target = groups[i][MN_GROUP_TARGET];
+    // Маркер разметки внутри строки: без него пришлось бы гонять текстовый
+    // разбор по каждому литералу файла, а `class=` есть в единицах из них.
+    visit(file, [
+      out[target] || (out[target] = []),
+      attrs,
+      groups[i][MN_GROUP_VARS],
+      groups[i][MN_GROUP_FNS],
+      attrs.map(attrMarkup),
+    ]);
+  }
 }
 
 /**
@@ -154,15 +191,15 @@ export function scanTokensSyntax(source: string, options: SyntaxScanOptions): st
 type ScanState = [
   tokens: string[],
   attrs: string[],
-  suffixes: string[],
-  mergeFnNames: string[],
+  varNames: string[],
+  fnNames: string[],
   markups: string[],
 ];
 
 const MN_SCAN_TOKENS = 0;
 const MN_SCAN_ATTR = 1;
-const MN_SCAN_SUFFIXES = 2;
-const MN_SCAN_MERGE_FNS = 3;
+const MN_SCAN_VARS = 2;
+const MN_SCAN_FNS = 3;
 const MN_SCAN_MARKUP = 4;
 
 function visit(node: ts.Node, state: ScanState): void {
@@ -207,7 +244,7 @@ function nameOf(node: ts.Node): string {
 
 /** `class="p10"`, `class={'p10'}`, `` class={`p10 ${x}`} ``. */
 function jsxAttribute(node: ts.JsxAttribute, state: ScanState): void {
-  if (!isAttrName(nameOf(node.name), state[MN_SCAN_ATTR])) {
+  if (!isScanName(nameOf(node.name), state[MN_SCAN_ATTR])) {
     return;
   }
   const value = node.initializer;
@@ -224,14 +261,14 @@ function jsxAttribute(node: ts.JsxAttribute, state: ScanState): void {
 /** `{ className: 'p10' }` и `{ rowClass: 'p10' }`. */
 function propertyAssignment(node: ts.PropertyAssignment, state: ScanState): void {
   const name = nameOf(node.name);
-  if (isAttrName(name, state[MN_SCAN_ATTR]) || hasSuffix(name, state[MN_SCAN_SUFFIXES])) {
+  if (isScanName(name, state[MN_SCAN_ATTR]) || isScanName(name, state[MN_SCAN_VARS])) {
     pushExpression(node.initializer, state);
   }
 }
 
 /** `const rowClass = 'p10'`, в том числе с аннотацией типа. */
 function variableDeclaration(node: ts.VariableDeclaration, state: ScanState): void {
-  if (hasSuffix(nameOf(node.name), state[MN_SCAN_SUFFIXES])) {
+  if (isScanName(nameOf(node.name), state[MN_SCAN_VARS])) {
     pushExpression(node.initializer, state);
   }
 }
@@ -250,8 +287,8 @@ function callExpression(node: ts.CallExpression, state: ScanState): void {
   }
   const name = (callee as ts.Identifier).text;
   // `thClass('w150')` — вызов функции, которую вернул `mnClass(base)`: её
-  // аргументы — такие же токены, как у самой `mnClass`.
-  if (state[MN_SCAN_MERGE_FNS].indexOf(name) < 0 && !hasSuffix(name, state[MN_SCAN_SUFFIXES])) {
+  // аргументы — такие же токены, как у самой `mnClass` (шаблон `*Class`).
+  if (!isScanName(name, state[MN_SCAN_FNS])) {
     return;
   }
   const args = node.arguments;
@@ -260,18 +297,6 @@ function callExpression(node: ts.CallExpression, state: ScanState): void {
   for (; i < l; i++) {
     pushEveryLiteral(args[i], state);
   }
-}
-
-/** Оканчивается ли имя на один из суффиксов. */
-function hasSuffix(name: string, suffixes: string[]): boolean {
-  const l = suffixes.length;
-  let i = 0;
-  for (; i < l; i++) {
-    if (name.length > suffixes[i].length && name.endsWith(suffixes[i])) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /**
@@ -400,10 +425,21 @@ function markupInside(text: string, state: ScanState): void {
  *
  * @param source — полный текст файла
  * @param options — см. {@link SyntaxScanOptions}
- * @returns массив токенов (с возможными повторами)
+ * @returns токены по цели (с возможными повторами)
  */
-export function scanTokensSfc(source: string, options: SyntaxScanOptions): string[] {
-  const tokens: string[] = [];
+export function scanTokensSfc(source: string, options: SyntaxScanOptions): ScannedTokens {
+  return scanSfcByPlan(source, cachedScanPlanOf(options));
+}
+
+/**
+ * {@link scanTokensSfc} по готовому плану.
+ *
+ * @param source — полный текст файла
+ * @param plan — план из `scanPlanOf`
+ * @returns токены по цели
+ */
+export function scanSfcByPlan(source: string, plan: ScanPlan): ScannedTokens {
+  const tokens: ScannedTokens = {};
   // Куски вне скриптов — их разберёт текстовый сканер одним проходом.
   const rest: string[] = [];
   let i = 0;
@@ -416,7 +452,7 @@ export function scanTokensSfc(source: string, options: SyntaxScanOptions): strin
     front = source.indexOf('\n---', 3);
     if (front > -1) {
       pushSyntax(
-        tokens, source.slice(3, front), options, TS_EXTENSION,
+        tokens, source.slice(3, front), plan, TS_EXTENSION,
       );
       rest.push(newlinesOf(
         source, 0, front,
@@ -437,7 +473,7 @@ export function scanTokensSfc(source: string, options: SyntaxScanOptions): strin
     pushSyntax(
       tokens,
       source.slice(body + 1, close),
-      options,
+      plan,
       extensionOf(source.slice(open, body)),
     );
     // Вместо вырезанного — только переводы строк: иначе склеились бы соседние
@@ -452,31 +488,22 @@ export function scanTokensSfc(source: string, options: SyntaxScanOptions): strin
   // атрибутов: в шаблоне бывают и вызовы `mne`, и комментарии — `<!-- <div
   // class="p99"> -->` иначе добавил бы в CSS правило, которое не к чему
   // применить.
-  const outside = scanTokens(rest.join(''), options);
-  const n = outside.length;
-  let j = 0;
-  for (; j < n; j++) {
-    tokens.push(outside[j]);
-  }
+  scanTokensByPlanInto(
+    tokens, rest.join(''), plan,
+  );
   return tokens;
 }
 
-/** Разбирает кусок кода парсером и складывает токены в общий массив. */
+/** Разбирает кусок кода парсером и складывает токены в общий набор. */
 function pushSyntax(
-  tokens: string[],
+  tokens: ScannedTokens,
   code: string,
-  options: SyntaxScanOptions,
+  plan: ScanPlan,
   extension: string,
 ): void {
-  const found = scanTokensSyntax(code, {
-    ...options,
-    fileName: 'sfc' + extension,
-  });
-  const l = found.length;
-  let i = 0;
-  for (; i < l; i++) {
-    tokens.push(found[i]);
-  }
+  scanSyntaxInto(
+    tokens, code, plan, 'sfc' + extension,
+  );
 }
 
 /**
@@ -537,11 +564,11 @@ function visitScopeClass(
     className: string }, edits: SourceEdit[],
 ): void {
   let value: ts.Node | undefined;
-  if (node.kind === ts.SyntaxKind.JsxAttribute && isAttrName(nameOf((node as ts.JsxAttribute).name), options.attr)) {
+  if (node.kind === ts.SyntaxKind.JsxAttribute && isScanName(nameOf((node as ts.JsxAttribute).name), options.attr)) {
     value = (node as ts.JsxAttribute).initializer;
     value && value.kind === ts.SyntaxKind.JsxExpression && (value = (value as ts.JsxExpression).expression);
   } else if (node.kind === ts.SyntaxKind.PropertyAssignment
-    && isAttrName(nameOf((node as ts.PropertyAssignment).name), options.attr)) {
+    && isScanName(nameOf((node as ts.PropertyAssignment).name), options.attr)) {
     value = (node as ts.PropertyAssignment).initializer;
   }
   if (value) {

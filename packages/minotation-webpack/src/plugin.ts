@@ -19,8 +19,8 @@ import type { MnPluginHandle } from './state';
 
 /**
  * Опции {@link MnWebpackPlugin} — эталонный набор `minotation-build` (D-026):
- * `attrs`, `root`, `extensions`, `include`, `exclude`, `skipPartials`, `presets`,
- * `presetExtensions`, `classVarSuffixes`, `mergeFnNames`, `syntax`,
+ * `attr`, `root`, `extensions`, `include`, `exclude`, `skipPartials`, `presets`,
+ * `presetExtensions`, `classVarName`, `classFnName`, `replaceDefaults`, `syntax`,
  * поля ядра (`altColor`, `warningMode`, `media`, `maxDepth`, `onWarning`,
  * `onError` — плоско, D-034), `entry`, `fileName`, `manifest`. Описание каждой — в
  * README `minotation-build`.
@@ -56,7 +56,7 @@ let nextId = 0;
  * // webpack.config.js
  * const { MnWebpackPlugin } = require('minotation-webpack');
  * module.exports = {
- *   plugins: [new MnWebpackPlugin({ attrs: 'class, className:class' })],
+ *   plugins: [new MnWebpackPlugin({ attr: ['class', 'className:class'] })],
  * };
  * // src/index.js
  * import 'minotation-webpack/mn.css';

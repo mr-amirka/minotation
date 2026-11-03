@@ -47,7 +47,7 @@ import { createTokenCollector, walkFiles } from 'minotation-build';
 import { presetStandard, presetSynonyms } from 'minotation';
 
 const collector = createTokenCollector({
-  attrs: 'class, className:class',
+  attr: ['class', 'className:class'],
   presets: [presetStandard, presetSynonyms],
 });
 
@@ -75,7 +75,7 @@ for (const warning of collector.takeWarnings()) {
 
 | Опция | Тип | По умолчанию | Что делает |
 |---|---|---|---|
-| `attrs` | `string \| string[] \| Record<string, string>` | `'class'` | какие атрибуты сканировать и во что разворачивать — раздел ниже |
+| `attr` | `string[]` | `['class']` | какие атрибуты сканировать и во что разворачивать — раздел ниже |
 | `root` | `string \| string[]` | у плагина своё: vite — `<root>/src`, rollup/esbuild — рабочая директория | корень первичного скана (в v1 — `path`); массив — несколько корней (монорепо): токены и пресеты `*.mn.*` — из всех и только из них |
 | `extensions` | `string[]` | `.html .jsx .tsx .vue .svelte` (+ `.astro` у astro) | какие файлы сканировать, если не задан `include` |
 | `include` | `MnFileMatcher` | — | какие файлы сканировать вместо `extensions`: RegExp, путь, функция или массив |
@@ -87,8 +87,9 @@ for (const warning of collector.takeWarnings()) {
 | `unreachableClassMode` | `'warn' \| 'silent' \| 'strict'` | `'warn'` | класс задан из JS в файле изолированной области (D-076) |
 | `scopes` | `MnScopeRule[]` | `[]` | правила для пакетов и путей без своей декларации: `{ match, requires, notationMode, override }` (D-080…D-082) |
 | `presetExtensions` | `string[]` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты (`import './app.mn'`) |
-| `classVarSuffixes` | `string[]` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
-| `mergeFnNames` | `string[]` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
+| `classVarName` | `string[]` | `['*Class:class']` | переменные со списком токенов: `const thClass = 'p10'` — раздел ниже |
+| `classFnName` | `string[]` | `['mne:class', '*Class:class']` | вызовы, чьи строковые аргументы — токены: `mne('p10')`, `thClass('w150')` |
+| `replaceDefaults` | `boolean` | `false` | `true` — списки выше заменяют умолчание намеренно, без предупреждения |
 | `syntax` | `boolean` | автоматически | разбирать JS/TS парсером (`false` — только текст) |
 | `altColor` | `boolean` | `false` | запасное непрозрачное объявление рядом с `rgba` |
 | `media` | `Record<string, MnMediaEntry>` | стандартные | именованные медиа: `{ wide: { query: '(width >= 1200px)' } }` → `p10@wide` |
@@ -117,7 +118,7 @@ for (const warning of collector.takeWarnings()) {
 | `onError` | `(e) => void` | — | обработчик ошибок ядра |
 | `onScannerWarning` | `(message) => void` | `console.warn` | колбэк сканера: `syntax: true`, а `typescript` нет |
 | `metrics` | `boolean \| string` | `true` | статистика употребления токенов (`mn-metrics.json`): общий список и по файлам (пути — от корня проекта); в dev не пишется (D-032) |
-| `entry` | `Record<string, MnEntryOptions>` | — | несколько CSS из одной сборки (D-030): записи переопределяют `include`, `exclude`, `skipPartials`, `attrs`, `presets`, поля ядра, `fileName` |
+| `entry` | `Record<string, MnEntryOptions>` | — | несколько CSS из одной сборки (D-030): записи переопределяют `include`, `exclude`, `skipPartials`, `attr`, `presets`, поля ядра, `fileName` |
 | `fileName` | `string` | у плагина своё | имя файла с `[name]` (имя записи) и `[hash]` (хеш содержимого) — там, где файл пишет плагин |
 | `manifest` | `boolean \| string` | `true` | `mn-manifest.json` рядом с CSS: `{ "mn.css": "mn.3f9a1c2e.css" }` |
 
@@ -137,7 +138,7 @@ for (const warning of collector.takeWarnings()) {
 
 ```ts
 mnVite({ atrs: 'class' });
-// TypeError: [minotation] mnVite: unknown option "atrs". Did you mean "attrs"?
+// TypeError: [minotation] mnVite: unknown option "atr". Did you mean "attr"?
 
 mnVite({ mn: { strict: true } });
 // TypeError: [minotation] mnVite: unknown option "mn". Known options: presets, media, onError, …
@@ -182,7 +183,7 @@ checkBuildOptions(options, 'mnMyPlugin', own);
 const { presetStandard, presetSynonyms, presetMedias, presetTw4 } = require('minotation');
 
 module.exports = {
-  attrs: 'class, className:class',
+  attr: ['class', 'className:class'],
   presets: [presetStandard, presetSynonyms, presetMedias], // обязательно — в файле или в коде (D-110)
   scopePresets: [presetTw4],
   metrics: false,
@@ -369,50 +370,59 @@ CSS проекта. После правок имя меняется, и брау
 Запись `entry` подключается своим модулем: `virtual:mn/<имя>.css` (vite, astro,
 esbuild), `mn.css?entry=<имя>` (webpack, next).
 
-## `attrs` — какие атрибуты сканировать и во что разворачивать
+## `attr`, `classVarName`, `classFnName` — что сканировать и во что разворачивать
 
-Опция общая для всех плагинов и CLI; возвращена из v1 (D-025). Ключ — атрибут
-в разметке, значение — атрибут, в который компилируется селектор. `class`
-даёт `.token`, любой другой — `[имя~="token"]`. Имя без `:` разворачивается в себя.
+Три опции сканера в одной форме (D-146), общие для всех плагинов и CLI. Каждая — список записей `имя` или
+`имя:цель`:
 
-Три равноценные формы:
+- **имя** — точное (`className`, `mne`) или шаблон `*Окончание`: `*ClassName` — любое имя длиннее окончания, которое
+  им кончается (`fillClassName`, `{ rootClassName: 'm5' }`; сам `ClassName` — нет). Регистр — как написан;
+- **цель** — во что компилируются найденные токены: `class` даёт `.token`, любая другая — `[цель~="token"]` (D-025).
 
 ```ts
-attrs: 'class, className:class'                  // строка: разделители — пробел, |, ",", ;
-attrs: ['class', 'className:class']               // массив
-attrs: { class: 'class', className: 'class' }     // объект
+mnVite({
+  attr: ['class', 'className:class', '*ClassName:class'],   // атрибуты, JSX-свойства, ключи объектов
+  classVarName: ['*Class:class'],                             // const rowClass = 'p10'
+  classFnName: ['mne:class', '*Class:class'],                 // mne('p10'), mnClass('p10'), thClass('w150')
+});
 ```
 
-По умолчанию — `'class'`. Типичные наборы:
+В `attr` имя без цели — само себе цель: `'m'` — то же, что `'m:m'`. У шаблона и у записей `classVarName` /
+`classFnName` цель пишется всегда (`'*ClassName'` без `:class` — ошибка: шаблон — не атрибут, в который можно
+компилировать). Запись — одна строка без пробелов: `['class, className:class']` — ошибка с подсказкой.
 
-| Проект | `attrs` | Что получится |
+По умолчанию — `attr: ['class']`, `classVarName: ['*Class:class']`, `classFnName: ['mne:class', '*Class:class']`.
+`'*Class:class'` в `classFnName` — вызов функции, которую вернул `mnClass` (`const thClass = mnClass('py12')`,
+`thClass('w150')`). Типичные наборы `attr`:
+
+| Проект | `attr` | Что получится |
 |---|---|---|
-| HTML, Astro, Vue, Svelte | `'class'` | `class="p10"` → `.p10` |
-| React (`className`) рядом с `.astro`/`.html` | `'class, className:class'` | оба → `.p10` |
-| свой атрибут для нотации | `'class, m, m-n'` | `m="p10"` → `[m~="p10"]`, `m-n="p10"` → `[m-n~="p10"]` |
-| React со свойствами-классами (`fillClassName`, `iconClassName`) | `'className:class, *ClassName:class'` | все → `.p10` |
+| HTML, Astro, Vue, Svelte | `['class']` (по умолчанию) | `class="p10"` → `.p10` |
+| React (`className`) рядом с `.astro`/`.html` | `['class', 'className:class']` | оба → `.p10` |
+| только React | `['className:class']` + `replaceDefaults: true` | `className="p10"` → `.p10` |
+| свой атрибут для нотации | `['class', 'm', 'm-n']` | `m="p10"` → `[m~="p10"]`, `m-n="p10"` → `[m-n~="p10"]` |
+| React со свойствами-классами (`fillClassName`, `iconClassName`) | `['className:class', '*ClassName:class']` | все → `.p10` |
 
 Частая ошибка — перечислить имена без цели: `['class', 'className']` даёт
 `.ws` **и** `[className~="ws"]`, то есть `className` компилируется в свой
 атрибут, а не в класс. Для React нужно `className:class`.
 
-Имя со `*` в начале — шаблон (D-131): `*ClassName` — любой атрибут, JSX-свойство
-или ключ объекта, имя которого кончается на `ClassName` (`fillClassName="p10"`,
-`{ rootClassName: 'm5' }`). Регистр — как написан, поэтому сам `className`
-перечисляется отдельно. Шаблон только сканирует: цель у него пишется явно
-(`'*ClassName'` без `:class` — ошибка), `*` в середине или одна `*` — тоже ошибка.
-Класс области (`isolateMode`) дописывается и в такие атрибуты.
+Класс области (`isolateMode`) дописывается во все атрибуты с целью `class`, и в шаблонные тоже.
 
-Токены из переменных `*Class` (`classVarSuffixes`) и вызовов `mne`/`mnClass`
-(`mergeFnNames`) — это значения классов: они идут в цель `class`, а если её
-нет в `attrs` — в первую цель.
+**Замена умолчания.** Заданный список заменяет умолчание целиком. Если в нём нет какой-то записи умолчания, сканер
+один раз, при создании, предупреждает (через `onScannerWarning`, иначе `console.warn`):
 
-Пустой `attrs` (`''`, `[]`) — ошибка: иначе сборка молча не нашла бы ни одного токена.
+```text
+[minotation] classFnName replaces its default and no longer scans "mne:class", "*Class:class"
+  (calls like mne('p10') and thClass('w150')). Add them to the list, or set replaceDefaults: true
+```
+
+Дописать к умолчанию — без предупреждения: `classFnName: ['mne:class', '*Class:class', 'cx:class']`. Заменить
+намеренно — `replaceDefaults: true`. Пустой список (`classFnName: []`) выключает механизм и тоже не предупреждает.
 
 ## `createTokenCollector(options)`
 
-Опции — `attrs` (выше), опции сканера (`classVarSuffixes`, `mergeFnNames`,
-`syntax`), плюс:
+Опции — опции сканера (`attr`, `classVarName`, `classFnName`, `replaceDefaults` — выше, и `syntax`), плюс:
 
 | Опция | Что делает |
 |-------|------------|
@@ -422,7 +432,7 @@ attrs: { class: 'class', className: 'class' }     // объект
 | Метод | Что делает |
 |-------|------------|
 | `add(id, source)` | сканирует исходник и учитывает токены файла; `true`, если набор изменился |
-| `set(id, entries)` | то же, но записи уже готовы (`'<цель> <токен>'`, см. `createAttrsScanner`) — для webpack, где сканирует лоадер |
+| `set(id, entries)` | то же, но записи уже готовы (`'<цель> <токен>'`, см. `createEntryScanner`) — для webpack, где сканирует лоадер |
 | `remove(id)` | снимает файл с учёта |
 | `has(id)` | стоит ли файл на учёте |
 | `setPreset(id, preset)` / `removePreset(id)` | динамические пресеты из `*.mn.ts` |
@@ -453,15 +463,14 @@ attrs: { class: 'class', className: 'class' }     // объект
   `isPreset(path)`; учитывает `extensions`, `include`, `exclude`, `skipPartials`.
 - `createMatcher(matcher, root)` — `MnFileMatcher` в функцию.
 
-## `parseAttrs`, `createAttrsScanner`, `compileEntries`
+## `createEntryScanner`, `compileEntries`
 
 Части, из которых собран накопитель; нужны тому, кто сканирует и компилирует
 сам (webpack-лоадер, CLI).
 
-- `parseAttrs(attrs)` — любая форма `attrs` в карту `{ сканируемый: целевой }`.
-- `createAttrsScanner({ attrs, ...опции сканера })` — сканер файла; возвращает записи
-  `'<цель> <токен>'` (`'class p10'`, `'m p10'`). Сканируемые атрибуты группируются
-  по цели — на группу один проход.
+- `createEntryScanner({ attr, classVarName, classFnName, ...опции сканера })` — сканер файла поверх `createScanner`
+  ядра; возвращает записи `'<цель> <токен>'` (`'class p10'`, `'m p10'`). Ядро группирует записи по цели — на
+  группу один проход.
 - `compileEntries(mn, entries)` — компилирует записи, каждую своим `getCompiler(цель)`.
 
 ## `walkFiles(dir, extensions, maxDepth?)`

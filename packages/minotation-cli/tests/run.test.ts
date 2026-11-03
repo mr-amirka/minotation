@@ -166,18 +166,19 @@ describe('mergeSettings', () => {
     const settings = mergeSettings(parseArgs([]), {
       input: './шаблоны',
       output: './dist/app.css',
-      attrs: 'className:class',
+      attr: ['className:class'],
     });
     expect(settings.input).toBe('./шаблоны');
     expect(settings.output).toBe('./dist/app.css');
-    expect(settings.attrs).toBe('className:class');
+    expect(settings.attr).toEqual(['className:class']);
   });
 
   test('умолчания применяются, когда нет ни аргумента, ни конфига', () => {
     const settings = mergeSettings(parseArgs([]), {});
     expect(settings.input).toBe('./');
     expect(settings.output).toBe('./mn.css');
-    expect(settings.attrs).toBe('class');
+    // Умолчание `attr` — у сканера ядра (`['class']`), CLI своего не держит.
+    expect(settings.attr).toBeUndefined();
   });
 
   test('аргумент важнее конфига и у этих трёх', () => {
@@ -190,11 +191,11 @@ describe('mergeSettings', () => {
     ]), {
       input: './шаблоны',
       output: './dist/app.css',
-      attrs: 'className:class',
+      attr: ['className:class'],
     });
     expect(settings.input).toBe('./src');
     expect(settings.output).toBe('./a.css');
-    expect(settings.attrs).toBe('class');
+    expect(settings.attr).toEqual(['class']);
   });
 
   test('флаги складываются: включён хоть где-то — включён', () => {
@@ -678,7 +679,10 @@ describe('изоляция: --isolate-out, --isolate-copy (D-079, D-081)', () =>
       output: join(
         dir, 'dist', 'app.css',
       ),
-      attrs: 'class, className:class',
+      attr: [
+        'class',
+        'className:class',
+      ],
       scopePresets: [presetTw4 as MnPreset],
       isolateMode: 'class',
       isolateOut: join(dir, 'isolated'),
@@ -759,7 +763,10 @@ describe('изоляция: --isolate-out, --isolate-copy (D-079, D-081)', () =>
       output: join(
         dir, 'dist', 's.css',
       ),
-      attrs: 'class, className:class',
+      attr: [
+        'class',
+        'className:class',
+      ],
       scopePresets: [presetTw4 as MnPreset],
       isolateMode: 'class',
       isolateOut: single,

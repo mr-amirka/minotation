@@ -7,7 +7,8 @@ export default defineConfig({
   plugins: [
     react(),
     mnVite({
-      attrs: 'className:class',
+      attr: ['className:class'],
+      replaceDefaults: true,
       extensions: ['.tsx', '.jsx'],
       presets: [presetStandard, presetSynonyms, presetMedias, presetNormalize8_0_1, presetMain],
     }),

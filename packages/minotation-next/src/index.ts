@@ -25,7 +25,7 @@ import type { MnWebpackPluginOptions } from 'minotation-webpack';
  * Опции {@link withMn} — опции {@link MnWebpackPlugin} (эталонный набор
  * `minotation-build`, D-026) и `enabled`.
  *
- * `attrs` по умолчанию `'class, className:class'`: в React `className` — класс.
+ * `attr` по умолчанию `['class', 'className:class']`: в React `className` — класс.
  */
 export interface MnNextOptions extends MnWebpackPluginOptions {
   /**
@@ -38,7 +38,10 @@ export interface MnNextOptions extends MnWebpackPluginOptions {
 
 const DEFAULT_OPTIONS: MnNextOptions = {
   enabled: true,
-  attrs: 'class, className:class',
+  attr: [
+    'class',
+    'className:class',
+  ],
   // Без импорта `minotation-next/mn.css` — файл рядом с остальной статикой Next.
   fileName: 'static/[name].css',
 };

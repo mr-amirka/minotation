@@ -38,7 +38,10 @@ describe('minotation-next — webpack-хук', () => {
     expect(out.plugins[0]).toBeInstanceOf(MnWebpackPlugin);
     // Опции — плагину: умолчания next и без служебного `enabled`.
     expect(out.plugins[0].options).toEqual({
-      attrs: 'class, className:class',
+      attr: [
+        'class',
+        'className:class',
+      ],
       fileName: 'static/[name].css',
       presets: PRESETS,
     });
@@ -81,7 +84,10 @@ describe('minotation-next — webpack-хук', () => {
 
     const plugin = (config.plugins as any[])[0] as { options: Record<string, unknown> };
     expect(plugin.options).toEqual({
-      attrs: 'class, className:class',
+      attr: [
+        'class',
+        'className:class',
+      ],
       fileName: 'custom/[name].[hash].css',
       altColor: true,
       presets: PRESETS,

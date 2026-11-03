@@ -6,10 +6,9 @@ import {
   extractTokens,
   extractClassVarTokens,
   extractMergeCallTokens,
-  attrNames,
   attrMarkup,
   attrNameSource,
-  isAttrName,
+  isScanName,
   scanTokens,
 } from '../extractTokens';
 
@@ -145,8 +144,8 @@ describe('extractClassVarTokens', () => {
    * Механизм жил только в `minotation-vite`; перенесён в ядро 2026-09-25, чтобы
    * esbuild, rollup и webpack перестали молча терять эти токены.
    */
-  function tokensOf(source: string, suffixes = ['Class']): string[] {
-    return extractClassVarTokens(source, suffixes);
+  function tokensOf(source: string, names = ['*Class']): string[] {
+    return extractClassVarTokens(source, names);
   }
 
   test('присваивание переменной', () => {
@@ -183,7 +182,13 @@ describe('extractClassVarTokens', () => {
   });
 
   test('свои суффиксы через параметр', () => {
-    expect(tokensOf("const aStyles = 'p10';", ['Styles'])).toEqual(['p10']);
+    expect(tokensOf("const aStyles = 'p10';", ['*Styles'])).toEqual(['p10']);
+  });
+
+  test('точное имя — целиком: чужое начало или конец его не дают', () => {
+    expect(tokensOf("const rowStyles = 'p10';", ['rowStyles'])).toEqual(['p10']);
+    expect(tokensOf("const my_rowStyles = 'p10'; const rowStylesX = 'm5';", ['rowStyles'])).toEqual([]);
+    expect(tokensOf("rowStyles = 'p10';", ['rowStyles'])).toEqual(['p10']);
   });
 
   test('пустой список суффиксов отключает механизм', () => {
@@ -290,7 +295,7 @@ describe('scanTokens — единая точка сбора', () => {
     const source = '<div class="h5">'
       + "\nconst aClass = 'p10';"
       + "\nmne(aClass, 'w50');";
-    expect(scanTokens(source, {}).sort()).toEqual([
+    expect(scanTokens(source, {}).class.sort()).toEqual([
       'h5',
       'p10',
       'w50',
@@ -299,28 +304,28 @@ describe('scanTokens — единая точка сбора', () => {
 
   test('своё имя атрибута', () => {
     expect(scanTokens('<div className="p10">', {
-      attr: 'className',
-    })).toEqual(['p10']);
+      attr: ['className:class'],
+    }).class).toEqual(['p10']);
   });
 
   test('механизмы отключаются по отдельности', () => {
     const source = "const aClass = 'p10'; mne(x, 'w50');";
     expect(scanTokens(source, {
-      classVarSuffixes: [],
-      mergeFnNames: [],
-    })).toEqual([]);
+      classVarName: [],
+      classFnName: [],
+    }).class).toEqual([]);
     expect(scanTokens(source, {
-      mergeFnNames: [],
-    })).toEqual(['p10']);
+      classFnName: [],
+    }).class).toEqual(['p10']);
     expect(scanTokens(source, {
-      classVarSuffixes: [],
-    })).toEqual(['w50']);
+      classVarName: [],
+    }).class).toEqual(['w50']);
   });
 
   test('повторный вызов с теми же опциями даёт тот же результат', () => {
     const source = "const aClass = 'p10';";
-    expect(scanTokens(source, {})).toEqual(['p10']);
-    expect(scanTokens(source, {})).toEqual(['p10']);
+    expect(scanTokens(source, {}).class).toEqual(['p10']);
+    expect(scanTokens(source, {}).class).toEqual(['p10']);
   });
 });
 
@@ -356,7 +361,7 @@ describe('вызов переменной с суффиксом — функци
   ])('%s', (
     _name, source, expected,
   ) => {
-    expect(scanTokens(source, {})).toEqual(expected);
+    expect(scanTokens(source, {}).class).toEqual(expected);
   });
 
   test.each([
@@ -368,31 +373,36 @@ describe('вызов переменной с суффиксом — функци
       'суффикс не в конце имени',
       "thClassy('p10')",
     ],
-    [
-      'ровно суффикс — не имя переменной',
-      "Class('p10')",
-    ],
   ])('%s — не разбирается', (_name, source) => {
-    expect(scanTokens(source, {})).toEqual([]);
+    expect(scanTokens(source, {}).class).toEqual([]);
   });
 
-  test('classVarSuffixes: [] отключает и это', () => {
+  test('шаблон `*Class` — окончание после начала имени: `Class(…)` не вызов', () => {
+    expect(scanTokens("Class('p10'); const Class = 'm5'", {}).class).toEqual([]);
+  });
+
+  test('classVarName: [] вызовы не отключает — они в classFnName (D-146)', () => {
     expect(scanTokens("thClass('w150')", {
-      classVarSuffixes: [],
-    })).toEqual([]);
+      classVarName: [],
+    }).class).toEqual(['w150']);
   });
 
-  test('работает и при отключённых функциях слияния', () => {
+  test('classFnName: [] отключает и вызов `thClass`', () => {
     expect(scanTokens("thClass('w150')", {
-      mergeFnNames: [],
-    })).toEqual(['w150']);
+      classFnName: [],
+    }).class).toEqual([]);
   });
 
-  test('extractMergeCallTokens без суффиксов их не разбирает', () => {
+  test('extractMergeCallTokens — точные имена и шаблоны одним списком', () => {
     expect(extractMergeCallTokens("thClass('w150')", ['mne'])).toEqual([]);
-    expect(extractMergeCallTokens(
-      "thClass('w150')", [], ['Class'],
-    )).toEqual(['w150']);
+    expect(extractMergeCallTokens("thClass('w150')", ['*Class'])).toEqual(['w150']);
+    expect(extractMergeCallTokens("mne('p1'); cx('p2'); mycx('p3')", [
+      'mne',
+      'cx',
+    ])).toEqual([
+      'p1',
+      'p2',
+    ]);
     expect(extractMergeCallTokens("thClass('w150')", [])).toEqual([]);
   });
 });
@@ -408,27 +418,40 @@ describe('attr — несколько имён (2026-10-05)', () => {
     expect(scanTokens(source, {
       attr: [
         'class',
-        'className',
+        'className:class',
       ],
-    })).toEqual([
+    }).class).toEqual([
       'p10',
       'm10',
     ]);
   });
 
-  test('одно имя — как раньше', () => {
+  test('имя без цели — само себе цель: `className` → `[className~="m10"]`', () => {
     expect(scanTokens(source, {
-      attr: 'class',
-    })).toEqual(['p10']);
-    expect(scanTokens(source, {
-      attr: 'className',
-    })).toEqual(['m10']);
+      attr: [
+        'class',
+        'className',
+      ],
+    })).toEqual({
+      class: ['p10'],
+      className: ['m10'],
+    });
   });
 
-  test('пустой массив — по умолчанию class', () => {
-    expect(attrNames([])).toEqual(['class']);
-    expect(attrNames(undefined)).toEqual(['class']);
-    expect(attrNames('className')).toEqual(['className']);
+  test('одно имя — как раньше', () => {
+    expect(scanTokens(source, {
+      attr: ['class'],
+    }).class).toEqual(['p10']);
+    expect(scanTokens(source, {
+      attr: ['className:class'],
+    }).class).toEqual(['m10']);
+  });
+
+  test('пустой список — атрибуты не сканируются, пропуск — умолчание `class` (D-146)', () => {
+    expect(scanTokens(source, {
+      attr: [],
+    }).class).toEqual([]);
+    expect(scanTokens(source, {}).class).toEqual(['p10']);
   });
 
   test('левая граница: имя не ловит хвост другого атрибута', () => {
@@ -477,8 +500,11 @@ describe('attr — шаблон `*ClassName` (D-131)', () => {
 
   test('шаблон ловит любое имя с этим концом', () => {
     expect(scanTokens(source, {
-      attr: ATTR,
-    })).toEqual([
+      attr: [
+        'className:class',
+        '*ClassName:class',
+      ],
+    }).class).toEqual([
       'w10',
       'bg42A5F5-2285D5-42A5F5',
       'h5',
@@ -487,31 +513,31 @@ describe('attr — шаблон `*ClassName` (D-131)', () => {
 
   test('без шаблона — только точное имя', () => {
     expect(scanTokens(source, {
-      attr: 'className',
-    })).toEqual(['w10']);
+      attr: ['className:class'],
+    }).class).toEqual(['w10']);
   });
 
   test('регистр — как написан: `*ClassName` не ловит `className` и `fillclassname`', () => {
     expect(scanTokens('<b className="p1" fillclassname="p2" />', {
-      attr: '*ClassName',
-    })).toEqual([]);
-    expect(extractTokens('<b ClassName="p1" />', '*ClassName')).toEqual(['p1']);
+      attr: ['*ClassName:class'],
+    }).class).toEqual([]);
+    expect(extractTokens('<b ClassName="p1" xClassName="p2" />', '*ClassName')).toEqual(['p2']);
   });
 
-  test('isAttrName — имя, шаблон, короче шаблона, почти совпадение', () => {
-    expect(isAttrName('className', ATTR)).toBe(true);
-    expect(isAttrName('fillClassName', ATTR)).toBe(true);
-    expect(isAttrName('ClassName', ['*ClassName'])).toBe(true);
-    expect(isAttrName('Name', ['*ClassName'])).toBe(false);
-    expect(isAttrName('fillClassNames', ATTR)).toBe(false);
-    expect(isAttrName('fillclassName', ['*ClassName'])).toBe(false);
-    expect(isAttrName('class', ATTR)).toBe(false);
-    expect(isAttrName('class', [])).toBe(false);
+  test('isScanName — имя, шаблон, короче шаблона, почти совпадение', () => {
+    expect(isScanName('className', ATTR)).toBe(true);
+    expect(isScanName('fillClassName', ATTR)).toBe(true);
+    expect(isScanName('ClassName', ['*ClassName'])).toBe(false);
+    expect(isScanName('Name', ['*ClassName'])).toBe(false);
+    expect(isScanName('fillClassNames', ATTR)).toBe(false);
+    expect(isScanName('fillclassName', ['*ClassName'])).toBe(false);
+    expect(isScanName('class', ATTR)).toBe(false);
+    expect(isScanName('class', [])).toBe(false);
   });
 
   test('attrNameSource и attrMarkup', () => {
     expect(attrNameSource('className')).toBe('className');
-    expect(attrNameSource('*Class.Name')).toBe('[\\w$-]*Class\\.Name');
+    expect(attrNameSource('*Class.Name')).toBe('[\\w$-]+Class\\.Name');
     expect(attrMarkup('className')).toBe('className=');
     expect(attrMarkup('*ClassName')).toBe('ClassName=');
   });
@@ -525,20 +551,20 @@ describe('scanTokens — отключение механизмов (регрес
    * «пустой массив отключает механизм». После перехода на ручной разбор регексп из API
    * ушёл вовсе, и отключение выражается единственным способом — пустым списком.
    */
-  test('classVarSuffixes: [] отключает разбор переменных', () => {
+  test('classVarName: [] отключает разбор переменных', () => {
     expect(scanTokens("const thClass = 'w777';", {
-      classVarSuffixes: [],
-    })).toEqual([]);
+      classVarName: [],
+    }).class).toEqual([]);
   });
 
-  test('без ключа работает дефолт ["Class"]', () => {
-    expect(scanTokens("const thClass = 'w777';", {})).toEqual(['w777']);
+  test('без ключа работает умолчание ["*Class:class"]', () => {
+    expect(scanTokens("const thClass = 'w777';", {}).class).toEqual(['w777']);
   });
 
-  test('mergeFnNames: [] отключает разбор вызовов', () => {
+  test('classFnName: [] отключает разбор вызовов', () => {
     expect(scanTokens("mne(x, 'w777')", {
-      mergeFnNames: [],
-    })).toEqual([]);
+      classFnName: [],
+    }).class).toEqual([]);
   });
 });
 
@@ -579,7 +605,7 @@ describe('extractClassVarTokens — края ручного разбора (2026
    * сканируется целиком, и слово с суффиксом легко встречается вне объявления.
    */
   function tokensOf(source: string): string[] {
-    return extractClassVarTokens(source, ['Class']);
+    return extractClassVarTokens(source, ['*Class']);
   }
 
   test('аннотация типа без `=` — совпадение пропускается', () => {
@@ -655,8 +681,8 @@ describe('extractClassVarTokens — края ручного разбора (2026
 
   test('несколько суффиксов, оба находятся', () => {
     expect(extractClassVarTokens("const aClass = 'p10'; const bCls = 'm5';", [
-      'Class',
-      'Cls',
+      '*Class',
+      '*Cls',
     ]))
       .toEqual([
         'p10',

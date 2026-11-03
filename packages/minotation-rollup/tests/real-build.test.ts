@@ -114,7 +114,8 @@ describe('minotation-rollup — реальная сборка', () => {
     });
 
     const { assets, css } = await runBuild(root, {
-      attrs: 'data-cls:class',
+      attr: ['data-cls:class'],
+      replaceDefaults: true,
       extensions: ['.vue'],
       presetExtensions: ['.mnjs'],
       fileName: 'styles.css',
@@ -517,7 +518,10 @@ describe('minotation-rollup — изоляция областей пакетов
     const { code, css } = await runBuild(root, {
       root: [join(root, 'src'), join(root, 'ui')],
       extensions: ['.js'],
-      attrs: 'class, className:class',
+      attr: [
+        'class',
+        'className:class',
+      ],
       scopePresets: [presetTw4],
       isolateMode: 'class',
     });

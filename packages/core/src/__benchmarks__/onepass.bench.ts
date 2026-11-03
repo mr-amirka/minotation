@@ -367,8 +367,8 @@ function scanTokensInto(
 const three = bench('три прохода (рабочая реализация)', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokens(sources[i], {
-      attr: CLASS_ATTR,
-    });
+      attr: [CLASS_ATTR],
+    }).class;
   }
 });
 const one = bench('один проход, charCodeAt        ', () => {
@@ -385,8 +385,8 @@ const one = bench('один проход, charCodeAt        ', () => {
 console.log(`один проход против трёх: ${((1 - one / three) * 100).toFixed(1)}%`);
 
 const a = scanTokens(sources[0], {
-  attr: CLASS_ATTR,
-}).slice().sort().join(' ');
+  attr: [CLASS_ATTR],
+}).class.slice().sort().join(' ');
 const outB: string[] = [];
 scanTokensInto(
   outB, sources[0], CLASS_ATTR, ['Class'], [

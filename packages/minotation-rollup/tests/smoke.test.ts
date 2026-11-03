@@ -24,8 +24,8 @@ describe('minotation-rollup — smoke', () => {
     expect(typeof plugin.generateBundle).toBe('function');
   });
 
-  test('mnRollup({ attrs: "className:class" }) — принимает опции', () => {
-    const plugin = mnRollup({ presets: PRESETS, attrs: 'className:class' });
+  test('mnRollup({ attr: ["className:class"], replaceDefaults: true }) — принимает опции', () => {
+    const plugin = mnRollup({ presets: PRESETS, attr: ['className:class'], replaceDefaults: true });
     expect(plugin.name).toBe('minotation');
   });
 });
@@ -34,7 +34,7 @@ describe('mnRollup — проверка опций (D-038)', () => {
   test('опечатка и неверное значение — ошибка с подсказкой', () => {
     expect(() => mnRollup({ fileNmae: 'a.css' } as never))
       .toThrow('[minotation] mnRollup: unknown option "fileNmae". Did you mean "fileName"?');
-    expect(() => mnRollup({ attrs: 5 } as never))
-      .toThrow('[minotation] mnRollup: "attrs" expects');
+    expect(() => mnRollup({ attr: 5 } as never))
+      .toThrow('[minotation] mnRollup: "attr" expects');
   });
 });

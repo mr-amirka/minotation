@@ -25,8 +25,8 @@ import { createRequire } from 'module';
 
 /**
  * Опции плагина {@link mnEsbuild} — эталонный набор `minotation-build` (D-026):
- * `attrs`, `root`, `extensions`, `include`, `exclude`, `skipPartials`, `presets`,
- * `presetExtensions`, `classVarSuffixes`, `mergeFnNames`, `syntax`,
+ * `attr`, `root`, `extensions`, `include`, `exclude`, `skipPartials`, `presets`,
+ * `presetExtensions`, `classVarName`, `classFnName`, `replaceDefaults`, `syntax`,
  * `mn`, `entry`, `fileName`, `manifest`. Описание каждой — в README `minotation-build`.
  *
  * `root` по умолчанию — рабочая директория (`process.cwd()`).
@@ -129,7 +129,7 @@ function evalPresetFile(id: string): MnPreset | null {
  *   entryPoints: ['src/main.tsx'],
  *   outdir: 'dist',
  *   bundle: true,
- *   plugins: [mnEsbuild({ attrs: 'class, className:class' })],
+ *   plugins: [mnEsbuild({ attr: ['class', 'className:class'] })],
  * });
  */
 export function mnEsbuild(code: MnEsbuildOptions = {}): Plugin {

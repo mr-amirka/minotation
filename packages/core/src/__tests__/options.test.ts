@@ -198,16 +198,29 @@ describe('точки входа ядра', () => {
 
   test('createScanner', () => {
     expect(messageOf(() => createScanner({
-      attrs: 'class',
+      attrs: ['class'],
     } as never))).toBe('[minotation] createScanner: unknown option "attrs". Did you mean "attr"?');
     expect(messageOf(() => createScanner({
+      classVarSuffixes: ['Class'],
+    } as never))).toMatch('[minotation] createScanner: unknown option "classVarSuffixes".');
+    expect(messageOf(() => createScanner({
       attr: 1,
-    } as never))).toBe('[minotation] createScanner: "attr" expects a string or a list, got number 1');
+    } as never))).toBe('[minotation] createScanner: "attr" expects a list, got number 1');
+    expect(messageOf(() => createScanner({
+      attr: 'class, className:class',
+    } as never))).toBe('[minotation] createScanner: "attr" expects a list, got string "class, className:class"');
     expect(messageOf(() => createScanner({
       attr: [
         'class',
-        'className',
+        'className:class',
+        '*ClassName:class',
       ],
+      classVarName: ['*Class:class'],
+      classFnName: [
+        'mne:class',
+        '*Class:class',
+      ],
+      replaceDefaults: false,
       syntax: false,
     }))).toBeNull();
   });
@@ -217,23 +230,43 @@ describe('точки входа ядра', () => {
     'class*',
     '**Name',
     'class name',
-  ])('attr — имя или шаблон `*Suffix` (D-131): %p нельзя', (name) => {
-    const expected = '[minotation] createScanner: "attr" expects names or patterns "*Suffix" (as "*ClassName"), each without spaces';
-    expect(messageOf(() => createScanner({
-      attr: name,
-    }))).toBe(expected);
-    expect(messageOf(() => createScanner({
-      attr: [
-        'className',
-        name,
-      ],
-    }))).toBe(expected);
+    'class, className',
+    '*ClassName',
+    'className:*class',
+    'className:',
+    ':class',
+  ])('attr — запись "имя" или "имя:цель", шаблон только с целью: %p нельзя', (entry) => {
     expect(messageOf(() => createScanner({
       attr: [
-        'className',
-        '*ClassName',
+        'className:class',
+        entry,
       ],
-    }))).toBeNull();
+    }))).toBe('[minotation] createScanner: "attr"[1] expects "name" or "name:target"; a pattern "*Ending" with its '
+      + 'target, as "*ClassName:class"; no spaces; got "' + entry + '"');
+  });
+
+  test.each([
+    [
+      'classVarName',
+      '*Class',
+    ],
+    [
+      'classVarName',
+      'rowStyles',
+    ],
+    [
+      'classFnName',
+      'mne',
+    ],
+    [
+      'classFnName',
+      '*Class:*x',
+    ],
+  ])('%s — цель пишется всегда: %p нельзя', (option, entry) => {
+    expect(messageOf(() => createScanner({
+      [option]: [entry],
+    }))).toBe('[minotation] createScanner: "' + option + '"[0] expects "name:target" or "*Ending:target", as '
+      + '"*Class:class"; no spaces; got "' + entry + '"');
   });
 });
 
@@ -275,7 +308,7 @@ describe('в продакшене ядро не проверяет опции (l
     [
       'createScanner',
       () => createScanner({
-        attr: 'class*',
+        attr: ['class*'],
       }),
     ],
     [

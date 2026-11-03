@@ -27,15 +27,14 @@ import {
   asPreset,
   assertPresets,
   checkBuildOptions,
-  createAttrsScanner,
   createBuildCollector,
+  createEntryScanner,
   createFileFilter,
   createTokenCollector,
   formatFileName,
   manifestFileName,
   manifestOf,
   metricsFileName,
-  parseAttrs,
   scanRoots,
   walkFiles,
 } from '../src/index';
@@ -44,7 +43,7 @@ import {
 } from 'minotation';
 
 const OPTIONS = {
-  attrs: 'class',
+  attr: ['class'],
   presets: [presetStandard],
 };
 
@@ -162,7 +161,7 @@ describe('createTokenCollector — учёт токенов', () => {
     // `affiliate`: страницы `.astro` пишут `class`, React-компоненты — `className`.
     const collector = createTokenCollector({
       ...OPTIONS,
-      attrs: [
+      attr: [
         'class',
         'className:class',
       ],
@@ -227,7 +226,7 @@ describe('createTokenCollector — пресеты', () => {
 
   test('без `presets` работают одни динамические', () => {
     const collector = createTokenCollector({
-      attrs: 'class',
+      attr: ['class'],
     });
     collector.setPreset('/theme.mn.ts', (mn) => {
       mn('brand', () => ({
@@ -411,83 +410,11 @@ describe('walkFiles', () => {
   });
 });
 
-describe('attrs — карта «сканируемый → целевой атрибут», как в v1 (D-025)', () => {
-  test.each([
-    [
-      'строка',
-      'class, className:class',
-      {
-        class: 'class',
-        className: 'class',
-      },
-    ],
-    [
-      'строка с | и ;',
-      'class|m;m-n',
-      {
-        class: 'class',
-        m: 'm',
-        'm-n': 'm-n',
-      },
-    ],
-    [
-      'массив',
-      [
-        'class',
-        'className:class',
-      ],
-      {
-        class: 'class',
-        className: 'class',
-      },
-    ],
-    [
-      'объект',
-      {
-        className: 'class',
-        class: 'class',
-      },
-      {
-        className: 'class',
-        class: 'class',
-      },
-    ],
-    [
-      'по умолчанию',
-      undefined,
-      {
-        class: 'class',
-      },
-    ],
-  ])('%s', (
-    _name, attrs, expected,
-  ) => {
-    expect(parseAttrs(attrs as never)).toEqual(expected);
-  });
-
-  test.each([
-    [
-      'пустая строка',
-      '',
-    ],
-    [
-      'пустой массив',
-      [],
-    ],
-    [
-      'объект без строковых значений',
-      {
-        class: '',
-      },
-    ],
-  ])('%s — ошибка, а не сборка без единого токена', (_name, attrs) => {
-    expect(() => parseAttrs(attrs as never)).toThrow('attrs is empty');
-  });
-
-  test('пример владельца: attrs [class, className] — className в свой атрибут', () => {
+describe('attr — записи «имя:цель», как attrs в v1 (D-025, D-146)', () => {
+  test('пример владельца: attr [class, className] — className в свой атрибут', () => {
     const collector = createTokenCollector({
       ...OPTIONS,
-      attrs: [
+      attr: [
         'class',
         'className',
       ],
@@ -500,7 +427,10 @@ describe('attrs — карта «сканируемый → целевой ат�
   test('className:class — оба атрибута дают один класс', () => {
     const collector = createTokenCollector({
       ...OPTIONS,
-      attrs: 'class, className:class',
+      attr: [
+        'class',
+        'className:class',
+      ],
     });
     collector.add('/a.html', '<div class="ws" className="ws">...</div>');
 
@@ -512,7 +442,7 @@ describe('attrs — карта «сканируемый → целевой ат�
   test('m и m-n — селекторы по атрибуту', () => {
     const collector = createTokenCollector({
       ...OPTIONS,
-      attrs: [
+      attr: [
         'class',
         'm',
         'm-n',
@@ -528,55 +458,59 @@ describe('attrs — карта «сканируемый → целевой ат�
 
   test('шаблон *ClassName:class — свойства с этим концом тоже классы (D-131)', () => {
     const source = '<Bar className="w10" fillClassName="p10" fillclassname="h30" />';
-    expect(parseAttrs('className:class,*ClassName:class')).toEqual({
-      className: 'class',
-      '*ClassName': 'class',
-    });
-    expect(createAttrsScanner({
-      attrs: 'className:class,*ClassName:class',
+    expect(createEntryScanner({
+      attr: [
+        'className:class',
+        '*ClassName:class',
+      ],
+      replaceDefaults: true,
     })(source, '/a.tsx').sort()).toEqual([
       'class p10',
       'class w10',
     ]);
-    expect(createAttrsScanner({
-      attrs: 'className:class,*ClassName:class',
+    expect(createEntryScanner({
+      attr: [
+        'className:class',
+        '*ClassName:class',
+      ],
+      replaceDefaults: true,
     })(source).sort()).toEqual([
       'class p10',
       'class w10',
     ]);
-    expect(createAttrsScanner({
-      attrs: 'className:class',
+    expect(createEntryScanner({
+      attr: ['className:class'],
+      replaceDefaults: true,
     })(source, '/a.tsx')).toEqual(['class w10']);
   });
 
   test.each([
     [
       'шаблон без цели',
-      '*ClassName',
-      'attrs: "*ClassName" expands into "*ClassName", but a pattern is not a target. Write the target: "*ClassName:class"',
+      ['*ClassName'],
     ],
     [
       'шаблон целью',
-      {
-        className: '*Name',
-      },
-      'attrs: "className" expands into "*Name", but a pattern is not a target. Write the target: "className:class"',
+      ['className:*Name'],
     ],
-  ])('%s — ошибка (D-131)', (
-    _name, attrs, message,
-  ) => {
-    expect(() => parseAttrs(attrs as never)).toThrow(message);
+    [
+      'звёздочка не в начале',
+      ['class*:class'],
+    ],
+    [
+      'список одной строкой',
+      ['class, className:class'],
+    ],
+  ])('%s — ошибка сканера (D-131, D-146)', (_name, attr) => {
+    expect(() => createEntryScanner({
+      attr,
+    })).toThrow('[minotation] createScanner: "attr"[0] expects "name" or "name:target"; a pattern "*Ending" with its '
+      + 'target, as "*ClassName:class"; no spaces; got "' + attr[0] + '"');
   });
 
-  test('звёздочка не в начале — ошибка сканера (D-131)', () => {
-    expect(() => createAttrsScanner({
-      attrs: 'class*:class',
-    })).toThrow('[minotation] createScanner: "attr" expects names or patterns "*Suffix" (as "*ClassName"), each without spaces');
-  });
-
-  test('переменные *Class и вызовы mne идут в class, а не в каждую цель', () => {
-    const scan = createAttrsScanner({
-      attrs: [
+  test('переменные и вызовы идут в цель своей записи: *Class:class — в class', () => {
+    const scan = createEntryScanner({
+      attr: [
         'm',
         'class',
       ],
@@ -589,17 +523,36 @@ describe('attrs — карта «сканируемый → целевой ат�
       ]);
   });
 
-  test('без группы class переменные идут в первую цель', () => {
-    const scan = createAttrsScanner({
-      attrs: 'm',
+  test('переменная в атрибутную цель: *M:m', () => {
+    const scan = createEntryScanner({
+      attr: ['m'],
+      classVarName: ['*M:m'],
+      classFnName: [],
+      replaceDefaults: true,
     });
-    expect(scan("const aClass = 'p10'; <i m=\"h30\" />", '/a.tsx').sort())
+    expect(scan("const aClass = 'p10'; const iconM = 'w1'; <i m=\"h30\" />", '/a.tsx').sort())
       .toEqual([
         'm h30',
-        'm p10',
+        'm w1',
       ]);
   });
 
+  test('замена умолчания — предупреждение через onScannerWarning, один раз', () => {
+    const warnings: string[] = [];
+    const scan = createEntryScanner({
+      classFnName: ['cx:class'],
+      onScannerWarning: (message) => {
+        warnings.push(message);
+      },
+    });
+    scan("cx('p1'); mne('p2')");
+    scan("cx('p1')");
+    expect(warnings).toEqual([
+      '[minotation] classFnName replaces its default and no longer scans "mne:class", "*Class:class" (calls like '
+        + 'mne(\'p10\') and thClass(\'w150\')). Add them to the list, or set replaceDefaults: true',
+    ]);
+    expect(scan("cx('p1'); mne('p2')")).toEqual(['class p1']);
+  });
 });
 
 describe('createFileFilter — отбор файлов, как в v1 (D-026, D-027)', () => {
@@ -710,14 +663,15 @@ describe('createBuildCollector — записи entry (D-030)', () => {
     expect(all.css).toContain('margin:20px');
   });
 
-  test('у записи могут быть свои attrs', () => {
+  test('у записи может быть свой attr', () => {
     const build = createBuildCollector({
       ...OPTIONS,
+      replaceDefaults: true,
       entry: {
         a: {},
         b: {},
         c: {
-          attrs: 'm',
+          attr: ['m'],
         },
       },
     }, '/proj');
@@ -837,7 +791,7 @@ describe('опции ядра — плоско, без mn (D-034)', () => {
 
   test('колбэк сканера — onScannerWarning; onWarning сканеру не передаётся', () => {
     const said: string[] = [];
-    const scan = createAttrsScanner({
+    const scan = createEntryScanner({
       syntax: false,
       onScannerWarning: (message) => said.push(message),
     });
@@ -850,7 +804,10 @@ describe('статистика употребления токенов (D-032)',
   test('общий список и по файлам; атрибут не class — в ключе', () => {
     const build = createBuildCollector({
       ...OPTIONS,
-      attrs: 'class, m',
+      attr: [
+        'class',
+        'm',
+      ],
     }, '/proj');
     build.add('/proj/src/a.html', '<div class="p10 p10 m20" m="p10"></div>');
     build.add('/proj/src/b.html', '<div class="p10"></div>');
@@ -1042,10 +999,10 @@ describe('specificityMode / importantMode в накопителе (D-039)', () =
 describe('checkBuildOptions — проверка опций плагина (D-038)', () => {
   test('полный набор допустимых опций проходит', () => {
     expect(() => checkBuildOptions({
-      attrs: {
-        class: 'class',
-        className: 'class',
-      },
+      attr: [
+        'class',
+        'className:class',
+      ],
       presets: [presetStandard],
       include: [
         /\.html$/,
@@ -1057,8 +1014,9 @@ describe('checkBuildOptions — проверка опций плагина (D-03
       root: './src',
       extensions: ['.html'],
       presetExtensions: ['.mn.ts'],
-      classVarSuffixes: ['Class'],
-      mergeFnNames: ['cn'],
+      classVarName: ['*Class:class'],
+      classFnName: ['cn:class'],
+      replaceDefaults: true,
       comments: false,
       syntax: true,
       onScannerWarning: () => undefined,
@@ -1068,7 +1026,7 @@ describe('checkBuildOptions — проверка опций плагина (D-03
       entry: {
         admin: {
           include: 'admin',
-          attrs: [
+          attr: [
             'class',
             'm',
           ],
@@ -1117,17 +1075,37 @@ describe('checkBuildOptions — проверка опций плагина (D-03
     )).not.toThrow();
   });
 
-  test('некорректные значения: attrs, include, entry', () => {
-    expect(() => checkBuildOptions({
-      attrs: 1,
-    }, 'mnGulp'))
-      .toThrow('[minotation] mnGulp: "attrs" expects a string, an array of strings or an object of strings, got number 1');
-    expect(() => checkBuildOptions({
-      attrs: {
-        className: 1,
+  test('без опций — ошибка о пресетах, а не проверка схемы', () => {
+    expect(() => checkBuildOptions(undefined, 'mnGulp')).toThrow('presets');
+  });
+
+  test('предупреждение сканера у записей — одно на набор опций', () => {
+    const said: string[] = [];
+    createBuildCollector({
+      ...OPTIONS,
+      attr: ['m'],
+      onScannerWarning: (message) => said.push(message),
+      entry: {
+        a: {},
+        b: {},
       },
+    }, '/proj');
+    expect(said).toHaveLength(1);
+  });
+
+  test('некорректные значения: attr, include, entry', () => {
+    expect(() => checkBuildOptions({
+      attr: 'class',
     }, 'mnGulp'))
-      .toThrow('[minotation] mnGulp: "attrs" expects a string, an array of strings or an object of strings, got object');
+      .toThrow('[minotation] mnGulp: "attr" expects');
+    expect(() => checkBuildOptions({
+      attr: ['class, className:class'],
+    }, 'mnGulp'))
+      .toThrow('[minotation] mnGulp: "attr"[0] expects "name" or "name:target"');
+    expect(() => checkBuildOptions({
+      attrs: 'class',
+    }, 'mnGulp'))
+      .toThrow('[minotation] mnGulp: unknown option "attrs". Did you mean "attr"?');
     expect(() => checkBuildOptions({
       include: [
         /a/,
@@ -1199,7 +1177,7 @@ describe('scanRoots — несколько корней скана (web-games, �
 describe('presets — только явно (D-110)', () => {
   test('без presets — ошибка с подсказкой: набора по умолчанию нет', () => {
     expect(() => checkBuildOptions({
-      attrs: 'class',
+      attr: ['class'],
     }, 'mnVite')).toThrow('[minotation] mnVite: "presets" is required — no preset is connected by default.'
       + ' List them in the options or in minotation.config.js: presets: [presetStandard, presetSynonyms, presetMedias]');
     expect(() => assertPresets({}, 'compile')).toThrow('compile: "presets" is required');

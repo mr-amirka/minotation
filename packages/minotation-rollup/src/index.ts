@@ -22,8 +22,8 @@ import { createRequire } from 'module';
 
 /**
  * Опции плагина {@link mnRollup} — эталонный набор `minotation-build` (D-026):
- * `attrs`, `root`, `extensions`, `include`, `exclude`, `skipPartials`, `presets`,
- * `presetExtensions`, `classVarSuffixes`, `mergeFnNames`, `syntax`,
+ * `attr`, `root`, `extensions`, `include`, `exclude`, `skipPartials`, `presets`,
+ * `presetExtensions`, `classVarName`, `classFnName`, `replaceDefaults`, `syntax`,
  * `mn`, `entry`, `fileName`, `manifest`. Описание каждой — в README `minotation-build`.
  *
  * `root` по умолчанию — рабочая директория (`process.cwd()`). Без `fileName` имя
@@ -91,7 +91,7 @@ function evalPresetFile(id: string): MnPreset | null {
  * // rollup.config.js
  * import { mnRollup } from 'minotation-rollup';
  * export default {
- *   plugins: [mnRollup({ attrs: 'class, className:class' })],
+ *   plugins: [mnRollup({ attr: ['class', 'className:class'] })],
  * };
  */
 export function mnRollup(code: MnRollupOptions = {}): Plugin {

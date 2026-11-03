@@ -121,7 +121,7 @@ console.log(`выигрыш: ${((1 - after / before) * 100).toFixed(1)}%\n`);
 bench('scanTokens — три прохода          ', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokens(sources[i], {
-      attr: CLASS_ATTR,
+      attr: [CLASS_ATTR],
     });
   }
 });
@@ -134,7 +134,7 @@ bench('scanTokens — три прохода          ', () => {
 bench('scanTokens — без вырезания          ', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokens(sources[i], {
-      attr: CLASS_ATTR,
+      attr: [CLASS_ATTR],
       comments: false,
     });
   }
@@ -149,7 +149,7 @@ bench('stripComments — только вырезание    ', () => {
 // Раздельно по механизмам: где именно уходит время.
 bench('  только extractClassVarTokens        ', () => {
   for (let i = 0; i < FILES; i++) {
-    extractClassVarTokens(sources[i], ['Class']);
+    extractClassVarTokens(sources[i], ['*Class']);
   }
 });
 bench('  только extractMergeCallTokens       ', () => {

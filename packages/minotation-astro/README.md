@@ -18,7 +18,7 @@ import { presetStandard, presetSynonyms, presetMedias } from 'minotation';
 
 export default defineConfig({
   // Пресеты — явно: по умолчанию не подключается ни один (D-110).
-  integrations: [mnAstro({ attrs: 'class', presets: [presetStandard, presetSynonyms, presetMedias] })],
+  integrations: [mnAstro({ attr: ['class'], presets: [presetStandard, presetSynonyms, presetMedias] })],
 });
 ```
 
@@ -26,12 +26,12 @@ export default defineConfig({
 Чтобы `className` давал те же классы, его разворачивают в `class`:
 
 ```js
-mnAstro({ attrs: 'class, className:class' })
+mnAstro({ attr: ['class', 'className:class'] })
 ```
 
-Без `:class` (`attrs: ['class', 'className']`) токены из `className` компилируются
+Без `:class` (`attr: ['class', 'className']`) токены из `className` компилируются
 в селектор по атрибуту `[className~="p10"]`, и стили к элементу не применятся —
-подробно в [`attrs`](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать).
+подробно в [`attr`](../minotation-build#attr-classvarname-classfnname--что-сканировать-и-во-что-разворачивать).
 
 По умолчанию сканируются `.html`, `.jsx`, `.tsx`, `.vue`, `.svelte` **и `.astro`**
 (в отличие от `minotation-vite`, где `.astro` не в списке по умолчанию — Astro-проекты
@@ -92,7 +92,7 @@ const thClass = 'py12 px14 bb1 bsS';
 <th class={thClass}>Сервис</th>
 ```
 
-Набор суффиксов настраивается (`classVarSuffixes`), а для случаев, когда переименовать нельзя,
+Набор имён настраивается (`classVarName`), а для случаев, когда переименовать нельзя,
 токены объявляются на месте маркером `@mn` в комментарии (D-083):
 
 ```astro
@@ -107,7 +107,7 @@ const thClass = 'py12 px14 bb1 bsS';
 
 | Опция | По умолчанию | Что делает |
 |---|---|---|
-| `attrs` | `'class'` | какие атрибуты сканировать и во что разворачивать: `'class, className:class'`; `'class, m'` → `[m~="p10"]` — [подробно](../minotation-build#attrs--какие-атрибуты-сканировать-и-во-что-разворачивать) |
+| `attr` | `['class']` | какие атрибуты сканировать и во что разворачивать: `['class', 'className:class']`; `['class', 'm']` → `[m~="p10"]` — [подробно](../minotation-build#attr-classvarname-classfnname--что-сканировать-и-во-что-разворачивать) |
 | `root` | `<root Astro>/src` | корень первичного скана — или несколько: `[src, '../components/src']` (монорепо) |
 | `extensions` | `.html .jsx .tsx .vue .svelte .astro` | какие файлы сканировать, если не задан `include` |
 | `include` | — | какие файлы сканировать: RegExp, путь, функция или массив |
@@ -121,8 +121,9 @@ const thClass = 'py12 px14 bb1 bsS';
 
 Опции можно задать и в общем файле `minotation.config.js` рабочего каталога — он один для всех плагинов и CLI, опции из кода сливаются поверх ([minotation-build](../minotation-build/README.md#файл-настроек-minotationconfig-d-081)).
 | `presetExtensions` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты (`import './app.mn'`) |
-| `classVarSuffixes` | `['Class']` | переменные со списком токенов: `const thClass = 'p10'` |
-| `mergeFnNames` | `['mne', 'mnClass']` | функции, чьи строковые аргументы — токены |
+| `classVarName` | `['*Class:class']` | переменные со списком токенов: `const thClass = 'p10'` |
+| `classFnName` | `['mne:class', '*Class:class']` | вызовы, чьи строковые аргументы — токены: `mne('p10')`, `thClass('w150')` |
+| `replaceDefaults` | `false` | `true` — `attr`, `classVarName`, `classFnName` заменяют умолчание намеренно, без предупреждения |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
 | `altColor` | `false` | запасное непрозрачное объявление рядом с `rgba` |
 | `media` | стандартные | карта именованных медиа: `{ wide: { query: '(width >= 1200px)' } }` → `p10@wide` |

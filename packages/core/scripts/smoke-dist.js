@@ -93,8 +93,8 @@ function typescriptLoaded() {
 /** Скрипт отдельного процесса: ESM-сборка там, откуда `typescript` не найти. */
 const NO_TYPESCRIPT_SCRIPT = "const m = await import('./index.mjs');\n"
   + 'const warnings = [];\n'
-  + "const scan = m.createScanner({ attr: 'class', syntax: true, onWarning: (w) => warnings.push(w) });\n"
-  + "console.log(scan('<div class=\"p10\"></div>', 'App.tsx').join(',') + ' ' + warnings.join(''));\n";
+  + "const scan = m.createScanner({ attr: ['class'], syntax: true, onWarning: (w) => warnings.push(w) });\n"
+  + "console.log(scan('<div class=\"p10\"></div>', 'App.tsx').class.join(',') + ' ' + warnings.join(''));\n";
 
 /** Вывод `NO_TYPESCRIPT_SCRIPT` в копии `dist/esm` вне пакета (своих внешних импортов у сборки нет). */
 function runWithoutTypescript(esmDir) {
@@ -122,8 +122,8 @@ function checkEsmTypescript(esm) {
     && /from\s*["']typescript["']/.test(fs.readFileSync(path.join(esmDir, file), 'utf8')));
   check('esm without a static typescript import', staticImports.join(',') || 'none', 'none');
   check('esm import leaves typescript unloaded', String(typescriptLoaded()), 'false');
-  const scan = esm.createScanner({ attr: 'className', syntax: true });
-  check('esm syntax scan', scan('<div className="p10"></div>', 'App.tsx').join(','), 'p10');
+  const scan = esm.createScanner({ attr: ['className:class'], replaceDefaults: true, syntax: true });
+  check('esm syntax scan', scan('<div className="p10"></div>', 'App.tsx').class.join(','), 'p10');
   check('esm loads typescript on the first syntax scan', String(typescriptLoaded()), 'true');
   check('esm without typescript: imports, scans as text, says why', runWithoutTypescript(esmDir),
     'p10 [minotation] syntax: true, but the parser is unavailable');
@@ -166,8 +166,8 @@ async function checkBrowser() {
   check('browser exports = cjs exports', Object.keys(browser).sort().join(','), cjsKeys);
   checkBuild('browser', browser);
   const warnings = [];
-  const scan = browser.createScanner({ attr: 'class', syntax: true, onWarning: (m) => warnings.push(m) });
-  check('browser scanner by text', scan('<div class="p10"></div>', 'App.tsx').join(','), 'p10');
+  const scan = browser.createScanner({ attr: ['class'], syntax: true, onWarning: (m) => warnings.push(m) });
+  check('browser scanner by text', scan('<div class="p10"></div>', 'App.tsx').class.join(','), 'p10');
   check('browser scanner says why', warnings.join(''), 'runs in Node only');
 }
 

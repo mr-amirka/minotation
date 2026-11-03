@@ -8,7 +8,7 @@
  * реализации `walkFiles` совпадали побайтово.
  *
  * Цена дублирования известна по опыту: механизм, доработанный в одном плагине,
- * в остальных молча отсутствует (`classVarSuffixes` жил только в vite до
+ * в остальных молча отсутствует (переменные разбирались только в vite до
  * 2026-09-25), а баг, исправленный в одном, остаётся в четырёх.
  *
  * Отдельный пакет, а не подпуть ядра: здесь `node:fs`, а `minotation` работает
@@ -64,7 +64,6 @@ import type {
 /** The `class` attribute: the default target of the scanned attributes. */
 const CLASS_TARGET = 'class';
 const COLON = ':';
-const ASTERISK = '*';
 const WARNING_MODE = 'warningMode';
 const SPACE = ' ';
 /** Separates the tag from the rest of an entry. */
@@ -141,9 +140,11 @@ import {
   MnWarningError,
   RAISE_MODES,
   SCANNER_OPTIONS,
+  SCAN_DEFAULTS,
   createScanner,
   createScopeClassWriter,
   minotationProvider,
+  parseScanEntries,
   parseSettingsKey,
 } from 'minotation';
 import type {
@@ -178,85 +179,6 @@ export function asPreset(value: unknown): MnPreset | null {
     || value !== null && typeof value === 'object' && typeof (value as { setup?: unknown }).setup === 'function'
     ? value as MnPreset
     : null;
-}
-
-/**
- * Какие атрибуты сканировать и во что разворачивать их селекторы (D-025, как в v1).
- *
- * Ключ — атрибут в разметке, значение — атрибут, в который компилируется селектор:
- * `class` → `.ws`, любой другой → `[name~="ws"]`. Имя без `:` разворачивается в себя.
- *
- * - строка: `'class, className:class'` (разделители — пробел, `|`, `,`, `;`);
- * - массив: `['class', 'className:class']`;
- * - объект: `{ class: 'class', className: 'class' }`.
- *
- * `attrs: ['class', 'className']` даёт `.ws` и `[className~="ws"]` — чтобы React-
- * `className` давал классы, его нужно развернуть в `class`: `'className:class'`.
- */
-export type MnAttrs = string | string[] | Record<string, string>;
-
-const REGEXP_ATTRS_SPLIT = /[\s|,;]+/;
-
-/**
- * Разбирает {@link MnAttrs} в карту «сканируемый атрибут → целевой».
- *
- * @param attrs — опция `attrs`; пусто — `{ class: 'class' }`
- * @returns непустая карта
- * @throws если после разбора не осталось ни одного атрибута — иначе сборка
- *   молча не нашла бы ни одного токена
- *
- * @example
- * parseAttrs('class, className:class')   // → { class: 'class', className: 'class' }
- * parseAttrs(['m', 'm-n'])               // → { m: 'm', 'm-n': 'm-n' }
- * parseAttrs('className:class, *ClassName:class')  // → { className: 'class', '*ClassName': 'class' }
- */
-export function parseAttrs(attrs?: MnAttrs): Record<string, string> {
-  if (attrs === undefined || attrs === null) {
-    return {
-      class: CLASS_TARGET,
-    };
-  }
-  const out: Record<string, string> = {};
-  let found = 0;
-  const isString = typeof attrs === 'string';
-  if (isString || Array.isArray(attrs)) {
-    const items = isString ? attrs.split(REGEXP_ATTRS_SPLIT) : attrs;
-    let at: number;
-    let from: string;
-    let to: string;
-    for (const item of items) {
-      at = item.indexOf(COLON);
-      from = (at > -1 ? item.slice(0, at) : item).trim();
-      to = (at > -1 ? item.slice(at + 1) : item).trim();
-      from && to && (out[from] = targetOf(from, to), found++);
-    }
-  } else {
-    let to: unknown;
-    for (const from of Object.keys(attrs)) {
-      to = attrs[from];
-      from && typeof to === 'string' && to && (out[from] = targetOf(from, to), found++);
-    }
-  }
-  if (!found) {
-    throw new Error('[minotation] attrs is empty: ' + JSON.stringify(attrs)
-      + '. Expected e.g. "class", "class, className:class" or { className: "class" }');
-  }
-  return out;
-}
-
-/**
- * Цель атрибута из `attrs`: шаблон `*ClassName` — только сканируемое имя, цель у него пишется явно (D-131).
- *
- * @param from — сканируемое имя или шаблон
- * @param to — цель
- * @returns цель
- * @throws если цель — шаблон: `'*ClassName'` без `:class` развернулся бы в несуществующий атрибут
- *
- * @example targetOf('*ClassName', 'class') // → 'class'
- */
-function targetOf(from: string, to: string): string {
-  return to.indexOf(ASTERISK) < 0 ? to : fail('attrs: "' + from + '" expands into "' + to
-    + '", but a pattern is not a target. Write the target: "' + from + ':class"');
 }
 
 function fail(message: string): never {
@@ -324,57 +246,44 @@ function coreOptionsOf(options: MnCoreOptions): MnCoreOptions {
   return out as MnCoreOptions;
 }
 
-/** Сканер с разворачиванием атрибутов: записи `'<целевой атрибут> <токен>'`. */
-export type AttrsScanner = (source: string, fileName?: string) => string[];
+/** Сканер записей: `'<цель> <токен>'` — цель из записи опции (`'className:class'` → `class`). */
+export type EntryScanner = (source: string, fileName?: string) => string[];
 
 /**
- * Сканер файла по опции `attrs`: токен помечается атрибутом, в который он
- * разворачивается.
- *
- * Сканируемые атрибуты группируются по целевому, и на группу — один проход
- * обычного сканера (`attr` списком имён). Обычно цель одна (`class`), и проход
- * тоже один. Токены из переменных `*Class` и вызовов `mne`/`mnClass` — это
- * значения классов, поэтому они идут в группу `class`, а если её нет — в первую.
+ * Сканер файла записями `'<цель> <токен>'` — тонкий слой над `createScanner` ядра, который отдаёт токены по цели
+ * (D-146): цели пишутся в самих записях `attr`, `classVarName`, `classFnName`.
  *
  * Запись — `'<цель> <токен>'`: в токене пробела не бывает, так что разбор
  * однозначен, а набор записей можно класть в `Set` как обычные строки.
  *
- * @param options — опции сканера и `attrs`
+ * @param options — опции сканера; `onScannerWarning` — его `onWarning`
+ * @returns сканер записей
+ *
+ * @example
+ * createEntryScanner({ attr: ['className:class', 'm'], replaceDefaults: true })('<a className="p10" m="w1" />')
+ * // → ['class p10', 'm w1']
  */
-export function createAttrsScanner(options: Omit<ScannerOptions, 'attr' | 'onWarning'> & {
-  attrs?: MnAttrs;
+export function createEntryScanner(options: Omit<ScannerOptions, 'onWarning'> & {
   onScannerWarning?: (message: string) => void;
-}): AttrsScanner {
-  const map = parseAttrs(options.attrs);
-  const byTarget: Record<string, string[]> = {};
-  for (const from of Object.keys(map)) {
-    (byTarget[map[from]] || (byTarget[map[from]] = [])).push(from);
-  }
-  const targets = Object.keys(byTarget);
-  const classTarget = byTarget.class ? CLASS_TARGET : targets[0];
-  const scanners = targets.map((target) => {
-    const isClassTarget = target === classTarget;
-    return createScanner({
-      syntax: options.syntax,
-      comments: options.comments,
-      // У сканера свой `onWarning` — о недоступном парсере. В опциях плагина это
-      // имя занято предупреждениями компиляции (D-034), поэтому колбэк сканера
-      // приходит как `onScannerWarning`.
-      onWarning: options.onScannerWarning,
-      attr: byTarget[target],
-      // Переменные и вызовы сканируются один раз — в группе классов.
-      classVarSuffixes: isClassTarget ? options.classVarSuffixes : [],
-      mergeFnNames: isClassTarget ? options.mergeFnNames : [],
-    });
+}): EntryScanner {
+  const scan = createScanner({
+    attr: options.attr,
+    classVarName: options.classVarName,
+    classFnName: options.classFnName,
+    replaceDefaults: options.replaceDefaults,
+    syntax: options.syntax,
+    comments: options.comments,
+    // У сканера свой `onWarning` — о недоступном парсере и о заменённом умолчании. В опциях плагина это
+    // имя занято предупреждениями компиляции (D-034), поэтому колбэк сканера приходит как `onScannerWarning`.
+    onWarning: options.onScannerWarning,
   });
-  const l = targets.length;
   return (source: string, fileName?: string): string[] => {
+    const found = scan(source, fileName);
     const out: string[] = [];
-    let i = 0;
     let prefix: string;
-    for (; i < l; i++) {
-      prefix = targets[i] + SPACE;
-      for (const token of scanners[i](source, fileName)) {
+    for (const target of Object.keys(found)) {
+      prefix = target + SPACE;
+      for (const token of found[target]) {
         out.push(prefix + token);
       }
     }
@@ -383,7 +292,7 @@ export function createAttrsScanner(options: Omit<ScannerOptions, 'attr' | 'onWar
 }
 
 /**
- * Компилирует записи {@link AttrsScanner} в инстансе: каждый токен — своим
+ * Компилирует записи {@link EntryScanner} в инстансе: каждый токен — своим
  * `getCompiler(цель)`.
  *
  * @param mn — инстанс с применёнными пресетами
@@ -450,7 +359,7 @@ export interface ScopeRewrite {
  * Переписывание файлов изолированных областей (D-075, D-076): класс области — в каждый атрибут
  * класса. Плагин зовёт его после `add`: класс берётся у накопителя (`scopeClassOf`).
  *
- * @param options — опции плагина: `attrs` (какие атрибуты — классы), `syntax`, `unreachableClassMode`
+ * @param options — опции плагина: `attr` (какие атрибуты — классы), `syntax`, `unreachableClassMode`
  * @returns `(накопитель, файл, исходник) → ScopeRewrite` или `undefined`, если файл не изолируется
  *
  * @example
@@ -458,10 +367,11 @@ export interface ScopeRewrite {
  * collector.add(id, source);
  * const result = rewrite(collector, id, source);   // { code: '<b className="_l p-4" />', warnings: [] }
  */
-export function createScopeRewriter(options: Pick<MnBuildOptions, 'attrs' | 'syntax' | 'unreachableClassMode'>): (collector: Pick<TokenCollector, 'scopeClassOf'>, id: string, source: string) => ScopeRewrite | undefined {
-  const attrs = parseAttrs(options.attrs);
+export function createScopeRewriter(options: Pick<MnBuildOptions, 'attr' | 'syntax' | 'unreachableClassMode'>): (collector: Pick<TokenCollector, 'scopeClassOf'>, id: string, source: string) => ScopeRewrite | undefined {
   const writer = createScopeClassWriter({
-    attr: Object.keys(attrs).filter((name) => attrs[name] === CLASS_TARGET),
+    attr: parseScanEntries(options.attr || SCAN_DEFAULTS.attr, true)
+      .filter((entry) => entry[1] === CLASS_TARGET)
+      .map((entry) => entry[0]),
     syntax: options.syntax,
   });
   const mode = options.unreachableClassMode || MODE_WARN;
@@ -526,9 +436,7 @@ function namesOf(list: MnPreset[]): string[] {
 }
 
 /** Опции {@link createTokenCollector}. */
-export interface TokenCollectorOptions extends Omit<ScannerOptions, 'attr' | 'onWarning'>, MnCoreOptions {
-  /** Какие атрибуты сканировать и во что разворачивать — {@link MnAttrs}. По умолчанию `'class'`. */
-  attrs?: MnAttrs;
+export interface TokenCollectorOptions extends Omit<ScannerOptions, 'onWarning'>, MnCoreOptions {
   /** Статические пресеты — обязательно (D-110, {@link assertPresets}): набора по умолчанию нет, `[]` — явно пустой. */
   presets?: MnPreset[];
   /**
@@ -639,11 +547,26 @@ export interface MnBuildOptions extends TokenCollectorOptions {
    */
   presetExtensions?: string[];
   /**
-   * Суффиксы имён переменных, значения которых считаются списком MN-токенов.
+   * Какие атрибуты и ключи объектов сканировать и во что компилировать их токены (D-025, D-146): записи `имя` или
+   * `имя:цель`. Цель `class` даёт `.ws`, любая другая — `[цель~="ws"]`; имя без цели — само себе цель. `*` в
+   * начале — шаблон: `'*ClassName:class'` берёт `fillClassName`, `iconClassName` (цель пишется явно, D-131).
+   *
+   * ```ts
+   * mnVite({ attr: ['class', 'className:class'] })   // .astro пишет class, React — className
+   * mnVite({ attr: ['class', 'm'] })                  // m="p10" → [m~="p10"]
+   * ```
+   *
+   * Список, в котором нет `'class'`, заменяет умолчание — об этом предупреждение; намеренно — `replaceDefaults: true`.
+   *
+   * @default ['class']
+   */
+  attr?: string[];
+  /**
+   * Переменные и ключи объектов, значения которых — список MN-токенов: записи `имя:цель`, `*` — шаблон окончания.
    *
    * Дополняет статическое извлечение из `class="…"`: классы, собранные в
    * переменной, плагин иначе не видит (он разбирает исходник текстом, а не
-   * исполняет его). Достаточно назвать переменную с суффиксом — и токены
+   * исполняет его). Достаточно назвать переменную по шаблону — и токены
    * из её строкового значения попадут в CSS:
    *
    * ```ts
@@ -653,37 +576,46 @@ export interface MnBuildOptions extends TokenCollectorOptions {
    *
    * Распознаются присваивание (`=`) и свойство объекта (`:`), строки в любых
    * кавычках, включая шаблонные; подстановки `${…}` пропускаются, статические
-   * части вокруг них — берутся. Сравнение суффикса регистрозависимое.
+   * части вокруг них — берутся. Сравнение имени регистрозависимое.
    *
    * Пустой массив отключает механизм; токены, которых сканер не видит, объявляются на месте
    * маркером `@mn` в комментарии (D-083): `{/* @mn cF00 px10 *\/}`.
    *
-   * @default ['Class']
+   * @default ['*Class:class']
    *
    * @example
-   * mnVite({ classVarSuffixes: ['Class', 'Cls', 'Styles'] })
+   * mnVite({ classVarName: ['*Class:class', '*Styles:class'] })
    */
-  classVarSuffixes?: string[];
+  classVarName?: string[];
   /**
-   * Имена функций слияния токенов, у которых строковые аргументы сканируются.
+   * Вызовы, у которых строковые аргументы сканируются: записи `имя:цель`, `*` — шаблон окончания.
    *
    * `mne('pt26 pb6', props.class)` — токены `pt26` и `pb6` записаны прямо в вызове,
-   * а не в `class="…"` и не в переменной с суффиксом из {@link classVarSuffixes}.
+   * а не в `class="…"` и не в переменной из {@link classVarName}.
    * Без этой опции они не попадали в CSS: сборка проходила зелёной, а стили молча
-   * отсутствовали.
+   * отсутствовали. `'*Class:class'` берёт и `mnClass('p10')`, и `thClass('w150')` — функцию, которую вернул `mnClass`.
    *
    * Берутся все строковые литералы внутри вызова, на любой глубине вложенности;
    * подстановки `${…}` пропускаются, идентификаторы-аргументы игнорируются
-   * (их значения приходят из своих объявлений — их подхватит `classVarSuffixes`).
+   * (их значения приходят из своих объявлений — их подхватит `classVarName`).
    *
    * Пустой массив отключает механизм.
    *
-   * @default ['mne', 'mnClass']
+   * @default ['mne:class', '*Class:class']
    *
    * @example
-   * mnVite({ mergeFnNames: ['mne', 'mnClass', 'cx'] })
+   * mnVite({ classFnName: ['mne:class', '*Class:class', 'cx:class'] })
    */
-  mergeFnNames?: string[];
+  classFnName?: string[];
+  /**
+   * `true` — `attr`, `classVarName` или `classFnName` заменяют умолчание намеренно, без предупреждения (D-146).
+   *
+   * @default false
+   *
+   * @example
+   * mnVite({ attr: ['className:class'], replaceDefaults: true })   // проект на React: `class` не пишут
+   */
+  replaceDefaults?: boolean;
   /**
    * Разбирать ли `.js/.jsx/.ts/.tsx` парсером вместо текстового поиска.
    *
@@ -748,8 +680,8 @@ export interface MnEntryOptions extends MnCoreOptions {
   exclude?: MnFileMatcher;
   /** Пропускать партиалы `_*` для этой записи. */
   skipPartials?: boolean;
-  /** Свои атрибуты. Записи с одинаковыми `attrs` сканируются одним проходом. */
-  attrs?: MnAttrs;
+  /** Свои атрибуты — записи `attr` ядра (D-146). Записи с одинаковыми опциями сканера сканируются одним проходом. */
+  attr?: string[];
   /** Свои пресеты вместо общих. */
   presets?: MnPreset[];
   /** Свои пресеты областей вместо общих — {@link TokenCollectorOptions.scopePresets}. */
@@ -778,11 +710,7 @@ export const ENTRY_OPTIONS = /*#__PURE__*/ lazy(() => {
     include: fileMatcher().optional(),
     exclude: fileMatcher().optional(),
     skipPartials: boolean().optional(),
-    attrs: union([
-      string(),
-      array(string()),
-      record(string()),
-    ]).describe('a string, an array of strings or an object of strings').optional(),
+    attr: SCANNER_OPTIONS().shape.attr,
     fileName: string().optional(),
     scopePresets: core.shape.presets,
   });
@@ -798,8 +726,9 @@ export const BUILD_OPTIONS = /*#__PURE__*/ lazy(() => {
   return object({
     ...ENTRY_OPTIONS().shape,
     onScannerWarning: func().optional(),
-    classVarSuffixes: scanner.classVarSuffixes,
-    mergeFnNames: scanner.mergeFnNames,
+    classVarName: scanner.classVarName,
+    classFnName: scanner.classFnName,
+    replaceDefaults: scanner.replaceDefaults,
     comments: scanner.comments,
     syntax: scanner.syntax,
     root: union([
@@ -855,8 +784,8 @@ export function withBuildConfig<T extends object>(
  * @param own — опции, которые есть только у этого плагина (`inject` у vite)
  *
  * @example
- * checkBuildOptions({ atrs: 'class' }, 'mnVite');
- * // TypeError: [minotation] mnVite: unknown option "atrs". Did you mean "attrs"?
+ * checkBuildOptions({ atr: ['class'] }, 'mnVite');
+ * // TypeError: [minotation] mnVite: unknown option "atr". Did you mean "attr"?
  */
 export function checkBuildOptions(
   options: unknown, where: string, own?: MnOwnOptions,
@@ -1016,7 +945,7 @@ export interface TokenCollector {
   add(id: string, source: string): boolean;
   /**
    * То же, что {@link TokenCollector.add}, но записи уже готовы — в формате
-   * {@link AttrsScanner} (`'<цель> <токен>'`).
+   * {@link EntryScanner} (`'<цель> <токен>'`).
    *
    * Нужен там, где сканирует не сам каркас: в webpack файл читает лоадер, а
    * CSS собирает плагин — между ними только общий стейт.
@@ -1055,15 +984,19 @@ export interface TokenCollector {
 /**
  * Создаёт накопитель токенов для плагина сборщика.
  *
+ * @param options — опции накопителя и сканера
+ * @param scan — готовый сканер: записи `entry` с одинаковыми опциями сканера делят один, и предупреждение сканера
+ *   выводится один раз; по умолчанию — свой, из `options`
+ * @returns накопитель
+ *
  * @example
- * const collector = createTokenCollector({ attr: 'class' });
+ * const collector = createTokenCollector({ attr: ['class'], presets: [presetStandard] });
  * collector.add(id, source);        // → изменился ли набор
  * collector.remove(id);
  * const css = collector.css();      // готовый CSS, с кешем
  * for (const w of collector.takeWarnings()) ctx.warn(w.message);
  */
-export function createTokenCollector(options: TokenCollectorOptions): TokenCollector {
-  const scan = createAttrsScanner(options);
+export function createTokenCollector(options: TokenCollectorOptions, scan: EntryScanner = createEntryScanner(options)): TokenCollector {
   const presets = options.presets || [];
   const scopePresets = options.scopePresets || [];
   /**
@@ -1435,7 +1368,7 @@ export function createTokenCollector(options: TokenCollectorOptions): TokenColle
     mn.setPresets(all);
     // Каждый токен — в свой целевой атрибут (D-025). До 2026-10-05 всё шло
     // в `class`, и `m="p10"` давал `.p10` вместо `[m~="p10"]` — так в v2
-    // потерялась опция `attrs` из v1.
+    // потерялась опция `attrs` из v1 (теперь — цели в записях `attr`, D-146).
     compileEntries(mn, resolveConflicts(
       entries, all, verdict[0],
     ));
@@ -1700,7 +1633,7 @@ export interface BuildOutput {
  * {@link TokenCollector}, но CSS — по записям.
  */
 export interface BuildCollector {
-  /** Сканирует файл один раз на каждый набор `attrs` и раздаёт токены записям. */
+  /** Сканирует файл один раз на каждый набор опций сканера и раздаёт токены записям. */
   add(id: string, source: string): boolean;
   /** Готовые записи сканера (webpack: сканирует лоадер) — раздать записям. */
   set(id: string, entries: Iterable<string>, notation?: MnNotationDirective): boolean;
@@ -1721,10 +1654,20 @@ export interface BuildCollector {
   metrics(): Metrics;
 }
 
+/** Ключ сканера записи: записи с одинаковыми списками сканируют файл одним проходом. */
+function scannerKey(options: Pick<ScannerOptions, 'attr' | 'classVarName' | 'classFnName' | 'replaceDefaults'>): string {
+  return JSON.stringify([
+    options.attr,
+    options.classVarName,
+    options.classFnName,
+    options.replaceDefaults,
+  ]);
+}
+
 /**
  * Создаёт накопитель с записями `entry`.
  *
- * Записи с одинаковым `attrs` используют один сканер, так что файл читается
+ * Записи с одинаковыми опциями сканера используют один сканер, так что файл читается
  * парсером один раз, сколько бы записей его ни разделяли; `include`/`exclude`
  * записи решают только, кому из них достанутся найденные токены.
  *
@@ -1739,11 +1682,11 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
   if (!names.length) {
     throw new Error('[minotation] entry is empty: declare at least one entry or omit the option');
   }
-  const scanners: Record<string, AttrsScanner> = {};
+  const scanners: Record<string, EntryScanner> = {};
   // Статистика считается по атрибутам верхнего уровня — тем, что видит автор
-  // разметки; записи с другими `attrs` на неё не влияют.
-  const metricsKey = JSON.stringify(parseAttrs(options.attrs));
-  scanners[metricsKey] = createAttrsScanner(options);
+  // разметки; записи с другим `attr` на неё не влияют.
+  const metricsKey = scannerKey(options);
+  scanners[metricsKey] = createEntryScanner(options);
   /** Счётчики по файлам: файл → `{ токен: сколько раз }`. */
   const counts = new Map<string, Record<string, number>>();
   function count(id: string, found: string[]): void {
@@ -1761,11 +1704,11 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
       ...options,
       ...own,
     };
-    const key = JSON.stringify(parseAttrs(merged.attrs));
-    scanners[key] || (scanners[key] = createAttrsScanner(merged));
+    const key = scannerKey(merged);
+    scanners[key] || (scanners[key] = createEntryScanner(merged));
     return {
       key,
-      collector: createTokenCollector(merged),
+      collector: createTokenCollector(merged, scanners[key]),
       // Отбор файлов плагином уже сделан; запись лишь делит найденное.
       filter: createFileFilter({
         extensions: [''],
@@ -1793,7 +1736,7 @@ export function createBuildCollector(options: MnBuildOptions, root: string): Bui
   return {
     names,
     /**
-     * Сканирует исходник файла один раз на каждый набор `attrs` и раздаёт токены записям `entry`.
+     * Сканирует исходник файла один раз на каждый набор опций сканера и раздаёт токены записям `entry`.
      *
      * @param id — путь файла
      * @param source — текст файла

@@ -50,7 +50,9 @@ import {
   MSG_COLON,
   MSG_INSTEAD_OF,
   MSG_IS_INVALID_FOR,
+  MSG_BRACE_NOT_CLOSED,
   MSG_VALUE,
+  hasUnclosedBrace,
   assertNotLongForm,
   throwInvalid,
 } from './messages';
@@ -647,9 +649,9 @@ export function registerMotion(ctx: StandardContext): void {
       // Суффикс не той формы молча давал `translate(0px,0px)`: `x--v`, `x_translate\(10px\)`. Математика без скобок
       // (`x10+5`) — своя подсказка: буква следующей оси не может закончить выражение.
       const suffix = '' + p.suffix;
-      suffix && p.all === undefined && throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + 'x": ' + (REGEXP_MATH_TAIL
-        .test(suffix) ? 'math in a shift goes in braces, as "x{10+5}", "x10y{100%-20}"' : 'expected a shift, as "x10",'
-        + ' "x10y20", "x10y20z5", with a scale "s50" and a turn "rz45" after it'));
+      suffix && p.all === undefined && throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + 'x": ' + (hasUnclosedBrace(suffix) ? MSG_BRACE_NOT_CLOSED + ', as "x{10+5}", "x10y{100%-20}"' : REGEXP_MATH_TAIL.test(suffix)
+        ? 'math in a shift goes in braces, as "x{10+5}", "x10y{100%-20}"' : 'expected a shift, as "x10", "x10y20",'
+          + ' "x10y20z5", with a scale "s50" and a turn "rz45" after it'));
       const scale = p.s;
       const angle = p.angle;
       const z = p.z;

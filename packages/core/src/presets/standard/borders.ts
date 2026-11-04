@@ -42,6 +42,8 @@ import {
 } from './words';
 import {
   assertNotLongForm,
+  MSG_BRACE_NOT_CLOSED,
+  hasUnclosedBrace,
   throwInvalid,
 } from './messages';
 import {
@@ -378,10 +380,12 @@ export function registerBorders(ctx: StandardContext): void {
         return whole;
       }
       const parsed = REGEXP_SHADOW_SUFFIX.exec(part);
-      parsed || throwInvalid(DOUBLE_QUOTE + name + part + (REGEXP_MATH_TAIL.test(part)
-        ? '" puts math without braces: a shadow slot holds it in braces, as "' + name + '{10+5}x2", "' + name
+      parsed || throwInvalid(DOUBLE_QUOTE + name + part + (hasUnclosedBrace(part)
+        ? '": ' + MSG_BRACE_NOT_CLOSED + ' — a shadow slot holds math in braces, as "' + name + '{10+5}x2"'
+        : REGEXP_MATH_TAIL.test(part)
+          ? '" puts math without braces: a shadow slot holds it in braces, as "' + name + '{10+5}x2", "' + name
           + '10x{-$a}"'
-        : '" is only partly parsed: the order is blur (a number or a variable after B, as "' + name
+          : '" is only partly parsed: the order is blur (a number or a variable after B, as "' + name
           + 'B$blur"), then x, y, r, m, c, in'));
       const p = parsed as RegExpExecArray;
       const repeatCount = intval(

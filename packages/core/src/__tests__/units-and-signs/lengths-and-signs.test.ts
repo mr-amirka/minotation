@@ -329,6 +329,14 @@ describe('математика в буквенной записи — в ско�
       'Value "10+5" is invalid for "x": math in a shift goes in braces, as "x{10+5}", "x10y{100%-20}"',
     ],
     [
+      'x{10+5',
+      'Value "{10+5" is invalid for "x": "{" is not closed, as "x{10+5}", "x10y{100%-20}"',
+    ],
+    [
+      'x10y{20',
+      'Value "10y{20" is invalid for "x": "{" is not closed, as "x{10+5}", "x10y{100%-20}"',
+    ],
+    [
       'x{10}%',
       '"x{10}%" puts "%" after math: write it inside, as "x{10%+5}"',
     ],
@@ -343,6 +351,14 @@ describe('математика в буквенной записи — в ско�
     [
       'tsh10x2-3',
       '"tsh10x2-3" puts math without braces: a shadow slot holds it in braces, as "tsh{10+5}x2", "tsh10x{-$a}"',
+    ],
+    [
+      'bxsh{1_2_3',
+      '"bxsh{1_2_3": "{" is not closed — a shadow slot holds math in braces, as "bxsh{10+5}x2"',
+    ],
+    [
+      'bxsh{1+2}x{3',
+      '"bxsh{1+2}x{3": "{" is not closed — a shadow slot holds math in braces, as "bxsh{10+5}x2"',
     ],
     [
       'bxsh{-1}',

@@ -48,6 +48,8 @@ export const MSG_COLON = '": ';
 export const MSG_AS = ' — as "';
 /** Начало цитаты слова после двоеточия: `…for "bgs": "cover" stands alone`. */
 export const MSG_COLON_QUOTE = MSG_COLON + DOUBLE_QUOTE;
+/** Скобка группы без пары — те же слова, что у ридера значений (`fundamentool/css`). */
+export const MSG_BRACE_NOT_CLOSED = '"{" is not closed';
 const REGEXP_DASHES = /-/g;
 
 /**
@@ -119,6 +121,30 @@ const CROSS_HINTS: Record<string, CrossHint[]> = {
     ],
   ],
 };
+
+/**
+ * Осталась ли `{` без своей `}`. Хендлер, чей разбор не прошёл, по ней говорит «скобка не закрыта», а не «математика —
+ * в скобках» или «разобрано частично»: скобки написаны, не хватает закрывающей (`x{10+5`).
+ *
+ * @param value — суффикс токена
+ * @returns `true`, если до конца значения закрылись не все группы
+ * @example hasUnclosedBrace('{10+5') // → true
+ */
+export function hasUnclosedBrace(value: string): boolean {
+  const l = value.length;
+  let depth = 0;
+  let i = 0;
+  let ch: string;
+  for (; i < l; i++) {
+    ch = value[i];
+    if (ch === '{') {
+      depth++;
+    } else if (ch === '}' && depth) {
+      depth--;
+    }
+  }
+  return depth > 0;
+}
 
 export function throwInvalid(message?: string): never {
   throw new MnParseError(message || 'Parameter is invalid', {

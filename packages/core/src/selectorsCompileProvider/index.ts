@@ -10,7 +10,6 @@
  * @module selectorsCompileProvider/index
  */
 export {
-  getCombinatorByDepth,
   getCombinator,
 } from './getCombinator';
 export {

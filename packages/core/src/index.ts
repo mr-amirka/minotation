@@ -19,7 +19,6 @@ import coreDefault from './core/index';
 import {
   selectorsCompileProvider as selectorsCompileProviderImpl,
   extractMedia as extractMediaImpl,
-  getCombinatorByDepth as getCombinatorByDepthImpl,
   getCombinator as getCombinatorImpl,
 } from './selectorsCompileProvider';
 import {
@@ -106,7 +105,6 @@ export const minotationProvider = minotationProviderImpl;
 export default coreDefault;
 export const selectorsCompileProvider = selectorsCompileProviderImpl;
 export const extractMedia = extractMediaImpl;
-export const getCombinatorByDepth = getCombinatorByDepthImpl;
 export const getCombinator = getCombinatorImpl;
 export const selectorNormalize = selectorNormalizeImpl;
 export const extractTokens = extractTokensImpl;
@@ -195,10 +193,6 @@ export type {
   MnTwArgs,
   MnTwHandler,
 } from './presets/shared/tw';
-export type {
-  MnMathRules,
-  MnMathRulesOptions,
-} from './core/mathValue';
 export type {
   MnCssDeclarations,
   MnCssEntry,

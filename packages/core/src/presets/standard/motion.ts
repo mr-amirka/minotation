@@ -1,9 +1,12 @@
 import type {
   StandardContext,
 } from './context';
-import type {
-  MnMathRules,
+import {
+  mnCss,
 } from '../../core/mathValue';
+import type {
+  TMathRules,
+} from 'fundamentool/css';
 import type {
   MnEssenceParams,
 } from '../../core/types';
@@ -63,9 +66,6 @@ import {
   throwParen,
 } from './functions';
 import {
-  cssVarValue,
-} from '../../core/mathValue';
-import {
   PATTERN_DIGITS,
   PATTERN_MATH_SLOT,
   REGEXP_MATH_TAIL,
@@ -118,7 +118,7 @@ const EASING_FUNCTIONS = functionSet(
       example: 'Steps4_JE',
       more: REGEXP_STEP_POSITION,
       args: (args, call) => {
-        const count = cssVarValue(args[0]) || (REGEXP_STEP_COUNT.test(args[0]) ? args[0]
+        const count = mnCss.variable(args[0]) || (REGEXP_STEP_COUNT.test(args[0]) ? args[0]
           : call.fail('a whole number of steps from 1'));
         if (args.length < 2) {
           return count;
@@ -142,7 +142,7 @@ const EASING_FUNCTIONS = functionSet(
         for (; i < 4; i++) {
           v = args[i];
           // x1 и x2 — время, от 0 до 1; y — любое число (выход за 0…1 — «отскок»).
-          out[i] = cssVarValue(v) || (REGEXP_BARE_NUMBER.test(v) && (i % 2 || (+v >= 0 && +v <= 1)) ? v
+          out[i] = mnCss.variable(v) || (REGEXP_BARE_NUMBER.test(v) && (i % 2 || (+v >= 0 && +v <= 1)) ? v
             : call.fail(i % 2 ? 'four numbers' : 'x1 and x2 from 0 to 1'));
         }
         return out.join(COMMA);
@@ -573,7 +573,7 @@ export function registerMotion(ctx: StandardContext): void {
    * @returns длина CSS
    */
   function shiftAxis(
-    v: string, unit: string | undefined, rules: MnMathRules, raw: string,
+    v: string, unit: string | undefined, rules: TMathRules, raw: string,
   ): string {
     if (v[0] !== OPEN_BRACE && v[0] !== DOLLAR) {
       return floatNormalize(v) + (unit || PX);
@@ -601,7 +601,7 @@ export function registerMotion(ctx: StandardContext): void {
         ? styleWrap({
           [propName]: num + MS,
         }, 1)
-        : (v = cssVarValue(p.suffix)) ? styleWrap({
+        : (v = mnCss.variable(p.suffix)) ? styleWrap({
           [propName]: v,
         }, 1) : normalizeDefault(p, 250)
       );
@@ -711,7 +711,7 @@ export function registerMotion(ctx: StandardContext): void {
     mn(R + suffix, (p) => {
       let v;
       // Переменная — угол поворота, часть `transform` (`rx--a` → `rotateX(var(--a))`).
-      return (v = cssVarValue(p.suffix)) ? styleWrap({
+      return (v = mnCss.variable(p.suffix)) ? styleWrap({
         transform: prefix + v + CLOSE_PAREN,
       }) : (v = p.value) ? styleWrap({
         transform: prefix + assertAngle(

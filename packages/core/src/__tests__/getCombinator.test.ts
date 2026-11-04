@@ -6,7 +6,6 @@
  */
 import {
   getCombinator,
-  getCombinatorByDepth,
   MN_MAX_DEPTH_HARD_LIMIT,
   type MnDepthCheck,
 } from '../selectorsCompileProvider/getCombinator';
@@ -33,25 +32,6 @@ function makeDepthCheck(over: Partial<MnDepthCheck> = {}): MnDepthCheck & { call
     ...over,
   };
 }
-
-describe('getCombinatorByDepth', () => {
-  test('0 — пустой комбинатор (потомок любой глубины)', () => {
-    expect(getCombinatorByDepth(0)).toBe('');
-  });
-
-  test('1 — прямой потомок', () => {
-    expect(getCombinatorByDepth(1)).toBe('>');
-  });
-
-  test('3 — цепочка через универсальный селектор', () => {
-    expect(getCombinatorByDepth(3)).toBe('>*>*>');
-  });
-
-  test('глубина выше жёсткого потолка клэмпится к нему', () => {
-    const atLimit = getCombinatorByDepth(MN_MAX_DEPTH_HARD_LIMIT);
-    expect(getCombinatorByDepth(MN_MAX_DEPTH_HARD_LIMIT + 100)).toBe(atLimit);
-  });
-});
 
 describe('getCombinator', () => {
   test('имя без числового префикса — комбинатор-пробел', () => {
@@ -165,7 +145,7 @@ describe('getCombinator', () => {
     const check = makeDepthCheck({
       maxDepth: undefined,
     });
-    expect(getCombinator('40Parent', check)[0]).toBe(getCombinatorByDepth(MN_MAX_DEPTH_HARD_LIMIT));
+    expect(getCombinator('40Parent', check)[0]).toBe('>' + '*>'.repeat(MN_MAX_DEPTH_HARD_LIMIT - 1));
     expect(check.calls).toEqual([]);
   });
 });

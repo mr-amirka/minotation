@@ -37,10 +37,12 @@ import type {
   spaceNormalize,
 } from './core/utils';
 import type {
-  cssVarValue,
-  mathRules,
   mathValue,
+  mnCss,
 } from './core/mathValue';
+import type {
+  mathRules,
+} from 'fundamentool/css';
 
 /**
  * Утилиты, доступные пресетам через `mn.utils`.
@@ -80,7 +82,7 @@ export interface MnUtils {
   /** Значение с математикой: `100%-2*$gap` → `calc(100% - 2 * var(--gap))`, `Min{100%,50rem}` → `min(100%, 50rem)`. */
   mathValue: typeof mathValue;
   /** Значение целиком — переменная: `$mono{serif}` → `var(--mono, serif)`, `$$x` → `env(x)`. */
-  cssVarValue: typeof cssVarValue;
+  cssVarValue: typeof mnCss.variable;
 }
 
 /** Значение токена MN — строка или массив строк (множественные значения) */

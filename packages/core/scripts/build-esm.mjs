@@ -95,10 +95,9 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
  * Исходник — ESM и всегда актуален.
  */
 const FUNDAMENTOOL = {
-  fundamentool: fileURLToPath(new URL('../node_modules/fundamentool/src/index.ts', import.meta.url)),
-  // Подпуть отдельно: алиас пакета указывает на файл, и `fundamentool/schema` стал бы `…/index.ts/schema`
-  'fundamentool/schema': fileURLToPath(new URL('../node_modules/fundamentool/src/schema/index.ts', import.meta.url)),
-  'fundamentool/hooks': fileURLToPath(new URL('../node_modules/fundamentool/src/hooks/index.ts', import.meta.url)),
+  // Каталог, а не файл: подпуть продолжает его — `fundamentool/css` → `…/src/css` (его `index.ts`), и новый подпуть
+  // fundamentool не требует строки здесь.
+  fundamentool: fileURLToPath(new URL('../node_modules/fundamentool/src', import.meta.url)),
 };
 
 /** `minotation/checked`: проверки в разработке включены навсегда. */

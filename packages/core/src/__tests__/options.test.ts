@@ -7,9 +7,6 @@ import type {
   TInfer,
 } from 'fundamentool/schema';
 import minotationProvider from '../core/index';
-import {
-  mathRules,
-} from '../core/mathValue';
 import type {
   MnOptions,
 } from '../core/types';
@@ -343,15 +340,6 @@ describe('в продакшене ядро не проверяет опции (l
       () => createScanner({
         attrs: ['class*'],
       }),
-    ],
-    [
-      'mathRules',
-      () => mathRules({
-        name: 'w',
-        unit: 'px',
-        units: ['px'],
-        negative: 'yes',
-      } as never),
     ],
     [
       'defineScale',

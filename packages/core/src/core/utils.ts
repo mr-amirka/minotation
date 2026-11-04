@@ -107,14 +107,12 @@ import {
   MnParseError,
 } from './types';
 import {
-  cssVarValue,
-  mathRules,
   mathValue,
+  mnCss,
 } from './mathValue';
 import {
-  colorValue,
-  gradientValue,
-} from './colorValue';
+  mathRules,
+} from 'fundamentool/css';
 import type {
   MnCompiler,
   MnContextEssence,
@@ -152,9 +150,9 @@ export const baseUtils = merge([
   {
     mathRules,
     mathValue,
-    cssVarValue,
-    color: colorValue,
-    colorGetBackground: gradientValue,
+    cssVarValue: mnCss.variable,
+    color: mnCss.color,
+    colorGetBackground: mnCss.gradient,
     half,
     unslash,
     noop,

@@ -791,7 +791,7 @@ describe('одиночные свойства-длины со своим раз�
   });
 
   test('переменная в olo больше не теряется', () => {
-    // Ветки `cssVarValue` у `olo` не было вовсе: `olo$v` давало
+    // Ветки переменной целиком (`mnCss.variable`) у `olo` не было вовсе: `olo$v` давало
     // `outline-offset:0` — умолчание вместо подстановки.
     expect(compile(['olo$v']).css).toContain('outline-offset:var(--v)');
   });

@@ -48,11 +48,11 @@ import {
   lengthPartRegExp,
 } from './functions';
 import {
-  cssVarValue,
+  mnCss,
 } from '../../core/mathValue';
 import type {
-  MnMathRules,
-} from '../../core/mathValue';
+  TMathRules,
+} from 'fundamentool/css';
 import {
   PATTERN_BASE_COLOR,
   PATTERN_MATH_SLOT,
@@ -352,7 +352,7 @@ export function registerBorders(ctx: StandardContext): void {
      * @returns часть тени
      */
     function slotValue(
-      v: string, rules: MnMathRules, mark?: string,
+      v: string, rules: TMathRules, mark?: string,
     ): string {
       const first = v[0];
       if (first !== OPEN_BRACE && first !== DOLLAR) {
@@ -373,7 +373,7 @@ export function registerBorders(ctx: StandardContext): void {
     // Вся тень одной переменной: `bxsh--shadow` → `box-shadow:var(--shadow)`.
     // У любого другого свойства `--x` означает значение целиком, и тень не
     // исключение. В позицию blur переменная ставится явно — `bxshB$blur`.
-      const whole = cssVarValue(part);
+      const whole = mnCss.variable(part);
       if (whole) {
         return whole;
       }

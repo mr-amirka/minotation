@@ -15,8 +15,8 @@ import {
   maxDepthMessage,
 } from './raiseMessages';
 import {
-  repeat,
-} from 'fundamentool';
+  childCombinator,
+} from 'fundamentool/css';
 import {
   REGEXP_DEPTH,
 } from './constants';
@@ -25,30 +25,13 @@ import {
 } from '../core/types';
 
 /**
- * Жёсткий потолок глубины контекстного селектора — НЕ настраивается опциями
+ * Жёсткий потолок глубины контекстного селектора ({@link childCombinator} из `fundamentool/css` его не знает) — НЕ настраивается опциями
  * инстанса, применяется всегда и безусловно (см.
  * и решение пользователя 2026-09-03: «лимит всегда может резаться до 30»).
  * Защищает от патологически длинных/дорогих селекторов (`>*>*>...`) независимо
  * от того, настроен ли мягкий {@link MnDepthCheck.maxDepth} вообще.
  */
 export const MN_MAX_DEPTH_HARD_LIMIT = 30;
-
-/**
- * Генерирует CSS-комбинатор по глубине вложенности. Глубина всегда клэмпится
- * к {@link MN_MAX_DEPTH_HARD_LIMIT} — безусловно, без исключений.
- *
- * @param depth — глубина (0 = пробел, 1 = `>`, 2+ = `>*>...`)
- * @returns CSS-комбинаторная строка
- *
- * @example
- * getCombinatorByDepth(0)  // → ''
- * getCombinatorByDepth(1)  // → '>'
- * getCombinatorByDepth(2)  // → '>*>'
- */
-export function getCombinatorByDepth(depth: number): string {
-  const clamped = depth < MN_MAX_DEPTH_HARD_LIMIT ? depth : MN_MAX_DEPTH_HARD_LIMIT;
-  return clamped < 1 ? '' : ('>' + repeat('*>', clamped - 1));
-}
 
 /** Опциональная проверка мягкого лимита глубины — {@link MnOptions.maxDepth}/`maxDepthMode`. */
 export interface MnDepthCheck {
@@ -69,7 +52,7 @@ export interface MnDepthCheck {
  * Формат: `(\d+)(.*)` — число = глубина, остаток = имя.
  *
  * @param name — имя с опциональным числовым префиксом (например `2Parent`)
- * @param depthCheck — опциональная проверка мягкого `maxDepth` (жёсткий потолок 30 — всегда, см. {@link getCombinatorByDepth})
+ * @param depthCheck — опциональная проверка мягкого `maxDepth` (жёсткий потолок 30 — всегда, см. {@link MN_MAX_DEPTH_HARD_LIMIT})
  * @param child — сегмент дочерний (`>`): глубина без селектора там законна —
  *   `fx>1` значит «каждому прямому потомку» (`.fx\>1>*`). Запрет §14.3 спеки
  *   касается только родителя: `<1` цеплялся бы к любому предку
@@ -179,7 +162,7 @@ export function getCombinator(
     }
   }
   return [
-    getCombinatorByDepth(depth),
+    childCombinator(depth < MN_MAX_DEPTH_HARD_LIMIT ? depth : MN_MAX_DEPTH_HARD_LIMIT),
     selector,
   ];
 }

@@ -36,8 +36,17 @@ import {
   record,
 } from 'fundamentool/schema';
 import {
-  mediaCondition,
-} from './mediaCondition';
+  mathBareBegin,
+  mathBareEnd,
+  mnCss,
+  throwOldVariable,
+} from './mathValue';
+import {
+  cssMediaCondition,
+} from 'fundamentool/css';
+import type {
+  TCssMediaSyntax,
+} from 'fundamentool/css';
 import {
   asError,
   createEvent,
@@ -155,15 +164,6 @@ import {
   orderPresets,
 } from './presetOrder';
 import {
-  mathBareBegin,
-  mathBareEnd,
-  throwOldVariable,
-} from './mathValue';
-import {
-  colorValue,
-  gradientValue,
-} from './colorValue';
-import {
   MnForbiddenTokenError,
   MnParseError,
   MnWarningError,
@@ -177,6 +177,7 @@ import type {
   MnInstance,
 } from '../types';
 
+const RANGE = 'range';
 const AMPERSAND = '&';
 const MEDIA_AND = ' and ';
 const MEDIA_PREFIX = '@media ';
@@ -668,7 +669,7 @@ function minotationProvider(options?: MnOptions) {
     $$altColor = settings.altColor === true;
     $$failOnWarnings = warningMode === 'error';
     $$mediaNesting = settings.mediaNesting === true;
-    $$mediaClassic = settings.mediaSyntax === 'classic';
+    $$mediaSyntax = settings.mediaSyntax || RANGE;
     $$raiseModes = {
       'raised-specificity': settings.specificityMode || MODE_WARN,
       important: settings.importantMode || MODE_WARN,
@@ -1171,8 +1172,8 @@ function minotationProvider(options?: MnOptions) {
   let $$raiseModes: Record<RaiseType, MnRaiseMode>;
   /** `mediaNesting` (D-070): вложенные `@media` вместо `and`. */
   let $$mediaNesting = false;
-  /** `mediaSyntax: 'classic'` (D-087): условия через `min-`/`max-` вместо формы диапазона. */
-  let $$mediaClassic = false;
+  /** Запись условий медиа (D-087): `classic` — через `min-`/`max-` вместо формы диапазона. */
+  let $$mediaSyntax: TCssMediaSyntax = RANGE;
   /** Уже учтённые `*N`/`-i` (ключ — тип и токен): одно сообщение на токен. */
   let $$raisedTokens: Record<string, number> = {};
   /** Запрещённые в режиме `'strict'` токены текущего состояния (D-039). */
@@ -1361,15 +1362,15 @@ function minotationProvider(options?: MnOptions) {
     const slash = body.indexOf('/');
     const noSlash = slash < 0;
     const explicit = !noColon || !noSlash;
-    const classic = $$mediaClassic && noColon;
+    const syntax = noColon ? $$mediaSyntax : RANGE;
     const conditions: string[] = [];
     const width = noSlash ? body : body.slice(0, slash);
     const height = noSlash ? '' : body.slice(slash + 1);
     const first = width ? rangeOf(
-      width, '', fragment, classic, conditions,
+      width, '', fragment, syntax, conditions,
     ) : [undefined];
     const second = height ? rangeOf(
-      height, 'height', fragment, classic, conditions,
+      height, 'height', fragment, syntax, conditions,
     ) : [undefined];
     const firstSingle = first.length < 2;
     if (!explicit && firstSingle) {
@@ -1412,7 +1413,7 @@ function minotationProvider(options?: MnOptions) {
    * @returns `[undefined]` — не диапазон, `[0]` — ошибка (сообщение выдано), `[1, приоритет]` — готово
    */
   function rangeOf(
-    part: string, side: string, fragment: string, classic: boolean, conditions: string[],
+    part: string, side: string, fragment: string, syntax: TCssMediaSyntax, conditions: string[],
   ): [undefined] | [0] | [1, number | undefined] {
     const whole = $$media[part] ? part : '';
     const dash = whole ? -1 : part.indexOf('-');
@@ -1435,11 +1436,11 @@ function minotationProvider(options?: MnOptions) {
       mediaProblem(fragment, 'mixes width and height. The class gives no CSS.');
       return [0];
     }
-    lower && conditions.push(mediaCondition(
-      lower[0], '>=', lower[1], classic,
+    lower && conditions.push(cssMediaCondition(
+      lower[0], '>=', lower[1], syntax,
     ));
-    upper && conditions.push(mediaCondition(
-      upper[0], upper[3] ? '<' : '<=', upper[1], classic,
+    upper && conditions.push(cssMediaCondition(
+      upper[0], upper[3] ? '<' : '<=', upper[1], syntax,
     ));
     // Порядок правил: «до» — по верхней границе (меньшие ниже и важнее), «от» точки — по нижней.
     return [
@@ -2569,13 +2570,13 @@ function minotationProvider(options?: MnOptions) {
   /**
    * Утилиты, доступные пресетам внутри `(mn) => {...}` (см. {@link MnUtils}).
    *
-   * `baseUtils` (`core/utils.ts`) + `color`/`colorGetBackground` (`core/colorValue.ts`), собранные
+   * `baseUtils` (`core/utils.ts`) + `color`/`colorGetBackground` (`mnCss` из `core/mathValue.ts`), собранные
    * здесь с зафиксированным `$$altColor` (из `options.altColor`, читается в
    * {@link applyOptions}) — сами пресеты передают только цвет, без второго аргумента.
    */
   mn.utils = extend(extend({}, baseUtils), {
-    color: (v: string) => colorValue(v, $$altColor),
-    colorGetBackground: (v: string) => gradientValue(v, $$altColor),
+    color: (v: string) => mnCss.color(v, $$altColor),
+    colorGetBackground: (v: string) => mnCss.gradient(v, $$altColor),
   });
 
   /**

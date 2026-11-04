@@ -322,6 +322,10 @@ describe('sbc — scrollbar-color (group B)', () => {
       '.sbc\\$my_ink\\;_F{scrollbar-color:var(--my_ink) #fff}',
     ],
     [
+      'sbc$a{F00}_0',
+      '.sbc\\$a\\{F00\\}_0{scrollbar-color:var(--a, #f00) #000}',
+    ],
+    [
       'sbc$bar',
       '.sbc\\$bar{scrollbar-color:var(--bar)}',
     ],

@@ -29,13 +29,15 @@ import {
   throwInvalid,
 } from './messages';
 import {
-  cssVarValue,
-  mathRules,
   mathValue,
+  mnCss,
 } from '../../core/mathValue';
+import {
+  mathRules,
+} from 'fundamentool/css';
 import type {
-  MnMathRules,
-} from '../../core/mathValue';
+  TMathRules,
+} from 'fundamentool/css';
 /**
  * Функция нативной формы `Name…`: имя в CamelCase, первый аргумент — слитно с ним, остальные — частями через
  * `_`. Скобки в токене не пишутся: `ftBlur2` → `blur(2px)`, `ftDropShadow2_4_6_000.5` →
@@ -191,7 +193,7 @@ const UNITS_NO_PERCENT = UNITS.filter((unit) => unit !== PERCENT);
  */
 export const REGEXP_TERM_START = /^-?(?:[0-9.$]|\{|[A-Z][a-z]*\{)/;
 /** Правила аргумента-длины по хендлеру и флагам — строятся при первом вызове, дальше берутся готовыми. */
-const functionLengthRules: Record<string, MnMathRules> = {};
+const functionLengthRules: Record<string, TMathRules> = {};
 /** Последнее слово CamelCase-имени: `Content` в `MinmaxMinContent`. */
 const REGEXP_CAMEL_LAST = /[A-Z][a-z]*$/;
 /**
@@ -228,14 +230,14 @@ export function splitValueParts(
   return parts;
 }
 /**
- * {@link cssVarValue} части, где `_` имени закрыт `\0` ({@link splitValueParts} с `keepHidden`): имя читается с `_`,
+ * `mnCss.variable` части, где `_` имени закрыт `\0` ({@link splitValueParts} с `keepHidden`): имя читается с `_`,
  * а в CSS `_` снова закрыт — его вернёт вызывающий после `spaceNormalize`.
  * @param part часть значения: `$border\0size;`
  * @returns CSS (`var(--border\0size)`), или `undefined`, если часть — не переменная целиком
  * @example hiddenVarValue('$a\0b;') // 'var(--a\0b)'
  */
 export function hiddenVarValue(part: string): string | undefined {
-  const css = cssVarValue(part.replace(REGEXP_VAR_UNDERSCORE, UNDERSCORE));
+  const css = mnCss.variable(part.replace(REGEXP_VAR_UNDERSCORE, UNDERSCORE));
   return css && css.replace(REGEXP_UNDERSCORE_ALL, '\0');
 }
 /**

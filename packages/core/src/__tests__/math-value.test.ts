@@ -1,13 +1,15 @@
 /**
- * Математика в значении — `mathRules` / `mathValue` / `cssVarValue` ядра: термы, операторы, функции, группы,
+ * Математика в значении — `mathRules` и ридеры `fundamentool/css` в записи нотации (`mathValue`, `mnCss.variable`): термы, операторы, функции, группы,
  * переменные, единицы и знак по правилам свойства, прежняя запись переменной.
  */
 import {
-  cssVarValue,
+  mathRules,
+} from 'fundamentool/css';
+import {
   mathBareBegin,
   mathBareEnd,
-  mathRules,
   mathValue,
+  mnCss,
   newVariables,
 } from '../core/mathValue';
 import {
@@ -637,7 +639,7 @@ describe('mathValue — прежняя запись переменной', () =>
   });
 });
 
-describe('cssVarValue — значение целиком переменная', () => {
+describe('mnCss.variable — значение целиком переменная', () => {
   test.each([
     [
       '$mono',
@@ -688,11 +690,11 @@ describe('cssVarValue — значение целиком переменная',
       undefined,
     ],
   ])('%j → %s', (s, css) => {
-    expect(cssVarValue(s)).toBe(css);
+    expect(mnCss.variable(s)).toBe(css);
   });
 
   test('прежняя запись — сообщение с новой', () => {
-    expect(() => cssVarValue('--mono')).toThrow('"--mono" was renamed: write "$mono"');
+    expect(() => mnCss.variable('--mono')).toThrow('"--mono" was renamed: write "$mono"');
   });
 });
 

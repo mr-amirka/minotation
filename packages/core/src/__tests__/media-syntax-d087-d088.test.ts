@@ -10,9 +10,6 @@ import presetTw4 from '../presets/tw4';
 import {
   extractMedia,
 } from '../selectorsCompileProvider';
-import {
-  mediaCondition,
-} from '../core/mediaCondition';
 import type {
   MnOptions,
   MnWarning,
@@ -50,80 +47,6 @@ function compile(
 const CLASSIC = {
   mediaSyntax: 'classic' as const,
 };
-
-describe('mediaCondition', () => {
-  test.each([
-    [
-      'width',
-      '>=',
-      '480px',
-      false,
-      '(width >= 480px)',
-    ],
-    [
-      'width',
-      '<',
-      '480px',
-      false,
-      '(width < 480px)',
-    ],
-    [
-      'width',
-      '>=',
-      '48rem',
-      true,
-      '(min-width: 48rem)',
-    ],
-    [
-      'width',
-      '<=',
-      '768px',
-      true,
-      '(max-width: 768px)',
-    ],
-    [
-      'width',
-      '<',
-      '480px',
-      true,
-      '(max-width: 479.98px)',
-    ],
-    [
-      'width',
-      '<',
-      '48rem',
-      true,
-      '(max-width: 47.99875rem)',
-    ],
-    [
-      'height',
-      '>',
-      '30em',
-      true,
-      '(min-height: 30.00125em)',
-    ],
-    [
-      'width',
-      '>',
-      '1024px',
-      true,
-      '(min-width: 1024.02px)',
-    ],
-    [
-      'width',
-      '<',
-      'calc(1px + 2px)',
-      true,
-      '(width < calc(1px + 2px))',
-    ],
-  ] as const)('%s %s %s classic=%s → %s', (
-    side, operator, length, classic, expected,
-  ) => {
-    expect(mediaCondition(
-      side, operator, length, classic,
-    )).toBe(expected);
-  });
-});
 
 describe('mediaSyntax: \'classic\' — во всех режимах (D-087)', () => {
   test.each([

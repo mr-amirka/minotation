@@ -89,12 +89,12 @@ import {
   throwNoFunction,
 } from './functions';
 import {
-  cssVarValue,
+  mnCss,
   throwOldVariable,
 } from '../../core/mathValue';
 import type {
-  MnMathRules,
-} from '../../core/mathValue';
+  TMathRules,
+} from 'fundamentool/css';
 
 /** Строка свойства-длины: свойство, значение по умолчанию, приоритет, одно значение, слова, без процента. */
 type LengthRow = [
@@ -298,7 +298,7 @@ export function imagePathValue(
   }
   const head = MSG_VALUE + UNDERSCORE + path + MSG_IS_INVALID_FOR + name + '": ';
   path || throwInvalid(head + 'the path after "_" is empty — as "' + name + '_a\\.png"');
-  cssVarValue(path) && throwInvalid('Write the variable without "_": "' + name + path + MSG_INSTEAD_OF + written
+  mnCss.variable(path) && throwInvalid('Write the variable without "_": "' + name + path + MSG_INSTEAD_OF + written
     + MSG_SAME_VALUE);
   word === NONE && throwInvalid(MSG_WRITE_SHORTER + name + N + MSG_INSTEAD_OF + written + MSG_SAME_VALUE);
   GLOBAL_KEYWORDS[word] && throwInvalid(MSG_WRITE_SHORTER + name + CSS_WIDE_LETTERS[word] + MSG_INSTEAD_OF
@@ -591,7 +591,7 @@ export function createContext(instance: MnInstance) {
   function lengthOrWord(
     p: MnEssenceParams,
     keywords: Record<string, 1>,
-    rules: MnMathRules,
+    rules: TMathRules,
     synonyms?: Record<string, string>,
   ): string {
     const camel = p.camel;
@@ -620,7 +620,7 @@ export function createContext(instance: MnInstance) {
    */
   function lengthRules(
     name: string, positive?: number, noPercent?: number,
-  ): MnMathRules {
+  ): TMathRules {
     return mathRules({
       name,
       unit: PX,
@@ -642,7 +642,7 @@ export function createContext(instance: MnInstance) {
    */
   function getVal(
     suffix: string | number,
-    rules: MnMathRules,
+    rules: TMathRules,
     one?: number,
     noOtherName?: number,
     synonyms?: Record<string, string>,
@@ -1104,7 +1104,7 @@ export function createContext(instance: MnInstance) {
     const withAlpha = REGEXP_VAR_WITH_ALPHA.exec(suffix);
     if (withAlpha) {
     // `.3` → 30%, `.67` → 67% — как у кодов.
-      return 'color-mix(in srgb, ' + cssVarValue(withAlpha[1]) + SPACE
+      return 'color-mix(in srgb, ' + mnCss.variable(withAlpha[1]) + SPACE
       + toFixed(parseFloat('0.' + withAlpha[2]) * 100) + '%, transparent)';
     }
   }
@@ -1313,7 +1313,7 @@ export function createContext(instance: MnInstance) {
   }
 
   /** Правила длины позиции по имени хендлера — строятся при первом токене хендлера, дальше берутся готовыми. */
-  const positionRulesOf: Record<string, MnMathRules> = {};
+  const positionRulesOf: Record<string, TMathRules> = {};
 
   /** Слово позиции → буква: `right` → `R` — для подсказки «Write it shorter». */
   const POSITION_BY_WORD: Record<string, string> = {};
@@ -1380,7 +1380,7 @@ export function createContext(instance: MnInstance) {
           continue;
         }
       }
-      word = cssVarValue(part) || '';
+      word = mnCss.variable(part) || '';
       if (word) {
         words.push(word);
         kinds.push(POSITION_ANY);
@@ -1518,7 +1518,7 @@ export function createContext(instance: MnInstance) {
    * @example lengthPartsValue('2_4', lengthRules('bsp', 1), LENGTH_MULTI, 'bsp') // '2px 4px'
    */
   function lengthPartsValue(
-    suffix: string, rules: MnMathRules, multi: number, essenceName: string,
+    suffix: string, rules: TMathRules, multi: number, essenceName: string,
   ): string {
     const parts = splitValueParts(suffix);
     const l = parts.length;
@@ -1641,7 +1641,7 @@ export function createContext(instance: MnInstance) {
         // Слово сюда доходит только разрешённое (проверено выше); остальное — длина из суффикса как написан.
         style[propName] = lengthy
           ? (REGEXP_BARE_WORD.test(s) ? s : lengthPartsValue(
-            p.suffix, rules as MnMathRules, multi, essenceName,
+            p.suffix, rules as TMathRules, multi, essenceName,
           ))
           // `optimize-contrast` нужен и с префиксом WebKit (бывший `contrast`).
           : s === 'optimize-contrast' ? [

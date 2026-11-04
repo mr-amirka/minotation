@@ -74,11 +74,11 @@ import {
   splitValueParts,
 } from './functions';
 import {
-  cssVarValue,
-} from '../../core/mathValue';
+  color,
+} from 'fundamentool';
 import {
-  colorVarValue,
-} from '../../core/colorValue';
+  mnCss,
+} from '../../core/mathValue';
 import {
   PATTERN_COLOR,
   REGEXP_DOTS,
@@ -86,6 +86,9 @@ import {
   normalizeDefault,
   styleWrap,
 } from './context';
+
+/** Запасной вариант переменной-цвета: код — как цвет (`F00` → `#f00`), слово — как есть. */
+const colorFallback = (raw: string): string => color(raw)[0];
 
 /** Строка цветового свойства: свойство, приоритет, слова сверх цвета (`auto` у `caret-color`). */
 type ColorRow = [propName: string, priority?: number, keywords?: Record<string, 1>];
@@ -164,7 +167,7 @@ const AUTO_KEYWORD: Record<string, 1> = {
  * @example functionRatio('50', call) // '50%'
  */
 function functionRatio(v: string, call: FunctionCall): string {
-  return cssVarValue(v) || (REGEXP_FUNCTION_RATIO.test(v)
+  return mnCss.variable(v) || (REGEXP_FUNCTION_RATIO.test(v)
     ? (v[v.length - 1] === PERCENT ? v : v + PERCENT) : call.fail('a percentage of zero or more'));
 }
 /**
@@ -176,7 +179,7 @@ function functionRatio(v: string, call: FunctionCall): string {
  * @example functionAngle('90', call) // '90deg'
  */
 function functionAngle(v: string, call: FunctionCall): string {
-  return cssVarValue(v) || (REGEXP_BARE_NUMBER.test(v) ? v + DEG
+  return mnCss.variable(v) || (REGEXP_BARE_NUMBER.test(v) ? v + DEG
     : REGEXP_FUNCTION_ANGLE.test(v) ? v : call.fail('an angle'));
 }
 /**
@@ -320,7 +323,7 @@ export function registerPaint(ctx: StandardContext): void {
     if (synonym) {
       return getColor(synonym);
     }
-    const raw = rawColorValue(part, p.name) || colorVarValue(part);
+    const raw = rawColorValue(part, p.name) || mnCss.variable(part, colorFallback);
     if (raw) {
       return [raw];
     }
@@ -357,7 +360,7 @@ export function registerPaint(ctx: StandardContext): void {
     const parts = splitValueParts(suffix);
     if (parts.length === 1) {
       // CSS-wide keyword — буквами, его ставит ядро.
-      const whole = cssVarValue(suffix) || throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name
+      const whole = mnCss.variable(suffix) || throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name
         + '": expected "A" (auto), two colors — thumb_track, as "sbcF00_0" — or a variable');
       return styleWrap({
         scrollbarColor: whole,
@@ -416,7 +419,7 @@ export function registerPaint(ctx: StandardContext): void {
       style[propName] = s === N ? NONE
         : s[0] === UNDERSCORE ? imagePathValue(s.slice(1), name)
           // CSS-wide keyword — буквами, его ставит ядро; `bgiNone` — «Write it shorter: "bgiN"».
-          : cssVarValue(s)
+          : mnCss.variable(s)
           || (assertNotLongForm(
             toKebabCase(s), NONE_ABBREVIATIONS, name, s,
           ), throwInvalid(MSG_VALUE + s + MSG_IS_INVALID_FOR + name + '": a picture is its path (`' + name
@@ -458,7 +461,7 @@ export function registerPaint(ctx: StandardContext): void {
     o: (p) => {
       let v, num;
       return p.camel || p.negative ? 0 : (
-        (v = cssVarValue(p.suffix || '')) ? styleWrap({
+        (v = mnCss.variable(p.suffix || '')) ? styleWrap({
           opacity: v,
           // `p.num` — группа регулярки, то есть строка. Раньше здесь шла
           // арифметика прямо по ней (`num * 0.01`) и работала на неявном
@@ -789,7 +792,7 @@ export function registerPaint(ctx: StandardContext): void {
 
   function ftProvider(propName: string): MnHandler {
     return (p: MnEssenceParams) => {
-      const whole = cssVarValue(p.suffix);
+      const whole = mnCss.variable(p.suffix);
       const main = whole || functionsValue(p, FILTER_FUNCTIONS);
       if (!main) {
         return 0;

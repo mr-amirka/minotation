@@ -47,7 +47,7 @@ import {
   assertEnumValue,
 } from './functions';
 import {
-  cssVarValue,
+  mnCss,
 } from '../../core/mathValue';
 import {
   REGEXP_SLOT_INTEGER,
@@ -123,7 +123,7 @@ const LAYOUT_VALUES: SingleValues = {
 /** Имена контейнера из суффикса — как записаны: ведущий `_` снят, `_` — пробел, `$c` — `var(--c)`. */
 function containerNames(suffix: string): string {
   const raw = suffix[0] === UNDERSCORE ? suffix.slice(1) : suffix;
-  return cssVarValue(raw) || raw.split(UNDERSCORE).join(SPACE);
+  return mnCss.variable(raw) || raw.split(UNDERSCORE).join(SPACE);
 }
 
 /**
@@ -271,7 +271,7 @@ export function registerLayout(ctx: StandardContext): void {
       let num, v;
       // `z-index` — целое число или `auto`. Дробь давала `z-index:1.5`,
       // правило, которое браузер отбрасывает целиком.
-      return p.camel ? 0 : (v = cssVarValue(p.suffix)) ? styleWrap({
+      return p.camel ? 0 : (v = mnCss.variable(p.suffix)) ? styleWrap({
         zIndex: v,
       }) : ((num = p.num) ? (
         REGEXP_INTEGER.test(num) || throwInvalid(MSG_VALUE + p.suffix

@@ -67,14 +67,15 @@ import {
   mediaFilterIteratee,
 } from './extractMedia';
 import {
-  mediaCondition,
-} from '../core/mediaCondition';
+  cssMediaCondition,
+} from 'fundamentool/css';
+import type {
+  TCssMediaOperator,
+  TCssMediaSyntax,
+} from 'fundamentool/css';
 import {
   mathSpaces,
 } from '../core/mathSpaces';
-import type {
-  MnMediaOperator,
-} from '../core/mediaCondition';
 import {
   childSelectorMessage,
   importantMessage,
@@ -95,6 +96,7 @@ import {
   wrapWhere,
 } from './joinMaps';
 
+const RANGE = 'range';
 const VARIANTS = 'variants';
 const BACKSLASH = '\\';
 const DOUBLE_QUOTE = '"';
@@ -751,7 +753,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     // Настройки файла разметки (D-081) важнее опций экземпляра.
     const markup = $$markupSettings || NO_SETTINGS;
     $$contextWhere = !!(markup.contextWhere === undefined ? $$mnOptions.contextWhere : markup.contextWhere);
-    $$mediaClassic = $$mnOptions.mediaSyntax === 'classic';
+    $$mediaSyntax = $$mnOptions.mediaSyntax || RANGE;
     // Режим синтаксиса (D-045): строки пресета — в режиме пресета (на время его `setup`),
     // остальное — в режиме проекта. Свой разборщик на режим (D-047); по умолчанию —
     // 'context-qualified' ниже.
@@ -862,8 +864,8 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   let $$markupSettings: MnParseSettings | undefined;
   /** `contextWhere` текущего разбора (D-049) — читается из опций в начале `parseComboName`. */
   let $$contextWhere = false;
-  /** `mediaSyntax: 'classic'` текущего разбора (D-087): условия ширины через `min-`/`max-`. */
-  let $$mediaClassic = false;
+  /** Запись условий медиа текущего разбора (D-087): `classic` — условия ширины через `min-`/`max-`. */
+  let $$mediaSyntax: TCssMediaSyntax = RANGE;
 
   function suffixesIteratee(
     items: Array<[StrMap<number>, AltMap]>, essences: StrMap<number>, suffix: string,
@@ -1064,8 +1066,8 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
     }
     const atLeast = name === 'min';
     if (atLeast || name === MAX) {
-      medias.push(registerQuery((instance as any).media || {}, mediaCondition(
-        WIDTH, atLeast ? AT_LEAST : LESS, value, $$mediaClassic,
+      medias.push(registerQuery((instance as any).media || {}, cssMediaCondition(
+        WIDTH, atLeast ? AT_LEAST : LESS, value, $$mediaSyntax,
       )));
       return true;
     }
@@ -1163,8 +1165,8 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   ): string {
     const entry = media[name];
     const side = !entry ? '' : entry.width !== undefined ? WIDTH : entry.height !== undefined ? 'height' : '';
-    return side ? registerQuery(media, mediaCondition(
-      side, operator as MnMediaOperator, pointCss(entry[side]), $$mediaClassic,
+    return side ? registerQuery(media, cssMediaCondition(
+      side, operator as TCssMediaOperator, pointCss(entry[side]), $$mediaSyntax,
     )) : '';
   }
 
@@ -1533,8 +1535,8 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       width = isNumber ? parseFloat(matchs[2]) : widthOf(
         media[matchs[2]], matchs[2], comboName,
       );
-      query = mediaCondition(
-        WIDTH, (matchs[1] || AT_LEAST) as MnMediaOperator, width + 'px', $$mediaClassic,
+      query = cssMediaCondition(
+        WIDTH, (matchs[1] || AT_LEAST) as TCssMediaOperator, width + 'px', $$mediaSyntax,
       );
       return registerQuery(media, query);
     }).join(AMPERSAND);

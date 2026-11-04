@@ -64,13 +64,15 @@ import {
   splitValueParts,
 } from './functions';
 import {
-  cssVarValue,
-  mathRules,
   mathValue,
+  mnCss,
 } from '../../core/mathValue';
+import {
+  mathRules,
+} from 'fundamentool/css';
 import type {
-  MnMathRules,
-} from '../../core/mathValue';
+  TMathRules,
+} from 'fundamentool/css';
 import {
   REGEXP_SLOT_IDENT,
   REGEXP_VALUE_INTEGER,
@@ -248,7 +250,7 @@ const TRACK_ARG_WORDS: Record<string, string> = {
 /** Доля свободного места: `1fr` — только верхняя граница `minmax()`. */
 const REGEXP_FLEX = /^(?:\d+\.?\d*|\.\d+)fr$/;
 /** Правила размера дорожки по хендлеру — строятся при первом вызове, дальше берутся готовыми. */
-const trackRulesOf: Record<string, MnMathRules> = {};
+const trackRulesOf: Record<string, TMathRules> = {};
 /** Функции дорожки — значение целиком: внутри списка дорожек функция пишется переменной. */
 const TRACK_FORMS: Record<string, FunctionForm> = {
   Minmax: {
@@ -720,7 +722,7 @@ export function registerFlexGrid(ctx: StandardContext): void {
       if (entry) {
         return styleWrap(entry[1], 1);
       }
-      const v = cssVarValue(s);
+      const v = mnCss.variable(s);
       if (v) {
         // Объект стилей — только на этой ветке: хендлер зовётся на каждый токен.
         const style: Record<string, string> = {};
@@ -855,7 +857,7 @@ export function registerFlexGrid(ctx: StandardContext): void {
           words.push(valueNormalize(word));
           continue;
         }
-        word = cssVarValue(part) || '';
+        word = mnCss.variable(part) || '';
         if (word) {
           words.push(word);
           continue;

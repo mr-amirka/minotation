@@ -70,7 +70,7 @@ import {
   throwNoFunction,
 } from './functions';
 import {
-  cssVarValue,
+  mnCss,
 } from '../../core/mathValue';
 import {
   REGEXP_SLOT_IDENT,
@@ -548,7 +548,7 @@ export function registerTypography(ctx: StandardContext): void {
     lcl: (p: MnEssenceParams) => {
       const suffix = p.suffix;
       const none = suffix === N;
-      const lines = none ? 'unset' : cssVarValue(suffix) || (REGEXP_LINE_COUNT.test(suffix) ? suffix
+      const lines = none ? 'unset' : mnCss.variable(suffix) || (REGEXP_LINE_COUNT.test(suffix) ? suffix
         : throwInvalid(MSG_VALUE + suffix + MSG_IS_INVALID_FOR + p.name
           + '": the number of lines is a whole number from 1, as "' + p.name + '3", or "N" to lift the clamp'));
       return styleWrap({
@@ -580,7 +580,7 @@ export function registerTypography(ctx: StandardContext): void {
       // Раньше второе молча давало 900: число всегда умножалось на 100
       // и зажималось в 1..9, то есть самая естественная запись была неверной.
       const num = p.num;
-      const v = cssVarValue(p.suffix);
+      const v = mnCss.variable(p.suffix);
       // Нераспознанный суффикс молча давал `font-weight:100`: `fw--v`, `fw_x`.
       v || camel || num || !p.suffix || throwInvalid(MSG_VALUE + p.suffix + MSG_IS_INVALID_FOR
         + 'fw": expected a digit (`fw6`), a weight (`fw600`), a letter (`fwB`) or a variable');
@@ -625,7 +625,7 @@ export function registerTypography(ctx: StandardContext): void {
     tsa: (p) => {
       let v;
       return p.negative ? 0 : (
-        (v = cssVarValue(p.suffix || '')) ? styleWrap({
+        (v = mnCss.variable(p.suffix || '')) ? styleWrap({
           textSizeAdjust: v,
         }) : (p.value ? styleWrap({
         // По грамматике это `none | auto | <percentage>`: единица по
@@ -642,7 +642,7 @@ export function registerTypography(ctx: StandardContext): void {
     fsa: (p) => {
       let v;
       return p.negative ? 0 : (
-        (v = cssVarValue(p.suffix || '')) ? styleWrap({
+        (v = mnCss.variable(p.suffix || '')) ? styleWrap({
           fontSizeAdjust: v,
         }) : (p.value ? styleWrap({
         // Значение безразмерное (`font-size-adjust:0.5`): единицы по
@@ -993,7 +993,7 @@ export function registerTypography(ctx: StandardContext): void {
       if (!(s = p.suffix)) {
         return 0;
       }
-      if (v = cssVarValue(s)) {
+      if (v = mnCss.variable(s)) {
         return styleWrap({
           fontFamily: v,
         }, 1);
@@ -1099,7 +1099,7 @@ export function registerTypography(ctx: StandardContext): void {
           if (args.length < 2) {
             return counter;
           }
-          const style = cssVarValue(args[1]) || (LIST_STYLE_TYPES[args[1]] ? toKebabCase(LIST_STYLE_TYPES[args[1]])
+          const style = mnCss.variable(args[1]) || (LIST_STYLE_TYPES[args[1]] ? toKebabCase(LIST_STYLE_TYPES[args[1]])
             : call.fail('a list style letter: ' + Object.keys(LIST_STYLE_TYPES).join(LIST_SEPARATOR)));
           return counter + COMMA + style;
         },

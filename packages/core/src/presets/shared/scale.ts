@@ -86,6 +86,8 @@ const REGEXP_NEGATABLE = /^[\d.]|\(/;
 
 /** `_` — пробел в произвольном значении, `\_` — само подчёркивание. */
 const REGEXP_ARBITRARY_SPACE = /\\_|_/g;
+/** Замена в произвольном значении: `_` — пробел, `\\_` — подчёркивание. Функция модуля, а не стрелка на каждый токен. */
+const arbitrarySpace = (match: string): string => (match === '_' ? ' ' : '_');
 
 /** `margin-top` → `marginTop`. */
 function camel(property: string): string {
@@ -196,7 +198,7 @@ function scaleHandler(
       name, suffix, 'expects a step of the scale',
     );
     if (options.arbitrary && step[0] === '[' && step[step.length - 1] === ']' && step.length > 2) {
-      value = step.slice(1, -1).replace(REGEXP_ARBITRARY_SPACE, (match) => (match === '_' ? ' ' : '_'));
+      value = step.slice(1, -1).replace(REGEXP_ARBITRARY_SPACE, arbitrarySpace);
     } else if (Object.prototype.hasOwnProperty.call(keywords, step)) {
       // Сюда слово доходит только с минусом (`-mt-px`): без минуса его берёт статика.
       value = REGEXP_NEGATABLE.test(keywords[step]) ? keywords[step] : fail(

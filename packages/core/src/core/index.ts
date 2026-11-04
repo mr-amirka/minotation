@@ -1029,9 +1029,11 @@ function minotationProvider(options?: MnOptions) {
   const updateAttrByValues = mn.updateAttrByValues = (comboNames: string[], attrName: string): any => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parseComboName: any = getParseComboName(attrName);
-    forEach(comboNames, (comboName: string) => {
-      forEach(parseComboName(comboName), updateSelectorIteratee);
-    });
+    const l = comboNames.length;
+    let i = 0;
+    for (; i < l; i++) {
+      forEach(parseComboName(comboNames[i]), updateSelectorIteratee);
+    }
     return mn;
   };
 
@@ -2158,7 +2160,7 @@ function minotationProvider(options?: MnOptions) {
     );
     // Статика могла объявить медиа-контекст, которого у хендлера нет вовсе
     // (`mn('box', …)` без `media` + `mn('box@sm', …)`). Тогда обходить в
-    // `__childsHandle` нечего, и переопределение не применялось бы — заводим
+    // `initChilds` нечего, и переопределение не применялось бы — заводим
     // пустого ребёнка, чтобы статике было куда влиться.
     const staticMedias = $$staticsMedias[essenceName];
     if (staticMedias) {
@@ -2170,48 +2172,55 @@ function minotationProvider(options?: MnOptions) {
     }
     const important = essence[MN_ESSENCE_IMPORTANT];
 
-    function __childsHandle(
-      childs: Record<string, MnEssenceResult> | undefined, separator: string, withStatic?: number,
-    ): void {
-      if (!childs) {
-        return;
-      }
-      const __prefix = essenceName + separator;
-      forIn(childs, withStatic ? (_childEssence: MnEssenceResult, _childName: string) => {
-        const childEssenceName = __prefix + _childName;
-        const childStaticEssence = $$staticsEssences[childEssenceName];
-        // Статическое переопределение для конкретного медиа-контекста
-        // (`mn('box@sm', {...})`) СЛИВАЕТСЯ с собственным
-        // `media`-блоком хендлера, а не затирает его. Раньше ветка
-        // `childStaticEssence[MN_ESSENCE_INITED] ? childStaticEssence : …`
-        // выбирала статику целиком — а `INITED` стоит у неё ВСЕГДА
-        // (`baseSetEssenseBase` заводит запись с `inited: 1`), так что
-        // `media`-блок хендлера терялся при любом переопределении.
-        // Порядок источников — статика ПОСЛЕ: `mergeEssenceDepth` льёт их по
-        // очереди в `dst`, поэтому побеждает последний, а переопределение и
-        // должно побеждать.
-        childs[_childName] = compileMixedEssence(
-          $$essences[childEssenceName] = [],
-          childStaticEssence
-            ? mergeEssenceDepth([
-              _childEssence,
-              childStaticEssence,
-            ], [])
-            : _childEssence,
-          excludes, important,
-        );
-      } : (_childEssence: MnEssenceResult, _childName: string) => {
-        childs[_childName] = compileMixedEssence(
-          $$essences[__prefix + _childName] = [],
-          _childEssence,
-          excludes, important,
-        );
-      });
-    }
-    __childsHandle(essence[MN_ESSENCE_CHILDS], DOT);
-    __childsHandle(
-      essence[MN_ESSENCE_MEDIA], AT, 1,
+    initChilds(
+      essence[MN_ESSENCE_CHILDS], essenceName + DOT, excludes, important, 0,
     );
+    initChilds(
+      essence[MN_ESSENCE_MEDIA], essenceName + AT, excludes, important, 1,
+    );
+  }
+  /**
+   * Дети эссенции (`childs`) или её медиа-блок (`media`) — каждый компилируется в свою эссенцию `prefix + имя`.
+   * Функция провайдера, а не вложенная: вложенная создавалась бы заново на каждый вызов `initEssence`.
+   *
+   * @param childs — дети или медиа-блок; `undefined` — нечего делать
+   * @param prefix — имя родителя и разделитель: `box.` или `box@`
+   * @param excludes — эссенции, уже стоящие на пути (от циклов)
+   * @param important — `!important` родителя
+   * @param withStatic — медиа-блок: статика `mn('box@sm', …)` вливается в ребёнка
+   */
+  function initChilds(
+    childs: Record<string, MnEssenceResult> | undefined, prefix: string, excludes: Record<string, number>,
+    important: number | undefined, withStatic: number,
+  ): void {
+    if (!childs) {
+      return;
+    }
+    let childName: string;
+    let childEssence: MnEssenceResult;
+    let childEssenceName: string;
+    let childStaticEssence: MnEssenceResult | undefined;
+    for (childName in childs) { // eslint-disable-line
+      childEssence = childs[childName];
+      childEssenceName = prefix + childName;
+      // Статическое переопределение для конкретного медиа-контекста (`mn('box@sm', {...})`) СЛИВАЕТСЯ с собственным
+      // `media`-блоком хендлера, а не затирает его. Раньше ветка `childStaticEssence[MN_ESSENCE_INITED] ?
+      // childStaticEssence : …` выбирала статику целиком — а `INITED` стоит у неё ВСЕГДА (`baseSetEssenseBase`
+      // заводит запись с `inited: 1`), так что `media`-блок хендлера терялся при любом переопределении. Порядок
+      // источников — статика ПОСЛЕ: `mergeEssenceDepth` льёт их по очереди в `dst`, поэтому побеждает последний, а
+      // переопределение и должно побеждать.
+      childStaticEssence = withStatic ? $$staticsEssences[childEssenceName] : undefined;
+      childs[childName] = compileMixedEssence(
+        $$essences[childEssenceName] = [],
+        childStaticEssence
+          ? mergeEssenceDepth([
+            childEssence,
+            childStaticEssence,
+          ], [])
+          : childEssence,
+        excludes, important,
+      );
+    }
   }
   function compileMixedEssence(
     dst: MnEssenceResult, src: MnEssenceResult, excludes: Record<string, number>, important?: number,
@@ -2265,7 +2274,7 @@ function minotationProvider(options?: MnOptions) {
     }
     // Запоминаем ДО подстановки 'all': медиа-детям нужно отличать «медиа не
     // задан» от «задан и называется all», иначе их собственный контекст
-    // затирается фолбэком (см. __childsHandle ниже).
+    // затирается фолбэком (см. `updateChilds`).
     const explicitMediaName = mediaName;
     mediaName = mediaName || MEDIA_ALL;
     excludes[essenceName] = 1;
@@ -2281,37 +2290,46 @@ function minotationProvider(options?: MnOptions) {
     contextEssence[MN_CONTEXT_ESSENCE_UPDATED] = 1;
     extend(contextEssence[MN_CONTEXT_ESSENCE_MAP],
       selectors = joinEssenceSelectors(selectors, contextEssence[MN_CONTEXT_ESSENCE_SELECTORS]));
-    /**
-     * @param asMedia — дети из `media`-блока: имя ребёнка И ЕСТЬ его медиа-контекст.
-     *   Без этого они рендерились с медиа РОДИТЕЛЯ (обычно пустым), то есть
-     *   `media: { sm: {...} }` уезжал в CSS безусловным правилом — ровно та
-     *   утечка. Явный медиа-суффикс токена (`box@md`) имеет
-     *   приоритет: два медиа-контекста на одно правило в плоском выводе не
-     *   совместить, а тот, что написан в разметке, ближе к намерению автора.
-     */
-    function __childsHandle(
-      childs: Record<string, MnEssenceResult>, separator: string, asMedia?: number,
-    ): void {
-      let childName: string;
-      for (childName in childs) updateEssence( // eslint-disable-line
-        essenceName + separator + childName,
-        selectors,
-        asMedia ? (explicitMediaName || childName) : mediaName,
-        excludes,
-        childs[childName],
-      );
-    }
     const childs = essence[MN_ESSENCE_CHILDS];
     const media = essence[MN_ESSENCE_MEDIA];
     const exts = essence[MN_ESSENCE_EXTS];
-    childs && __childsHandle(childs, DOT);
-    media && __childsHandle(
-      media, AT, 1,
+    childs && updateChilds(
+      childs, essenceName + DOT, selectors, mediaName, excludes,
+    );
+    media && updateChilds(
+      media, essenceName + AT, selectors, explicitMediaName, excludes, 1,
     );
     exts && __assignCore(
       $$assigned, exts, selectors, mediaName, excludes,
     );
     return essence;
+  }
+  /**
+   * Дети эссенции или её медиа-блок — в контекст родителя. Функция провайдера, а не вложенная: вложенная создавалась
+   * бы заново на каждый вызов `updateEssence`, то есть на каждую эссенцию каждого токена.
+   *
+   * @param childs — дети или медиа-блок
+   * @param prefix — имя родителя и разделитель: `box.` или `box@`
+   * @param selectors — селекторы родителя
+   * @param mediaName — у детей — медиа родителя; у медиа-блока — явный медиа-суффикс токена (`box@md`) или `''`
+   * @param excludes — эссенции, уже стоящие на пути
+   * @param asMedia — медиа-блок: имя ребёнка И ЕСТЬ его медиа-контекст. Без этого они рендерились с медиа РОДИТЕЛЯ
+   *   (обычно пустым), то есть `media: { sm: {...} }` уезжал в CSS безусловным правилом. Явный медиа-суффикс токена
+   *   имеет приоритет: два медиа-контекста на одно правило в плоском выводе не совместить, а тот, что написан в
+   *   разметке, ближе к намерению автора.
+   */
+  function updateChilds(
+    childs: Record<string, MnEssenceResult>, prefix: string, selectors: Record<string, number>, mediaName: string,
+    excludes: Record<string, number>, asMedia?: number,
+  ): void {
+    let childName: string;
+    for (childName in childs) updateEssence( // eslint-disable-line
+      prefix + childName,
+      selectors,
+      asMedia ? mediaName || childName : mediaName,
+      excludes,
+      childs[childName],
+    );
   }
   function updateSelectorIteratee(item: [Record<string, number>, Record<string, string>]): void {
     let selector: string;
@@ -2352,11 +2370,10 @@ function minotationProvider(options?: MnOptions) {
   }
 
   function __assignItemCompile(actx: Record<string, Record<string, number>>, mediaName: string): void {
-    forIn(actx, (selectors: Record<string, number>, essenceName: string) => {
-      updateEssence(
-        essenceName, selectors, mediaName,
-      );
-    });
+    let essenceName: string;
+    for (essenceName in actx) updateEssence( // eslint-disable-line
+      essenceName, actx[essenceName], mediaName,
+    );
   }
   function __clear() {
     // mn.media/mn.domains заведены при создании инстанса (см. выше) —

@@ -93,6 +93,22 @@ const VIA = 'via';
 const FROM = 'from';
 const OPACITY = 'opacity';
 const TW_MASK_PREFIX = '--tw-mask-';
+
+// Отображения для `map` в хендлерах — функции модуля: стрелка в вызове создавалась бы заново на каждый токен.
+/** `x` → `--tw-border-spacing-x`. */
+const borderSpacingVar = (axis: string): string => '--tw-border-spacing-' + axis;
+/** `--tw-translate-x`. */
+const translateVar = (axis: string): string => '--tw-translate-' + axis;
+/** `--tw-scale-x`. */
+const scaleVar = (axis: string): string => '--tw-scale-' + axis;
+/** `borderTopWidth` → `borderTopStyle`. */
+const styleOfWidth = (name: string): string => name.replace(WIDTH, 'Style');
+/** `borderTopWidth` → `borderTopColor`. */
+const colorOfWidth = (name: string): string => name.replace(WIDTH, 'Color');
+/** Тень `inset-shadow`: `inset` в начале каждой части. */
+const insetShadow = (part: string): string => (part.indexOf('inset') === 0 ? part : 'inset ' + part);
+/** Часть `drop-shadow-*` — своя функция `drop-shadow(…)`. */
+const dropShadow = (part: string): string => 'drop-shadow(' + part + CLOSE_PAREN;
 const AT = '@';
 
 /** Число шкалы: `4`, `0.5`, `2.5`. */
@@ -694,7 +710,7 @@ function borderSpacing(axes: string[]) {
       },
     });
     return value === undefined ? undefined : result({
-      ...styleOf(axes.map((axis) => '--tw-border-spacing-' + axis), value),
+      ...styleOf(axes.map(borderSpacingVar), value),
       borderSpacing: 'var(--tw-border-spacing-x) var(--tw-border-spacing-y)',
     });
   });
@@ -1061,9 +1077,9 @@ function setupBorders(mn: MnInstance): void {
       const widths = side || ['borderWidth'];
       // Сторона — свой стиль и свой цвет: `border-t-4` → `border-top-style`, `border-t-red-500` → `border-top-color`.
       return width !== undefined ? result({
-        ...styleOf(widths.map((name) => name.replace(WIDTH, 'Style')), VAR_TW_BORDER_STYLE),
+        ...styleOf(widths.map(styleOfWidth), VAR_TW_BORDER_STYLE),
         ...styleOf(widths, width),
-      }) : color === undefined ? undefined : colorResult(widths.map((name) => name.replace(WIDTH, 'Color')), color);
+      }) : color === undefined ? undefined : colorResult(widths.map(colorOfWidth), color);
     }), '', 1,
   );
   mn(
@@ -1463,7 +1479,7 @@ function setupShadows(mn: MnInstance): void {
       alphaVar: '--tw-inset-shadow-alpha',
       sizes: {},
       size: (parts) => ({
-        '--tw-inset-shadow': parts.map((part) => (part.indexOf('inset') === 0 ? part : 'inset ' + part)).join(LIST_SEPARATOR),
+        '--tw-inset-shadow': parts.map(insetShadow).join(LIST_SEPARATOR),
         boxShadow: BOX_SHADOW,
       }),
       none: {
@@ -1499,7 +1515,7 @@ function setupShadows(mn: MnInstance): void {
       size: (
         parts, alpha, key,
       ) => ({
-        '--tw-drop-shadow-size': parts.map((part) => 'drop-shadow(' + part + CLOSE_PAREN).join(SPACE),
+        '--tw-drop-shadow-size': parts.map(dropShadow).join(SPACE),
         '--tw-drop-shadow': alpha && key || key === ARBITRARY ? 'var(--tw-drop-shadow-size)'
           : key ? 'drop-shadow(var(--drop-shadow-' + key + CLOSE_TWO_PARENS
             : 'drop-shadow(0 1px 2px rgb(0 0 0 / 0.1)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.06))',
@@ -1567,7 +1583,7 @@ function translateHandler(axes: string[], value: string) {
       negative: true,
     });
     return shift === undefined ? undefined : result({
-      ...styleOf(axes.map((axis) => '--tw-translate-' + axis), shift),
+      ...styleOf(axes.map(translateVar), shift),
       translate: value,
     });
   });
@@ -1580,7 +1596,7 @@ function scaleTransformHandler(axes: string[], value: string) {
     return factor === undefined ? undefined : result(axes.length === 3 && args.arbitrary !== undefined ? {
       scale: factor,
     } : {
-      ...styleOf(axes.map((axis) => '--tw-scale-' + axis), factor),
+      ...styleOf(axes.map(scaleVar), factor),
       scale: value,
     });
   });
@@ -2401,8 +2417,14 @@ function maskStopHandler(
     if (noPosition && color === undefined) {
       return undefined;
     }
+    const properties: string[] = [];
+    const namesLength = names.length;
+    let i = 0;
+    for (; i < namesLength; i++) {
+      properties.push(TW_MASK_PREFIX + names[i] + suffix);
+    }
     return colorResult(
-      names.map((name) => TW_MASK_PREFIX + name + suffix), color || [position as string], {
+      properties, color || [position as string], {
         ...MASK_BASE,
         ...shape,
       },

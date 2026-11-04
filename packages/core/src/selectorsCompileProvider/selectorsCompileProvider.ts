@@ -454,6 +454,11 @@ function splitSelectorList(source: string): string[] {
 
 /** `_` — пробел в произвольном значении Tailwind, `\\_` — само подчёркивание. */
 const REGEXP_ARBITRARY_SPACE = /\\_|_/g;
+/** Замена в произвольном значении: `_` — пробел, `\_` — подчёркивание. Функция модуля: стрелка в вызове создавалась бы
+ * заново на каждое значение. */
+const arbitrarySpace = (match: string): string => (match === UNDERSCORE ? SPACE : UNDERSCORE);
+/** Число сравнения в медиа Master CSS: `<768`. */
+const REGEXP_MASTER_NUMBER = /^[0-9.]+$/;
 
 /** `[@правило условие]`: `[1]` — media/supports/container, `[2]` — условие. */
 const REGEXP_AT_RULE = /^@(media|supports|container)\s*(\S.*)$/;
@@ -1195,7 +1200,7 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
   function arbitrary(value: string): string {
     // В математике — пробелы вокруг операторов, как у Tailwind: `max-[calc(100%-2rem)]:` (`calc(100%-2rem)` —
     // недействительный CSS).
-    return mathSpaces(value.replace(REGEXP_ARBITRARY_SPACE, (match) => (match === UNDERSCORE ? SPACE : UNDERSCORE)));
+    return mathSpaces(value.replace(REGEXP_ARBITRARY_SPACE, arbitrarySpace));
   }
 
   /**
@@ -1522,28 +1527,39 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    */
   function masterMedia(expression: string, comboName: string): string {
     const media: StrMap<{ query?: string }> = (instance as any).media || {};
-    return splitConditions(expression).map((atom) => {
-      const matchs = REGEXP_MASTER_MEDIA_COMPARE.exec(atom);
-      const isNumber = !!matchs && /^[0-9.]+$/.test(matchs[2]);
-      let width: number;
-      let query: string;
-      if (atom.slice(0, 6) === 'media(') {
-        return registerQuery(media, atom.slice(5));
-      }
-      if (!matchs || !matchs[1] && !isNumber) {
-        // Имя без сравнения: своё медиа проекта, слово оригинала или неизвестное.
-        return media[atom] ? atom : MASTER_MEDIA[atom]
-          ? registerQuery(media, MASTER_MEDIA[atom])
-          : throwPropertyValue(comboName, 'media "' + atom + '" is unknown');
-      }
-      width = isNumber ? parseFloat(matchs[2]) : widthOf(
-        media[matchs[2]], matchs[2], comboName,
+    const atoms = splitConditions(expression);
+    const l = atoms.length;
+    let out = '';
+    let i = 0;
+    for (; i < l; i++) {
+      out += (i ? AMPERSAND : '') + masterAtom(
+        atoms[i], media, comboName,
       );
-      query = cssMediaCondition(
-        WIDTH, (matchs[1] || AT_LEAST) as TCssMediaOperator, width + 'px', $$mediaSyntax,
-      );
-      return registerQuery(media, query);
-    }).join(AMPERSAND);
+    }
+    return out;
+  }
+
+  /** Один атом медиа Master CSS → имя медиа ядра (см. {@link masterMedia}). */
+  function masterAtom(
+    atom: string, media: StrMap<{ query?: string }>, comboName: string,
+  ): string {
+    const matchs = REGEXP_MASTER_MEDIA_COMPARE.exec(atom);
+    const isNumber = !!matchs && REGEXP_MASTER_NUMBER.test(matchs[2]);
+    if (atom.slice(0, 6) === 'media(') {
+      return registerQuery(media, atom.slice(5));
+    }
+    if (!matchs || !matchs[1] && !isNumber) {
+      // Имя без сравнения: своё медиа проекта, слово оригинала или неизвестное.
+      return media[atom] ? atom : MASTER_MEDIA[atom]
+        ? registerQuery(media, MASTER_MEDIA[atom])
+        : throwPropertyValue(comboName, 'media "' + atom + '" is unknown');
+    }
+    const width = isNumber ? parseFloat(matchs[2]) : widthOf(
+      media[matchs[2]], matchs[2], comboName,
+    );
+    return registerQuery(media, cssMediaCondition(
+      WIDTH, (matchs[1] || AT_LEAST) as TCssMediaOperator, width + 'px', $$mediaSyntax,
+    ));
   }
 
   /** Ширина брейкпоинта из его запроса (`(min-width: 1024px)`). */
@@ -1939,108 +1955,116 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
    * @returns AltMap раскрытых состояний
    */
   function getSynonyms(nodes: MnStateNode[]): AltMap {
-    let alts: AltMap = {
+    $$alts = {
       '': [],
     };
-    base(nodes, 1);
-    return alts;
+    synonymsBase(nodes, 1);
+    return $$alts;
+  }
 
-    function base(scopes: MnStateNode[], hasTop: number): void {
-      const scopesL = scopes.length;
-      let scopesI = 0;
-      let scope: MnStateNode;
-      let state: string;
-      let _state: string;
-      let states: string[];
-      let childs: MnStateNode[] | undefined;
-      let ns: string[] | undefined;
-      let si: number;
-      let statesL: number;
-      let statesI: number;
-      // `shift()` у пустого массива даёт `undefined` — ниже это и
-      // проверяется (`if (head)`).
-      let head: string | undefined;
-      let matches: RegExpExecArray | null;
-      let suffix: string;
-      let synonyms: AltMap | undefined;
-      let wasEmpty: boolean;
+  /**
+   * Альтернативы текущего {@link getSynonyms} — поле провайдера, а не переменная, замкнутая вложенными функциями: те
+   * создавались бы заново на каждый токен с состояниями. Повторного входа нет — разбор синхронный.
+   */
+  let $$alts: AltMap;
 
-      for (; scopesI < scopesL; scopesI++) {
-        scope = scopes[scopesI];
-        // Узел уже разобран (D-047): `[0]` — литеральный префикс, дальше — имена
-        // состояний. Массив общий для кеша разбора — не мутируется.
-        states = scope[0];
-        head = states[0];
-        if (head) {
-          _pushSuffix(head);
+  /** Уровень дерева состояний {@link getSynonyms}: префикс, состояния, вложенные scope — в {@link $$alts}. */
+  function synonymsBase(scopes: MnStateNode[], hasTop: number): void {
+    const scopesL = scopes.length;
+    let scopesI = 0;
+    let scope: MnStateNode;
+    let state: string;
+    let _state: string;
+    let states: string[];
+    let childs: MnStateNode[] | undefined;
+    let ns: string[] | undefined;
+    let si: number;
+    let statesL: number;
+    let statesI: number;
+    // `shift()` у пустого массива даёт `undefined` — ниже это и
+    // проверяется (`if (head)`).
+    let head: string | undefined;
+    let matches: RegExpExecArray | null;
+    let suffix: string;
+    let synonyms: AltMap | undefined;
+    let wasEmpty: boolean;
+
+    for (; scopesI < scopesL; scopesI++) {
+      scope = scopes[scopesI];
+      // Узел уже разобран (D-047): `[0]` — литеральный префикс, дальше — имена
+      // состояний. Массив общий для кеша разбора — не мутируется.
+      states = scope[0];
+      head = states[0];
+      if (head) {
+        pushStateSuffix(head);
+      }
+      statesL = states.length;
+      statesI = 1;
+
+      for (; statesI < statesL; statesI++) {
+        // Пустое имя — признак псевдоЭЛЕМЕНТА (`p10::before` даёт пару
+        // ['', 'before']). О следующем за ним имени предупреждать не о чем:
+        // `::before` — не состояние и синонимом не заводится.
+        wasEmpty = !states[statesI - 1] && statesI > 1;
+        _state = state = unslash(states[statesI]);
+        matches = REGEXP_SCOPE_SUFFIX.exec(_state);
+        if (matches) {
+          state = matches[1];
+          suffix = matches[2];
+        } else {
+          suffix = '';
         }
-        statesL = states.length;
-        statesI = 1;
 
-        for (; statesI < statesL; statesI++) {
-          // Пустое имя — признак псевдоЭЛЕМЕНТА (`p10::before` даёт пару
-          // ['', 'before']). О следующем за ним имени предупреждать не о чем:
-          // `::before` — не состояние и синонимом не заводится.
-          wasEmpty = !states[statesI - 1] && statesI > 1;
-          _state = state = unslash(states[statesI]);
-          matches = REGEXP_SCOPE_SUFFIX.exec(_state);
-          if (matches) {
-            state = matches[1];
-            suffix = matches[2];
-          } else {
-            suffix = '';
-          }
-
-          // После `::` — псевдоэлемент как есть: синоним с тем же именем (`before: '::before'` у
-          // клона Tailwind) иначе дал бы `:::before`.
-          synonyms = wasEmpty ? undefined : $$synonyms[state];
-          if (synonyms) {
-            alts = joinMapsWithFirstValue(
-              alts, synonyms, 0 as any, suffix,
-            );
-          } else {
-            ns = wasEmpty ? undefined : $$states[state];
-            if (ns && (si = ns.length)) {
-              synonyms = {};
-              for (; si--;) {
-                synonyms[ns[si] + suffix] = [];
-              }
-              alts = joinMapsWithFirstValue(alts, synonyms);
-            } else {
-              // Имени нет ни в синонимах, ни в `mn.states` — пропускаем как есть
-              // (псевдокласс может быть специфичен для окружения или ещё не быть
-              // в стандарте), но предупреждаем: `p10:fv` иначе давал мёртвое
-              // правило `.p10\:fv:fv{…}` молча. Пустое имя — это `::before`
-              // и подобные, там предупреждать не о чем.
-              _state && !wasEmpty && !$$quietStates && (instance as any)._collectWarning?.({
-                type: 'unregistered-state',
-                token: $$depthCheck.token,
-                message: 'State ":' + _state + '" is not registered — neither as a synonym '
-                  + 'nor in `mn.states`. It goes to CSS as is; if it is a typo, '
-                  + 'the rule is dead. Add a synonym '
-                  + '(`mn.synonyms({ … })`) so the project has one canonical spelling',
-              });
-              _pushSuffix(COLON + _state);
+        // После `::` — псевдоэлемент как есть: синоним с тем же именем (`before: '::before'` у
+        // клона Tailwind) иначе дал бы `:::before`.
+        synonyms = wasEmpty ? undefined : $$synonyms[state];
+        if (synonyms) {
+          $$alts = joinMapsWithFirstValue(
+            $$alts, synonyms, 0 as any, suffix,
+          );
+        } else {
+          ns = wasEmpty ? undefined : $$states[state];
+          if (ns && (si = ns.length)) {
+            synonyms = {};
+            for (; si--;) {
+              synonyms[ns[si] + suffix] = [];
             }
+            $$alts = joinMapsWithFirstValue($$alts, synonyms);
+          } else {
+            // Имени нет ни в синонимах, ни в `mn.states` — пропускаем как есть
+            // (псевдокласс может быть специфичен для окружения или ещё не быть
+            // в стандарте), но предупреждаем: `p10:fv` иначе давал мёртвое
+            // правило `.p10\:fv:fv{…}` молча. Пустое имя — это `::before`
+            // и подобные, там предупреждать не о чем.
+            _state && !wasEmpty && !$$quietStates && (instance as any)._collectWarning?.({
+              type: 'unregistered-state',
+              token: $$depthCheck.token,
+              message: 'State ":' + _state + '" is not registered — neither as a synonym '
+                + 'nor in `mn.states`. It goes to CSS as is; if it is a typo, '
+                + 'the rule is dead. Add a synonym '
+                + '(`mn.synonyms({ … })`) so the project has one canonical spelling',
+            });
+            pushStateSuffix(COLON + _state);
           }
         }
+      }
 
-        childs = scope[1];
-        if (childs) {
-          _pushSuffix(hasTop ? OPEN_PAREN : OPEN_BRACKET);
-          base(childs, 0);
-          _pushSuffix(hasTop ? CLOSE_PAREN : CLOSE_BRACKET);
-        }
+      childs = scope[1];
+      if (childs) {
+        pushStateSuffix(hasTop ? OPEN_PAREN : OPEN_BRACKET);
+        synonymsBase(childs, 0);
+        pushStateSuffix(hasTop ? CLOSE_PAREN : CLOSE_BRACKET);
       }
     }
+  }
 
-    function _pushSuffix(suffix: string): void {
-      const prefixes = alts;
-      let prefix: string;
-      alts = {};
-      for (prefix in prefixes) {
-        alts[prefix + suffix] = prefixes[prefix];
-      }
+
+  function pushStateSuffix(suffix: string): void {
+    const prefixes = $$alts;
+    let prefix: string;
+    $$alts = {};
+    for (prefix in prefixes) {
+      $$alts[prefix + suffix] = prefixes[prefix];
     }
   }
 

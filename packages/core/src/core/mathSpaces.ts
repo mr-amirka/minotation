@@ -71,7 +71,10 @@ export function mathSpaces(value: string): string {
   let run = -1;
   let previousRun = -1;
   for (fn of MATH_FUNCTIONS) {
-    value.indexOf(fn) < 0 || (found = 1);
+    if (value.indexOf(fn) > -1) {
+      found = 1;
+      break;
+    }
   }
   if (!found) {
     return value;

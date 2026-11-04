@@ -720,7 +720,7 @@ describe('mathValue — `{{`: группа в начале группы', () => 
 /** Что собрал читатель за одно значение: пары «как написано», «выражение». */
 function bareOf(
   expr: string, rules = width, written?: string,
-): string[] {
+): readonly string[] {
   const outer = mathBareBegin();
   mathValue(
     expr, rules, written,
@@ -795,8 +795,13 @@ describe('mathValue — математика без скобок для bareMath
 
   test('без сбора читатель ничего не копит', () => {
     mathValue('1+2', width);
-    expect(mathBareBegin()).toBeUndefined();
-    mathBareEnd(undefined);
+    expect(mathBareEnd(mathBareBegin())).toEqual([]);
+  });
+
+  test('ничего не найдено — общий пустой список, без нового на каждый токен', () => {
+    const first = mathBareEnd(mathBareBegin());
+    mathValue('10', width);
+    expect(mathBareEnd(mathBareBegin())).toBe(first);
   });
 
   test('ошибка в значении не оставляет глубину скобок следующему', () => {

@@ -80,7 +80,7 @@ export function maxDepthMessage(
  * @example bareMathMessage('w1/2+32', ['1/2+32', '1/2+32'], false) // '"w1/2+32" writes math without braces: …'
  */
 export function bareMathMessage(
-  token: string, found: string[], strict: boolean,
+  token: string, found: readonly string[], strict: boolean,
 ): string {
   const head = '"' + token + '" writes math without braces: write "' + bracedToken(token, found) + '"';
   return strict
@@ -98,7 +98,7 @@ export function bareMathMessage(
  * @returns токен со скобками
  * @example bracedToken('bxshB$a*2;x2', ['B$a*2', '$a*2']) // 'bxsh{$a*2}x2'
  */
-function bracedToken(token: string, found: string[]): string {
+function bracedToken(token: string, found: readonly string[]): string {
   const l = found.length;
   let out = token;
   let at = 0;

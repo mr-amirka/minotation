@@ -67,10 +67,15 @@ export const MN_CSS_SPELLING: TCssValuesOptions = Object.freeze<TCssValuesOption
 export const mnCss = cssValuesProvider(MN_CSS_SPELLING);
 
 /**
- * Математика без скобок, найденная с {@link mathBareBegin}: пары «как часть написана в токене», «выражение».
- * `undefined` — сбор выключен: ридер, вызванный вне хендлера, ничего не копит.
+ * Математика без скобок, найденная с {@link mathBareBegin}: пары «как часть написана в токене», «выражение». Один
+ * список на всю сборку: сбор помечает его длину и отрезает своё в {@link mathBareEnd}, так что токен без такой
+ * математики (почти любой) не стоит списка.
  */
-let bareFound: string[] | undefined;
+const $$bare: string[] = [];
+/** Сколько сборов открыто; `0` — ридер, вызванный вне хендлера, ничего не копит. */
+let $$bareDepth = 0;
+/** Ничего не найдено — один общий пустой список, его не меняют. */
+const NO_BARE: readonly string[] = [];
 
 /**
  * Значение с математикой — {@link mnCss}`.math`, и запись в сбор математики без скобок (режим `bareMathMode`), если
@@ -91,32 +96,31 @@ export function mathValue(
   expr: string, rules: TMathRules, written?: string,
 ): string {
   const css = mnCss.math(expr, rules);
-  mnCss.bare() && bareFound && bareFound.push(written === undefined ? expr : written, expr);
+  $$bareDepth && mnCss.bare() && $$bare.push(written === undefined ? expr : written, expr);
   return css;
 }
 
 /**
  * Начинает сбор математики без скобок: ядро зовёт его перед хендлером токена, {@link mathBareEnd} — после.
- * Сбор вложенный: прежний возвращается в {@link mathBareEnd}.
- * @returns прежний сбор
- * @example const outer = mathBareBegin(); mathValue('1+2', rules); mathBareEnd(outer) // ['1+2', '1+2']
+ * Сбор вложенный: внутренний отрезает только своё, внешний своё сохраняет.
+ * @returns метка начала сбора — её получает {@link mathBareEnd}
+ * @example const mark = mathBareBegin(); mathValue('1+2', rules); mathBareEnd(mark) // ['1+2', '1+2']
  */
-export function mathBareBegin(): string[] | undefined {
-  const outer = bareFound;
-  bareFound = [];
-  return outer;
+export function mathBareBegin(): number {
+  $$bareDepth++;
+  return $$bare.length;
 }
 
 /**
  * Заканчивает сбор, начатый {@link mathBareBegin}.
- * @param outer — прежний сбор, который вернул {@link mathBareBegin}
- * @returns пары «как часть написана в токене», «выражение» — по одной на каждое значение с оператором вне скобок
- * @example mathBareEnd(outer) // ['B$a*2', '$a*2']
+ * @param mark — метка, которую вернул {@link mathBareBegin}
+ * @returns пары «как часть написана в токене», «выражение» — по одной на каждое значение с оператором вне скобок;
+ *   ничего не найдено — общий пустой список (его не меняют)
+ * @example mathBareEnd(mark) // ['B$a*2', '$a*2']
  */
-export function mathBareEnd(outer: string[] | undefined): string[] {
-  const found = bareFound as string[];
-  bareFound = outer;
-  return found;
+export function mathBareEnd(mark: number): readonly string[] {
+  $$bareDepth--;
+  return $$bare.length === mark ? NO_BARE : $$bare.splice(mark);
 }
 
 /** Ошибка ридера — ошибка разбора нотации; токен и хендлер подставит ядро. */

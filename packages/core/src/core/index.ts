@@ -2025,7 +2025,7 @@ function minotationProvider(options?: MnOptions) {
       const matchs = handle.skip ? null : REGEXP_MATCH_VALUE.exec(params.suffix);
       let essence: MnEssenceRaw | void | 0;
       let placed: number;
-      let bare: string[];
+      let bare: readonly string[];
       matchs && (
         params.value = matchs[2],
         params.camel = matchs[3],

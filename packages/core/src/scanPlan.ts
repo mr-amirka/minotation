@@ -14,6 +14,12 @@
 import {
   pairsProvider,
 } from 'fundamentool';
+import {
+  sourceStringsProvider,
+} from 'fundamentool/source';
+import type {
+  TSourceStrings,
+} from 'fundamentool/source';
 import type {
   TPair,
   TPairsPreset,
@@ -92,19 +98,25 @@ const LIST_EXAMPLES: Record<ScanListOption, string> = {
 };
 
 /**
- * Группа одной цели: имена без целей для трёх механизмов. Кортеж (§2): группа читается на каждый файл.
+ * Группа одной цели: имена без целей для трёх механизмов и читатель строк по ним (`sourceStringsProvider` из
+ * fundamentool, создаётся с планом). Читатель по дереву создаёт `syntaxScan.ts` при первом разборе парсером и кладёт
+ * сюда же. Кортеж (§2): группа читается на каждый файл.
  */
 export type ScanGroup = [
   target: string,
   attrs: string[],
   varNames: string[],
   fnNames: string[],
+  strings: TSourceStrings,
+  syntaxStrings?: unknown,
 ];
 
 export const MN_GROUP_TARGET = 0;
 export const MN_GROUP_ATTR = 1;
 export const MN_GROUP_VARS = 2;
 export const MN_GROUP_FNS = 3;
+export const MN_GROUP_STRINGS = 4;
+export const MN_GROUP_SYNTAX = 5;
 
 /**
  * План сканирования: группы по цели, цель маркеров `@mn` (D-083) и вырезать ли комментарии.
@@ -169,7 +181,7 @@ export function cachedScanPlanOf(options: ScanTokensOptions): ScanPlan {
  *
  * @example
  * scanPlanOf({ attrs: 'class, m' })
- * // → [[['class', ['class'], ['*Class'], ['mne', '*Class']], ['m', ['m'], [], []]], 'class', true]
+ * // → [[['class', ['class'], ['*Class'], ['mne', '*Class'], читатель], ['m', ['m'], [], [], читатель]], 'class', true]
  */
 export function scanPlanOf(options: ScanTokensOptions): ScanPlan {
   const byTarget: Record<string, ScanGroup> = {};
@@ -183,16 +195,24 @@ export function scanPlanOf(options: ScanTokensOptions): ScanPlan {
     ] of entriesAt(i, options[LIST_OPTIONS[i]])) {
       group = byTarget[target];
       if (!group) {
+        // Читатель ставится ниже, когда имена группы собраны.
         group = byTarget[target] = [
           target,
           [],
           [],
           [],
-        ];
+        ] as unknown as ScanGroup;
         groups.push(group);
       }
       (group[i + 1] as string[]).push(name);
     }
+  }
+  for (group of groups) {
+    group[MN_GROUP_STRINGS] = sourceStringsProvider({
+      attrs: group[MN_GROUP_ATTR],
+      variables: group[MN_GROUP_VARS],
+      calls: group[MN_GROUP_FNS],
+    });
   }
   return [
     groups,

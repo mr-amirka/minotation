@@ -30,11 +30,25 @@
  * что даёт итоговые 1,06× — ниже порога.
  */
 import {
-  extractTokens,
+  sourceStringsProvider,
+} from 'fundamentool/source';
+import {
+  pushLiteralTokens,
   scanTokens,
 } from '../extractTokens';
 
 const CLASS_ATTR = 'class';
+
+/** Токены атрибута — читатель `fundamentool/source` с разбиением minotation. */
+function extractTokens(source: string, attr: string): string[] {
+  const out: string[] = [];
+  sourceStringsProvider({
+    attrs: [attr],
+  })(
+    source, out, pushLiteralTokens,
+  );
+  return out;
+}
 
 const FILES = 300;
 const ROUNDS = 20;

@@ -1,16 +1,41 @@
 /**
- * Тесты extractTokens — извлечение MN-токенов из значений атрибута в тексте файла.
+ * Токены по местам — атрибуты, переменные, вызовы: читатели `fundamentool/source` с разбиением minotation.
  */
 
 import {
-  extractTokens,
-  extractClassVarTokens,
-  extractMergeCallTokens,
-  attrMarkup,
-  attrNameSource,
-  isScanName,
+  matchesName as isScanName,
+  namePatternSource as attrNameSource,
+  sourceStringsProvider,
+} from 'fundamentool/source';
+import type {
+  TStringPlaces,
+} from 'fundamentool/source';
+import {
+  pushLiteralTokens,
   scanTokens,
 } from '../extractTokens';
+
+/** Токены одного места: читатель `fundamentool/source` и `push` minotation, как в `scanTokens`. */
+function tokensOf(places: TStringPlaces, source: string): string[] {
+  const out: string[] = [];
+  sourceStringsProvider(places)(
+    source, out, pushLiteralTokens,
+  );
+  return out;
+}
+
+/** Атрибут. */
+const extractTokens = (source: string, attr: string) => tokensOf({
+  attrs: [attr],
+}, source);
+/** Переменные. */
+const extractClassVarTokens = (source: string, names: string[]) => tokensOf({
+  variables: names,
+}, source);
+/** Вызовы. */
+const extractMergeCallTokens = (source: string, names: string[]) => tokensOf({
+  calls: names,
+}, source);
 
 describe('extractTokens', () => {
   test('литеральная строка в двойных кавычках', () => {
@@ -535,11 +560,9 @@ describe('attr — шаблон `*ClassName` (D-131)', () => {
     expect(isScanName('class', [])).toBe(false);
   });
 
-  test('attrNameSource и attrMarkup', () => {
+  test('attrNameSource', () => {
     expect(attrNameSource('className')).toBe('className');
     expect(attrNameSource('*Class.Name')).toBe('[\\w$-]+Class\\.Name');
-    expect(attrMarkup('className')).toBe('className=');
-    expect(attrMarkup('*ClassName')).toBe('ClassName=');
   });
 });
 

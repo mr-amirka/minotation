@@ -27,15 +27,48 @@
  * позиции файла. Пятикратное замедление за счёт кода, который ничего не делал.
  */
 import {
-  extractTokens,
+  blankComments as stripComments,
+  sourceStringsProvider,
+} from 'fundamentool/source';
+import type {
+  TStringPlaces,
+} from 'fundamentool/source';
+import {
+  pushLiteralTokens,
   scanTokens,
-  extractClassVarTokens,
-  extractMergeCallTokens,
-  stripComments,
 } from '../extractTokens';
 
 const SPACE = ' ';
 const CLASS_ATTR = 'class';
+
+/** Читатель одного места — создаётся один раз, как в плане сканера; токены — разбиением minotation. */
+function readerOf(places: TStringPlaces): (source: string) => string[] {
+  const strings = sourceStringsProvider(places);
+  return (source) => {
+    const out: string[] = [];
+    strings(
+      source, out, pushLiteralTokens,
+    );
+    return out;
+  };
+}
+
+const classAttr = readerOf({
+  attrs: [CLASS_ATTR],
+});
+const classVars = readerOf({
+  variables: ['*Class'],
+});
+const twoCalls = readerOf({
+  calls: [
+    'mne',
+    'mnClass',
+  ],
+});
+const oneCall = readerOf({
+  calls: ['mne'],
+});
+const extractTokens = (source: string, _attr: string) => classAttr(source);
 
 const FILES = 300;
 const ROUNDS = 20;
@@ -149,20 +182,17 @@ bench('stripComments — только вырезание    ', () => {
 // Раздельно по механизмам: где именно уходит время.
 bench('  только extractClassVarTokens        ', () => {
   for (let i = 0; i < FILES; i++) {
-    extractClassVarTokens(sources[i], ['*Class']);
+    classVars(sources[i]);
   }
 });
 bench('  только extractMergeCallTokens       ', () => {
   for (let i = 0; i < FILES; i++) {
-    extractMergeCallTokens(sources[i], [
-      'mne',
-      'mnClass',
-    ]);
+    twoCalls(sources[i]);
   }
 });
 bench('  только extractMergeCallTokens (1 имя)', () => {
   for (let i = 0; i < FILES; i++) {
-    extractMergeCallTokens(sources[i], ['mne']);
+    oneCall(sources[i]);
   }
 });
 

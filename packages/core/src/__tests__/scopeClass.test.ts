@@ -85,6 +85,15 @@ describe('JS/TS/JSX — по синтаксическому дереву', () =>
     ).code).toBe(once);
   });
 
+  test('класс вплотную к подстановке шаблона уже стоит; знак `$` без `{` — ещё нет', () => {
+    expect(write(
+      '<b className={`_l${x}`} />', 'a.tsx', '_l',
+    ).code).toBe('<b className={`_l${x}`} />');
+    expect(write(
+      '<b className={`_l$x`} />', 'a.tsx', '_l',
+    ).code).toBe('<b className={`_l _l$x`} />');
+  });
+
   test('битый файл — текстом', () => {
     expect(write(
       '<b className="p-4" ', 'a.tsx', '_l',

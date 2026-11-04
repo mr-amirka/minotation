@@ -43,12 +43,21 @@
  */
 import ts from 'typescript';
 import {
-  attrMarkup,
-  isScanName,
-  extractTokensInto,
+  applyEdits,
+  blankSpan,
+  parseSource,
+  sfcParts,
+  syntaxStringsProvider,
+  syntaxValueRanges,
+} from 'fundamentool/source';
+import type {
+  TSourceEdit,
+  TSyntaxStrings,
+} from 'fundamentool/source';
+import {
   pushLiteralTokens,
+  readMarkers,
   scanTokensByPlanInto,
-  stripComments,
 } from './extractTokens';
 import type {
   ScanTokensOptions,
@@ -56,6 +65,7 @@ import type {
 import {
   MN_GROUP_ATTR,
   MN_GROUP_FNS,
+  MN_GROUP_SYNTAX,
   MN_GROUP_TARGET,
   MN_GROUP_VARS,
   MN_PLAN_GROUPS,
@@ -63,19 +73,15 @@ import {
   cachedScanPlanOf,
 } from './scanPlan';
 import type {
+  ScanGroup,
   ScanPlan,
   ScannedTokens,
 } from './scanPlan';
 import {
-  applyEdits,
   isWrapped,
+  startsWithClass,
   wrapExpression,
 } from './scopeClass';
-import type {
-  SourceEdit,
-} from './scopeClass';
-
-const TS_EXTENSION = '.ts';
 
 /** Опции {@link scanTokensSyntax}. */
 export interface SyntaxScanOptions extends ScanTokensOptions {
@@ -85,16 +91,6 @@ export interface SyntaxScanOptions extends ScanTokensOptions {
    * надмножество остальных.
    */
   fileName?: string;
-}
-
-/** `.ts` и `.mts`/`.cts` разбираются без JSX: там `<T>` — это приведение типа. */
-function scriptKindOf(fileName: string): ts.ScriptKind {
-  const dot = fileName.lastIndexOf('.');
-  const ext = dot > -1 ? fileName.slice(dot) : '';
-  if (ext === TS_EXTENSION || ext === '.mts' || ext === '.cts') {
-    return ts.ScriptKind.TS;
-  }
-  return ts.ScriptKind.TSX;
 }
 
 /**
@@ -136,26 +132,23 @@ export function scanSyntaxByPlan(
   return out;
 }
 
+/** Читатель дерева группы — создаётся при первом разборе и остаётся в группе. */
+function syntaxStringsOf(group: ScanGroup): TSyntaxStrings {
+  return (group[MN_GROUP_SYNTAX] || (group[MN_GROUP_SYNTAX] = syntaxStringsProvider(ts, {
+    attrs: group[MN_GROUP_ATTR],
+    variables: group[MN_GROUP_VARS],
+    calls: group[MN_GROUP_FNS],
+  }))) as TSyntaxStrings;
+}
+
 /** {@link scanSyntaxByPlan} в готовый набор: скрипты однофайлового компонента пишут в один объект. */
 function scanSyntaxInto(
   out: ScannedTokens, source: string, plan: ScanPlan, fileName: string,
 ): void {
-  const file = ts.createSourceFile(
-    fileName,
-    source,
-    // Разбор без проверки типов: нужна только форма кода, а `Latest` избавляет
-    // от вопроса «какой синтаксис уже можно».
-    ts.ScriptTarget.Latest,
-    // Ссылки на родителей не нужны: обход идёт сверху вниз, а их простановка
-    // стоит отдельного прохода по дереву.
-    false,
-    scriptKindOf(fileName),
+  const file = parseSource(
+    ts, source, fileName,
   );
-  // `parseDiagnostics` нет в публичных типах, но это единственный способ
-  // узнать про синтаксическую ошибку, не строя программу: `createSourceFile`
-  // на битом файле возвращает дерево как ни в чём не бывало.
-  const broken = (file as unknown as { parseDiagnostics?: unknown[] }).parseDiagnostics;
-  if (broken && broken.length) {
+  if (!file) {
     scanTokensByPlanInto(
       out, source, plan,
     );
@@ -163,246 +156,15 @@ function scanSyntaxInto(
   }
   const markerTarget = plan[MN_PLAN_MARKER_TARGET];
   // Маркеры `@mn` в комментариях (D-083) — тем же разбором, что и у текстового сканера: паритет.
-  stripComments(source, out[markerTarget] || (out[markerTarget] = []));
+  readMarkers(source, out[markerTarget] || (out[markerTarget] = []));
   const groups = plan[MN_PLAN_GROUPS];
   const l = groups.length;
   let i = 0;
-  let attrs: string[];
   let target: string;
   for (; i < l; i++) {
-    attrs = groups[i][MN_GROUP_ATTR];
     target = groups[i][MN_GROUP_TARGET];
-    // Маркер разметки внутри строки: без него пришлось бы гонять текстовый
-    // разбор по каждому литералу файла, а `class=` есть в единицах из них.
-    visit(file, [
-      out[target] || (out[target] = []),
-      attrs,
-      groups[i][MN_GROUP_VARS],
-      groups[i][MN_GROUP_FNS],
-      attrs.map(attrMarkup),
-    ]);
-  }
-}
-
-/**
- * Состояние обхода кортежем, а не объектом (§2): оно прокидывается в каждый
- * узел дерева, а узлов в файле тысячи.
- */
-type ScanState = [
-  tokens: string[],
-  attrs: string[],
-  varNames: string[],
-  fnNames: string[],
-  markups: string[],
-];
-
-const MN_SCAN_TOKENS = 0;
-const MN_SCAN_ATTR = 1;
-const MN_SCAN_VARS = 2;
-const MN_SCAN_FNS = 3;
-const MN_SCAN_MARKUP = 4;
-
-function visit(node: ts.Node, state: ScanState): void {
-  switch (node.kind) {
-    case ts.SyntaxKind.JsxAttribute:
-      jsxAttribute(node as ts.JsxAttribute, state);
-      break;
-    case ts.SyntaxKind.PropertyAssignment:
-      propertyAssignment(node as ts.PropertyAssignment, state);
-      break;
-    case ts.SyntaxKind.VariableDeclaration:
-      variableDeclaration(node as ts.VariableDeclaration, state);
-      break;
-    case ts.SyntaxKind.CallExpression:
-      callExpression(node as ts.CallExpression, state);
-      break;
-    case ts.SyntaxKind.StringLiteral:
-    case ts.SyntaxKind.NoSubstitutionTemplateLiteral:
-      markupInside((node as ts.StringLiteralLike).text, state);
-      break;
-    case ts.SyntaxKind.TemplateExpression:
-      templateMarkup(node as ts.TemplateExpression, state);
-      break;
-    default:
-      break;
-  }
-  ts.forEachChild(node, (child) => {
-    visit(child, state);
-  });
-}
-
-/** Имя узла как строка; вычисляемые и служебные имена нас не интересуют. */
-function nameOf(node: ts.Node): string {
-  if (node.kind === ts.SyntaxKind.Identifier) {
-    return (node as ts.Identifier).text;
-  }
-  if (node.kind === ts.SyntaxKind.StringLiteral) {
-    return (node as ts.StringLiteral).text;
-  }
-  return '';
-}
-
-/** `class="p10"`, `class={'p10'}`, `` class={`p10 ${x}`} ``. */
-function jsxAttribute(node: ts.JsxAttribute, state: ScanState): void {
-  if (!isScanName(nameOf(node.name), state[MN_SCAN_ATTR])) {
-    return;
-  }
-  const value = node.initializer;
-  if (!value) {
-    return;
-  }
-  if (value.kind === ts.SyntaxKind.JsxExpression) {
-    pushExpression((value as ts.JsxExpression).expression, state);
-    return;
-  }
-  pushExpression(value, state);
-}
-
-/** `{ className: 'p10' }` и `{ rowClass: 'p10' }`. */
-function propertyAssignment(node: ts.PropertyAssignment, state: ScanState): void {
-  const name = nameOf(node.name);
-  if (isScanName(name, state[MN_SCAN_ATTR]) || isScanName(name, state[MN_SCAN_VARS])) {
-    pushExpression(node.initializer, state);
-  }
-}
-
-/** `const rowClass = 'p10'`, в том числе с аннотацией типа. */
-function variableDeclaration(node: ts.VariableDeclaration, state: ScanState): void {
-  if (isScanName(nameOf(node.name), state[MN_SCAN_VARS])) {
-    pushExpression(node.initializer, state);
-  }
-}
-
-/**
- * `mne(base, 'p10')` и `thClass('w150')` — берутся все строковые литералы
- * вызова, включая вложенные.
- *
- * Как и в текстовом сканере, имя должно быть самостоятельным идентификатором:
- * `obj.mne(...)` — чужой метод, а не наш.
- */
-function callExpression(node: ts.CallExpression, state: ScanState): void {
-  const callee = node.expression;
-  if (callee.kind !== ts.SyntaxKind.Identifier) {
-    return;
-  }
-  const name = (callee as ts.Identifier).text;
-  // `thClass('w150')` — вызов функции, которую вернул `mnClass(base)`: её
-  // аргументы — такие же токены, как у самой `mnClass` (шаблон `*Class`).
-  if (!isScanName(name, state[MN_SCAN_FNS])) {
-    return;
-  }
-  const args = node.arguments;
-  const l = args.length;
-  let i = 0;
-  for (; i < l; i++) {
-    pushEveryLiteral(args[i], state);
-  }
-}
-
-/**
- * Токены выражения — из каждого литерала, который может стать его значением.
- *
- * Значение, которое сводится к набору литералов без выполнения кода, берётся целиком:
- * обе ветки `cond ? 'a' : 'b'` (и вложенных), правая часть `cond && 'a'`, обе части
- * `a || 'b'` и `a ?? 'b'`, скобки. Условие не берётся: в `v === 'splash' ? …` строка
- * `'splash'` — операнд сравнения, а не класс.
- */
-function pushExpression(node: ts.Node | undefined, state: ScanState): void {
-  if (!node) {
-    return;
-  }
-  switch (node.kind) {
-    case ts.SyntaxKind.ConditionalExpression:
-      pushExpression((node as ts.ConditionalExpression).whenTrue, state);
-      pushExpression((node as ts.ConditionalExpression).whenFalse, state);
-      break;
-    case ts.SyntaxKind.ParenthesizedExpression:
-      pushExpression((node as ts.ParenthesizedExpression).expression, state);
-      break;
-    case ts.SyntaxKind.BinaryExpression:
-      pushBinary(node as ts.BinaryExpression, state);
-      break;
-    default:
-      // Вычисляемое значение (вызов, переменная, конкатенация) на этапе сборки
-      // неизвестно — ровно как и у текстового сканера.
-      pushLiteral(node, state);
-      break;
-  }
-}
-
-/** `cond && 'a'` — только правая часть; `a || 'b'`, `a ?? 'b'` — обе. */
-function pushBinary(node: ts.BinaryExpression, state: ScanState): void {
-  const operator = node.operatorToken.kind;
-  if (operator === ts.SyntaxKind.AmpersandAmpersandToken) {
-    pushExpression(node.right, state);
-  } else if (operator === ts.SyntaxKind.BarBarToken || operator === ts.SyntaxKind.QuestionQuestionToken) {
-    pushExpression(node.left, state);
-    pushExpression(node.right, state);
-  }
-}
-
-/** Сам узел — строка или шаблон: его токены. */
-function pushLiteral(node: ts.Node, state: ScanState): void {
-  switch (node.kind) {
-    case ts.SyntaxKind.StringLiteral:
-    case ts.SyntaxKind.NoSubstitutionTemplateLiteral:
-      pushLiteralTokens(state[MN_SCAN_TOKENS], (node as ts.StringLiteralLike).text);
-      break;
-    case ts.SyntaxKind.TemplateExpression:
-      pushTemplate(node as ts.TemplateExpression, state);
-      break;
-    default:
-      break;
-  }
-}
-
-/** Литеральные куски шаблонной строки и значения подстановок `${…}` (D-074). */
-function pushTemplate(node: ts.TemplateExpression, state: ScanState): void {
-  const tokens = state[MN_SCAN_TOKENS];
-  pushLiteralTokens(tokens, node.head.text);
-  const spans = node.templateSpans;
-  const l = spans.length;
-  let i = 0;
-  for (; i < l; i++) {
-    pushExpression(spans[i].expression, state);
-    pushLiteralTokens(tokens, spans[i].literal.text);
-  }
-}
-
-/** Все строковые литералы поддерева — для аргументов функций слияния. */
-function pushEveryLiteral(node: ts.Node, state: ScanState): void {
-  pushLiteral(node, state);
-  ts.forEachChild(node, (child) => {
-    pushEveryLiteral(child, state);
-  });
-}
-
-/** Разметка внутри шаблонной строки — по каждому литеральному куску. */
-function templateMarkup(node: ts.TemplateExpression, state: ScanState): void {
-  markupInside(node.head.text, state);
-  const spans = node.templateSpans;
-  const l = spans.length;
-  let i = 0;
-  for (; i < l; i++) {
-    markupInside(spans[i].literal.text, state);
-  }
-}
-
-/**
- * Разметка внутри строки: `` html`<div class="p10">` ``, строка с HTML,
- * шаблон для `innerHTML`.
- *
- * Для парсера это просто строка, но токены в ней настоящие — текстовый сканер
- * их находит, и без этого два сканера расходились бы на ровном месте.
- */
-function markupInside(text: string, state: ScanState): void {
-  const attrs = state[MN_SCAN_ATTR];
-  const markups = state[MN_SCAN_MARKUP];
-  const l = markups.length;
-  let i = 0;
-  for (; i < l; i++) {
-    text.indexOf(markups[i]) > -1 && extractTokensInto(
-      state[MN_SCAN_TOKENS], text, attrs[i],
+    syntaxStringsOf(groups[i])(
+      file, out[target] || (out[target] = []), pushLiteralTokens,
     );
   }
 }
@@ -440,96 +202,34 @@ export function scanTokensSfc(source: string, options: SyntaxScanOptions): Scann
  */
 export function scanSfcByPlan(source: string, plan: ScanPlan): ScannedTokens {
   const tokens: ScannedTokens = {};
-  // Куски вне скриптов — их разберёт текстовый сканер одним проходом.
-  const rest: string[] = [];
+  const parts = sfcParts(source);
+  const l = parts.length;
+  // Разметка вне скриптов — её разберёт текстовый сканер одним проходом. Вместо скрипта — пробелы той же длины с
+  // его переводами строк: иначе склеились бы соседние строки, и `class=` из-под скрипта попал бы в чужой контекст.
+  let rest = '';
   let i = 0;
-  let open: number;
-  let body: number;
-  let close: number;
-  let front: number;
-  // Фронтматтер Astro: `---` в самом начале файла и до следующего `---`.
-  if (source.startsWith('---')) {
-    front = source.indexOf('\n---', 3);
-    if (front > -1) {
-      pushSyntax(
-        tokens, source.slice(3, front), plan, TS_EXTENSION,
-      );
-      rest.push(newlinesOf(
-        source, 0, front,
-      ));
-      i = front;
+  let part: [kind: number, from: number, to: number];
+  for (; i < l; i++) {
+    part = parts[i];
+    if (!part[0]) {
+      rest += source.slice(part[1], part[2]);
+      continue;
     }
-  }
-  while ((open = source.indexOf('<script', i)) > -1) {
-    body = source.indexOf('>', open);
-    if (body < 0) {
-      break;
-    }
-    close = source.indexOf('</script', body);
-    if (close < 0) {
-      break;
-    }
-    rest.push(source.slice(i, open));
-    pushSyntax(
-      tokens,
-      source.slice(body + 1, close),
-      plan,
-      extensionOf(source.slice(open, body)),
+    scanSyntaxInto(
+      tokens, source.slice(part[1], part[2]), plan, part[0] === 2 ? 'sfc.tsx' : 'sfc.ts',
     );
-    // Вместо вырезанного — только переводы строк: иначе склеились бы соседние
-    // строки, и `class=` из-под скрипта попал бы в чужой контекст.
-    rest.push(newlinesOf(
-      source, open, close,
-    ));
-    i = close;
+    rest += blankSpan(
+      source, part[1], part[2],
+    );
   }
-  rest.push(source.slice(i));
   // Остаток идёт через полный текстовый сканер, а не через один разбор
   // атрибутов: в шаблоне бывают и вызовы `mne`, и комментарии — `<!-- <div
   // class="p99"> -->` иначе добавил бы в CSS правило, которое не к чему
   // применить.
   scanTokensByPlanInto(
-    tokens, rest.join(''), plan,
+    tokens, rest, plan,
   );
   return tokens;
-}
-
-/** Разбирает кусок кода парсером и складывает токены в общий набор. */
-function pushSyntax(
-  tokens: ScannedTokens,
-  code: string,
-  plan: ScanPlan,
-  extension: string,
-): void {
-  scanSyntaxInto(
-    tokens, code, plan, 'sfc' + extension,
-  );
-}
-
-/**
- * Расширение по атрибутам тега `<script>`.
- *
- * `lang="tsx"` и `lang="jsx"` — единственные, где нужен разбор с JSX: в
- * обычном `<script lang="ts">` символ `<` это сравнение или generic, и
- * TSX-режим спотыкался бы о него.
- */
-function extensionOf(tag: string): string {
-  if (tag.indexOf('sx"') > -1 || tag.indexOf("sx'") > -1) {
-    return '.tsx';
-  }
-  return TS_EXTENSION;
-}
-
-/** Только переводы строк из диапазона — остальное отбрасывается. */
-function newlinesOf(
-  source: string, from: number, to: number,
-): string {
-  let out = '';
-  let i = from;
-  for (; i < to; i++) {
-    source[i] === '\n' && (out += '\n');
-  }
-  return out;
 }
 
 /**
@@ -546,67 +246,41 @@ export function addScopeClassSyntax(source: string, options: {
   className: string;
   fileName: string;
 }): string | undefined {
-  const file = ts.createSourceFile(
-    options.fileName, source, ts.ScriptTarget.Latest, false, scriptKindOf(options.fileName),
+  const file = parseSource(
+    ts, source, options.fileName,
   );
-  if ((file as unknown as { parseDiagnostics?: unknown[] }).parseDiagnostics?.length) {
+  if (!file) {
     return undefined;
   }
-  const edits: SourceEdit[] = [];
-  visitScopeClass(
-    file, file, options, edits,
-  );
-  return applyEdits(source, edits);
-}
-
-function visitScopeClass(
-  node: ts.Node, file: ts.SourceFile, options: { attrs: string[];
-    className: string }, edits: SourceEdit[],
-): void {
-  let value: ts.Node | undefined;
-  if (node.kind === ts.SyntaxKind.JsxAttribute && isScanName(nameOf((node as ts.JsxAttribute).name), options.attrs)) {
-    value = (node as ts.JsxAttribute).initializer;
-    value && value.kind === ts.SyntaxKind.JsxExpression && (value = (value as ts.JsxExpression).expression);
-  } else if (node.kind === ts.SyntaxKind.PropertyAssignment
-    && isScanName(nameOf((node as ts.PropertyAssignment).name), options.attrs)) {
-    value = (node as ts.PropertyAssignment).initializer;
-  }
-  if (value) {
-    scopeClassEdit(
-      value, file, options.className, edits,
-    );
-    // Внутри значения класса другого атрибута класса нет — обход дальше не идёт.
-    return;
-  }
-  ts.forEachChild(node, (child) => {
-    visitScopeClass(
-      child, file, options, edits,
-    );
-  });
-}
-
-/** Литерал — вставка в начало (если класса там ещё нет); выражение — обёртка. */
-function scopeClassEdit(
-  value: ts.Node, file: ts.SourceFile, className: string, edits: SourceEdit[],
-): void {
-  const start = value.getStart(file);
-  const kind = value.kind;
-  const template = kind === ts.SyntaxKind.TemplateExpression;
-  if (kind === ts.SyntaxKind.StringLiteral || kind === ts.SyntaxKind.NoSubstitutionTemplateLiteral
-    || template) {
-    const text = template
-      ? (value as ts.TemplateExpression).head.text : (value as ts.StringLiteralLike).text;
-    (text === className || text.startsWith(className + ' ')) || edits.push([
-      start + 1,
-      start + 1,
-      className + ' ',
+  const className = options.className;
+  const edits: TSourceEdit[] = [];
+  let ch: string;
+  let expression: string;
+  for (const [
+    from,
+    to,
+  ] of syntaxValueRanges(
+      ts, file, options.attrs,
+    )) {
+    ch = source[from];
+    if (ch === '"' || ch === '\'' || ch === '`') {
+      // Литерал — класс в начало, если его там ещё нет.
+      startsWithClass(
+        source, from + 1, className,
+      ) || edits.push([
+        from + 1,
+        from + 1,
+        className + ' ',
+      ]);
+      continue;
+    }
+    // Выражение — обёртка; уже обёрнутое прошлым проходом не трогаем.
+    expression = source.slice(from, to);
+    isWrapped(expression, className) || edits.push([
+      from,
+      to,
+      wrapExpression(expression, className),
     ]);
-    return;
   }
-  // Уже обёрнуто прошлым проходом — не трогаем.
-  isWrapped(file.text.slice(start, value.end), className) || edits.push([
-    start,
-    value.end,
-    wrapExpression(file.text.slice(start, value.end), className),
-  ]);
+  return applyEdits(source, edits);
 }

@@ -11,8 +11,10 @@
  * добавляет свои токены в CSS — правила есть, применить их не к чему.
  */
 import {
+  blankComments as stripComments,
+} from 'fundamentool/source';
+import {
   scanTokens,
-  stripComments,
 } from '../extractTokens';
 
 describe('комментарии не дают токенов', () => {

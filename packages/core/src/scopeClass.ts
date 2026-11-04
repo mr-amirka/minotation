@@ -23,9 +23,13 @@
  * @module scopeClass
  */
 import {
-  attrNameSource,
-  stripComments,
-} from './extractTokens';
+  applyEdits,
+  blankComments,
+  namePatternSource,
+} from 'fundamentool/source';
+import type {
+  TSourceEdit,
+} from 'fundamentool/source';
 import {
   syntaxKindOf,
 } from './scanner';
@@ -49,9 +53,6 @@ export interface ScopeClassResult {
 
 /** Писатель класса области: исходник, имя файла (по нему — способ), класс. */
 export type ScopeClassWriter = (source: string, fileName: string, className: string) => ScopeClassResult;
-
-/** Правка исходника: `[начало, конец, текст]` — вставка, если начало и конец совпадают. */
-export type SourceEdit = [from: number, to: number, text: string];
 
 /** Синтаксический писатель — из `minotation/syntax`, загружается лениво. */
 type SyntaxWriter = (source: string, options: {
@@ -115,7 +116,7 @@ function loadSyntaxWriter(): SyntaxWriter | undefined {
 export function addScopeClassText(
   source: string, attrs: string[], className: string,
 ): string {
-  const edits: SourceEdit[] = [];
+  const edits: TSourceEdit[] = [];
   for (const name of attrs) {
     textEditsFor(
       source, name, className, edits,
@@ -125,11 +126,11 @@ export function addScopeClassText(
 }
 
 function textEditsFor(
-  source: string, name: string, className: string, edits: SourceEdit[],
+  source: string, name: string, className: string, edits: TSourceEdit[],
 ): void {
   // Слева — не продолжение другого имени и не `:` (`:class` Vue — привязка, а не атрибут). Шаблон `*ClassName` —
   // любое имя с этим концом (D-131).
-  const re = new RegExp('(?<![\\w$:.-])' + attrNameSource(name) + '\\s*([=:])\\s*(["\'`{])', 'g');
+  const re = new RegExp('(?<![\\w$:.-])' + namePatternSource(name) + '\\s*([=:])\\s*(["\'`{])', 'g');
   let match: RegExpExecArray | null;
   let at: number;
   let end: number;
@@ -183,12 +184,21 @@ function closingBrace(source: string, at: number): number {
   return l;
 }
 
-/** Значение уже начинается с класса области — второй проход ничего не меняет. */
-function startsWithClass(
+/**
+ * Значение уже начинается с класса области — второй проход ничего не меняет: за классом пробел, конец строки или
+ * подстановка шаблона (`` `_l${x}` ``).
+ *
+ * @param source — исходник
+ * @param at — начало значения (за кавычкой)
+ * @param className — класс области
+ */
+export function startsWithClass(
   source: string, at: number, className: string,
 ): boolean {
-  const next = source[at + className.length];
-  return source.startsWith(className, at) && (next === SPACE || next === '"' || next === '\'' || next === '`');
+  const end = at + className.length;
+  const next = source[end];
+  return source.startsWith(className, at)
+    && (next === SPACE || next === '"' || next === '\'' || next === '`' || (next === '$' && source[end + 1] === '{'));
 }
 
 /**
@@ -211,25 +221,10 @@ export function isWrapped(expression: string, className: string): boolean {
   return expression.startsWith(JSON.stringify(className + SPACE) + ' + ');
 }
 
-/**
- * Применяет правки с конца — позиции остальных не сдвигаются.
- *
- * @param source — исходник
- * @param edits — правки по позициям исходника; пересекающиеся не допускаются
- */
-export function applyEdits(source: string, edits: SourceEdit[]): string {
-  const sorted = edits.slice().sort((a, b) => b[0] - a[0]);
-  let out = source;
-  for (const edit of sorted) {
-    out = out.slice(0, edit[0]) + edit[2] + out.slice(edit[1]);
-  }
-  return out;
-}
-
 /** Классы, заданные из JS (не в комментариях): строка и фрагмент. */
 function unreachableClasses(source: string): Array<[line: number, text: string]> {
-  // Комментарии вырезаются с сохранением переводов строк — номера строк те же.
-  const code = stripComments(source);
+  // Комментарии — пробелами той же длины с переводами строк: номера строк те же.
+  const code = blankComments(source);
   const out: Array<[line: number, text: string]> = [];
   let match: RegExpExecArray | null;
   REGEXP_UNREACHABLE.lastIndex = 0;

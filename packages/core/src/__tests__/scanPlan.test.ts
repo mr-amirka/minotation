@@ -7,6 +7,9 @@ import {
   scanPlanOf,
   SCAN_DEFAULTS,
 } from '../scanPlan';
+import type {
+  ScanPlan,
+} from '../scanPlan';
 import {
   scanTokens,
 } from '../extractTokens';
@@ -99,9 +102,21 @@ describe('readScanEntries', () => {
   });
 });
 
+/** План без читателей групп — их форма, а у каждой группы проверяется, что читатель есть. */
+function shapeOf(plan: ScanPlan): unknown[] {
+  for (const group of plan[0]) {
+    expect(typeof group[4]).toBe('function');
+  }
+  return [
+    plan[0].map((group) => group.slice(0, 4)),
+    plan[1],
+    plan[2],
+  ];
+}
+
 describe('scanPlanOf', () => {
   test('умолчания — одна группа class', () => {
-    expect(scanPlanOf({})).toEqual([
+    expect(shapeOf(scanPlanOf({}))).toEqual([
       [
         [
           'class',
@@ -128,7 +143,7 @@ describe('scanPlanOf', () => {
       fnNames: [],
       comments: false,
     });
-    expect(plan).toEqual([
+    expect(shapeOf(plan)).toEqual([
       [
         [
           'm',

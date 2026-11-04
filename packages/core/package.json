@@ -66,7 +66,7 @@
     "css-tree": "^3.2.1",
     "esbuild": "^0.28.0",
     "eslint": "^10.9.1",
-    "eslint-config-lab": "github:mr-amirka/eslint-config-lab#9238feb561678405da80afe8ce7dfc379a7160b5",
+    "eslint-config-lab": "github:mr-amirka/eslint-config-lab#967829552b464a34a239eb46eda4f965a29f42a8",
     "fast-check": "^4.8.0",
     "jest": "^29.0.0",
     "modern-normalize-1.1.0": "npm:modern-normalize@1.1.0",

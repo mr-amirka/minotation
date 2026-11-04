@@ -810,10 +810,14 @@ export function selectorsCompileProvider(instance?: ParseComboNameFn) {
       }
     }
 
-    const suffixes = reduceIn(
-      variantsBase(name, (instance as any).domains || {}),
-      suffixesReduce, {} as StrMap<StrMap<number>>,
-    );
+    // Варианты — массив: индексный цикл, не `reduceIn` (его `for…in` перебирал индексы строками — 16% компиляции).
+    const alts = variantsBase(name, (instance as any).domains || {});
+    const altsLength = alts.length;
+    const suffixes: StrMap<StrMap<number>> = {};
+    let altIndex = 0;
+    for (; altIndex < altsLength; altIndex++) {
+      suffixesReduce(suffixes, alts[altIndex]);
+    }
     // `!important` (`-i`) виден только в именах эссенций — после разворота групп;
     // дочерний сегмент `>` — в суффиксе (D-041).
     for (suffix in suffixes) { // eslint-disable-line

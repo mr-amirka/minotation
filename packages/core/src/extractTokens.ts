@@ -359,6 +359,10 @@ function readConditional(state: ExpressionState): void {
 
 /** Оператор в позиции `at` или пустая строка; `=>` и `=` операторами не считаются. */
 function binaryOperator(source: string, at: number): string {
+  // Почти всегда за операндом — `}`, `)`, `,` или конец: оператором это не начинается, перебор не нужен.
+  if (OPERATOR_STARTS[source[at]] !== 1) {
+    return '';
+  }
   const l = BINARY_OPERATORS.length;
   let i = 0;
   let operator: string;
@@ -370,6 +374,23 @@ function binaryOperator(source: string, at: number): string {
   }
   return '';
 }
+
+/** Первые знаки операторов {@link BINARY_OPERATORS}. */
+const OPERATOR_STARTS: Record<string, 1> = {
+  '=': 1,
+  '!': 1,
+  '&': 1,
+  '|': 1,
+  '?': 1,
+  '<': 1,
+  '>': 1,
+  '+': 1,
+  '-': 1,
+  '*': 1,
+  '/': 1,
+  '%': 1,
+  '^': 1,
+};
 
 /** Приоритет: `??`/`||` — 1, `&&` — 2, остальные (сравнения, арифметика) — 3. */
 function precedence(operator: string): number {
@@ -762,38 +783,64 @@ function isAssignment(source: string, at: number): boolean {
     && prev !== EQUALS && prev !== EXCLAMATION && prev !== LESS && prev !== GREATER;
 }
 
-/**
- * Кеш регулярок поиска вызовов, по списку имён.
- *
- * Список приходит из опций плагина и на всю сборку один, а функция зовётся на каждый файл.
- */
-const $$mergeCallRegexps: Record<string, RegExp> = {};
+/** Начала следующих вызовов по каждому имени — общие на все файлы, без аллокации на файл. */
+const $$callStarts: number[] = [];
+/** Открывающая скобка того же вызова. */
+const $$callParens: number[] = [];
+/** Имена без `*` и их вид (точное или окончание) — на файл один раз, а не на каждый найденный вызов. */
+const $$callNames: string[] = [];
+const $$callExact: boolean[] = [];
 
 /**
- * Регексп, находящий начало вызова любой из функций слияния.
+ * Следующий вызов функции с этим именем, начиная с `from`: точное имя (`mne`) — само имя, шаблон (`*Class`) — любое
+ * имя с этим окончанием и хотя бы одним знаком перед ним (`thClass`). Слева — не продолжение имени и не `.`
+ * (`myMne`, `obj.mne`), справа — не продолжение имени (`mne2`), затем пробелы и `(`.
  *
- * Отсечение «хвоста другого идентификатора» (`myMne`, `obj.mne`, `mne2`) выражено прямо
- * в регекспе: `(?<![\\w$.])` слева и `(?![\\w$])` справа. Раньше это проверялось вручную
- * после каждого `indexOf`, и проход по файлу делался отдельно на каждое имя.
+ * Поиск — `indexOf` имени или окончания, а не регулярка: регулярка с `[\w$]+Class` перебирала длины имени на каждой
+ * позиции файла и стоила 16% сканирования.
  *
- * Шаблон `*Class` — любое имя с этим окончанием: так зовётся и функция, которую вернул `mnClass(base)`
- * (`thClass('w150')`), и её аргументы — те же токены (D-146).
+ * @param source — текст файла
+ * @param name — имя или окончание шаблона (без `*`)
+ * @param exact — точное имя
+ * @param from — откуда искать
+ * @param j — номер имени: туда пишутся начало вызова и его скобка (`-1` — вызовов больше нет)
  */
-function mergeCallRegExp(names: string[]): RegExp {
-  const key = names.join(PIPE);
-  const cached = $$mergeCallRegexps[key];
-  if (cached) {
-    return cached;
+function findCall(
+  source: string, name: string, exact: boolean, from: number, j: number,
+): void {
+  const l = source.length;
+  const nameLength = name.length;
+  let at: number;
+  let start: number;
+  let i: number;
+  while ((at = source.indexOf(name, from)) !== -1) {
+    from = at + 1;
+    start = at;
+    if (!exact) {
+      while (start && isIdentChar(source[start - 1])) {
+        start--;
+      }
+      if (start === at) {
+        continue;
+      }
+    } else if (start && isIdentChar(source[start - 1])) {
+      continue;
+    }
+    i = at + nameLength;
+    if (start && source[start - 1] === DOT || i < l && isIdentChar(source[i])) {
+      continue;
+    }
+    while (i < l && isSpaceChar(source[i])) {
+      i++;
+    }
+    if (source[i] === OPEN_PAREN) {
+      $$callStarts[j] = start;
+      $$callParens[j] = i;
+      return;
+    }
   }
-  const alternatives = names.map((n) => (n[0] === ASTERISK
-    ? CALL_NAME_HEAD_SOURCE + n.slice(1).replace(REGEXP_ESCAPE, ESCAPED_MATCH)
-    : n.replace(REGEXP_ESCAPE, ESCAPED_MATCH)));
-  return ($$mergeCallRegexps[key] = new RegExp('(?<![\\w$.])(?:' + alternatives.join(PIPE)
-    + ')(?![\\w$])\\s*\\(', 'g'));
+  $$callStarts[j] = -1;
 }
-
-/** Начало имени функции перед окончанием шаблона: `th` в `thClass`, хотя бы один знак. */
-const CALL_NAME_HEAD_SOURCE = '[\\w$]+';
 
 /**
  * Извлекает MN-токены из строковых аргументов вызовов функций слияния (`mne`, `*Class`).
@@ -833,21 +880,38 @@ export function extractMergeCallTokens(source: string, names: string[]): string[
 export function extractMergeCallTokensInto(
   out: string[], source: string, names: string[],
 ): void {
-  if (!names.length) {
+  const count = names.length;
+  if (!count) {
     return;
   }
-  const re = mergeCallRegExp(names);
-  re.lastIndex = 0;
   const l = source.length;
   let i: number;
+  let j: number;
+  let next: number;
   let depth: number;
   let ch: string;
   let quote: string;
   let from: number;
-  // Позиция после открывающей скобки берётся из `lastIndex`, само совпадение не нужно.
-  while (re.exec(source) !== null) {
-    // `lastIndex` стоит сразу за открывающей скобкой — отступаем на неё.
-    i = re.lastIndex - 1;
+  let name: string;
+  // Вызовы читаются по порядку в файле, как одной регуляркой: из начал по каждому имени берётся ближайшее, а имена,
+  // чьё начало оказалось внутри прочитанного вызова, ищутся дальше от его конца.
+  for (j = 0; j < count; j++) {
+    name = names[j];
+    $$callExact[j] = name[0] !== ASTERISK;
+    $$callNames[j] = $$callExact[j] ? name : name.slice(1);
+    findCall(
+      source, $$callNames[j], $$callExact[j], 0, j,
+    );
+  }
+  for (;;) {
+    next = -1;
+    for (j = 0; j < count; j++) {
+      $$callStarts[j] > -1 && (next < 0 || $$callStarts[j] < $$callStarts[next]) && (next = j);
+    }
+    if (next < 0) {
+      return;
+    }
+    i = $$callParens[next];
     depth = 0;
     for (; i < l; i++) {
       ch = source[i];
@@ -886,8 +950,12 @@ export function extractMergeCallTokensInto(
       }
       pushLiteralTokens(out, source.slice(from, i));
     }
-    // Продолжаем поиск за концом разобранного вызова, а не внутри него.
-    re.lastIndex = i;
+    // Дальше — за концом прочитанного вызова, а не внутри него.
+    for (j = 0; j < count; j++) {
+      $$callStarts[j] > -1 && $$callStarts[j] < i && findCall(
+        source, $$callNames[j], $$callExact[j], i, j,
+      );
+    }
   }
 }
 
@@ -919,6 +987,7 @@ export function extractMergeCallTokensInto(
  */
 export function stripComments(source: string, markers?: string[]): string {
   const l = source.length;
+  $$markerAt = markers ? source.indexOf(MARKER) : -1;
   // Куски исходника между вырезанными диапазонами. Пока массив пуст, ни одного
   // комментария не встретилось — тогда возвращается сам `source`, без склейки.
   let parts: string[] | 0 = 0;
@@ -972,7 +1041,7 @@ export function stripComments(source: string, markers?: string[]): string {
       i++;
       continue;
     }
-    markers && markerTokens(
+    markers && $$markerAt > -1 && markerTokens(
       markers, source, from, i,
     );
     parts || (parts = []);
@@ -1005,7 +1074,13 @@ const REGEXP_MARKER_TAIL = /\s*(?:\*\/|-->)\s*$/;
 function markerTokens(
   out: string[], source: string, from: number, to: number,
 ): void {
-  let at = source.indexOf('@mn', from);
+  // Следующий `@mn` файла найден заранее: комментарии идут по порядку, поэтому поиск не начинается заново с каждого
+  // (без этого файл со многими комментариями и без маркеров просматривался до конца на каждый комментарий).
+  let at = $$markerAt;
+  if (at >= to) {
+    return;
+  }
+  at < from && (at = source.indexOf(MARKER, from));
   let end: number;
   let next: string;
   while (at > -1 && at < to) {
@@ -1017,9 +1092,15 @@ function markerTokens(
       }
       pushLiteralTokens(out, source.slice(at + 4, end).replace(REGEXP_MARKER_TAIL, ''));
     }
-    at = source.indexOf('@mn', at + 3);
+    at = source.indexOf(MARKER, at + 3);
   }
+  $$markerAt = at;
 }
+
+/** Маркер токенов в комментарии. */
+const MARKER = '@mn';
+/** Первый `@mn` файла на месте чтения или после него; `-1` — дальше маркеров нет. */
+let $$markerAt = -1;
 
 /** Только переводы строк из вырезанного диапазона — остальное отбрасывается. */
 function newlinesOf(

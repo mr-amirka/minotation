@@ -37,7 +37,7 @@ export const DEFAULT_PRESET_IDS = ['standard', 'synonyms', 'medias'];
  * @returns CSS, скомпилированный из всех найденных в `html` токенов
  */
 export function compilePreviewCss(html: string, presetIds: string[]): string {
-  const tokens = scanTokens(html, { attr: 'class' });
+  const tokens = scanTokens(html, { attrs: 'class' }).class || [];
   if (tokens.length === 0) return '';
 
   const mn = minotationProvider();

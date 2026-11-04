@@ -69,7 +69,7 @@ function bench(name: string, fn: () => void): number {
 }
 
 const options = {
-  attr: [CLASS_ATTR],
+  attrs: [CLASS_ATTR],
 };
 // План строится один раз, как в `createScanner`: файлы сканируются по готовому.
 const plan = scanPlanOf(options);

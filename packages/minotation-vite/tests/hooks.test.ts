@@ -323,13 +323,13 @@ describe('minotation-vite — модуль virtual:mn.css (D-031)', () => {
   });
 });
 
-describe('minotation-vite — attr массивом (2026-10-05)', () => {
+describe('minotation-vite — attrs массивом (2026-10-05)', () => {
   test('class и className собираются в одной сборке', () => {
     const root = makeProject({
       'src/Page.html': '<div class="p10"></div>',
       'src/Card.tsx': 'export const Card = () => <div className="m10" />;',
     });
-    const plugin = makePlugin(root, 'build', { attr: ['class', 'className:class'] });
+    const plugin = makePlugin(root, 'build', { attrs: ['class', 'className:class'] });
 
     const css = transformHtml(plugin, '<html><head></head><body></body></html>')
       .map((tag) => tag.children).join('');
@@ -410,7 +410,7 @@ describe('изоляция областей пакетов: класс обла�
       'ui/package.json': JSON.stringify({ name: '@acme/ui', minotation: { requires: ['presetTw4'], notationMode: 'tw4-compatible' } }),
     });
     const plugin = makePlugin(root, 'build', {
-      attr: [
+      attrs: [
         'class',
         'className:class',
       ],

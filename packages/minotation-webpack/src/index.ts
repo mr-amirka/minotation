@@ -7,7 +7,7 @@
  *   // webpack.config.js
  *   const { MnWebpackPlugin } = require('minotation-webpack');
  *   module.exports = {
- *     plugins: [new MnWebpackPlugin({ attr: ['class', 'className:class'] })],
+ *     plugins: [new MnWebpackPlugin({ attrs: ['class', 'className:class'] })],
  *   };
  *
  *   // src/index.js — CSS через конвейер проекта (имя с хешем, ссылка в HTML)

@@ -7,6 +7,6 @@ export default defineConfig({
   plugins: [
     react(),
     // Пресеты — явно: по умолчанию не подключается ни один (D-110).
-    mnVite({ attr: ['className:class'], replaceDefaults: true, presets: [presetStandard, presetSynonyms, presetMedias] }),
+    mnVite({ attrs: ['className:class'], replaceDefaults: true, presets: [presetStandard, presetSynonyms, presetMedias] }),
   ],
 });

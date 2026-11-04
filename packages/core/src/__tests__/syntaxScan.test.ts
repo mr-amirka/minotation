@@ -100,14 +100,14 @@ describe('scanTokensSyntax — что собирается', () => {
     _name, source, expected,
   ) => {
     expect(setOf(scanTokensSyntax(source, {
-      attr: ['class'],
+      attrs: ['class'],
     }).class)).toEqual(setOf(expected));
   });
 
   test('шаблонная строка с интерполяцией и разметкой', () => {
     const source = 'html`<div class="p10">${x}<span class="m5">`';
     expect(setOf(scanTokensSyntax(source, {
-      attr: ['class'],
+      attrs: ['class'],
     }).class)).toEqual([
       'm5',
       'p10',
@@ -117,15 +117,15 @@ describe('scanTokensSyntax — что собирается', () => {
   test('чужой метод с тем же именем не считается функцией слияния', () => {
     // Ровно как у текстового сканера: `obj.mne(...)` — не наш вызов.
     expect(scanTokensSyntax('obj.mne(a, \'p10\')', {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual([]);
   });
 
   test('имя атрибута и суффиксы задаются опциями', () => {
     const source = 'const rowCls = \'p10\';\n<div className="m5" />;';
     expect(setOf(scanTokensSyntax(source, {
-      attr: ['className:class'],
-      classVarName: ['*Cls:class'],
+      attrs: ['className:class'],
+      varNames: ['*Cls:class'],
     }).class)).toEqual([
       'm5',
       'p10',
@@ -135,9 +135,9 @@ describe('scanTokensSyntax — что собирается', () => {
   test('пустые списки отключают механизмы', () => {
     const source = 'const rowClass = \'p10\';\nmne(a, \'m5\');';
     expect(scanTokensSyntax(source, {
-      attr: ['class'],
-      classVarName: [],
-      classFnName: [],
+      attrs: ['class'],
+      varNames: [],
+      fnNames: [],
     }).class).toEqual([]);
   });
 
@@ -145,7 +145,7 @@ describe('scanTokensSyntax — что собирается', () => {
     const source = '<div class="p10" />;\n<Box className="m10" />;\n'
       + 'f({ className: \'w20\' });\nconst s = \'<i class="h5">\';';
     expect(setOf(scanTokensSyntax(source, {
-      attr: [
+      attrs: [
         'class',
         'className:class',
       ],
@@ -161,7 +161,7 @@ describe('scanTokensSyntax — что собирается', () => {
     const source = '<Bar className="w10" fillClassName="p10" iconClassName={`m5`} />;\n'
       + 'f({ rootClassName: \'h5\', fillclassname: \'h6\' });\nconst s = \'<i trackClassName="w20">\';';
     expect(setOf(scanTokensSyntax(source, {
-      attr: [
+      attrs: [
         'className:class',
         '*ClassName:class',
       ],
@@ -173,65 +173,65 @@ describe('scanTokensSyntax — что собирается', () => {
       'w20',
     ]);
     expect(setOf(scanTokensSyntax(source, {
-      attr: ['className:class'],
+      attrs: ['className:class'],
     }).class)).toEqual(['w10']);
   });
 
   test('вызов переменной с суффиксом — функции из mnClass', () => {
     expect(scanTokensSyntax('<th class={thClass(`w(|max)150`)} />', {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual(['w(|max)150']);
     expect(scanTokensSyntax('el.thClass(\'p10\'); thClassy(\'m5\');', {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual([]);
   });
 
   test('вычисляемое значение не даёт токенов', () => {
     // На этапе сборки оно неизвестно — как и у текстового сканера.
     expect(scanTokensSyntax('<div class={cond ? a : b} />', {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual([]);
     expect(scanTokensSyntax('<div class={x} />', {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual([]);
   });
 
   test('атрибут без значения игнорируется', () => {
     expect(scanTokensSyntax('<input class />', {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual([]);
   });
 
   test('пустое JSX-выражение в атрибуте', () => {
     expect(scanTokensSyntax('<div class={} />', {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual([]);
   });
 
   test('чужие атрибуты не трогаются', () => {
     expect(scanTokensSyntax('<div id="w50" data-x="m5" class="p10" />', {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual(['p10']);
   });
 
   test('объявление без значения', () => {
     // `let rowClass;` — имя подходит, брать нечего.
     expect(scanTokensSyntax('let rowClass;', {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual([]);
   });
 
   test('вычисляемое и строковое имя свойства', () => {
     // `['class']: '…'` — то же свойство, записанное строкой; `[key]` — чужое.
     expect(scanTokensSyntax('const o = { \'class\': \'p10\', [key]: \'m5\' };', {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual(['p10']);
   });
 
   test('деструктуризация с подходящим именем токенов не даёт', () => {
     // Имя узла не Identifier — значения там нет, есть образец разбора.
     expect(scanTokensSyntax('const { rowClass } = props;', {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual([]);
   });
 });
@@ -256,7 +256,7 @@ describe('scanTokensSyntax — чего НЕ видно парсеру', () => {
     ],
   ])('%s', (_name, source) => {
     expect(scanTokensSyntax(source, {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual(['m5']);
   });
 
@@ -265,7 +265,7 @@ describe('scanTokensSyntax — чего НЕ видно парсеру', () => {
     // открывает строку, и дальше разбор уезжает. Парсеру это безразлично.
     const source = 'const re = /"/;\n// class="p10"\n<div class="m5" />';
     expect(scanTokensSyntax(source, {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual(['m5']);
   });
 });
@@ -276,15 +276,15 @@ describe('scanTokensSyntax — битый файл', () => {
     // Сборка из-за этого срываться не должна: стили нужны и такие.
     const source = '<div class="p10"\nfunction (((';
     expect(scanTokensSyntax(source, {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual(['p10']);
   });
 
   test('откат сохраняет опции', () => {
     const source = 'const rowCls = \'p10\';\nfunction (((';
     expect(scanTokensSyntax(source, {
-      attr: ['class'],
-      classVarName: ['*Cls:class'],
+      attrs: ['class'],
+      varNames: ['*Cls:class'],
     }).class).toEqual(['p10']);
   });
 });
@@ -294,14 +294,14 @@ describe('scanTokensSyntax — диалекты', () => {
     // В `.tsx` такой код — незакрытый тег, то есть ошибка разбора.
     const source = 'const v = <string>x;\nconst rowClass = \'p10\';';
     expect(scanTokensSyntax(source, {
-      attr: ['class'],
+      attrs: ['class'],
       fileName: 'a.ts',
     }).class).toEqual(['p10']);
   });
 
   test('.tsx разбирает JSX', () => {
     expect(scanTokensSyntax('<div class="p10" />', {
-      attr: ['class'],
+      attrs: ['class'],
       fileName: 'a.tsx',
     }).class).toEqual(['p10']);
   });
@@ -309,7 +309,7 @@ describe('scanTokensSyntax — диалекты', () => {
   test('имя без расширения разбирается как TSX', () => {
     // Расширения нет — берём диалект, принимающий надмножество остальных.
     expect(scanTokensSyntax('<div class="p10" />', {
-      attr: ['class'],
+      attrs: ['class'],
       fileName: 'Makefile',
     }).class).toEqual(['p10']);
   });
@@ -631,7 +631,7 @@ describe('условные выражения — оба сканера', () => 
     _name, source, expected,
   ) => {
     const options = {
-      attr: ['className:class'],
+      attrs: ['className:class'],
     };
     expect(setOf(scanTokensSyntax(source, options).class)).toEqual(setOf(expected));
     expect(setOf(scanTokens(source, options).class)).toEqual(setOf(expected));
@@ -648,28 +648,28 @@ describe('условные выражения — оба сканера', () => 
       'splash',
     ];
     expect(setOf(scanTokensSyntax(source, {
-      attr: ['className:class'],
+      attrs: ['className:class'],
     }).class)).toEqual(expected);
     expect(setOf(scanTokens(source, {
-      attr: ['className:class'],
+      attrs: ['className:class'],
     }).class)).toEqual(expected);
   });
 
   test('битое выражение: без `:` у тернарного токенов нет', () => {
     expect(scanTokens('<div className={on ? \'a\' } />', {
-      attr: ['className:class'],
+      attrs: ['className:class'],
     }).class).toEqual([]);
   });
 
   test('незакрытые строка, шаблон и скобки не роняют разбор', () => {
     expect(() => scanTokens('<div className={on ? (\'a', {
-      attr: ['className:class'],
+      attrs: ['className:class'],
     }).class).not.toThrow();
     expect(() => scanTokens('<div className={on ? `a ${x', {
-      attr: ['className:class'],
+      attrs: ['className:class'],
     }).class).not.toThrow();
     expect(() => scanTokens('<div className={f(`a\\` ${\'b\\\'\'} \'', {
-      attr: ['className:class'],
+      attrs: ['className:class'],
     }).class).not.toThrow();
   });
 });
@@ -730,7 +730,7 @@ describe('маркер @mn — оба сканера', () => {
     _name, source, expected,
   ) => {
     const options = {
-      attr: ['class'],
+      attrs: ['class'],
     };
     expect(setOf(scanTokensSyntax(source, options).class)).toEqual(setOf(expected));
     expect(setOf(scanTokens(source, options).class)).toEqual(setOf(expected));
@@ -738,7 +738,7 @@ describe('маркер @mn — оба сканера', () => {
 
   test('comments: false — маркер читается всё равно', () => {
     expect(setOf(scanTokens('<div class="m5"></div> <!-- @mn p20 -->', {
-      attr: ['class'],
+      attrs: ['class'],
       comments: false,
     }).class)).toEqual([
       'm5',
@@ -805,15 +805,15 @@ describe('паритет с текстовым сканером', () => {
 
   test.each(SAMPLES)('%s', (_name, source) => {
     const options = {
-      attr: ['class'],
+      attrs: ['class'],
     };
     expect(setOf(scanTokensSyntax(source, options).class))
       .toEqual(setOf(scanTokens(source, options).class));
   });
 
-  test.each(SAMPLES)('%s — attr: [class, className]', (_name, source) => {
+  test.each(SAMPLES)('%s — attrs: [class, className]', (_name, source) => {
     const options = {
-      attr: [
+      attrs: [
         'class',
         'className:class',
       ],
@@ -826,14 +826,14 @@ describe('паритет с текстовым сканером', () => {
     const source = '// class="p10"\n<div class="m5" />';
     // Текстовый сканер комментарии вырезает сам — здесь наборы совпадают.
     expect(setOf(scanTokens(source, {
-      attr: ['class'],
+      attrs: ['class'],
     }).class)).toEqual(['m5']);
     expect(setOf(scanTokensSyntax(source, {
-      attr: ['class'],
+      attrs: ['class'],
     }).class)).toEqual(['m5']);
     // А вот с отключённым вырезанием текстовый берёт лишнее, парсер — нет.
     expect(setOf(scanTokens(source, {
-      attr: ['class'],
+      attrs: ['class'],
       comments: false,
     }).class)).toEqual([
       'm5',
@@ -860,7 +860,7 @@ describe('createScanner', () => {
     // Точный разбор это не дополнительная возможность, а отсутствие ложных
     // токенов: просить о нём отдельно незачем.
     const scan = createScanner({
-      attr: ['class'],
+      attrs: ['class'],
     });
     expect(scan(SOURCE, '/src/App.tsx').class).toEqual(['m5']);
     // Текстовому сканеру тот же файл даёт лишний токен из комментария:
@@ -873,7 +873,7 @@ describe('createScanner', () => {
 
   test('`syntax: false` — всегда текст, даже для .tsx', () => {
     const scan = createScanner({
-      attr: ['class'],
+      attrs: ['class'],
       syntax: false,
     });
     expect(scan(SOURCE, '/src/App.tsx').class).toEqual(scan(SOURCE).class);
@@ -881,7 +881,7 @@ describe('createScanner', () => {
 
   test('с `syntax` — разбор для JS/TS, текст для остального', () => {
     const scan = createScanner({
-      attr: ['class'],
+      attrs: ['class'],
       syntax: true,
     });
     // Разбор видит регулярный литерал и комментарий как есть.
@@ -895,7 +895,7 @@ describe('createScanner', () => {
   test('хвост сборщика в имени файла не мешает', () => {
     // Сборщики отдают id с хвостом: `App.tsx?raw`, `App.tsx?used&lang.tsx`.
     const scan = createScanner({
-      attr: ['class'],
+      attrs: ['class'],
       syntax: true,
     });
     expect(scan(SOURCE, '/src/App.tsx?used&lang.tsx').class).toEqual(['m5']);
@@ -919,7 +919,7 @@ describe('createScanner', () => {
 
     try {
       const scan = fresh.createScanner({
-        attr: ['class'],
+        attrs: ['class'],
       });
       expect(scan(SOURCE, '/src/App.tsx').class).toEqual([
         'p10',
@@ -945,7 +945,7 @@ describe('createScanner', () => {
     const fresh = require('../scanner') as typeof import('../scanner');
     const said: string[] = [];
     const scan = fresh.createScanner({
-      attr: ['class'],
+      attrs: ['class'],
       syntax: true,
       onWarning: (m: string) => said.push(m),
     });
@@ -977,7 +977,7 @@ describe('createScanner', () => {
 
     try {
       fresh.createScanner({
-        attr: ['class'],
+        attrs: ['class'],
         syntax: true,
       })(SOURCE, '/src/App.tsx');
     } finally {
@@ -997,7 +997,7 @@ describe('createScanner', () => {
  */
 describe('scanTokensSfc — Vue, Svelte, Astro', () => {
   const OPTIONS = {
-    attr: ['class'],
+    attrs: ['class'],
   };
 
   test('Vue: скрипт парсером, шаблон текстом', () => {

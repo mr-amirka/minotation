@@ -7,5 +7,5 @@ esbuild.build({
   outdir: 'dist',
   bundle: true,
   // Пресеты — явно: по умолчанию не подключается ни один (D-110).
-  plugins: [mnEsbuild({ attr: ['class'], presets: [presetStandard, presetSynonyms, presetMedias] })],
+  plugins: [mnEsbuild({ attrs: ['class'], presets: [presetStandard, presetSynonyms, presetMedias] })],
 }).catch(() => process.exit(1));

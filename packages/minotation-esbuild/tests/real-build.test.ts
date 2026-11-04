@@ -38,7 +38,7 @@ describe('minotation-esbuild — реальная сборка', () => {
       bundle: true,
       outdir: outDir,
       jsx: 'preserve',
-      plugins: [mnEsbuild({ presets: PRESETS, attr: ['class'], root: [join(repo, 'src'), join(repo, 'shared')] })],
+      plugins: [mnEsbuild({ presets: PRESETS, attrs: ['class'], root: [join(repo, 'src'), join(repo, 'shared')] })],
     });
 
     const css = readFileSync(join(outDir, 'mn.css'), 'utf-8');
@@ -55,7 +55,7 @@ describe('minotation-esbuild — реальная сборка', () => {
       entryPoints: [join(FIXTURES_DIR, 'app.tsx')],
       bundle: true,
       outdir: outDir,
-      plugins: [mnEsbuild({ presets: PRESETS, attr: ['class'], root: FIXTURES_DIR })],
+      plugins: [mnEsbuild({ presets: PRESETS, attrs: ['class'], root: FIXTURES_DIR })],
     });
 
     const js = readFileSync(join(outDir, 'app.js'), 'utf-8');
@@ -87,7 +87,7 @@ describe('mnEsbuild — изоляция областей пакетов (D-075,
       plugins: [mnEsbuild({
         presets: PRESETS,
         root: [join(root, 'src'), join(root, 'ui')],
-        attr: [
+        attrs: [
           'class',
           'className:class',
         ],

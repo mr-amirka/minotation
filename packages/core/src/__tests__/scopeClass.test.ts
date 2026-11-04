@@ -11,7 +11,7 @@ const ATTR = [
   'className',
 ];
 const write = createScopeClassWriter({
-  attr: ATTR,
+  attrs: ATTR,
 });
 
 describe('JS/TS/JSX — по синтаксическому дереву', () => {
@@ -93,7 +93,7 @@ describe('JS/TS/JSX — по синтаксическому дереву', () =>
 
   test('syntax: false — текстом и для .tsx', () => {
     const text = createScopeClassWriter({
-      attr: ATTR,
+      attrs: ATTR,
       syntax: false,
     });
     expect(text(
@@ -170,7 +170,7 @@ describe('текстом — .html, .vue, .svelte, .astro', () => {
 
 describe('шаблон `*ClassName` в attr (D-131)', () => {
   const writePattern = createScopeClassWriter({
-    attr: [
+    attrs: [
       'className',
       '*ClassName',
     ],
@@ -268,7 +268,7 @@ describe('край: повтор, похожие классы, нет парсе
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const fresh = require('../scopeClass') as typeof import('../scopeClass');
       const text = fresh.createScopeClassWriter({
-        attr: ATTR,
+        attrs: ATTR,
       });
       expect(text(
         'f({ className: cls })', 'a.tsx', '_l',

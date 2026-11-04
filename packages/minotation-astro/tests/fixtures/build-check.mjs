@@ -25,7 +25,7 @@ await build({
   outDir,
   logLevel: 'error',
   ...args.astro,
-  integrations: [mnAstro({ presets: PRESETS, attr: ['class'], ...args.mn })],
+  integrations: [mnAstro({ presets: PRESETS, attrs: ['class'], ...args.mn })],
 });
 
 const css = {};

@@ -254,11 +254,11 @@ describe('scopes — проверка опции', () => {
         scopes: [
           {
             match: 'a',
-            attr: ['class'],
+            attrs: ['class'],
           },
         ],
       },
-      '[minotation] mnVite: "scopes"[0]: unknown option "attr". Known options: notationMode, requires, groupMode, contextWhere, warningMode,'
+      '[minotation] mnVite: "scopes"[0]: unknown option "attrs". Known options: notationMode, requires, groupMode, contextWhere, warningMode,'
       + ' maxDepthMode, maxSpecificityMode, specificityMode, importantMode, childSelectorMode, unknownMediaMode, suspectClassMode,'
       + ' groupSuspectMode, bareMathMode, match, override',
     ],
@@ -298,7 +298,7 @@ describe('scopes — проверка опции', () => {
 describe('scopes в сборке: пакет без декларации на Tailwind', () => {
   test('правило даёт пакету семейство и режим — своя область', () => {
     const collector = createTokenCollector({
-      attr: ['class'],
+      attrs: ['class'],
       presets: [
         presetStandard,
         presetSynonyms,

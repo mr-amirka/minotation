@@ -22,7 +22,7 @@ const server = await dev({
   root,
   logLevel: 'error',
   server: { port },
-  integrations: [mnAstro({ presets: PRESETS, attr: ['class'] })],
+  integrations: [mnAstro({ presets: PRESETS, attrs: ['class'] })],
 });
 try {
   const page = await fetch(origin + '/');

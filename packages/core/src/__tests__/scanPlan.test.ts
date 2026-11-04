@@ -2,7 +2,7 @@
  * Опции сканера в одной форме: записи `имя:цель`, план по целям, предупреждение о заменённом умолчании.
  */
 import {
-  parseScanEntries,
+  readScanEntries,
   scanDefaultWarnings,
   scanPlanOf,
   SCAN_DEFAULTS,
@@ -18,47 +18,84 @@ import {
   createScanner,
 } from '../scanner';
 
-describe('parseScanEntries', () => {
-  test('attr: имя без цели — само себе цель, шаблон без цели — class', () => {
-    expect(parseScanEntries([
+describe('readScanEntries', () => {
+  const PAIRS = [
+    [
       'class',
-      'className:class',
+      'class',
+    ],
+    [
+      'className',
+      'class',
+    ],
+    [
       'm',
+      'm',
+    ],
+    [
       '*ClassName',
-    ], true)).toEqual([
+      'class',
+    ],
+  ];
+
+  test.each([
+    [
+      'строка',
+      'class, className:class m;*ClassName : class',
+    ],
+    [
+      'массив',
       [
         'class',
-        'class',
+        'className:class',
+        'm',
+        '*ClassName:class',
       ],
-      [
-        'className',
-        'class',
-      ],
+    ],
+    [
+      'объект',
+      {
+        class: 'class',
+        className: 'class',
+        m: 'm',
+        '*ClassName': 'class',
+      },
+    ],
+  ])('attrs, %s: имя без цели — само себе цель', (_name, value) => {
+    expect(readScanEntries('attrs', value)).toEqual(PAIRS);
+  });
+
+  test('шаблон attrs без цели и переменная без цели пропускаются — о них говорит схема', () => {
+    expect(readScanEntries('attrs', '*ClassName, m')).toEqual([
       [
         'm',
         'm',
       ],
+    ]);
+    expect(readScanEntries('varNames', [
+      'mne',
+      '*Class:m',
+    ])).toEqual([
       [
-        '*ClassName',
-        'class',
+        '*Class',
+        'm',
       ],
     ]);
   });
 
-  test('переменные и вызовы: пропущенная цель — class', () => {
-    expect(parseScanEntries([
-      'mne',
-      '*Class:m',
-    ], false)).toEqual([
+  test('undefined — умолчание, пустое — ничего', () => {
+    expect(readScanEntries('fnNames', undefined)).toEqual([
       [
         'mne',
         'class',
       ],
       [
         '*Class',
-        'm',
+        'class',
       ],
     ]);
+    expect(readScanEntries('fnNames', '')).toEqual([]);
+    expect(readScanEntries('fnNames', {})).toEqual([]);
   });
 });
 
@@ -83,12 +120,12 @@ describe('scanPlanOf', () => {
 
   test('группы по цели, в порядке первой записи; маркеры — в class', () => {
     const plan = scanPlanOf({
-      attr: [
+      attrs: [
         'm',
         'class',
       ],
-      classVarName: ['*M:m'],
-      classFnName: [],
+      varNames: ['*M:m'],
+      fnNames: [],
       comments: false,
     });
     expect(plan).toEqual([
@@ -113,14 +150,14 @@ describe('scanPlanOf', () => {
 
   test('без группы class маркеры идут в первую; без групп — в class', () => {
     expect(scanPlanOf({
-      attr: ['m'],
-      classVarName: [],
-      classFnName: [],
+      attrs: ['m'],
+      varNames: [],
+      fnNames: [],
     })[1]).toBe('m');
     expect(scanPlanOf({
-      attr: [],
-      classVarName: [],
-      classFnName: [],
+      attrs: [],
+      varNames: [],
+      fnNames: [],
     })).toEqual([
       [],
       'class',
@@ -133,15 +170,15 @@ describe('токены по цели', () => {
   const source = '<a className="p10" m="w1" />;\nconst iconM = \'h5\';\nconst rowClass = \'c0\';\n'
     + 'cx(\'b1\'); mne(\'d1\');\n// @mn fx1';
   const options = {
-    attr: [
+    attrs: [
       'className:class',
       'm',
     ],
-    classVarName: [
+    varNames: [
       '*Class:class',
       '*M:m',
     ],
-    classFnName: [
+    fnNames: [
       'mne:class',
       '*Class:class',
       'cx:m',
@@ -184,11 +221,11 @@ describe('токены по цели', () => {
 
   test('точное имя вызова — целиком: `mycx` и `obj.cx` не берутся', () => {
     expect(scanTokens('mycx(\'p1\'); obj.cx(\'p2\'); cx(\'p3\')', {
-      classFnName: ['cx:class'],
+      fnNames: ['cx:class'],
       replaceDefaults: true,
     }).class).toEqual(['p3']);
     expect(scanTokensSyntax('mycx(\'p1\'); obj.cx(\'p2\'); cx(\'p3\')', {
-      classFnName: ['cx:class'],
+      fnNames: ['cx:class'],
     }).class).toEqual(['p3']);
   });
 });
@@ -196,27 +233,42 @@ describe('токены по цели', () => {
 describe('предупреждение о заменённом умолчании', () => {
   test('список без записей умолчания — по сообщению на опцию', () => {
     expect(scanDefaultWarnings({
-      attr: ['className:class'],
-      classVarName: ['*Styles:class'],
-      classFnName: ['cx:class'],
+      attrs: ['className:class'],
+      varNames: ['*Styles:class'],
+      fnNames: ['cx:class'],
     })).toEqual([
-      '[minotation] attr replaces its default and no longer scans "class:class" (attributes like class="p10"). '
+      '[minotation] attrs replaces its default and no longer scans "class:class" (attributes like class="p10"). '
         + 'Add them to the list, or set replaceDefaults: true',
-      '[minotation] classVarName replaces its default and no longer scans "*Class:class" (variables like const '
+      '[minotation] varNames replaces its default and no longer scans "*Class:class" (variables like const '
         + 'rowClass = \'p10\'). Add them to the list, or set replaceDefaults: true',
-      '[minotation] classFnName replaces its default and no longer scans "mne:class", "*Class:class" (calls like '
+      '[minotation] fnNames replaces its default and no longer scans "mne:class", "*Class:class" (calls like '
         + 'mne(\'p10\') and thClass(\'w150\')). Add them to the list, or set replaceDefaults: true',
     ]);
   });
 
+  test('строка и объект сравниваются с умолчанием так же, как массив', () => {
+    expect(scanDefaultWarnings({
+      attrs: 'class className:class',
+      fnNames: {
+        mne: 'class',
+        '*Class': 'class',
+      },
+    })).toEqual([]);
+    expect(scanDefaultWarnings({
+      varNames: {
+        '*Styles': 'class',
+      },
+    })).toHaveLength(1);
+  });
+
   test('называет только потерянные записи', () => {
     expect(scanDefaultWarnings({
-      classFnName: [
+      fnNames: [
         'mne:class',
         'cx:class',
       ],
     })).toEqual([
-      '[minotation] classFnName replaces its default and no longer scans "*Class:class" (calls like mne(\'p10\') '
+      '[minotation] fnNames replaces its default and no longer scans "*Class:class" (calls like mne(\'p10\') '
         + 'and thClass(\'w150\')). Add them to the list, or set replaceDefaults: true',
     ]);
   });
@@ -225,12 +277,12 @@ describe('предупреждение о заменённом умолчани�
     [
       'умолчание целиком плюс своё',
       {
-        attr: [
+        attrs: [
           'class',
           'className:class',
         ],
-        classFnName: [
-          ...SCAN_DEFAULTS.classFnName,
+        fnNames: [
+          ...SCAN_DEFAULTS.fnNames,
           'cx:class',
         ],
       },
@@ -238,20 +290,27 @@ describe('предупреждение о заменённом умолчани�
     [
       'пустой список — выключено намеренно',
       {
-        classVarName: [],
-        classFnName: [],
+        varNames: [],
+        fnNames: [],
       },
     ],
     [
       'replaceDefaults: true',
       {
-        attr: ['className:class'],
+        attrs: ['className:class'],
         replaceDefaults: true,
       },
     ],
     [
       'опции не заданы',
       {},
+    ],
+    [
+      'пустая строка и пустой объект — тоже выключено',
+      {
+        attrs: '',
+        fnNames: {},
+      },
     ],
   ])('нет предупреждения: %s', (_name, options) => {
     expect(scanDefaultWarnings(options)).toEqual([]);
@@ -260,7 +319,7 @@ describe('предупреждение о заменённом умолчани�
   test('createScanner выводит его один раз, при создании, через onWarning', () => {
     const warnings: string[] = [];
     const scan = createScanner({
-      attr: ['className:class'],
+      attrs: ['className:class'],
       syntax: false,
       onWarning: (message) => {
         warnings.push(message);
@@ -269,7 +328,7 @@ describe('предупреждение о заменённом умолчани�
     scan('<a className="p10" />');
     scan('<a className="p10" />');
     expect(warnings).toEqual([
-      '[minotation] attr replaces its default and no longer scans "class:class" (attributes like class="p10"). '
+      '[minotation] attrs replaces its default and no longer scans "class:class" (attributes like class="p10"). '
         + 'Add them to the list, or set replaceDefaults: true',
     ]);
   });
@@ -278,7 +337,7 @@ describe('предупреждение о заменённом умолчани�
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     try {
       createScanner({
-        classVarName: ['*Styles:class'],
+        varNames: ['*Styles:class'],
       });
       expect(warn).toHaveBeenCalledTimes(1);
     } finally {

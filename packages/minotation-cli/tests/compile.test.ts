@@ -211,7 +211,7 @@ describe('compile', () => {
       presets: PRESETS,
       input: dir,
       atr: ['class'],
-    } as never)).toThrow('[minotation] compile: unknown option "atr". Did you mean "attr"?');
+    } as never)).toThrow('[minotation] compile: unknown option "atr". Did you mean "attrs"?');
   });
 
   test('атрибут разворачивается в class — className:class', () => {
@@ -219,7 +219,7 @@ describe('compile', () => {
     expect(compile({
       presets: PRESETS,
       input: dir,
-      attr: ['className:class'],
+      attrs: ['className:class'],
       replaceDefaults: true,
     }).css).toContain('.p10{padding:10px}');
   });
@@ -229,7 +229,7 @@ describe('compile', () => {
     const result = compile({
       presets: PRESETS,
       input: dir,
-      attr: [
+      attrs: [
         'class',
         'm',
       ],

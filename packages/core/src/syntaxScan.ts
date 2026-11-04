@@ -28,8 +28,8 @@
  *    из пунктов 2–3). Текстовый сканер таких выражений не видит.
  * 2. Свойство объекта с тем же именем: `{ className: 'p10' }` — в том числе
  *    вложенное (`slotProps={{ paper: { className: 'p10' } }}`).
- * 3. Переменная из `classVarName`: `const rowClass = 'p10'`, `{ rowClass: 'p10' }`.
- * 4. Строковые аргументы вызовов из `classFnName`: `mne(base, 'p10')`, включая вложенные,
+ * 3. Переменная из `varNames`: `const rowClass = 'p10'`, `{ rowClass: 'p10' }`.
+ * 4. Строковые аргументы вызовов из `fnNames`: `mne(base, 'p10')`, включая вложенные,
  *    и `thClass('w150')` — функции из `mnClass` (шаблон `*Class`).
  * 5. Разметка внутри строкового литерала (`` html`<div class="p10">` ``) —
  *    текстовым разбором уже самого литерала: для парсера это просто строка,
@@ -534,7 +534,7 @@ function newlinesOf(
 
 /**
  * Класс области по синтаксическому дереву (D-075): JSX-атрибуты и свойства объектов с именами из
- * `attr`. Литерал — класс вставляется в его начало; выражение — оборачивается
+ * `attrs`. Литерал — класс вставляется в его начало; выражение — оборачивается
  * (`"_l " + ((expr) || "")`). Битый файл — `undefined`: писатель перейдёт к текстовому способу.
  *
  * @param source — исходник
@@ -542,7 +542,7 @@ function newlinesOf(
  * @returns переписанный исходник или `undefined`
  */
 export function addScopeClassSyntax(source: string, options: {
-  attr: string[];
+  attrs: string[];
   className: string;
   fileName: string;
 }): string | undefined {
@@ -560,15 +560,15 @@ export function addScopeClassSyntax(source: string, options: {
 }
 
 function visitScopeClass(
-  node: ts.Node, file: ts.SourceFile, options: { attr: string[];
+  node: ts.Node, file: ts.SourceFile, options: { attrs: string[];
     className: string }, edits: SourceEdit[],
 ): void {
   let value: ts.Node | undefined;
-  if (node.kind === ts.SyntaxKind.JsxAttribute && isScanName(nameOf((node as ts.JsxAttribute).name), options.attr)) {
+  if (node.kind === ts.SyntaxKind.JsxAttribute && isScanName(nameOf((node as ts.JsxAttribute).name), options.attrs)) {
     value = (node as ts.JsxAttribute).initializer;
     value && value.kind === ts.SyntaxKind.JsxExpression && (value = (value as ts.JsxExpression).expression);
   } else if (node.kind === ts.SyntaxKind.PropertyAssignment
-    && isScanName(nameOf((node as ts.PropertyAssignment).name), options.attr)) {
+    && isScanName(nameOf((node as ts.PropertyAssignment).name), options.attrs)) {
     value = (node as ts.PropertyAssignment).initializer;
   }
   if (value) {

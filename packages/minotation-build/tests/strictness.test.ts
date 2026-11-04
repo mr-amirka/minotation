@@ -50,7 +50,7 @@ function pkg(minotation: object, name = 'ui'): void {
 
 function collector(options: Partial<TokenCollectorOptions> = {}) {
   return createTokenCollector({
-    attr: ['class'],
+    attrs: ['class'],
     presets: [presetStandard],
     ...options,
   });

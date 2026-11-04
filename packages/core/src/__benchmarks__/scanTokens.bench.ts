@@ -121,7 +121,7 @@ console.log(`выигрыш: ${((1 - after / before) * 100).toFixed(1)}%\n`);
 bench('scanTokens — три прохода          ', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokens(sources[i], {
-      attr: [CLASS_ATTR],
+      attrs: [CLASS_ATTR],
     });
   }
 });
@@ -134,7 +134,7 @@ bench('scanTokens — три прохода          ', () => {
 bench('scanTokens — без вырезания          ', () => {
   for (let i = 0; i < FILES; i++) {
     scanTokens(sources[i], {
-      attr: [CLASS_ATTR],
+      attrs: [CLASS_ATTR],
       comments: false,
     });
   }

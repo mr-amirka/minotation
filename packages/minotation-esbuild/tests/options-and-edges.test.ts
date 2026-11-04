@@ -26,7 +26,7 @@ function makeProject(files: Record<string, string>): string {
 }
 
 describe('minotation-esbuild — опции и граничные случаи', () => {
-  test('рекурсивный обход поддиректорий + кастомные extensions/attr/fileName/presetExtensions/mn', async () => {
+  test('рекурсивный обход поддиректорий + кастомные extensions/attrs/fileName/presetExtensions/mn', async () => {
     const root = makeProject({
       'src/main.js': "import './presets/theme.mnjs';\nexport const x = 1;\n",
       // глубоко вложенный файл приложения с нестандартным расширением и атрибутом
@@ -42,7 +42,7 @@ describe('minotation-esbuild — опции и граничные случаи',
       outdir: outDir,
       plugins: [mnEsbuild({
         presets: PRESETS,
-        attr: ['data-cls:class'],
+        attrs: ['data-cls:class'],
         replaceDefaults: true,
         extensions: ['.vue'],
         presetExtensions: ['.mnjs'],

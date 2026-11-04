@@ -33,8 +33,8 @@ describe('minotation-vite — smoke', () => {
     expect(typeof plugin.buildStart).toBe('function');
   });
 
-  test('mnVite({ attr: ["className:class"], replaceDefaults: true }) — принимает опции', () => {
-    const plugin: any = mnVite({ presets: PRESETS, attr: ['className:class'], replaceDefaults: true });
+  test('mnVite({ attrs: ["className:class"], replaceDefaults: true }) — принимает опции', () => {
+    const plugin: any = mnVite({ presets: PRESETS, attrs: ['className:class'], replaceDefaults: true });
     expect(plugin.name).toBe('minotation');
   });
 });
@@ -53,7 +53,7 @@ describe('minotation-vite — маркер @mn (D-083)', () => {
   });
 });
 
-describe('minotation-vite — classVarName', () => {
+describe('minotation-vite — varNames', () => {
   /**
    * Классы, собранные в переменной, статическое извлечение из `class="…"` не видит.
    * Кроме маркера `@mn` есть конвенция имени: переменная по шаблону (по умолчанию
@@ -100,7 +100,7 @@ describe('minotation-vite — classVarName', () => {
   });
 
   test('свои шаблоны через опцию', () => {
-    const own = { classVarName: ['*Cls:class'], replaceDefaults: true };
+    const own = { varNames: ['*Cls:class'], replaceDefaults: true };
     const css = cssOf("const rowCls = 'w777';", own);
     expect(css).toContain('width:777px');
     // дефолтный `*Class` заменён, а не дополнен
@@ -108,16 +108,16 @@ describe('minotation-vite — classVarName', () => {
   });
 
   test('пустой массив отключает механизм', () => {
-    expect(cssOf("const thClass = 'w777';", { classVarName: [] })).not.toContain('width:777px');
+    expect(cssOf("const thClass = 'w777';", { varNames: [] })).not.toContain('width:777px');
   });
 
   test('спецсимволы в окончании экранируются и не ломают регексп', () => {
-    expect(cssOf("const a$Class = 'w777';", { classVarName: ['*$Class:class'], replaceDefaults: true }))
+    expect(cssOf("const a$Class = 'w777';", { varNames: ['*$Class:class'], replaceDefaults: true }))
       .toContain('width:777px');
   });
 });
 
-describe('minotation-vite — classFnName', () => {
+describe('minotation-vite — fnNames', () => {
   /**
    * `mne('pt26 pb6', props.class)` — токены записаны прямо в аргументах вызова:
    * ни в `class="…"`, ни в переменной `*Class`. До появления этой опции
@@ -165,26 +165,26 @@ describe('minotation-vite — classFnName', () => {
     expect(css).not.toContain('width:999px');
   });
 
-  test('пустой classFnName отключает механизм', () => {
-    const css = cssOf("class={mne('w888')}", { classFnName: [] });
+  test('пустой fnNames отключает механизм', () => {
+    const css = cssOf("class={mne('w888')}", { fnNames: [] });
     expect(css).not.toContain('width:888px');
   });
 
   test('своё имя функции через опцию', () => {
-    const css = cssOf("class={cx('w555')}", { classFnName: ['cx:class'], replaceDefaults: true });
+    const css = cssOf("class={cx('w555')}", { fnNames: ['cx:class'], replaceDefaults: true });
     expect(css).toContain('width:555px');
   });
 
   test('вызов результата mnClass — шаблон *Class:class', () => {
     expect(cssOf("const thClass = mnClass('p1'); thClass('w444');")).toContain('width:444px');
-    expect(cssOf("thClass('w444');", { classFnName: ['mne:class'], replaceDefaults: true })).not.toContain('width:444px');
+    expect(cssOf("thClass('w444');", { fnNames: ['mne:class'], replaceDefaults: true })).not.toContain('width:444px');
   });
 });
 
 describe('mnVite — проверка опций (D-038)', () => {
   test('опечатка, неверное inject, старый mn — ошибка с подсказкой', () => {
-    expect(() => mnVite({ atr: ['class'] } as never))
-      .toThrow('[minotation] mnVite: unknown option "atr". Did you mean "attr"?');
+    expect(() => mnVite({ atrs: ['class'] } as never))
+      .toThrow('[minotation] mnVite: unknown option "atrs". Did you mean "attrs"?');
     expect(() => mnVite({ inject: 'style' } as never))
       .toThrow('[minotation] mnVite: "inject" expects "inline", "link" or false, got string "style"');
     expect(() => mnVite({ mn: { strict: true } } as never))

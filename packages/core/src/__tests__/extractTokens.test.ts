@@ -304,21 +304,21 @@ describe('scanTokens — единая точка сбора', () => {
 
   test('своё имя атрибута', () => {
     expect(scanTokens('<div className="p10">', {
-      attr: ['className:class'],
+      attrs: ['className:class'],
     }).class).toEqual(['p10']);
   });
 
   test('механизмы отключаются по отдельности', () => {
     const source = "const aClass = 'p10'; mne(x, 'w50');";
     expect(scanTokens(source, {
-      classVarName: [],
-      classFnName: [],
+      varNames: [],
+      fnNames: [],
     }).class).toEqual([]);
     expect(scanTokens(source, {
-      classFnName: [],
+      fnNames: [],
     }).class).toEqual(['p10']);
     expect(scanTokens(source, {
-      classVarName: [],
+      varNames: [],
     }).class).toEqual(['w50']);
   });
 
@@ -381,15 +381,15 @@ describe('вызов переменной с суффиксом — функци
     expect(scanTokens("Class('p10'); const Class = 'm5'", {}).class).toEqual([]);
   });
 
-  test('classVarName: [] вызовы не отключает — они в classFnName (D-146)', () => {
+  test('varNames: [] вызовы не отключает — они в fnNames (D-146)', () => {
     expect(scanTokens("thClass('w150')", {
-      classVarName: [],
+      varNames: [],
     }).class).toEqual(['w150']);
   });
 
-  test('classFnName: [] отключает и вызов `thClass`', () => {
+  test('fnNames: [] отключает и вызов `thClass`', () => {
     expect(scanTokens("thClass('w150')", {
-      classFnName: [],
+      fnNames: [],
     }).class).toEqual([]);
   });
 
@@ -416,7 +416,7 @@ describe('attr — несколько имён (2026-10-05)', () => {
 
   test('массив имён — токены всех атрибутов', () => {
     expect(scanTokens(source, {
-      attr: [
+      attrs: [
         'class',
         'className:class',
       ],
@@ -428,7 +428,7 @@ describe('attr — несколько имён (2026-10-05)', () => {
 
   test('имя без цели — само себе цель: `className` → `[className~="m10"]`', () => {
     expect(scanTokens(source, {
-      attr: [
+      attrs: [
         'class',
         'className',
       ],
@@ -440,16 +440,16 @@ describe('attr — несколько имён (2026-10-05)', () => {
 
   test('одно имя — как раньше', () => {
     expect(scanTokens(source, {
-      attr: ['class'],
+      attrs: ['class'],
     }).class).toEqual(['p10']);
     expect(scanTokens(source, {
-      attr: ['className:class'],
+      attrs: ['className:class'],
     }).class).toEqual(['m10']);
   });
 
   test('пустой список — атрибуты не сканируются, пропуск — умолчание `class` (D-146)', () => {
     expect(scanTokens(source, {
-      attr: [],
+      attrs: [],
     }).class).toEqual([]);
     expect(scanTokens(source, {}).class).toEqual(['p10']);
   });
@@ -500,7 +500,7 @@ describe('attr — шаблон `*ClassName` (D-131)', () => {
 
   test('шаблон ловит любое имя с этим концом', () => {
     expect(scanTokens(source, {
-      attr: [
+      attrs: [
         'className:class',
         '*ClassName:class',
       ],
@@ -513,13 +513,13 @@ describe('attr — шаблон `*ClassName` (D-131)', () => {
 
   test('без шаблона — только точное имя', () => {
     expect(scanTokens(source, {
-      attr: ['className:class'],
+      attrs: ['className:class'],
     }).class).toEqual(['w10']);
   });
 
   test('регистр — как написан: `*ClassName` не ловит `className` и `fillclassname`', () => {
     expect(scanTokens('<b className="p1" fillclassname="p2" />', {
-      attr: ['*ClassName:class'],
+      attrs: ['*ClassName:class'],
     }).class).toEqual([]);
     expect(extractTokens('<b ClassName="p1" xClassName="p2" />', '*ClassName')).toEqual(['p2']);
   });
@@ -551,9 +551,9 @@ describe('scanTokens — отключение механизмов (регрес
    * «пустой массив отключает механизм». После перехода на ручной разбор регексп из API
    * ушёл вовсе, и отключение выражается единственным способом — пустым списком.
    */
-  test('classVarName: [] отключает разбор переменных', () => {
+  test('varNames: [] отключает разбор переменных', () => {
     expect(scanTokens("const thClass = 'w777';", {
-      classVarName: [],
+      varNames: [],
     }).class).toEqual([]);
   });
 
@@ -561,9 +561,9 @@ describe('scanTokens — отключение механизмов (регрес
     expect(scanTokens("const thClass = 'w777';", {}).class).toEqual(['w777']);
   });
 
-  test('classFnName: [] отключает разбор вызовов', () => {
+  test('fnNames: [] отключает разбор вызовов', () => {
     expect(scanTokens("mne(x, 'w777')", {
-      classFnName: [],
+      fnNames: [],
     }).class).toEqual([]);
   });
 });

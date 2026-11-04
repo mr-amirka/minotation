@@ -141,7 +141,7 @@ test.each([
   ],
 ])('сканер: %s', (source, expected) => {
   const options = {
-    attr: ['className:class'],
+    attrs: ['className:class'],
   };
   expect(Array.from(new Set(scanTokensSyntax(source, options).class)).sort()).toEqual(expected);
   expect(Array.from(new Set(scanTokens(source, options).class)).sort()).toEqual(expected);

@@ -3,7 +3,7 @@
  *
  * Логика выбора живёт здесь, а не в плагинах, по конкретной причине: механизм,
  * реализованный в одном плагине, в остальных молча отсутствует. Так было с
- * переменными (`classVarName`) — они разбирались только в vite до 2026-09-25, и проекты на
+ * переменными (`varNames`) — они разбирались только в vite до 2026-09-25, и проекты на
  * webpack, rollup и esbuild теряли токены из переменных, ничего не сообщая.
  * Плагин должен уметь одно: позвать `createScanner` и передать имя файла.
  *
@@ -131,7 +131,7 @@ interface SyntaxModule {
  * предупреждение в `onWarning`, если не задано `replaceDefaults: true`.
  *
  * @example
- * const scan = createScanner({ attr: ['class', 'className:class'] });
+ * const scan = createScanner({ attrs: 'class, className:class' });
  * scan(source, '/src/App.tsx');   // разбором, если парсер доступен → { class: ['p10'] }
  * scan(source, '/index.html');    // текстом
  */

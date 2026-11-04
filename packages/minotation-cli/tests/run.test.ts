@@ -166,19 +166,19 @@ describe('mergeSettings', () => {
     const settings = mergeSettings(parseArgs([]), {
       input: './шаблоны',
       output: './dist/app.css',
-      attr: ['className:class'],
+      attrs: ['className:class'],
     });
     expect(settings.input).toBe('./шаблоны');
     expect(settings.output).toBe('./dist/app.css');
-    expect(settings.attr).toEqual(['className:class']);
+    expect(settings.attrs).toEqual(['className:class']);
   });
 
   test('умолчания применяются, когда нет ни аргумента, ни конфига', () => {
     const settings = mergeSettings(parseArgs([]), {});
     expect(settings.input).toBe('./');
     expect(settings.output).toBe('./mn.css');
-    // Умолчание `attr` — у сканера ядра (`['class']`), CLI своего не держит.
-    expect(settings.attr).toBeUndefined();
+    // Умолчание `attrs` — у сканера ядра (`['class']`), CLI своего не держит.
+    expect(settings.attrs).toBeUndefined();
   });
 
   test('аргумент важнее конфига и у этих трёх', () => {
@@ -191,11 +191,11 @@ describe('mergeSettings', () => {
     ]), {
       input: './шаблоны',
       output: './dist/app.css',
-      attr: ['className:class'],
+      attrs: ['className:class'],
     });
     expect(settings.input).toBe('./src');
     expect(settings.output).toBe('./a.css');
-    expect(settings.attr).toEqual(['class']);
+    expect(settings.attrs).toBe('class');
   });
 
   test('флаги складываются: включён хоть где-то — включён', () => {
@@ -679,7 +679,7 @@ describe('изоляция: --isolate-out, --isolate-copy (D-079, D-081)', () =>
       output: join(
         dir, 'dist', 'app.css',
       ),
-      attr: [
+      attrs: [
         'class',
         'className:class',
       ],
@@ -763,7 +763,7 @@ describe('изоляция: --isolate-out, --isolate-copy (D-079, D-081)', () =>
       output: join(
         dir, 'dist', 's.css',
       ),
-      attr: [
+      attrs: [
         'class',
         'className:class',
       ],

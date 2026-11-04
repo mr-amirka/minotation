@@ -120,7 +120,7 @@ describe('loadConfigFile', () => {
 
 describe('withConfigFile / withBuildConfig', () => {
   test('общие опции и свои — из файла; чужие пропускаются; код — поверх', () => {
-    write('minotation.config.js', 'module.exports = { attr: ["className:class"], metrics: false, inject: "link", input: "./src" };');
+    write('minotation.config.js', 'module.exports = { attrs: ["className:class"], metrics: false, inject: "link", input: "./src" };');
     expect(withConfigFile(
       {
         metrics: true,
@@ -129,7 +129,7 @@ describe('withConfigFile / withBuildConfig', () => {
         ...VITE_OWN,
       }), dir,
     )).toEqual({
-      attr: ['className:class'],
+      attrs: ['className:class'],
       metrics: true,
       inject: 'link',
     });
@@ -137,7 +137,7 @@ describe('withConfigFile / withBuildConfig', () => {
     expect(withConfigFile(
       {}, 'mnRollup', BUILD_OPTIONS(), BUILD_OPTIONS(), dir,
     )).toEqual({
-      attr: ['className:class'],
+      attrs: ['className:class'],
       metrics: false,
     });
   });

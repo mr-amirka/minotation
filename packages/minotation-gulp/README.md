@@ -49,7 +49,7 @@ exports.css = () => gulp.src('src/**/*.html')
 
 | Опция | По умолчанию | Что делает |
 |---|---|---|
-| `attr` | `['class']` | какие атрибуты сканировать и во что разворачивать: `['class', 'className:class']`; `['class', 'm']` → `[m~="p10"]` — [подробно](../minotation-build#attr-classvarname-classfnname--что-сканировать-и-во-что-разворачивать) |
+| `attrs` | `['class']` | какие атрибуты сканировать и во что разворачивать, строкой, массивом или объектом: `'class, className:class'`; `'class, m'` → `[m~="p10"]` — [подробно](../minotation-build#attrs-varnames-fnnames--что-сканировать-и-во-что-разворачивать) |
 | `root` | — (файлы выбирает `gulp.src`) | корень первичного скана |
 | `extensions` | любые — отбор делает `gulp.src` | какие файлы сканировать, если не задан `include` |
 | `include` | — | какие файлы сканировать: RegExp, путь, функция или массив |
@@ -62,9 +62,9 @@ exports.css = () => gulp.src('src/**/*.html')
 | `unreachableClassMode` | `'warn'` | класс задан из JS в файле изолированной области — элемент класса области не получит |
 
 Опции можно задать и в общем файле `minotation.config.js` рабочего каталога — он один для всех плагинов и CLI, опции из кода сливаются поверх ([minotation-build](../minotation-build/README.md#файл-настроек-minotationconfig-d-081)).
-| `classVarName` | `['*Class:class']` | переменные со списком токенов: `const thClass = 'p10'` |
-| `classFnName` | `['mne:class', '*Class:class']` | вызовы, чьи строковые аргументы — токены: `mne('p10')`, `thClass('w150')` |
-| `replaceDefaults` | `false` | `true` — `attr`, `classVarName`, `classFnName` заменяют умолчание намеренно, без предупреждения |
+| `varNames` | `['*Class:class']` | переменные со списком токенов: `const thClass = 'p10'` |
+| `fnNames` | `['mne:class', '*Class:class']` | вызовы, чьи строковые аргументы — токены: `mne('p10')`, `thClass('w150')` |
+| `replaceDefaults` | `false` | `true` — `attrs`, `varNames`, `fnNames` заменяют умолчание намеренно, без предупреждения |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
 | `altColor` | `false` | запасное непрозрачное объявление рядом с `rgba` |
 | `media` | стандартные | карта именованных медиа: `{ wide: { query: '(width >= 1200px)' } }` → `p10@wide` |

@@ -33,7 +33,7 @@ CSS-файл. Путь по умолчанию — текущая директо
 
 ```bash
 mn ./src --watch                        # пересобирать при изменениях
-mn ./templates --attr "class, className:class"    # className тоже даёт классы
+mn ./templates --attrs "class, className:class"    # className тоже даёт классы
 mn ./src -p .app                        # префикс у всех селекторов
 mn ./index.html -o ./page.css           # одиночный файл
 ```
@@ -63,7 +63,7 @@ mn ./index.html -o ./page.css           # одиночный файл
 | `-o, --output <файл>` | куда писать CSS (по умолчанию `./mn.css`); шаблон с `[name]` (запись `entry`) и `[hash]` (хеш содержимого): `./dist/[name].[hash].css` |
 | `-w, --watch` | следить за изменениями и пересобирать |
 | `-c, --config <файл>` | файл настроек (по умолчанию `./minotation.config.{js,cjs,mjs,json}` — общий с плагинами, D-081) |
-| `-a, --attr <список>` | какие атрибуты сканировать и во что разворачивать, как `attrs` в v1: `"class, className:class"`, `"class, m"` → `[m~="p10"]` (по умолчанию `class`); список — через пробел, `,`, `\|` или `;`; подробно — [`attr`](../minotation-build#attr-classvarname-classfnname--что-сканировать-и-во-что-разворачивать) |
+| `-a, --attrs <список>` | какие атрибуты сканировать и во что разворачивать, как `attrs` в v1: `"class, className:class"`, `"class, m"` → `[m~="p10"]` (по умолчанию `class`); список — через пробел, `,`, `\|` или `;`, его читает сканер; подробно — [`attrs`](../minotation-build#attrs-varnames-fnnames--что-сканировать-и-во-что-разворачивать) |
 | `--alt-color` | запасное непрозрачное объявление рядом с `rgba` |
 | `--warning-mode <режим>` | что делать с предупреждением о битом токене: `log` — напечатать (по умолчанию), `silent` — промолчать, `error` — код возврата 1 |
 | `--specificity-mode <режим>` | токены с накруткой специфичности (`f10**2`): `warn` — предупреждение с подсказкой (по умолчанию), `silent` — промолчать, `strict` — токен не даёт CSS, код возврата 1 |
@@ -189,8 +189,8 @@ module.exports = {
   input: './src',
   output: './dist/app.css',
   altColor: true,                 // как --alt-color
-  attr: ['class', 'className:class'], // массив записей — как --attr
-  classFnName: ['mne:class', '*Class:class', 'cx:class'], // вызовы со строками-токенами; есть только в конфиге
+  attrs: 'class, className:class', // строка записей — как --attrs
+  fnNames: ['mne:class', '*Class:class', 'cx:class'], // вызовы со строками-токенами; есть только в конфиге
   syntax: false,                  // только текстовый разбор (как --no-syntax)
   metrics: './metrics.json',      // то же, что -m; false — как --no-metrics
   include: /\.(html|tsx)$/,

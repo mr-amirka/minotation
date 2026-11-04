@@ -79,7 +79,7 @@ function bench(name: string, fn: () => void): number {
 console.log('образец: ' + kb.toFixed(0) + ' КБ × ' + ROUNDS + ' прогонов\n');
 
 const options = {
-  attr: [CLASS_ATTR],
+  attrs: [CLASS_ATTR],
 };
 
 const full = bench('scanTokens — все три механизма      ', () => {

@@ -106,7 +106,7 @@ describe('minotation-rollup — реальная сборка', () => {
     expect(css).toContain('.objToken{color:#f00}');
   });
 
-  test('кастомные attr/extensions/presetExtensions/fileName/mn + вложенные директории + named-экспорт пресета', async () => {
+  test('кастомные attrs/extensions/presetExtensions/fileName/mn + вложенные директории + named-экспорт пресета', async () => {
     const root = makeProject({
       'src/main.js': "import './presets/theme.mnjs';\nexport const x = 1;\n",
       'src/ui/deep/widget.vue': '<template><div data-cls="edgeToken p10 cF00.5"></div></template>',
@@ -114,7 +114,7 @@ describe('minotation-rollup — реальная сборка', () => {
     });
 
     const { assets, css } = await runBuild(root, {
-      attr: ['data-cls:class'],
+      attrs: ['data-cls:class'],
       replaceDefaults: true,
       extensions: ['.vue'],
       presetExtensions: ['.mnjs'],
@@ -518,7 +518,7 @@ describe('minotation-rollup — изоляция областей пакетов
     const { code, css } = await runBuild(root, {
       root: [join(root, 'src'), join(root, 'ui')],
       extensions: ['.js'],
-      attr: [
+      attrs: [
         'class',
         'className:class',
       ],

@@ -17,7 +17,7 @@ import { presetStandard, presetSynonyms, presetMedias } from 'minotation';
 export default defineConfig({
   plugins: [
     mnVite({
-      attr: ['class', 'className:class'], // className в React — тоже класс
+      attrs: 'class, className:class', // className в React — тоже класс
       extensions: ['.tsx', '.jsx'],
       presets: [presetStandard, presetSynonyms, presetMedias],
     }),
@@ -51,7 +51,7 @@ export default defineConfig({
 
 Для таких случаев есть два механизма.
 
-### 1. Конвенция имени — `classVarName` (по умолчанию включена)
+### 1. Конвенция имени — `varNames` (по умолчанию включена)
 
 Переменная, чьё имя заканчивается на `Class`, считается списком MN-токенов:
 
@@ -65,7 +65,7 @@ const th = 'py12 px14';                 // ← нет
 шаблонные (подстановки `${…}` пропускаются, статические части берутся).
 
 Вызов такой функции тоже сканируется — это случай `mnClass`, которая возвращает функцию
-для дополнительных токенов (запись `'*Class:class'` в `classFnName`):
+для дополнительных токенов (запись `'*Class:class'` в `fnNames`):
 
 ```ts
 const thClass = mnClass('py12 px14');
@@ -76,12 +76,12 @@ const thClass = mnClass('py12 px14');
 вариантов (ветви `const btnClass = cond ? 'a' : 'b'` сканер прочитает, но вариант лучше выразить
 уточнением). Варианты — выше.
 
-Набор имён настраивается — записи `*Окончание:цель` ([подробно](../minotation-build#attr-classvarname-classfnname--что-сканировать-и-во-что-разворачивать)):
+Набор имён настраивается — записи `*Окончание:цель` ([подробно](../minotation-build#attrs-varnames-fnnames--что-сканировать-и-во-что-разворачивать)):
 
 ```ts
-mnVite({ classVarName: ['*Class:class', '*Cls:class', '*Styles:class'] })   // дополняет умолчание
-mnVite({ classVarName: ['*Cls:class'], replaceDefaults: true })             // заменяет его намеренно
-mnVite({ classVarName: [] })                                                // отключить механизм
+mnVite({ varNames: ['*Class:class', '*Cls:class', '*Styles:class'] })   // дополняет умолчание
+mnVite({ varNames: ['*Cls:class'], replaceDefaults: true })             // заменяет его намеренно
+mnVite({ varNames: '' })                                                // отключить механизм
 ```
 
 Список без записи умолчания `'*Class:class'` и без `replaceDefaults: true` сборка принимает с предупреждением: так
@@ -172,7 +172,7 @@ repo/
 import path from 'node:path';
 
 mnVite({
-  attr: ['className:class'],
+  attrs: 'className:class',
   replaceDefaults: true,
   root: [
     path.resolve(__dirname, 'src'),
@@ -195,7 +195,7 @@ mnVite({
 
 | Опция | По умолчанию | Что делает |
 |---|---|---|
-| `attr` | `['class']` | какие атрибуты сканировать и во что разворачивать: `['class', 'className:class']`; `['class', 'm']` → `[m~="p10"]`; `['className:class', '*ClassName:class']` — и `fillClassName`, `iconClassName` (D-131) — [подробно](../minotation-build#attr-classvarname-classfnname--что-сканировать-и-во-что-разворачивать) |
+| `attrs` | `['class']` | какие атрибуты сканировать и во что разворачивать, строкой, массивом или объектом: `'class, className:class'`; `'class, m'` → `[m~="p10"]`; `'className:class, *ClassName:class'` — и `fillClassName`, `iconClassName` (D-131) — [подробно](../minotation-build#attrs-varnames-fnnames--что-сканировать-и-во-что-разворачивать) |
 | `root` | `<root Vite>/src` | корень первичного скана — или несколько (монорепо, см. ниже) |
 | `extensions` | `.html .jsx .tsx .vue .svelte` | какие файлы сканировать, если не задан `include` |
 | `include` | — | какие файлы сканировать: RegExp, путь, функция или массив |
@@ -209,9 +209,9 @@ mnVite({
 
 Опции можно задать и в общем файле `minotation.config.js` рабочего каталога — он один для всех плагинов и CLI, опции из кода сливаются поверх ([minotation-build](../minotation-build/README.md#файл-настроек-minotationconfig-d-081)).
 | `presetExtensions` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты (`import './app.mn'`) |
-| `classVarName` | `['*Class:class']` | переменные со списком токенов: `const thClass = 'p10'` |
-| `classFnName` | `['mne:class', '*Class:class']` | вызовы, чьи строковые аргументы — токены: `mne('p10')`, `thClass('w150')` |
-| `replaceDefaults` | `false` | `true` — `attr`, `classVarName`, `classFnName` заменяют умолчание намеренно, без предупреждения |
+| `varNames` | `['*Class:class']` | переменные со списком токенов: `const thClass = 'p10'` |
+| `fnNames` | `['mne:class', '*Class:class']` | вызовы, чьи строковые аргументы — токены: `mne('p10')`, `thClass('w150')` |
+| `replaceDefaults` | `false` | `true` — `attrs`, `varNames`, `fnNames` заменяют умолчание намеренно, без предупреждения |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
 | `altColor` | `false` | запасное непрозрачное объявление рядом с `rgba` |
 | `media` | стандартные | карта именованных медиа: `{ wide: { query: '(width >= 1200px)' } }` → `p10@wide` |

@@ -19,17 +19,6 @@ import {
 const DOUBLE_QUOTE = '"';
 
 /**
- * Опции-списки: в командной строке массива нет, поэтому список пишется одной строкой через пробел, запятую, `|` или
- * `;` — как `attrs` в v1 — и делится здесь (D-146).
- */
-const LIST_OPTIONS: Partial<Record<keyof CliArgs, true>> = {
-  attr: true,
-};
-
-/** Разделители списка в значении опции. */
-const REGEXP_LIST_SPLIT = /[\s,|;]+/;
-
-/**
  * Разобранные аргументы командной строки.
  *
  * Поля, у которых есть значение по умолчанию (путь, вывод, атрибут),
@@ -56,8 +45,11 @@ export interface CliArgs {
   watch: boolean;
   /** Путь к файлу конфигурации. */
   config?: string;
-  /** Какие атрибуты сканировать и во что разворачивать: `--attr "class, className:class"` → `['class', 'className:class']`. */
-  attr?: string[];
+  /**
+   * Какие атрибуты сканировать и во что разворачивать: `--attrs "class, className:class"` — строка записей, как в
+   * конфиге; её читает сканер (D-147).
+   */
+  attrs?: string;
   /** Запасное непрозрачное объявление рядом с `rgba`. */
   altColor: boolean;
   /** Что делать с предупреждением: `log`, `silent`, `error` (D-035). */
@@ -155,8 +147,8 @@ const OPTIONS: Record<string, keyof CliArgs> = {
   '--output': 'output',
   '-c': 'config',
   '--config': 'config',
-  '-a': 'attr',
-  '--attr': 'attr',
+  '-a': 'attrs',
+  '--attrs': 'attrs',
   '-m': 'metrics',
   '--metrics': 'metrics',
   '--warning-mode': 'warningMode',
@@ -216,7 +208,7 @@ export function parseArgs(argv: string[]): CliArgs {
     if (option) {
       i + 1 < l || raise('Option "' + arg + '" requires a value');
       arg2 = argv[++i];
-      args[option] = (LIST_OPTIONS[option] ? arg2.split(REGEXP_LIST_SPLIT).filter(Boolean) : arg2) as never;
+      args[option] = arg2 as never;
       // Значение — по схеме опции конфига (D-141): списки режимов — одни на ядро, сборку и CLI.
       (known[option as keyof typeof known] as TSchema<unknown> | undefined)?.parse(args[option], 'Option "' + arg + DOUBLE_QUOTE);
       continue;
@@ -245,7 +237,7 @@ Options:
                          [name] = entry name, [hash] = content hash
   -w, --watch            watch for changes and rebuild
   -c, --config <file>    config file (default ./minotation.config.{js,cjs,mjs,json})
-  -a, --attr <list>      attributes to scan and their target, as in v1:
+  -a, --attrs <list>     attributes to scan and their target, as in v1:
                          "class, className:class" (default class)
       --alt-color        opaque fallback declaration next to rgba
       --warning-mode <m> warnings: log (default), silent, error (fail the build)
@@ -307,5 +299,5 @@ Options:
 Examples:
   mn ./src -o ./dist/app.css
   mn ./src --watch
-  mn ./templates --attr "class, className:class" --alt-color
+  mn ./templates --attrs "class, className:class" --alt-color
 `.trim();

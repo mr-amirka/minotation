@@ -37,7 +37,7 @@ import {
   isSyntaxScannable as isSyntaxScannableImpl,
 } from './scanner';
 import {
-  parseScanEntries as parseScanEntriesImpl,
+  readScanEntries as readScanEntriesImpl,
   SCAN_DEFAULTS as SCAN_DEFAULTS_IMPL,
 } from './scanPlan';
 import {
@@ -112,8 +112,8 @@ export const selectorNormalize = selectorNormalizeImpl;
 export const extractTokens = extractTokensImpl;
 
 /**
- * Сбор токенов из текста по цели: атрибуты (`attr`), переменные (`classVarName`), аргументы вызовов (`classFnName`;
- * D-146).
+ * Сбор токенов из текста по цели: атрибуты (`attrs`), переменные (`varNames`), аргументы вызовов (`fnNames`;
+ * D-146, D-147).
  *
  * Плагины вызывают `createScanner`, а не собирают механизмы по отдельности —
  * иначе набор возможностей расходится от сборщика к сборщику (так и было
@@ -130,11 +130,11 @@ export const scanTokens = scanTokensImpl;
  */
 export const createScanner = createScannerImpl;
 /**
- * Записи опции сканера парами «имя, цель» (D-146): `parseScanEntries(['className:class', 'm'], true)` →
- * `[['className', 'class'], ['m', 'm']]`. Сборке — чтобы узнать, какие атрибуты дают классы.
+ * Записи опции сканера парами «имя, цель» (D-146, D-147): `readScanEntries('attrs', 'className:class, m')` →
+ * `[['className', 'class'], ['m', 'm']]`; `undefined` — умолчание. Сборке — чтобы узнать, какие атрибуты дают классы.
  */
-export const parseScanEntries = parseScanEntriesImpl;
-/** Умолчания `attr`, `classVarName`, `classFnName` (D-146). */
+export const readScanEntries = readScanEntriesImpl;
+/** Умолчания `attrs`, `varNames`, `fnNames` (D-146, D-147). */
 export const SCAN_DEFAULTS = SCAN_DEFAULTS_IMPL;
 /** Писатель класса области в разметку (D-075, D-076): разбором для JS/TS, текстом для остального. */
 export const createScopeClassWriter = createScopeClassWriterImpl;

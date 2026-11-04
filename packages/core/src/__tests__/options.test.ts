@@ -198,75 +198,108 @@ describe('точки входа ядра', () => {
 
   test('createScanner', () => {
     expect(messageOf(() => createScanner({
-      attrs: ['class'],
-    } as never))).toBe('[minotation] createScanner: unknown option "attrs". Did you mean "attr"?');
+      attr: ['class'],
+    } as never))).toBe('[minotation] createScanner: unknown option "attr". Did you mean "attrs"?');
     expect(messageOf(() => createScanner({
       classVarSuffixes: ['Class'],
     } as never))).toMatch('[minotation] createScanner: unknown option "classVarSuffixes".');
     expect(messageOf(() => createScanner({
-      attr: 1,
-    } as never))).toBe('[minotation] createScanner: "attr" expects a list, got number 1');
+      attrs: 1,
+    } as never))).toBe('[minotation] createScanner: "attrs" expects a list — a string "a, b:c", an array ["a", '
+      + '"b:c"] or an object { b: "c" }, got number 1');
     expect(messageOf(() => createScanner({
-      attr: 'class, className:class',
-    } as never))).toBe('[minotation] createScanner: "attr" expects a list, got string "class, className:class"');
-    expect(messageOf(() => createScanner({
-      attr: [
+      attrs: [
         'class',
         'className:class',
         '*ClassName:class',
       ],
-      classVarName: ['*Class:class'],
-      classFnName: [
-        'mne:class',
-        '*Class:class',
-      ],
+      varNames: '*Class:class',
+      fnNames: {
+        mne: 'class',
+        '*Class': 'class',
+      },
       replaceDefaults: false,
       syntax: false,
     }))).toBeNull();
   });
 
   test.each([
-    '*',
-    'class*',
-    '**Name',
-    'class name',
-    'class, className',
-    '*ClassName',
-    'className:*class',
-    'className:',
-    ':class',
-  ])('attr — запись "имя" или "имя:цель", шаблон только с целью: %p нельзя', (entry) => {
+    [
+      '*:class',
+      ': a pattern needs its ending, as "*Class"',
+    ],
+    [
+      'class*',
+      ': "*" stands only at the start of a name, as "*Class"',
+    ],
+    [
+      '**Name:class',
+      ': "*" stands only at the start of a name, as "*Class"',
+    ],
+    [
+      'class name',
+      ' holds a separator: write each entry apart',
+    ],
+    [
+      'class, className',
+      ' holds a separator: write each entry apart',
+    ],
+    [
+      '*ClassName',
+      ' has no value: write "*ClassName:…"',
+    ],
+    [
+      'className:*class',
+      ': a pattern is not a target',
+    ],
+    [
+      'className:a:b',
+      ': a target has no ":"',
+    ],
+    [
+      'className:',
+      ' has no value after ":"',
+    ],
+    [
+      ':class',
+      ' has no name',
+    ],
+  ])('attrs — запись "имя" или "имя:цель", шаблон только с целью: %p нельзя', (entry, problem) => {
     expect(messageOf(() => createScanner({
-      attr: [
+      attrs: [
         'className:class',
         entry,
       ],
-    }))).toBe('[minotation] createScanner: "attr"[1] expects "name" or "name:target"; a pattern "*Ending" with its '
-      + 'target, as "*ClassName:class"; no spaces; got "' + entry + '"');
+    }))).toBe('[minotation] createScanner: "attrs" entry "' + entry + '"' + problem);
   });
 
   test.each([
     [
-      'classVarName',
+      'varNames',
       '*Class',
+      ' has no value: write "*Class:…"',
     ],
     [
-      'classVarName',
+      'varNames',
       'rowStyles',
+      ' has no value: write "rowStyles:…"',
     ],
     [
-      'classFnName',
+      'fnNames',
       'mne',
+      ' has no value: write "mne:…"',
     ],
     [
-      'classFnName',
+      'fnNames',
       '*Class:*x',
+      ': a pattern is not a target',
     ],
-  ])('%s — цель пишется всегда: %p нельзя', (option, entry) => {
+  ])('%s — цель пишется всегда: %p нельзя', (
+    option, entry, problem,
+  ) => {
     expect(messageOf(() => createScanner({
-      [option]: [entry],
-    }))).toBe('[minotation] createScanner: "' + option + '"[0] expects "name:target" or "*Ending:target", as '
-      + '"*Class:class"; no spaces; got "' + entry + '"');
+      [option]: entry,
+    }))).toBe('[minotation] createScanner: "' + option + '" entry "' + entry + '"' + problem);
   });
 });
 
@@ -308,7 +341,7 @@ describe('в продакшене ядро не проверяет опции (l
     [
       'createScanner',
       () => createScanner({
-        attr: ['class*'],
+        attrs: ['class*'],
       }),
     ],
     [

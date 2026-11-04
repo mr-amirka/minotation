@@ -25,6 +25,9 @@ import {
   object,
   string,
 } from 'fundamentool/schema';
+import type {
+  TPairsValue,
+} from 'fundamentool';
 import {
   MN_WHERE,
 } from 'minotation';
@@ -68,9 +71,9 @@ export const CONFIG_OPTIONS = /*#__PURE__*/ lazy(() => object({
     scopes: true,
     isolateMode: true,
     unreachableClassMode: true,
-    attr: true,
-    classVarName: true,
-    classFnName: true,
+    attrs: true,
+    varNames: true,
+    fnNames: true,
     replaceDefaults: true,
     syntax: true,
     include: true,
@@ -127,14 +130,14 @@ export interface CompileSettings extends MnCoreOptions {
   /** Файл или директория для сканирования. */
   input: string;
   /**
-   * Какие атрибуты сканировать и во что разворачивать — как `attrs` в v1 (D-025, D-146): записи `имя` или
-   * `имя:цель`, `['class', 'className:class']`. По умолчанию `['class']`.
+   * Какие атрибуты сканировать и во что разворачивать — как `attrs` в v1 (D-025, D-146, D-147): записи `имя` или
+   * `имя:цель` строкой, массивом или объектом, `'class, className:class'`. По умолчанию `['class']`.
    */
-  attr?: string[];
-  /** Переменные со списком токенов, `['*Class:class']` (D-146). */
-  classVarName?: string[];
-  /** Вызовы со строками-токенами, `['mne:class', '*Class:class']` (D-146). */
-  classFnName?: string[];
+  attrs?: TPairsValue;
+  /** Переменные со списком токенов, `'*Class:class'` (D-146, D-147). */
+  varNames?: TPairsValue;
+  /** Вызовы со строками-токенами, `'mne:class, *Class:class'` (D-146, D-147). */
+  fnNames?: TPairsValue;
   /** `true` — списки выше заменяют умолчание намеренно, без предупреждения. */
   replaceDefaults?: boolean;
   /**
@@ -308,9 +311,9 @@ export function compile(settings: CompileSettings): CompileResult {
   // CSS — общим накопителем, как у плагинов: записи `entry`, их фильтры,
   // пресеты и разворачивание атрибутов (D-025, D-030).
   const build = createBuildCollector({
-    attr: settings.attr,
-    classVarName: settings.classVarName,
-    classFnName: settings.classFnName,
+    attrs: settings.attrs,
+    varNames: settings.varNames,
+    fnNames: settings.fnNames,
     replaceDefaults: settings.replaceDefaults,
     syntax: settings.syntax,
     entry: settings.entry,

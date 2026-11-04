@@ -63,7 +63,7 @@ afterEach(() => {
 function collector(extra: object = {}) {
   const seen: string[] = [];
   const out = createTokenCollector({
-    attr: ['class'],
+    attrs: ['class'],
     presets: APP,
     scopePresets: [presetTw4],
     onWarning: (warning) => seen.push(warning.type + ': ' + warning.message),
@@ -255,7 +255,7 @@ describe('scopePresets — опция плагина', () => {
       },
     }, 'mnVite')).not.toThrow();
     const build = createBuildCollector({
-      attr: ['class'],
+      attrs: ['class'],
       presets: APP,
       entry: {
         ui: {
@@ -293,7 +293,7 @@ describe('изоляция областей пакетов (D-075…D-077)', () 
     ],
   ])("isolateMode '%s': правила пакета привязаны к классу области, приложения — нет", (mode, rule) => {
     const out = createTokenCollector({
-      attr: ['class'],
+      attrs: ['class'],
       presets: APP,
       scopePresets: [presetTw4],
       isolateMode: mode as 'class',
@@ -318,7 +318,7 @@ describe('изоляция областей пакетов (D-075…D-077)', () 
 
   test("isolateMode 'none' (по умолчанию) — класса нет", () => {
     const out = createTokenCollector({
-      attr: ['class'],
+      attrs: ['class'],
       presets: APP,
       scopePresets: [presetTw4],
     });
@@ -333,7 +333,7 @@ describe('изоляция областей пакетов (D-075…D-077)', () 
 
   test('записи entry — тот же класс; isolateClass плагину не задают', () => {
     const build = createBuildCollector({
-      attr: ['class'],
+      attrs: ['class'],
       presets: APP,
       scopePresets: [presetTw4],
       isolateMode: 'class',
@@ -353,7 +353,7 @@ describe('изоляция областей пакетов (D-075…D-077)', () 
 describe('createScopeRewriter (D-075, D-076)', () => {
   function collector() {
     const out = createTokenCollector({
-      attr: ['class'],
+      attrs: ['class'],
       presets: APP,
       scopePresets: [presetTw4],
       isolateMode: 'class',
@@ -391,13 +391,13 @@ describe('createScopeRewriter (D-075, D-076)', () => {
     });
   });
 
-  test('attr с шаблоном *ClassName:class — класс области и в fillClassName (D-131)', () => {
-    const attr = [
+  test('attrs с шаблоном *ClassName:class — класс области и в fillClassName (D-131)', () => {
+    const attrs = [
       'className:class',
       '*ClassName:class',
     ];
     const out = createTokenCollector({
-      attr,
+      attrs,
       replaceDefaults: true,
       presets: APP,
       scopePresets: [presetTw4],
@@ -410,7 +410,7 @@ describe('createScopeRewriter (D-075, D-076)', () => {
     out.add(file, source);
     const cls = scopeClassName('presetTw4');
     expect(createScopeRewriter({
-      attr,
+      attrs,
     })(
       out, file, source,
     )?.code).toBe('<b className="' + cls + ' p-4" fillClassName="' + cls + ' m-2" />');
@@ -472,7 +472,7 @@ describe('медиа и синонимы области — только из е
     pkg('kit', ['presetPkg']);
     const seen: string[] = [];
     const out = createTokenCollector({
-      attr: ['class'],
+      attrs: ['class'],
       presets: [
         presetStandard,
         presetSynonyms,
@@ -502,7 +502,7 @@ describe('медиа и синонимы области — только из е
   test('медиа, которого пресеты области не знают, — неизвестное медиа области, а не определение приложения', () => {
     pkg('bare', ['presetBare']);
     const out = createTokenCollector({
-      attr: ['class'],
+      attrs: ['class'],
       presets: [presetStandard],
       scopePresets: [presetBare],
       media: {

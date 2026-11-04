@@ -1,14 +1,27 @@
 /**
- * Опции сканера в одной форме (D-146): `attr`, `classVarName`, `classFnName` — списки записей `имя` или `имя:цель`.
+ * Опции сканера (D-146, D-147): `attrs`, `varNames`, `fnNames` — списки записей `имя` или `имя:цель`, каждый строкой
+ * (`'class, className:class'`), массивом (`['class', 'className:class']`) или объектом (`{ className: 'class' }`).
  *
  * - имя — точное (`mne`) или шаблон `*Окончание` (`*Class` — любое имя, которое кончается на `Class`; D-131);
  * - цель — во что компилируются найденные токены: `class` → `.ws`, любая другая → `[цель~="ws"]` (D-025).
  *
- * Здесь записи разбираются один раз, при создании сканера, в план: группы по цели, в каждой — имена без целей для
- * трёх механизмов. Горячий путь получает готовые списки и ничего не разбирает.
+ * Запись читает `pairsProvider` из fundamentool (D-096); домен — пресеты {@link SCAN_PRESETS}. Записи разбираются
+ * один раз, при создании сканера, в план: группы по цели, в каждой — имена без целей для трёх механизмов. Горячий
+ * путь получает готовые списки и ничего не разбирает.
  *
  * @module scanPlan
  */
+import {
+  pairsProvider,
+} from 'fundamentool';
+import type {
+  TPair,
+  TPairsPreset,
+  TPairsValue,
+} from 'fundamentool';
+import type {
+  ScanTokensOptions,
+} from './extractTokens';
 
 const COLON = ':';
 const ASTERISK = '*';
@@ -18,9 +31,9 @@ export const CLASS_TARGET = 'class';
 
 /** Умолчания опций сканера (D-146). Вызов результата `mnClass` (`thClass('w150')`) — запись `'*Class:class'`. */
 export const SCAN_DEFAULTS = {
-  attr: ['class'],
-  classVarName: ['*Class:class'],
-  classFnName: [
+  attrs: ['class'],
+  varNames: ['*Class:class'],
+  fnNames: [
     'mne:class',
     '*Class:class',
   ],
@@ -29,37 +42,61 @@ export const SCAN_DEFAULTS = {
 /** Опции сканера, которые задаются записями. */
 export type ScanListOption = keyof typeof SCAN_DEFAULTS;
 
+/** Между записями строки — пробелы, `,`, `|`, `;`; между именем и целью — `:`. */
+const SEPARATOR = /[\s,|;]+/;
+
+/**
+ * Пресеты записей (D-096): `attrs` — имя без цели само себе цель (`'m'` = `'m:m'`), у шаблона цели своей нет;
+ * `varNames` / `fnNames` — цель пишется всегда: у переменной нет атрибута её имени.
+ */
+export const SCAN_PRESETS: Record<ScanListOption, TPairsPreset> = {
+  attrs: {
+    separator: SEPARATOR,
+    pair: COLON,
+    alone: (name) => (name[0] === ASTERISK ? undefined : name),
+  },
+  varNames: {
+    separator: SEPARATOR,
+    pair: COLON,
+  },
+  fnNames: {
+    separator: SEPARATOR,
+    pair: COLON,
+  },
+};
+
 /** Опции сканера, которые задаются записями, — в порядке механизмов. */
 const LIST_OPTIONS: ScanListOption[] = [
-  'attr',
-  'classVarName',
-  'classFnName',
+  'attrs',
+  'varNames',
+  'fnNames',
 ];
 const LIST_OPTIONS_LENGTH = LIST_OPTIONS.length;
 
+/** Читатели записей — по опции, в порядке механизмов. */
+const READERS = LIST_OPTIONS.map((option) => pairsProvider(SCAN_PRESETS[option]));
+
+/** Умолчания, прочитанные один раз: опции без списков (`scanTokens(source, {})`) не читают их на каждый файл. */
+const DEFAULT_PAIRS = LIST_OPTIONS.map((option, i) => READERS[i](SCAN_DEFAULTS[option]));
+
+/** Пары опции по её номеру; умолчание — общий массив, его не меняют. */
+function entriesAt(i: number, value: TPairsValue | undefined): TPair[] {
+  return value === undefined ? DEFAULT_PAIRS[i] : READERS[i](value);
+}
+
 /** Примеры механизмов для предупреждения об умолчании: что перестаёт сканироваться. */
 const LIST_EXAMPLES: Record<ScanListOption, string> = {
-  attr: 'attributes like class="p10"',
-  classVarName: 'variables like const rowClass = \'p10\'',
-  classFnName: 'calls like mne(\'p10\') and thClass(\'w150\')',
+  attrs: 'attributes like class="p10"',
+  varNames: 'variables like const rowClass = \'p10\'',
+  fnNames: 'calls like mne(\'p10\') and thClass(\'w150\')',
 };
-
-/** Записи сканера, заданные списками. */
-export interface ScanLists {
-  attr?: string[];
-  classVarName?: string[];
-  classFnName?: string[];
-  /** `true` — замена умолчания намеренная, предупреждения нет. */
-  replaceDefaults?: boolean;
-  comments?: boolean;
-}
 
 /**
  * Группа одной цели: имена без целей для трёх механизмов. Кортеж (§2): группа читается на каждый файл.
  */
 export type ScanGroup = [
   target: string,
-  attr: string[],
+  attrs: string[],
   varNames: string[],
   fnNames: string[],
 ];
@@ -88,48 +125,28 @@ export const MN_PLAN_COMMENTS = 2;
 export type ScannedTokens = Record<string, string[]>;
 
 /**
- * Разбирает записи одной опции в пары «имя, цель».
+ * Читает записи одной опции в пары «имя, цель». Неверная запись (шаблон без цели, пустая цель) пропускается: о ней
+ * говорит схема опций, в разработке.
  *
- * В `attr` имя без цели — само себе цель (`'m'` = `'m:m'`); у шаблона и у записей `classVarName` / `classFnName`
- * цель пишется явно, это проверяет схема опций. Здесь, без проверки (в production), пропущенная цель — `class`.
- *
- * @param entries — записи опции
- * @param isAttr — `true` для `attr`
+ * @param option — опция
+ * @param value — её значение, в любой из трёх форм; `undefined` — умолчание
  * @returns пары `[имя, цель]`
  *
  * @example
- * parseScanEntries(['class', 'className:class', 'm'], true)   // → [['class', 'class'], ['className', 'class'], ['m', 'm']]
- * parseScanEntries(['*Class:class'], false)                    // → [['*Class', 'class']]
+ * readScanEntries('attrs', 'class, className:class, m')   // → [['class', 'class'], ['className', 'class'], ['m', 'm']]
+ * readScanEntries('varNames', { '*Class': 'class' })       // → [['*Class', 'class']]
  */
-export function parseScanEntries(entries: readonly string[], isAttr: boolean): [name: string, target: string][] {
-  const out: [string, string][] = [];
-  let at: number;
-  for (const entry of entries) {
-    at = entry.indexOf(COLON);
-    if (at > -1) {
-      out.push([
-        entry.slice(0, at),
-        entry.slice(at + 1),
-      ]);
-    } else {
-      out.push([
-        entry,
-        isAttr && entry[0] !== ASTERISK ? entry : CLASS_TARGET,
-      ]);
-    }
-  }
-  return out;
+export function readScanEntries(option: ScanListOption, value: TPairsValue | undefined): TPair[] {
+  return entriesAt(LIST_OPTIONS.indexOf(option), value).slice();
 }
 
-/**
- * Записи одной опции в каноничной форме `имя:цель` — для сравнения с умолчанием.
- */
-function canonicalEntries(entries: readonly string[], isAttr: boolean): string[] {
-  return parseScanEntries(entries, isAttr).map((pair) => pair[0] + COLON + pair[1]);
+/** Записи одной опции в каноничной форме `имя:цель` — для сравнения с умолчанием. */
+function canonicalEntries(pairs: TPair[]): string[] {
+  return pairs.map((pair) => pair[0] + COLON + pair[1]);
 }
 
 /** Планы по объекту опций: `scanTokens` зовётся на каждый файл с одним и тем же объектом. */
-const $$plans = new WeakMap<ScanLists, ScanPlan>();
+const $$plans = new WeakMap<ScanTokensOptions, ScanPlan>();
 
 /**
  * {@link scanPlanOf} с кешем по объекту опций: план строится на первом файле, дальше берётся готовый. Объект опций
@@ -138,34 +155,32 @@ const $$plans = new WeakMap<ScanLists, ScanPlan>();
  * @param options — опции сканера
  * @returns план {@link ScanPlan}
  */
-export function cachedScanPlanOf(options: ScanLists): ScanPlan {
+export function cachedScanPlanOf(options: ScanTokensOptions): ScanPlan {
   let plan = $$plans.get(options);
   plan || $$plans.set(options, plan = scanPlanOf(options));
   return plan;
 }
 
 /**
- * Строит план сканирования из опций: умолчания на месте пропущенных списков, группы по цели.
+ * Строит план сканирования из опций: умолчания на месте пропущенных опций, группы по цели.
  *
  * @param options — опции сканера
  * @returns план {@link ScanPlan}
  *
  * @example
- * scanPlanOf({ attr: ['class', 'm'] })
+ * scanPlanOf({ attrs: 'class, m' })
  * // → [[['class', ['class'], ['*Class'], ['mne', '*Class']], ['m', ['m'], [], []]], 'class', true]
  */
-export function scanPlanOf(options: ScanLists): ScanPlan {
+export function scanPlanOf(options: ScanTokensOptions): ScanPlan {
   const byTarget: Record<string, ScanGroup> = {};
   const groups: ScanGroup[] = [];
   let i = 0;
-  let option: ScanListOption;
   let group: ScanGroup;
   for (; i < LIST_OPTIONS_LENGTH; i++) {
-    option = LIST_OPTIONS[i];
     for (const [
       name,
       target,
-    ] of parseScanEntries(options[option] || SCAN_DEFAULTS[option], !i)) {
+    ] of entriesAt(i, options[LIST_OPTIONS[i]])) {
       group = byTarget[target];
       if (!group) {
         group = byTarget[target] = [
@@ -187,36 +202,40 @@ export function scanPlanOf(options: ScanLists): ScanPlan {
 }
 
 /**
- * Предупреждения о заменённых умолчаниях (D-146): список, заданный явно, теряет записи умолчания.
+ * Предупреждения о заменённых умолчаниях (D-146): опция, заданная явно, теряет записи умолчания.
  *
- * Пустой список — механизм выключен намеренно, предупреждения нет; `replaceDefaults: true` снимает их все.
+ * Пустая опция (`''`, `[]`, `{}`) — механизм выключен намеренно, предупреждения нет; `replaceDefaults: true` снимает
+ * их все.
  *
  * @param options — опции сканера
  * @returns сообщения, по одному на опцию
  *
  * @example
- * scanDefaultWarnings({ classFnName: ['cx:class'] })
- * // → ['[minotation] classFnName replaces its default and no longer scans "mne:class", "*Class:class" (calls like
+ * scanDefaultWarnings({ fnNames: 'cx:class' })
+ * // → ['[minotation] fnNames replaces its default and no longer scans "mne:class", "*Class:class" (calls like
  * //     mne(\'p10\') and thClass(\'w150\')). Add them to the list, or set replaceDefaults: true']
  */
-export function scanDefaultWarnings(options: ScanLists): string[] {
+export function scanDefaultWarnings(options: ScanTokensOptions): string[] {
   const out: string[] = [];
   if (options.replaceDefaults) {
     return out;
   }
   let i = 0;
   let option: ScanListOption;
-  let given: readonly string[] | undefined;
+  let given: TPair[];
   let own: string[];
   let dropped: string[];
   for (; i < LIST_OPTIONS_LENGTH; i++) {
     option = LIST_OPTIONS[i];
-    given = options[option];
-    if (!given || !given.length) {
+    if (options[option] === undefined) {
       continue;
     }
-    own = canonicalEntries(given, !i);
-    dropped = canonicalEntries(SCAN_DEFAULTS[option], !i).filter((entry) => own.indexOf(entry) < 0);
+    given = entriesAt(i, options[option]);
+    if (!given.length) {
+      continue;
+    }
+    own = canonicalEntries(given);
+    dropped = canonicalEntries(DEFAULT_PAIRS[i]).filter((entry) => own.indexOf(entry) < 0);
     dropped.length && out.push('[minotation] ' + option + ' replaces its default and no longer scans '
       + dropped.map((entry) => '"' + entry + '"').join(', ') + ' (' + LIST_EXAMPLES[option]
       + '). Add them to the list, or set replaceDefaults: true');

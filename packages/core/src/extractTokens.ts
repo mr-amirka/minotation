@@ -13,6 +13,9 @@ import type {
   ScanPlan,
   ScannedTokens,
 } from './scanPlan';
+import type {
+  TPairsValue,
+} from 'fundamentool';
 
 /** A replacement: the match, escaped. */
 const ESCAPED_MATCH = '\\$&';
@@ -1034,25 +1037,26 @@ function newlinesOf(
 export interface ScanTokensOptions {
   /**
    * Атрибуты и ключи объектов: `'class'`, `'className:class'`, `'*ClassName:class'` (любое имя, которое кончается на
-   * `ClassName`; D-131), `'m'` — в `[m~="ws"]`. Имя без цели — само себе цель; у шаблона цель пишется явно.
+   * `ClassName`; D-131), `'m'` — в `[m~="ws"]`. Имя без цели — само себе цель; у шаблона цель пишется явно. Строка
+   * (`'class, className:class'`), массив записей или объект `{ className: 'class' }` (D-147).
    *
    * @default ['class']
    */
-  attr?: string[];
+  attrs?: TPairsValue;
   /**
    * Переменные и ключи объектов со списком токенов: `'*Class:class'` берёт `const rowClass = 'p10'`. Цель пишется
-   * явно. Пустой список отключает механизм.
+   * явно. Пустой список (`''`, `[]`, `{}`) отключает механизм.
    *
    * @default ['*Class:class']
    */
-  classVarName?: string[];
+  varNames?: TPairsValue;
   /**
    * Вызовы, чьи строковые аргументы — токены: `'mne:class'` и `'*Class:class'` — `mnClass('p10')` и
    * `thClass('w150')` (функция, которую вернул `mnClass`). Цель пишется явно. Пустой список отключает механизм.
    *
    * @default ['mne:class', '*Class:class']
    */
-  classFnName?: string[];
+  fnNames?: TPairsValue;
   /**
    * `true` — список, заданный вместо умолчания, теряет его записи намеренно: сканер не предупреждает (D-146).
    *
@@ -1085,7 +1089,7 @@ export interface ScanTokensOptions {
  * @example
  * scanTokens('<div class="p10">', {})                                // → { class: ['p10'] }
  * scanTokens("const aClass = 'p10'; mne(base, 'w1')", {})            // → { class: ['p10', 'w1'] }
- * scanTokens('<a className="p10" m="w1">', { attr: ['className:class', 'm'] })
+ * scanTokens('<a className="p10" m="w1">', { attrs: 'className:class, m' })
  * // → { class: ['p10'], m: ['w1'] }
  */
 export function scanTokens(source: string, options: ScanTokensOptions): ScannedTokens {

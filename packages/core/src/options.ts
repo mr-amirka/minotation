@@ -13,6 +13,7 @@
  */
 import {
   isPlainObject,
+  pairsSchema,
 } from 'fundamentool';
 import {
   array,
@@ -23,7 +24,6 @@ import {
   number,
   object,
   oneOf,
-  string,
 } from 'fundamentool/schema';
 import {
   MN_MAX_SPECIFICITY,
@@ -32,10 +32,18 @@ import type {
   MnMediaEntry,
   MnPreset,
 } from './core/types';
+import {
+  SCAN_PRESETS,
+} from './scanPlan';
+import type {
+  ScanListOption,
+} from './scanPlan';
 
 /** Начало каждого сообщения проверки: `[minotation] mnVite: …`. */
 export const MN_WHERE = '[minotation] ';
 
+const ASTERISK = '*';
+const COLON = ':';
 const MODE_WARN = 'warn' as const;
 const MODE_STRICT = 'strict' as const;
 
@@ -140,31 +148,41 @@ export const CORE_OPTIONS = /*#__PURE__*/ lazy(() => {
   });
 });
 
-/** Запись `attr`: имя или `имя:цель`, у шаблона `*ClassName` — только с целью (D-131, D-146). */
-const REGEXP_ATTR_ENTRY = /^(?:[^*\s:,|;]+(?::[^*\s:,|;]+)?|\*[^*\s:,|;]+:[^*\s:,|;]+)$/;
-
-/** Запись `classVarName` / `classFnName`: имя или шаблон, цель — всегда (D-146). */
-const REGEXP_TARGET_ENTRY = /^\*?[^*\s:,|;]+:[^*\s:,|;]+$/;
+/**
+ * Правило домена над каждой записью сканера (D-147): разбор записи — `pairsSchema` (D-096), здесь — что в имени и цели.
+ *
+ * @param name — имя или шаблон `*Окончание`
+ * @param target — цель
+ * @returns `''` — запись верна; иначе причина
+ */
+function scanEntryProblem(name: string, target: string): string {
+  return name === ASTERISK
+    ? 'a pattern needs its ending, as "*Class"'
+    : name.indexOf(ASTERISK, 1) > -1
+      ? '"*" stands only at the start of a name, as "*Class"'
+      : target.indexOf(ASTERISK) > -1
+        ? 'a pattern is not a target'
+        : target.indexOf(COLON) > -1
+          ? 'a target has no ":"'
+          : '';
+}
 
 /**
- * Опции `createScanner` ({@link ScannerOptions}).
+ * Опции `createScanner` ({@link ScannerOptions}): `attrs`, `varNames`, `fnNames` — строка, массив или объект записей.
  *
  * @example
- * SCANNER_OPTIONS().parse({ attr: ['*ClassName'] }, MN_WHERE + 'createScanner');
- * // TypeError: [minotation] createScanner: "attr"[0] expects "name" or "name:target"; a pattern "*Ending" with its
- * //   target, as "*ClassName:class"; no spaces; got "*ClassName"
+ * SCANNER_OPTIONS().parse({ attrs: '*ClassName' }, MN_WHERE + 'createScanner');
+ * // TypeError: [minotation] createScanner: "attrs" entry "*ClassName" has no value: write "*ClassName:…"
  */
 export const SCANNER_OPTIONS = /*#__PURE__*/ lazy(() => {
-  const withTarget = array(string().refine((entry) => REGEXP_TARGET_ENTRY.test(entry),
-    (entry) => 'expects "name:target" or "*Ending:target", as "*Class:class"; no spaces; got "' + entry + '"'))
-    .optional();
+  const list = (option: ScanListOption) => pairsSchema({
+    ...SCAN_PRESETS[option],
+    check: scanEntryProblem,
+  }).optional();
   return object({
-    attr: array(string().refine((entry) => REGEXP_ATTR_ENTRY.test(entry),
-      (entry) => 'expects "name" or "name:target"; a pattern "*Ending" with its target, as "*ClassName:class"; '
-        + 'no spaces; got "' + entry + '"'))
-      .optional(),
-    classVarName: withTarget,
-    classFnName: withTarget,
+    attrs: list('attrs'),
+    varNames: list('varNames'),
+    fnNames: list('fnNames'),
     replaceDefaults: boolean().optional(),
     comments: boolean().optional(),
     syntax: boolean().optional(),

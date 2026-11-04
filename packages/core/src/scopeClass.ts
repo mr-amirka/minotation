@@ -35,7 +35,7 @@ const SPACE = ' ';
 /** Опции {@link createScopeClassWriter}. */
 export interface ScopeClassWriterOptions {
   /** Имена атрибутов, чьи значения — классы (цель `class`): `['class', 'className']`. */
-  attr: string[];
+  attrs: string[];
   /** `false` — только текстом, даже для JS/TS. По умолчанию — разбором, если `typescript` доступен. */
   syntax?: boolean;
 }
@@ -55,7 +55,7 @@ export type SourceEdit = [from: number, to: number, text: string];
 
 /** Синтаксический писатель — из `minotation/syntax`, загружается лениво. */
 type SyntaxWriter = (source: string, options: {
-  attr: string[];
+  attrs: string[];
   className: string;
   fileName: string;
 }) => string | undefined;
@@ -67,7 +67,7 @@ const REGEXP_UNREACHABLE = /\.className\s*=(?!=)|\.classList\s*\.\s*(?:add|toggl
  * Возвращает писатель класса области по опциям — как {@link createScanner} для сканера.
  *
  * @example
- * const write = createScopeClassWriter({ attr: ['class', 'className'] });
+ * const write = createScopeClassWriter({ attrs: ['class', 'className'] });
  * write('<b className="p-4" />', 'Button.tsx', '_l').code;   // → '<b className="_l p-4" />'
  */
 export function createScopeClassWriter(options: ScopeClassWriterOptions): ScopeClassWriter {
@@ -81,13 +81,13 @@ export function createScopeClassWriter(options: ScopeClassWriterOptions): ScopeC
       syntax = loadSyntaxWriter() || 1;
     }
     const code = syntax !== 0 && syntax !== 1 && typescriptLike && syntax(source, {
-      attr: options.attr,
+      attrs: options.attrs,
       className,
       fileName,
     });
     return {
       code: typeof code === 'string' ? code : addScopeClassText(
-        source, options.attr, className,
+        source, options.attrs, className,
       ),
       unreachable: unreachableClasses(source),
     };
@@ -108,15 +108,15 @@ function loadSyntaxWriter(): SyntaxWriter | undefined {
  * Дописывает класс области текстом: атрибуты в кавычках, `attr={…}`, свойство объекта `attr: '…'`.
  *
  * @param source — исходник
- * @param attr — имена атрибутов класса
+ * @param attrs — имена атрибутов класса
  * @param className — класс области
  * @returns переписанный исходник
  */
 export function addScopeClassText(
-  source: string, attr: string[], className: string,
+  source: string, attrs: string[], className: string,
 ): string {
   const edits: SourceEdit[] = [];
-  for (const name of attr) {
+  for (const name of attrs) {
     textEditsFor(
       source, name, className, edits,
     );

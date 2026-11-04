@@ -19,8 +19,8 @@ import { createRequire } from 'module';
 
 /**
  * Опции плагина {@link mnVite} — эталонный набор `minotation-build` целиком
- * (D-026): `attr`, `root`, `extensions`, `include`, `exclude`, `skipPartials`,
- * `presets`, `presetExtensions`, `classVarName`, `classFnName`, `replaceDefaults`,
+ * (D-026): `attrs`, `root`, `extensions`, `include`, `exclude`, `skipPartials`,
+ * `presets`, `presetExtensions`, `varNames`, `fnNames`, `replaceDefaults`,
  * `syntax`, `mn`, `entry`. Описание каждой — в README `minotation-build`.
  *
  * `root` у vite по умолчанию — `<root конфига Vite>/src`.
@@ -150,7 +150,7 @@ function evalPresetFile(id: string): MnPreset | null {
  * import { mnVite } from 'minotation-vite';
  *
  * export default defineConfig({
- *   plugins: [mnVite({ attr: ['class', 'className:class'] })],
+ *   plugins: [mnVite({ attrs: ['class', 'className:class'] })],
  * });
  */
 export function mnVite(code: MnViteOptions = {}): Plugin {

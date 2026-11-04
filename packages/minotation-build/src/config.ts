@@ -157,9 +157,9 @@ function withToolKeys(schema: MnOptionsSchema): MnOptionsSchema {
  * @param path — явный путь файла (CLI `--config`)
  *
  * @example
- * // minotation.config.js: module.exports = { attr: ['className:class'], metrics: false };
+ * // minotation.config.js: module.exports = { attrs: ['className:class'], metrics: false };
  * withConfigFile({ metrics: true }, 'mnVite', BUILD_OPTIONS(), BUILD_OPTIONS());
- * // => { attr: ['className:class'], metrics: true }
+ * // => { attrs: ['className:class'], metrics: true }
  */
 export function withConfigFile<T extends object>(
   options: T, tool: string, validate: MnOptionsSchema, pick: MnOptionsSchema, dir?: string, path?: string,

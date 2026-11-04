@@ -189,9 +189,9 @@ describe('mnGulp — реальный пайп', () => {
     write('b.tsx', 'const rowCls = "m20";');
 
     const files = await run('*.tsx', {
-      attr: ['className:class'],
+      attrs: ['className:class'],
       replaceDefaults: true,
-      classVarName: ['*Cls:class'],
+      varNames: ['*Cls:class'],
     });
 
     expect(files['mn.css']).toContain('padding:10px');

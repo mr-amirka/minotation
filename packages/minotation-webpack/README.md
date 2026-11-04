@@ -15,7 +15,7 @@ const { presetStandard, presetSynonyms, presetMedias } = require('minotation');
 
 module.exports = {
   // Пресеты — явно: по умолчанию не подключается ни один (D-110).
-  plugins: [new MnWebpackPlugin({ attr: ['class', 'className:class'], presets: [presetStandard, presetSynonyms, presetMedias] })],
+  plugins: [new MnWebpackPlugin({ attrs: 'class, className:class', presets: [presetStandard, presetSynonyms, presetMedias] })],
 };
 ```
 
@@ -107,7 +107,7 @@ module.exports = {
 
 | Опция | По умолчанию | Что делает |
 |---|---|---|
-| `attr` | `['class']` | какие атрибуты сканировать и во что разворачивать: `['class', 'className:class']`; `['class', 'm']` → `[m~="p10"]` — [подробно](../minotation-build#attr-classvarname-classfnname--что-сканировать-и-во-что-разворачивать) |
+| `attrs` | `['class']` | какие атрибуты сканировать и во что разворачивать, строкой, массивом или объектом: `'class, className:class'`; `'class, m'` → `[m~="p10"]` — [подробно](../minotation-build#attrs-varnames-fnnames--что-сканировать-и-во-что-разворачивать) |
 | `root` | `src/`, если есть, иначе корень проекта | корень скана — или несколько (монорепо); с массивом относительные пути `include` — от `context` |
 | `extensions` | `.html .jsx .tsx .vue .svelte` | какие файлы сканировать, если не задан `include` |
 | `include` | — | какие файлы сканировать: RegExp, путь, функция или массив |
@@ -121,9 +121,9 @@ module.exports = {
 
 Опции можно задать и в общем файле `minotation.config.js` рабочего каталога — он один для всех плагинов и CLI, опции из кода сливаются поверх ([minotation-build](../minotation-build/README.md#файл-настроек-minotationconfig-d-081)).
 | `presetExtensions` | `.mn.ts .mn.js .mn.tsx` | динамические пресеты |
-| `classVarName` | `['*Class:class']` | переменные со списком токенов: `const thClass = 'p10'` |
-| `classFnName` | `['mne:class', '*Class:class']` | вызовы, чьи строковые аргументы — токены: `mne('p10')`, `thClass('w150')` |
-| `replaceDefaults` | `false` | `true` — `attr`, `classVarName`, `classFnName` заменяют умолчание намеренно, без предупреждения |
+| `varNames` | `['*Class:class']` | переменные со списком токенов: `const thClass = 'p10'` |
+| `fnNames` | `['mne:class', '*Class:class']` | вызовы, чьи строковые аргументы — токены: `mne('p10')`, `thClass('w150')` |
+| `replaceDefaults` | `false` | `true` — `attrs`, `varNames`, `fnNames` заменяют умолчание намеренно, без предупреждения |
 | `syntax` | авто | разбирать JS/TS парсером; `false` — только текст |
 | `altColor` | `false` | запасное непрозрачное объявление рядом с `rgba` |
 | `media` | стандартные | карта именованных медиа: `{ wide: { query: '(width >= 1200px)' } }` → `p10@wide` |
@@ -174,6 +174,6 @@ JS-семейства он разбирает настоящим парсеро�
 ```js
 {
   loader: 'minotation-webpack/loader',
-  options: { attr: ['class', 'className:class'], syntax: false },
+  options: { attrs: 'class, className:class', syntax: false },
 }
 ```
